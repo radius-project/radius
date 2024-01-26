@@ -1,0 +1,45 @@
+[
+    {
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend",
+        "name": "frontend",
+        "properties": {
+            "application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+            "connections": {
+                "sql": {
+                    "source": "http://backendapp:8080"
+                }
+            },
+            "provisioningState": "Succeeded",
+            "status": {
+                "outputResources": {
+                    "id": "/some/thing/else",
+                    "localId": "something"
+                }
+            }
+        },
+        "type": "Applications.Core/containers"
+    },
+    {
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp",
+        "name": "backendapp",
+        "properties": {
+            "application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+            "container": {
+                "ports": {
+                    "web": {
+                        "port": 8080,
+                        "protocol": "TCP"
+                    }
+                }
+            },
+            "provisioningState": "Succeeded",
+            "status": {
+                "outputResources": {
+                    "id": "/some/thing/else",
+                    "localId": "something"
+                }
+            }
+        },
+        "type": "Applications.Core/containers"
+    }
+]

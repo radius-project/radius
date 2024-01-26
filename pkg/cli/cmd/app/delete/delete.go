@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	deleteConfirmation = "Are you sure you want to delete application '%v' from '%v'?"
+	deleteConfirmation = "Are you sure you want to delete application '%v' from environment '%v'?"
 	bicepWarning       = "'%v' is a Bicep filename or path and not the name of a Radius Application. Specify the name of a valid application and try again"
 )
 

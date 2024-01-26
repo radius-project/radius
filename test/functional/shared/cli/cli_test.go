@@ -294,6 +294,8 @@ func Test_Run_Logger(t *testing.T) {
 		filepath.Join(cwd, template),
 		"--application",
 		applicationName,
+		"--parameters",
+		functional.GetMagpieImage(),
 	}
 
 	// 'rad run' streams logs until canceled by the user. This is why we can't 'just' run the command in
