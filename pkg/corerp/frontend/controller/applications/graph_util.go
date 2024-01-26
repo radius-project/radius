@@ -250,11 +250,11 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 		}
 
 		// Resolve Outbound connections based on 'connections'.
-		connections := resolveConnections(resource, connectionsPath, connectionsFromAPIData(resources))
+		connections := resolveConnections(resource, connectionsPath, connectionsConverter(resources))
 		// Resolve Outbound connections based on 'routes'.
 		connections = append(connections, resolveConnections(resource, routesPath, routesPathConverter(resources))...)
 		// Resolve Inbound connections based on 'provides'.
-		connections = append(connections, resolveConnections(resource, portsPath, providesFromAPIData)...)
+		connections = append(connections, resolveConnections(resource, portsPath, providersConverter)...)
 
 		sort.Slice(connections, func(i, j int) bool {
 			return to.String(connections[i].ID) < to.String(connections[j].ID)
@@ -515,40 +515,6 @@ func resolveConnections(resource generated.GenericResource, jsonRefPath string, 
 	return entries
 }
 
-// connectionsFromAPIData resolves the outbound connections for a resource from the generic resource representation.
-// For example if the resource is an 'Applications.Core/container' then this function can find it's connections
-// to other resources like databases. Conversely if the resource is a database then this function
-// will not find any connections (because they are inbound). Inbound connections are processed later.
-func connectionsFromAPIData(resources []generated.GenericResource) func(any) (string, corerpv20231001preview.Direction, error) {
-	return func(item any) (string, corerpv20231001preview.Direction, error) {
-		data := &corerpv20231001preview.ConnectionProperties{}
-		err := toStronglyTypedData(item, data)
-		if err != nil {
-			return "", "", err
-		}
-		sourceID, err := findSourceResource(to.String(data.Source), resources)
-		if err != nil {
-			return "", "", err
-		}
-		return sourceID, corerpv20231001preview.DirectionOutbound, nil
-	}
-}
-
-func routesPathConverter(resources []generated.GenericResource) func(any) (string, corerpv20231001preview.Direction, error) {
-	return func(item any) (string, corerpv20231001preview.Direction, error) {
-		data := &corerpv20231001preview.GatewayRoute{}
-		err := toStronglyTypedData(item, data)
-		if err != nil {
-			return "", "", err
-		}
-		sourceID, err := findSourceResource(to.String(data.Destination), resources)
-		if err != nil {
-			return "", "", err
-		}
-		return sourceID, corerpv20231001preview.DirectionOutbound, nil
-	}
-}
-
 // findSourceResource looks up resource id by using source string by the following steps:
 // 1. Immediately return the resource ID if the source is a valid resource ID.
 // 2. Parse the hostname from source and look up the hostname in the resource list if the source is a valid URL.
@@ -583,7 +549,41 @@ func findSourceResource(source string, allResources []generated.GenericResource)
 	return orig, ErrInvalidSource
 }
 
-// providesFromAPIData is specifically to support HTTPRoute.
+// connectionsConverter resolves the outbound connections for a resource from the generic resource representation.
+// For example if the resource is an 'Applications.Core/container' then this function can find it's connections
+// to other resources like databases. Conversely if the resource is a database then this function
+// will not find any connections (because they are inbound). Inbound connections are processed later.
+func connectionsConverter(resources []generated.GenericResource) func(any) (string, corerpv20231001preview.Direction, error) {
+	return func(item any) (string, corerpv20231001preview.Direction, error) {
+		data := &corerpv20231001preview.ConnectionProperties{}
+		err := toStronglyTypedData(item, data)
+		if err != nil {
+			return "", "", err
+		}
+		sourceID, err := findSourceResource(to.String(data.Source), resources)
+		if err != nil {
+			return "", "", err
+		}
+		return sourceID, corerpv20231001preview.DirectionOutbound, nil
+	}
+}
+
+func routesPathConverter(resources []generated.GenericResource) func(any) (string, corerpv20231001preview.Direction, error) {
+	return func(item any) (string, corerpv20231001preview.Direction, error) {
+		data := &corerpv20231001preview.GatewayRoute{}
+		err := toStronglyTypedData(item, data)
+		if err != nil {
+			return "", "", err
+		}
+		sourceID, err := findSourceResource(to.String(data.Destination), resources)
+		if err != nil {
+			return "", "", err
+		}
+		return sourceID, corerpv20231001preview.DirectionOutbound, nil
+	}
+}
+
+// providersConverter is specifically to support HTTPRoute.
 // Any Radius resource type that exposes a port uses the following property path to return them.
 // The port may have a 'provides' attribute that specifies a httproute.
 // This route should be parsed to find the connections between containers.
@@ -591,7 +591,7 @@ func findSourceResource(source string, allResources []generated.GenericResource)
 // then we have port.provides in container A and container.connection in container B.
 // This gives us the connection: container A --> route R --> container B.
 // Without parsing the 'provides' attribute, we would miss the connection between container A and route R.
-func providesFromAPIData(item any) (string, corerpv20231001preview.Direction, error) {
+func providersConverter(item any) (string, corerpv20231001preview.Direction, error) {
 	data := &corerpv20231001preview.ContainerPortProperties{}
 	err := toStronglyTypedData(item, data)
 	if err != nil {
