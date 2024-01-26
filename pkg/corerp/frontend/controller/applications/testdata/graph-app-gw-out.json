@@ -1,0 +1,53 @@
+[
+    {
+        "connections": [
+            {
+                "direction": "Outbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp"
+            },
+            {
+                "direction": "Outbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/gateways/httpgw",
+        "name": "httpgw",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/gateways"
+    },
+    {
+        "connections": [
+            {
+                "direction": "Outbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp"
+            },
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/gateways/httpgw"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend",
+        "name": "frontend",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/containers"
+    },
+    {
+        "connections": [
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend"
+            },
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp",
+        "name": "backendapp",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/containers"
+    }
+]
