@@ -287,6 +287,15 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
+			// add the last deployed resource  which was deployed with error to deployed list
+			// cleanup all deployed output resources in reverse order since app deployment has failed
+			outputResource := rpv1.OutputResource{
+				LocalID: outputResource.LocalID,
+				ID:      outputResource.ID,
+			}
+			deployedOutputResources = append(deployedOutputResources, outputResource)
+			dp.Delete(ctx, id, deployedOutputResources)
+
 			return rpv1.DeploymentOutput{}, err
 		}
 
