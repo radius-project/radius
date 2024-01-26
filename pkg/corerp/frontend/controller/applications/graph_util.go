@@ -465,6 +465,8 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 }
 
 func resolveConnections(resource generated.GenericResource, jsonRefPath string, converter func(any) (string, corerpv20231001preview.Direction, error)) []*corerpv20231001preview.ApplicationGraphConnection {
+	// We need to access the connections in a weakly-typed way since the data type we're
+	// working with is a property bag.
 	p, err := jsonpointer.New(jsonRefPath)
 	if err != nil {
 		// This should never fail since we're hard-coding the path.
