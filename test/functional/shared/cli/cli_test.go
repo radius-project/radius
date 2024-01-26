@@ -76,7 +76,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	templateKindBicep := "bicep"
 	templateKindTerraform := "terraform"
 	resourceType := "Applications.Datastores/redisCaches"
-	file := "./test/functional/shared/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep"
+	file := "testdata/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:ghcr.io/radius-project/dev/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
@@ -108,8 +108,8 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	t.Run("Validate rad recipe show", func(t *testing.T) {
 		output, err := cli.RecipeShow(ctx, envName, recipe1, resourceType)
 		require.NoError(t, err)
-		require.Contains(t, output, recipeName)
-		require.Contains(t, output, recipeTemplate)
+		require.Contains(t, output, recipe1)
+		require.Contains(t, output, envRecipeTemplateBicep)
 		require.Contains(t, output, resourceType)
 		require.Contains(t, output, "redisName")
 		require.Contains(t, output, "string")
@@ -118,7 +118,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
 		showRecipeName := "redistesttf"
 		moduleServer := strings.TrimPrefix(functional.GetTerraformRecipeModuleServerURL(), "moduleServer=")
-		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip", moduleServer)
+		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip//modules", moduleServer)
 		showRecipeResourceType := "Applications.Datastores/redisCaches"
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType, false)
 		require.NoError(t, err)
