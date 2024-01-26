@@ -176,11 +176,11 @@ jobs:
               branch: '${{ steps.get-version.outputs.release-branch-name }}',
             })
 
-            if (data.name == '${{ steps.get-version.outputs.release-branch-name }}') {
-              echo "Release branch ${{ steps.get-version.outputs.release-branch-name }} already exists."
+            if (data.name == '${{ steps.get-version.outputs.release-branch-name }}' && context.ref == 'refs/heads/main' && context.eventName == 'push') {
+              echo "Release branch ${{ steps.get-version.outputs.release-branch-name }} already exists and this is a push to main." 
               return 'true'
             } else {
-              echo "Release branch ${{ steps.get-version.outputs.release-branch-name }} does not exist."
+              echo "Release branch ${{ steps.get-version.outputs.release-branch-name }} does not exist or this is not a push to main."
               return 'false'
             }
       - name: Generate release summary
@@ -191,7 +191,7 @@ jobs:
           echo "* Supported versions: ${{ steps.get-supported-versions.outputs.result }}" >> $GITHUB_STEP_SUMMARY
           echo "* Desired release tag: ${{ steps.get-version.outputs.release-version }}" >> $GITHUB_STEP_SUMMARY
           echo "* Desired release branch: ${{ steps.get-version.outputs.release-branch-name }}" >> $GITHUB_STEP_SUMMARY
-          echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMA`RY
+          echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
       - name: Release radius-project/radius version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
