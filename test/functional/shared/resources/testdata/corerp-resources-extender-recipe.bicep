@@ -1,7 +1,8 @@
 import radius as radius
 
-param registry string 
-
+@description('The OCI registry for test Bicep recipes.')
+param registry string
+@description('The OCI tag for test Bicep recipes.')
 param version string
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
