@@ -189,7 +189,7 @@ jobs:
         if: success()
 
       
-      - name: Wait for the radius-project/radius Assets workflow to complete
+      - name: Wait for the radius-project/radius Build and Test workflow to complete
         if: always()
         uses: willdavsmith/wait-on-check-action@v1.0.0
         with:
