@@ -43,29 +43,5 @@ if [[ -z "$WORKFLOW_NAME" ]]; then
     exit 1
 fi
 
-MAX_RETRIES=30
-RETRY_INTERVAL=60
-
-for ((i=0; i<MAX_RETRIES; i++)); do
-    RUN_ID=$(gh run list --limit 1 --workflow "$WORKFLOW_NAME" -b $TAG_NAME --repo radius-project/$REPOSITORY --json databaseId --jq '.[0].databaseId')
-    echo "RUN_ID: ${RUN_ID}"
-
-    RUN_STATUS=$(gh run view $RUN_ID --json status --jq '.status')
-    echo "RUN_STATUS: ${RUN_STATUS}"
-
-    RUN_CONCLUSION=$(gh run view $RUN_ID --json conclusion --jq '.conclusion')
-    echo "RUN_CONCLUSION: ${RUN_CONCLUSION}"
-
-    if [[ "${RUN_STATUS}" == "completed" && "${RUN_CONCLUSION}" == "success" ]]; then
-        echo "Run status is: ${RUN_STATUS} and conclusion is: ${RUN_CONCLUSION}."
-        break
-    fi
-
-    if [[ $i -eq $((MAX_RETRIES - 1)) ]]; then
-        echo "Error: Maximum retries reached. Run status: ${RUN_STATUS}, Run conclusion: ${RUN_CONCLUSION}."
-        exit 1
-    fi
-
-    echo "Retrying in ${RETRY_INTERVAL} seconds..."
-    sleep $RETRY_INTERVAL
-done
+RUN_ID=$(gh run list --limit 1 --workflow "$WORKFLOW_NAME" -b $TAG_NAME --repo radius-project/$REPOSITORY --json databaseId --jq '.[0].databaseId')
+echo "run-id=$RUN_ID" >> $GITHUB_OUTPUT
