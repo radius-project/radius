@@ -1,0 +1,44 @@
+name: 'Skip Functional Tests'
+on:
+  pull_request:
+    branches:
+      - main
+      - features/*
+      - release/*
+    # Only applies if version.yaml was changed
+    paths: 
+      - 'versions.yaml'  
+jobs:
+  skip-functional-tests-run:
+    name: 'Skip Functional Tests'
+    runs-on: ubuntu-latest
+    permissions:
+        checks: write
+        contents: read
+    environment: functional-tests
+    steps:
+    - name: Use custom actions
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Get changed files
+      id: changed-files
+      uses: tj-actions/changed-files@v42
+    - name: Display chnaged file count
+      run: |
+        echo "Number of changed files: ${{ steps.changed-files.outputs.all_changed_files_count }}"
+    - name: Save PR number
+      if: ${{ steps.changed-files.outputs.all_changed_files_count == 1 }}
+      uses: ./.github/actions/save-pr-as-artifact
+    - name: Create Check run for release
+      if: ${{ steps.changed-files.outputs.all_changed_files_count == 1 }}
+      uses: LouisBrunner/checks-action@v2.0.0
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        name: 'Functional Test Run'
+        repo: ${{ github.repository }}
+        sha: ${{ github.sha}}
+        status: completed
+        conclusion: 'success'
+        output: |
+          {"summary":"Functional Test run not required as only versions.yaml has changed."}      
