@@ -2,6 +2,7 @@ package aci
 
 import (
 	"context"
+	"fmt"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -40,9 +41,13 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	env := []*cs2client.EnvironmentVariable{}
 
 	for name, val := range properties.Container.Env {
+		if val.ValueFrom != nil {
+			return renderers.RendererOutput{}, fmt.Errorf("valueFrom not supported with ACI")
+		}
+
 		env = append(env, &cs2client.EnvironmentVariable{
 			Name:  to.Ptr(name),
-			Value: to.Ptr(val),
+			Value: val.Value,
 		})
 	}
 
