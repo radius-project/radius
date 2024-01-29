@@ -294,7 +294,10 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 				ID:      outputResource.ID,
 			}
 			deployedOutputResources = append(deployedOutputResources, outputResource)
-			dp.Delete(ctx, id, deployedOutputResources)
+			deleteErr := dp.Delete(ctx, id, deployedOutputResources)
+			if deleteErr != nil {
+				logger.Info("Failed to cleanup deployed output resources for resource %q. Error: %s", id.String(), deleteErr.Error())
+			}
 
 			return rpv1.DeploymentOutput{}, err
 		}
