@@ -62,22 +62,23 @@ const (
 func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	options := shared.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	// get the current environment to switch back to after the test since the environment is used
-	// for AWS test and has the AWS scope which the environment created in this does not.
 	envName := test.Steps[0].RPResources.Resources[0].Name
-	recipeName := "recipeName"
-	recipe1 := "recipe1"
-	recipe2 := "recipe2"
 	registry := strings.TrimPrefix(functional.GetBicepRecipeRegistry(), "registry=")
 	version := strings.TrimPrefix(functional.GetBicepRecipeVersion(), "version=")
-	recipeTemplate := fmt.Sprintf("%s/recipes/local-dev/rediscaches:%s", registry, version)
-	envRecipeTemplateBicep := fmt.Sprintf("%s/test/functional/shared/recipes/corerp-redis-recipe:%s", registry, version)
-	envRecipeTemplateTerraform := "Azure/cosmosdb/azurerm"
-	templateKindBicep := "bicep"
-	templateKindTerraform := "terraform"
 	resourceType := "Applications.Datastores/redisCaches"
-	file := "testdata/corerp-redis-recipe.bicep"
+	file := "../../shared/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:ghcr.io/radius-project/dev/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
+
+	recipeName := "recipeName"
+	recipeTemplate := fmt.Sprintf("%s/recipes/local-dev/rediscaches:%s", registry, version)
+
+	bicepRecipe := "recipe1"
+	bicepRecipeTemplate := fmt.Sprintf("%s/test/functional/shared/recipes/corerp-redis-recipe:%s", registry, version)
+	templateKindBicep := "bicep"
+
+	terraformRecipe := "recipe2"
+	terraformRecipeTemplate := "Azure/cosmosdb/azurerm"
+	templateKindTerraform := "terraform"
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
@@ -85,15 +86,21 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		require.Contains(t, output, "Successfully linked recipe")
 	})
 
+	t.Run("Validate rad recipe register with insecure registry", func(t *testing.T) {
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, true)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully linked recipe")
+	})
+
 	t.Run("Validate rad recipe list", func(t *testing.T) {
 		output, err := cli.RecipeList(ctx, envName)
 		require.NoError(t, err)
-		require.Regexp(t, recipe1, output)
-		require.Regexp(t, recipe2, output)
+		require.Regexp(t, bicepRecipe, output)
+		require.Regexp(t, terraformRecipe, output)
 		require.Regexp(t, recipeName, output)
 		require.Regexp(t, resourceType, output)
-		require.Regexp(t, envRecipeTemplateBicep, output)
-		require.Regexp(t, envRecipeTemplateTerraform, output)
+		require.Regexp(t, bicepRecipeTemplate, output)
+		require.Regexp(t, terraformRecipeTemplate, output)
 		require.Regexp(t, recipeTemplate, output)
 		require.Regexp(t, templateKindBicep, output)
 		require.Regexp(t, templateKindTerraform, output)
@@ -106,10 +113,10 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 
 	t.Run("Validate rad recipe show", func(t *testing.T) {
-		output, err := cli.RecipeShow(ctx, envName, recipe1, resourceType)
+		output, err := cli.RecipeShow(ctx, envName, bicepRecipe, resourceType)
 		require.NoError(t, err)
-		require.Contains(t, output, recipe1)
-		require.Contains(t, output, envRecipeTemplateBicep)
+		require.Contains(t, output, bicepRecipe)
+		require.Contains(t, output, bicepRecipeTemplate)
 		require.Contains(t, output, resourceType)
 		require.Contains(t, output, "redisName")
 		require.Contains(t, output, "string")
@@ -139,7 +146,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with existing recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipe1, templateKindBicep, recipeTemplate, resourceType, false)
+		output, err := cli.RecipeRegister(ctx, envName, bicepRecipe, templateKindBicep, recipeTemplate, resourceType, false)
 		require.Contains(t, output, "Successfully linked recipe")
 		require.NoError(t, err)
 		output, err = cli.RecipeList(ctx, envName)
