@@ -138,7 +138,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		require.Contains(t, output, "Successfully published")
 	})
 
-	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
+	t.Run("Validate rad recipe register with recipe name conflicting with existing recipe", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipe1, templateKindBicep, recipeTemplate, resourceType, false)
 		require.Contains(t, output, "Successfully linked recipe")
 		require.NoError(t, err)
