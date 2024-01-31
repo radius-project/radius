@@ -1,5 +1,7 @@
+param redisName string
+
 resource redis 'Microsoft.Cache/redis@2022-06-01' = {
-  name: 'rds-${uniqueString(resourceGroup().id, deployment().name)}'
+  name: 'rds-${uniqueString(resourceGroup().id, redisName, deployment().name)}'
   location: 'global'
   properties: {
     enableNonSslPort: false
