@@ -177,10 +177,10 @@ jobs:
             })
 
             if (data.name == '${{ steps.get-version.outputs.release-branch-name }}' && context.ref == 'refs/heads/main' && context.eventName == 'push') {
-              echo "Release branch ${{ steps.get-version.outputs.release-branch-name }} already exists and this is a push to main." 
+              console.log("Release branch ${{ steps.get-version.outputs.release-branch-name }} already exists and this is a push to main.")
               return 'true'
             } else {
-              echo "Release branch ${{ steps.get-version.outputs.release-branch-name }} does not exist or this is not a push to main."
+              console.log("Release branch ${{ steps.get-version.outputs.release-branch-name }} does not exist or this is not a push to main.")
               return 'false'
             }
       - name: Generate release summary
