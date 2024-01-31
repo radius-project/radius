@@ -170,17 +170,22 @@ jobs:
         with:
           result-encoding: string
           script: |
-            const { data } = await github.rest.repos.getBranch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              branch: '${{ steps.get-version.outputs.release-branch-name }}',
-            })
+            try {
+              const { data } = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: '${{ steps.get-version.outputs.release-branch-name }}',
+              })
 
-            if (data.name == '${{ steps.get-version.outputs.release-branch-name }}' && context.ref == 'refs/heads/main' && context.eventName == 'push') {
-              console.log("Release branch ${{ steps.get-version.outputs.release-branch-name }} already exists and this is a push to main.")
-              return 'true'
-            } else {
-              console.log("Release branch ${{ steps.get-version.outputs.release-branch-name }} does not exist or this is not a push to main.")
+              if (data && data.name == '${{ steps.get-version.outputs.release-branch-name }}' && context.ref == 'refs/heads/main' && context.eventName == 'push') {
+                console.log("Release branch ${{ steps.get-version.outputs.release-branch-name }} already exists and this is a push to main.")
+                return 'true'
+              } else {
+                console.log("This is not a push to main.")
+                return 'false'
+              }
+            } catch (error) {
+              console.log("Release branch ${{ steps.get-version.outputs.release-branch-name }} does not exist.")
               return 'false'
             }
       - name: Generate release summary
