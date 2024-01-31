@@ -166,8 +166,8 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 	}
 
 	if applicationName == "" {
-		return "", fmt.Errorf("no application name provided and no default application set, " +
-			"either pass in an application name or set a default application by using `rad application switch`")
+		return "", fmt.Errorf("no application name provided, " +
+			"pass in an application name with '-a/--application'")
 	}
 
 	return applicationName, nil
