@@ -109,7 +109,12 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: gateway.ResourceType,
-			Renderer:     &gateway.Renderer{},
+			Renderer: &mux.Renderer{
+				Inners: map[rpv1.EnvironmentComputeKind]renderers.Renderer{
+					rpv1.KubernetesComputeKind: &gateway.Renderer{},
+					rpv1.ACIComputeKind:        nil,
+				},
+			},
 		},
 		{
 			ResourceType: volume.ResourceType,
