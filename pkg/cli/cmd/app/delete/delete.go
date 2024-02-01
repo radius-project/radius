@@ -123,7 +123,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Lopkup the environment name for use in the confirmation prompt
+	// Lookup the environment name for use in the confirmation prompt
 	if workspace.Environment != "" {
 		id, err := resources.ParseResource(workspace.Environment)
 		if err != nil {
