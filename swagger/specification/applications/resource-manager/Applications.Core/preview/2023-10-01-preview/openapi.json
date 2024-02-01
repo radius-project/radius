@@ -5077,7 +5077,6 @@
         }
       },
       "required": [
-        "application",
         "data"
       ]
     },
