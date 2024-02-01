@@ -132,8 +132,9 @@ func Test_Show(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
+			Name:        "kind-kind",
+			Scope:       "/planes/radius/local/resourceGroups/test-group",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
@@ -166,13 +167,14 @@ func Test_Show(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
+			Name:        "kind-kind",
+			Scope:       "/planes/radius/local/resourceGroups/test-group",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
 		}
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", workspace.Name)).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "default")).
 			Return(prompt.ConfirmYes, nil).
 			Times(1)
 
@@ -189,6 +191,7 @@ func Test_Show(t *testing.T) {
 			Workspace:         workspace,
 			Output:            outputSink,
 			ApplicationName:   "test-app",
+			EnvironmentName:   "default",
 		}
 
 		err := runner.Run(context.Background())
@@ -213,13 +216,14 @@ func Test_Show(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
+			Name:        "kind-kind",
+			Scope:       "/planes/radius/local/resourceGroups/test-group",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
 		}
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", workspace.Name)).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "default")).
 			Return(prompt.ConfirmNo, nil).
 			Times(1)
 
@@ -229,6 +233,7 @@ func Test_Show(t *testing.T) {
 			Workspace:       workspace,
 			Output:          outputSink,
 			ApplicationName: "test-app",
+			EnvironmentName: "default",
 		}
 
 		err := runner.Run(context.Background())
@@ -255,8 +260,9 @@ func Test_Show(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
+			Name:        "kind-kind",
+			Scope:       "/planes/radius/local/resourceGroups/test-group",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
@@ -264,6 +270,7 @@ func Test_Show(t *testing.T) {
 			Workspace:         workspace,
 			Output:            outputSink,
 			ApplicationName:   "test-app",
+			EnvironmentName:   "default",
 			Confirm:           true,
 		}
 
@@ -290,13 +297,14 @@ func Test_Show(t *testing.T) {
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
+			Name:        "kind-kind",
+			Scope:       "/planes/radius/local/resourceGroups/test-group",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
 		}
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", workspace.Name)).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "default")).
 			Return("", &prompt.ErrExitConsole{}).
 			Times(1)
 
@@ -306,6 +314,7 @@ func Test_Show(t *testing.T) {
 			Output:          outputSink,
 			Workspace:       workspace,
 			ApplicationName: "test-app",
+			EnvironmentName: "default",
 		}
 
 		err := runner.Run(context.Background())
