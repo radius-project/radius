@@ -3,6 +3,7 @@ package aci
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -42,6 +43,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	internalLBID := options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/loadBalancers/" + internalLBName
 	internalLBNSGID := options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/networkSecurityGroups/" + envID.Name() + "-nsg"
 
+	orResources := []rpv1.OutputResource{}
 	// Build ContainerGroupProfile and ContainerScaleSet resources
 	env := []*cs2client.EnvironmentVariable{}
 
@@ -61,6 +63,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// Support only one port for now.
 	firstPort := int32(80)
+	gatewayProvides := ""
 	for _, v := range properties.Container.Ports {
 		containerPorts = append(containerPorts, &cs2client.ContainerPort{
 			Port:     to.Ptr[int32](v.ContainerPort),
@@ -70,10 +73,20 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			Port:     to.Ptr[int32](v.ContainerPort),
 			Protocol: to.Ptr(cs2client.ContainerGroupNetworkProtocolTCP),
 		})
+
+		// TODO: This is a hack to determine if this is a gateway container.
+		if strings.Contains(strings.ToLower(v.Provides), "applications.core/gateways") {
+			gatewayProvides = v.Provides
+		}
 	}
 
 	if len(containerPorts) > 0 {
 		firstPort = to.Int32(containerPorts[0].Port)
+	}
+
+	nsgID := internalLBNSGID
+	if gatewayProvides != "" {
+		nsgID = options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/networkSecurityGroups/" + resources.MustParse(gatewayProvides).Name() + "-nsg"
 	}
 
 	// Build Subnet for this container
@@ -92,7 +105,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 				},
 			},
 			NetworkSecurityGroup: &armnetwork.SecurityGroup{
-				ID: to.Ptr(internalLBNSGID),
+				ID: to.Ptr(nsgID),
 			},
 		},
 	}
@@ -108,83 +121,119 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			Data: subnet,
 		},
 	}
+	orResources = append(orResources, vnetSubnet)
 
-	internalSubnetID := vnetID + "/subnets/internal-lb"
+	networkprofile := &cs2client.NetworkProfile{}
 	appSubnetID := vnetID + "/subnets/" + resource.Name
 
-	frontendIPConfID := internalLBID + "/frontendIPConfigurations/" + resource.Name
-	backendAddressPoolID := internalLBID + "/backendAddressPools/" + resource.Name
-	probeID := internalLBID + "/probes/" + resource.Name
+	profileDep := []string{rpv1.LocalIDAzureVirtualNetworkSubnet}
+	if gatewayProvides == "" {
+		internalSubnetID := vnetID + "/subnets/internal-lb"
 
-	// Build internal loadBalaner configuration for this container
-	lb := &armnetwork.LoadBalancer{
-		Name: to.Ptr(internalLBName),
-		Type: to.Ptr("Microsoft.Network/loadBalancers"),
-		Properties: &armnetwork.LoadBalancerPropertiesFormat{
-			FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{
-				{
-					Name: to.Ptr(resource.Name),
-					Properties: &armnetwork.FrontendIPConfigurationPropertiesFormat{
-						PrivateIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
-						Subnet: &armnetwork.Subnet{
-							ID: to.Ptr(internalSubnetID),
+		frontendIPConfID := internalLBID + "/frontendIPConfigurations/" + resource.Name
+		backendAddressPoolID := internalLBID + "/backendAddressPools/" + resource.Name
+		probeID := internalLBID + "/probes/" + resource.Name
+
+		// Build internal loadBalaner configuration for this container
+		lb := &armnetwork.LoadBalancer{
+			Name: to.Ptr(internalLBName),
+			Type: to.Ptr("Microsoft.Network/loadBalancers"),
+			Properties: &armnetwork.LoadBalancerPropertiesFormat{
+				FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{
+					{
+						Name: to.Ptr(resource.Name),
+						Properties: &armnetwork.FrontendIPConfigurationPropertiesFormat{
+							PrivateIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
+							Subnet: &armnetwork.Subnet{
+								ID: to.Ptr(internalSubnetID),
+							},
+						},
+					},
+				},
+				BackendAddressPools: []*armnetwork.BackendAddressPool{
+					{
+						Name: to.Ptr(resource.Name),
+					},
+				},
+				Probes: []*armnetwork.Probe{
+					{
+						Name: to.Ptr(resource.Name),
+						Properties: &armnetwork.ProbePropertiesFormat{
+							Protocol:          to.Ptr(armnetwork.ProbeProtocolTCP),
+							Port:              to.Ptr[int32](firstPort),
+							IntervalInSeconds: to.Ptr[int32](15),
+							NumberOfProbes:    to.Ptr[int32](2),
+						},
+					},
+				},
+				LoadBalancingRules: []*armnetwork.LoadBalancingRule{
+					{
+						Name: to.Ptr(resource.Name),
+						Properties: &armnetwork.LoadBalancingRulePropertiesFormat{
+							Protocol:       to.Ptr(armnetwork.TransportProtocolTCP),
+							FrontendPort:   to.Ptr[int32](firstPort),
+							BackendPort:    to.Ptr[int32](firstPort),
+							EnableTCPReset: to.Ptr(true),
+							FrontendIPConfiguration: &armnetwork.SubResource{
+								ID: to.Ptr(frontendIPConfID),
+							},
+							BackendAddressPool: &armnetwork.SubResource{
+								ID: to.Ptr(backendAddressPoolID),
+							},
+							Probe: &armnetwork.SubResource{
+								ID: to.Ptr(probeID),
+							},
 						},
 					},
 				},
 			},
-			BackendAddressPools: []*armnetwork.BackendAddressPool{
-				{
-					Name: to.Ptr(resource.Name),
-				},
+		}
+
+		lbResource := rpv1.OutputResource{
+			LocalID: rpv1.LocalIDAzureContainerLoadBalancer,
+			ID:      resources.MustParse(internalLBID + "/applications/" + resource.Name),
+			AdditionalProperties: map[string]string{
+				"appName": resource.Name,
 			},
-			Probes: []*armnetwork.Probe{
-				{
-					Name: to.Ptr(resource.Name),
-					Properties: &armnetwork.ProbePropertiesFormat{
-						Protocol:          to.Ptr(armnetwork.ProbeProtocolTCP),
-						Port:              to.Ptr[int32](firstPort),
-						IntervalInSeconds: to.Ptr[int32](15),
-						NumberOfProbes:    to.Ptr[int32](2),
-					},
+			CreateResource: &rpv1.Resource{
+				ResourceType: resourcemodel.ResourceType{
+					Type:     "Microsoft.Network/loadBalancers",
+					Provider: resourcemodel.ProviderAzure,
 				},
+				Data:         lb,
+				Dependencies: []string{rpv1.LocalIDAzureVirtualNetworkSubnet},
 			},
-			LoadBalancingRules: []*armnetwork.LoadBalancingRule{
-				{
-					Name: to.Ptr(resource.Name),
-					Properties: &armnetwork.LoadBalancingRulePropertiesFormat{
-						Protocol:       to.Ptr(armnetwork.TransportProtocolTCP),
-						FrontendPort:   to.Ptr[int32](firstPort),
-						BackendPort:    to.Ptr[int32](firstPort),
-						EnableTCPReset: to.Ptr(true),
-						FrontendIPConfiguration: &armnetwork.SubResource{
-							ID: to.Ptr(frontendIPConfID),
-						},
-						BackendAddressPool: &armnetwork.SubResource{
+		}
+
+		networkprofile = &cs2client.NetworkProfile{
+			LoadBalancer: &cs2client.LoadBalancer{
+				BackendAddressPools: []*cs2client.LoadBalancerBackendAddressPool{
+					{
+						Resource: &cs2client.APIEntityReference{
 							ID: to.Ptr(backendAddressPoolID),
 						},
-						Probe: &armnetwork.SubResource{
-							ID: to.Ptr(probeID),
+					},
+				},
+			},
+		}
+		orResources = append(orResources, lbResource)
+		profileDep = append(profileDep, rpv1.LocalIDAzureContainerLoadBalancer)
+	} else {
+		appgwID := options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/applicationGateways/" + resources.MustParse(gatewayProvides).Name()
+		networkprofile = &cs2client.NetworkProfile{
+			ApplicationGateway: &cs2client.ApplicationGateway{
+				Resource: &cs2client.APIEntityReference{
+					ID: to.Ptr(appgwID),
+				},
+				BackendAddressPools: []*cs2client.ApplicationGatewayBackendAddressPool{
+					{
+						Resource: &cs2client.APIEntityReference{
+							ID: to.Ptr(strings.Join([]string{appgwID, "backendAddressPools", resource.Name}, "/")),
 						},
 					},
 				},
 			},
-		},
-	}
-
-	lbResource := rpv1.OutputResource{
-		LocalID: rpv1.LocalIDAzureContainerLoadBalancer,
-		ID:      resources.MustParse(internalLBID + "/applications/" + resource.Name),
-		AdditionalProperties: map[string]string{
-			"appName": resource.Name,
-		},
-		CreateResource: &rpv1.Resource{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/loadBalancers",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			Data:         lb,
-			Dependencies: []string{rpv1.LocalIDAzureVirtualNetworkSubnet},
-		},
+		}
 	}
 
 	profile := &cs2client.ContainerGroupProfile{
@@ -224,9 +273,10 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 				Provider: resourcemodel.ProviderAzure,
 			},
 			Data:         profile,
-			Dependencies: []string{rpv1.LocalIDAzureContainerLoadBalancer},
+			Dependencies: profileDep,
 		},
 	}
+	orResources = append(orResources, orProfile)
 
 	scaleSet := &cs2client.ContainerScaleSet{
 		Name:     to.Ptr(resource.Name),
@@ -254,17 +304,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 							},
 						},
 					},
-					NetworkProfile: &cs2client.NetworkProfile{
-						LoadBalancer: &cs2client.LoadBalancer{
-							BackendAddressPools: []*cs2client.LoadBalancerBackendAddressPool{
-								{
-									Resource: &cs2client.APIEntityReference{
-										ID: to.Ptr(backendAddressPoolID),
-									},
-								},
-							},
-						},
-					},
+					NetworkProfile: networkprofile,
 				},
 			},
 		},
@@ -282,9 +322,10 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			Dependencies: []string{rpv1.LocalIDAzureCGProfile},
 		},
 	}
+	orResources = append(orResources, orScaleSet)
 
 	return renderers.RendererOutput{
-		Resources:      []rpv1.OutputResource{vnetSubnet, lbResource, orProfile, orScaleSet},
+		Resources:      orResources,
 		RadiusResource: dm,
 	}, nil
 }
