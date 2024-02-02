@@ -67,6 +67,8 @@ const (
 	LocalIDRoleAssignmentPrefix         = "RoleAssignment"
 	LocalIDAzureCGProfile               = "AzureCGProfile"
 	LocalIDAzureCGScaleSet              = "AzureCGScaleSet"
+	LocalIDAzureVirtualNetworkSubnet    = "AzureVirtualNetworkSubnet"
+	LocalIDAzureContainerLoadBalancer   = "AzureContainerLoadBalancer"
 
 	// Obsolete when we remove AppModelV1
 	LocalIDRoleAssignmentKVKeys = "RoleAssignment-KVKeys"

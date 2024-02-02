@@ -386,6 +386,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 
 	envOpts := renderers.EnvironmentOptions{
+		Resource:       resources.MustParse(env.ID),
 		CloudProviders: &env.Properties.Providers,
 	}
 
