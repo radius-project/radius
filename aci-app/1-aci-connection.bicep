@@ -46,7 +46,7 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
       }
     }
     connections: {
-      mongodb: {
+      redis: {
         source: redis.id
       }
       backend: {
