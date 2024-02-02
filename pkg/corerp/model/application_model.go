@@ -221,6 +221,20 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 			},
 			ResourceHandler: handlers.NewAzureAppGWHandler(arm),
 		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     "Microsoft.Network/loadBalancers",
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureContainerLoadBalancerHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     "Microsoft.Network/vitualNetworks/subnets",
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureVirtualNetworkSubnetHandler(arm),
+		},
 	}
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
 	if err != nil {
