@@ -75,9 +75,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		})
 
 		// TODO: This is a hack to determine if this is a gateway container.
-		if strings.Contains(strings.ToLower(v.Provides), "applications.core/gateways") {
-			gatewayProvides = v.Provides
-		}
+		// if strings.Contains(strings.ToLower(v.Provides), "applications.core/gateways") {
+		// 	gatewayProvides = v.Provides
+		// }
 	}
 
 	if len(containerPorts) > 0 {
@@ -115,7 +115,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		ID:      resources.MustParse(vnetID + "/subnets/" + resource.Name),
 		CreateResource: &rpv1.Resource{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/vitualNetworks/subnets",
+				Type:     "Microsoft.Network/virtualNetworks/subnets",
 				Provider: resourcemodel.ProviderAzure,
 			},
 			Data: subnet,

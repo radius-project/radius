@@ -160,7 +160,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	nsgResource := rpv1.OutputResource{
-		LocalID: rpv1.LocalIDAzureNetworkSecurityGroup,
+		LocalID: rpv1.LocalIDAzureAppGWNetworkSecurityGroup,
 		ID:      resources.MustParse(resourceGroupID + "/providers/Microsoft.Network/networkSecurityGroups/" + nsgName),
 		CreateResource: &rpv1.Resource{
 			ResourceType: resourcemodel.ResourceType{
@@ -200,11 +200,11 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		ID:      resources.MustParse(vnetID + "/subnets/" + gateway.Name),
 		CreateResource: &rpv1.Resource{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/vitualNetworks/subnets",
+				Type:     "Microsoft.Network/virtualNetworks/subnets",
 				Provider: resourcemodel.ProviderAzure,
 			},
 			Data:         subnet,
-			Dependencies: []string{rpv1.LocalIDAzureNetworkSecurityGroup},
+			Dependencies: []string{rpv1.LocalIDAzureAppGWNetworkSecurityGroup},
 		},
 	}
 

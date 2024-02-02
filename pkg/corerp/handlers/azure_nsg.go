@@ -47,14 +47,16 @@ func (handler *azureNSGHandler) Put(ctx context.Context, options *PutOptions) (m
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
 
-	publicIP, ok := options.DependencyProperties[rpv1.LocalIDAzurePublicIP]["publicIPAddress"]
-	if !ok {
-		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
-	}
+	if options.Resource.LocalID == rpv1.LocalIDAzureAppGWNetworkSecurityGroup {
+		publicIP, ok := options.DependencyProperties[rpv1.LocalIDAzurePublicIP]["publicIPAddress"]
+		if !ok {
+			return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
+		}
 
-	for i := range nsg.Properties.SecurityRules {
-		if to.String(nsg.Properties.SecurityRules[i].Name) == "AllowPublicIPAddress" {
-			nsg.Properties.SecurityRules[i].Properties.DestinationAddressPrefix = to.Ptr(publicIP)
+		for i := range nsg.Properties.SecurityRules {
+			if to.String(nsg.Properties.SecurityRules[i].Name) == "AllowPublicIPAddress" {
+				nsg.Properties.SecurityRules[i].Properties.DestinationAddressPrefix = to.Ptr(publicIP)
+			}
 		}
 	}
 
