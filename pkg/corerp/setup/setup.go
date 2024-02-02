@@ -101,6 +101,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				ctr_ctrl.ValidateAndMutateRequest,
 			},
 			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationTimeout:    time.Minute * time.Duration(10),
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Patch: builder.Operation[datamodel.ContainerResource]{
@@ -109,10 +110,12 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				ctr_ctrl.ValidateAndMutateRequest,
 			},
 			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationTimeout:    time.Minute * time.Duration(10),
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.ContainerResource]{
 			AsyncJobController:       backend_ctrl.NewDeleteResource,
+			AsyncOperationTimeout:    time.Minute * time.Duration(10),
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 	})
