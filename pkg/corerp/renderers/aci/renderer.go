@@ -3,6 +3,8 @@ package aci
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
@@ -15,6 +17,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
 	cs2client "github.com/radius-project/azure-cs2/client/v20230515preview"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
 const (
@@ -26,7 +29,51 @@ type Renderer struct {
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
-	return nil, nil, nil
+	resource, ok := dm.(*datamodel.ContainerResource)
+	if !ok {
+		return nil, nil, v1.ErrInvalidModelConversion
+	}
+	properties := resource.Properties
+
+	for _, connection := range properties.Connections {
+		resourceID, err := resources.ParseResource(connection.Source)
+		if err != nil {
+			return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
+		}
+
+		// Non-radius Azure connections that are accessible from Radius container resource.
+		if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
+			azureResourceIDs = append(azureResourceIDs, resourceID)
+			continue
+		}
+
+		if resources_radius.IsRadiusResource(resourceID) {
+			radiusResourceIDs = append(radiusResourceIDs, resourceID)
+			continue
+		}
+	}
+
+	// TODO: fix routing
+	// for _, port := range properties.Container.Ports {
+	// 	provides := port.Provides
+
+	// 	// if provides is empty, skip this port. A service for this port will be generated later on.
+	// 	if provides == "" {
+	// 		continue
+	// 	}
+
+	// 	resourceID, err := resources.ParseResource(provides)
+	// 	if err != nil {
+	// 		return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
+	// 	}
+
+	// 	if resources_radius.IsRadiusResource(resourceID) {
+	// 		radiusResourceIDs = append(radiusResourceIDs, resourceID)
+	// 		continue
+	// 	}
+	// }
+
+	return radiusResourceIDs, azureResourceIDs, nil
 }
 
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
@@ -44,9 +91,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	internalLBNSGID := options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/networkSecurityGroups/" + envID.Name() + "-nsg"
 
 	orResources := []rpv1.OutputResource{}
-	// Build ContainerGroupProfile and ContainerScaleSet resources
-	env := []*cs2client.EnvironmentVariable{}
 
+	// Populate environment variables in properties.container.env
+	env := []*cs2client.EnvironmentVariable{}
 	for name, val := range properties.Container.Env {
 		if val.ValueFrom != nil {
 			return renderers.RendererOutput{}, fmt.Errorf("valueFrom not supported with ACI")
@@ -55,6 +102,28 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		env = append(env, &cs2client.EnvironmentVariable{
 			Name:  to.Ptr(name),
 			Value: val.Value,
+		})
+	}
+
+	// We build the environment variable list in a stable order for testability
+	envData, secretData, err := getEnvVarsAndSecretData(resource, properties.Application, options.Dependencies)
+	if err != nil {
+		return renderers.RendererOutput{}, fmt.Errorf("failed to obtain environment variables and secret data: %w", err)
+	}
+
+	// Populate environment variables from connections
+	for _, key := range getSortedKeys(envData) {
+		env = append(env, &cs2client.EnvironmentVariable{
+			Name:  to.Ptr(envData[key].Name),
+			Value: to.Ptr(envData[key].Value),
+		})
+	}
+
+	// Populate secret data from connections
+	for _, key := range getSortedKeys(secretData) {
+		env = append(env, &cs2client.EnvironmentVariable{
+			Name:        to.Ptr(secretData[key].Name),
+			SecureValue: to.Ptr(secretData[key].Value),
 		})
 	}
 
@@ -327,5 +396,62 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	return renderers.RendererOutput{
 		Resources:      orResources,
 		RadiusResource: dm,
+		ComputedValues: map[string]rpv1.ComputedValueReference{
+			// TODO: Add the computed values here
+			"test_computed_value_key": {
+				Value: "test_computed_value_value",
+			},
+		},
 	}, nil
+}
+
+type EnvVar struct {
+	Name  string
+	Value string
+}
+
+func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationName string, dependencies map[string]renderers.RendererDependency) (map[string]EnvVar, map[string]EnvVar, error) {
+	env := map[string]EnvVar{}
+	secretData := map[string]EnvVar{}
+	properties := resource.Properties
+
+	// Take each connection and create environment variables for each part
+	// We'll store each value in a secret named with the same name as the resource.
+	// We'll use the environment variable names as keys.
+	// Float is used by the JSON serializer
+	for name, con := range properties.Connections {
+		properties := dependencies[con.Source]
+		if !con.GetDisableDefaultEnvVars() {
+			source := con.Source
+			if source == "" {
+				continue
+			}
+
+			for key, value := range properties.ComputedValues {
+				name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
+
+				switch v := value.(type) {
+				case string:
+					secretData[name] = EnvVar{Name: name, Value: v}
+				case float64:
+					secretData[name] = EnvVar{Name: name, Value: strconv.Itoa(int(v))}
+				case int:
+					secretData[name] = EnvVar{Name: name, Value: strconv.Itoa(v)}
+				}
+			}
+		}
+	}
+
+	return env, secretData, nil
+}
+
+func getSortedKeys(env map[string]EnvVar) []string {
+	keys := []string{}
+	for k := range env {
+		key := k
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+	return keys
 }
