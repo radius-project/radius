@@ -397,10 +397,15 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		Resources:      orResources,
 		RadiusResource: dm,
 		ComputedValues: map[string]rpv1.ComputedValueReference{
-			// TODO: Add the computed values here
-			"test_computed_value_key": {
-				Value: "test_computed_value_value",
+			// Populate hostname for the frontend of load balancer.
+			"hostname": {
+				LocalID:           rpv1.LocalIDAzureContainerLoadBalancer,
+				PropertyReference: "hostname",
 			},
+			// // TODO: Add the computed values here
+			// "test_computed_value_key": {
+			// 	Value: "test_computed_value_value",
+			// },
 		},
 	}, nil
 }
