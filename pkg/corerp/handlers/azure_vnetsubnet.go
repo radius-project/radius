@@ -56,42 +56,45 @@ func (handler *azureVirtualNetworkSubnetHandler) Put(ctx context.Context, option
 
 	vnetName := options.Resource.ID.Truncate().Name()
 
-	// TODO: for loop until we find an available subnet
-	checked := map[int]bool{}
-	pager := subnetClient.NewListPager(resourceGroupName, vnetName, nil)
-	for pager.More() {
-		s, err := pager.NextPage(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, s := range s.Value {
-			if to.String(s.Name) == to.String(subnet.Name) {
-				// no ops
-				return nil, nil
+	// if subnet.Properties.AddressPrefix is nil, we need to find an available subnet
+	if subnet.Properties.AddressPrefix == nil {
+		// TODO: for loop until we find an available subnet
+		checked := map[int]bool{}
+		pager := subnetClient.NewListPager(resourceGroupName, vnetName, nil)
+		for pager.More() {
+			s, err := pager.NextPage(ctx)
+			if err != nil {
+				return nil, err
 			}
+			for _, s := range s.Value {
+				if to.String(s.Name) == to.String(subnet.Name) {
+					// no ops
+					return nil, nil
+				}
 
-			ip := strings.Split(to.String(s.Properties.AddressPrefix), ".")
-			if ip[0] != "10" {
-				continue
+				ip := strings.Split(to.String(s.Properties.AddressPrefix), ".")
+				if ip[0] != "10" {
+					continue
+				}
+				cnt, _ := strconv.ParseInt(ip[2], 10, 32)
+				checked[int(cnt)] = true
 			}
-			cnt, _ := strconv.ParseInt(ip[2], 10, 32)
-			checked[int(cnt)] = true
 		}
-	}
 
-	subnetPrefix := ""
-	for i := 2; i < 253; i++ {
-		if !checked[i] {
-			subnetPrefix = fmt.Sprintf("10.1.%d.0/24", i)
-			break
+		subnetPrefix := ""
+		for i := 2; i < 253; i++ {
+			if !checked[i] {
+				subnetPrefix = fmt.Sprintf("10.1.%d.0/24", i)
+				break
+			}
 		}
-	}
 
-	if subnetPrefix == "" {
-		return nil, errors.New("no available subnet")
-	}
+		if subnetPrefix == "" {
+			return nil, errors.New("no available subnet")
+		}
 
-	subnet.Properties.AddressPrefix = to.Ptr(subnetPrefix)
+		subnet.Properties.AddressPrefix = to.Ptr(subnetPrefix)
+	}
 
 	poller, err := subnetClient.BeginCreateOrUpdate(ctx, resourceGroupName, vnetName, to.String(subnet.Name), *subnet, nil)
 	if err != nil {
