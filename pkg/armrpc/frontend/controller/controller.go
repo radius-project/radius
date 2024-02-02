@@ -26,6 +26,7 @@ import (
 	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/components/database"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,8 +53,20 @@ type Options struct {
 	// Code that needs to construct a URL path should use the base path prefix when constructing the URL path.
 	PathBase string
 
+	// HACKHACK: This is a temporary hack to allow the controller to know the address of the RP.
+	Arm *armauth.ArmConfig
+
+	// HACKHACK: This is a temporary hack to allow the controller to know the address of the RP.
+	Arm *armauth.ArmConfig
+
 	// DatabaseClient is the database client.
 	DatabaseClient database.Client
+
+	// StorageClient is the data storage client.
+	StorageClient store.StorageClient
+
+	// DataProvider is the data storage provider.
+	DataProvider dataprovider.DataStorageProvider
 
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
