@@ -266,7 +266,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			},
 			CreateResource: &rpv1.Resource{
 				ResourceType: resourcemodel.ResourceType{
-					Type:     "Microsoft.Network/loadBalancers",
+					Type:     "Microsoft.Network/loadBalancers/applications",
 					Provider: resourcemodel.ProviderAzure,
 				},
 				Data:         lb,
