@@ -1670,37 +1670,6 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 	})
 }
 
-func Test_IsURL(t *testing.T) {
-	const valid_url = "http://examplehost:80"
-	const invalid_url = "http://abc:def"
-	const path = "/testpath/testfolder/testfile.txt"
-
-	require.True(t, isURL(valid_url))
-	require.False(t, isURL(invalid_url))
-	require.False(t, isURL(path))
-}
-
-func Test_ParseURL(t *testing.T) {
-	const valid_url = "http://examplehost:80"
-	const invalid_url = "http://abc:def"
-
-	t.Run("valid URL test", func(t *testing.T) {
-		scheme, hostname, port, err := parseURL(valid_url)
-		require.Equal(t, scheme, "http")
-		require.Equal(t, hostname, "examplehost")
-		require.Equal(t, port, "80")
-		require.Equal(t, err, nil)
-	})
-
-	t.Run("invalid URL test", func(t *testing.T) {
-		scheme, hostname, port, err := parseURL(invalid_url)
-		require.Equal(t, scheme, "")
-		require.Equal(t, hostname, "")
-		require.Equal(t, port, "")
-		require.NotEqual(t, err, nil)
-	})
-}
-
 func Test_DNS_Service_Generation(t *testing.T) {
 	var containerPortNumber int32 = 3000
 	var servicePortNumber int32 = 80
