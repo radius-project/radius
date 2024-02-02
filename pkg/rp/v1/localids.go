@@ -69,6 +69,9 @@ const (
 	LocalIDAzureCGScaleSet              = "AzureCGScaleSet"
 	LocalIDAzureVirtualNetworkSubnet    = "AzureVirtualNetworkSubnet"
 	LocalIDAzureContainerLoadBalancer   = "AzureContainerLoadBalancer"
+	LocalIDAzurePublicIP                = "AzurePublicIP"
+	LocalIDAzureApplicationGateway      = "AzureApplicationGateway"
+	LocalIDAzureNetworkSecurityGroup    = "AzureNetworkSecurityGroup"
 
 	// Obsolete when we remove AppModelV1
 	LocalIDRoleAssignmentKVKeys = "RoleAssignment-KVKeys"
