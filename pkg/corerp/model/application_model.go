@@ -194,7 +194,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/vitualNetworks/subnets",
+				Type:     "Microsoft.Network/virtualNetworks/subnets",
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureVirtualNetworkSubnetHandler(arm),
