@@ -187,7 +187,8 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/loadBalancers",
+				// HACKHACK: /applications resource doesn't exist. This is to parse application name from id. We should find the better way.
+				Type:     "Microsoft.Network/loadBalancers/applications",
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureContainerLoadBalancerHandler(arm),
