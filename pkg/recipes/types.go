@@ -24,7 +24,7 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
-// Configuration represents kubernetes runtime and cloud provider configuration, which is used by the driver while deploying recipes.
+// Configuration represents runtime and cloud provider configuration, which is used by the driver while deploying recipes.
 type Configuration struct {
 	// Kubernetes Runtime configuration for the environment.
 	Runtime RuntimeConfiguration
@@ -36,9 +36,10 @@ type Configuration struct {
 	RecipeConfig datamodel.RecipeConfigProperties
 }
 
-// RuntimeConfiguration represents Kubernetes Runtime configuration for the environment.
+// RuntimeConfiguration represents Runtime configuration for the environment.
 type RuntimeConfiguration struct {
-	Kubernetes *KubernetesRuntime `json:"kubernetes,omitempty"`
+	Kubernetes              *KubernetesRuntime              `json:"kubernetes,omitempty"`
+	AzureContainerInstances *AzureContainerInstancesRuntime `json:"azureContainerInstances,omitempty"`
 }
 
 // KubernetesRuntime represents application and environment namespaces.
@@ -47,6 +48,11 @@ type KubernetesRuntime struct {
 	Namespace string `json:"namespace,omitempty"`
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
+}
+
+// AzureContainerInstancesRuntime represents Azure Container Instances runtime configuration.
+type AzureContainerInstancesRuntime struct {
+	// TODO: Add runtime configuration for Azure Container Instances
 }
 
 // EnvironmentDefinition represents the recipe configuration details.
