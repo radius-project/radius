@@ -270,12 +270,20 @@ func RequireResourceType(args []string) (string, error) {
 	}
 	resourceTypeName := args[0]
 	supportedTypes := []string{}
+	foundTypes := []string{}
 	for _, resourceType := range clients.ResourceTypesList {
 		supportedType := strings.Split(resourceType, "/")[1]
 		supportedTypes = append(supportedTypes, supportedType)
-		if strings.EqualFold(supportedType, resourceTypeName) {
-			return resourceType, nil
+		//check to see if the resource type is the correct short or long name.
+		if strings.EqualFold(supportedType, resourceTypeName) || strings.EqualFold(resourceType, resourceTypeName) {
+			foundTypes = append(foundTypes, resourceType)
 		}
+	}
+	if len(foundTypes) == 1 {
+		return foundTypes[0], nil
+	} else if len(foundTypes) > 1 {
+		return "", fmt.Errorf("multiple resource types match '%s'. Please specify the full resource type and try again:\n\n%s\n",
+			resourceTypeName, strings.Join(foundTypes, "\n"))
 	}
 	return "", fmt.Errorf("'%s' is not a valid resource type. Available Types are: \n\n%s\n",
 		resourceTypeName, strings.Join(supportedTypes, "\n"))
