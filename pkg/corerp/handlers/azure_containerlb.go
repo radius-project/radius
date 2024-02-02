@@ -108,9 +108,25 @@ func (handler *azureContainerLoadBalancerHandler) Put(ctx context.Context, optio
 		return nil, err
 	}
 
-	_, err = poller.PollUntilDone(ctx, nil)
+	resp, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, err
+	hostname := ""
+	if len(lb.Properties.FrontendIPConfigurations) > 0 {
+		for _, conf := range resp.Properties.FrontendIPConfigurations {
+			if to.String(conf.Name) == to.String(lb.Properties.FrontendIPConfigurations[0].Name) {
+				hostname = to.String(conf.Properties.PrivateIPAddress)
+			}
+		}
+	}
+
+	properties := map[string]string{
+		"hostname": hostname,
+	}
+
+	return properties, nil
 }
 
 func (handler *azureContainerLoadBalancerHandler) Delete(ctx context.Context, options *DeleteOptions) error {
