@@ -20,6 +20,7 @@ on:
   push:
     branches:
       - main
+      - 'release/*'
     paths:
       - 'versions.yaml'
   pull_request:
