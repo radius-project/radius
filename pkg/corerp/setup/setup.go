@@ -101,7 +101,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				ctr_ctrl.ValidateAndMutateRequest,
 			},
 			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
-			AsyncOperationTimeout:    time.Minute * time.Duration(10),
+			AsyncOperationTimeout:    time.Minute * time.Duration(20),
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Patch: builder.Operation[datamodel.ContainerResource]{
@@ -110,12 +110,12 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				ctr_ctrl.ValidateAndMutateRequest,
 			},
 			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
-			AsyncOperationTimeout:    time.Minute * time.Duration(10),
+			AsyncOperationTimeout:    time.Minute * time.Duration(20),
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.ContainerResource]{
 			AsyncJobController:       backend_ctrl.NewDeleteResource,
-			AsyncOperationTimeout:    time.Minute * time.Duration(10),
+			AsyncOperationTimeout:    time.Minute * time.Duration(20),
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 	})
@@ -130,7 +130,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				gw_ctrl.ValidateAndMutateRequest,
 			},
 			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
-			AsyncOperationTimeout:    time.Minute * time.Duration(10),
+			AsyncOperationTimeout:    time.Minute * time.Duration(20),
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Patch: builder.Operation[datamodel.Gateway]{
@@ -139,12 +139,12 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				gw_ctrl.ValidateAndMutateRequest,
 			},
 			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
-			AsyncOperationTimeout:    time.Minute * time.Duration(10),
+			AsyncOperationTimeout:    time.Minute * time.Duration(20),
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.Gateway]{
 			AsyncJobController:       backend_ctrl.NewDeleteResource,
-			AsyncOperationTimeout:    time.Minute * time.Duration(10),
+			AsyncOperationTimeout:    time.Minute * time.Duration(20),
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 	})
