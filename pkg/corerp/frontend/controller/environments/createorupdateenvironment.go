@@ -258,35 +258,50 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 
 	internalLBName := envName + "-ilb"
 	loadBalancersClient := networkClientFactory.NewLoadBalancersClient()
-	lbPoller, err := loadBalancersClient.BeginCreateOrUpdate(ctx,
-		resourceGroupName,
-		internalLBName,
-		armnetwork.LoadBalancer{
-			SKU: &armnetwork.LoadBalancerSKU{
-				Name: to.Ptr(armnetwork.LoadBalancerSKUNameStandard),
-				Tier: to.Ptr(armnetwork.LoadBalancerSKUTierRegional),
-			},
-			Location:   to.Ptr(ResourceLocation),
-			Properties: &armnetwork.LoadBalancerPropertiesFormat{
-				// Following resources are not deleted if we do not specify etag
-				// FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{},
-				// BackendAddressPools:      []*armnetwork.BackendAddressPool{},
-				// Probes:                   []*armnetwork.Probe{},
-				// LoadBalancingRules:       []*armnetwork.LoadBalancingRule{},
-				// InboundNatRules:          []*armnetwork.InboundNatRule{},
-			},
-		}, nil)
-
+	_, err = loadBalancersClient.Get(ctx, resourceGroupName, internalLBName, nil)
 	if err != nil {
-		return err
-	}
+		lbPoller, err := loadBalancersClient.BeginCreateOrUpdate(ctx,
+			resourceGroupName,
+			internalLBName,
+			armnetwork.LoadBalancer{
+				SKU: &armnetwork.LoadBalancerSKU{
+					Name: to.Ptr(armnetwork.LoadBalancerSKUNameStandard),
+					Tier: to.Ptr(armnetwork.LoadBalancerSKUTierRegional),
+				},
+				Location: to.Ptr(ResourceLocation),
+				Properties: &armnetwork.LoadBalancerPropertiesFormat{
+					// internal loadbalancer must have one frontend ip configuration.
+					FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{
+						{
+							Name: to.Ptr("internal-lb-default"),
+							Properties: &armnetwork.FrontendIPConfigurationPropertiesFormat{
+								PrivateIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
+								Subnet: &armnetwork.Subnet{
+									ID: subnetResp.ID,
+								},
+							},
+						},
+					},
+					// Following resources are not deleted if we do not specify etag
+					// FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{},
+					// BackendAddressPools:      []*armnetwork.BackendAddressPool{},
+					// Probes:                   []*armnetwork.Probe{},
+					// LoadBalancingRules:       []*armnetwork.LoadBalancingRule{},
+					// InboundNatRules:          []*armnetwork.InboundNatRule{},
+				},
+			}, nil)
 
-	lbResp, err := lbPoller.PollUntilDone(ctx, nil)
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	logger.Info("Created internal load balancer.", "ID", lbResp.ID)
+		lbResp, err := lbPoller.PollUntilDone(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		logger.Info("Created internal load balancer.", "ID", lbResp.ID)
+	}
 
 	return nil
 }
