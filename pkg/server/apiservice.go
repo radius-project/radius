@@ -73,6 +73,7 @@ func (s *APIService) Run(ctx context.Context) error {
 					Address:        address,
 					PathBase:       s.Options.Config.Server.PathBase,
 					DatabaseClient: databaseClient,
+					Arm:            s.Options.Arm, // HACKHACK: This is a temporary fix to avoid ARM initialization in the test environment.
 					KubeClient:     s.KubeClient,
 					StatusManager:  s.OperationStatusManager,
 				}

@@ -40,6 +40,8 @@ type OutputResource struct {
 	// RadiusManaged determines whether Radius manages the lifecycle of the underlying resource.
 	RadiusManaged *bool `json:"radiusManaged"`
 
+	AdditionalProperties map[string]string `json:"additionalProperties,omitempty"`
+
 	// CreateResource describes data that will be used to create a resource. This is never saved to the database.
 	CreateResource *Resource `json:"-"`
 }

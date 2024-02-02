@@ -62,6 +62,7 @@ type RendererDependency struct {
 
 // EnvironmentOptions represents the options for the linked environment resource.
 type EnvironmentOptions struct {
+	Resource resources.ID
 	// Namespace represents the Kubernetes namespace.
 	Namespace string
 
