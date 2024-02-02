@@ -23,7 +23,6 @@ import (
 
 	cs2client "github.com/radius-project/azure-cs2/client/v20230515preview"
 	"github.com/radius-project/radius/pkg/azure/armauth"
-	"github.com/radius-project/radius/pkg/azure/clientv2"
 )
 
 func NewAzureCGProfileHandler(arm *armauth.ArmConfig) ResourceHandler {
@@ -44,12 +43,6 @@ func (handler *azureCGProfileHandler) Put(ctx context.Context, options *PutOptio
 	resourceGroupName := options.Resource.ID.FindScope("resourceGroups")
 	if subID == "" || resourceGroupName == "" {
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
-	}
-
-	// Ensure resource group is created.
-	err := clientv2.EnsureResourceGroupIsCreated(ctx, subID, resourceGroupName, "West US 3", &handler.arm.ClientOptions)
-	if err != nil {
-		return nil, err
 	}
 
 	cgp, err := cs2client.NewContainerGroupProfilesClient(subID, handler.arm.ClientOptions.Cred, nil)
