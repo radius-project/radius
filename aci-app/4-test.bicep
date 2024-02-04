@@ -1,6 +1,6 @@
 import radius as radius
 
-param aciscope string = '/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/cs2-demo-sun'
+param aciscope string = '<rg>'
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'radius-demo'
