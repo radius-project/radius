@@ -45,11 +45,11 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/long-running-azure.yaml'
+      - ".github/workflows/long-running-azure.yaml"
 
 env:
   # Go version
-  GOVER: '^1.21'
+  GOVER: "^1.21"
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
@@ -70,24 +70,24 @@ env:
   # The region for AWS resources
   AWS_REGION: us-west-2
   # The AWS account ID
-  AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
+  AWS_ACCOUNT_ID: "${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
 
   # The valid radius build time window in seconds to rebuild radius. 24 hours = 24 * 60 * 60 = 86400
   VALID_RADIUS_BUILD_WINDOW: 86400
 
   # The AKS cluster name
-  AKS_CLUSTER_NAME: 'radiuse2e00-aks'
+  AKS_CLUSTER_NAME: "radiuse2e00-aks"
   # The resource group for AKS_CLUSTER_NAME resource.
-  AKS_RESOURCE_GROUP: 'radiuse2e00'
+  AKS_RESOURCE_GROUP: "radiuse2e00"
 
   # Server where terraform test modules are deployed
-  TF_RECIPE_MODULE_SERVER_URL: 'http://tf-module-server.radius-test-tf-module-server.svc.cluster.local'
+  TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
 
   # Radius test environment name
-  RADIUS_TEST_ENVIRONMENT_NAME: 'kind-radius'
+  RADIUS_TEST_ENVIRONMENT_NAME: "kind-radius"
 
   # The current GitHub action link
-  ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
 jobs:
   build:
@@ -333,6 +333,12 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         run: |
           current_time=$(date +%s)
