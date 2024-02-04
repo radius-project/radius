@@ -22,10 +22,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 func NewAzureVirtualNetworkSubnetHandler(arm *armauth.ArmConfig) ResourceHandler {
@@ -37,6 +39,7 @@ type azureVirtualNetworkSubnetHandler struct {
 }
 
 func (handler *azureVirtualNetworkSubnetHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	subnet, ok := options.Resource.CreateResource.Data.(*armnetwork.Subnet)
 	if !ok {
 		return nil, errors.New("cannot parse subnet")
@@ -56,54 +59,74 @@ func (handler *azureVirtualNetworkSubnetHandler) Put(ctx context.Context, option
 
 	vnetName := options.Resource.ID.Truncate().Name()
 
-	// if subnet.Properties.AddressPrefix is nil, we need to find an available subnet
-	if subnet.Properties.AddressPrefix == nil {
-		// TODO: for loop until we find an available subnet
-		checked := map[int]bool{}
-		pager := subnetClient.NewListPager(resourceGroupName, vnetName, nil)
-		for pager.More() {
-			s, err := pager.NextPage(ctx)
-			if err != nil {
-				return nil, err
-			}
-			for _, s := range s.Value {
-				if to.String(s.Name) == to.String(subnet.Name) {
-					// no ops
-					return nil, nil
+	orgPrefix := to.String(subnet.Properties.AddressPrefix)
+
+	var lastErr error
+	for retry := 0; retry < 5; retry++ {
+		// if subnet.Properties.AddressPrefix is nil, we need to find an available subnet
+		if orgPrefix == "" {
+			// TODO: for loop until we find an available subnet
+			checked := map[int]bool{}
+			pager := subnetClient.NewListPager(resourceGroupName, vnetName, nil)
+			for pager.More() {
+				s, err := pager.NextPage(ctx)
+				if err != nil {
+					return nil, err
 				}
+				for _, s := range s.Value {
+					if to.String(s.Name) == to.String(subnet.Name) {
+						// no ops
+						return nil, nil
+					}
 
-				ip := strings.Split(to.String(s.Properties.AddressPrefix), ".")
-				if ip[0] != "10" {
-					continue
+					ip := strings.Split(to.String(s.Properties.AddressPrefix), ".")
+					if ip[0] != "10" {
+						continue
+					}
+					cnt, _ := strconv.ParseInt(ip[2], 10, 32)
+					checked[int(cnt)] = true
 				}
-				cnt, _ := strconv.ParseInt(ip[2], 10, 32)
-				checked[int(cnt)] = true
 			}
-		}
 
-		subnetPrefix := ""
-		for i := 2; i < 253; i++ {
-			if !checked[i] {
-				subnetPrefix = fmt.Sprintf("10.1.%d.0/24", i)
-				break
+			subnetPrefix := ""
+			for i := 2; i < 253; i++ {
+				if !checked[i] {
+					subnetPrefix = fmt.Sprintf("10.1.%d.0/24", i)
+					break
+				}
 			}
+
+			if subnetPrefix == "" {
+				return nil, errors.New("no available subnet")
+			}
+
+			subnet.Properties.AddressPrefix = to.Ptr(subnetPrefix)
 		}
 
-		if subnetPrefix == "" {
-			return nil, errors.New("no available subnet")
+		poller, err := subnetClient.BeginCreateOrUpdate(ctx, resourceGroupName, vnetName, to.String(subnet.Name), *subnet, nil)
+		if err != nil {
+			lastErr = err
+			logger.Info("failed to create subnet", "error", err, "retry", retry)
+			fmt.Printf("\n\n### failed to create subnet: %s, retry: %d, %s", err.Error(), retry, *subnet.Properties.AddressPrefix)
+			time.Sleep(60 * time.Second)
+			continue
 		}
 
-		subnet.Properties.AddressPrefix = to.Ptr(subnetPrefix)
+		_, err = poller.PollUntilDone(ctx, nil)
+		if err != nil {
+			lastErr = err
+			logger.Info("failed to poll subnet update", "error", err, "retry", retry)
+			fmt.Printf("\n\n### failed to poll subnet update: %s, retry: %d, %s", err.Error(), retry, *subnet.Properties.AddressPrefix)
+			time.Sleep(60 * time.Second)
+			continue
+		}
+
+		lastErr = nil
+		break
 	}
 
-	poller, err := subnetClient.BeginCreateOrUpdate(ctx, resourceGroupName, vnetName, to.String(subnet.Name), *subnet, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = poller.PollUntilDone(ctx, nil)
-	if err != nil {
-		return nil, err
+	if lastErr != nil {
+		return nil, lastErr
 	}
 
 	return nil, nil
