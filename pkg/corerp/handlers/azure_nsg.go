@@ -65,15 +65,18 @@ func (handler *azureNSGHandler) Put(ctx context.Context, options *PutOptions) (m
 		return nil, err
 	}
 	nsgClient := networkClientFactory.NewSecurityGroupsClient()
-
-	poller, err := nsgClient.BeginCreateOrUpdate(ctx, resourceGroupName, *nsg.Name, *nsg, nil)
+	_, err = nsgClient.Get(ctx, resourceGroupName, *nsg.Name, nil)
+	// TODO: needs to validate the properties of the existing resource to see if it needs to be updated. For now, we just create it.
 	if err != nil {
-		return nil, err
-	}
+		poller, err := nsgClient.BeginCreateOrUpdate(ctx, resourceGroupName, *nsg.Name, *nsg, nil)
+		if err != nil {
+			return nil, err
+		}
 
-	_, err = poller.PollUntilDone(ctx, nil)
-	if err != nil {
-		return nil, err
+		_, err = poller.PollUntilDone(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return map[string]string{}, nil
