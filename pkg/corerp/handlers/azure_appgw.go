@@ -51,14 +51,18 @@ func (handler *azureAppGWHandler) Put(ctx context.Context, options *PutOptions) 
 	}
 	cli := networkClientFactory.NewApplicationGatewaysClient()
 
-	poller, err := cli.BeginCreateOrUpdate(ctx, resourceGroupName, *appgw.Name, *appgw, nil)
+	_, err = cli.Get(ctx, resourceGroupName, *appgw.Name, nil)
+	// TODO: needs to validate the properties of the existing resource to see if it needs to be updated. For now, we just create it.
 	if err != nil {
-		return nil, err
-	}
+		poller, err := cli.BeginCreateOrUpdate(ctx, resourceGroupName, *appgw.Name, *appgw, nil)
+		if err != nil {
+			return nil, err
+		}
 
-	_, err = poller.PollUntilDone(ctx, nil)
-	if err != nil {
-		return nil, err
+		_, err = poller.PollUntilDone(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return map[string]string{}, nil

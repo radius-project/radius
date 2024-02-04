@@ -18,6 +18,7 @@ package gateway
 
 import (
 	"context"
+	"crypto/sha1"
 	"errors"
 	"fmt"
 	"net"
@@ -26,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
@@ -66,6 +68,12 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// Extract the target container.
 	_, containerName, targetPort, _ := parseURL(gateway.Properties.Routes[0].Destination)
 
+	// Generate dns prefix for gateway public ip
+	hash := sha1.New()
+	hash.Write([]byte(uuid.New().String()))
+	sum := hash.Sum(nil)
+	dnsPrefix := fmt.Sprintf("%s-%x", gateway.Name, sum)
+
 	publicIP := &armnetwork.PublicIPAddress{
 		Name:     to.Ptr(gateway.Name),
 		Location: to.Ptr(aciLocation),
@@ -76,6 +84,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		Properties: &armnetwork.PublicIPAddressPropertiesFormat{
 			PublicIPAddressVersion:   to.Ptr(armnetwork.IPVersionIPv4),
 			PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+			DNSSettings: &armnetwork.PublicIPAddressDNSSettings{
+				DomainNameLabel: to.Ptr(dnsPrefix),
+			},
 		},
 	}
 
@@ -341,7 +352,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		ComputedValues: map[string]rpv1.ComputedValueReference{
 			"url": {
 				LocalID:           rpv1.LocalIDAzurePublicIP,
-				PropertyReference: "publicIPAddress",
+				PropertyReference: "publicIPFQDN",
 			},
 		},
 	}, nil

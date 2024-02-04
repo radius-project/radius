@@ -52,24 +52,39 @@ func (handler *azurePublicIPHandler) Put(ctx context.Context, options *PutOption
 	}
 
 	publicIPAddressesClient := networkClientFactory.NewPublicIPAddressesClient()
-	pollerIP, err := publicIPAddressesClient.BeginCreateOrUpdate(
-		ctx,
-		resourceGroupName,
-		to.String(publicIP.Name),
-		*publicIP,
-		nil,
-	)
-	if err != nil {
-		return nil, err
+	publicIPAddress := ""
+	fqdn := ""
+	resp, err := publicIPAddressesClient.Get(ctx, resourceGroupName, to.String(publicIP.Name), nil)
+	if err == nil {
+		publicIPAddress = to.String(resp.Properties.IPAddress)
+		fqdn = to.String(resp.Properties.DNSSettings.Fqdn)
+	} else {
+		pollerIP, err := publicIPAddressesClient.BeginCreateOrUpdate(
+			ctx,
+			resourceGroupName,
+			to.String(publicIP.Name),
+			*publicIP,
+			nil,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		puIPResp, err := pollerIP.PollUntilDone(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		publicIPAddress = to.String(puIPResp.Properties.IPAddress)
+		fqdn = to.String(puIPResp.Properties.DNSSettings.Fqdn)
 	}
 
-	puIPResp, err := pollerIP.PollUntilDone(ctx, nil)
-	if err != nil {
-		return nil, err
+	if fqdn == "" {
+		fqdn = publicIPAddress
 	}
 
 	properties := map[string]string{
-		"publicIPAddress": to.String(puIPResp.Properties.IPAddress),
+		"publicIPAddress": publicIPAddress,
+		"publicIPFQDN":    fqdn,
 	}
 
 	return properties, nil
