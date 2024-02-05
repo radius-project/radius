@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
@@ -69,7 +68,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	_, containerName, targetPort, _ := parseURL(gateway.Properties.Routes[0].Destination)
 
 	// Generate dns prefix for gateway public ip
-	suffix := fmt.Sprintf("%x", sha1.Sum([]byte(uuid.New().String())))
+	suffix := fmt.Sprintf("%x", sha1.Sum([]byte(resourceGroupID)))
 	dnsPrefix := fmt.Sprintf("%s-%s", gateway.Name, suffix[:10])
 
 	publicIP := &armnetwork.PublicIPAddress{
