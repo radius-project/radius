@@ -27,7 +27,6 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/azure-storage.zip'
           parameters: {
-            name: 'blob${uniqueString(resourceGroup().id)}'
             resource_group_name: resourceGroup().name
             location: location
           }
