@@ -69,10 +69,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	_, containerName, targetPort, _ := parseURL(gateway.Properties.Routes[0].Destination)
 
 	// Generate dns prefix for gateway public ip
-	hash := sha1.New()
-	hash.Write([]byte(uuid.New().String()))
-	sum := hash.Sum(nil)
-	dnsPrefix := fmt.Sprintf("%s-%x", gateway.Name, sum)
+	suffix := fmt.Sprintf("%x", sha1.Sum([]byte(uuid.New().String())))
+	dnsPrefix := fmt.Sprintf("%s-%s", gateway.Name, suffix[:10])
 
 	publicIP := &armnetwork.PublicIPAddress{
 		Name:     to.Ptr(gateway.Name),
