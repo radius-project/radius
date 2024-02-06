@@ -123,6 +123,24 @@ func PossibleDaprSidecarExtensionProtocolValues() []DaprSidecarExtensionProtocol
 	}
 }
 
+// DeploymentStatus - Status of Output Resource deployment
+type DeploymentStatus string
+
+const (
+	// DeploymentStatusFailed - The resource deployment failed
+	DeploymentStatusFailed DeploymentStatus = "Failed"
+	// DeploymentStatusSucceeded - The resource is successfully deployed
+	DeploymentStatusSucceeded DeploymentStatus = "Succeeded"
+)
+
+// PossibleDeploymentStatusValues returns the possible values for the DeploymentStatus const type.
+func PossibleDeploymentStatusValues() []DeploymentStatus {
+	return []DeploymentStatus{	
+		DeploymentStatusFailed,
+		DeploymentStatusSucceeded,
+	}
+}
+
 // Direction - The direction of a connection.
 type Direction string
 

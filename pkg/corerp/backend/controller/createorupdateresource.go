@@ -33,6 +33,7 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateResource)(nil)
@@ -101,9 +102,10 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput)
-	if err != nil {
-		return ctrl.Result{}, err
+	deploymentOutput, deploymentErr := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput)
+	if deploymentErr != nil {
+		logger := ucplog.FromContextOrDiscard(ctx)
+		logger.Info("Failed to deploy resource.", "resourceID", id.String())
 	}
 
 	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
@@ -125,6 +127,8 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		}
 	}
 
+	// We persist the resource to the store after the deployment is done successfully as well as unsuccessfully so that Radius can still management the resource.
+	// For example, even though a deployment failed, we still want to be able to delete the resource through rad app delete.
 	nr := &store.Object{
 		Metadata: store.Metadata{
 			ID: request.ResourceID,
@@ -136,5 +140,5 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, err
+	return ctrl.Result{}, deploymentErr
 }

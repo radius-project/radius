@@ -3408,6 +3408,30 @@
         ]
       }
     },
+    "DeploymentStatus": {
+      "type": "string",
+      "description": "Status of Output Resource deployment",
+      "enum": [
+        "Succeeded",
+        "Failed"
+      ],
+      "x-ms-enum": {
+        "name": "DeploymentStatus",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "The resource is successfully deployed"
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "The resource deployment failed"
+          }
+        ]
+      }
+    },
     "Direction": {
       "type": "string",
       "description": "The direction of a connection.",
@@ -4535,8 +4559,15 @@
         "radiusManaged": {
           "type": "boolean",
           "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+        },
+        "status": {
+          "$ref": "#/definitions/DeploymentStatus",
+          "description": "Determines whether the resource was deployed successfully"
         }
-      }
+      },
+      "required": [
+        "status"
+      ]
     },
     "PersistentVolume": {
       "type": "object",

@@ -138,12 +138,24 @@ model OutputResource {
 
   @doc("Determines whether Radius manages the lifecycle of the underlying resource.")
   radiusManaged?: boolean;
+
+  @doc("Determines whether the resource was deployed successfully")
+  status: DeploymentStatus
 }
 
 @doc("Describes a reference to an existing resource")
 model ResourceReference {
   @doc("Resource id of an existing resource")
   id: string;
+}
+
+@doc("Status of Output Resource deployment")
+enum DeploymentStatus {
+  @doc("The resource is successfully deployed")
+  Succeeded,
+
+  @doc("The resource deployment failed")
+  Failed,
 }
 
 @doc("Provisioning state of the resource at the time the operation was called")

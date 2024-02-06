@@ -46,6 +46,24 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
+// DeploymentStatus - Status of Output Resource deployment
+type DeploymentStatus string
+
+const (
+	// DeploymentStatusFailed - The resource deployment failed
+	DeploymentStatusFailed DeploymentStatus = "Failed"
+	// DeploymentStatusSucceeded - The resource is successfully deployed
+	DeploymentStatusSucceeded DeploymentStatus = "Succeeded"
+)
+
+// PossibleDeploymentStatusValues returns the possible values for the DeploymentStatus const type.
+func PossibleDeploymentStatusValues() []DeploymentStatus {
+	return []DeploymentStatus{	
+		DeploymentStatusFailed,
+		DeploymentStatusSucceeded,
+	}
+}
+
 // IdentitySettingKind - IdentitySettingKind is the kind of supported external identity setting
 type IdentitySettingKind string
 

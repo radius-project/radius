@@ -287,7 +287,19 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
-			return rpv1.DeploymentOutput{}, err
+			failed := rpv1.DeploymentStatus(rpv1.DeploymentStatusFailed)
+			outputResource := rpv1.OutputResource{
+				LocalID: outputResource.LocalID,
+				ID:      outputResource.ID,
+				Status:  &failed,
+			}
+			deployedOutputResources = append(deployedOutputResources, outputResource)
+
+			return rpv1.DeploymentOutput{
+				DeployedOutputResources: deployedOutputResources,
+				ComputedValues:          computedValues,
+				SecretValues:            rendererOutput.SecretValues,
+			}, err
 		}
 
 		if outputResource.ID.IsEmpty() {
@@ -295,9 +307,11 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		}
 
 		// Build database resource - copy updated properties to Resource field
+		success := rpv1.DeploymentStatus(rpv1.DeploymentStatusSucceeded)
 		outputResource := rpv1.OutputResource{
 			LocalID: outputResource.LocalID,
 			ID:      outputResource.ID,
+			Status:  &success,
 		}
 		deployedOutputResources = append(deployedOutputResources, outputResource)
 	}
