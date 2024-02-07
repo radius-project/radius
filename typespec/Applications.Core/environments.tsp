@@ -65,9 +65,42 @@ model EnvironmentProperties {
   @doc("Specifies Recipes linked to the Environment.")
   recipes?: Record<Record<RecipeProperties>>;
 
+  @doc("Specifies recipe configurations needed for the recipes.")
+  recipeConfig?: RecipeConfigProperties;
+
   @doc("The environment extension.")
   @extension("x-ms-identifiers", [])
   extensions?: Array<Extension>;
+}
+
+@doc("Specifies recipe configurations needed for the recipes.")
+model RecipeConfigProperties {
+  @doc("Specifies the terraform config properties")
+  terraform?: TerraformConfigProperties;
+}
+
+@doc("Specifies the terraform config properties")
+model TerraformConfigProperties{
+  @doc("Specifies authentication information needed to use private terraform module repositories.")  
+  authentication?: AuthConfig;
+}
+
+@doc("Specifies authentication information needed to use private terraform module repositories.")
+model AuthConfig{
+  @doc("Specifies authentication information needed to use private terraform module repositories from git module source")  
+  git?: GitAuthConfig;
+}
+
+@doc("Specifies authentication information needed to use private terraform module repositories from git module source")
+model GitAuthConfig{
+  @doc("Specifies the secret details of type personal access token for each different git platforms")  
+  pat?: Record<Secret>;
+}
+
+@doc("Specifies the secret details of type personal access token for each different git platforms")
+model Secret {
+  @doc("The resource id for the secret store containing credentials")
+  secretStore?: string;
 }
 
 @doc("The Cloud providers configuration")

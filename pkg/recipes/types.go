@@ -32,6 +32,8 @@ type Configuration struct {
 	Providers datamodel.Providers
 	// Simulated represents whether the environment is simulated or not.
 	Simulated bool
+
+	RecipeConfig string
 }
 
 // RuntimeConfiguration represents Kubernetes Runtime configuration for the environment.

@@ -102,7 +102,7 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(options.UCPConnection, provider.NewSecretProvider(options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: options.Config.Terraform.Path,
-				}, cfg.K8sClients.ClientSet),
+				}, cfg.K8sClients.ClientSet, clientOptions),
 		},
 	})
 

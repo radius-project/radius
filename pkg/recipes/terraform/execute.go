@@ -22,9 +22,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -33,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
@@ -48,8 +52,8 @@ var (
 var _ TerraformExecutor = (*executor)(nil)
 
 // NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
-func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, k8sClientSet kubernetes.Interface) *executor {
-	return &executor{ucpConn: ucpConn, secretProvider: secretProvider, k8sClientSet: k8sClientSet}
+func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, k8sClientSet kubernetes.Interface, armOptions *arm.ClientOptions) *executor {
+	return &executor{ucpConn: ucpConn, secretProvider: secretProvider, k8sClientSet: k8sClientSet, armOptions: armOptions}
 }
 
 type executor struct {
@@ -61,6 +65,8 @@ type executor struct {
 
 	// k8sClientSet is the Kubernetes client.
 	k8sClientSet kubernetes.Interface
+
+	armOptions *arm.ClientOptions
 }
 
 // Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
@@ -184,7 +190,7 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
-	result, err := downloadAndInspect(ctx, tf, options)
+	result, err := downloadAndInspect(ctx, tf, options, e.armOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +210,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return "", err
 	}
 
-	loadedModule, err := downloadAndInspect(ctx, tf, options)
+	loadedModule, err := downloadAndInspect(ctx, tf, options, e.armOptions)
 	if err != nil {
 		return "", err
 	}
@@ -262,13 +268,15 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 }
 
 // downloadAndInspect handles downloading the TF module and retrieving the necessary information
-func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Options) (*moduleInspectResult, error) {
+func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Options, armOptions *arm.ClientOptions) (*moduleInspectResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Download the Terraform module to the working directory.
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
-	if err := downloadModule(ctx, tf, options.EnvRecipe.TemplatePath); err != nil {
+	path, _ := getTemplatePath(ctx, options, armOptions)
+	//path := options.EnvRecipe.TemplatePath
+	if err := downloadModule(ctx, tf, path); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
 				options.EnvRecipe, recipes.RecipeDownloadFailed))
@@ -280,13 +288,25 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 
 	// Load the downloaded module to retrieve providers and variables required by the module.
 	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
-	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
+	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", path))
 	loadedModule, err := inspectModule(tf.WorkingDir(), options.EnvRecipe)
 	if err != nil {
 		return nil, err
 	}
 
 	return loadedModule, nil
+}
+
+func getTemplatePath(ctx context.Context, options Options, armOptions *arm.ClientOptions) (string, error) {
+	secretStoreID, err := resources.ParseResource(options.EnvConfig.RecipeConfig)
+	if err != nil {
+		return "", err
+	}
+	client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, armOptions)
+	p, err := client.ListSecrets(ctx, secretStoreID.Name(), map[string]any{}, nil)
+	fmt.Println(p)
+	path := fmt.Sprintf("git::https://%s:%s@%s", *p.Data["username"].Value, *p.Data["pat"].Value, options.EnvRecipe.TemplatePath)
+	return path, err
 }
 
 // getTerraformConfig initializes the Terraform json config with provided module source and saves it

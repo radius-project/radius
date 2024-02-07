@@ -72,8 +72,9 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 
 func getConfiguration(environment *v20231001preview.EnvironmentResource, application *v20231001preview.ApplicationResource) (*recipes.Configuration, error) {
 	config := recipes.Configuration{
-		Runtime:   recipes.RuntimeConfiguration{},
-		Providers: datamodel.Providers{},
+		Runtime:      recipes.RuntimeConfiguration{},
+		Providers:    datamodel.Providers{},
+		RecipeConfig: *environment.Properties.RecipeConfig.Terraform.Authentication.Git.Pat["dev.azure.com"].SecretStore,
 	}
 
 	switch environment.Properties.Compute.(type) {

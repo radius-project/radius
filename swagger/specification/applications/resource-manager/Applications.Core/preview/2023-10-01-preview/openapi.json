@@ -2745,6 +2745,10 @@
             "type": "object"
           }
         },
+        "recipeConfig": {
+          "$ref": "#/definitions/RecipeConfigProperties",
+          "description": "Specifies recipe configurations needed for the recipes."
+        },
         "extensions": {
           "type": "array",
           "description": "The environment extension.",
@@ -2752,6 +2756,16 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        }
+      }
+    },
+    "AuthConfig": {
+      "type": "object",
+      "description": "Specifies authentication information needed to use private terraform module repositories.",
+      "properties": {
+        "git": {
+          "$ref": "#/definitions/GitAuthConfig",
+          "description": "Specifies authentication information needed to use private terraform module repositories from git module source"
         }
       }
     },
@@ -3507,6 +3521,10 @@
             "type": "object"
           }
         },
+        "recipeConfig": {
+          "$ref": "#/definitions/RecipeConfigProperties",
+          "description": "Specifies recipe configurations needed for the recipes."
+        },
         "extensions": {
           "type": "array",
           "description": "The environment extension.",
@@ -3606,6 +3624,10 @@
             },
             "type": "object"
           }
+        },
+        "recipeConfig": {
+          "$ref": "#/definitions/RecipeConfigProperties",
+          "description": "Specifies recipe configurations needed for the recipes."
         },
         "extensions": {
           "type": "array",
@@ -4008,6 +4030,19 @@
         "certificateFrom": {
           "type": "string",
           "description": "The resource id for the secret containing the TLS certificate and key for the gateway."
+        }
+      }
+    },
+    "GitAuthConfig": {
+      "type": "object",
+      "description": "Specifies authentication information needed to use private terraform module repositories from git module source",
+      "properties": {
+        "pat": {
+          "type": "object",
+          "description": "Specifies the secret details of type personal access token for each different git platforms",
+          "additionalProperties": {
+            "$ref": "#/definitions/Secret"
+          }
         }
       }
     },
@@ -4732,6 +4767,16 @@
         "name"
       ]
     },
+    "RecipeConfigProperties": {
+      "type": "object",
+      "description": "Specifies recipe configurations needed for the recipes.",
+      "properties": {
+        "terraform": {
+          "$ref": "#/definitions/TerraformConfigProperties",
+          "description": "Specifies the terraform config properties"
+        }
+      }
+    },
     "RecipeGetMetadata": {
       "type": "object",
       "description": "Represents the request body of the getmetadata action.",
@@ -4963,6 +5008,16 @@
         "kubernetes": {
           "$ref": "#/definitions/KubernetesRuntimeProperties",
           "description": "The runtime configuration properties for Kubernetes"
+        }
+      }
+    },
+    "Secret": {
+      "type": "object",
+      "description": "Specifies the secret details of type personal access token for each different git platforms",
+      "properties": {
+        "secretStore": {
+          "type": "string",
+          "description": "The resource id for the secret store containing credentials"
         }
       }
     },
@@ -5236,6 +5291,16 @@
         }
       ],
       "x-ms-discriminator-value": "tcp"
+    },
+    "TerraformConfigProperties": {
+      "type": "object",
+      "description": "Specifies the terraform config properties",
+      "properties": {
+        "authentication": {
+          "$ref": "#/definitions/AuthConfig",
+          "description": "Specifies authentication information needed to use private terraform module repositories."
+        }
+      }
     },
     "TerraformRecipeProperties": {
       "type": "object",

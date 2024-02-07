@@ -126,11 +126,20 @@ type ApplicationResourceUpdateProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *ProvidersUpdate
 
+	// Specifies recipe configurations needed for the recipes.
+	RecipeConfig *RecipeConfigProperties
+
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesUpdateClassification
 
 	// Simulated environment.
 	Simulated *bool
+}
+
+// AuthConfig - Specifies authentication information needed to use private terraform module repositories.
+type AuthConfig struct {
+	// Specifies authentication information needed to use private terraform module repositories from git module source
+	Git *GitAuthConfig
 }
 
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
@@ -553,6 +562,9 @@ type EnvironmentProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *Providers
 
+	// Specifies recipe configurations needed for the recipes.
+	RecipeConfig *RecipeConfigProperties
+
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesClassification
 
@@ -615,6 +627,9 @@ type EnvironmentResourceUpdateProperties struct {
 
 	// Cloud providers configuration for the environment.
 	Providers *ProvidersUpdate
+
+	// Specifies recipe configurations needed for the recipes.
+	RecipeConfig *RecipeConfigProperties
 
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesUpdateClassification
@@ -932,6 +947,13 @@ type GatewayTLS struct {
 
 	// If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
 	SSLPassthrough *bool
+}
+
+// GitAuthConfig - Specifies authentication information needed to use private terraform module repositories from git module
+// source
+type GitAuthConfig struct {
+	// Specifies the secret details of type personal access token for each different git platforms
+	Pat map[string]*Secret
 }
 
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
@@ -1377,6 +1399,12 @@ type Recipe struct {
 	Parameters map[string]any
 }
 
+// RecipeConfigProperties - Specifies recipe configurations needed for the recipes.
+type RecipeConfigProperties struct {
+	// Specifies the terraform config properties
+	Terraform *TerraformConfigProperties
+}
+
 // RecipeGetMetadata - Represents the request body of the getmetadata action.
 type RecipeGetMetadata struct {
 	// REQUIRED; The name of the recipe registered to the environment
@@ -1494,6 +1522,12 @@ type ResourceStatus struct {
 type RuntimesProperties struct {
 	// The runtime configuration properties for Kubernetes
 	Kubernetes *KubernetesRuntimeProperties
+}
+
+// Secret - Specifies the secret details of type personal access token for each different git platforms
+type Secret struct {
+	// The resource id for the secret store containing credentials
+	SecretStore *string
 }
 
 // SecretObjectProperties - Represents secret object properties
@@ -1667,6 +1701,12 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 		PeriodSeconds: t.PeriodSeconds,
 		TimeoutSeconds: t.TimeoutSeconds,
 	}
+}
+
+// TerraformConfigProperties - Specifies the terraform config properties
+type TerraformConfigProperties struct {
+	// Specifies authentication information needed to use private terraform module repositories.
+	Authentication *AuthConfig
 }
 
 // TerraformRecipeProperties - Represents Terraform recipe properties.

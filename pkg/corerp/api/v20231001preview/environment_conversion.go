@@ -63,6 +63,24 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 	converted.Properties.Compute = *envCompute
 
+	recipeConfig := src.Properties.RecipeConfig
+	if recipeConfig != nil {
+		if recipeConfig.Terraform != nil {
+			if recipeConfig.Terraform.Authentication != nil {
+				gitConfig := recipeConfig.Terraform.Authentication.Git
+				if gitConfig != nil {
+					pat := gitConfig.Pat
+					p := map[string]datamodel.Secret{}
+					for k, v := range pat {
+						p[k] = datamodel.Secret{
+							SecretStore: to.String(v.SecretStore),
+						}
+					}
+					converted.Properties.RecipeConfig.Terraform.Authentication.Git.PAT = p
+				}
+			}
+		}
+	}
 	if src.Properties.Recipes != nil {
 		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
 		for resourceType, recipes := range src.Properties.Recipes {
@@ -149,6 +167,21 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 			}
 		}
 		dst.Properties.Recipes = recipes
+	}
+
+	dst.Properties.RecipeConfig = &RecipeConfigProperties{
+		Terraform: &TerraformConfigProperties{
+			Authentication: &AuthConfig{
+				Git: &GitAuthConfig{
+					Pat: map[string]*Secret{},
+				},
+			},
+		},
+	}
+	for k, v := range env.Properties.RecipeConfig.Terraform.Authentication.Git.PAT {
+		dst.Properties.RecipeConfig.Terraform.Authentication.Git.Pat[k] = &Secret{
+			SecretStore: to.Ptr(v.SecretStore),
+		}
 	}
 
 	if env.Properties.Providers != (datamodel.Providers{}) {

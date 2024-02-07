@@ -38,11 +38,32 @@ func (e *Environment) ResourceTypeName() string {
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	Compute    rpv1.EnvironmentCompute                           `json:"compute,omitempty"`
-	Recipes    map[string]map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
-	Providers  Providers                                         `json:"providers,omitempty"`
-	Extensions []Extension                                       `json:"extensions,omitempty"`
-	Simulated  bool                                              `json:"simulated,omitempty"`
+	Compute      rpv1.EnvironmentCompute                           `json:"compute,omitempty"`
+	Recipes      map[string]map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
+	Providers    Providers                                         `json:"providers,omitempty"`
+	RecipeConfig RecipeConfigProperties                            `json:"recipeConfig,omitempty"`
+	Extensions   []Extension                                       `json:"extensions,omitempty"`
+	Simulated    bool                                              `json:"simulated,omitempty"`
+}
+
+type RecipeConfigProperties struct {
+	Terraform TerraformConfigProperties `json:"terraform,omitempty"`
+}
+
+type TerraformConfigProperties struct {
+	Authentication AuthConfig `json:"authentication,omitempty"`
+}
+
+type AuthConfig struct {
+	Git GitAuthConfig `json:"git,omitempty"`
+}
+
+type GitAuthConfig struct {
+	PAT map[string]Secret `json:"pat,omitempty"`
+}
+
+type Secret struct {
+	SecretStore string `json:"secretStore,omitempty"`
 }
 
 // EnvironmentRecipeProperties represents the properties of environment's recipe.
