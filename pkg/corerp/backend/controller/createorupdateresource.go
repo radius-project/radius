@@ -127,7 +127,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		}
 	}
 
-	// We persist the resource to the store after the deployment is done successfully as well as unsuccessfully so that Radius can still management the resource.
+	// We persist the resource to the store after the deployment is done successfully as well as unsuccessfully so that Radius can still manage the resource.
 	// For example, even though a deployment failed, we still want to be able to delete the resource through rad app delete.
 	nr := &store.Object{
 		Metadata: store.Metadata{
