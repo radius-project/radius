@@ -249,7 +249,7 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 // are present. If either is missing, an error is returned.
 func RequireResourceTypeAndName(args []string) (string, string, error) {
 	if len(args) < 2 {
-		return "", "", errors.New("No resource type or name provided")
+		return "", "", errors.New("no resource type or name provided")
 	}
 	resourceType, err := RequireResourceType(args)
 	if err != nil {
