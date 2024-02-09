@@ -51,7 +51,6 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
 var (
 	ResourceTypesList = []string{
-		sstr_ctrl.ResourceTypeName,
 		ds_ctrl.MongoDatabasesResourceType,
 		msg_ctrl.RabbitMQQueuesResourceType,
 		ds_ctrl.RedisCachesResourceType,
@@ -63,6 +62,7 @@ var (
 		gtwy_ctrl.ResourceTypeName,
 		hrt_ctrl.ResourceTypeName,
 		cntr_ctrl.ResourceTypeName,
+		sstr_ctrl.ResourceTypeName,
 	}
 )
 
