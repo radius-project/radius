@@ -1,32 +1,33 @@
 import kubernetes as kubernetes {
   kubeConfig: ''
-  namespace: 'radius-testing'
+  namespace: context.runtime.kubernetes.namespace
 }
 
+param context object
 
 @description('Specifies the RabbitMQ username.')
 param username string = 'guest'
 
 @description('Specifies the RabbitMQ password.')
 @secure()
-param password string = 'guest'
+param password string
 
 resource rabbitmq 'apps/Deployment@v1' = {
   metadata: {
-    name: 'rabbitmq-test'
+    name: 'rabbitmq-${uniqueString(context.resource.id)}'
   }
   spec: {
     selector: {
       matchLabels: {
         app: 'rabbitmq'
-        resource: 'rabbitmq-test'
+        resource: context.resource.name
       }
     }
     template: {
       metadata: {
         labels: {
           app: 'rabbitmq'
-          resource: 'rabbitmq-test'
+          resource: context.resource.name
         }
       }
       spec: {
@@ -58,13 +59,13 @@ resource rabbitmq 'apps/Deployment@v1' = {
 
 resource svc 'core/Service@v1' = {
   metadata: {
-    name: 'rabbitmq-svc'
+    name: 'rabbitmq-${uniqueString(context.resource.id)}'
   }
   spec: {
     type: 'ClusterIP'
     selector: {
       app: 'rabbitmq'
-      resource: 'rabbitmq-test'
+      resource: context.resource.name
     }
     ports: [
       {
