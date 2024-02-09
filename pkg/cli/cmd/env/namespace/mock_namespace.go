@@ -9,6 +9,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 )
 
 // MockInterface is a mock of Interface interface.
@@ -35,7 +37,7 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // ValidateNamespace mocks base method.
-func (m *MockInterface) ValidateNamespace(arg0 context.Context, arg1 string) error {
+func (m *MockInterface) ValidateNamespace(arg0 context.Context, arg1 string, workspace workspaces.Workspace) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateNamespace", arg0, arg1)
 	ret0, _ := ret[0].(error)
