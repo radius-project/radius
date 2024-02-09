@@ -87,11 +87,6 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		}
 	}()
 
-	if opts.Configuration.Simulated {
-		logger.Info("simulated environment is set to true, skipping deployment")
-		return nil, nil
-	}
-
 	// Add credential information to .gitconfig if module source is of type git.
 	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
 		err := addSecretsToGitConfig(opts.BaseOptions.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
