@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -179,11 +180,14 @@ func fromResourceID(id string) (ns string, name string, err error) {
 // UpsertSecret creates or updates a Kubernetes secret based on the incoming request and returns the secret's location in
 // the output resource.
 func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	ref := newResource.Properties.Resource
 	if ref == "" && old != nil {
 		ref = old.Properties.Resource
 	}
-
+	if newResource.Properties.Application == "" && newResource.Properties.Resource == "" {
+		return rest.NewBadRequestResponse("$.properties.resource cannot be \"\" for global scoped resource."), nil
+	}
 	ns, name, err := fromResourceID(ref)
 	if err != nil {
 		return nil, err
@@ -193,6 +197,14 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		if ns, err = getNamespace(ctx, newResource, options); err != nil {
 			return nil, err
 		}
+	}
+	err = options.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+	if apierrors.IsAlreadyExists(err) {
+		logger.Info("Using existing namespace", "namespace", ns)
+	} else if err != nil {
+		return nil, err
+	} else {
+		logger.Info("Created the namespace", "namespace", ns)
 	}
 
 	if name == "" {
@@ -209,7 +221,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
 	if apierrors.IsNotFound(err) {
 		// If resource in incoming request references resource, then the resource must exist.
-		if ref != "" {
+		if ref != "" && newResource.Properties.Application != "" {
 			return rest.NewBadRequestResponse(fmt.Sprintf("'%s' referenced resource does not exist.", ref)), nil
 		}
 		app, _ := resources.ParseResource(newResource.Properties.Application)
