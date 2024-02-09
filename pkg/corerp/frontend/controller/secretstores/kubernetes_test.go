@@ -45,9 +45,10 @@ const (
 	testEnvID     = testRootScope + "/Applications.Core/environments/env0"
 	testAppID     = testRootScope + "/Applications.Core/applications/app0"
 
-	testFileCertValueFrom = "secretstores_datamodel_cert_valuefrom.json"
-	testFileCertValue     = "secretstores_datamodel_cert_value.json"
-	testFileGenericValue  = "secretstores_datamodel_generic.json"
+	testFileCertValueFrom           = "secretstores_datamodel_cert_valuefrom.json"
+	testFileCertValue               = "secretstores_datamodel_cert_value.json"
+	testFileGenericValue            = "secretstores_datamodel_generic.json"
+	testFileGenericValueGlobalScope = "secretstores_datamodel_global_scope.json"
 )
 
 func TestGetNamespace(t *testing.T) {
@@ -464,6 +465,43 @@ func TestUpsertSecret(t *testing.T) {
 		// assert
 		r := resp.(*rest.BadRequestResponse)
 		require.Equal(t, "'app0-ns/secret1' of $.properties.resource must be same as 'app0-ns/secret0'.", r.Body.Error.Message)
+	})
+
+	t.Run("create a new secret resource with global scope", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		sc := store.NewMockStorageClient(ctrl)
+
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValueGlobalScope)
+
+		opt := &controller.Options{
+			StorageClient: sc,
+			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+		}
+
+		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		require.NoError(t, err)
+		_, err = UpsertSecret(context.TODO(), newResource, nil, opt)
+		require.NoError(t, err)
+
+		// assert
+		require.Equal(t, "test-namespace/secret0", newResource.Properties.Resource)
+		ksecret := &corev1.Secret{}
+
+		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "test-namespace", Name: "secret0"}, ksecret)
+		require.NoError(t, err)
+
+		require.Equal(t, "dGxzLmNydA==", string(ksecret.Data["tls.crt"]))
+		require.Equal(t, "dGxzLmNlcnQK", string(ksecret.Data["tls.key"]))
+		require.Equal(t, "MTAwMDAwMDAtMTAwMC0xMDAwLTAwMDAtMDAwMDAwMDAwMDAw", string(ksecret.Data["servicePrincipalPassword"]))
+		require.Equal(t, rpv1.OutputResource{
+			LocalID: "Secret",
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"",
+				resources_kubernetes.KindSecret,
+				"test-namespace",
+				"secret0"),
+		}, newResource.Properties.Status.OutputResources[0])
 	})
 
 }
