@@ -122,6 +122,55 @@ func Test_Engine_Execute_Success(t *testing.T) {
 	require.Equal(t, result, recipeResult)
 }
 
+func Test_Engine_Execute_SimulatedEnv_Success(t *testing.T) {
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          "mongo-azure",
+		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		Parameters: map[string]any{
+			"resourceName": "resource1",
+		},
+	}
+
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+		Simulated: true,
+	}
+
+	ctx := testcontext.New(t)
+	engine, configLoader, _ := setup(t)
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
+	// Note: LoadRecipe is not called as the environment is simulated
+
+	result, err := engine.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		PreviousState: prevState,
+	})
+	require.NoError(t, err)
+	require.Nil(t, result)
+}
+
 func Test_Engine_Execute_Failure(t *testing.T) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
@@ -264,6 +313,19 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 	ctx := testcontext.New(t)
 	engine, configLoader, _ := setup(t)
 
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       "invalid",
 		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
@@ -282,6 +344,12 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 	prevState := []string{
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
@@ -299,6 +367,20 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 func Test_Engine_Lookup_Error(t *testing.T) {
 	ctx := testcontext.New(t)
 	engine, configLoader, _ := setup(t)
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
@@ -311,6 +393,12 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 	prevState := []string{
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
@@ -328,6 +416,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 func Test_Engine_Load_Error(t *testing.T) {
 	ctx := testcontext.New(t)
 	engine, configLoader, _ := setup(t)
+
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
@@ -340,15 +429,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 	prevState := []string{
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
-	recipeDefinition := &recipes.EnvironmentDefinition{
-		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Datastores/mongoDatabases",
-	}
-	configLoader.EXPECT().
-		LoadRecipe(ctx, &recipeMetadata).
-		Times(1).
-		Return(recipeDefinition, nil)
+
 	configLoader.EXPECT().
 		LoadConfiguration(ctx, recipeMetadata).
 		Times(1).
@@ -403,6 +484,40 @@ func Test_Engine_Delete_Success(t *testing.T) {
 		}).
 		Times(1).
 		Return(nil)
+
+	err := engine.Delete(ctx, DeleteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		OutputResources: outputResources,
+	})
+	require.NoError(t, err)
+}
+
+func Test_Engine_Delete_SimulatedEnv_Success(t *testing.T) {
+	recipeMetadata, _, outputResources := getRecipeInputs()
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+		Simulated: true,
+	}
+
+	ctx := testcontext.New(t)
+	engine, configLoader, _ := setup(t)
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
 
 	err := engine.Delete(ctx, DeleteOptions{
 		BaseOptions: BaseOptions{
@@ -471,6 +586,24 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 	ctx := testcontext.New(t)
 	engine, configLoader, _ := setup(t)
 
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
@@ -489,6 +622,24 @@ func Test_Delete_Lookup_Error(t *testing.T) {
 	ctx := testcontext.New(t)
 	engine, configLoader, _ := setup(t)
 	recipeMetadata, _, outputResources := getRecipeInputs()
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
 
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).

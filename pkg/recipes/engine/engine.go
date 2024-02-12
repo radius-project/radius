@@ -147,12 +147,14 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 // deleteCore function is the core logic of the Delete function.
 // Any changes to the core logic of the Delete function should be made here.
 func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) (*recipes.EnvironmentDefinition, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
 		return nil, err
 	}
 
 	if configuration.Simulated {
+		logger.Info("simulated environment enabled, skipping deleting resources")
 		return nil, nil
 	}
 
