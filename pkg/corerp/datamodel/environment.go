@@ -46,23 +46,33 @@ type EnvironmentProperties struct {
 	Simulated    bool                                              `json:"simulated,omitempty"`
 }
 
+// RecipeConfigProperties - Specifies recipe configurations needed for the recipes.
 type RecipeConfigProperties struct {
+	// Specifies the terraform config properties
 	Terraform TerraformConfigProperties `json:"terraform,omitempty"`
 }
 
+// TerraformConfigProperties - Specifies the terraform config properties
 type TerraformConfigProperties struct {
+	// Specifies authentication information needed to use private terraform module repositories.
 	Authentication AuthConfig `json:"authentication,omitempty"`
 }
 
+// AuthConfig - Specifies authentication information needed to use private terraform module repositories.
 type AuthConfig struct {
+	// Specifies authentication information needed to use private terraform module repositories from git module source
 	Git GitAuthConfig `json:"git,omitempty"`
 }
 
+// GitAuthConfig - Specifies authentication information needed to use private terraform module repositories from git module source
 type GitAuthConfig struct {
+	// Specifies the secret details of type personal access token for each different git platforms
 	PAT map[string]Secret `json:"pat,omitempty"`
 }
 
+// Secret - Specifies the secret details of type personal access token for each different git platforms
 type Secret struct {
+	// The resource id for the secret store containing credentials
 	SecretStore string `json:"secretStore,omitempty"`
 }
 

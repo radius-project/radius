@@ -45,7 +45,7 @@ const (
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
 // Parameters are populated from environment recipe and resource recipe metadata.
 func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration, armOptions *arm.ClientOptions) *TerraformConfig {
-
+	// Getting the module source path with credentials information if its a private source.
 	path, _ := getModuleSource(ctx, envConfig, envRecipe.TemplatePath, armOptions)
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
@@ -60,6 +60,8 @@ func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentD
 	}
 }
 
+// getModuleSource is called to get the module source path with credential information
+// if template path represent a private source else returns the provided template path
 func getModuleSource(ctx context.Context, envConfig *recipes.Configuration, templatePath string, armOptions *arm.ClientOptions) (string, error) {
 	var source string
 	var err error
@@ -74,6 +76,8 @@ func getModuleSource(ctx context.Context, envConfig *recipes.Configuration, temp
 	return source, err
 }
 
+// getGitSource creates a terraform module source in a generic git format with credential information
+// e.g: git::https://<username>:<pat>@<example.com>/<repo_path>
 func getGitSource(ctx context.Context, envConfig *recipes.Configuration, templatePath string, armOptions *arm.ClientOptions) (string, error) {
 	secretStore, err := getSecretStoreID(*envConfig, templatePath)
 	if err != nil {

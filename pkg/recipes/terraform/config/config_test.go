@@ -542,23 +542,46 @@ func Test_Save_InvalidWorkingDir(t *testing.T) {
 }
 
 func Test_getSecretStoreID(t *testing.T) {
-	config := &recipes.Configuration{
-		RecipeConfig: datamodel.RecipeConfigProperties{
-			Terraform: datamodel.TerraformConfigProperties{
-				Authentication: datamodel.AuthConfig{
-					Git: datamodel.GitAuthConfig{
-						PAT: map[string]datamodel.Secret{
-							"dev.azure.com": datamodel.Secret{
-								SecretStore: "secret-store1",
+	tests := []struct {
+		desc             string
+		templatePath     string
+		config           *recipes.Configuration
+		expSecretStoreID string
+		expectedErr      bool
+	}{
+		{
+			desc:         "success",
+			templatePath: "https://dev.azure.com/recipes/redis",
+			config: &recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.Secret{
+									"dev.azure.com": datamodel.Secret{
+										SecretStore: "secret-store1",
+									},
+								},
 							},
 						},
 					},
 				},
 			},
+			expSecretStoreID: "secret-store1",
+			expectedErr:      false,
 		},
 	}
-	templatePath := "https://dev.azure.com/recipes/redis"
-	path, err := getSecretStoreID(*config, templatePath)
-	require.Equal(t, "secret-store1", path)
-	require.NoError(t, err)
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			ss, err := getSecretStoreID(*tc.config, tc.templatePath)
+			if !tc.expectedErr {
+				require.Equal(t, tc.expSecretStoreID, ss)
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+
 }
