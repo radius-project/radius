@@ -46,7 +46,7 @@ const (
 // Parameters are populated from environment recipe and resource recipe metadata.
 func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration, armOptions *arm.ClientOptions) *TerraformConfig {
 
-	path, _ := getTemplatePath(ctx, envConfig, envRecipe, armOptions)
+	path, _ := getModuleSource(ctx, envConfig, envRecipe.TemplatePath, armOptions)
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
 	moduleData := newModuleConfig(path, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
@@ -60,22 +60,22 @@ func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentD
 	}
 }
 
-func getTemplatePath(ctx context.Context, envConfig *recipes.Configuration, envRecipe *recipes.EnvironmentDefinition, armOptions *arm.ClientOptions) (string, error) {
-	var templatePath string
+func getModuleSource(ctx context.Context, envConfig *recipes.Configuration, templatePath string, armOptions *arm.ClientOptions) (string, error) {
+	var source string
 	var err error
-	if strings.HasPrefix(envRecipe.TemplatePath, "git::") {
-		templatePath, err = getGitTemplatePath(ctx, envConfig, envRecipe, armOptions)
+	if strings.HasPrefix(templatePath, "git::") {
+		source, err = getGitSource(ctx, envConfig, templatePath, armOptions)
 		if err != nil {
 			return "", err
 		}
 	} else {
-		templatePath = envRecipe.TemplatePath
+		source = templatePath
 	}
-	return templatePath, err
+	return source, err
 }
 
-func getGitTemplatePath(ctx context.Context, envConfig *recipes.Configuration, envRecipe *recipes.EnvironmentDefinition, armOptions *arm.ClientOptions) (string, error) {
-	secretStore, err := getSecretStoreID(envConfig, envRecipe)
+func getGitSource(ctx context.Context, envConfig *recipes.Configuration, templatePath string, armOptions *arm.ClientOptions) (string, error) {
+	secretStore, err := getSecretStoreID(*envConfig, templatePath)
 	if err != nil {
 		return "", err
 	}
@@ -92,18 +92,27 @@ func getGitTemplatePath(ctx context.Context, envConfig *recipes.Configuration, e
 		if err != nil {
 			return "", err
 		}
-		url, err := getGitURL(envRecipe.TemplatePath)
+		url, err := getGitURL(templatePath)
 		if err != nil {
 			return "", err
 		}
-		urlString := url.String()
-		urlString = strings.TrimPrefix(urlString, "https://")
-		urlString = strings.TrimPrefix(urlString, "http://")
-		path := fmt.Sprintf("git::https://%s:%s@%s", *secrets.Data["username"].Value, *secrets.Data["pat"].Value, urlString)
+		var username, pat *string
+		path := "git::https://"
+		user, ok := secrets.Data["username"]
+		if ok {
+			username = user.Value
+			path += fmt.Sprintf("%s:", *username)
+		}
+		token, ok := secrets.Data["pat"]
+		if ok {
+			pat = token.Value
+			path += *pat
+		}
+		path += fmt.Sprintf("@%s", strings.TrimPrefix(url.String(), "https://"))
 		return path, err
 	}
 
-	return envRecipe.TemplatePath, err
+	return templatePath, err
 }
 
 func getGitURL(templatePath string) (*url.URL, error) {
@@ -116,11 +125,12 @@ func getGitURL(templatePath string) (*url.URL, error) {
 	return url, nil
 }
 
-func getSecretStoreID(envConfig *recipes.Configuration, envRecipe *recipes.EnvironmentDefinition) (string, error) {
-	url, err := getGitURL(envRecipe.TemplatePath)
+func getSecretStoreID(envConfig recipes.Configuration, templatePath string) (string, error) {
+	url, err := getGitURL(templatePath)
 	if err != nil {
 		return "", err
 	}
+
 	return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].SecretStore, nil
 }
 

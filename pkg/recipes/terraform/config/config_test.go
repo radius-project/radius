@@ -540,3 +540,25 @@ func Test_Save_InvalidWorkingDir(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf("error creating file: open %s/main.tf.json: no such file or directory", testDir), err.Error())
 }
+
+func Test_getSecretStoreID(t *testing.T) {
+	config := &recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Authentication: datamodel.AuthConfig{
+					Git: datamodel.GitAuthConfig{
+						PAT: map[string]datamodel.Secret{
+							"dev.azure.com": datamodel.Secret{
+								SecretStore: "secret-store1",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	templatePath := "https://dev.azure.com/recipes/redis"
+	path, err := getSecretStoreID(*config, templatePath)
+	require.Equal(t, "secret-store1", path)
+	require.NoError(t, err)
+}
