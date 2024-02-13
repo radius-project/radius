@@ -30,6 +30,7 @@ jobs:
               body = 'Your PR does not have a [Add | Remove | Update | Fix] <Title>. Please add one to help streamline our changelog. For example: Fix Bug in feature';
             }
             github.issues.createComment({ issue_number, owner, repo, body });
+            throw new Error('Invalid PR title');
           }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
