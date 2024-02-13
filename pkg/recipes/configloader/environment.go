@@ -28,7 +28,6 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -74,7 +73,7 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 	config := recipes.Configuration{
 		Runtime:      recipes.RuntimeConfiguration{},
 		Providers:    datamodel.Providers{},
-		RecipeConfig: *environment.Properties.RecipeConfig.Terraform.Authentication.Git.Pat["dev.azure.com"].SecretStore,
+		RecipeConfig: datamodel.RecipeConfigProperties{},
 	}
 
 	switch environment.Properties.Compute.(type) {
@@ -102,14 +101,15 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 		return nil, ErrUnsupportedComputeKind
 	}
 
-	providers := environment.Properties.Providers
-	if providers != nil {
-		if providers.Aws != nil {
-			config.Providers.AWS.Scope = to.String(providers.Aws.Scope)
-		}
-		if providers.Azure != nil {
-			config.Providers.Azure.Scope = to.String(providers.Azure.Scope)
-		}
+	env, err := environment.ConvertTo()
+	if err != nil {
+		return nil, err
+	}
+	if environment.Properties.Providers != nil {
+		config.Providers = env.(*datamodel.Environment).Properties.Providers
+	}
+	if environment.Properties.RecipeConfig != nil {
+		config.RecipeConfig = env.(*datamodel.Environment).Properties.RecipeConfig
 	}
 
 	if environment.Properties.Simulated != nil && *environment.Properties.Simulated {

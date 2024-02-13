@@ -33,7 +33,7 @@ type Configuration struct {
 	// Simulated represents whether the environment is simulated or not.
 	Simulated bool
 
-	RecipeConfig string
+	RecipeConfig datamodel.RecipeConfigProperties
 }
 
 // RuntimeConfiguration represents Kubernetes Runtime configuration for the environment.

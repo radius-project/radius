@@ -177,6 +177,53 @@ func TestGetConfiguration(t *testing.T) {
 			},
 			errString: ErrUnsupportedComputeKind.Error(),
 		},
+		{
+			name: "recipe config with env resource",
+			envResource: &model.EnvironmentResource{
+				Properties: &model.EnvironmentProperties{
+					Compute: &model.KubernetesCompute{
+						Kind:       to.Ptr(kind),
+						Namespace:  to.Ptr(envNamespace),
+						ResourceID: to.Ptr(envResourceId),
+					},
+					RecipeConfig: &model.RecipeConfigProperties{
+						Terraform: &model.TerraformConfigProperties{
+							Authentication: &model.AuthConfig{
+								Git: &model.GitAuthConfig{
+									Pat: map[string]*model.Secret{
+										"dev.azure.com": &model.Secret{
+											SecretStore: to.Ptr("secretStoreID"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			appResource: nil,
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            envNamespace,
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.Secret{
+									"dev.azure.com": datamodel.Secret{
+										SecretStore: "secretStoreID",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range configTests {

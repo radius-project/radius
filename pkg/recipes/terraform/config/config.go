@@ -22,12 +22,18 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -38,10 +44,12 @@ const (
 
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
 // Parameters are populated from environment recipe and resource recipe metadata.
-func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
+func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration, armOptions *arm.ClientOptions) *TerraformConfig {
+
+	path, _ := getTemplatePath(ctx, envConfig, envRecipe, armOptions)
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
-	moduleData := newModuleConfig(envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
+	moduleData := newModuleConfig(path, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
 
 	return &TerraformConfig{
 		Terraform: nil,
@@ -50,6 +58,70 @@ func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRe
 			moduleName: moduleData,
 		},
 	}
+}
+
+func getTemplatePath(ctx context.Context, envConfig *recipes.Configuration, envRecipe *recipes.EnvironmentDefinition, armOptions *arm.ClientOptions) (string, error) {
+	var templatePath string
+	var err error
+	if strings.HasPrefix(envRecipe.TemplatePath, "git::") {
+		templatePath, err = getGitTemplatePath(ctx, envConfig, envRecipe, armOptions)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		templatePath = envRecipe.TemplatePath
+	}
+	return templatePath, err
+}
+
+func getGitTemplatePath(ctx context.Context, envConfig *recipes.Configuration, envRecipe *recipes.EnvironmentDefinition, armOptions *arm.ClientOptions) (string, error) {
+	secretStore, err := getSecretStoreID(envConfig, envRecipe)
+	if err != nil {
+		return "", err
+	}
+	if secretStore != "" {
+		secretStoreID, err := resources.ParseResource(secretStore)
+		if err != nil {
+			return "", err
+		}
+		client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, armOptions)
+		if err != nil {
+			return "", err
+		}
+		secrets, err := client.ListSecrets(ctx, secretStoreID.Name(), map[string]any{}, nil)
+		if err != nil {
+			return "", err
+		}
+		url, err := getGitURL(envRecipe.TemplatePath)
+		if err != nil {
+			return "", err
+		}
+		urlString := url.String()
+		urlString = strings.TrimPrefix(urlString, "https://")
+		urlString = strings.TrimPrefix(urlString, "http://")
+		path := fmt.Sprintf("git::https://%s:%s@%s", *secrets.Data["username"].Value, *secrets.Data["pat"].Value, urlString)
+		return path, err
+	}
+
+	return envRecipe.TemplatePath, err
+}
+
+func getGitURL(templatePath string) (*url.URL, error) {
+	paths := strings.Split(templatePath, "git::")
+	gitUrl := paths[len(paths)-1]
+	url, err := url.Parse(gitUrl)
+	if err != nil {
+		return nil, err
+	}
+	return url, nil
+}
+
+func getSecretStoreID(envConfig *recipes.Configuration, envRecipe *recipes.EnvironmentDefinition) (string, error) {
+	url, err := getGitURL(envRecipe.TemplatePath)
+	if err != nil {
+		return "", err
+	}
+	return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].SecretStore, nil
 }
 
 // getMainConfigFilePath returns the path of the Terraform main config file.

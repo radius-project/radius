@@ -18,6 +18,7 @@ package v20231001preview
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -169,21 +170,27 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		dst.Properties.Recipes = recipes
 	}
 
-	dst.Properties.RecipeConfig = &RecipeConfigProperties{
-		Terraform: &TerraformConfigProperties{
-			Authentication: &AuthConfig{
-				Git: &GitAuthConfig{
-					Pat: map[string]*Secret{},
-				},
-			},
-		},
-	}
-	for k, v := range env.Properties.RecipeConfig.Terraform.Authentication.Git.PAT {
-		dst.Properties.RecipeConfig.Terraform.Authentication.Git.Pat[k] = &Secret{
-			SecretStore: to.Ptr(v.SecretStore),
+	if !reflect.DeepEqual(env.Properties.RecipeConfig, datamodel.RecipeConfigProperties{}) {
+		recipeConfig := &RecipeConfigProperties{}
+		if !reflect.DeepEqual(env.Properties.RecipeConfig.Terraform, datamodel.TerraformConfigProperties{}) {
+			recipeConfig.Terraform = &TerraformConfigProperties{}
+			if !reflect.DeepEqual(env.Properties.RecipeConfig.Terraform.Authentication, datamodel.AuthConfig{}) {
+				recipeConfig.Terraform.Authentication = &AuthConfig{}
+				if !reflect.DeepEqual(env.Properties.RecipeConfig.Terraform.Authentication.Git, datamodel.GitAuthConfig{}) {
+					recipeConfig.Terraform.Authentication.Git = &GitAuthConfig{}
+					if env.Properties.RecipeConfig.Terraform.Authentication.Git.PAT != nil {
+						recipeConfig.Terraform.Authentication.Git.Pat = map[string]*Secret{}
+					}
+				}
+			}
 		}
+		for k, v := range env.Properties.RecipeConfig.Terraform.Authentication.Git.PAT {
+			recipeConfig.Terraform.Authentication.Git.Pat[k] = &Secret{
+				SecretStore: to.Ptr(v.SecretStore),
+			}
+		}
+		dst.Properties.RecipeConfig = recipeConfig
 	}
-
 	if env.Properties.Providers != (datamodel.Providers{}) {
 		dst.Properties.Providers = &Providers{}
 		if env.Properties.Providers.Azure != (datamodel.ProvidersAzure{}) {

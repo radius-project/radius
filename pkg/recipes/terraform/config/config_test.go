@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -179,7 +180,7 @@ func Test_NewConfig(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			workingDir := t.TempDir()
 
-			tfconfig := New(testRecipeName, tc.envdef, tc.metadata)
+			tfconfig := New(context.Background(), testRecipeName, tc.envdef, tc.metadata, nil, nil)
 
 			// validate generated config
 			err := tfconfig.Save(testcontext.New(t), workingDir)
@@ -272,7 +273,7 @@ func Test_AddRecipeContext(t *testing.T) {
 			ctx := testcontext.New(t)
 			workingDir := t.TempDir()
 
-			tfconfig := New(testRecipeName, tc.envdef, tc.metadata)
+			tfconfig := New(context.Background(), testRecipeName, tc.envdef, tc.metadata, nil, nil)
 
 			err := tfconfig.AddRecipeContext(ctx, tc.moduleName, tc.recipeContext)
 			if tc.err == "" {
@@ -416,7 +417,7 @@ func Test_AddProviders(t *testing.T) {
 			ctx := testcontext.New(t)
 			workingDir := t.TempDir()
 
-			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+			tfconfig := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil, nil)
 			for _, p := range tc.expectedProviders {
 				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(p, nil)
 			}
@@ -476,7 +477,7 @@ func Test_AddOutputs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+			tfconfig := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil, nil)
 
 			err := tfconfig.AddOutputs(tc.moduleName)
 			if tc.expectedErr {
@@ -505,7 +506,7 @@ func Test_Save_overwrite(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
-	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+	tfconfig := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil, nil)
 
 	err := tfconfig.Save(ctx, testDir)
 	require.NoError(t, err)
@@ -517,7 +518,7 @@ func Test_Save_overwrite(t *testing.T) {
 func Test_Save_ConfigFileReadOnly(t *testing.T) {
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
-	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+	tfconfig := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil, nil)
 
 	// Create a test configuration file with read only permission.
 	err := os.WriteFile(getMainConfigFilePath(testDir), []byte(`{"module":{}}`), 0400)
@@ -533,7 +534,7 @@ func Test_Save_InvalidWorkingDir(t *testing.T) {
 	testDir := filepath.Join("invalid", uuid.New().String())
 	envRecipe, resourceRecipe := getTestInputs()
 
-	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+	tfconfig := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil, nil)
 
 	err := tfconfig.Save(testcontext.New(t), testDir)
 	require.Error(t, err)

@@ -26,8 +26,6 @@ import (
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -36,7 +34,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/pkg/ucp/resources"
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
@@ -185,12 +182,12 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
-	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options)
+	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options, e.armOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := downloadAndInspect(ctx, tf, options, e.armOptions)
+	result, err := downloadAndInspect(ctx, tf, options)
 	if err != nil {
 		return nil, err
 	}
@@ -205,12 +202,12 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
 
-	tfConfig, err := getTerraformConfig(ctx, workingDir, options)
+	tfConfig, err := getTerraformConfig(ctx, workingDir, options, e.armOptions)
 	if err != nil {
 		return "", err
 	}
 
-	loadedModule, err := downloadAndInspect(ctx, tf, options, e.armOptions)
+	loadedModule, err := downloadAndInspect(ctx, tf, options)
 	if err != nil {
 		return "", err
 	}
@@ -268,15 +265,15 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 }
 
 // downloadAndInspect handles downloading the TF module and retrieving the necessary information
-func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Options, armOptions *arm.ClientOptions) (*moduleInspectResult, error) {
+func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Options) (*moduleInspectResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Download the Terraform module to the working directory.
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
-	path, _ := getTemplatePath(ctx, options, armOptions)
+
 	//path := options.EnvRecipe.TemplatePath
-	if err := downloadModule(ctx, tf, path); err != nil {
+	if err := downloadModule(ctx, tf, options.EnvRecipe.TemplatePath); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
 				options.EnvRecipe, recipes.RecipeDownloadFailed))
@@ -288,7 +285,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 
 	// Load the downloaded module to retrieve providers and variables required by the module.
 	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
-	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", path))
+	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
 	loadedModule, err := inspectModule(tf.WorkingDir(), options.EnvRecipe)
 	if err != nil {
 		return nil, err
@@ -297,20 +294,8 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 	return loadedModule, nil
 }
 
-func getTemplatePath(ctx context.Context, options Options, armOptions *arm.ClientOptions) (string, error) {
-	secretStoreID, err := resources.ParseResource(options.EnvConfig.RecipeConfig)
-	if err != nil {
-		return "", err
-	}
-	client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, armOptions)
-	p, err := client.ListSecrets(ctx, secretStoreID.Name(), map[string]any{}, nil)
-	fmt.Println(p)
-	path := fmt.Sprintf("git::https://%s:%s@%s", *p.Data["username"].Value, *p.Data["pat"].Value, options.EnvRecipe.TemplatePath)
-	return path, err
-}
-
 // getTerraformConfig initializes the Terraform json config with provided module source and saves it
-func getTerraformConfig(ctx context.Context, workingDir string, options Options) (*config.TerraformConfig, error) {
+func getTerraformConfig(ctx context.Context, workingDir string, options Options, armOptions *arm.ClientOptions) (*config.TerraformConfig, error) {
 	// Generate Terraform json config in the working directory
 	// Use recipe name as a local reference to the module.
 	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the
@@ -322,7 +307,7 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 	}
 
 	// Create Terraform configuration containing module information with the given recipe parameters.
-	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
+	tfConfig := config.New(ctx, localModuleName, options.EnvRecipe, options.ResourceRecipe, options.EnvConfig, armOptions)
 
 	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
 	// Terraform Get command uses this config file to download module from the source specified in the config.
