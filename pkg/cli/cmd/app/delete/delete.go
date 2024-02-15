@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -82,6 +83,7 @@ type Runner struct {
 	Output            output.Interface
 
 	ApplicationName string
+	EnvironmentName string
 	Scope           string
 	Confirm         bool
 	Workspace       *workspaces.Workspace
@@ -121,6 +123,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Lookup the environment name for use in the confirmation prompt
+	if workspace.Environment != "" {
+		id, err := resources.ParseResource(workspace.Environment)
+		if err != nil {
+			return err
+		}
+
+		r.EnvironmentName = id.Name()
+	}
+
 	// Throw error if user specifies a Bicep filename or path instead of an application name
 	if strings.HasSuffix(r.ApplicationName, ".bicep") {
 		return clierrors.Message(bicepWarning, r.ApplicationName)
@@ -143,7 +155,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
-		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, r.Workspace.Name), prompt.ConfirmNo, r.InputPrompter)
+		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, r.EnvironmentName), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			return err
 		}
