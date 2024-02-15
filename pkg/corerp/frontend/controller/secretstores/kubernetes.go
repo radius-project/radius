@@ -220,7 +220,8 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	ksecret := &corev1.Secret{}
 	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
 	if apierrors.IsNotFound(err) {
-		// If resource in incoming request references resource, then the resource must exist.
+		// If resource in incoming request references resource, then the resource must exist for a application/environment scoped resource.
+		// For global scoped resource create the kubernetes resource if not exists.
 		if ref != "" && !isGlobalScopedResource(newResource) {
 			return rest.NewBadRequestResponse(fmt.Sprintf("'%s' referenced resource does not exist.", ref)), nil
 		}
