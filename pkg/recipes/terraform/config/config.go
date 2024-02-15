@@ -44,9 +44,12 @@ const (
 
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
 // Parameters are populated from environment recipe and resource recipe metadata.
-func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration, armOptions *arm.ClientOptions) *TerraformConfig {
+func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration, armOptions *arm.ClientOptions) (*TerraformConfig, error) {
 	// Getting the module source path with credentials information if its a private source.
-	path, _ := getModuleSource(ctx, envConfig, envRecipe.TemplatePath, armOptions)
+	path, err := getModuleSource(ctx, envConfig, envRecipe.TemplatePath, armOptions)
+	if err != nil {
+		return nil, err
+	}
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
 	moduleData := newModuleConfig(path, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
@@ -57,7 +60,7 @@ func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentD
 		Module: map[string]TFModuleConfig{
 			moduleName: moduleData,
 		},
-	}
+	}, nil
 }
 
 // getModuleSource is called to get the module source path with credential information
@@ -83,40 +86,41 @@ func getGitSource(ctx context.Context, envConfig *recipes.Configuration, templat
 	if err != nil {
 		return "", err
 	}
-	if secretStore != "" {
-		secretStoreID, err := resources.ParseResource(secretStore)
-		if err != nil {
-			return "", err
-		}
-		client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, armOptions)
-		if err != nil {
-			return "", err
-		}
-		secrets, err := client.ListSecrets(ctx, secretStoreID.Name(), map[string]any{}, nil)
-		if err != nil {
-			return "", err
-		}
-		url, err := getGitURL(templatePath)
-		if err != nil {
-			return "", err
-		}
-		var username, pat *string
-		path := "git::https://"
-		user, ok := secrets.Data["username"]
-		if ok {
-			username = user.Value
-			path += fmt.Sprintf("%s:", *username)
-		}
-		token, ok := secrets.Data["pat"]
-		if ok {
-			pat = token.Value
-			path += *pat
-		}
-		path += fmt.Sprintf("@%s", strings.TrimPrefix(url.String(), "https://"))
-		return path, err
+	if secretStore == "" {
+		return templatePath, err
 	}
 
-	return templatePath, err
+	secretStoreID, err := resources.ParseResource(secretStore)
+	if err != nil {
+		return "", err
+	}
+	client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, armOptions)
+	if err != nil {
+		return "", err
+	}
+	secrets, err := client.ListSecrets(ctx, secretStoreID.Name(), map[string]any{}, nil)
+	if err != nil {
+		return "", err
+	}
+	url, err := getGitURL(templatePath)
+	if err != nil {
+		return "", err
+	}
+	var username, pat *string
+	path := "git::https://"
+	user, ok := secrets.Data["username"]
+	if ok {
+		username = user.Value
+		path += fmt.Sprintf("%s:", *username)
+	}
+	token, ok := secrets.Data["pat"]
+	if ok {
+		pat = token.Value
+		path += *pat
+	}
+	path += fmt.Sprintf("@%s", strings.TrimPrefix(url.String(), "https://"))
+	return path, err
+
 }
 
 func getGitURL(templatePath string) (*url.URL, error) {

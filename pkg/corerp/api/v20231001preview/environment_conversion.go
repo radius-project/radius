@@ -63,25 +63,8 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		return nil, err
 	}
 	converted.Properties.Compute = *envCompute
+	converted.Properties.RecipeConfig = toRecipeConfigDatamodel(src.Properties.RecipeConfig)
 
-	recipeConfig := src.Properties.RecipeConfig
-	if recipeConfig != nil {
-		if recipeConfig.Terraform != nil {
-			if recipeConfig.Terraform.Authentication != nil {
-				gitConfig := recipeConfig.Terraform.Authentication.Git
-				if gitConfig != nil {
-					pat := gitConfig.Pat
-					p := map[string]datamodel.Secret{}
-					for k, v := range pat {
-						p[k] = datamodel.Secret{
-							SecretStore: to.String(v.SecretStore),
-						}
-					}
-					converted.Properties.RecipeConfig.Terraform.Authentication.Git.PAT = p
-				}
-			}
-		}
-	}
 	if src.Properties.Recipes != nil {
 		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
 		for resourceType, recipes := range src.Properties.Recipes {
@@ -169,28 +152,8 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		}
 		dst.Properties.Recipes = recipes
 	}
+	dst.Properties.RecipeConfig = fromRecipeConfigDatamodel(env.Properties.RecipeConfig)
 
-	if !reflect.DeepEqual(env.Properties.RecipeConfig, datamodel.RecipeConfigProperties{}) {
-		recipeConfig := &RecipeConfigProperties{}
-		if !reflect.DeepEqual(env.Properties.RecipeConfig.Terraform, datamodel.TerraformConfigProperties{}) {
-			recipeConfig.Terraform = &TerraformConfigProperties{}
-			if !reflect.DeepEqual(env.Properties.RecipeConfig.Terraform.Authentication, datamodel.AuthConfig{}) {
-				recipeConfig.Terraform.Authentication = &AuthConfig{}
-				if !reflect.DeepEqual(env.Properties.RecipeConfig.Terraform.Authentication.Git, datamodel.GitAuthConfig{}) {
-					recipeConfig.Terraform.Authentication.Git = &GitAuthConfig{}
-					if env.Properties.RecipeConfig.Terraform.Authentication.Git.PAT != nil {
-						recipeConfig.Terraform.Authentication.Git.Pat = map[string]*Secret{}
-					}
-				}
-			}
-		}
-		for k, v := range env.Properties.RecipeConfig.Terraform.Authentication.Git.PAT {
-			recipeConfig.Terraform.Authentication.Git.Pat[k] = &Secret{
-				SecretStore: to.Ptr(v.SecretStore),
-			}
-		}
-		dst.Properties.RecipeConfig = recipeConfig
-	}
 	if env.Properties.Providers != (datamodel.Providers{}) {
 		dst.Properties.Providers = &Providers{}
 		if env.Properties.Providers.Azure != (datamodel.ProvidersAzure{}) {
@@ -217,6 +180,59 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		dst.Properties.Extensions = extensions
 	}
 
+	return nil
+}
+
+func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeConfigProperties {
+	if config != nil {
+		recipeConfig := datamodel.RecipeConfigProperties{}
+		if config.Terraform != nil {
+			recipeConfig.Terraform = datamodel.TerraformConfigProperties{}
+			if config.Terraform.Authentication != nil {
+				recipeConfig.Terraform.Authentication = datamodel.AuthConfig{}
+				gitConfig := config.Terraform.Authentication.Git
+				if gitConfig != nil {
+					recipeConfig.Terraform.Authentication.Git = datamodel.GitAuthConfig{}
+					if gitConfig.Pat != nil {
+						p := map[string]datamodel.Secret{}
+						for k, v := range gitConfig.Pat {
+							p[k] = datamodel.Secret{
+								SecretStore: to.String(v.SecretStore),
+							}
+						}
+						recipeConfig.Terraform.Authentication.Git.PAT = p
+					}
+
+				}
+			}
+		}
+		return recipeConfig
+	}
+	return datamodel.RecipeConfigProperties{}
+}
+
+func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeConfigProperties {
+	if !reflect.DeepEqual(config, datamodel.RecipeConfigProperties{}) {
+		recipeConfig := &RecipeConfigProperties{}
+		if !reflect.DeepEqual(config.Terraform, datamodel.TerraformConfigProperties{}) {
+			recipeConfig.Terraform = &TerraformConfigProperties{}
+			if !reflect.DeepEqual(config.Terraform.Authentication, datamodel.AuthConfig{}) {
+				recipeConfig.Terraform.Authentication = &AuthConfig{}
+				if !reflect.DeepEqual(config.Terraform.Authentication.Git, datamodel.GitAuthConfig{}) {
+					recipeConfig.Terraform.Authentication.Git = &GitAuthConfig{}
+					if config.Terraform.Authentication.Git.PAT != nil {
+						recipeConfig.Terraform.Authentication.Git.Pat = map[string]*Secret{}
+					}
+				}
+			}
+		}
+		for k, v := range config.Terraform.Authentication.Git.PAT {
+			recipeConfig.Terraform.Authentication.Git.Pat[k] = &Secret{
+				SecretStore: to.Ptr(v.SecretStore),
+			}
+		}
+		return recipeConfig
+	}
 	return nil
 }
 

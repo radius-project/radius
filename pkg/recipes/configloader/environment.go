@@ -105,11 +105,12 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 	if err != nil {
 		return nil, err
 	}
+	envDatamodel := env.(*datamodel.Environment)
 	if environment.Properties.Providers != nil {
-		config.Providers = env.(*datamodel.Environment).Properties.Providers
+		config.Providers = envDatamodel.Properties.Providers
 	}
 	if environment.Properties.RecipeConfig != nil {
-		config.RecipeConfig = env.(*datamodel.Environment).Properties.RecipeConfig
+		config.RecipeConfig = envDatamodel.Properties.RecipeConfig
 	}
 
 	if environment.Properties.Simulated != nil && *environment.Properties.Simulated {
