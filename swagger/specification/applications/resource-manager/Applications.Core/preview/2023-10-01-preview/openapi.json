@@ -3522,7 +3522,7 @@
     },
     "EnvironmentResource": {
       "type": "object",
-      "description": "The environment resource",
+      "description": "The environment resource hello",
       "properties": {
         "properties": {
           "$ref": "#/definitions/EnvironmentProperties",

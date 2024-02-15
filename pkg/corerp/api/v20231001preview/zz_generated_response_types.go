@@ -73,7 +73,7 @@ type ContainersClientUpdateResponse struct {
 
 // EnvironmentsClientCreateOrUpdateResponse contains the response from method EnvironmentsClient.CreateOrUpdate.
 type EnvironmentsClientCreateOrUpdateResponse struct {
-	// The environment resource
+	// The environment resource hello
 	EnvironmentResource
 }
 
@@ -90,7 +90,7 @@ type EnvironmentsClientGetMetadataResponse struct {
 
 // EnvironmentsClientGetResponse contains the response from method EnvironmentsClient.Get.
 type EnvironmentsClientGetResponse struct {
-	// The environment resource
+	// The environment resource hello
 	EnvironmentResource
 }
 
@@ -102,7 +102,7 @@ type EnvironmentsClientListByScopeResponse struct {
 
 // EnvironmentsClientUpdateResponse contains the response from method EnvironmentsClient.Update.
 type EnvironmentsClientUpdateResponse struct {
-	// The environment resource
+	// The environment resource hello
 	EnvironmentResource
 }
 

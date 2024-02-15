@@ -563,7 +563,7 @@ type EnvironmentProperties struct {
 	ProvisioningState *ProvisioningState
 }
 
-// EnvironmentResource - The environment resource
+// EnvironmentResource - The environment resource hello
 type EnvironmentResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
