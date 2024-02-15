@@ -45,10 +45,12 @@ const (
 	testEnvID     = testRootScope + "/Applications.Core/environments/env0"
 	testAppID     = testRootScope + "/Applications.Core/applications/app0"
 
-	testFileCertValueFrom           = "secretstores_datamodel_cert_valuefrom.json"
-	testFileCertValue               = "secretstores_datamodel_cert_value.json"
-	testFileGenericValue            = "secretstores_datamodel_generic.json"
-	testFileGenericValueGlobalScope = "secretstores_datamodel_global_scope.json"
+	testFileCertValueFrom               = "secretstores_datamodel_cert_valuefrom.json"
+	testFileCertValue                   = "secretstores_datamodel_cert_value.json"
+	testFileGenericValue                = "secretstores_datamodel_generic.json"
+	testFileGenericValueGlobalScope     = "secretstores_datamodel_global_scope.json"
+	testFileGenericValueInvalidResource = "secretstores_datamodel_global_scope_invalid_resource.json"
+	testFileGenericValueEmptyResource   = "secretstores_datamodel_global_scope_empty_resource.json"
 )
 
 func TestGetNamespace(t *testing.T) {
@@ -502,6 +504,43 @@ func TestUpsertSecret(t *testing.T) {
 				"test-namespace",
 				"secret0"),
 		}, newResource.Properties.Status.OutputResources[0])
+	})
+	t.Run("create a new secret resource with invalid resource", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		sc := store.NewMockStorageClient(ctrl)
+
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValueInvalidResource)
+
+		opt := &controller.Options{
+			StorageClient: sc,
+			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+		}
+
+		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		require.NoError(t, err)
+		_, err = UpsertSecret(context.TODO(), newResource, nil, opt)
+		require.Error(t, err)
+		require.Equal(t, err.Error(), "no Kubernetes namespace")
+	})
+	t.Run("create a new secret resource with empty resource", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		sc := store.NewMockStorageClient(ctrl)
+
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValueEmptyResource)
+
+		opt := &controller.Options{
+			StorageClient: sc,
+			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+		}
+
+		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		require.NoError(t, err)
+		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
+		require.NoError(t, err)
+
+		// assert
+		r := resp.(*rest.BadRequestResponse)
+		require.Equal(t, "$.properties.resource cannot be empty for global scoped resource.", r.Body.Error.Message)
 	})
 
 }
