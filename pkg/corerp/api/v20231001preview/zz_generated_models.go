@@ -542,7 +542,7 @@ type EnvironmentComputeUpdate struct {
 // GetEnvironmentComputeUpdate implements the EnvironmentComputeUpdateClassification interface for type EnvironmentComputeUpdate.
 func (e *EnvironmentComputeUpdate) GetEnvironmentComputeUpdate() *EnvironmentComputeUpdate { return e }
 
-// EnvironmentProperties - Environment properties
+// EnvironmentProperties - Environment properties…
 type EnvironmentProperties struct {
 	// REQUIRED; The compute resource used by application environment.
 	Compute EnvironmentComputeClassification

@@ -3478,7 +3478,7 @@
     },
     "EnvironmentProperties": {
       "type": "object",
-      "description": "Environment properties",
+      "description": "Environment properties...",
       "properties": {
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",

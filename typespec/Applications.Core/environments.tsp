@@ -47,7 +47,7 @@ model EnvironmentResource is TrackedResourceRequired<EnvironmentProperties, "env
   name: ResourceNameString;
 }
 
-@doc("Environment properties")
+@doc("Environment properties...")
 model EnvironmentProperties {
   @doc("The status of the asynchronous operation.")
   @visibility("read")
