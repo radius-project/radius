@@ -126,7 +126,7 @@ type ApplicationResourceUpdateProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *ProvidersUpdate
 
-	// Specifies recipe configurations needed for the recipes.
+	// Specifies configurations needed for the recipes registered to the environment.
 	RecipeConfig *RecipeConfigProperties
 
 	// Specifies Recipes linked to the Environment.
@@ -138,7 +138,7 @@ type ApplicationResourceUpdateProperties struct {
 
 // AuthConfig - Specifies authentication information needed to use private terraform module repositories.
 type AuthConfig struct {
-	// Specifies authentication information needed to use private terraform module repositories from git module source
+	// Specifies authentication information needed to access private terraform modules from Git repository sources.
 	Git *GitAuthConfig
 }
 
@@ -562,7 +562,7 @@ type EnvironmentProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *Providers
 
-	// Specifies recipe configurations needed for the recipes.
+	// Specifies configurations needed for the recipes registered to the environment.
 	RecipeConfig *RecipeConfigProperties
 
 	// Specifies Recipes linked to the Environment.
@@ -628,7 +628,7 @@ type EnvironmentResourceUpdateProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *ProvidersUpdate
 
-	// Specifies recipe configurations needed for the recipes.
+	// Specifies configurations needed for the recipes registered to the environment.
 	RecipeConfig *RecipeConfigProperties
 
 	// Specifies Recipes linked to the Environment.
@@ -949,8 +949,7 @@ type GatewayTLS struct {
 	SSLPassthrough *bool
 }
 
-// GitAuthConfig - Specifies authentication information needed to use private terraform module repositories from git module
-// source
+// GitAuthConfig - Specifies authentication information needed to access private terraform modules from Git repository sources.
 type GitAuthConfig struct {
 	// Specifies the secret details of type personal access token for each different git platforms
 	Pat map[string]*Secret
@@ -1526,7 +1525,7 @@ type RuntimesProperties struct {
 
 // Secret - Specifies the secret details of type personal access token for each different git platforms
 type Secret struct {
-	// The resource id for the secret store containing credentials
+	// The resource id for the Applications.Core/SecretStore resource containing credentials.
 	SecretStore *string
 }
 
@@ -1705,7 +1704,8 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 
 // TerraformConfigProperties - Specifies the terraform config properties
 type TerraformConfigProperties struct {
-	// Specifies authentication information needed to use private terraform module repositories.
+	// Specifies authentication information needed to access private terraform module sources. Currently supported module sources:
+// Git.
 	Authentication *AuthConfig
 }
 

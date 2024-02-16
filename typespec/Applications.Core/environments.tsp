@@ -65,7 +65,7 @@ model EnvironmentProperties {
   @doc("Specifies Recipes linked to the Environment.")
   recipes?: Record<Record<RecipeProperties>>;
 
-  @doc("Specifies recipe configurations needed for the recipes.")
+  @doc("Specifies configurations needed for the recipes registered to the environment.")
   recipeConfig?: RecipeConfigProperties;
 
   @doc("The environment extension.")
@@ -81,17 +81,17 @@ model RecipeConfigProperties {
 
 @doc("Specifies the terraform config properties")
 model TerraformConfigProperties{
-  @doc("Specifies authentication information needed to use private terraform module repositories.")  
+  @doc("Specifies authentication information needed to access private terraform module sources. Currently supported module sources: Git.")
   authentication?: AuthConfig;
 }
 
 @doc("Specifies authentication information needed to use private terraform module repositories.")
 model AuthConfig{
-  @doc("Specifies authentication information needed to use private terraform module repositories from git module source")  
+  @doc("Specifies authentication information needed to access private terraform modules from Git repository sources.")
   git?: GitAuthConfig;
 }
 
-@doc("Specifies authentication information needed to use private terraform module repositories from git module source")
+@doc("Specifies authentication information needed to access private terraform modules from Git repository sources.")
 model GitAuthConfig{
   @doc("Specifies the secret details of type personal access token for each different git platforms")  
   pat?: Record<Secret>;
@@ -99,7 +99,7 @@ model GitAuthConfig{
 
 @doc("Specifies the secret details of type personal access token for each different git platforms")
 model Secret {
-  @doc("The resource id for the secret store containing credentials")
+  @doc("The resource id for the Applications.Core/SecretStore resource containing credentials.")
   secretStore?: string;
 }
 
