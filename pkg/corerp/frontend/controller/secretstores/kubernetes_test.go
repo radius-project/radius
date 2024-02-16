@@ -505,6 +505,7 @@ func TestUpsertSecret(t *testing.T) {
 				"secret0"),
 		}, newResource.Properties.Status.OutputResources[0])
 	})
+
 	t.Run("create a new secret resource with invalid resource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		sc := store.NewMockStorageClient(ctrl)
@@ -522,6 +523,7 @@ func TestUpsertSecret(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, err.Error(), "no Kubernetes namespace")
 	})
+
 	t.Run("create a new secret resource with empty resource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		sc := store.NewMockStorageClient(ctrl)

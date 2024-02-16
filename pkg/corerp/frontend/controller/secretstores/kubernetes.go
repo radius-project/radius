@@ -185,9 +185,10 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	if ref == "" && old != nil {
 		ref = old.Properties.Resource
 	}
-	if isGlobalScopedResource(newResource) && newResource.Properties.Resource == "" {
+	if isGlobalScopedResource(newResource) && ref == "" {
 		return rest.NewBadRequestResponse("$.properties.resource cannot be empty for global scoped resource."), nil
 	}
+
 	ns, name, err := fromResourceID(ref)
 	if err != nil {
 		return nil, err
@@ -198,6 +199,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 			return nil, err
 		}
 	}
+
 	err = options.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
 	if err != nil && apierrors.IsAlreadyExists(err) {
 		logger.Info("Using existing namespace", "namespace", ns)
