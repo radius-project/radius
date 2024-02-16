@@ -3660,15 +3660,15 @@ func (r *RuntimesProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type Secret.
-func (s Secret) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type SecretConfig.
+func (s SecretConfig) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "secretStore", s.SecretStore)
+	populate(objectMap, "secret", s.Secret)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type Secret.
-func (s *Secret) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type SecretConfig.
+func (s *SecretConfig) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", s, err)
@@ -3676,8 +3676,8 @@ func (s *Secret) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "secretStore":
-				err = unpopulate(val, "SecretStore", &s.SecretStore)
+		case "secret":
+				err = unpopulate(val, "Secret", &s.Secret)
 			delete(rawMsg, key)
 		}
 		if err != nil {

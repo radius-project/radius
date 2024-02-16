@@ -557,9 +557,9 @@ func Test_getSecretStoreID(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						Authentication: datamodel.AuthConfig{
 							Git: datamodel.GitAuthConfig{
-								PAT: map[string]datamodel.Secret{
-									"dev.azure.com": datamodel.Secret{
-										SecretStore: "secret-store1",
+								PAT: map[string]datamodel.SecretConfig{
+									"dev.azure.com": datamodel.SecretConfig{
+										Secret: "secret-store1",
 									},
 								},
 							},

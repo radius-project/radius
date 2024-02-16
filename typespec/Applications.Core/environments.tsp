@@ -94,13 +94,13 @@ model AuthConfig{
 @doc("Specifies authentication information needed to access private terraform modules from Git repository sources.")
 model GitAuthConfig{
   @doc("Specifies the secret details of type personal access token for each different git platforms")  
-  pat?: Record<Secret>;
+  pat?: Record<SecretConfig>;
 }
 
 @doc("Specifies the secret details of type personal access token for each different git platforms")
-model Secret {
+model SecretConfig {
   @doc("The resource id for the Applications.Core/SecretStore resource containing credentials.")
-  secretStore?: string;
+  secret?: string;
 }
 
 @doc("The Cloud providers configuration")

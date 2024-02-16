@@ -4041,7 +4041,7 @@
           "type": "object",
           "description": "Specifies the secret details of type personal access token for each different git platforms",
           "additionalProperties": {
-            "$ref": "#/definitions/Secret"
+            "$ref": "#/definitions/SecretConfig"
           }
         }
       }
@@ -5011,11 +5011,11 @@
         }
       }
     },
-    "Secret": {
+    "SecretConfig": {
       "type": "object",
       "description": "Specifies the secret details of type personal access token for each different git platforms",
       "properties": {
-        "secretStore": {
+        "secret": {
           "type": "string",
           "description": "The resource id for the Applications.Core/SecretStore resource containing credentials."
         }

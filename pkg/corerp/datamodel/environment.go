@@ -67,13 +67,13 @@ type AuthConfig struct {
 // GitAuthConfig - Specifies authentication information needed to use private terraform module repositories from git module source
 type GitAuthConfig struct {
 	// GitAuthConfig specifies the secret details of type personal access token for each different git platforms
-	PAT map[string]Secret `json:"pat,omitempty"`
+	PAT map[string]SecretConfig `json:"pat,omitempty"`
 }
 
-// Secret - Specifies the secret details of type personal access token for each different git platforms
-type Secret struct {
+// SecretConfig - Specifies the secret details of type personal access token for each different git platforms
+type SecretConfig struct {
 	// Secret represent the resource id for the secret store containing credentials
-	SecretStore string `json:"secretStore,omitempty"`
+	Secret string `json:"secret,omitempty"`
 }
 
 // EnvironmentRecipeProperties represents the properties of environment's recipe.

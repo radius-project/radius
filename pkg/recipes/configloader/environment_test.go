@@ -190,9 +190,9 @@ func TestGetConfiguration(t *testing.T) {
 						Terraform: &model.TerraformConfigProperties{
 							Authentication: &model.AuthConfig{
 								Git: &model.GitAuthConfig{
-									Pat: map[string]*model.Secret{
-										"dev.azure.com": &model.Secret{
-											SecretStore: to.Ptr("secretStoreID"),
+									Pat: map[string]*model.SecretConfig{
+										"dev.azure.com": &model.SecretConfig{
+											Secret: to.Ptr("secretStoreID"),
 										},
 									},
 								},
@@ -213,9 +213,9 @@ func TestGetConfiguration(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						Authentication: datamodel.AuthConfig{
 							Git: datamodel.GitAuthConfig{
-								PAT: map[string]datamodel.Secret{
-									"dev.azure.com": datamodel.Secret{
-										SecretStore: "secretStoreID",
+								PAT: map[string]datamodel.SecretConfig{
+									"dev.azure.com": datamodel.SecretConfig{
+										Secret: "secretStoreID",
 									},
 								},
 							},

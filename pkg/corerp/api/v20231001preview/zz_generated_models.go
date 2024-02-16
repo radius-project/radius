@@ -952,7 +952,7 @@ type GatewayTLS struct {
 // GitAuthConfig - Specifies authentication information needed to access private terraform modules from Git repository sources.
 type GitAuthConfig struct {
 	// Specifies the secret details of type personal access token for each different git platforms
-	Pat map[string]*Secret
+	Pat map[string]*SecretConfig
 }
 
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
@@ -1523,10 +1523,10 @@ type RuntimesProperties struct {
 	Kubernetes *KubernetesRuntimeProperties
 }
 
-// Secret - Specifies the secret details of type personal access token for each different git platforms
-type Secret struct {
+// SecretConfig - Specifies the secret details of type personal access token for each different git platforms
+type SecretConfig struct {
 	// The resource id for the Applications.Core/SecretStore resource containing credentials.
-	SecretStore *string
+	Secret *string
 }
 
 // SecretObjectProperties - Represents secret object properties

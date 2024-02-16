@@ -139,7 +139,7 @@ func getSecretStoreID(envConfig recipes.Configuration, templatePath string) (str
 		return "", err
 	}
 
-	return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].SecretStore, nil
+	return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
 }
 
 // getMainConfigFilePath returns the path of the Terraform main config file.

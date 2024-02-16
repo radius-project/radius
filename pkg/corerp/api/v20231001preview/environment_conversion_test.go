@@ -121,9 +121,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						Terraform: datamodel.TerraformConfigProperties{
 							Authentication: datamodel.AuthConfig{
 								Git: datamodel.GitAuthConfig{
-									PAT: map[string]datamodel.Secret{
-										"dev.azure.com": datamodel.Secret{
-											SecretStore: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github",
+									PAT: map[string]datamodel.SecretConfig{
+										"dev.azure.com": datamodel.SecretConfig{
+											Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github",
 										},
 									},
 								},
@@ -381,7 +381,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				if tt.filename == "environmentresourcedatamodel.json" {
 					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplatePath))
 					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplateKind))
-					require.Equal(t, "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github", string(*versioned.Properties.RecipeConfig.Terraform.Authentication.Git.Pat["dev.azure.com"].SecretStore))
+					require.Equal(t, "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github", string(*versioned.Properties.RecipeConfig.Terraform.Authentication.Git.Pat["dev.azure.com"].Secret))
 					switch c := recipeDetails.(type) {
 					case *TerraformRecipeProperties:
 						require.Equal(t, "1.1.0", string(*c.TemplateVersion))
