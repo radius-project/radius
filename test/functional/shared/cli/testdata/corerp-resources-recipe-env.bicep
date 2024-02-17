@@ -2,6 +2,10 @@ import radius as radius
 
 @description('Specifies the location for resources.')
 param location string = 'global'
+@description('The OCI registry for test Bicep recipes.')
+param registry string
+@description('The OCI tag for test Bicep recipes.')
+param version string
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-resources-recipe-env'
@@ -13,10 +17,10 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       namespace: 'corerp-resources-recipe-env'
     }
     recipes: {
-      'Applications.Datastores/mongoDatabases':{
+      'Applications.Datastores/redisCaches':{
         recipe1: {
           templateKind: 'bicep'
-          templatePath: 'ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1' 
+          templatePath: '${registry}/test/functional/shared/recipes/corerp-redis-recipe:${version}'
         }
         recipe2: {
           templateKind: 'terraform'

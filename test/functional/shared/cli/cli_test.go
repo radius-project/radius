@@ -33,6 +33,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
@@ -61,24 +62,32 @@ const (
 func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	options := shared.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	// get the current environment to switch back to after the test since the environment is used
-	// for AWS test and has the AWS scope which the environment created in this does not.
 	envName := test.Steps[0].RPResources.Resources[0].Name
-	recipeName := "recipeName"
-	recipeTemplate := "ghcr.io/testpublicrecipe/bicep/modules/testTemplate:v1"
-	templateKind := "bicep"
-	resourceType := "Applications.Datastores/mongoDatabases"
-	file := "testdata/corerp-redis-recipe.bicep"
+	registry := strings.TrimPrefix(functional.GetBicepRecipeRegistry(), "registry=")
+	version := strings.TrimPrefix(functional.GetBicepRecipeVersion(), "version=")
+	resourceType := "Applications.Datastores/redisCaches"
+	file := "../../shared/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:ghcr.io/radius-project/dev/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
+	recipeName := "recipeName"
+	recipeTemplate := fmt.Sprintf("%s/recipes/local-dev/rediscaches:%s", registry, version)
+
+	bicepRecipe := "recipe1"
+	bicepRecipeTemplate := fmt.Sprintf("%s/test/functional/shared/recipes/corerp-redis-recipe:%s", registry, version)
+	templateKindBicep := "bicep"
+
+	terraformRecipe := "recipe2"
+	terraformRecipeTemplate := "Azure/cosmosdb/azurerm"
+	templateKindTerraform := "terraform"
+
 	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, resourceType, false)
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
 
 	t.Run("Validate rad recipe register with insecure registry", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, resourceType, true)
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, true)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
@@ -86,10 +95,15 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	t.Run("Validate rad recipe list", func(t *testing.T) {
 		output, err := cli.RecipeList(ctx, envName)
 		require.NoError(t, err)
+		require.Regexp(t, bicepRecipe, output)
+		require.Regexp(t, terraformRecipe, output)
 		require.Regexp(t, recipeName, output)
 		require.Regexp(t, resourceType, output)
+		require.Regexp(t, bicepRecipeTemplate, output)
+		require.Regexp(t, terraformRecipeTemplate, output)
 		require.Regexp(t, recipeTemplate, output)
-		require.Regexp(t, "true", output)
+		require.Regexp(t, templateKindBicep, output)
+		require.Regexp(t, templateKindTerraform, output)
 	})
 
 	t.Run("Validate rad recipe unregister", func(t *testing.T) {
@@ -99,31 +113,19 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 
 	t.Run("Validate rad recipe show", func(t *testing.T) {
-		showRecipeName := "mongodbtest"
-		showRecipeTemplate := "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
-		showRecipeResourceType := "Applications.Datastores/mongoDatabases"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeResourceType, false)
+		output, err := cli.RecipeShow(ctx, envName, bicepRecipe, resourceType)
 		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName, resourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, showRecipeName)
-		require.Contains(t, output, showRecipeTemplate)
-		require.Contains(t, output, showRecipeResourceType)
-		require.Contains(t, output, "mongodbName")
-		require.Contains(t, output, "documentdbName")
-		require.Contains(t, output, "location")
+		require.Contains(t, output, bicepRecipe)
+		require.Contains(t, output, bicepRecipeTemplate)
+		require.Contains(t, output, resourceType)
+		require.Contains(t, output, "redisName")
 		require.Contains(t, output, "string")
-		require.Contains(t, output, "resourceGroup().location]")
 	})
 
 	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
 		showRecipeName := "redistesttf"
-		moduleServer := os.Getenv("TF_RECIPE_MODULE_SERVER_URL")
-		if moduleServer == "" {
-			moduleServer = "http://localhost:8999"
-		}
-		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip", moduleServer)
+		moduleServer := strings.TrimPrefix(functional.GetTerraformRecipeModuleServerURL(), "moduleServer=")
+		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip//modules", moduleServer)
 		showRecipeResourceType := "Applications.Datastores/redisCaches"
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType, false)
 		require.NoError(t, err)
@@ -143,8 +145,8 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		require.Contains(t, output, "Successfully published")
 	})
 
-	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, resourceType, false)
+	t.Run("Validate rad recipe register with recipe name conflicting with existing recipe", func(t *testing.T) {
+		output, err := cli.RecipeRegister(ctx, envName, bicepRecipe, templateKindBicep, recipeTemplate, resourceType, false)
 		require.Contains(t, output, "Successfully linked recipe")
 		require.NoError(t, err)
 		output, err = cli.RecipeList(ctx, envName)
@@ -228,7 +230,6 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 
 	t.Run("Validate rad resource expose Container", func(t *testing.T) {
-		t.Skip("https://github.com/radius-project/radius/issues/3232")
 		port, err := GetAvailablePort()
 		require.NoError(t, err)
 
@@ -237,7 +238,8 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 
 		done := make(chan error)
 		go func() {
-			_, err = cli.ResourceExpose(child, appName, containerName, port, 3000)
+			output, err := cli.ResourceExpose(child, appName, containerName, port, 3000)
+			t.Logf("ResourceExpose - output: %s", output)
 			done <- err
 		}()
 
@@ -254,40 +256,24 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 // callHealthEndpointOnLocalPort calls the magpie health endpoint '/healthz' with retries. It will fail the
 // test if the exceed the number of retries without success.
 func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
-	for i := 0; i < retries; i++ {
-		url := fmt.Sprintf("http://localhost:%d/healthz", port)
-		t.Logf("making request to %s", url)
-		response, err := http.Get(url)
-		if err != nil {
-			if i == retries-1 {
-				// last retry failed, report failure
-				require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
-			}
-			t.Logf("got error %s", err.Error())
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		if response.Body != nil {
-			defer response.Body.Close()
-		}
+	healthzURL := fmt.Sprintf("http://localhost:%d/healthz", port)
 
-		if response.StatusCode > 299 || response.StatusCode < 200 {
-			if i == retries-1 {
-				// last retry failed, report failure
-				require.NoError(t, err, "status code was a bad response after %d retries %d", retries, response.StatusCode)
-			}
-			t.Logf("got status %d", response.StatusCode)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		defer response.Body.Close()
-		content, err := io.ReadAll(response.Body)
-		require.NoError(t, err)
-
-		t.Logf("[response] %s", string(content))
-		return
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = retries
+	retryClient.RetryWaitMin = 5 * time.Second
+	retryClient.RetryWaitMax = 20 * time.Second
+	retryClient.Backoff = retryablehttp.LinearJitterBackoff
+	retryClient.RequestLogHook = func(_ retryablehttp.Logger, req *http.Request, retry int) {
+		t.Logf("retry calling healthz endpoint %s, retry: %d", healthzURL, retry)
 	}
+
+	resp, err := retryClient.Get(healthzURL)
+	require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
+	defer resp.Body.Close()
+	content, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	t.Logf("[response] %s", string(content))
 }
 
 func Test_Run_Logger(t *testing.T) {
@@ -309,6 +295,8 @@ func Test_Run_Logger(t *testing.T) {
 		filepath.Join(cwd, template),
 		"--application",
 		applicationName,
+		"--parameters",
+		functional.GetMagpieImage(),
 	}
 
 	// 'rad run' streams logs until canceled by the user. This is why we can't 'just' run the command in
@@ -705,13 +693,12 @@ func Test_CLI_Only_version(t *testing.T) {
 }
 
 func Test_RecipeCommands(t *testing.T) {
-	t.Skip("TODO: disabling this test temporarily while we determine which recipes it should pull")
 	template := "testdata/corerp-resources-recipe-env.bicep"
 	name := "corerp-resources-recipe-env"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template),
+			Executor: step.NewDeployExecutor(template, functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

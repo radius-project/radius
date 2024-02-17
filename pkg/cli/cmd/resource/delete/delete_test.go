@@ -84,6 +84,15 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 		},
+		{
+			Name:          "List Command with ambiguous args",
+			Input:         []string{"secretStores"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
