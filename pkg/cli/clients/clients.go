@@ -93,7 +93,6 @@ type DeploymentClient interface {
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
 type DiagnosticsClient interface {
 	Expose(ctx context.Context, options ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error)
-	ExposeDashboard(ctx context.Context, options ExposeDashboardOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error)
 	Logs(ctx context.Context, options LogsOptions) ([]LogStream, error)
 	GetPublicEndpoint(ctx context.Context, options EndpointOptions) (*string, error)
 }
