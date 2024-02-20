@@ -222,13 +222,13 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 					recipeConfig.Terraform.Authentication.Git = &GitAuthConfig{}
 					if config.Terraform.Authentication.Git.PAT != nil {
 						recipeConfig.Terraform.Authentication.Git.Pat = map[string]*SecretConfig{}
+						for k, v := range config.Terraform.Authentication.Git.PAT {
+							recipeConfig.Terraform.Authentication.Git.Pat[k] = &SecretConfig{
+								Secret: to.Ptr(v.Secret),
+							}
+						}
 					}
 				}
-			}
-		}
-		for k, v := range config.Terraform.Authentication.Git.PAT {
-			recipeConfig.Terraform.Authentication.Git.Pat[k] = &SecretConfig{
-				Secret: to.Ptr(v.Secret),
 			}
 		}
 		return recipeConfig

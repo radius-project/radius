@@ -73,6 +73,15 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
 						},
 					},
+					RecipeConfig: datamodel.RecipeConfigProperties{
+						Terraform: datamodel.TerraformConfigProperties{
+							Authentication: datamodel.AuthConfig{
+								Git: datamodel.GitAuthConfig{
+									PAT: map[string]datamodel.SecretConfig{},
+								},
+							},
+						},
+					},
 					Recipes: map[string]map[string]datamodel.EnvironmentRecipeProperties{
 						ds_ctrl.MongoDatabasesResourceType: {
 							"cosmos-recipe": datamodel.EnvironmentRecipeProperties{
@@ -122,7 +131,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Authentication: datamodel.AuthConfig{
 								Git: datamodel.GitAuthConfig{
 									PAT: map[string]datamodel.SecretConfig{
-										"dev.azure.com": datamodel.SecretConfig{
+										"dev.azure.com": {
 											Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github",
 										},
 									},

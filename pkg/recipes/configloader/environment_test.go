@@ -63,6 +63,19 @@ func TestGetConfiguration(t *testing.T) {
 							Scope: to.Ptr(azureScope),
 						},
 					},
+					RecipeConfig: &model.RecipeConfigProperties{
+						Terraform: &model.TerraformConfigProperties{
+							Authentication: &model.AuthConfig{
+								Git: &model.GitAuthConfig{
+									Pat: map[string]*model.SecretConfig{
+										"dev.azure.com": &model.SecretConfig{
+											Secret: to.Ptr("secretStoreID"),
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			appResource: nil,
@@ -74,6 +87,19 @@ func TestGetConfiguration(t *testing.T) {
 					},
 				},
 				Providers: createAzureProvider(),
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{
+									"dev.azure.com": datamodel.SecretConfig{
+										Secret: "secretStoreID",
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 		{
@@ -84,6 +110,15 @@ func TestGetConfiguration(t *testing.T) {
 						Kind:       to.Ptr(kind),
 						Namespace:  to.Ptr(envNamespace),
 						ResourceID: to.Ptr(envResourceId),
+					},
+					RecipeConfig: &model.RecipeConfigProperties{
+						Terraform: &model.TerraformConfigProperties{
+							Authentication: &model.AuthConfig{
+								Git: &model.GitAuthConfig{
+									Pat: map[string]*model.SecretConfig{},
+								},
+							},
+						},
 					},
 					Providers: &model.Providers{
 						Aws: &model.ProvidersAws{
@@ -98,6 +133,15 @@ func TestGetConfiguration(t *testing.T) {
 					Kubernetes: &recipes.KubernetesRuntime{
 						Namespace:            envNamespace,
 						EnvironmentNamespace: envNamespace,
+					},
+				},
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{},
+							},
+						},
 					},
 				},
 				Providers: createAWSProvider(),
@@ -176,53 +220,6 @@ func TestGetConfiguration(t *testing.T) {
 				},
 			},
 			errString: ErrUnsupportedComputeKind.Error(),
-		},
-		{
-			name: "recipe config with env resource",
-			envResource: &model.EnvironmentResource{
-				Properties: &model.EnvironmentProperties{
-					Compute: &model.KubernetesCompute{
-						Kind:       to.Ptr(kind),
-						Namespace:  to.Ptr(envNamespace),
-						ResourceID: to.Ptr(envResourceId),
-					},
-					RecipeConfig: &model.RecipeConfigProperties{
-						Terraform: &model.TerraformConfigProperties{
-							Authentication: &model.AuthConfig{
-								Git: &model.GitAuthConfig{
-									Pat: map[string]*model.SecretConfig{
-										"dev.azure.com": &model.SecretConfig{
-											Secret: to.Ptr("secretStoreID"),
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			appResource: nil,
-			expectedConfig: &recipes.Configuration{
-				Runtime: recipes.RuntimeConfiguration{
-					Kubernetes: &recipes.KubernetesRuntime{
-						Namespace:            envNamespace,
-						EnvironmentNamespace: envNamespace,
-					},
-				},
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Terraform: datamodel.TerraformConfigProperties{
-						Authentication: datamodel.AuthConfig{
-							Git: datamodel.GitAuthConfig{
-								PAT: map[string]datamodel.SecretConfig{
-									"dev.azure.com": datamodel.SecretConfig{
-										Secret: "secretStoreID",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
 		},
 	}
 

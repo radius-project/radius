@@ -136,7 +136,7 @@ type ApplicationResourceUpdateProperties struct {
 	Simulated *bool
 }
 
-// AuthConfig - Specifies authentication information needed to use private terraform module repositories.
+// AuthConfig - Specifies authentication information needed to access private terraform module repositories.
 type AuthConfig struct {
 	// Specifies authentication information needed to access private terraform modules from Git repository sources.
 	Git *GitAuthConfig

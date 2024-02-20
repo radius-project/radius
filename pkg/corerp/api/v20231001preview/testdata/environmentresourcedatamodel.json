@@ -35,7 +35,7 @@
           "git": {
             "pat": {
               "dev.azure.com":{
-                "secretStore":"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
+                "secret":"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
               }
             }
           }

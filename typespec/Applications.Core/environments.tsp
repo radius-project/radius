@@ -85,7 +85,7 @@ model TerraformConfigProperties{
   authentication?: AuthConfig;
 }
 
-@doc("Specifies authentication information needed to use private terraform module repositories.")
+@doc("Specifies authentication information needed to access private terraform module repositories.")
 model AuthConfig{
   @doc("Specifies authentication information needed to access private terraform modules from Git repository sources.")
   git?: GitAuthConfig;

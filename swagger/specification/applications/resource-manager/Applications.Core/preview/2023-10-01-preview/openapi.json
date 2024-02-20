@@ -2761,7 +2761,7 @@
     },
     "AuthConfig": {
       "type": "object",
-      "description": "Specifies authentication information needed to use private terraform module repositories.",
+      "description": "Specifies authentication information needed to access private terraform module repositories.",
       "properties": {
         "git": {
           "$ref": "#/definitions/GitAuthConfig",

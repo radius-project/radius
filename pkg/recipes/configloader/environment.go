@@ -101,6 +101,7 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 		return nil, ErrUnsupportedComputeKind
 	}
 
+	// convert versioned Environment resource to internal datamodel.
 	env, err := environment.ConvertTo()
 	if err != nil {
 		return nil, err
