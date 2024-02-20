@@ -545,6 +545,19 @@ func TestUpsertSecret(t *testing.T) {
 		require.Equal(t, "$.properties.resource cannot be empty for global scoped resource.", r.Body.Error.Message)
 	})
 
+	t.Run("add secret values to the existing secret store 1 ", func(t *testing.T) {
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValue)
+		newResource.Properties.Resource = "default/secret"
+
+		opt := &controller.Options{
+			KubeClient: k8sutil.NewFakeKubeClient(nil),
+		}
+
+		resp, _ := UpsertSecret(context.TODO(), newResource, nil, opt)
+		r := resp.(*rest.BadRequestResponse)
+		require.Equal(t, "'default/secret' referenced resource does not exist.", r.Body.Error.Message)
+	})
+
 }
 
 func TestDeleteSecret(t *testing.T) {
