@@ -133,11 +133,6 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
-type ExposeDashboardOptions struct {
-	Port       int
-	RemotePort int
-}
-
 //go:generate mockgen -destination=./mock_applicationsclient.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients ApplicationsManagementClient
 
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.

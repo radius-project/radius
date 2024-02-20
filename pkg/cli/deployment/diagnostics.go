@@ -268,24 +268,6 @@ func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace str
 	return nil, fmt.Errorf("failed to find a running replica for resource %v", resource)
 }
 
-func getDashboardReplica(ctx context.Context, client *k8s.Clientset) (*corev1.Pod, error) {
-	pods, err := client.CoreV1().Pods("radius-system").List(ctx, v1.ListOptions{
-		LabelSelector: labels.FormatLabels(k8slabels.MakeDashboardLabels()),
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to list running replicas for dashboard: %w", err)
-	}
-
-	for _, p := range pods.Items {
-		if p.Status.Phase == corev1.PodRunning {
-			return &p, nil
-		}
-	}
-
-	return nil, fmt.Errorf("failed to find a running replica for dashboard")
-}
-
 func getRunningReplicas(ctx context.Context, client *k8s.Clientset, namespace string, application string, resource string) ([]corev1.Pod, error) {
 	// Right now this connects to a pod related to a resource. We can find the pods with the labels
 	// and then choose one that's in the running state.

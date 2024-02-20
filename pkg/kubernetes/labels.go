@@ -110,15 +110,6 @@ func MakeSelectorLabels(application string, resource string) map[string]string {
 	}
 }
 
-// MakeDashboardLabels returns a map of labels suitable for a Kubernetes selector to identify
-// the Radius dashboard.
-func MakeDashboardLabels() map[string]string {
-	return map[string]string{
-		LabelName:   "dashboard",
-		LabelPartOf: "radius",
-	}
-}
-
 // MakeRouteSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
