@@ -185,19 +185,24 @@ func (r *Runner) Run(ctx context.Context) error {
 	group, ctx := errgroup.WithContext(ctx)
 
 	// 1. Display port-forward messages
-	status := make(chan portforward.StatusMessage)
+	applicationStatusChan := make(chan portforward.StatusMessage)
 	group.Go(func() error {
-		r.displayPortforwardMessages(status)
+		r.displayPortforwardMessages(applicationStatusChan)
+		return nil
+	})
+	dashboardStatusChan := make(chan portforward.StatusMessage)
+	group.Go(func() error {
+		r.displayPortforwardMessages(dashboardStatusChan)
 		return nil
 	})
 
-	// 2. Port-forward
+	// 2. Port-forward application
 	group.Go(func() error {
 		return r.Portforward.Run(ctx, portforward.Options{
 			LabelSelector: applicationSelector,
 			Namespace:     namespace,
 			KubeContext:   kubeContext,
-			StatusChan:    status,
+			StatusChan:    applicationStatusChan,
 			Out:           os.Stdout,
 		})
 	})
@@ -208,7 +213,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			LabelSelector: dashboardSelector,
 			Namespace:     "radius-system",
 			KubeContext:   kubeContext,
-			StatusChan:    status,
+			StatusChan:    dashboardStatusChan,
 			Out:           os.Stdout,
 		})
 	})

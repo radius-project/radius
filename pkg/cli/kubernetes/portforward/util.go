@@ -39,16 +39,11 @@ const (
 // This is useful because we frequently run a port-forward right after completion of a Radius
 // deployment. We want to make sure we're port-forwarding to fresh replicas, not the ones
 // that are being scaled-down.
-func findStaleReplicaSets(ctx context.Context, client k8sclient.Interface, namespace, applicationName, desiredRevision string) (map[string]bool, error) {
+func findStaleReplicaSets(ctx context.Context, client k8sclient.Interface, namespace, desiredRevision string, labelSelector labels.Selector) (map[string]bool, error) {
 	outdated := map[string]bool{}
 
-	req, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{applicationName})
-	if err != nil {
-		return nil, err
-	}
-
 	sets, err := client.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.NewSelector().Add(*req).String(),
+		LabelSelector: labelSelector.String(),
 	})
 	if err != nil {
 		return nil, err
@@ -87,4 +82,14 @@ func findOwningDeployment(set appsv1.ReplicaSet) string {
 	}
 
 	return ""
+}
+
+// createLabelSelectorForApplication creates a Kubernetes label selector for the given application name.
+func createLabelSelectorForApplication(applicationName string) (labels.Selector, error) {
+	applicationLabel, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{applicationName})
+	if err != nil {
+		return nil, err
+	}
+
+	return labels.NewSelector().Add(*applicationLabel), nil
 }

@@ -155,20 +155,38 @@ func Test_Run(t *testing.T) {
 		}).
 		Times(1)
 
-	portforwardOptionsChan := make(chan portforward.Options, 1)
 	portforwardMock := portforward.NewMockInterface(ctrl)
+
+	appPortforwardOptionsChan := make(chan portforward.Options, 1)
 	portforwardMock.EXPECT().
 		Run(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, o portforward.Options) error {
 			// Capture options for verification
-			portforwardOptionsChan <- o
-			close(portforwardOptionsChan)
+			appPortforwardOptionsChan <- o
+			close(appPortforwardOptionsChan)
+
+			// Run is expected to close this channel
+			close(o.StatusChan)
 
 			// Wait for context to be canceled
 			<-ctx.Done()
+			return ctx.Err()
+		}).
+		Times(1)
 
-			// Run is expected to close this channel.
+	dashboardPortforwardOptionsChan := make(chan portforward.Options, 1)
+	portforwardMock.EXPECT().
+		Run(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, o portforward.Options) error {
+			// Capture options for verification
+			dashboardPortforwardOptionsChan <- o
+			close(dashboardPortforwardOptionsChan)
+
+			// Run is expected to close this channel
 			close(o.StatusChan)
+
+			// Wait for context to be canceled
+			<-ctx.Done()
 			return ctx.Err()
 		}).
 		Times(1)
@@ -268,11 +286,17 @@ func Test_Run(t *testing.T) {
 	require.Equal(t, "kind-kind", logStreamOptions.KubeContext)
 	require.Equal(t, "test-namespace-app", logStreamOptions.Namespace)
 
-	portforwardOptions := <-portforwardOptionsChan
-	// Port-forward is scoped to application and namespace
-	require.Equal(t, runner.ApplicationName, portforwardOptions.ApplicationName)
-	require.Equal(t, "kind-kind", portforwardOptions.KubeContext)
-	require.Equal(t, "test-namespace-app", portforwardOptions.Namespace)
+	appPortforwardOptions := <-appPortforwardOptionsChan
+	// Application Portforward is scoped to application and app namespace
+	require.Equal(t, "kind-kind", appPortforwardOptions.KubeContext)
+	require.Equal(t, "test-namespace-app", appPortforwardOptions.Namespace)
+	require.Equal(t, "radapp.io/application=test-application", appPortforwardOptions.LabelSelector.String())
+
+	dashboardPortforwardOptions := <-dashboardPortforwardOptionsChan
+	// Dashboard Portforward is scoped to dashboard and radius namespace
+	require.Equal(t, "kind-kind", dashboardPortforwardOptions.KubeContext)
+	require.Equal(t, "radius-system", dashboardPortforwardOptions.Namespace)
+	require.Equal(t, "app.kubernetes.io/name=dashboard,app.kubernetes.io/part-of=radius", dashboardPortforwardOptions.LabelSelector.String())
 
 	// Shut down the log stream and verify result
 	cancel()

@@ -39,7 +39,10 @@ func Test_ApplicationWatcher_Run_CanShutDown(t *testing.T) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
 
-	aw := NewApplicationWatcher(Options{ApplicationName: "test", Namespace: "default", Client: client})
+	labelSelector, err := createLabelSelectorForApplication("test")
+	require.NoError(t, err)
+
+	aw := NewApplicationWatcher(Options{LabelSelector: labelSelector, Namespace: "default", Client: client})
 
 	go func() { _ = aw.Run(ctx) }()
 	cancel()

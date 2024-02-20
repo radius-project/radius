@@ -30,9 +30,6 @@ type Options struct {
 	// Labels is the label selector to use to find the pods to forward to.
 	LabelSelector labels.Selector
 
-	// ApplicationName is the name of the application to forward to.
-	ApplicationName string
-
 	// Namespace is the kubernetes namespace.
 	Namespace string
 
