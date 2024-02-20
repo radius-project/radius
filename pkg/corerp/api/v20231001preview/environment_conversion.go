@@ -39,7 +39,6 @@ const (
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-
 	converted := &datamodel.Environment{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -204,9 +203,15 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 					}
 				}
 			}
+
+			recipeConfig.Terraform.Providers = toRecipeConfigTerraformProvidersDatamodel(config)
 		}
+
+		recipeConfig.EnvVariables = toRecipeConfigEnvDatamodel(config)
+
 		return recipeConfig
 	}
+
 	return datamodel.RecipeConfigProperties{}
 }
 
@@ -229,9 +234,15 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 					}
 				}
 			}
+
+			recipeConfig.Terraform.Providers = fromRecipeConfigTerraformProvidersDatamodel(config)
 		}
+
+		recipeConfig.EnvVariables = fromRecipeConfigEnvDatamodel(config)
+
 		return recipeConfig
 	}
+
 	return nil
 }
 
@@ -394,4 +405,100 @@ func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipePr
 		}
 	}
 	return nil
+}
+
+func toRecipeConfigTerraformProvidersDatamodel(config *RecipeConfigProperties) map[string][]datamodel.ProviderConfigProperties {
+	if config.Terraform == nil || config.Terraform.Providers == nil {
+		return nil
+	}
+
+	dm := map[string][]datamodel.ProviderConfigProperties{}
+
+	for k, v := range config.Terraform.Providers {
+		dm[k] = []datamodel.ProviderConfigProperties{}
+
+		for _, provider := range v {
+			secrets := map[string]datamodel.RecipeSecret{}
+			for secretKey, secret := range provider.Secrets {
+				if secret.Source == nil || secret.Key == nil {
+					continue
+				}
+
+				secrets[secretKey] = datamodel.RecipeSecret{
+					Source: *secret.Source,
+					Key:    *secret.Key,
+				}
+			}
+
+			dm[k] = append(dm[k], datamodel.ProviderConfigProperties{
+				AdditionalProperties: provider.AdditionalProperties,
+				Secrets:              secrets,
+			})
+		}
+	}
+
+	return dm
+}
+
+func fromRecipeConfigTerraformProvidersDatamodel(config datamodel.RecipeConfigProperties) map[string][]*ProviderConfigProperties {
+	if config.Terraform.Providers == nil {
+		return nil
+	}
+
+	providers := map[string][]*ProviderConfigProperties{}
+
+	for k, v := range config.Terraform.Providers {
+		providers[k] = []*ProviderConfigProperties{}
+
+		for _, provider := range v {
+			secrets := map[string]*RecipeSecret{}
+			for secretKey, secret := range provider.Secrets {
+				secrets[secretKey] = &RecipeSecret{
+					Source: to.Ptr(secret.Source),
+					Key:    to.Ptr(secret.Key),
+				}
+			}
+
+			providers[k] = append(providers[k], &ProviderConfigProperties{
+				AdditionalProperties: provider.AdditionalProperties,
+				Secrets:              secrets,
+			})
+		}
+	}
+
+	return providers
+}
+
+func toRecipeConfigEnvDatamodel(config *RecipeConfigProperties) datamodel.EnvironmentVariables {
+	if config.EnvVariables == nil {
+		return datamodel.EnvironmentVariables{}
+	}
+
+	secrets := make(map[string]datamodel.RecipeSecret, len(config.EnvVariables.Secrets))
+	for k, v := range config.EnvVariables.Secrets {
+		secrets[k] = datamodel.RecipeSecret{
+			Source: to.String(v.Source),
+			Key:    to.String(v.Key),
+		}
+	}
+
+	return datamodel.EnvironmentVariables{
+		AdditionalProperties: config.EnvVariables.AdditionalProperties,
+		Secrets:              secrets,
+	}
+}
+
+func fromRecipeConfigEnvDatamodel(config datamodel.RecipeConfigProperties) *EnvironmentVariables {
+	secrets := make(map[string]*RecipeSecret, len(config.EnvVariables.Secrets))
+	for k, v := range config.EnvVariables.Secrets {
+		secrets[k] = &RecipeSecret{
+			Source: to.Ptr(v.Source),
+			Key:    to.Ptr(v.Key),
+		}
+	}
+
+	return &EnvironmentVariables{
+		AdditionalProperties: config.EnvVariables.AdditionalProperties,
+		Secrets:              secrets,
+	}
 }

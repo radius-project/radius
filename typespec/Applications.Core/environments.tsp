@@ -39,7 +39,8 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("The environment resource")
-model EnvironmentResource is TrackedResourceRequired<EnvironmentProperties, "environments">{
+model EnvironmentResource
+  is TrackedResourceRequired<EnvironmentProperties, "environments"> {
   @doc("environment name")
   @key("environmentName")
   @path
@@ -77,23 +78,29 @@ model EnvironmentProperties {
 model RecipeConfigProperties {
   @doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
   terraform?: TerraformConfigProperties;
+
+  @doc("Environment variables injected during Terraform Recipe execution for the recipes in the environment.")
+  envVariables?: EnvironmentVariables;
 }
 
 @doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
-model TerraformConfigProperties{
-    @doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
+model TerraformConfigProperties {
+  @doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
   authentication?: AuthConfig;
+
+  @doc("Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration.")
+  providers?: Record<Array<ProviderConfigProperties>>;
 }
 
 @doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
-model AuthConfig{
+model AuthConfig {
   @doc("Authentication information used to access private Terraform modules from Git repository sources.")
   git?: GitAuthConfig;
 }
 
 @doc("Authentication information used to access private Terraform modules from Git repository sources.")
-model GitAuthConfig{
-  @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")  
+model GitAuthConfig {
+  @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
   pat?: Record<SecretConfig>;
 }
 
@@ -103,24 +110,51 @@ model SecretConfig {
   secret?: string;
 }
 
-@doc("The Cloud providers configuration")
+// ProviderConfigProperties allows to get the additional properties. To ensure that `additionalProperties` is true, we need to extend `Record<unknown>`.
+// Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
+#suppress "@azure-tools/typespec-azure-core/bad-record-type"
+@doc("This configuration holds the necessary information to authenticate and interact with a provider for the recipe execution.")
+model ProviderConfigProperties extends Record<unknown> {
+  @doc("Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data.")
+  secrets?: Record<RecipeSecret>;
+}
+
+// EnvironmentVariables allows to get the additional properties. To ensure that `additionalProperties` is true, we need to extend `Record<unknown>`.
+// Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
+#suppress "@azure-tools/typespec-azure-core/bad-record-type"
+@doc("The environment variables injected during Terraform Recipe execution for the recipes in the environment.")
+model EnvironmentVariables extends Record<unknown> {
+  @doc("Environment variables containing sensitive information can be fetched from `Applications.Core/SecretStore` resource.")
+  secrets?: Record<RecipeSecret>;
+}
+
+@doc("This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data.")
+model RecipeSecret {
+  @doc("The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.")
+  source: string;
+
+  @doc("The key for the secret in the secret store.")
+  key: string;
+}
+
+@doc("The Cloud providers configuration.")
 model Providers {
-  @doc("The Azure cloud provider configuration")
+  @doc("The Azure cloud provider configuration.")
   azure?: ProvidersAzure;
 
-  @doc("The AWS cloud provider configuration")
+  @doc("The AWS cloud provider configuration.")
   aws?: ProvidersAws;
 }
 
-@doc("The Azure cloud provider definition")
+@doc("The Azure cloud provider definition.")
 model ProvidersAzure {
-  @doc("Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'")
+  @doc("Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'.")
   scope: string;
 }
 
-@doc("The AWS cloud provider definition")
+@doc("The AWS cloud provider definition.")
 model ProvidersAws {
-  @doc("Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'")
+  @doc("Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'.")
   scope: string;
 }
 
@@ -130,7 +164,7 @@ model RecipeProperties {
   @doc("Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.")
   templatePath: string;
 
-  @doc("Key/value parameters to pass to the recipe template at deployment")
+  @doc("Key/value parameters to pass to the recipe template at deployment.")
   parameters?: {};
 }
 
@@ -154,10 +188,10 @@ model TerraformRecipeProperties extends RecipeProperties {
 
 @doc("Represents the request body of the getmetadata action.")
 model RecipeGetMetadata {
-  @doc("Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'")
+  @doc("Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'.")
   resourceType: string;
 
-  @doc("The name of the recipe registered to the environment")
+  @doc("The name of the recipe registered to the environment.")
   name: string;
 }
 

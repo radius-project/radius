@@ -20,6 +20,9 @@ package datamodel
 type RecipeConfigProperties struct {
 	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
 	Terraform TerraformConfigProperties `json:"terraform,omitempty"`
+
+	// EnvVariables specifies the environment variables to be set during the Terraform Recipe execution.
+	EnvVariables EnvironmentVariables `json:"envVariables,omitempty"`
 }
 
 // TerraformConfigProperties - Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as
@@ -27,6 +30,9 @@ type RecipeConfigProperties struct {
 type TerraformConfigProperties struct {
 	// Authentication information used to access private Terraform module sources. Supported module sources: Git.
 	Authentication AuthConfig `json:"authentication,omitempty"`
+
+	// Providers specifies the Terraform provider configurations. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs: https://developer.hashicorp.com/terraform/language/providers/configuration.// Providers specifies the Terraform provider configurations.
+	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
 }
 
 // AuthConfig - Authentication information used to access private Terraform module sources. Supported module sources: Git.
@@ -47,4 +53,32 @@ type SecretConfig struct {
 	// store must have a secret named 'pat', containing the PAT value. A secret named
 	// 'username' is optional, containing the username associated with the pat. By default no username is specified.
 	Secret string `json:"secret,omitempty"`
+}
+
+// EnvironmentVariables represents the environment variables to be set for the recipe execution.
+type EnvironmentVariables struct {
+	// AdditionalProperties represents the non-sensitive environment variables to be set for the recipe execution.
+	// Environment variables that contain sensitive values are specified in the Secrets and are fetched from the `Applications.Core/secretStores` resource.
+	AdditionalProperties map[string]any `json:"additionalProperties,omitempty"`
+
+	// Secrets represent the secret values provided for the recipe execution.
+	Secrets map[string]RecipeSecret `json:"secrets,omitempty"`
+}
+
+// RecipeSecret specifies the secret details for the provider.
+type RecipeSecret struct {
+	// Source represents the resource id for the Application.Core/SecretStore containing credentials.
+	Source string `json:"source"`
+
+	// Key represents the key to the secret in the secret store.
+	Key string `json:"key"`
+}
+
+type ProviderConfigProperties struct {
+	// AdditionalProperties represents the non-sensitive environment variables to be set for the recipe execution.
+	// Environment variables that contain sensitive values are specified in the Secrets and are fetched from the `Applications.Core/secretStores` resource.
+	AdditionalProperties map[string]any `json:"additionalProperties,omitempty"`
+
+	// Secrets represent the secret values provided for the recipe execution.
+	Secrets map[string]RecipeSecret `json:"secrets,omitempty"`
 }

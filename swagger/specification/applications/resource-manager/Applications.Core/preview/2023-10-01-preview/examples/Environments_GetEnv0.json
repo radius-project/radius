@@ -23,9 +23,9 @@
               "oidcIssuer": "https://oidcissuer/oidc"
             }
           },
-          "providers" : {
-            "azure" : {
-                "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+          "providers": {
+            "azure": {
+              "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
             }
           },
           "recipeConfig": {
@@ -33,16 +33,46 @@
               "authentication": {
                 "git": {
                   "pat": {
-                    "dev.azure.com":{
-                      "secret":"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
+                    "dev.azure.com": {
+                      "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
                     }
                   }
+                }
+              },
+              "providers": {
+                "azurerm": [
+                  {
+                    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+                    "secrets": {
+                      "my_secret_1": {
+                        "source": "source.my_secret_1",
+                        "key": "secret.one"
+                      },
+                      "my_secret_2": {
+                        "source": "source.my_secret_2",
+                        "key": "secret.two"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "envVariables": {
+              "myEnvVar": "myEnvValue",
+              "secrets": {
+                "my_secret_1": {
+                  "source": "source.my_secret_1",
+                  "key": "secret.one"
+                },
+                "my_secret_2": {
+                  "source": "source.my_secret_2",
+                  "key": "secret.two"
                 }
               }
             }
           },
           "recipes": {
-            "Applications.Datastores/mongoDatabases":{
+            "Applications.Datastores/mongoDatabases": {
               "cosmos-recipe": {
                 "templateKind": "bicep",
                 "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"

@@ -76,8 +76,14 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					RecipeConfig: datamodel.RecipeConfigProperties{
 						Terraform: datamodel.TerraformConfigProperties{
 							Authentication: datamodel.AuthConfig{
-								Git: datamodel.GitAuthConfig{},
+								Git: datamodel.GitAuthConfig{
+									PAT: map[string]datamodel.SecretConfig{},
+								},
 							},
+							Providers: map[string][]datamodel.ProviderConfigProperties{},
+						},
+						EnvVariables: datamodel.EnvironmentVariables{
+							Secrets: map[string]datamodel.RecipeSecret{},
 						},
 					},
 					Recipes: map[string]map[string]datamodel.EnvironmentRecipeProperties{
@@ -133,6 +139,40 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 											Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github",
 										},
 									},
+								},
+							},
+							Providers: map[string][]datamodel.ProviderConfigProperties{
+								"azurerm": {
+									{
+										AdditionalProperties: map[string]any{
+											"subscriptionId": "00000000-0000-0000-0000-000000000000",
+										},
+										Secrets: map[string]datamodel.RecipeSecret{
+											"my_secret_1": {
+												Source: "source.my_secret_1",
+												Key:    "secret.one",
+											},
+											"my_secret_2": {
+												Source: "source.my_secret_2",
+												Key:    "secret.two",
+											},
+										},
+									},
+								},
+							},
+						},
+						EnvVariables: datamodel.EnvironmentVariables{
+							AdditionalProperties: map[string]any{
+								"myEnvVar": "myEnvValue",
+							},
+							Secrets: map[string]datamodel.RecipeSecret{
+								"my_secret_1": {
+									Source: "source.my_secret_1",
+									Key:    "secret.one",
+								},
+								"my_secret_2": {
+									Source: "source.my_secret_2",
+									Key:    "secret.two",
 								},
 							},
 						},
@@ -385,6 +425,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 				require.Equal(t, 1, len(versioned.Properties.Extensions))
 				recipeDetails := versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"]
+
 				if tt.filename == "environmentresourcedatamodel.json" {
 					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplatePath))
 					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplateKind))
@@ -395,15 +436,25 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 					case *BicepRecipeProperties:
 						require.Equal(t, true, bool(*c.PlainHTTP))
 					}
+					require.Equal(t, 1, len(versioned.Properties.RecipeConfig.Terraform.Providers))
+					require.Equal(t, 1, len(versioned.Properties.RecipeConfig.Terraform.Providers["azurerm"]))
+					azurermProvider := versioned.Properties.RecipeConfig.Terraform.Providers["azurerm"][0]
+					subscriptionId := azurermProvider.AdditionalProperties["subscriptionId"]
+					require.Equal(t, "00000000-0000-0000-0000-000000000000", subscriptionId)
+					require.Equal(t, 1, len(azurermProvider.Secrets))
+					require.Equal(t, 1, len(versioned.Properties.RecipeConfig.EnvVariables.AdditionalProperties))
+					require.Equal(t, "myEnvValue", versioned.Properties.RecipeConfig.EnvVariables.AdditionalProperties["myEnvVar"])
+					require.Equal(t, 2, len(versioned.Properties.RecipeConfig.EnvVariables.Secrets))
 				}
+
 				if tt.filename == "environmentresourcedatamodelemptyext.json" {
 					switch c := recipeDetails.(type) {
 					case *TerraformRecipeProperties:
 						require.Nil(t, c.TemplateVersion)
 					}
 
+					require.Nil(t, versioned.Properties.RecipeConfig)
 				}
-
 			}
 		})
 	}
@@ -451,7 +502,6 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().TemplatePath))
 	require.Equal(t, recipes.TemplateKindBicep, string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().TemplateKind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
-
 	require.Equal(t, &IdentitySettings{
 		Kind:       to.Ptr(IdentitySettingKindAzureComWorkload),
 		Resource:   to.Ptr("/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"),
@@ -460,6 +510,10 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "azure.com.workload", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Kind))
 	require.Equal(t, "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Resource))
 	require.Equal(t, "https://oidcurl/guid", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.OidcIssuer))
+	require.Equal(t, map[string][]*ProviderConfigProperties{}, versioned.Properties.RecipeConfig.Terraform.Providers)
+	require.Equal(t, &EnvironmentVariables{
+		Secrets: map[string]*RecipeSecret{},
+	}, versioned.Properties.RecipeConfig.EnvVariables)
 }
 
 func TestConvertFromValidation(t *testing.T) {
@@ -544,4 +598,179 @@ func getTestKubernetesEmptyMetadataExtensions(t *testing.T) []datamodel.Extensio
 	}
 
 	return extensions
+}
+
+func Test_toRecipeConfigTerraformProvidersDatamodel(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *RecipeConfigProperties
+		want   map[string][]datamodel.ProviderConfigProperties
+	}{
+		{
+			name:   "empty",
+			config: &RecipeConfigProperties{},
+			want:   nil,
+		},
+		{
+			name: "single provider",
+			config: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Providers: map[string][]*ProviderConfigProperties{
+						"azurerm": {
+							{
+								AdditionalProperties: map[string]any{
+									"subscription_id": "00000000-0000-0000-0000-000000000000",
+								},
+								Secrets: map[string]*RecipeSecret{
+									"my_secret_1": {
+										Source: to.Ptr("my_secret_1"),
+										Key:    to.Ptr("my_key_1"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: map[string][]datamodel.ProviderConfigProperties{
+				"azurerm": {
+					{
+						AdditionalProperties: map[string]any{
+							"subscription_id": "00000000-0000-0000-0000-000000000000",
+						},
+						Secrets: map[string]datamodel.RecipeSecret{
+							"my_secret_1": {
+								Source: "my_secret_1",
+								Key:    "my_key_1",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := toRecipeConfigTerraformProvidersDatamodel(tt.config)
+			require.Equal(t, tt.want, result)
+		})
+	}
+}
+
+func Test_fromRecipeConfigTerraformProvidersDatamodel(t *testing.T) {
+	tests := []struct {
+		name   string
+		config datamodel.RecipeConfigProperties
+		want   map[string][]*ProviderConfigProperties
+	}{
+		{
+			name:   "empty",
+			config: datamodel.RecipeConfigProperties{},
+			want:   nil,
+		},
+		{
+			name: "single provider",
+			config: datamodel.RecipeConfigProperties{
+				Terraform: datamodel.TerraformConfigProperties{
+					Providers: map[string][]datamodel.ProviderConfigProperties{
+						"azurerm": {
+							{
+								AdditionalProperties: map[string]any{
+									"subscription_id": "00000000-0000-0000-0000-000000000000",
+								},
+								Secrets: map[string]datamodel.RecipeSecret{
+									"my_secret_1": {
+										Source: "my_secret_1",
+										Key:    "my_key_1",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: map[string][]*ProviderConfigProperties{
+				"azurerm": {
+					{
+						AdditionalProperties: map[string]any{
+							"subscription_id": "00000000-0000-0000-0000-000000000000",
+						},
+						Secrets: map[string]*RecipeSecret{
+							"my_secret_1": {
+								Source: to.Ptr("my_secret_1"),
+								Key:    to.Ptr("my_key_1"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := fromRecipeConfigTerraformProvidersDatamodel(tt.config)
+			require.Equal(t, tt.want, result)
+		})
+	}
+}
+
+func Test_toRecipeConfigEnvDatamodel(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *RecipeConfigProperties
+		want   datamodel.EnvironmentVariables
+	}{
+		{
+			name:   "empty",
+			config: &RecipeConfigProperties{},
+			want:   datamodel.EnvironmentVariables{},
+		},
+		{
+			name: "single provider",
+			config: &RecipeConfigProperties{
+				EnvVariables: &EnvironmentVariables{
+					AdditionalProperties: map[string]any{
+						"key1": "value1",
+						"key2": "value2",
+					},
+				},
+			},
+			want: datamodel.EnvironmentVariables{
+				AdditionalProperties: map[string]any{
+					"key1": "value1",
+					"key2": "value2",
+				},
+				Secrets: map[string]datamodel.RecipeSecret{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := toRecipeConfigEnvDatamodel(tt.config)
+			require.Equal(t, tt.want, result)
+		})
+	}
+}
+
+func Test_fromRecipeConfigEnvDatamodel(t *testing.T) {
+	tests := []struct {
+		name   string
+		config datamodel.RecipeConfigProperties
+		want   *EnvironmentVariables
+	}{
+		{
+			name:   "empty",
+			config: datamodel.RecipeConfigProperties{},
+			want: &EnvironmentVariables{
+				Secrets: map[string]*RecipeSecret{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := fromRecipeConfigEnvDatamodel(tt.config)
+			require.Equal(t, tt.want, result)
+		})
+	}
 }

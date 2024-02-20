@@ -33,13 +33,17 @@
         },
         "recipeConfig": {
             "terraform": {
-              "authentication": {
-                "git": {}
-              }
+                "authentication": {
+                    "git": {}
+                },
+                "providers": {}
+            },
+            "envVariables": {
+                "secrets": {}
             }
-          },
+        },
         "recipes": {
-            "Applications.Datastores/mongoDatabases":{
+            "Applications.Datastores/mongoDatabases": {
                 "cosmos-recipe": {
                     "templateKind": "bicep",
                     "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"

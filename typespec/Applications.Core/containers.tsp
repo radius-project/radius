@@ -38,7 +38,8 @@ using OpenAPI;
 
 namespace Applications.Core;
 
-model ContainerResource is TrackedResourceRequired<ContainerProperties, "containers">{
+model ContainerResource
+  is TrackedResourceRequired<ContainerProperties, "containers"> {
   @doc("Container name")
   @path
   @key("containerName")
