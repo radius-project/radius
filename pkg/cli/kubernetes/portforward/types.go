@@ -20,16 +20,20 @@ import (
 	"context"
 	"io"
 
+	"k8s.io/apimachinery/pkg/labels"
 	k8sclient "k8s.io/client-go/kubernetes"
 	rest "k8s.io/client-go/rest"
 )
 
 // Options specifies the options for port-forwarding.
 type Options struct {
-	// ApplicationName is the name of the application.
+	// Labels is the label selector to use to find the pods to forward to.
+	LabelSelector labels.Selector
+
+	// ApplicationName is the name of the application to forward to.
 	ApplicationName string
 
-	// Namespace is the kubernetes namespace of the application.
+	// Namespace is the kubernetes namespace.
 	Namespace string
 
 	// KubeContext is the kubernetes context to use. If Client or RESTConfig is unset, this will be

@@ -30,9 +30,12 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/logstream"
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad run` command.
@@ -159,7 +162,26 @@ func (r *Runner) Run(ctx context.Context) error {
 		return clierrors.Message("Only kubernetes runtimes are supported.")
 	}
 
-	// We start three background jobs and wait for them to complete.
+	applicationLabel, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{r.ApplicationName})
+	if err != nil {
+		return err
+	}
+
+	applicationSelector := labels.NewSelector().Add(*applicationLabel)
+
+	dashboardNameLabel, err := labels.NewRequirement(kubernetes.LabelName, selection.Equals, []string{"dashboard"})
+	if err != nil {
+		return err
+	}
+
+	dashboardPartOfLabel, err := labels.NewRequirement(kubernetes.LabelPartOf, selection.Equals, []string{"radius"})
+	if err != nil {
+		return err
+	}
+
+	dashboardSelector := labels.NewSelector().Add(*dashboardNameLabel).Add(*dashboardPartOfLabel)
+
+	// We start four background jobs and wait for them to complete.
 	group, ctx := errgroup.WithContext(ctx)
 
 	// 1. Display port-forward messages
@@ -172,15 +194,26 @@ func (r *Runner) Run(ctx context.Context) error {
 	// 2. Port-forward
 	group.Go(func() error {
 		return r.Portforward.Run(ctx, portforward.Options{
-			ApplicationName: r.ApplicationName,
-			Namespace:       namespace,
-			KubeContext:     kubeContext,
-			StatusChan:      status,
-			Out:             os.Stdout,
+			LabelSelector: applicationSelector,
+			Namespace:     namespace,
+			KubeContext:   kubeContext,
+			StatusChan:    status,
+			Out:           os.Stdout,
 		})
 	})
 
-	// 3. Stream logs
+	// 3. Port-forward dashboard
+	group.Go(func() error {
+		return r.Portforward.Run(ctx, portforward.Options{
+			LabelSelector: dashboardSelector,
+			Namespace:     "radius-system",
+			KubeContext:   kubeContext,
+			StatusChan:    status,
+			Out:           os.Stdout,
+		})
+	})
+
+	// 4. Stream logs
 	group.Go(func() error {
 		return r.Logstream.Stream(ctx, logstream.Options{
 			ApplicationName: r.ApplicationName,

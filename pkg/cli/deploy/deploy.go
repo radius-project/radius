@@ -18,6 +18,8 @@ package deploy
 
 import (
 	"context"
+	"fmt"
+	"os/signal"
 	"sync"
 
 	"github.com/radius-project/radius/pkg/cli/bicep"
@@ -105,6 +107,48 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 			for _, entry := range endpoints {
 				output.LogInfo("    %s %s", output.FormatResourceForDisplay(entry.Resource), entry.Endpoint)
 			}
+		}
+
+		exposeDashboardOptions := clients.ExposeDashboardOptions{
+			Port:       7007,
+			RemotePort: 7007,
+		}
+		failed, stop, signals, err := diagnosticsClient.ExposeDashboard(ctx, exposeDashboardOptions)
+		if err != nil {
+			// We don't want to fail deployment if the dashboard fails to launch.
+			output.LogInfo("")
+			output.LogInfo("Dashboard failed to launch. You may be able to access it by running:")
+			output.LogInfo("    kubectl port-forward --namespace=radius-system svc/dashboard 7007:80")
+		}
+
+		go func() error {
+			// We own stopping the signal created by Expose
+			defer signal.Stop(signals)
+
+			for {
+				select {
+				case <-signals:
+					// shutting down... wait for socket to close
+					close(stop)
+					continue
+				case err := <-failed:
+					if err != nil {
+						return fmt.Errorf("failed to port-forward: %w", err)
+					}
+
+					return nil
+				}
+			}
+		}()
+
+		if err != nil {
+			// We don't want to fail deployment if the dashboard fails to launch.
+			output.LogInfo("")
+			output.LogInfo("Dashboard failed to launch. You may be able to access it by running:")
+			output.LogInfo("    kubectl port-forward --namespace=radius-system svc/dashboard 7007:80")
+		} else {
+			output.LogInfo("")
+			output.LogInfo("Dashboard URL: %s", "http://localhost:7007")
 		}
 	}
 

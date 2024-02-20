@@ -149,6 +149,30 @@ func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOp
 	return streams, err
 }
 
+func (dc *ARMDiagnosticsClient) ExposeDashboard(ctx context.Context, options clients.ExposeDashboardOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {
+	var replica *corev1.Pod
+
+	// TODO: This is a temporary solution to get the dashboard replica. We need to find a better way to get the dashboard replica.
+	replica, err = getDashboardReplica(ctx, dc.K8sTypedClient)
+
+	if err != nil {
+		return
+	}
+
+	signals = make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt)
+
+	failed = make(chan error)
+	ready := make(chan struct{})
+	stop = make(chan struct{}, 1)
+	go func() {
+		err := runPortforward(dc.RestConfig, dc.K8sTypedClient, replica, ready, stop, options.Port, options.RemotePort)
+		failed <- err
+	}()
+
+	return
+}
+
 func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, resourceName string) (string, error) {
 	containerResponse, err := dc.ContainerClient.Get(ctx, resourceName, nil)
 	if err != nil {
@@ -266,6 +290,24 @@ func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace str
 	}
 
 	return nil, fmt.Errorf("failed to find a running replica for resource %v", resource)
+}
+
+func getDashboardReplica(ctx context.Context, client *k8s.Clientset) (*corev1.Pod, error) {
+	pods, err := client.CoreV1().Pods("radius-system").List(ctx, v1.ListOptions{
+		LabelSelector: labels.FormatLabels(k8slabels.MakeDashboardLabels()),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to list running replicas for dashboard: %w", err)
+	}
+
+	for _, p := range pods.Items {
+		if p.Status.Phase == corev1.PodRunning {
+			return &p, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find a running replica for dashboard")
 }
 
 func getRunningReplicas(ctx context.Context, client *k8s.Clientset, namespace string, application string, resource string) ([]corev1.Pod, error) {
