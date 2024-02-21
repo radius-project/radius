@@ -126,7 +126,7 @@ type ApplicationResourceUpdateProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *ProvidersUpdate
 
-	// Specifies configurations needed for the recipes registered to the environment.
+	// Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 	RecipeConfig *RecipeConfigProperties
 
 	// Specifies Recipes linked to the Environment.
@@ -136,9 +136,9 @@ type ApplicationResourceUpdateProperties struct {
 	Simulated *bool
 }
 
-// AuthConfig - Specifies authentication information needed to access private terraform module repositories.
+// AuthConfig - Authentication information used to access private Terraform module sources. Supported module sources: Git.
 type AuthConfig struct {
-	// Specifies authentication information needed to access private terraform modules from Git repository sources.
+	// Authentication information used to access private Terraform modules from Git repository sources.
 	Git *GitAuthConfig
 }
 
@@ -562,7 +562,7 @@ type EnvironmentProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *Providers
 
-	// Specifies configurations needed for the recipes registered to the environment.
+	// Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 	RecipeConfig *RecipeConfigProperties
 
 	// Specifies Recipes linked to the Environment.
@@ -628,7 +628,7 @@ type EnvironmentResourceUpdateProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *ProvidersUpdate
 
-	// Specifies configurations needed for the recipes registered to the environment.
+	// Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 	RecipeConfig *RecipeConfigProperties
 
 	// Specifies Recipes linked to the Environment.
@@ -949,9 +949,9 @@ type GatewayTLS struct {
 	SSLPassthrough *bool
 }
 
-// GitAuthConfig - Specifies authentication information needed to access private terraform modules from Git repository sources.
+// GitAuthConfig - Authentication information used to access private Terraform modules from Git repository sources.
 type GitAuthConfig struct {
-	// Specifies the secret details of type personal access token for each different git platforms
+	// Personal Access Token (PAT) configuration used to authenticate to Git platforms.
 	Pat map[string]*SecretConfig
 }
 
@@ -1398,7 +1398,7 @@ type Recipe struct {
 	Parameters map[string]any
 }
 
-// RecipeConfigProperties - Specifies recipe configurations needed for the recipes.
+// RecipeConfigProperties - Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 type RecipeConfigProperties struct {
 	// Specifies the terraform config properties
 	Terraform *TerraformConfigProperties
@@ -1523,9 +1523,10 @@ type RuntimesProperties struct {
 	Kubernetes *KubernetesRuntimeProperties
 }
 
-// SecretConfig - Specifies the secret details of type personal access token for each different git platforms
+// SecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
 type SecretConfig struct {
-	// The resource id for the Applications.Core/SecretStore resource containing credentials.
+	// The resource id for the Applications.Core/SecretStore resource containing credentials. Secret names required: 'pat', and
+// 'username' is optional
 	Secret *string
 }
 
@@ -1702,10 +1703,10 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 	}
 }
 
-// TerraformConfigProperties - Specifies the terraform config properties
+// TerraformConfigProperties - Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as
+// part of Recipe deployment.
 type TerraformConfigProperties struct {
-	// Specifies authentication information needed to access private terraform module sources. Currently supported module sources:
-// Git.
+	// Authentication information used to access private Terraform module sources. Supported module sources: Git.
 	Authentication *AuthConfig
 }
 

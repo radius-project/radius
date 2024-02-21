@@ -65,7 +65,7 @@ model EnvironmentProperties {
   @doc("Specifies Recipes linked to the Environment.")
   recipes?: Record<Record<RecipeProperties>>;
 
-  @doc("Specifies configurations needed for the recipes registered to the environment.")
+  @doc("Configuration for Recipes. Defines how each type of Recipe should be configured and run.")
   recipeConfig?: RecipeConfigProperties;
 
   @doc("The environment extension.")
@@ -73,33 +73,33 @@ model EnvironmentProperties {
   extensions?: Array<Extension>;
 }
 
-@doc("Specifies recipe configurations needed for the recipes.")
+@doc("Configuration for Recipes. Defines how each type of Recipe should be configured and run.")
 model RecipeConfigProperties {
   @doc("Specifies the terraform config properties")
   terraform?: TerraformConfigProperties;
 }
 
-@doc("Specifies the terraform config properties")
+@doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
 model TerraformConfigProperties{
-  @doc("Specifies authentication information needed to access private terraform module sources. Currently supported module sources: Git.")
+    @doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
   authentication?: AuthConfig;
 }
 
-@doc("Specifies authentication information needed to access private terraform module repositories.")
+@doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
 model AuthConfig{
-  @doc("Specifies authentication information needed to access private terraform modules from Git repository sources.")
+  @doc("Authentication information used to access private Terraform modules from Git repository sources.")
   git?: GitAuthConfig;
 }
 
-@doc("Specifies authentication information needed to access private terraform modules from Git repository sources.")
+@doc("Authentication information used to access private Terraform modules from Git repository sources.")
 model GitAuthConfig{
-  @doc("Specifies the secret details of type personal access token for each different git platforms")  
+  @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")  
   pat?: Record<SecretConfig>;
 }
 
-@doc("Specifies the secret details of type personal access token for each different git platforms")
+@doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
 model SecretConfig {
-  @doc("The resource id for the Applications.Core/SecretStore resource containing credentials.")
+  @doc("The resource id for the Applications.Core/SecretStore resource containing credentials. Secret names required: 'pat', and 'username' is optional")
   secret?: string;
 }
 

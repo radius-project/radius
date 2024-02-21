@@ -2747,7 +2747,7 @@
         },
         "recipeConfig": {
           "$ref": "#/definitions/RecipeConfigProperties",
-          "description": "Specifies configurations needed for the recipes registered to the environment."
+          "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
         },
         "extensions": {
           "type": "array",
@@ -2761,11 +2761,11 @@
     },
     "AuthConfig": {
       "type": "object",
-      "description": "Specifies authentication information needed to access private terraform module repositories.",
+      "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git.",
       "properties": {
         "git": {
           "$ref": "#/definitions/GitAuthConfig",
-          "description": "Specifies authentication information needed to access private terraform modules from Git repository sources."
+          "description": "Authentication information used to access private Terraform modules from Git repository sources."
         }
       }
     },
@@ -3523,7 +3523,7 @@
         },
         "recipeConfig": {
           "$ref": "#/definitions/RecipeConfigProperties",
-          "description": "Specifies configurations needed for the recipes registered to the environment."
+          "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
         },
         "extensions": {
           "type": "array",
@@ -3627,7 +3627,7 @@
         },
         "recipeConfig": {
           "$ref": "#/definitions/RecipeConfigProperties",
-          "description": "Specifies configurations needed for the recipes registered to the environment."
+          "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
         },
         "extensions": {
           "type": "array",
@@ -4035,11 +4035,11 @@
     },
     "GitAuthConfig": {
       "type": "object",
-      "description": "Specifies authentication information needed to access private terraform modules from Git repository sources.",
+      "description": "Authentication information used to access private Terraform modules from Git repository sources.",
       "properties": {
         "pat": {
           "type": "object",
-          "description": "Specifies the secret details of type personal access token for each different git platforms",
+          "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms.",
           "additionalProperties": {
             "$ref": "#/definitions/SecretConfig"
           }
@@ -4769,7 +4769,7 @@
     },
     "RecipeConfigProperties": {
       "type": "object",
-      "description": "Specifies recipe configurations needed for the recipes.",
+      "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run.",
       "properties": {
         "terraform": {
           "$ref": "#/definitions/TerraformConfigProperties",
@@ -5013,11 +5013,11 @@
     },
     "SecretConfig": {
       "type": "object",
-      "description": "Specifies the secret details of type personal access token for each different git platforms",
+      "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms.",
       "properties": {
         "secret": {
           "type": "string",
-          "description": "The resource id for the Applications.Core/SecretStore resource containing credentials."
+          "description": "The resource id for the Applications.Core/SecretStore resource containing credentials. Secret names required: 'pat', and 'username' is optional"
         }
       }
     },
@@ -5294,11 +5294,11 @@
     },
     "TerraformConfigProperties": {
       "type": "object",
-      "description": "Specifies the terraform config properties",
+      "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.",
       "properties": {
         "authentication": {
           "$ref": "#/definitions/AuthConfig",
-          "description": "Specifies authentication information needed to access private terraform module sources. Currently supported module sources: Git."
+          "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git."
         }
       }
     },
