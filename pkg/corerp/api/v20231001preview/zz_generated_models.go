@@ -117,20 +117,11 @@ type ApplicationResourceUpdate struct {
 
 // ApplicationResourceUpdateProperties - The updatable properties of the ApplicationResource.
 type ApplicationResourceUpdateProperties struct {
-	// The compute resource used by application environment.
-	Compute EnvironmentComputeUpdateClassification
+	// Fully qualified resource ID for the environment that the application is linked to
+	Environment *string
 
-	// The environment extension.
+	// The application extension.
 	Extensions []ExtensionClassification
-
-	// Cloud providers configuration for the environment.
-	Providers *ProvidersUpdate
-
-	// Specifies Recipes linked to the Environment.
-	Recipes map[string]map[string]RecipePropertiesUpdateClassification
-
-	// Simulated environment.
-	Simulated *bool
 }
 
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
