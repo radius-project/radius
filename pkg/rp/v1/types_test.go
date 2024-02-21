@@ -96,3 +96,38 @@ func TestEqualLinkedResource(t *testing.T) {
 		require.Equal(t, tt.propA.EqualLinkedResource(&tt.propB), tt.eq)
 	}
 }
+
+func Test_isGlobalScopedResource(t *testing.T) {
+	tests := []struct {
+		desc                    string
+		basicResourceProperties BasicResourceProperties
+		isGlobal                bool
+	}{
+		{
+			desc: "application scope",
+			basicResourceProperties: BasicResourceProperties{
+				Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/app1",
+			},
+			isGlobal: false,
+		},
+		{
+			desc: "envisronment scope",
+			basicResourceProperties: BasicResourceProperties{
+				Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.core/environments/env0",
+			},
+			isGlobal: false,
+		},
+		{
+			desc:                    "global scope",
+			basicResourceProperties: BasicResourceProperties{},
+			isGlobal:                true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			act := tt.basicResourceProperties.IsGlobalScopedResource()
+			require.Equal(t, act, tt.isGlobal)
+		})
+	}
+
+}

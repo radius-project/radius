@@ -557,7 +557,6 @@ func TestUpsertSecret(t *testing.T) {
 		r := resp.(*rest.BadRequestResponse)
 		require.Equal(t, "'default/secret' referenced resource does not exist.", r.Body.Error.Message)
 	})
-
 }
 
 func TestDeleteSecret(t *testing.T) {
