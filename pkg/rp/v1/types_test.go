@@ -111,7 +111,7 @@ func Test_isGlobalScopedResource(t *testing.T) {
 			isGlobal: false,
 		},
 		{
-			desc: "envisronment scope",
+			desc: "environment scope",
 			basicResourceProperties: BasicResourceProperties{
 				Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.core/environments/env0",
 			},
