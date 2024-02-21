@@ -22,18 +22,13 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"net/url"
 	"os"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
-	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -44,11 +39,26 @@ const (
 
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
 // Parameters are populated from environment recipe and resource recipe metadata.
-func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration, armOptions *arm.ClientOptions) (*TerraformConfig, error) {
-	// Getting the module source path with credentials information if its a private source.
-	path, err := getModuleSource(ctx, envConfig, envRecipe.TemplatePath, armOptions)
-	if err != nil {
-		return nil, err
+func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration) (*TerraformConfig, error) {
+	path := envRecipe.TemplatePath
+	if strings.HasPrefix(envRecipe.TemplatePath, "git::") {
+		secretStore, err := recipes.GetSecretStoreID(*envConfig, envRecipe.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
+
+		if secretStore != "" {
+			env, app, resource, err := recipes.GetEnvAppResourceNames(resourceRecipe)
+			if err != nil {
+				return nil, err
+			}
+			url, err := recipes.GetGitURL(envRecipe.TemplatePath)
+			if err != nil {
+				return nil, err
+			}
+			path = fmt.Sprintf("git::https://%s-%s-%s-%s", env, app, resource, strings.TrimPrefix(url.String(), "https://"))
+		}
+
 	}
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
@@ -61,85 +71,6 @@ func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentD
 			moduleName: moduleData,
 		},
 	}, nil
-}
-
-// getModuleSource is called to get the module source path with credential information
-// if template path represent a private source else returns the provided template path
-func getModuleSource(ctx context.Context, envConfig *recipes.Configuration, templatePath string, armOptions *arm.ClientOptions) (string, error) {
-	var source string
-	var err error
-	if strings.HasPrefix(templatePath, "git::") {
-		source, err = getGitSource(ctx, envConfig, templatePath, armOptions)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		source = templatePath
-	}
-	return source, err
-}
-
-// getGitSource creates a terraform module source in a generic git format with credential information
-// e.g: git::https://<username>:<pat>@<example.com>/<repo_path>
-func getGitSource(ctx context.Context, envConfig *recipes.Configuration, templatePath string, armOptions *arm.ClientOptions) (string, error) {
-	secretStore, err := getSecretStoreID(*envConfig, templatePath)
-	if err != nil {
-		return "", err
-	}
-	if secretStore == "" {
-		return templatePath, err
-	}
-
-	secretStoreID, err := resources.ParseResource(secretStore)
-	if err != nil {
-		return "", err
-	}
-	client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, armOptions)
-	if err != nil {
-		return "", err
-	}
-	secrets, err := client.ListSecrets(ctx, secretStoreID.Name(), map[string]any{}, nil)
-	if err != nil {
-		return "", err
-	}
-	url, err := getGitURL(templatePath)
-	if err != nil {
-		return "", err
-	}
-	var username, pat *string
-	path := "git::https://"
-	user, ok := secrets.Data["username"]
-	if ok {
-		username = user.Value
-		path += fmt.Sprintf("%s:", *username)
-	}
-	token, ok := secrets.Data["pat"]
-	if ok {
-		pat = token.Value
-		path += *pat
-	}
-	path += fmt.Sprintf("@%s", strings.TrimPrefix(url.String(), "https://"))
-	return path, err
-
-}
-
-func getGitURL(templatePath string) (*url.URL, error) {
-	paths := strings.Split(templatePath, "git::")
-	gitUrl := paths[len(paths)-1]
-	url, err := url.Parse(gitUrl)
-	if err != nil {
-		return nil, err
-	}
-	return url, nil
-}
-
-func getSecretStoreID(envConfig recipes.Configuration, templatePath string) (string, error) {
-	url, err := getGitURL(templatePath)
-	if err != nil {
-		return "", err
-	}
-
-	return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
 }
 
 // getMainConfigFilePath returns the path of the Terraform main config file.

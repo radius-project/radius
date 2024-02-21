@@ -49,8 +49,8 @@ var (
 var _ TerraformExecutor = (*executor)(nil)
 
 // NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
-func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, k8sClientSet kubernetes.Interface, armOptions *arm.ClientOptions) *executor {
-	return &executor{ucpConn: ucpConn, secretProvider: secretProvider, k8sClientSet: k8sClientSet, armOptions: armOptions}
+func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, k8sClientSet kubernetes.Interface) *executor {
+	return &executor{ucpConn: ucpConn, secretProvider: secretProvider, k8sClientSet: k8sClientSet}
 }
 
 type executor struct {
@@ -306,7 +306,7 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options,
 	}
 
 	// Create Terraform configuration containing module information with the given recipe parameters.
-	tfConfig, err := config.New(ctx, localModuleName, options.EnvRecipe, options.ResourceRecipe, options.EnvConfig, armOptions)
+	tfConfig, err := config.New(ctx, localModuleName, options.EnvRecipe, options.ResourceRecipe, options.EnvConfig)
 	if err != nil {
 		return nil, err
 	}

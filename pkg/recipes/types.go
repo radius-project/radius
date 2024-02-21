@@ -19,9 +19,13 @@ package recipes
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // Configuration represents kubernetes runtime and cloud provider configuration, which is used by the driver while deploying recipes.
@@ -136,4 +140,40 @@ func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error 
 	}
 
 	return nil
+}
+
+func GetSecretStoreID(envConfig Configuration, templatePath string) (string, error) {
+	url, err := GetGitURL(templatePath)
+	if err != nil {
+		return "", err
+	}
+
+	return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
+}
+
+func GetGitURL(templatePath string) (*url.URL, error) {
+	paths := strings.Split(templatePath, "git::")
+	gitUrl := paths[len(paths)-1]
+	url, err := url.Parse(gitUrl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse git url %s : %w", gitUrl, err)
+	}
+
+	return url, nil
+}
+
+func GetEnvAppResourceNames(resourceMetadata *ResourceMetadata) (string, string, string, error) {
+	app, err := resources.ParseResource(resourceMetadata.ApplicationID)
+	if err != nil {
+		return "", "", "", err
+	}
+	env, err := resources.ParseResource(resourceMetadata.EnvironmentID)
+	if err != nil {
+		return "", "", "", err
+	}
+	resource, err := resources.ParseResource(resourceMetadata.ResourceID)
+	if err != nil {
+		return "", "", "", err
+	}
+	return env.Name(), app.Name(), resource.Name(), nil
 }

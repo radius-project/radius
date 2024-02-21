@@ -21,18 +21,22 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"golang.org/x/exp/slices"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/recipes"
 
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
@@ -51,7 +55,8 @@ var _ Driver = (*terraformDriver)(nil)
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
 func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, options TerraformOptions, k8sClientSet kubernetes.Interface, armOptions *arm.ClientOptions) Driver {
 	return &terraformDriver{
-		terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, k8sClientSet, armOptions),
+		ArmClientOptions:  armOptions,
+		terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, k8sClientSet),
 		options:           options,
 	}
 }
@@ -64,6 +69,7 @@ type TerraformOptions struct {
 
 // terraformDriver represents a driver to interact with Terraform Recipe - deploy recipe, delete resources, etc.
 type terraformDriver struct {
+	ArmClientOptions *arm.ClientOptions
 	// terraformExecutor is used to execute Terraform commands - deploy, destroy, etc.
 	terraformExecutor terraform.TerraformExecutor
 
@@ -90,6 +96,10 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		logger.Info("simulated environment is set to true, skipping deployment")
 		return nil, nil
 	}
+	secrets, err := configureSecretsForModuleSource(ctx, &opts.Configuration, &opts.Recipe, opts.Definition.TemplatePath, d.ArmClientOptions)
+	if err != nil {
+		return nil, err
+	}
 
 	tfState, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
 		RootDir:        requestDirPath,
@@ -97,6 +107,14 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 	})
+
+	if !reflect.DeepEqual(secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		unsetError := unsetSecretsFromGitConfig(secrets, opts.Definition.TemplatePath)
+		if unsetError != nil {
+			return nil, unsetError
+		}
+	}
+
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -107,6 +125,103 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 	}
 
 	return recipeOutputs, nil
+}
+
+func configureSecretsForModuleSource(ctx context.Context, envConfig *recipes.Configuration, recipeMetadata *recipes.ResourceMetadata, templatePath string, armOptions *arm.ClientOptions) (v20231001preview.SecretStoresClientListSecretsResponse, error) {
+	if strings.HasPrefix(templatePath, "git::") {
+		secretStore, err := recipes.GetSecretStoreID(*envConfig, templatePath)
+		if err != nil {
+			return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+		}
+
+		if secretStore == "" {
+			return v20231001preview.SecretStoresClientListSecretsResponse{}, nil
+		}
+
+		secrets, err := getSecrets(ctx, secretStore, armOptions)
+		if err != nil {
+			return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+		}
+
+		err = addSecretsToGitConfig(secrets, recipeMetadata, templatePath)
+		if err != nil {
+			return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+		}
+
+		return secrets, nil
+	}
+	return v20231001preview.SecretStoresClientListSecretsResponse{}, nil
+}
+func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) (string, string, error) {
+	url, err := recipes.GetGitURL(templatePath)
+	if err != nil {
+		return "", "", err
+	}
+
+	var username, pat *string
+	path := "https://"
+	user, ok := secrets.Data["username"]
+	if ok {
+		username = user.Value
+		path += fmt.Sprintf("%s:", *username)
+	}
+
+	token, ok := secrets.Data["pat"]
+	if ok {
+		pat = token.Value
+		path += *pat
+	}
+
+	path += fmt.Sprintf("@%s", url.Hostname())
+	return fmt.Sprintf("url.%s.insteadOf", path), url.Hostname(), nil
+}
+func addSecretsToGitConfig(secrets v20231001preview.SecretStoresClientListSecretsResponse, recipeMetadata *recipes.ResourceMetadata, templatePath string) error {
+	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
+	if err != nil {
+		return err
+	}
+	env, app, resource, err := recipes.GetEnvAppResourceNames(recipeMetadata)
+	if err != nil {
+		return err
+	}
+	urlConfigValue = fmt.Sprintf("https://%s-%s-%s-%s", env, app, resource, urlConfigValue)
+	cmd := exec.Command("git", "config", "--global", urlConfigKey, urlConfigValue)
+	_, err = cmd.Output()
+	if err != nil {
+		return errors.New("failed to add git config")
+	}
+
+	return err
+}
+
+func unsetSecretsFromGitConfig(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
+	urlConfigKey, _, err := getURLConfigKeyValue(secrets, templatePath)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("git", "config", "--global", "--unset", urlConfigKey)
+	_, err = cmd.Output()
+	if err != nil {
+		return errors.New("failed to unset git config")
+	}
+
+	return err
+}
+func getSecrets(ctx context.Context, secretStore string, armOptions *arm.ClientOptions) (v20231001preview.SecretStoresClientListSecretsResponse, error) {
+	secretStoreID, err := resources.ParseResource(secretStore)
+	if err != nil {
+		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+	}
+	client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, armOptions)
+	if err != nil {
+		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+	}
+	secrets, err := client.ListSecrets(ctx, secretStoreID.Name(), map[string]any{}, nil)
+	if err != nil {
+		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+	}
+	return secrets, nil
 }
 
 // Delete returns an error if called as it is not yet implemented.
