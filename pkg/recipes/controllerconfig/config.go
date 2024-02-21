@@ -88,6 +88,7 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 
 	cfg.ConfigLoader = configloader.NewEnvironmentLoader(clientOptions)
 	cfg.Engine = engine.NewEngine(engine.Options{
+		SecretsLoader:       configloader.NewSecretStoreLoader(clientOptions),
 		ConfigurationLoader: cfg.ConfigLoader,
 		Drivers: map[string]driver.Driver{
 			recipes.TemplateKindBicep: driver.NewBicepDriver(
