@@ -74,7 +74,6 @@ rp:
 
 dashboard:
   enabled: true
-  port: 7007
   image: ghcr.io/radius-project/dashboard
   # Default tag uses Chart AppVersion.
   # tag: latest

@@ -181,22 +181,24 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	dashboardSelector := labels.NewSelector().Add(*dashboardNameLabel).Add(*dashboardPartOfLabel)
 
-	// We start four background jobs and wait for them to complete.
+	// We start 5 background jobs and wait for them to complete.
 	group, ctx := errgroup.WithContext(ctx)
 
-	// 1. Display port-forward messages
+	// 1. Display port-forward messages for application
 	applicationStatusChan := make(chan portforward.StatusMessage)
 	group.Go(func() error {
 		r.displayPortforwardMessages(applicationStatusChan)
 		return nil
 	})
+
+	// 2. Display port-forward messages for dashboard
 	dashboardStatusChan := make(chan portforward.StatusMessage)
 	group.Go(func() error {
 		r.displayPortforwardMessages(dashboardStatusChan)
 		return nil
 	})
 
-	// 2. Port-forward application
+	// 3. Port-forward application
 	group.Go(func() error {
 		return r.Portforward.Run(ctx, portforward.Options{
 			LabelSelector: applicationSelector,
@@ -207,7 +209,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		})
 	})
 
-	// 3. Port-forward dashboard
+	// 4. Port-forward dashboard
 	group.Go(func() error {
 		return r.Portforward.Run(ctx, portforward.Options{
 			LabelSelector: dashboardSelector,
@@ -218,7 +220,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		})
 	})
 
-	// 4. Stream logs
+	// 5. Stream logs
 	group.Go(func() error {
 		return r.Logstream.Stream(ctx, logstream.Options{
 			ApplicationName: r.ApplicationName,

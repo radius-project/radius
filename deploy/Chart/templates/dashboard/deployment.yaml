@@ -1,3 +1,4 @@
+{{- if .Values.dashboard.enabled }}
 {{- $appversion := include "radius.versiontag" . }}
 apiVersion: apps/v1
 kind: Deployment
@@ -30,4 +31,4 @@ spec:
           containerPort: 7007
         securityContext:
           allowPrivilegeEscalation: false
-
+{{- end }}
