@@ -142,6 +142,7 @@ func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error 
 	return nil
 }
 
+// GetSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
 func GetSecretStoreID(envConfig Configuration, templatePath string) (string, error) {
 	url, err := GetGitURL(templatePath)
 	if err != nil {
@@ -151,6 +152,7 @@ func GetSecretStoreID(envConfig Configuration, templatePath string) (string, err
 	return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
 }
 
+// GetGitURL returns git url from generic git module source.
 func GetGitURL(templatePath string) (*url.URL, error) {
 	paths := strings.Split(templatePath, "git::")
 	gitUrl := paths[len(paths)-1]
@@ -162,18 +164,22 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 	return url, nil
 }
 
+// GetEnvAppResourceNames returns the application, environment and resource names.
 func GetEnvAppResourceNames(resourceMetadata *ResourceMetadata) (string, string, string, error) {
 	app, err := resources.ParseResource(resourceMetadata.ApplicationID)
 	if err != nil {
 		return "", "", "", err
 	}
+
 	env, err := resources.ParseResource(resourceMetadata.EnvironmentID)
 	if err != nil {
 		return "", "", "", err
 	}
+
 	resource, err := resources.ParseResource(resourceMetadata.ResourceID)
 	if err != nil {
 		return "", "", "", err
 	}
+
 	return env.Name(), app.Name(), resource.Name(), nil
 }
