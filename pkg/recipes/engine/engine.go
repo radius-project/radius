@@ -19,8 +19,10 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
@@ -40,6 +42,7 @@ var _ Engine = (*engine)(nil)
 type Options struct {
 	ConfigurationLoader configloader.ConfigurationLoader
 	Drivers             map[string]recipedriver.Driver
+	SecretsLoader       configloader.SecretsLoader
 }
 
 type engine struct {
@@ -81,11 +84,28 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
 
+	secrets := v20231001preview.SecretStoresClientListSecretsResponse{}
+	if strings.HasPrefix(definition.TemplatePath, "git::") {
+		secretStore, err := recipes.GetSecretStoreID(*configuration, definition.TemplatePath)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if secretStore != "" {
+			secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
+			if err != nil {
+				return nil, nil, err
+			}
+
+		}
+	}
+
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
 		BaseOptions: recipedriver.BaseOptions{
 			Configuration: *configuration,
 			Recipe:        recipe,
 			Definition:    *definition,
+			Secrets:       secrets,
 		},
 		PrevState: prevState,
 	})
