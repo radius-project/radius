@@ -11,7 +11,7 @@ spec:
   ports:
     - name: http
       port: 80
-      targetPort: http
+      targetPort: {{ .Values.dashboard.containerPort }}
   selector:
       app.kubernetes.io/name: dashboard
 {{- end }}

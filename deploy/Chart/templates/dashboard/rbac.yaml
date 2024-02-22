@@ -2,30 +2,30 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: dashboard-role
+  name: dashboard
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: dashboard-role
+    app.kubernetes.io/name: dashboard
     app.kubernetes.io/part-of: radius
 rules:
   - apiGroups: ['', 'api.ucp.dev']
     resources: ['*']
-    verbs: ['*']
+    verbs: ['get', 'list']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: dashboard-role-binding
+  name: dashboard
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: dashboard-role-binding
+    app.kubernetes.io/name: dashboard
     app.kubernetes.io/part-of: radius
 subjects:
 - kind: ServiceAccount
-  name: dashboard-account
+  name: dashboard
   namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: dashboard-role
+  name: dashboard
 {{- end }}

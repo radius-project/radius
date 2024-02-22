@@ -21,14 +21,14 @@ spec:
         app.kubernetes.io/name: dashboard
         app.kubernetes.io/part-of: radius
     spec:
-      serviceAccountName: dashboard-account
+      serviceAccountName: dashboard
       containers:
       - name: dashboard
         image: "{{ .Values.dashboard.image }}:{{ .Values.dashboard.tag | default $appversion }}"
         imagePullPolicy: Always
         ports:
         - name: http
-          containerPort: 7007
+          containerPort: {{ .Values.dashboard.containerPort }}
         securityContext:
           allowPrivilegeEscalation: false
 {{- end }}
