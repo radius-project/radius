@@ -408,14 +408,13 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 						After(deployCall).
 						Times(1)
 
-					if tt.deployErr == nil {
-						msc.EXPECT().
-							Save(gomock.Any(), gomock.Any(), gomock.Any()).
-							Return(tt.saveErr).
-							After(deployCall).
-							After(deleteCall).
-							Times(1)
-					}
+					msc.EXPECT().
+						Save(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(tt.saveErr).
+						After(deployCall).
+						After(deleteCall).
+						Times(1)
+
 				}
 			}
 

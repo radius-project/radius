@@ -989,8 +989,9 @@ func Test_Deploy(t *testing.T) {
 
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to deploy the resource"))
 
-		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 		require.Error(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
 	})
 
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {

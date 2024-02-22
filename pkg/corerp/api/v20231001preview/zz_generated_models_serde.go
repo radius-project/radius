@@ -2937,6 +2937,7 @@ func (o OutputResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "id", o.ID)
 	populate(objectMap, "localId", o.LocalID)
 	populate(objectMap, "radiusManaged", o.RadiusManaged)
+	populate(objectMap, "status", o.Status)
 	return json.Marshal(objectMap)
 }
 
@@ -2957,6 +2958,9 @@ func (o *OutputResource) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "radiusManaged":
 				err = unpopulate(val, "RadiusManaged", &o.RadiusManaged)
+			delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &o.Status)
 			delete(rawMsg, key)
 		}
 		if err != nil {

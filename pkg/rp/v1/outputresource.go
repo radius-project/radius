@@ -27,6 +27,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// DeploymentStatus - Status of Output Resource deployment
+type DeploymentStatus string
+
+const (
+	// DeploymentStatusFailed - The resource deployment failed
+	DeploymentStatusFailed DeploymentStatus = "Failed"
+	// DeploymentStatusSucceeded - The resource is successfully deployed
+	DeploymentStatusSucceeded DeploymentStatus = "Succeeded"
+)
+
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
 	// LocalID is a logical identifier scoped to the owning Radius resource. This is only needed or used
@@ -42,6 +52,8 @@ type OutputResource struct {
 
 	// CreateResource describes data that will be used to create a resource. This is never saved to the database.
 	CreateResource *Resource `json:"-"`
+
+	Status *DeploymentStatus `json:"status"`
 }
 
 // Resource describes data that will be used to create a resource. This data is not saved to the database.

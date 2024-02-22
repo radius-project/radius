@@ -132,6 +132,11 @@ func toOutputResourcesDataModel(outputResources []rpv1.OutputResource) []*Output
 			r.RadiusManaged = or.RadiusManaged
 		}
 
+		if *or.Status == rpv1.DeploymentStatusFailed {
+			r.Status = to.Ptr(DeploymentStatusFailed)
+		} else if *or.Status == rpv1.DeploymentStatusSucceeded {
+			r.Status = to.Ptr(DeploymentStatusSucceeded)
+		}
 		outResources = append(outResources, r)
 	}
 	return outResources

@@ -457,6 +457,9 @@ type OperationListResult struct {
 
 // OutputResource - Properties of an output resource.
 type OutputResource struct {
+	// REQUIRED; Determines whether the resource was deployed successfully
+	Status *DeploymentStatus
+
 	// The UCP resource ID of the underlying resource.
 	ID *string
 

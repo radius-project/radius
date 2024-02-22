@@ -138,6 +138,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 			ResourceProvisioning: toContainerResourceProvisioningDataModel(src.Properties.ResourceProvisioning),
 			Resources:            toResourceReferencesDataModel(src.Properties.Resources),
 			RestartPolicy:        toRestartPolicyDataModel(src.Properties.RestartPolicy),
+			//Status is not converted as it is an output property.
 		},
 	}
 
