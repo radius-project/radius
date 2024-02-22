@@ -309,12 +309,8 @@ func (a *ApplicationResourceUpdate) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ApplicationResourceUpdateProperties.
 func (a ApplicationResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "compute", a.Compute)
+	populate(objectMap, "environment", a.Environment)
 	populate(objectMap, "extensions", a.Extensions)
-	populate(objectMap, "providers", a.Providers)
-	populate(objectMap, "recipeConfig", a.RecipeConfig)
-	populate(objectMap, "recipes", a.Recipes)
-	populate(objectMap, "simulated", a.Simulated)
 	return json.Marshal(objectMap)
 }
 
@@ -327,34 +323,11 @@ func (a *ApplicationResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "compute":
-			a.Compute, err = unmarshalEnvironmentComputeUpdateClassification(val)
+		case "environment":
+				err = unpopulate(val, "Environment", &a.Environment)
 			delete(rawMsg, key)
 		case "extensions":
 			a.Extensions, err = unmarshalExtensionClassificationArray(val)
-			delete(rawMsg, key)
-		case "providers":
-				err = unpopulate(val, "Providers", &a.Providers)
-			delete(rawMsg, key)
-		case "recipeConfig":
-				err = unpopulate(val, "RecipeConfig", &a.RecipeConfig)
-			delete(rawMsg, key)
-		case "recipes":
-			var recipesRaw map[string]json.RawMessage
-			if err = json.Unmarshal(val, &recipesRaw); err != nil {
-				return err
-			}
-			recipes := map[string]map[string]RecipePropertiesUpdateClassification{}
-			for k1, v1 := range recipesRaw {
-				recipes[k1], err = unmarshalRecipePropertiesUpdateClassificationMap(v1)
-				if err != nil {
-					return fmt.Errorf("unmarshalling type %T: %v", a, err)
-				}
-			}
-			a.Recipes = recipes
-			delete(rawMsg, key)
-		case "simulated":
-				err = unpopulate(val, "Simulated", &a.Simulated)
 			delete(rawMsg, key)
 		}
 		if err != nil {

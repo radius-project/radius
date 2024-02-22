@@ -2723,35 +2723,13 @@
       "type": "object",
       "description": "The updatable properties of the ApplicationResource.",
       "properties": {
-        "compute": {
-          "$ref": "#/definitions/EnvironmentComputeUpdate",
-          "description": "The compute resource used by application environment."
-        },
-        "providers": {
-          "$ref": "#/definitions/ProvidersUpdate",
-          "description": "Cloud providers configuration for the environment."
-        },
-        "simulated": {
-          "type": "boolean",
-          "description": "Simulated environment."
-        },
-        "recipes": {
-          "type": "object",
-          "description": "Specifies Recipes linked to the Environment.",
-          "additionalProperties": {
-            "additionalProperties": {
-              "$ref": "#/definitions/RecipePropertiesUpdate"
-            },
-            "type": "object"
-          }
-        },
-        "recipeConfig": {
-          "$ref": "#/definitions/RecipeConfigProperties",
-          "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "extensions": {
           "type": "array",
-          "description": "The environment extension.",
+          "description": "The application extension.",
           "items": {
             "$ref": "#/definitions/Extension"
           },
