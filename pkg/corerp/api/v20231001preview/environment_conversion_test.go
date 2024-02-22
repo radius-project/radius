@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
@@ -73,11 +74,11 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
 						},
 					},
-					RecipeConfig: datamodel.RecipeConfigProperties{
-						Terraform: datamodel.TerraformConfigProperties{
-							Authentication: datamodel.AuthConfig{
-								Git: datamodel.GitAuthConfig{
-									PAT: map[string]datamodel.SecretConfig{},
+					RecipeConfig: v1alpha3.RecipeConfigProperties{
+						Terraform: v1alpha3.TerraformConfigProperties{
+							Authentication: v1alpha3.AuthConfig{
+								Git: v1alpha3.GitAuthConfig{
+									PAT: map[string]v1alpha3.SecretConfig{},
 								},
 							},
 						},
@@ -126,11 +127,11 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Scope: "/planes/aws/aws/accounts/140313373712/regions/us-west-2",
 						},
 					},
-					RecipeConfig: datamodel.RecipeConfigProperties{
-						Terraform: datamodel.TerraformConfigProperties{
-							Authentication: datamodel.AuthConfig{
-								Git: datamodel.GitAuthConfig{
-									PAT: map[string]datamodel.SecretConfig{
+					RecipeConfig: v1alpha3.RecipeConfigProperties{
+						Terraform: v1alpha3.TerraformConfigProperties{
+							Authentication: v1alpha3.AuthConfig{
+								Git: v1alpha3.GitAuthConfig{
+									PAT: map[string]v1alpha3.SecretConfig{
 										"dev.azure.com": {
 											Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github",
 										},

@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -37,7 +38,7 @@ type Configuration struct {
 	// Simulated represents whether the environment is simulated or not.
 	Simulated bool
 
-	RecipeConfig datamodel.RecipeConfigProperties
+	RecipeConfig v1alpha3.RecipeConfigProperties
 }
 
 // RuntimeConfiguration represents Kubernetes Runtime configuration for the environment.

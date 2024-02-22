@@ -28,6 +28,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -184,11 +185,11 @@ func Test_NewConfig(t *testing.T) {
 				Parameters:   envParams,
 			},
 			envConfig: &recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Terraform: datamodel.TerraformConfigProperties{
-						Authentication: datamodel.AuthConfig{
-							Git: datamodel.GitAuthConfig{
-								PAT: map[string]datamodel.SecretConfig{
+				RecipeConfig: v1alpha3.RecipeConfigProperties{
+					Terraform: v1alpha3.TerraformConfigProperties{
+						Authentication: v1alpha3.AuthConfig{
+							Git: v1alpha3.GitAuthConfig{
+								PAT: map[string]v1alpha3.SecretConfig{
 									"dev.azure.com": {
 										Secret: "secret-store1",
 									},

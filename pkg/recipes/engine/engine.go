@@ -40,8 +40,8 @@ var _ Engine = (*engine)(nil)
 // Options represents the configuration loader and type of driver used to deploy recipe.
 type Options struct {
 	ConfigurationLoader configloader.ConfigurationLoader
-	Drivers             map[string]recipedriver.Driver
 	SecretsLoader       configloader.SecretsLoader
+	Drivers             map[string]recipedriver.Driver
 }
 
 type engine struct {

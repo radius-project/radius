@@ -1400,7 +1400,7 @@ type Recipe struct {
 
 // RecipeConfigProperties - Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 type RecipeConfigProperties struct {
-	// Specifies the terraform config properties
+	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
 	Terraform *TerraformConfigProperties
 }
 
@@ -1525,8 +1525,9 @@ type RuntimesProperties struct {
 
 // SecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
 type SecretConfig struct {
-	// The resource id for the Applications.Core/SecretStore resource containing credentials. Secret names required: 'pat', and
-// 'username' is optional
+	// The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret
+// store must have a secret named 'pat', containing the PAT value. A secret named
+// 'username' is optional, containing the username associated with the pat. By default no username is specified.
 	Secret *string
 }
 

@@ -78,7 +78,7 @@ func Test_GetTerraformConfig(t *testing.T) {
 		Module: map[string]config.TFModuleConfig{
 			"test-recipe": {"source": "test/module/source"}},
 	}
-	tfConfig, err := getTerraformConfig(testcontext.New(t), testDir, options, nil)
+	tfConfig, err := getTerraformConfig(testcontext.New(t), testDir, options)
 	require.NoError(t, err)
 	require.Equal(t, &expectedConfig, tfConfig)
 }
@@ -95,7 +95,7 @@ func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	_, err := getTerraformConfig(testcontext.New(t), testDir, options, nil)
+	_, err := getTerraformConfig(testcontext.New(t), testDir, options)
 	require.Error(t, err)
 	require.Equal(t, err, ErrRecipeNameEmpty)
 }
@@ -110,7 +110,7 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	_, err := getTerraformConfig(testcontext.New(t), workingDir, options, nil)
+	_, err := getTerraformConfig(testcontext.New(t), workingDir, options)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file: open invalid-directory/main.tf.json: no such file or directory")
 }

@@ -146,3 +146,36 @@ type RecipeList struct {
 func init() {
 	SchemeBuilder.Register(&Recipe{}, &RecipeList{})
 }
+
+// RecipeConfigProperties - Configuration for Recipes. Defines how each type of Recipe should be configured and run.
+type RecipeConfigProperties struct {
+	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
+	Terraform TerraformConfigProperties `json:"terraform,omitempty"`
+}
+
+// TerraformConfigProperties - Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as
+// part of Recipe deployment.
+type TerraformConfigProperties struct {
+	// Authentication information used to access private Terraform module sources. Supported module sources: Git.
+	Authentication AuthConfig `json:"authentication,omitempty"`
+}
+
+// AuthConfig - Authentication information used to access private Terraform module sources. Supported module sources: Git.
+type AuthConfig struct {
+	// Authentication information used to access private Terraform modules from Git repository sources.
+	Git GitAuthConfig `json:"git,omitempty"`
+}
+
+// GitAuthConfig - Authentication information used to access private Terraform modules from Git repository sources.
+type GitAuthConfig struct {
+	// Personal Access Token (PAT) configuration used to authenticate to Git platforms.
+	PAT map[string]SecretConfig `json:"pat,omitempty"`
+}
+
+// SecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
+type SecretConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret
+	// store must have a secret named 'pat', containing the PAT value. A secret named
+	// 'username' is optional, containing the username associated with the pat. By default no username is specified.
+	Secret string `json:"secret,omitempty"`
+}

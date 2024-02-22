@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
@@ -62,8 +61,6 @@ type executor struct {
 
 	// k8sClientSet is the Kubernetes client.
 	k8sClientSet kubernetes.Interface
-
-	armOptions *arm.ClientOptions
 }
 
 // Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
@@ -182,7 +179,7 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
-	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options, e.armOptions)
+	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +199,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
 
-	tfConfig, err := getTerraformConfig(ctx, workingDir, options, e.armOptions)
+	tfConfig, err := getTerraformConfig(ctx, workingDir, options)
 	if err != nil {
 		return "", err
 	}
@@ -294,7 +291,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 }
 
 // getTerraformConfig initializes the Terraform json config with provided module source and saves it
-func getTerraformConfig(ctx context.Context, workingDir string, options Options, armOptions *arm.ClientOptions) (*config.TerraformConfig, error) {
+func getTerraformConfig(ctx context.Context, workingDir string, options Options) (*config.TerraformConfig, error) {
 	// Generate Terraform json config in the working directory
 	// Use recipe name as a local reference to the module.
 	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the

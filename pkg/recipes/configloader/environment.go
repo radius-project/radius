@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -73,7 +74,7 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 	config := recipes.Configuration{
 		Runtime:      recipes.RuntimeConfiguration{},
 		Providers:    datamodel.Providers{},
-		RecipeConfig: datamodel.RecipeConfigProperties{},
+		RecipeConfig: v1alpha3.RecipeConfigProperties{},
 	}
 
 	switch environment.Properties.Compute.(type) {
@@ -106,10 +107,12 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 	if err != nil {
 		return nil, err
 	}
+
 	envDatamodel := env.(*datamodel.Environment)
 	if environment.Properties.Providers != nil {
 		config.Providers = envDatamodel.Properties.Providers
 	}
+
 	if environment.Properties.RecipeConfig != nil {
 		config.RecipeConfig = envDatamodel.Properties.RecipeConfig
 	}

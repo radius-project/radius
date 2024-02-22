@@ -19,7 +19,7 @@ package recipes
 import (
 	"testing"
 
-	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
@@ -213,12 +213,12 @@ func Test_GetSecretStoreID(t *testing.T) {
 		{
 			desc: "success",
 			envConfig: Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Terraform: datamodel.TerraformConfigProperties{
-						Authentication: datamodel.AuthConfig{
-							Git: datamodel.GitAuthConfig{
-								PAT: map[string]datamodel.SecretConfig{
-									"dev.azure.com": datamodel.SecretConfig{
+				RecipeConfig: v1alpha3.RecipeConfigProperties{
+					Terraform: v1alpha3.TerraformConfigProperties{
+						Authentication: v1alpha3.AuthConfig{
+							Git: v1alpha3.GitAuthConfig{
+								PAT: map[string]v1alpha3.SecretConfig{
+									"dev.azure.com": v1alpha3.SecretConfig{
 										Secret: "secret-store1",
 									},
 								},

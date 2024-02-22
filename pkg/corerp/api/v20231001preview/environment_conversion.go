@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	types "github.com/radius-project/radius/pkg/recipes"
@@ -183,20 +184,20 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeConfigProperties {
+func toRecipeConfigDatamodel(config *RecipeConfigProperties) v1alpha3.RecipeConfigProperties {
 	if config != nil {
-		recipeConfig := datamodel.RecipeConfigProperties{}
+		recipeConfig := v1alpha3.RecipeConfigProperties{}
 		if config.Terraform != nil {
-			recipeConfig.Terraform = datamodel.TerraformConfigProperties{}
+			recipeConfig.Terraform = v1alpha3.TerraformConfigProperties{}
 			if config.Terraform.Authentication != nil {
-				recipeConfig.Terraform.Authentication = datamodel.AuthConfig{}
+				recipeConfig.Terraform.Authentication = v1alpha3.AuthConfig{}
 				gitConfig := config.Terraform.Authentication.Git
 				if gitConfig != nil {
-					recipeConfig.Terraform.Authentication.Git = datamodel.GitAuthConfig{}
+					recipeConfig.Terraform.Authentication.Git = v1alpha3.GitAuthConfig{}
 					if gitConfig.Pat != nil {
-						p := map[string]datamodel.SecretConfig{}
+						p := map[string]v1alpha3.SecretConfig{}
 						for k, v := range gitConfig.Pat {
-							p[k] = datamodel.SecretConfig{
+							p[k] = v1alpha3.SecretConfig{
 								Secret: to.String(v.Secret),
 							}
 						}
@@ -208,17 +209,17 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 		}
 		return recipeConfig
 	}
-	return datamodel.RecipeConfigProperties{}
+	return v1alpha3.RecipeConfigProperties{}
 }
 
-func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeConfigProperties {
-	if !reflect.DeepEqual(config, datamodel.RecipeConfigProperties{}) {
+func fromRecipeConfigDatamodel(config v1alpha3.RecipeConfigProperties) *RecipeConfigProperties {
+	if !reflect.DeepEqual(config, v1alpha3.RecipeConfigProperties{}) {
 		recipeConfig := &RecipeConfigProperties{}
-		if !reflect.DeepEqual(config.Terraform, datamodel.TerraformConfigProperties{}) {
+		if !reflect.DeepEqual(config.Terraform, v1alpha3.TerraformConfigProperties{}) {
 			recipeConfig.Terraform = &TerraformConfigProperties{}
-			if !reflect.DeepEqual(config.Terraform.Authentication, datamodel.AuthConfig{}) {
+			if !reflect.DeepEqual(config.Terraform.Authentication, v1alpha3.AuthConfig{}) {
 				recipeConfig.Terraform.Authentication = &AuthConfig{}
-				if !reflect.DeepEqual(config.Terraform.Authentication.Git, datamodel.GitAuthConfig{}) {
+				if !reflect.DeepEqual(config.Terraform.Authentication.Git, v1alpha3.GitAuthConfig{}) {
 					recipeConfig.Terraform.Authentication.Git = &GitAuthConfig{}
 					if config.Terraform.Authentication.Git.PAT != nil {
 						recipeConfig.Terraform.Authentication.Git.Pat = map[string]*SecretConfig{}

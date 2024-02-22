@@ -18,6 +18,7 @@ package datamodel
 
 import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -41,39 +42,9 @@ type EnvironmentProperties struct {
 	Compute      rpv1.EnvironmentCompute                           `json:"compute,omitempty"`
 	Recipes      map[string]map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
 	Providers    Providers                                         `json:"providers,omitempty"`
-	RecipeConfig RecipeConfigProperties                            `json:"recipeConfig,omitempty"`
+	RecipeConfig v1alpha3.RecipeConfigProperties                   `json:"recipeConfig,omitempty"`
 	Extensions   []Extension                                       `json:"extensions,omitempty"`
 	Simulated    bool                                              `json:"simulated,omitempty"`
-}
-
-// RecipeConfigProperties - Specifies recipe configurations needed for the recipes.
-type RecipeConfigProperties struct {
-	// Terraform specifies the terraform config properties
-	Terraform TerraformConfigProperties `json:"terraform,omitempty"`
-}
-
-// TerraformConfigProperties - Specifies the terraform config properties
-type TerraformConfigProperties struct {
-	// Authentication specifies authentication information needed to use private terraform module repositories.
-	Authentication AuthConfig `json:"authentication,omitempty"`
-}
-
-// AuthConfig - Specifies authentication information needed to use private terraform module repositories.
-type AuthConfig struct {
-	// Git specifies authentication information needed to use private terraform module repositories from git module source
-	Git GitAuthConfig `json:"git,omitempty"`
-}
-
-// GitAuthConfig - Specifies authentication information needed to use private terraform module repositories from git module source
-type GitAuthConfig struct {
-	// GitAuthConfig specifies the secret details of type personal access token for each different git platforms
-	PAT map[string]SecretConfig `json:"pat,omitempty"`
-}
-
-// SecretConfig - Specifies the secret details of type personal access token for each different git platforms
-type SecretConfig struct {
-	// Secret represent the resource id for the secret store containing credentials
-	Secret string `json:"secret,omitempty"`
 }
 
 // EnvironmentRecipeProperties represents the properties of environment's recipe.
