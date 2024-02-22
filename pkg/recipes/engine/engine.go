@@ -19,7 +19,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -85,18 +84,15 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 	}
 
 	secrets := v20231001preview.SecretStoresClientListSecretsResponse{}
-	if strings.HasPrefix(definition.TemplatePath, "git::") {
-		secretStore, err := recipes.GetSecretStoreID(*configuration, definition.TemplatePath)
+	secretStore, err := recipes.GetSecretStoreID(*configuration, definition.TemplatePath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if secretStore != "" {
+		secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
 		if err != nil {
 			return nil, nil, err
-		}
-
-		if secretStore != "" {
-			secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
-			if err != nil {
-				return nil, nil, err
-			}
-
 		}
 	}
 

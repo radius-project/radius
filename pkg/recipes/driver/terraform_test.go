@@ -880,11 +880,6 @@ func TestUnsetConfig(t *testing.T) {
 }
 
 func withGlobalGitConfigFile(tmpdir string, content string) func() {
-	//tmpdir := t.TempDir()
-	// tmpdir := os.TempDir(workingDir)
-	// if err != nil {
-	// 	panic(err)
-	// }
 
 	tmpGitConfigFile := filepath.Join(tmpdir, ".gitconfig")
 

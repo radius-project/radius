@@ -41,14 +41,14 @@ const (
 // Parameters are populated from environment recipe and resource recipe metadata.
 func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration) (*TerraformConfig, error) {
 	path := envRecipe.TemplatePath
-	if strings.HasPrefix(envRecipe.TemplatePath, "git::") {
+
+	if envConfig != nil {
 		secretStore, err := recipes.GetSecretStoreID(*envConfig, envRecipe.TemplatePath)
 		if err != nil {
 			return nil, err
 		}
-
 		if secretStore != "" {
-			env, app, resource, err := recipes.GetEnvAppResourceNames(resourceRecipe)
+			prefix, err := recipes.GetURLPrefix(resourceRecipe)
 			if err != nil {
 				return nil, err
 			}
@@ -56,10 +56,10 @@ func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentD
 			if err != nil {
 				return nil, err
 			}
-			path = fmt.Sprintf("git::https://%s-%s-%s-%s", env, app, resource, strings.TrimPrefix(url.String(), "https://"))
+			path = fmt.Sprintf("git::%s%s", prefix, strings.TrimPrefix(url.String(), "https://"))
 		}
-
 	}
+
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
 	moduleData := newModuleConfig(path, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)

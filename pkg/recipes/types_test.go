@@ -256,3 +256,52 @@ func Test_GetSecretStoreID(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetURLPrefix(t *testing.T) {
+	tests := []struct {
+		desc           string
+		metadata       ResourceMetadata
+		expectedPrefix string
+		expectedErr    bool
+	}{
+		{
+			desc: "success",
+			metadata: ResourceMetadata{
+				Name:          "redis-azure",
+				ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+				EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.datastores/rediscaches/redis",
+				Parameters: map[string]any{
+					"redis_cache_name": "redis-test",
+				},
+			},
+			expectedPrefix: "https://env1-app1-redis-",
+			expectedErr:    false,
+		},
+		{
+			desc: "success",
+			metadata: ResourceMetadata{
+				Name:          "redis-azure",
+				ApplicationID: "//planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+				EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.datastores/rediscaches/redis",
+				Parameters: map[string]any{
+					"redis_cache_name": "redis-test",
+				},
+			},
+			expectedPrefix: "",
+			expectedErr:    true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			ss, err := GetURLPrefix(&tt.metadata)
+			if !tt.expectedErr {
+				require.NoError(t, err)
+				require.Equal(t, ss, tt.expectedPrefix)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}

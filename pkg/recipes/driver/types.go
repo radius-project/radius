@@ -56,6 +56,7 @@ type BaseOptions struct {
 	// Definition is the environment definition for the recipe.
 	Definition recipes.EnvironmentDefinition
 
+	// Secrets specifies the module authentication information stored in the secret store.
 	Secrets v20231001preview.SecretStoresClientListSecretsResponse
 }
 
@@ -74,6 +75,7 @@ type DeleteOptions struct {
 	OutputResources []rpv1.OutputResource
 }
 
+// getURLConfigKeyValue is used to get the key and value details of the url config.
 func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) (string, string, error) {
 	url, err := recipes.GetGitURL(templatePath)
 	if err != nil {
@@ -95,18 +97,23 @@ func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecrets
 	}
 
 	path += fmt.Sprintf("@%s", url.Hostname())
+
 	return fmt.Sprintf("url.%s.insteadOf", path), url.Hostname(), nil
 }
+
+// Add the git credentials information to .gitconfig by running
+// git config --global url<template_path_domain_with_credentails>.insteadOf <template_path_domain>
 func addSecretsToGitConfig(secrets v20231001preview.SecretStoresClientListSecretsResponse, recipeMetadata *recipes.ResourceMetadata, templatePath string) error {
 	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
 	if err != nil {
 		return err
 	}
-	env, app, resource, err := recipes.GetEnvAppResourceNames(recipeMetadata)
+
+	prefix, err := recipes.GetURLPrefix(recipeMetadata)
 	if err != nil {
 		return err
 	}
-	urlConfigValue = fmt.Sprintf("https://%s-%s-%s-%s", env, app, resource, urlConfigValue)
+	urlConfigValue = fmt.Sprintf("%s%s", prefix, urlConfigValue)
 	cmd := exec.Command("git", "config", "--global", urlConfigKey, urlConfigValue)
 	_, err = cmd.Output()
 	if err != nil {
@@ -116,6 +123,8 @@ func addSecretsToGitConfig(secrets v20231001preview.SecretStoresClientListSecret
 	return err
 }
 
+// Unset the git credentials information from .gitconfig by running
+// git config --global --unset url<template_path_domain_with_credentails>.insteadOf
 func unsetSecretsFromGitConfig(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
 	urlConfigKey, _, err := getURLConfigKeyValue(secrets, templatePath)
 	if err != nil {

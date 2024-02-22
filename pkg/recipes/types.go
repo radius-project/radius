@@ -144,15 +144,20 @@ func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error 
 
 // GetSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
 func GetSecretStoreID(envConfig Configuration, templatePath string) (string, error) {
-	url, err := GetGitURL(templatePath)
-	if err != nil {
-		return "", err
-	}
+	if strings.HasPrefix(templatePath, "git::") {
+		url, err := GetGitURL(templatePath)
+		if err != nil {
+			return "", err
+		}
 
-	return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
+		// get the secret store id associated with the git domain of the template path.
+		return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
+	}
+	return "", nil
 }
 
 // GetGitURL returns git url from generic git module source.
+// git::https://exmaple.com/project/module -> https://exmaple.com/project/module
 func GetGitURL(templatePath string) (*url.URL, error) {
 	paths := strings.Split(templatePath, "git::")
 	gitUrl := paths[len(paths)-1]
@@ -182,4 +187,13 @@ func GetEnvAppResourceNames(resourceMetadata *ResourceMetadata) (string, string,
 	}
 
 	return env.Name(), app.Name(), resource.Name(), nil
+}
+
+// GetURLPrefix returns the url prefix to be added to the template path before adding it to the .gitconfig and terraform config.
+func GetURLPrefix(resourceRecipe *ResourceMetadata) (string, error) {
+	env, app, resource, err := GetEnvAppResourceNames(resourceRecipe)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("https://%s-%s-%s-", env, app, resource), nil
 }

@@ -94,7 +94,9 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		logger.Info("simulated environment is set to true, skipping deployment")
 		return nil, nil
 	}
-	if !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+
+	// Add credential information to .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
 		addSecretsToGitConfig(opts.BaseOptions.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
 	}
 
@@ -105,7 +107,8 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		EnvRecipe:      &opts.Definition,
 	})
 
-	if !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+	// Unset credential information from .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
 		unsetError := unsetSecretsFromGitConfig(opts.BaseOptions.Secrets, opts.Definition.TemplatePath)
 		if unsetError != nil {
 			return nil, unsetError
