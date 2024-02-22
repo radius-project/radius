@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: dashboard
     app.kubernetes.io/part-of: radius
 rules:
-  - apiGroups: ['', 'api.ucp.dev']
+  - apiGroups: ['api.ucp.dev']
     resources: ['*']
     verbs: ['get', 'list']
 ---
