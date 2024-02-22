@@ -27,12 +27,12 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/store"
-	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -180,7 +180,6 @@ func fromResourceID(id string) (ns string, name string, err error) {
 // UpsertSecret creates or updates a Kubernetes secret based on the incoming request and returns the secret's location in
 // the output resource.
 func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
 	ref := newResource.Properties.Resource
 	if ref == "" && old != nil {
 		ref = old.Properties.Resource
@@ -202,13 +201,10 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		}
 	}
 
-	err = options.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
-	if err != nil && apierrors.IsAlreadyExists(err) {
-		logger.Info("Using existing namespace", "namespace", ns)
-	} else if err != nil {
+	// Create namespace if not exists.
+	err = kubeutil.PatchNamespace(ctx, options.KubeClient, ns)
+	if err != nil {
 		return nil, err
-	} else {
-		logger.Info("Created the namespace", "namespace", ns)
 	}
 
 	if name == "" {
