@@ -19,7 +19,6 @@ package configloader
 import (
 	"testing"
 
-	"github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	model "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -88,11 +87,11 @@ func TestGetConfiguration(t *testing.T) {
 					},
 				},
 				Providers: createAzureProvider(),
-				RecipeConfig: v1alpha3.RecipeConfigProperties{
-					Terraform: v1alpha3.TerraformConfigProperties{
-						Authentication: v1alpha3.AuthConfig{
-							Git: v1alpha3.GitAuthConfig{
-								PAT: map[string]v1alpha3.SecretConfig{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{
 									"dev.azure.com": {
 										Secret: "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/secretStores/secret",
 									},
@@ -136,11 +135,11 @@ func TestGetConfiguration(t *testing.T) {
 						EnvironmentNamespace: envNamespace,
 					},
 				},
-				RecipeConfig: v1alpha3.RecipeConfigProperties{
-					Terraform: v1alpha3.TerraformConfigProperties{
-						Authentication: v1alpha3.AuthConfig{
-							Git: v1alpha3.GitAuthConfig{
-								PAT: map[string]v1alpha3.SecretConfig{},
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{},
 							},
 						},
 					},

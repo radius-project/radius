@@ -18,9 +18,6 @@ package driver
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"os/exec"
 
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -73,69 +70,4 @@ type DeleteOptions struct {
 
 	// OutputResources is the list of output resources for the recipe.
 	OutputResources []rpv1.OutputResource
-}
-
-// getURLConfigKeyValue is used to get the key and value details of the url config.
-func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) (string, string, error) {
-	url, err := recipes.GetGitURL(templatePath)
-	if err != nil {
-		return "", "", err
-	}
-
-	var username, pat *string
-	path := "https://"
-	user, ok := secrets.Data["username"]
-	if ok {
-		username = user.Value
-		path += fmt.Sprintf("%s:", *username)
-	}
-
-	token, ok := secrets.Data["pat"]
-	if ok {
-		pat = token.Value
-		path += *pat
-	}
-
-	path += fmt.Sprintf("@%s", url.Hostname())
-
-	return fmt.Sprintf("url.%s.insteadOf", path), url.Hostname(), nil
-}
-
-// Add the git credentials information to .gitconfig by running
-// git config --global url<template_path_domain_with_credentails>.insteadOf <template_path_domain>
-func addSecretsToGitConfig(secrets v20231001preview.SecretStoresClientListSecretsResponse, recipeMetadata *recipes.ResourceMetadata, templatePath string) error {
-	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
-	if err != nil {
-		return err
-	}
-
-	prefix, err := recipes.GetURLPrefix(recipeMetadata)
-	if err != nil {
-		return err
-	}
-	urlConfigValue = fmt.Sprintf("%s%s", prefix, urlConfigValue)
-	cmd := exec.Command("git", "config", "--global", urlConfigKey, urlConfigValue)
-	_, err = cmd.Output()
-	if err != nil {
-		return errors.New("failed to add git config")
-	}
-
-	return err
-}
-
-// Unset the git credentials information from .gitconfig by running
-// git config --global --unset url<template_path_domain_with_credentails>.insteadOf
-func unsetSecretsFromGitConfig(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
-	urlConfigKey, _, err := getURLConfigKeyValue(secrets, templatePath)
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command("git", "config", "--global", "--unset", urlConfigKey)
-	_, err = cmd.Output()
-	if err != nil {
-		return errors.New("failed to unset git config")
-	}
-
-	return err
 }

@@ -18,7 +18,6 @@ package datamodel
 
 import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -42,7 +41,7 @@ type EnvironmentProperties struct {
 	Compute      rpv1.EnvironmentCompute                           `json:"compute,omitempty"`
 	Recipes      map[string]map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
 	Providers    Providers                                         `json:"providers,omitempty"`
-	RecipeConfig v1alpha3.RecipeConfigProperties                   `json:"recipeConfig,omitempty"`
+	RecipeConfig RecipeConfigProperties                            `json:"recipeConfig,omitempty"`
 	Extensions   []Extension                                       `json:"extensions,omitempty"`
 	Simulated    bool                                              `json:"simulated,omitempty"`
 }
