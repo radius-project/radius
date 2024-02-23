@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	install "github.com/hashicorp/hc-install"
@@ -84,6 +85,13 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	// Create Terraform config in the working directory
 	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set environment variables for the Terraform process reading input from the environment configuration.
+	// This is required for the Terraform process to read the environment variables and use them as input for the recipe deployment.
+	err = e.setEnvironmentVariables(ctx, options.EnvConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +200,24 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	return map[string]any{
 		"parameters": result.Parameters,
 	}, nil
+}
+
+// setEnvironmentVariables sets environment variables for the Terraform process reading input from the environment configuration.
+func (e executor) setEnvironmentVariables(ctx context.Context, envConfig *recipes.Configuration) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Set environment variables for the Terraform process reading input from the environment configuration.
+	// This is required for the Terraform process to read the environment variables and use them as input for the recipe deployment.
+	if envConfig != nil && envConfig.RecipeConfig.EnvVars.AdditionalProperties != nil {
+		for key, value := range envConfig.RecipeConfig.EnvVars.AdditionalProperties {
+			if err := os.Setenv(key, value); err != nil {
+				logger.Info(fmt.Sprintf("Failed to set environment variable %s: %s", key, err.Error()))
+				return fmt.Errorf("error setting environment variable %s: %w", key, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.

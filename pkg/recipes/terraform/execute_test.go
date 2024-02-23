@@ -17,10 +17,12 @@ limitations under the License.
 package terraform
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
+	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/test/testcontext"
@@ -113,4 +115,63 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 	_, err := getTerraformConfig(testcontext.New(t), workingDir, options)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file: open invalid-directory/main.tf.json: no such file or directory")
+}
+
+func TestSetEnvironmentVariables(t *testing.T) {
+	testCase := []struct {
+		name string
+		opts Options
+	}{
+		{
+			name: "set environment variables",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						EnvVars: dm.EnvironmentVariables{
+							AdditionalProperties: map[string]string{
+								"TEST_ENV_VAR1": "value1",
+								"TEST_ENV_VAR2": "value2",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "no environment variables",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{},
+				},
+			},
+		},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+
+			// Get the environment variables to set
+			envVars := tc.opts.EnvConfig.RecipeConfig.EnvVars.AdditionalProperties
+
+			// Create an executor
+			e := executor{}
+
+			// Check that the environment variables are not set
+			for key, expectedValue := range envVars {
+				err := os.Unsetenv(key)
+				require.NoError(t, err)
+
+				// Call the function to set environment variables
+				err = e.setEnvironmentVariables(ctx, tc.opts.EnvConfig)
+				require.NoError(t, err)
+
+				actualValue, ok := os.LookupEnv(key)
+				require.True(t, ok)
+				require.Equal(t, expectedValue, actualValue)
+
+				// Ensure the environment variable is unset after the test execution
+				defer os.Unsetenv(key)
+			}
+		})
+	}
 }
