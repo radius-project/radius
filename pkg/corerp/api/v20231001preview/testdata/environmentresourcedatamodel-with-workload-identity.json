@@ -34,9 +34,7 @@
         "recipeConfig": {
             "terraform": {
               "authentication": {
-                "git": {
-                  "pat": {}
-                }
+                "git": {}
               }
             }
           },

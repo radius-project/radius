@@ -170,6 +170,7 @@ func Test_GetEnvAppResourceNames(t *testing.T) {
 		})
 	}
 }
+
 func Test_GetGitURL(t *testing.T) {
 	tests := []struct {
 		desc         string
@@ -202,6 +203,7 @@ func Test_GetGitURL(t *testing.T) {
 	}
 
 }
+
 func Test_GetSecretStoreID(t *testing.T) {
 	tests := []struct {
 		desc                string

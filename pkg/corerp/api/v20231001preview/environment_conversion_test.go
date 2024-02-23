@@ -76,9 +76,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					RecipeConfig: datamodel.RecipeConfigProperties{
 						Terraform: datamodel.TerraformConfigProperties{
 							Authentication: datamodel.AuthConfig{
-								Git: datamodel.GitAuthConfig{
-									PAT: map[string]datamodel.SecretConfig{},
-								},
+								Git: datamodel.GitAuthConfig{},
 							},
 						},
 					},

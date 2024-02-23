@@ -28,7 +28,7 @@ import (
 
 // getGitURLWithSecrets returns the git URL with secrets information added.
 func getGitURLWithSecrets(secrets v20231001preview.SecretStoresClientListSecretsResponse, url *url.URL) string {
-	//accessing the secret values and creating the git url with secret information.
+	// accessing the secret values and creating the git url with secret information.
 	var username, pat *string
 	path := "https://"
 	user, ok := secrets.Data["username"]
@@ -85,7 +85,7 @@ func addSecretsToGitConfig(secrets v20231001preview.SecretStoresClientListSecret
 		return errors.New("failed to add git config")
 	}
 
-	return err
+	return nil
 }
 
 // Unset the git credentials information from .gitconfig by running
@@ -102,5 +102,5 @@ func unsetSecretsFromGitConfig(secrets v20231001preview.SecretStoresClientListSe
 		return errors.New("failed to unset git config")
 	}
 
-	return err
+	return nil
 }
