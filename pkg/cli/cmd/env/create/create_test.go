@@ -271,13 +271,13 @@ func createMocksWithInvalidResourceGroup(namespaceClient *namespace.MockInterfac
 
 func createValidateNamespaceSuccess(namespaceClient *namespace.MockInterface) {
 	namespaceClient.EXPECT().
-		ValidateNamespace(gomock.Any(), "testingenv").
+		ValidateNamespace(gomock.Any(), "testingenv", gomock.Any()).
 		Return(nil).Times(1)
 }
 
 func createValidateNamespaceError(namespaceClient *namespace.MockInterface) {
 	namespaceClient.EXPECT().
-		ValidateNamespace(gomock.Any(), gomock.Any()).
+		ValidateNamespace(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(fmt.Errorf("failed to create namespace")).Times(1)
 }
 

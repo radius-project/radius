@@ -142,7 +142,7 @@ interface Applications {
 
   update is ArmResourcePatchSync<
     ApplicationResource,
-    EnvironmentProperties,
+    ApplicationProperties,
     UCPBaseParameters<ApplicationResource>
   >;
 
