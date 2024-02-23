@@ -2740,6 +2740,16 @@
         }
       }
     },
+    "AuthConfig": {
+      "type": "object",
+      "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git.",
+      "properties": {
+        "git": {
+          "$ref": "#/definitions/GitAuthConfig",
+          "description": "Authentication information used to access private Terraform modules from Git repository sources."
+        }
+      }
+    },
     "AzureKeyVaultVolumeProperties": {
       "type": "object",
       "description": "Represents Azure Key Vault Volume properties",
@@ -3492,6 +3502,10 @@
             "type": "object"
           }
         },
+        "recipeConfig": {
+          "$ref": "#/definitions/RecipeConfigProperties",
+          "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
+        },
         "extensions": {
           "type": "array",
           "description": "The environment extension.",
@@ -3591,6 +3605,10 @@
             },
             "type": "object"
           }
+        },
+        "recipeConfig": {
+          "$ref": "#/definitions/RecipeConfigProperties",
+          "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
         },
         "extensions": {
           "type": "array",
@@ -3993,6 +4011,19 @@
         "certificateFrom": {
           "type": "string",
           "description": "The resource id for the secret containing the TLS certificate and key for the gateway."
+        }
+      }
+    },
+    "GitAuthConfig": {
+      "type": "object",
+      "description": "Authentication information used to access private Terraform modules from Git repository sources.",
+      "properties": {
+        "pat": {
+          "type": "object",
+          "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms.",
+          "additionalProperties": {
+            "$ref": "#/definitions/SecretConfig"
+          }
         }
       }
     },
@@ -4717,6 +4748,16 @@
         "name"
       ]
     },
+    "RecipeConfigProperties": {
+      "type": "object",
+      "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run.",
+      "properties": {
+        "terraform": {
+          "$ref": "#/definitions/TerraformConfigProperties",
+          "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
+        }
+      }
+    },
     "RecipeGetMetadata": {
       "type": "object",
       "description": "Represents the request body of the getmetadata action.",
@@ -4948,6 +4989,16 @@
         "kubernetes": {
           "$ref": "#/definitions/KubernetesRuntimeProperties",
           "description": "The runtime configuration properties for Kubernetes"
+        }
+      }
+    },
+    "SecretConfig": {
+      "type": "object",
+      "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified."
         }
       }
     },
@@ -5220,6 +5271,16 @@
         }
       ],
       "x-ms-discriminator-value": "tcp"
+    },
+    "TerraformConfigProperties": {
+      "type": "object",
+      "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.",
+      "properties": {
+        "authentication": {
+          "$ref": "#/definitions/AuthConfig",
+          "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git."
+        }
+      }
     },
     "TerraformRecipeProperties": {
       "type": "object",
