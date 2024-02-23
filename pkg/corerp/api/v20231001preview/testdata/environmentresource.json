@@ -16,6 +16,19 @@
         "scope": "/planes/aws/aws/accounts/140313373712/regions/us-west-2"
       }
     },
+    "recipeConfig": {
+      "terraform": {
+        "authentication": {
+          "git": {
+            "pat": {
+              "dev.azure.com":{
+                "secret":"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
+              }
+            }
+          }
+        }
+      }
+    },
     "recipes": {
       "Applications.Datastores/mongoDatabases":{
         "cosmos-recipe": {

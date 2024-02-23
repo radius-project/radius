@@ -124,6 +124,12 @@ type ApplicationResourceUpdateProperties struct {
 	Extensions []ExtensionClassification
 }
 
+// AuthConfig - Authentication information used to access private Terraform module sources. Supported module sources: Git.
+type AuthConfig struct {
+	// Authentication information used to access private Terraform modules from Git repository sources.
+	Git *GitAuthConfig
+}
+
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
 type AzureKeyVaultVolumeProperties struct {
 	// REQUIRED; Fully qualified resource ID for the application
@@ -544,6 +550,9 @@ type EnvironmentProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *Providers
 
+	// Configuration for Recipes. Defines how each type of Recipe should be configured and run.
+	RecipeConfig *RecipeConfigProperties
+
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesClassification
 
@@ -606,6 +615,9 @@ type EnvironmentResourceUpdateProperties struct {
 
 	// Cloud providers configuration for the environment.
 	Providers *ProvidersUpdate
+
+	// Configuration for Recipes. Defines how each type of Recipe should be configured and run.
+	RecipeConfig *RecipeConfigProperties
 
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesUpdateClassification
@@ -923,6 +935,12 @@ type GatewayTLS struct {
 
 	// If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
 	SSLPassthrough *bool
+}
+
+// GitAuthConfig - Authentication information used to access private Terraform modules from Git repository sources.
+type GitAuthConfig struct {
+	// Personal Access Token (PAT) configuration used to authenticate to Git platforms.
+	Pat map[string]*SecretConfig
 }
 
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
@@ -1368,6 +1386,12 @@ type Recipe struct {
 	Parameters map[string]any
 }
 
+// RecipeConfigProperties - Configuration for Recipes. Defines how each type of Recipe should be configured and run.
+type RecipeConfigProperties struct {
+	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
+	Terraform *TerraformConfigProperties
+}
+
 // RecipeGetMetadata - Represents the request body of the getmetadata action.
 type RecipeGetMetadata struct {
 	// REQUIRED; The name of the recipe registered to the environment
@@ -1485,6 +1509,14 @@ type ResourceStatus struct {
 type RuntimesProperties struct {
 	// The runtime configuration properties for Kubernetes
 	Kubernetes *KubernetesRuntimeProperties
+}
+
+// SecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
+type SecretConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret
+// store must have a secret named 'pat', containing the PAT value. A secret named
+// 'username' is optional, containing the username associated with the pat. By default no username is specified.
+	Secret *string
 }
 
 // SecretObjectProperties - Represents secret object properties
@@ -1658,6 +1690,13 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 		PeriodSeconds: t.PeriodSeconds,
 		TimeoutSeconds: t.TimeoutSeconds,
 	}
+}
+
+// TerraformConfigProperties - Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as
+// part of Recipe deployment.
+type TerraformConfigProperties struct {
+	// Authentication information used to access private Terraform module sources. Supported module sources: Git.
+	Authentication *AuthConfig
 }
 
 // TerraformRecipeProperties - Represents Terraform recipe properties.

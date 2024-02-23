@@ -268,6 +268,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 	// Download the Terraform module to the working directory.
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
+
 	if err := downloadModule(ctx, tf, options.EnvRecipe.TemplatePath); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
@@ -302,7 +303,10 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 	}
 
 	// Create Terraform configuration containing module information with the given recipe parameters.
-	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
+	tfConfig, err := config.New(ctx, localModuleName, options.EnvRecipe, options.ResourceRecipe, options.EnvConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
 	// Terraform Get command uses this config file to download module from the source specified in the config.
