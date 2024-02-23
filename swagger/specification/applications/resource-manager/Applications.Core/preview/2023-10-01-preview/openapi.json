@@ -2002,6 +2002,9 @@
           },
           "Create or Update a secret store resource with valueFrom": {
             "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
+          },
+          "Create or Update a secret store resource with global scope": {
+            "$ref": "./examples/SecretStores_CreateOrUpdate_GlobalScope.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -5110,7 +5113,6 @@
         }
       },
       "required": [
-        "application",
         "data"
       ]
     },

@@ -1545,11 +1545,11 @@ type SecretStoreListSecretsResult struct {
 
 // SecretStoreProperties - The properties of SecretStore
 type SecretStoreProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application
-	Application *string
-
 	// REQUIRED; An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties
+
+	// Fully qualified resource ID for the application
+	Application *string
 
 	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
