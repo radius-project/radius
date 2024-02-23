@@ -51,3 +51,9 @@ func CreateLabelsForDashboard() labels.Labels {
 		kubernetes.LabelPartOf: "radius",
 	}
 }
+
+func CreateLabelsForApplication(applicationName string) labels.Labels {
+	return labels.Set{
+		kubernetes.LabelRadiusApplication: applicationName,
+	}
+}

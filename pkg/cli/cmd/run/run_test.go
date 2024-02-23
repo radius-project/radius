@@ -39,6 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/testcontext"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -158,8 +159,10 @@ func Test_Run(t *testing.T) {
 	portforwardMock := portforward.NewMockInterface(ctrl)
 
 	appPortforwardOptionsChan := make(chan portforward.Options, 1)
+	appLabelSelector, err := portforward.CreateLabelSelectorForApplication("test-application")
+	require.NoError(t, err)
 	portforwardMock.EXPECT().
-		Run(gomock.Any(), gomock.Any()).
+		Run(gomock.Any(), PortForwardOptionsMatcher{LabelSelector: appLabelSelector}).
 		DoAndReturn(func(ctx context.Context, o portforward.Options) error {
 			// Capture options for verification
 			appPortforwardOptionsChan <- o
@@ -175,8 +178,10 @@ func Test_Run(t *testing.T) {
 		Times(1)
 
 	dashboardPortforwardOptionsChan := make(chan portforward.Options, 1)
+	dashboardLabelSelector, err := portforward.CreateLabelSelectorForDashboard()
+	require.NoError(t, err)
 	portforwardMock.EXPECT().
-		Run(gomock.Any(), gomock.Any()).
+		Run(gomock.Any(), PortForwardOptionsMatcher{LabelSelector: dashboardLabelSelector}).
 		DoAndReturn(func(ctx context.Context, o portforward.Options) error {
 			// Capture options for verification
 			dashboardPortforwardOptionsChan <- o
@@ -300,7 +305,7 @@ func Test_Run(t *testing.T) {
 
 	// Shut down the log stream and verify result
 	cancel()
-	err := <-resultErrChan
+	err = <-resultErrChan
 	require.NoError(t, err)
 
 	// All of the output in this command is being done by functions that we mock for testing, so this
@@ -317,4 +322,20 @@ func Test_Run(t *testing.T) {
 		},
 	}
 	require.Equal(t, expected, outputSink.Writes)
+}
+
+type PortForwardOptionsMatcher struct {
+	LabelSelector labels.Selector
+}
+
+func (p PortForwardOptionsMatcher) Matches(x interface{}) bool {
+	if s, ok := x.(portforward.Options); ok {
+		return p.LabelSelector.String() == s.LabelSelector.String()
+	}
+
+	return false
+}
+
+func (p PortForwardOptionsMatcher) String() string {
+	return fmt.Sprintf("expected label selector %s", p.LabelSelector.String())
 }
