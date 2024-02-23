@@ -19,6 +19,7 @@ package driver
 import (
 	"context"
 
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
@@ -51,6 +52,9 @@ type BaseOptions struct {
 
 	// Definition is the environment definition for the recipe.
 	Definition recipes.EnvironmentDefinition
+
+	// Secrets specifies the module authentication information stored in the secret store.
+	Secrets v20231001preview.SecretStoresClientListSecretsResponse
 }
 
 // ExecuteOptions is the options for the Execute method.

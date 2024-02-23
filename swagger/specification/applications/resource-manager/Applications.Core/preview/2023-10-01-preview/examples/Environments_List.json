@@ -29,6 +29,19 @@
                     "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
                 }
               },
+              "recipeConfig": {
+                "terraform": {
+                  "authentication": {
+                    "git": {
+                      "pat": {
+                        "dev.azure.com":{
+                          "secret":"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
               "recipes": {
                 "Applications.Datastores/mongoDatabases":{
                   "cosmos-recipe": {

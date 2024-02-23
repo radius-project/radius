@@ -18,6 +18,13 @@
                 "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
             }
         },
+        "recipeConfig": {
+            "terraform": {
+              "authentication": {
+                "git": {}
+              }
+            }
+        },
         "recipes": {
             "Applications.Datastores/mongoDatabases":{
                 "cosmos-recipe": {

@@ -65,9 +65,42 @@ model EnvironmentProperties {
   @doc("Specifies Recipes linked to the Environment.")
   recipes?: Record<Record<RecipeProperties>>;
 
+  @doc("Configuration for Recipes. Defines how each type of Recipe should be configured and run.")
+  recipeConfig?: RecipeConfigProperties;
+
   @doc("The environment extension.")
   @extension("x-ms-identifiers", [])
   extensions?: Array<Extension>;
+}
+
+@doc("Configuration for Recipes. Defines how each type of Recipe should be configured and run.")
+model RecipeConfigProperties {
+  @doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
+  terraform?: TerraformConfigProperties;
+}
+
+@doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
+model TerraformConfigProperties{
+    @doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
+  authentication?: AuthConfig;
+}
+
+@doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
+model AuthConfig{
+  @doc("Authentication information used to access private Terraform modules from Git repository sources.")
+  git?: GitAuthConfig;
+}
+
+@doc("Authentication information used to access private Terraform modules from Git repository sources.")
+model GitAuthConfig{
+  @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")  
+  pat?: Record<SecretConfig>;
+}
+
+@doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
+model SecretConfig {
+  @doc("The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified.")
+  secret?: string;
 }
 
 @doc("The Cloud providers configuration")

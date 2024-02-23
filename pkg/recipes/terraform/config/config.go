@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -38,10 +39,39 @@ const (
 
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
 // Parameters are populated from environment recipe and resource recipe metadata.
-func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
+func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration) (*TerraformConfig, error) {
+	path := envRecipe.TemplatePath
+
+	if envConfig != nil {
+		// Retrieving the secret store with associated with the template path.
+		// appends an URL prefix to the templatePath if secret store exists.
+		secretStore, err := recipes.GetSecretStoreID(*envConfig, envRecipe.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
+
+		if secretStore != "" {
+			// Retrieving the URL prefix, prefix will be in the format of https://<environment>-<application>-<resource>-
+			prefix, err := recipes.GetURLPrefix(resourceRecipe)
+			if err != nil {
+				return nil, err
+			}
+
+			url, err := recipes.GetGitURL(envRecipe.TemplatePath)
+			if err != nil {
+				return nil, err
+			}
+
+			// Adding URL prefix to the template path.
+			// Adding the prefix helps to access the the right credential information for git across environments.
+			// Updated template path will be added to the terraform config.
+			path = fmt.Sprintf("git::%s%s", prefix, strings.TrimPrefix(url.String(), "https://"))
+		}
+	}
+
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
-	moduleData := newModuleConfig(envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
+	moduleData := newModuleConfig(path, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
 
 	return &TerraformConfig{
 		Terraform: nil,
@@ -49,7 +79,7 @@ func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRe
 		Module: map[string]TFModuleConfig{
 			moduleName: moduleData,
 		},
-	}
+	}, nil
 }
 
 // getMainConfigFilePath returns the path of the Terraform main config file.
