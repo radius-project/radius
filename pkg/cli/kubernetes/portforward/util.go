@@ -19,11 +19,9 @@ package portforward
 import (
 	"context"
 
-	"github.com/radius-project/radius/pkg/kubernetes"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	k8sclient "k8s.io/client-go/kubernetes"
 )
 
@@ -82,14 +80,4 @@ func findOwningDeployment(set appsv1.ReplicaSet) string {
 	}
 
 	return ""
-}
-
-// createLabelSelectorForApplication creates a Kubernetes label selector for the given application name.
-func createLabelSelectorForApplication(applicationName string) (labels.Selector, error) {
-	applicationLabel, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{applicationName})
-	if err != nil {
-		return nil, err
-	}
-
-	return labels.NewSelector().Add(*applicationLabel), nil
 }

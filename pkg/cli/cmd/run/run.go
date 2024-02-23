@@ -30,12 +30,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/logstream"
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad run` command.
@@ -162,24 +159,15 @@ func (r *Runner) Run(ctx context.Context) error {
 		return clierrors.Message("Only kubernetes runtimes are supported.")
 	}
 
-	applicationLabel, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{r.ApplicationName})
+	applicationSelector, err := portforward.CreateLabelSelectorForApplication(r.ApplicationName)
 	if err != nil {
 		return err
 	}
 
-	applicationSelector := labels.NewSelector().Add(*applicationLabel)
-
-	dashboardNameLabel, err := labels.NewRequirement(kubernetes.LabelName, selection.Equals, []string{"dashboard"})
+	dashboardSelector, err := portforward.CreateLabelSelectorForDashboard()
 	if err != nil {
 		return err
 	}
-
-	dashboardPartOfLabel, err := labels.NewRequirement(kubernetes.LabelPartOf, selection.Equals, []string{"radius"})
-	if err != nil {
-		return err
-	}
-
-	dashboardSelector := labels.NewSelector().Add(*dashboardNameLabel).Add(*dashboardPartOfLabel)
 
 	// We start 5 background jobs and wait for them to complete.
 	group, ctx := errgroup.WithContext(ctx)

@@ -175,25 +175,11 @@ func Test_findStaleReplicaSets(t *testing.T) {
 		"rs1c": true,
 	}
 
-	labelSelector, err := createLabelSelectorForApplication("test-app")
+	labelSelector, err := CreateLabelSelectorForApplication("test-app")
 	require.NoError(t, err)
 
 	client := fake.NewSimpleClientset(objs...)
 	actual, err := findStaleReplicaSets(context.Background(), client, "default", "3", labelSelector)
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
-}
-
-func Test_createLabelSelectorForApplication(t *testing.T) {
-	// Create a label selector for the application "test-app"
-	selector, err := createLabelSelectorForApplication("test-app")
-	require.NoError(t, err)
-	require.NotNil(t, selector)
-	require.Equal(t, "radapp.io/application=test-app", selector.String())
-
-	// Create a label selector for the application "another-test-app"
-	selector, err = createLabelSelectorForApplication("another-test-app")
-	require.NoError(t, err)
-	require.NotNil(t, selector)
-	require.Equal(t, "radapp.io/application=another-test-app", selector.String())
 }
