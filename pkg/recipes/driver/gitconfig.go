@@ -19,21 +19,15 @@ package driver
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os/exec"
 
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
 )
 
-// getURLConfigKeyValue is used to get the key and value details of the url config.
-// get the secret values pat and username from secrets and create a git url in
-// the format : https://<username>:<pat>@<git>.com and adds it to gitconfig
-func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) (string, string, error) {
-	url, err := recipes.GetGitURL(templatePath)
-	if err != nil {
-		return "", "", err
-	}
-
+// getGitURLWithSecrets returns the git URL with secrets information added.
+func getGitURLWithSecrets(secrets v20231001preview.SecretStoresClientListSecretsResponse, url *url.URL) string {
 	//accessing the secret values and creating the git url with secret information.
 	var username, pat *string
 	path := "https://"
@@ -48,16 +42,32 @@ func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecrets
 		pat = token.Value
 		path += *pat
 	}
-
 	path += fmt.Sprintf("@%s", url.Hostname())
+
+	return path
+}
+
+// getURLConfigKeyValue is used to get the key and value details of the url config.
+// get the secret values pat and username from secrets and create a git url in
+// the format : https://<username>:<pat>@<git>.com and adds it to gitconfig
+func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) (string, string, error) {
+	url, err := recipes.GetGitURL(templatePath)
+	if err != nil {
+		return "", "", err
+	}
+
+	path := getGitURLWithSecrets(secrets, url)
 
 	// git config key will be in the format of url.<git url with secret details>.insteadOf
 	// and value returned will the original git url domain, e.g github.com
 	return fmt.Sprintf("url.%s.insteadOf", path), url.Hostname(), nil
 }
 
-// Add the git credentials information to .gitconfig by running
-// git config --global url<template_path_domain_with_credentails>.insteadOf <template_path_domain>
+// Updates the global Git configuration with credentials for a recipe template path and prefixes the path with environment, application, and resource name to make the entry unique to each recipe execution operation.
+//
+// Retrieves the git credentials from the provided secrets object
+// and adds them to the Git config by running
+// git config --global url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
 func addSecretsToGitConfig(secrets v20231001preview.SecretStoresClientListSecretsResponse, recipeMetadata *recipes.ResourceMetadata, templatePath string) error {
 	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
 	if err != nil {

@@ -27,7 +27,7 @@ func NewSecretStoreLoader(armOptions *arm.ClientOptions) SecretsLoader {
 	return SecretsLoader{ArmClientOptions: armOptions}
 }
 
-// SecretsLoader struct provides functionality to get secret information from secret stores.
+// SecretsLoader struct provides functionality to get secret information from Application.Core/SecretStore resource.
 type SecretsLoader struct {
 	ArmClientOptions *arm.ClientOptions
 }

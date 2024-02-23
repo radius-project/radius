@@ -25,7 +25,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -51,9 +50,8 @@ import (
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, options TerraformOptions, k8sClientSet kubernetes.Interface, armOptions *arm.ClientOptions) Driver {
+func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, options TerraformOptions, k8sClientSet kubernetes.Interface) Driver {
 	return &terraformDriver{
-		ArmClientOptions:  armOptions,
 		terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, k8sClientSet),
 		options:           options,
 	}
@@ -67,7 +65,6 @@ type TerraformOptions struct {
 
 // terraformDriver represents a driver to interact with Terraform Recipe - deploy recipe, delete resources, etc.
 type terraformDriver struct {
-	ArmClientOptions *arm.ClientOptions
 	// terraformExecutor is used to execute Terraform commands - deploy, destroy, etc.
 	terraformExecutor terraform.TerraformExecutor
 
@@ -97,7 +94,10 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 
 	// Add credential information to .gitconfig if module source is of type git.
 	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
-		addSecretsToGitConfig(opts.BaseOptions.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
+		err := addSecretsToGitConfig(opts.BaseOptions.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tfState, err := d.terraformExecutor.Deploy(ctx, terraform.Options{

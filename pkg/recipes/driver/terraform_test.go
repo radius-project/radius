@@ -41,7 +41,7 @@ func setup(t *testing.T) (terraform.MockTerraformExecutor, terraformDriver) {
 	ctrl := gomock.NewController(t)
 	tfExecutor := terraform.NewMockTerraformExecutor(ctrl)
 
-	driver := terraformDriver{nil, tfExecutor, TerraformOptions{Path: t.TempDir()}}
+	driver := terraformDriver{tfExecutor, TerraformOptions{Path: t.TempDir()}}
 
 	return *tfExecutor, driver
 }

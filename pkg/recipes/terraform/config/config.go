@@ -43,19 +43,28 @@ func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentD
 	path := envRecipe.TemplatePath
 
 	if envConfig != nil {
+		// Retrieving the secret store with associated with the template path.
+		// appends an URL prefix to the templatePath if secret store exists.
 		secretStore, err := recipes.GetSecretStoreID(*envConfig, envRecipe.TemplatePath)
 		if err != nil {
 			return nil, err
 		}
+
 		if secretStore != "" {
+			// Retrieving the URL prefix, prefix will be in the format of https://<environment>-<application>-<resource>-
 			prefix, err := recipes.GetURLPrefix(resourceRecipe)
 			if err != nil {
 				return nil, err
 			}
+
 			url, err := recipes.GetGitURL(envRecipe.TemplatePath)
 			if err != nil {
 				return nil, err
 			}
+
+			// Adding URL prefix to the template path.
+			// Adding the prefix helps to access the the right credential information for git across environments.
+			// Updated template path will be added to the terraform config.
 			path = fmt.Sprintf("git::%s%s", prefix, strings.TrimPrefix(url.String(), "https://"))
 		}
 	}

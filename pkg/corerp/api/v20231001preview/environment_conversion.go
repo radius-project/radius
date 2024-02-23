@@ -202,7 +202,6 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 						}
 						recipeConfig.Terraform.Authentication.Git.PAT = p
 					}
-
 				}
 			}
 		}

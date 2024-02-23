@@ -83,16 +83,19 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
 
-	secrets := v20231001preview.SecretStoresClientListSecretsResponse{}
+	// Retrieves the secret store id from the recipes configuration for the terraform module source of type git.
+	// secretStoreID returned will be an empty string for other types.
 	secretStore, err := recipes.GetSecretStoreID(*configuration, definition.TemplatePath)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	// Retrieves the secret values from the secret store ID provided.
+	secrets := v20231001preview.SecretStoresClientListSecretsResponse{}
 	if secretStore != "" {
 		secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %w", secretStore, definition.TemplatePath, err)
 		}
 	}
 
