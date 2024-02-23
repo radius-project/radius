@@ -54,13 +54,14 @@ func TestAddConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			tmpdir := t.TempDir()
-			config := withGlobalGitConfigFile(tmpdir, ``)
+			config, err := withGlobalGitConfigFile(tmpdir, ``)
+			require.NoError(t, err)
 			defer config()
 			_, recipeMetadata, _ := buildTestInputs()
 			if tt.desc == "invalid resource id" {
 				recipeMetadata.EnvironmentID = "//planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env"
 			}
-			err := addSecretsToGitConfig(getSecretList(), &recipeMetadata, tt.templatePath)
+			err = addSecretsToGitConfig(getSecretList(), &recipeMetadata, tt.templatePath)
 			if tt.expectedErr == nil {
 				require.NoError(t, err)
 				fileContent, err := os.ReadFile(filepath.Join(tmpdir, ".gitconfig"))
@@ -109,9 +110,10 @@ func TestUnsetConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		tmpdir := t.TempDir()
-		config := withGlobalGitConfigFile(tmpdir, tt.fileContent)
+		config, err := withGlobalGitConfigFile(tmpdir, tt.fileContent)
+		require.NoError(t, err)
 		defer config()
-		err := unsetSecretsFromGitConfig(getSecretList(), tt.templatePath)
+		err = unsetSecretsFromGitConfig(getSecretList(), tt.templatePath)
 		if tt.expectedErr == nil {
 			require.NoError(t, err)
 			contents, err := os.ReadFile(filepath.Join(tmpdir, ".gitconfig"))
@@ -124,23 +126,25 @@ func TestUnsetConfig(t *testing.T) {
 	}
 }
 
-func withGlobalGitConfigFile(tmpdir string, content string) func() {
+func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
 
 	tmpGitConfigFile := filepath.Join(tmpdir, ".gitconfig")
 
-	err:=os.WriteFile(
+	err := os.WriteFile(
 		tmpGitConfigFile,
 		[]byte(content),
 		0777,
 	)
 
-	require.NoError(t,err)
+	if err != nil {
+		return func() {}, err
+	}
 	prevGitConfigEnv := os.Getenv("HOME")
 	os.Setenv("HOME", tmpdir)
 
 	return func() {
 		os.Setenv("HOME", prevGitConfigEnv)
-	}
+	}, nil
 }
 
 func getSecretList() v20231001preview.SecretStoresClientListSecretsResponse {
