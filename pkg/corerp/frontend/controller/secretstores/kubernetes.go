@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -184,6 +185,11 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		ref = old.Properties.Resource
 	}
 
+	// resource property cannot be empty for global scoped resource.
+	if newResource.Properties.BasicResourceProperties.IsGlobalScopedResource() && ref == "" {
+		return rest.NewBadRequestResponse("$.properties.resource cannot be empty for global scoped resource."), nil
+	}
+
 	ns, name, err := fromResourceID(ref)
 	if err != nil {
 		return nil, err
@@ -193,6 +199,12 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		if ns, err = getNamespace(ctx, newResource, options); err != nil {
 			return nil, err
 		}
+	}
+
+	// Create namespace if not exists.
+	err = kubeutil.PatchNamespace(ctx, options.KubeClient, ns)
+	if err != nil {
+		return nil, err
 	}
 
 	if name == "" {
@@ -208,8 +220,9 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	ksecret := &corev1.Secret{}
 	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
 	if apierrors.IsNotFound(err) {
-		// If resource in incoming request references resource, then the resource must exist.
-		if ref != "" {
+		// If resource in incoming request references resource, then the resource must exist for a application/environment scoped resource.
+		// For global scoped resource create the kubernetes resource if not exists.
+		if ref != "" && !newResource.Properties.BasicResourceProperties.IsGlobalScopedResource() {
 			return rest.NewBadRequestResponse(fmt.Sprintf("'%s' referenced resource does not exist.", ref)), nil
 		}
 		app, _ := resources.ParseResource(newResource.Properties.Application)

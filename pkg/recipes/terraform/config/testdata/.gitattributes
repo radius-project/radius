@@ -1,0 +1,4 @@
+#test files should use lf line endings
+*.tf text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf

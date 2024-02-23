@@ -2002,6 +2002,9 @@
           },
           "Create or Update a secret store resource with valueFrom": {
             "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
+          },
+          "Create or Update a secret store resource with global scope": {
+            "$ref": "./examples/SecretStores_CreateOrUpdate_GlobalScope.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2723,31 +2726,13 @@
       "type": "object",
       "description": "The updatable properties of the ApplicationResource.",
       "properties": {
-        "compute": {
-          "$ref": "#/definitions/EnvironmentComputeUpdate",
-          "description": "The compute resource used by application environment."
-        },
-        "providers": {
-          "$ref": "#/definitions/ProvidersUpdate",
-          "description": "Cloud providers configuration for the environment."
-        },
-        "simulated": {
-          "type": "boolean",
-          "description": "Simulated environment."
-        },
-        "recipes": {
-          "type": "object",
-          "description": "Specifies Recipes linked to the Environment.",
-          "additionalProperties": {
-            "additionalProperties": {
-              "$ref": "#/definitions/RecipePropertiesUpdate"
-            },
-            "type": "object"
-          }
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "extensions": {
           "type": "array",
-          "description": "The environment extension.",
+          "description": "The application extension.",
           "items": {
             "$ref": "#/definitions/Extension"
           },
@@ -5077,7 +5062,6 @@
         }
       },
       "required": [
-        "application",
         "data"
       ]
     },

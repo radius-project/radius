@@ -62,6 +62,23 @@ model ApplicationScopedResource {
   status?: ResourceStatus;
 }
 
+@doc("Base properties of a Global-scoped resource")
+model GlobalScopedResource {
+  @doc("Fully qualified resource ID for the environment that the application is linked to")
+  environment?: string;
+
+  @doc("Fully qualified resource ID for the application")
+  application?: string;
+
+  @doc("The status of the asynchronous operation.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
+
+  @doc("Status of a resource.")
+  @visibility("read")
+  status?: ResourceStatus;
+}
+
 @doc("IdentitySettings is the external identity setting.")
 model IdentitySettings {
   @doc("kind of identity setting")

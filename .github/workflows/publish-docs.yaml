@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
     env:
-      GOVER: '^1.21'
+      GOVER: '1.21.7'
       GOPRIVATE: github.com/radius-project
     steps:
       - name: Checkout radius repository

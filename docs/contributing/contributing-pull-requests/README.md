@@ -103,3 +103,7 @@ If you are the code reviewer, it's your responsibility to follow up (politely) i
 We welcome **any contributor or community member** to engage with **any pull request** on our repository. Feel free to make suggestions for improvements and ask questions that are relevant. If you're asking questions for your learning, please make it clear that your questions are "non-blocking" for the pull request.
 
 See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md) for guidance on code reviewing.
+
+## Inactive Pull Requests
+
+Pull requests that have been inactive for 90 days will be marked with a stale label. They will automatically be closed after a subsequent 7 days of inactivity. This timeframe may be adjusted in the future based on project needs.
