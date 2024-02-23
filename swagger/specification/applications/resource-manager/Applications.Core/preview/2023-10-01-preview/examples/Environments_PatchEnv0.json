@@ -54,6 +54,19 @@
               }
             }
           },
+          "recipeConfig": {
+            "terraform": {
+              "authentication": {
+                "git": {
+                  "pat": {
+                    "dev.azure.com":{
+                      "secret":"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "extensions": [
             {
               "kind": "kubernetesMetadata",

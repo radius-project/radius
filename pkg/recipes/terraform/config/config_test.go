@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -116,6 +117,7 @@ func Test_NewConfig(t *testing.T) {
 		desc               string
 		moduleName         string
 		envdef             *recipes.EnvironmentDefinition
+		envConfig          *recipes.Configuration
 		metadata           *recipes.ResourceMetadata
 		expectedConfigFile string
 	}{
@@ -173,16 +175,49 @@ func Test_NewConfig(t *testing.T) {
 			},
 			expectedConfigFile: "testdata/module-emptytemplateversion.tf.json",
 		},
+		{
+			desc:       "git private repo module",
+			moduleName: testRecipeName,
+			envdef: &recipes.EnvironmentDefinition{
+				Name:         testRecipeName,
+				TemplatePath: "git::https://dev.azure.com/project/module",
+				Parameters:   envParams,
+			},
+			envConfig: &recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{
+									"dev.azure.com": {
+										Secret: "secret-store1",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name:          testRecipeName,
+				Parameters:    resourceParams,
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Environments/testEnv/env",
+				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Applications/testApp/app",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
+			},
+			expectedConfigFile: "testdata/module-private-git-repo.tf.json",
+		},
 	}
 
 	for _, tc := range configTests {
 		t.Run(tc.desc, func(t *testing.T) {
 			workingDir := t.TempDir()
 
-			tfconfig := New(testRecipeName, tc.envdef, tc.metadata)
+			tfconfig, err := New(context.Background(), testRecipeName, tc.envdef, tc.metadata, tc.envConfig)
+			require.NoError(t, err)
 
 			// validate generated config
-			err := tfconfig.Save(testcontext.New(t), workingDir)
+			err = tfconfig.Save(testcontext.New(t), workingDir)
 			require.NoError(t, err)
 			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
 			require.NoError(t, err)
@@ -272,9 +307,9 @@ func Test_AddRecipeContext(t *testing.T) {
 			ctx := testcontext.New(t)
 			workingDir := t.TempDir()
 
-			tfconfig := New(testRecipeName, tc.envdef, tc.metadata)
-
-			err := tfconfig.AddRecipeContext(ctx, tc.moduleName, tc.recipeContext)
+			tfconfig, err := New(context.Background(), testRecipeName, tc.envdef, tc.metadata, nil)
+			require.NoError(t, err)
+			err = tfconfig.AddRecipeContext(ctx, tc.moduleName, tc.recipeContext)
 			if tc.err == "" {
 				require.NoError(t, err)
 			} else {
@@ -416,14 +451,15 @@ func Test_AddProviders(t *testing.T) {
 			ctx := testcontext.New(t)
 			workingDir := t.TempDir()
 
-			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+			tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+			require.NoError(t, err)
 			for _, p := range tc.expectedProviders {
 				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(p, nil)
 			}
 			if tc.Err != nil {
 				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(nil, tc.Err)
 			}
-			err := tfconfig.AddProviders(ctx, tc.requiredProviders, supportedProviders, &tc.envConfig)
+			err = tfconfig.AddProviders(ctx, tc.requiredProviders, supportedProviders, &tc.envConfig)
 			if tc.Err != nil {
 				require.ErrorContains(t, err, tc.Err.Error())
 				return
@@ -476,9 +512,10 @@ func Test_AddOutputs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+			tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+			require.NoError(t, err)
 
-			err := tfconfig.AddOutputs(tc.moduleName)
+			err = tfconfig.AddOutputs(tc.moduleName)
 			if tc.expectedErr {
 				require.Error(t, err)
 				require.Nil(t, tfconfig.Output)
@@ -505,9 +542,10 @@ func Test_Save_overwrite(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
-	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+	tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+	require.NoError(t, err)
 
-	err := tfconfig.Save(ctx, testDir)
+	err = tfconfig.Save(ctx, testDir)
 	require.NoError(t, err)
 
 	err = tfconfig.Save(ctx, testDir)
@@ -517,10 +555,11 @@ func Test_Save_overwrite(t *testing.T) {
 func Test_Save_ConfigFileReadOnly(t *testing.T) {
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
-	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+	tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+	require.NoError(t, err)
 
 	// Create a test configuration file with read only permission.
-	err := os.WriteFile(getMainConfigFilePath(testDir), []byte(`{"module":{}}`), 0400)
+	err = os.WriteFile(getMainConfigFilePath(testDir), []byte(`{"module":{}}`), 0400)
 	require.NoError(t, err)
 
 	// Assert that Save returns an error.
@@ -533,9 +572,10 @@ func Test_Save_InvalidWorkingDir(t *testing.T) {
 	testDir := filepath.Join("invalid", uuid.New().String())
 	envRecipe, resourceRecipe := getTestInputs()
 
-	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+	tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+	require.NoError(t, err)
 
-	err := tfconfig.Save(testcontext.New(t), testDir)
+	err = tfconfig.Save(testcontext.New(t), testDir)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf("error creating file: open %s/main.tf.json: no such file or directory", testDir), err.Error())
 }
