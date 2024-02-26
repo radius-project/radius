@@ -9,11 +9,9 @@
     }
   },
   "provider": {
-    "azurerm": [
-      {
-        "features": {}
-      }
-    ]
+    "azurerm": {
+      "features": {}
+    }
   },
   "module": {
     "redis-azure": {

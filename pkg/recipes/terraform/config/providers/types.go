@@ -34,13 +34,37 @@ type Provider interface {
 	BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error)
 }
 
-// GetUCPSupportedTerraformProviders returns a map of Terraform provider names with configuration details stored in UCP, to provider config builder.
-// These providers represent Terraform providers for which Radius generates custom provider configurations based on credentials stored with UCP.
-// For example, the Azure subscription id is added to Azure provider config using Radius Environment's Azure provider scope.
-func GetUCPSupportedTerraformProviders(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) map[string]Provider {
+// GetUCPConfiguredTerraformProviders returns a map of Terraform provider names with configuration details stored in UCP, to provider config builder.
+// These providers represent Terraform providers for which Radius generates custom provider configurations based on credentials stored with UCP
+// and providers configured on the Radius environment. For example, the Azure subscription id is added to Azure provider config using Radius Environment's Azure provider scope.
+func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) map[string]Provider {
 	return map[string]Provider{
 		AWSProviderName:        NewAWSProvider(ucpConn, secretProvider),
 		AzureProviderName:      NewAzureProvider(ucpConn, secretProvider),
 		KubernetesProviderName: &kubernetesProvider{},
 	}
+}
+
+// GetRecipeProviderConfigs returns the Terraform provider configurations for Terraform providers
+// specified under the RecipeConfig/Terraform/Providers section under environment configuration.
+func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
+	providerConfigs := make(map[string]any)
+
+	// If the provider is not configured, or has empty configuration, skip this iteration
+	if envConfig != nil && envConfig.RecipeConfig.Terraform.Providers != nil {
+		for provider, config := range envConfig.RecipeConfig.Terraform.Providers {
+			if len(config) > 0 {
+				configList := make([]any, 0)
+
+				// Retrieve configuration details from 'AdditionalProperties' property and add to the list.
+				for _, configDetails := range config {
+					configList = append(configList, configDetails.AdditionalProperties)
+				}
+
+				providerConfigs[provider] = configList
+			}
+		}
+	}
+
+	return providerConfigs
 }

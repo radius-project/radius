@@ -113,8 +113,8 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 // by Radius to generate custom provider configurations. Save() must be called to save
 // the generated providers config. requiredProviders contains a list of provider names
 // that are required for the module.
-func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, ucpSupportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
-	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, ucpSupportedProviders, envConfig)
+func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
+	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, ucpConfiguredProviders, envConfig)
 	if err != nil {
 		return err
 	}
@@ -165,21 +165,21 @@ func newModuleConfig(moduleSource string, moduleVersion string, params ...Recipe
 	return moduleConfig
 }
 
-// getProviderConfigs generates the Terraform provider configurations for the required providers.
-func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpSupportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
-	providerConfigs := make(map[string]any)
-
+// getProviderConfigs generates the Terraform provider configurations. This is built from a combination of environment level recipe configuration for
+// providers and the provider configurations registered with UCP. The environment level recipe configuration for providers takes precedence over UCP provider configurations.
+func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
 	// Get recipe provider configurations from the environment configuration
-	providerConfigs = getRecipeProviderConfigs(ctx, envConfig)
+	providerConfigs := getRecipeProviderConfigs(ctx, envConfig)
 
 	// Build provider configurations for required providers excluding the ones already present in providerConfigs
 	for _, provider := range requiredProviders {
 		if _, ok := providerConfigs[provider]; ok {
-			// If provider is in providerConfigs, skip this iteration
+			// Environment level recipe configuration for providers will take precedence over
+			// UCP provider configuration (currently these include azurerm, aws, kubernetes providers)
 			continue
 		}
 
-		builder, ok := ucpSupportedProviders[provider]
+		builder, ok := ucpConfiguredProviders[provider]
 		if !ok {
 			// No-op: For any other provider under required_providers, Radius doesn't generate any custom configuration.
 			continue
@@ -189,7 +189,6 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpSupp
 		if err != nil {
 			return nil, err
 		}
-
 		if len(config) > 0 {
 			providerConfigs[provider] = config
 		}
@@ -198,15 +197,25 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpSupp
 	return providerConfigs, nil
 }
 
-// getRecipeProviderConfigs returns the Terraform provider configurations for Terraform providers.
+// getRecipeProviderConfigs returns the Terraform provider configurations for Terraform providers
+// specified under the RecipeConfig/Terraform/Providers section under environment configuration.
 func getRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
 	providerConfigs := make(map[string]any)
 
 	// If the provider is not configured, or has empty configuration, skip this iteration
-	if envConfig.RecipeConfig.Terraform.Providers != nil {
+	if envConfig != nil && envConfig.RecipeConfig.Terraform.Providers != nil {
 		for provider, config := range envConfig.RecipeConfig.Terraform.Providers {
 			if len(config) > 0 {
-				providerConfigs[provider] = config
+				configList := make([]any, 0)
+
+				for _, configDetails := range config {
+					//for _, additionalProperty := range configDetails.AdditionalProperties {
+					//	configList = append(configList, additionalProperty)
+					//}
+					configList = append(configList, configDetails.AdditionalProperties)
+				}
+
+				providerConfigs[provider] = configList
 			}
 		}
 	}
