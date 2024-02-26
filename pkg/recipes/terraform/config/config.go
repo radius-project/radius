@@ -169,7 +169,7 @@ func newModuleConfig(moduleSource string, moduleVersion string, params ...Recipe
 // providers and the provider configurations registered with UCP. The environment level recipe configuration for providers takes precedence over UCP provider configurations.
 func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
 	// Get recipe provider configurations from the environment configuration
-	providerConfigs := getRecipeProviderConfigs(ctx, envConfig)
+	providerConfigs := providers.GetRecipeProviderConfigs(ctx, envConfig)
 
 	// Build provider configurations for required providers excluding the ones already present in providerConfigs
 	for _, provider := range requiredProviders {
@@ -195,32 +195,6 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpConf
 	}
 
 	return providerConfigs, nil
-}
-
-// getRecipeProviderConfigs returns the Terraform provider configurations for Terraform providers
-// specified under the RecipeConfig/Terraform/Providers section under environment configuration.
-func getRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
-	providerConfigs := make(map[string]any)
-
-	// If the provider is not configured, or has empty configuration, skip this iteration
-	if envConfig != nil && envConfig.RecipeConfig.Terraform.Providers != nil {
-		for provider, config := range envConfig.RecipeConfig.Terraform.Providers {
-			if len(config) > 0 {
-				configList := make([]any, 0)
-
-				for _, configDetails := range config {
-					//for _, additionalProperty := range configDetails.AdditionalProperties {
-					//	configList = append(configList, additionalProperty)
-					//}
-					configList = append(configList, configDetails.AdditionalProperties)
-				}
-
-				providerConfigs[provider] = configList
-			}
-		}
-	}
-
-	return providerConfigs
 }
 
 // AddTerraformBackend adds backend configurations to store Terraform state file for the deployment.
