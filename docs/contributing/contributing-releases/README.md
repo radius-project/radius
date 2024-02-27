@@ -9,7 +9,24 @@
 - **RC Release**: A release candidate that we can test internally before releasing to the public which we can run validation on. If we find issues in validation, we can create additional RC releases until we feel confident in the release. Example: `v0.21.0-rc1` or `v0.21.0-rc2`
 - **Final Release**: A release that is ready to be published to the public. Example: `v0.21.0`
 - **Patch Release**: A release that contains bug fixes and patches for an already-created release. Example: `v0.21.1`
-- **Relase Branch**: A branch in the `radius-project/radius` repo that contains the release version. Example: `release/0.21`
+- **Release Branch**: A branch in the `radius-project/radius` repo that contains the release version. Example: `release/0.21`
+
+## How releases work
+
+Each release belongs to a *channel* named `<major>.<minor>`. Releases will only interact with assets from their channel. For example, the `0.1` `rad` CLI will:
+
+- Download `rad-bicep` from the `0.1` channel
+- Create an environment using the `0.1` version of the RP and environment setup script
+
+> ⚠️ Compatibility ⚠️
+At this time we do not guarantee compatibility across releases or provide a migration path. For example, the behavior of a `0.1` `rad` CLI talking to a `0.2` control plane is unspecifed. We expect the project to change too frequently to provide compatibility guarantees at this time.
+
+Conceptually we scope channels to a major+minor pair because this allows us to freely patch assets as needed without needing to change the intermediate pieces. For example pushing a `v0.1.1` tag will update the assets in the `v0.1` channel. This works as long as it is a *true* patch release and maintains compatibility.
+
+## Cadence
+
+We follow a monthly release cadence. Any contributions that have been merged through the pull-request process will be present in the next scheduled release.
+
 
 ## Release Process
 
@@ -43,13 +60,13 @@ Follow the steps below to create an RC release.
 
 1. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vx.y.z-rc1` tag. Monitor this workflow to ensure that it completes successfully. If it does, then the release candidate has been created.
 
-1. Verify that a patch release was created on Github Releases for the current patch version ([Example](https://github.com/radius-project/radius/releases)).
+1. Verify that an RC release was created on Github Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
 1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius RC release version number being released.
 
-1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius release or pre-release version number being released.
+1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius RC release version number being released.
 
-   > There is a possibility that the workflow run failed because of flaky tests. Try re-running, and if the failure is persistent, then there should be further investigation.
+   > If this workflow run fails, then there should be further investigation. Try checking the logs to see what failed and why, and checking if there is already an issue open for this failure in the samples repo. Sometimes, the workflow run will fail because of flaky tests. Try re-running, and if the failure is persistent, then file an issue in the samples repo and raise it with the maintainers.
 
 1. If these workflows pass, then the release candidate has been successfully created and validated. We can now proceed to creating the final release. If the workflows fail, then we need to fix the issues and create a new RC release.
 
@@ -120,9 +137,9 @@ Update it to reflect the new release version that we would like to release ([Exa
 
 1. Verify that a release was created on Github Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
-1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius RC release version number being released.
+1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius release version number being released.
 
-1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius release or pre-release version number being released.
+1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius release version number being released.
 
    > There is a possibility that the workflow run failed because of flaky tests. Try re-running, and if the failure is persistent, then there should be further investigation.
 
@@ -139,19 +156,3 @@ Let's say we have a bug in a release that needs to be patched for an already-cre
 1. Go through all of the steps in [Creating the final release](#creating-the-final-release), substituting in the patch version for the release version. For example, if the current release version is `0.1.0`, the patch version would be `0.1.1`.
 
 1. If breaking changes have been made to our Bicep fork, update the file `radius/.github/workflows/validate-bicep.yaml` to use the release version (eg. `v0.21`) instead of `edge` for validating the `.bicep` files in the docs and samples repositories. Also, modify the version from `env.REL_CHANNEL` to `<major>.<minor>` (eg. `0.21`) for downloading the `rad-bicep-corerp`.
-
-## How releases work
-
-Each release belongs to a *channel* named `<major>.<minor>`. Releases will only interact with assets from their channel. For example, the `0.1` `rad` CLI will:
-
-- Download `rad-bicep` from the `0.1` channel
-- Create an environment using the `0.1` version of the RP and environment setup script
-
-> ⚠️ Compatibility ⚠️
-At this time we do not guarantee compatibility across releases or provide a migration path. For example, the behavior of a `0.1` `rad` CLI talking to a `0.2` control plane is unspecifed. We expect the project to change too frequently to provide compatibility guarantees at this time.
-
-Conceptually we scope channels to a major+minor pair because this allows us to freely patch assets as needed without needing to change the intermediate pieces. For example pushing a `v0.1.1` tag will update the assets in the `v0.1` channel. This works as long as it is a *true* patch release and maintains compatibility.
-
-## Cadence
-
-We follow a monthly release cadence. Any contributions that have been merged through the pull-request process will be present in the next scheduled release.
