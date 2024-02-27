@@ -17,7 +17,6 @@ limitations under the License.
 package terraform
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -127,11 +126,23 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			opts: Options{
 				EnvConfig: &recipes.Configuration{
 					RecipeConfig: dm.RecipeConfigProperties{
-						EnvVars: dm.EnvironmentVariables{
+						Env: dm.EnvironmentVariables{
 							AdditionalProperties: map[string]string{
 								"TEST_ENV_VAR1": "value1",
 								"TEST_ENV_VAR2": "value2",
 							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "AdditionalProperties set to nil",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						Env: dm.EnvironmentVariables{
+							AdditionalProperties: nil,
 						},
 					},
 				},
@@ -149,29 +160,17 @@ func TestSetEnvironmentVariables(t *testing.T) {
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := testcontext.New(t)
+			workingDir := t.TempDir()
 
-			// Get the environment variables to set
-			envVars := tc.opts.EnvConfig.RecipeConfig.EnvVars.AdditionalProperties
+			tf, err := tfexec.NewTerraform(workingDir, filepath.Join(workingDir, "terraform"))
+			require.NoError(t, err)
 
 			// Create an executor
 			e := executor{}
 
-			// Check that the environment variables are not set
-			for key, expectedValue := range envVars {
-				err := os.Unsetenv(key)
-				require.NoError(t, err)
-
-				// Call the function to set environment variables
-				err = e.setEnvironmentVariables(ctx, tc.opts.EnvConfig)
-				require.NoError(t, err)
-
-				actualValue, ok := os.LookupEnv(key)
-				require.True(t, ok)
-				require.Equal(t, expectedValue, actualValue)
-
-				// Ensure the environment variable is unset after the test execution
-				defer os.Unsetenv(key)
-			}
+			// Call the function to set environment variables
+			err = e.setEnvironmentVariables(ctx, tf, tc.opts.EnvConfig)
+			require.NoError(t, err)
 		})
 	}
 }

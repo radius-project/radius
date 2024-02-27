@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	install "github.com/hashicorp/hc-install"
@@ -91,7 +90,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	// Set environment variables for the Terraform process reading input from the environment configuration.
 	// This is required for the Terraform process to read the environment variables and use them as input for the recipe deployment.
-	err = e.setEnvironmentVariables(ctx, options.EnvConfig)
+	err = e.setEnvironmentVariables(ctx, tf, options.EnvConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -203,17 +202,19 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 }
 
 // setEnvironmentVariables sets environment variables for the Terraform process reading input from the environment configuration.
-func (e executor) setEnvironmentVariables(ctx context.Context, envConfig *recipes.Configuration) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
+func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, envConfig *recipes.Configuration) error {
 	// Set environment variables for the Terraform process reading input from the environment configuration.
 	// This is required for the Terraform process to read the environment variables and use them as input for the recipe deployment.
-	if envConfig != nil && envConfig.RecipeConfig.EnvVars.AdditionalProperties != nil {
-		for key, value := range envConfig.RecipeConfig.EnvVars.AdditionalProperties {
-			if err := os.Setenv(key, value); err != nil {
-				logger.Info(fmt.Sprintf("Failed to set environment variable %s: %s", key, err.Error()))
-				return fmt.Errorf("error setting environment variable %s: %w", key, err)
-			}
+	if envConfig != nil && envConfig.RecipeConfig.Env.AdditionalProperties != nil {
+		envVars := map[string]string{}
+
+		for key, value := range envConfig.RecipeConfig.Env.AdditionalProperties {
+			strValue := fmt.Sprintf("%v", value)
+			envVars[key] = strValue
+		}
+
+		if err := tf.SetEnv(envVars); err != nil {
+			return fmt.Errorf("failed to set environment variables: %w", err)
 		}
 	}
 
