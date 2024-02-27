@@ -39,7 +39,10 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/testcontext"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -158,6 +161,9 @@ func Test_Run(t *testing.T) {
 
 	portforwardMock := portforward.NewMockInterface(ctrl)
 
+	dashboardDeployment := createDashboardDeploymentObject()
+	kubernetesClientMock := fake.NewSimpleClientset(dashboardDeployment)
+
 	appPortforwardOptionsChan := make(chan portforward.Options, 1)
 	appLabelSelector, err := portforward.CreateLabelSelectorForApplication("test-application")
 	require.NoError(t, err)
@@ -266,8 +272,9 @@ func Test_Run(t *testing.T) {
 			Workspace:       workspace,
 			Providers:       providers,
 		},
-		Logstream:   logstreamMock,
-		Portforward: portforwardMock,
+		Logstream:        logstreamMock,
+		Portforward:      portforwardMock,
+		KubernetesClient: kubernetesClientMock,
 	}
 
 	// We'll run the actual command in the background, and do cancellation and verification in
@@ -338,4 +345,17 @@ func (p PortForwardOptionsMatcher) Matches(x interface{}) bool {
 
 func (p PortForwardOptionsMatcher) String() string {
 	return fmt.Sprintf("expected label selector %s", p.LabelSelector.String())
+}
+
+func createDashboardDeploymentObject() *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dashboard",
+			Namespace: "radius-system",
+			Labels: map[string]string{
+				"app.kubernetes.io/name":    "dashboard",
+				"app.kubernetes.io/part-of": "radius",
+			},
+		},
+	}
 }

@@ -36,6 +36,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	k8sclient "k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -92,8 +93,9 @@ rad run app.bicep --parameters @myfile.json --parameters version=latest
 // Runner is the runner implementation for the `rad run` command.
 type Runner struct {
 	deploycmd.Runner
-	Logstream   logstream.Interface
-	Portforward portforward.Interface
+	Logstream        logstream.Interface
+	Portforward      portforward.Interface
+	KubernetesClient k8sclient.Interface
 }
 
 // NewRunner creates a new instance of the `rad run` runner.
@@ -199,7 +201,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		})
 	})
 
-	if shouldPortforwardDashboard(ctx, kubeContext, dashboardSelector) {
+	if dashboardDeploymentExists(ctx, r.KubernetesClient, kubeContext, dashboardSelector) {
 		// Display port-forward messages for dashboard
 		dashboardStatusChan := make(chan portforward.StatusMessage)
 		group.Go(func() error {
@@ -257,10 +259,20 @@ func (r *Runner) displayPortforwardMessages(status <-chan portforward.StatusMess
 	}
 }
 
-func shouldPortforwardDashboard(ctx context.Context, kubeContext string, dashboardLabelSelector labels.Selector) bool {
-	client, _, err := kubernetes.NewClientset(kubeContext)
-	if err != nil {
-		return false
+// dashboardDeploymentExists checks if a dashboard deployment exists in the given Kubernetes context.
+func dashboardDeploymentExists(ctx context.Context, kubernetesClient k8sclient.Interface, kubeContext string, dashboardLabelSelector labels.Selector) bool {
+	var client k8sclient.Interface
+	var err error
+
+	// If a kubernetes client is provided, use it. Otherwise, create a new client.
+	// This helps with testing.
+	if kubernetesClient != nil {
+		client = kubernetesClient
+	} else {
+		client, _, err = kubernetes.NewClientset(kubeContext)
+		if err != nil {
+			return false
+		}
 	}
 
 	deployments := client.AppsV1().Deployments(radiusSystemNamespace)
