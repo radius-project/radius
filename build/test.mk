@@ -85,8 +85,10 @@ test-functional-daprrp: ## Runs Dapr RP functional tests
 test-functional-datastoresrp: ## Runs Datastores RP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/datastoresrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
-test-functional-samples: ## Runs Samples functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+test-functional-samples: test-functional-samples-noncloud
+
+test-functional-samples-noncloud: ## Runs Samples functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/samples/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin/rad-bicep" ./build/validate-bicep.sh
