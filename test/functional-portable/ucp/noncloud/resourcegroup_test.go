@@ -29,11 +29,12 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/resourcegroups"
+	ucptest "github.com/radius-project/radius/test/functional-portable/ucp"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_ResourceGroup_Operations(t *testing.T) {
-	test := NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	test := ucptest.NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Create resource groups
 		rgID := "/planes/radius/local/resourcegroups/test-RG"
 		apiVersion := v20231001preview.Version
@@ -84,7 +85,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 		require.NoError(t, err, "failed to marshal resource group")
 	}
 
-	createRequest, err := NewUCPRequest(
+	createRequest, err := ucptest.NewUCPRequest(
 		http.MethodPut,
 		url,
 		bytes.NewBuffer(b))
@@ -98,7 +99,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 }
 
 func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) v20231001preview.ResourceGroupResourceListResult {
-	listRgsRequest, err := NewUCPRequest(
+	listRgsRequest, err := ucptest.NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -122,7 +123,7 @@ func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string
 }
 
 func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) (v20231001preview.ResourceGroupResource, int) {
-	getRgRequest, err := NewUCPRequest(
+	getRgRequest, err := ucptest.NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -145,7 +146,7 @@ func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) 
 }
 
 func deleteResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) int {
-	deleteRgRequest, err := NewUCPRequest(
+	deleteRgRequest, err := ucptest.NewUCPRequest(
 		http.MethodDelete,
 		url,
 		nil,
