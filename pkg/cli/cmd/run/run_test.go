@@ -331,6 +331,176 @@ func Test_Run(t *testing.T) {
 	require.Equal(t, expected, outputSink.Writes)
 }
 
+func Test_Run_NoDashboard(t *testing.T) {
+	// This is the same test as above, but without expecting the dashboard portforward to be started.
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	bicep := bicep.NewMockInterface(ctrl)
+	bicep.EXPECT().
+		PrepareTemplate("app.bicep").
+		Return(map[string]any{}, nil).
+		Times(1)
+
+	deployOptionsChan := make(chan deploy.Options, 1)
+	deployMock := deploy.NewMockInterface(ctrl)
+	deployMock.EXPECT().
+		DeployWithProgress(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
+			// Capture options for verification
+			deployOptionsChan <- o
+			close(deployOptionsChan)
+
+			return clients.DeploymentResult{}, nil
+		}).
+		Times(1)
+
+	portforwardMock := portforward.NewMockInterface(ctrl)
+
+	kubernetesClientMock := fake.NewSimpleClientset()
+
+	appPortforwardOptionsChan := make(chan portforward.Options, 1)
+	appLabelSelector, err := portforward.CreateLabelSelectorForApplication("test-application")
+	require.NoError(t, err)
+	portforwardMock.EXPECT().
+		Run(gomock.Any(), PortForwardOptionsMatcher{LabelSelector: appLabelSelector}).
+		DoAndReturn(func(ctx context.Context, o portforward.Options) error {
+			// Capture options for verification
+			appPortforwardOptionsChan <- o
+			close(appPortforwardOptionsChan)
+
+			// Run is expected to close this channel
+			close(o.StatusChan)
+
+			// Wait for context to be canceled
+			<-ctx.Done()
+			return ctx.Err()
+		}).
+		Times(1)
+
+	logstreamOptionsChan := make(chan logstream.Options, 1)
+	logstreamMock := logstream.NewMockInterface(ctrl)
+	logstreamMock.EXPECT().
+		Stream(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, o logstream.Options) error {
+			// Capture options for verification
+			logstreamOptionsChan <- o
+			close(logstreamOptionsChan)
+
+			// Wait for context to be canceled
+			<-ctx.Done()
+			return ctx.Err()
+		}).
+		Times(1)
+
+	app := v20231001preview.ApplicationResource{
+		Properties: &v20231001preview.ApplicationProperties{
+			Status: &v20231001preview.ResourceStatus{
+				Compute: &v20231001preview.KubernetesCompute{
+					Kind:      to.Ptr("kubernetes"),
+					Namespace: to.Ptr("test-namespace-app"),
+				},
+			},
+		},
+	}
+
+	clientMock := clients.NewMockApplicationsManagementClient(ctrl)
+	clientMock.EXPECT().
+		GetEnvDetails(gomock.Any(), "test-environment").
+		Return(v20231001preview.EnvironmentResource{}, nil).
+		Times(1)
+	clientMock.EXPECT().
+		CreateApplicationIfNotFound(gomock.Any(), "test-application", gomock.Any()).
+		Return(nil).
+		Times(1)
+	clientMock.EXPECT().
+		ShowApplication(gomock.Any(), "test-application").
+		Return(app, nil).
+		Times(1)
+
+	workspace := &workspaces.Workspace{
+		Connection: map[string]any{
+			"kind":    "kubernetes",
+			"context": "kind-kind",
+		},
+		Name: "kind-kind",
+	}
+	outputSink := &output.MockOutput{}
+	providers := &clients.Providers{
+		Radius: &clients.RadiusProvider{
+			EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			ApplicationID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s/applications/test-application", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+		},
+	}
+	runner := &Runner{
+		Runner: deploycmd.Runner{
+			Bicep:  bicep,
+			Deploy: deployMock,
+			Output: outputSink,
+			ConnectionFactory: &connections.MockFactory{
+				ApplicationsManagementClient: clientMock,
+			},
+
+			FilePath:        "app.bicep",
+			ApplicationName: "test-application",
+			EnvironmentName: radcli.TestEnvironmentName,
+			Parameters:      map[string]map[string]any{},
+			Workspace:       workspace,
+			Providers:       providers,
+		},
+		Logstream:        logstreamMock,
+		Portforward:      portforwardMock,
+		KubernetesClient: kubernetesClientMock,
+	}
+
+	// We'll run the actual command in the background, and do cancellation and verification in
+	// the foreground.
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	resultErrChan := make(chan error, 1)
+	go func() {
+		resultErrChan <- runner.Run(ctx)
+	}()
+
+	deployOptions := <-deployOptionsChan
+	// Deployment is scoped to app and env
+	require.Equal(t, runner.Providers.Radius.ApplicationID, deployOptions.Providers.Radius.ApplicationID)
+	require.Equal(t, runner.Providers.Radius.EnvironmentID, deployOptions.Providers.Radius.EnvironmentID)
+
+	logStreamOptions := <-logstreamOptionsChan
+	// Logstream is scoped to application and namespace
+	require.Equal(t, runner.ApplicationName, logStreamOptions.ApplicationName)
+	require.Equal(t, "kind-kind", logStreamOptions.KubeContext)
+	require.Equal(t, "test-namespace-app", logStreamOptions.Namespace)
+
+	appPortforwardOptions := <-appPortforwardOptionsChan
+	// Application Portforward is scoped to application and app namespace
+	require.Equal(t, "kind-kind", appPortforwardOptions.KubeContext)
+	require.Equal(t, "test-namespace-app", appPortforwardOptions.Namespace)
+	require.Equal(t, "radapp.io/application=test-application", appPortforwardOptions.LabelSelector.String())
+
+	// Shut down the log stream and verify result
+	cancel()
+	err = <-resultErrChan
+	require.NoError(t, err)
+
+	// All of the output in this command is being done by functions that we mock for testing, so this
+	// is always empty except for some boilerplate.
+	expected := []any{
+		output.LogOutput{
+			Format: "",
+		},
+		output.LogOutput{
+			Format: "Starting log stream...",
+		},
+		output.LogOutput{
+			Format: "",
+		},
+	}
+	require.Equal(t, expected, outputSink.Writes)
+}
+
 type PortForwardOptionsMatcher struct {
 	LabelSelector labels.Selector
 }
