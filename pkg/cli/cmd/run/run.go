@@ -261,21 +261,17 @@ func (r *Runner) displayPortforwardMessages(status <-chan portforward.StatusMess
 
 // dashboardDeploymentExists checks if a dashboard deployment exists in the given Kubernetes context.
 func dashboardDeploymentExists(ctx context.Context, kubernetesClient k8sclient.Interface, kubeContext string, dashboardLabelSelector labels.Selector) bool {
-	var client k8sclient.Interface
-	var err error
-
 	// If a kubernetes client is provided, use it. Otherwise, create a new client.
 	// This helps with testing.
-	if kubernetesClient != nil {
-		client = kubernetesClient
-	} else {
-		client, _, err = kubernetes.NewClientset(kubeContext)
+	if kubernetesClient == nil {
+		var err error
+		kubernetesClient, _, err = kubernetes.NewClientset(kubeContext)
 		if err != nil {
 			return false
 		}
 	}
 
-	deployments := client.AppsV1().Deployments(radiusSystemNamespace)
+	deployments := kubernetesClient.AppsV1().Deployments(radiusSystemNamespace)
 	listOptions := metav1.ListOptions{LabelSelector: dashboardLabelSelector.String()}
 
 	// List all deployments that match the label selector
