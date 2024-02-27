@@ -214,3 +214,7 @@ jobs:
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh recipes ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
+      - name: Release radius-project/dashboard version ${{ steps.get-version.outputs.release-version }}
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-create-tag-and-branch.sh dashboard ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
