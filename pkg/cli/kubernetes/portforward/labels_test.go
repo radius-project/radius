@@ -50,27 +50,3 @@ func Test_CreateLabelSelectorForDashboard(t *testing.T) {
 
 	require.NotEqual(t, "app.kubernetes.io/part-of=radius,app.kubernetes.io/name=dashboard", selector.String())
 }
-
-func Test_CreateLabelsForDashboard(t *testing.T) {
-	// Create labels for the dashboard
-	labels := CreateLabelsForDashboard()
-	require.NotNil(t, labels)
-	require.True(t, labels.Has("app.kubernetes.io/name"))
-	require.True(t, labels.Has("app.kubernetes.io/part-of"))
-	require.Equal(t, "dashboard", labels.Get("app.kubernetes.io/name"))
-	require.Equal(t, "radius", labels.Get("app.kubernetes.io/part-of"))
-}
-
-func Test_CreateLabelsForApplication(t *testing.T) {
-	// Create labels for the application "test-app"
-	labels := CreateLabelsForApplication("test-app")
-	require.NotNil(t, labels)
-	require.True(t, labels.Has("radapp.io/application"))
-	require.Equal(t, "test-app", labels.Get("radapp.io/application"))
-
-	// Create labels for the application "another-test-app"
-	labels = CreateLabelsForApplication("another-test-app")
-	require.NotNil(t, labels)
-	require.True(t, labels.Has("radapp.io/application"))
-	require.Equal(t, "another-test-app", labels.Get("radapp.io/application"))
-}

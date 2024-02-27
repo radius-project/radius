@@ -18,7 +18,6 @@ package portforward
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -60,19 +59,6 @@ func (aw *applicationWatcher) Run(ctx context.Context) error {
 
 	deployments := aw.Options.Client.AppsV1().Deployments(aw.Options.Namespace)
 	listOptions := metav1.ListOptions{LabelSelector: aw.Options.LabelSelector.String()}
-
-	// List all deployments that match the label selector
-	labelledDeployments, err := deployments.List(ctx, listOptions)
-	if err != nil {
-		return fmt.Errorf("failed to list deployments: %w", err)
-	}
-
-	if len(labelledDeployments.Items) == 0 {
-		dashboardLabels := CreateLabelsForDashboard()
-		if aw.Options.LabelSelector.Matches(dashboardLabels) {
-			fmt.Println("Radius Dashboard not found, please see https://docs.radapp.io/guides/tooling/dashboard for more information")
-		}
-	}
 
 	// Starting a watch will populate the current state as well as give us updates
 	//

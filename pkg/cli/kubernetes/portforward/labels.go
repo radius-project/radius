@@ -44,16 +44,3 @@ func CreateLabelSelectorForDashboard() (labels.Selector, error) {
 
 	return labels.NewSelector().Add(*dashboardNameLabel).Add(*dashboardPartOfLabel), nil
 }
-
-func CreateLabelsForDashboard() labels.Labels {
-	return labels.Set{
-		kubernetes.LabelName:   "dashboard",
-		kubernetes.LabelPartOf: "radius",
-	}
-}
-
-func CreateLabelsForApplication(applicationName string) labels.Labels {
-	return labels.Set{
-		kubernetes.LabelRadiusApplication: applicationName,
-	}
-}

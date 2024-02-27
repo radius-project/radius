@@ -27,12 +27,21 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	deploycmd "github.com/radius-project/radius/pkg/cli/cmd/deploy"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/kubernetes/logstream"
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+)
+
+const (
+	radiusSystemNamespace = "radius-system"
+	dashboardLabelName    = "dashboard"
+	dashboardLabelPartOf  = "radius"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad run` command.
@@ -169,24 +178,17 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// We start 5 background jobs and wait for them to complete.
+	// We start some background jobs and wait for them to complete.
 	group, ctx := errgroup.WithContext(ctx)
 
-	// 1. Display port-forward messages for application
+	// Display port-forward messages for application
 	applicationStatusChan := make(chan portforward.StatusMessage)
 	group.Go(func() error {
 		r.displayPortforwardMessages(applicationStatusChan)
 		return nil
 	})
 
-	// 2. Display port-forward messages for dashboard
-	dashboardStatusChan := make(chan portforward.StatusMessage)
-	group.Go(func() error {
-		r.displayPortforwardMessages(dashboardStatusChan)
-		return nil
-	})
-
-	// 3. Port-forward application
+	// Port-forward application
 	group.Go(func() error {
 		return r.Portforward.Run(ctx, portforward.Options{
 			LabelSelector: applicationSelector,
@@ -197,18 +199,29 @@ func (r *Runner) Run(ctx context.Context) error {
 		})
 	})
 
-	// 4. Port-forward dashboard
-	group.Go(func() error {
-		return r.Portforward.Run(ctx, portforward.Options{
-			LabelSelector: dashboardSelector,
-			Namespace:     "radius-system",
-			KubeContext:   kubeContext,
-			StatusChan:    dashboardStatusChan,
-			Out:           os.Stdout,
+	if shouldPortforwardDashboard(ctx, kubeContext, dashboardSelector) {
+		// Display port-forward messages for dashboard
+		dashboardStatusChan := make(chan portforward.StatusMessage)
+		group.Go(func() error {
+			r.displayPortforwardMessages(dashboardStatusChan)
+			return nil
 		})
-	})
 
-	// 5. Stream logs
+		// Port-forward dashboard
+		group.Go(func() error {
+			return r.Portforward.Run(ctx, portforward.Options{
+				LabelSelector: dashboardSelector,
+				Namespace:     radiusSystemNamespace,
+				KubeContext:   kubeContext,
+				StatusChan:    dashboardStatusChan,
+				Out:           os.Stdout,
+			})
+		})
+	} else {
+		fmt.Println("Radius Dashboard not found, please see https://docs.radapp.io/guides/tooling/dashboard for more information")
+	}
+
+	// Stream logs
 	group.Go(func() error {
 		return r.Logstream.Stream(ctx, logstream.Options{
 			ApplicationName: r.ApplicationName,
@@ -242,4 +255,24 @@ func (r *Runner) displayPortforwardMessages(status <-chan portforward.StatusMess
 		// update the tests if you make changes here.
 		fmt.Printf("%s %s [port-forward] %s from localhost:%d -> ::%d\n", regular.Sprint(message.ReplicaName), bold.Sprint(message.ContainerName), message.Kind, message.LocalPort, message.RemotePort)
 	}
+}
+
+func shouldPortforwardDashboard(ctx context.Context, kubeContext string, dashboardLabelSelector labels.Selector) bool {
+	client, _, err := kubernetes.NewClientset(kubeContext)
+	if err != nil {
+		return false
+	}
+
+	deployments := client.AppsV1().Deployments(radiusSystemNamespace)
+	listOptions := metav1.ListOptions{LabelSelector: dashboardLabelSelector.String()}
+
+	// List all deployments that match the label selector
+	labelledDeployments, err := deployments.List(ctx, listOptions)
+	if err != nil {
+		return false
+	}
+
+	// If there are any deployments that match the dashboard label selector, return true.
+	// Otherwise, return false.
+	return len(labelledDeployments.Items) != 0
 }
