@@ -162,7 +162,7 @@ func Test_Run(t *testing.T) {
 	portforwardMock := portforward.NewMockInterface(ctrl)
 
 	dashboardDeployment := createDashboardDeploymentObject()
-	kubernetesClientMock := fake.NewSimpleClientset(dashboardDeployment)
+	fakeKubernetesClient := fake.NewSimpleClientset(dashboardDeployment)
 
 	appPortforwardOptionsChan := make(chan portforward.Options, 1)
 	appLabelSelector, err := portforward.CreateLabelSelectorForApplication("test-application")
@@ -274,7 +274,7 @@ func Test_Run(t *testing.T) {
 		},
 		Logstream:        logstreamMock,
 		Portforward:      portforwardMock,
-		KubernetesClient: kubernetesClientMock,
+		kubernetesClient: fakeKubernetesClient,
 	}
 
 	// We'll run the actual command in the background, and do cancellation and verification in
@@ -357,7 +357,7 @@ func Test_Run_NoDashboard(t *testing.T) {
 
 	portforwardMock := portforward.NewMockInterface(ctrl)
 
-	kubernetesClientMock := fake.NewSimpleClientset()
+	fakeKubernetesClient := fake.NewSimpleClientset()
 
 	appPortforwardOptionsChan := make(chan portforward.Options, 1)
 	appLabelSelector, err := portforward.CreateLabelSelectorForApplication("test-application")
@@ -450,7 +450,7 @@ func Test_Run_NoDashboard(t *testing.T) {
 		},
 		Logstream:        logstreamMock,
 		Portforward:      portforwardMock,
-		KubernetesClient: kubernetesClientMock,
+		kubernetesClient: fakeKubernetesClient,
 	}
 
 	// We'll run the actual command in the background, and do cancellation and verification in

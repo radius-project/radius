@@ -95,7 +95,7 @@ type Runner struct {
 	deploycmd.Runner
 	Logstream        logstream.Interface
 	Portforward      portforward.Interface
-	KubernetesClient k8sclient.Interface
+	kubernetesClient k8sclient.Interface
 }
 
 // NewRunner creates a new instance of the `rad run` runner.
@@ -180,6 +180,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	if r.kubernetesClient == nil {
+		r.kubernetesClient, _, err = kubernetes.NewClientset(kubeContext)
+		if err != nil {
+			return err
+		}
+	}
+
 	// We start some background jobs and wait for them to complete.
 	group, ctx := errgroup.WithContext(ctx)
 
@@ -198,10 +205,11 @@ func (r *Runner) Run(ctx context.Context) error {
 			KubeContext:   kubeContext,
 			StatusChan:    applicationStatusChan,
 			Out:           os.Stdout,
+			Client:        r.kubernetesClient,
 		})
 	})
 
-	if dashboardDeploymentExists(ctx, r.KubernetesClient, kubeContext, dashboardSelector) {
+	if dashboardDeploymentExists(ctx, r.kubernetesClient, kubeContext, dashboardSelector) {
 		// Display port-forward messages for dashboard
 		dashboardStatusChan := make(chan portforward.StatusMessage)
 		group.Go(func() error {
@@ -217,6 +225,7 @@ func (r *Runner) Run(ctx context.Context) error {
 				KubeContext:   kubeContext,
 				StatusChan:    dashboardStatusChan,
 				Out:           os.Stdout,
+				Client:        r.kubernetesClient,
 			})
 		})
 	} else {
@@ -261,15 +270,6 @@ func (r *Runner) displayPortforwardMessages(status <-chan portforward.StatusMess
 
 // dashboardDeploymentExists checks if a dashboard deployment exists in the given Kubernetes context.
 func dashboardDeploymentExists(ctx context.Context, kubernetesClient k8sclient.Interface, kubeContext string, dashboardLabelSelector labels.Selector) bool {
-	// If a kubernetes client is provided, use it. Otherwise, create a new client.
-	// This helps with testing.
-	if kubernetesClient == nil {
-		var err error
-		kubernetesClient, _, err = kubernetes.NewClientset(kubeContext)
-		if err != nil {
-			return false
-		}
-	}
 
 	deployments := kubernetesClient.AppsV1().Deployments(radiusSystemNamespace)
 	listOptions := metav1.ListOptions{LabelSelector: dashboardLabelSelector.String()}
