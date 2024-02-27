@@ -34,28 +34,42 @@
         "authentication": {
           "git": {
             "pat": {
-              "dev.azure.com":{
-                "secret":"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
+              "dev.azure.com": {
+                "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
               }
             }
           }
+        },
+        "providers": {
+          "azurerm": [
+            {
+              "additionalProperties": {
+                "subscriptionId": "00000000-0000-0000-0000-000000000000"
+              }
+            }
+          ]
+        }
+      },
+      "env": {
+        "additionalProperties": {
+          "myEnvVar": "myEnvValue"
         }
       }
     },
     "recipes": {
-      "Applications.Datastores/mongoDatabases":{
+      "Applications.Datastores/mongoDatabases": {
         "cosmos-recipe": {
           "templateKind": "bicep",
           "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb",
-          "parameters" : {
+          "parameters": {
             "throughput": 400
           },
-          "plainHttp":true
+          "plainHttp": true
         },
         "terraform-recipe": {
           "templateKind": "terraform",
           "templatePath": "Azure/cosmosdb/azurerm",
-          "templateVersion":"1.1.0"
+          "templateVersion": "1.1.0"
         }
       }
     },
