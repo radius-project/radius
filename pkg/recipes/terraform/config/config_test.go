@@ -509,6 +509,33 @@ func Test_AddProviders(t *testing.T) {
 			expectedConfigFile: "testdata/providers-overridereqproviders.tf.json",
 		},
 		{
+			desc:                           "recipe providers in env config setup but nil",
+			expectedUCPConfiguredProviders: nil,
+			Err:                            nil,
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"azurerm": {
+								{
+									AdditionalProperties: nil,
+								},
+								{
+									AdditionalProperties: map[string]any{
+										"alias":          "az-paymentservice",
+										"subscriptionid": 45678,
+										"tenant_id":      "gfhf45345-5d73-gh34-wh84",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			requiredProviders:  nil,
+			expectedConfigFile: "testdata/providers-envrecipedefaultconfig.tf.json",
+		},
+		{
 			desc:                           "recipe providers not populated",
 			expectedUCPConfiguredProviders: nil,
 			Err:                            nil,
