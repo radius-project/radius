@@ -37,6 +37,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8sclient "k8s.io/client-go/kubernetes"
+	k8srest "k8s.io/client-go/rest"
 )
 
 const (
@@ -93,9 +94,10 @@ rad run app.bicep --parameters @myfile.json --parameters version=latest
 // Runner is the runner implementation for the `rad run` command.
 type Runner struct {
 	deploycmd.Runner
-	Logstream        logstream.Interface
-	Portforward      portforward.Interface
-	kubernetesClient k8sclient.Interface
+	Logstream            logstream.Interface
+	Portforward          portforward.Interface
+	kubernetesClient     k8sclient.Interface
+	kubernetesRESTConfig *k8srest.Config
 }
 
 // NewRunner creates a new instance of the `rad run` runner.
@@ -180,11 +182,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	if r.kubernetesClient == nil {
-		r.kubernetesClient, _, err = kubernetes.NewClientset(kubeContext)
+	if r.kubernetesClient == nil && r.kubernetesRESTConfig == nil {
+		kubernetesClient, kubernetesRESTConfig, err := kubernetes.NewClientset(kubeContext)
 		if err != nil {
 			return err
 		}
+
+		r.kubernetesClient = kubernetesClient
+		r.kubernetesRESTConfig = kubernetesRESTConfig
 	}
 
 	// We start some background jobs and wait for them to complete.
@@ -206,10 +211,11 @@ func (r *Runner) Run(ctx context.Context) error {
 			StatusChan:    applicationStatusChan,
 			Out:           os.Stdout,
 			Client:        r.kubernetesClient,
+			RESTConfig:    r.kubernetesRESTConfig,
 		})
 	})
 
-	if dashboardDeploymentExists(ctx, r.kubernetesClient, kubeContext, dashboardSelector) {
+	if dashboardDeploymentExists(ctx, r.kubernetesClient, dashboardSelector) {
 		// Display port-forward messages for dashboard
 		dashboardStatusChan := make(chan portforward.StatusMessage)
 		group.Go(func() error {
@@ -226,6 +232,7 @@ func (r *Runner) Run(ctx context.Context) error {
 				StatusChan:    dashboardStatusChan,
 				Out:           os.Stdout,
 				Client:        r.kubernetesClient,
+				RESTConfig:    r.kubernetesRESTConfig,
 			})
 		})
 	} else {
@@ -269,8 +276,7 @@ func (r *Runner) displayPortforwardMessages(status <-chan portforward.StatusMess
 }
 
 // dashboardDeploymentExists checks if a dashboard deployment exists in the given Kubernetes context.
-func dashboardDeploymentExists(ctx context.Context, kubernetesClient k8sclient.Interface, kubeContext string, dashboardLabelSelector labels.Selector) bool {
-
+func dashboardDeploymentExists(ctx context.Context, kubernetesClient k8sclient.Interface, dashboardLabelSelector labels.Selector) bool {
 	deployments := kubernetesClient.AppsV1().Deployments(radiusSystemNamespace)
 	listOptions := metav1.ListOptions{LabelSelector: dashboardLabelSelector.String()}
 
