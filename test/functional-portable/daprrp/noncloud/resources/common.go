@@ -22,7 +22,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/functional-portable/corerp"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
-func verifyDaprComponentsDeleted(ctx context.Context, t *testing.T, test shared.RPTest, resourceType, resourceName, namespace string) {
+func verifyDaprComponentsDeleted(ctx context.Context, t *testing.T, test corerp.RPTest, resourceType, resourceName, namespace string) {
 	resource, err := test.Options.ManagementClient.ShowResource(ctx, resourceType, resourceName)
 	require.Error(t, err)
 	require.True(t, clients.Is404Error(err))

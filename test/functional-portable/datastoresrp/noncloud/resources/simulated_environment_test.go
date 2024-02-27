@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -37,7 +37,7 @@ func Test_Deployment_SimulatedEnv_BicepRecipe(t *testing.T) {
 	mongoDBName := "mongodb-db-simenv"
 	envName := "dsrp-resources-simenv-recipe-env"
 
-	test := shared.NewRPTest(t, appName, []shared.TestStep{
+	test := corerp.NewRPTest(t, appName, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
@@ -65,7 +65,7 @@ func Test_Deployment_SimulatedEnv_BicepRecipe(t *testing.T) {
 			},
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.RPTest) {
 				// Get pods in app namespace
 				label := fmt.Sprintf("radapp.io/application=%s", appName)
 				pods, err := ct.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{

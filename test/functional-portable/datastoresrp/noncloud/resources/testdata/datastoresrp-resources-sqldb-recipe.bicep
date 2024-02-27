@@ -33,7 +33,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Datastores/sqlDatabases': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/shared/recipes/sqldb-recipe:${version}'
+          templatePath: '${registry}/test/functional-portable/corerp/recipes/sqldb-recipe:${version}'
           parameters: {
             username: username
             password: password

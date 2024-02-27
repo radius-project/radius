@@ -19,7 +19,7 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -30,7 +30,7 @@ func Test_DaprServiceInvocation(t *testing.T) {
 	name := "dapr-serviceinvocation"
 	appNamespace := "default-dapr-serviceinvocation"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := corerp.NewRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -61,7 +61,7 @@ func Test_DaprServiceInvocation(t *testing.T) {
 			},
 		},
 	})
-	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }

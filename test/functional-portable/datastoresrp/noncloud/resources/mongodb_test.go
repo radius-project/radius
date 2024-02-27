@@ -19,7 +19,7 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -31,7 +31,7 @@ func Test_MongoDB_Manual(t *testing.T) {
 	name := "dsrp-resources-mongodb-manual"
 	appNamespace := "default-cdsrp-resources-mongodb-manual"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := corerp.NewRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -78,7 +78,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 	name := "dsrp-resources-mongodb-recipe"
 	appNamespace := "dsrp-resources-mongodb-recipe-app"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := corerp.NewRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{

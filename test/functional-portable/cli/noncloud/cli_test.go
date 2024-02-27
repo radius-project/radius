@@ -44,7 +44,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/version"
-	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testcontext"
@@ -59,21 +59,21 @@ const (
 	retries = 10
 )
 
-func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
-	options := shared.NewRPTestOptions(t)
+func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.RPTest) {
+	options := corerp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	envName := test.Steps[0].RPResources.Resources[0].Name
 	registry := strings.TrimPrefix(testutil.GetBicepRecipeRegistry(), "registry=")
 	version := strings.TrimPrefix(testutil.GetBicepRecipeVersion(), "version=")
 	resourceType := "Applications.Datastores/redisCaches"
-	file := "../../../functional/shared/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep"
+	file := "../../../corerp/noncloud/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:ghcr.io/radius-project/dev/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
 	recipeName := "recipeName"
 	recipeTemplate := fmt.Sprintf("%s/recipes/local-dev/rediscaches:%s", registry, version)
 
 	bicepRecipe := "recipe1"
-	bicepRecipeTemplate := fmt.Sprintf("%s/test/functional/shared/recipes/corerp-redis-recipe:%s", registry, version)
+	bicepRecipeTemplate := fmt.Sprintf("%s/test/functional-portable/corerp/noncloud/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep:%s", registry, version)
 	templateKindBicep := "bicep"
 
 	terraformRecipe := "recipe2"
@@ -155,8 +155,8 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 }
 
-func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
-	options := shared.NewRPTestOptions(t)
+func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.RPTest) {
+	options := corerp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	appName := test.Name
 	containerName := "containerA"
@@ -280,7 +280,7 @@ func Test_Run_Logger(t *testing.T) {
 	// Will be used to cancel `rad run`
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
-	options := shared.NewRPTestOptions(t)
+	options := corerp.NewRPTestOptions(t)
 
 	template := "testdata/corerp-kubernetes-cli-run.bicep"
 	applicationName := "cli-run-logger"
@@ -354,7 +354,7 @@ func Test_Run_Portforward(t *testing.T) {
 	// Will be used to cancel `rad run`
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
-	options := shared.NewRPTestOptions(t)
+	options := corerp.NewRPTestOptions(t)
 
 	template := "testdata/corerp-kubernetes-cli-run-portforward.bicep"
 	applicationName := "cli-run-portforward"
@@ -453,7 +453,7 @@ func Test_CLI(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.bicep"
 	name := "kubernetes-cli"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := corerp.NewRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -493,7 +493,7 @@ func Test_CLI_JSON(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.json"
 	name := "kubernetes-cli-json"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := corerp.NewRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -533,7 +533,7 @@ func Test_CLI_Delete(t *testing.T) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
 
-	options := shared.NewRPTestOptions(t)
+	options := corerp.NewRPTestOptions(t)
 	appName := "kubernetes-cli-with-resources"
 	appNameUnassociatedResources := "kubernetes-cli-with-unassociated-resources"
 	appNameEmptyResources := "kubernetes-cli-empty-resources"
@@ -631,7 +631,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	// corerp-kubernetes-cli-parameters.parameters.json uses ghcr.io/radius-project/dev as a registry parameter.
 	// Use the specified tag only if the test uses ghcr.io/radius-project/dev registry. Otherwise, use latest tag.
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := corerp.NewRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, testutil.GetMagpieTag()),
 			RPResources: &validation.RPResourceSet{
@@ -670,7 +670,7 @@ func Test_CLI_version(t *testing.T) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
 
-	options := shared.NewTestOptions(t)
+	options := corerp.NewTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	output, err := cli.Version(ctx)
@@ -691,7 +691,7 @@ func Test_CLI_Only_version(t *testing.T) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
 
-	options := shared.NewTestOptions(t)
+	options := corerp.NewTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	output, err := cli.CliVersion(ctx)
@@ -709,7 +709,7 @@ func Test_RecipeCommands(t *testing.T) {
 	template := "testdata/corerp-resources-recipe-env.bicep"
 	name := "corerp-resources-recipe-env"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := corerp.NewRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
@@ -735,7 +735,7 @@ func Test_DevRecipes(t *testing.T) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
 
-	options := shared.NewTestOptions(t)
+	options := corerp.NewTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	envName := "test-dev-recipes"
@@ -797,7 +797,7 @@ func GetAvailablePort() (int, error) {
 
 // DeleteAppWithoutDeletingResources creates a client to delete an application without deleting its resources and returns
 // an error if one occurs.
-func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options shared.RPTestOptions, applicationName string) error {
+func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options corerp.RPTestOptions, applicationName string) error {
 	client := options.ManagementClient
 	require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
 	appManagementClient := client.(*clients.UCPApplicationsManagementClient)

@@ -31,7 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/test/functional/shared"
+	corerptest "github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +45,7 @@ func Test_TrackedResources(t *testing.T) {
 	}
 
 	ctx := testcontext.New(t)
-	options := shared.NewRPTestOptions(t)
+	options := corerptest.NewRPTestOptions(t)
 	resourceGroupID := resources.MustParse("/planes/radius/local/resourcegroups/test-" + uuid.New().String())
 
 	rgc, err := ucp.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.Connection))

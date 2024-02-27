@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -32,7 +32,7 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 	name := "dpsb-manual-app"
 	appNamespace := "default-dpsb-manual-app"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := corerp.NewRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("namespace=%s", appNamespace)),
 			RPResources: &validation.RPResourceSet{
@@ -70,9 +70,9 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 		},
 	})
 
-	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test corerp.RPTest) {
 		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/pubSubBrokers", "dpsb-manual", appNamespace)
 	}
 
@@ -84,7 +84,7 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 	name := "dpsb-recipe-app"
 	appNamespace := "dpsb-recipe-env"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := corerp.NewRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
@@ -124,9 +124,9 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 		},
 	})
 
-	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test corerp.RPTest) {
 		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/pubSubBrokers", "dpsb-recipe", appNamespace)
 	}
 
