@@ -88,8 +88,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
-	// Set environment variables for the Terraform process reading input from the environment configuration.
-	// This is required for the Terraform process to read the environment variables and use them as input for the recipe deployment.
+	// Set environment variables for the Terraform process.
 	err = e.setEnvironmentVariables(ctx, tf, options.EnvConfig)
 	if err != nil {
 		return nil, err
@@ -201,16 +200,14 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	}, nil
 }
 
-// setEnvironmentVariables sets environment variables for the Terraform process reading input from the environment configuration.
+// setEnvironmentVariables sets environment variables for the Terraform process by reading values from the environment configuration.
+// Terraform process will use environment variables as input for the recipe deployment.
 func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, envConfig *recipes.Configuration) error {
-	// Set environment variables for the Terraform process reading input from the environment configuration.
-	// This is required for the Terraform process to read the environment variables and use them as input for the recipe deployment.
 	if envConfig != nil && envConfig.RecipeConfig.Env.AdditionalProperties != nil {
 		envVars := map[string]string{}
 
 		for key, value := range envConfig.RecipeConfig.Env.AdditionalProperties {
-			strValue := fmt.Sprintf("%v", value)
-			envVars[key] = strValue
+			envVars[key] = value
 		}
 
 		if err := tf.SetEnv(envVars); err != nil {

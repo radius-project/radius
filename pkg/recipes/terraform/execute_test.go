@@ -157,6 +157,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := testcontext.New(t)
@@ -165,10 +166,8 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			tf, err := tfexec.NewTerraform(workingDir, filepath.Join(workingDir, "terraform"))
 			require.NoError(t, err)
 
-			// Create an executor
 			e := executor{}
 
-			// Call the function to set environment variables
 			err = e.setEnvironmentVariables(ctx, tf, tc.opts.EnvConfig)
 			require.NoError(t, err)
 		})
