@@ -5091,7 +5091,7 @@
     },
     "SecretStoreProperties": {
       "type": "object",
-      "description": "The properties of SecretStore",
+      "description": "The properties of SecretStore.",
       "properties": {
         "environment": {
           "type": "string",

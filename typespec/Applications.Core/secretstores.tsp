@@ -45,7 +45,7 @@ model SecretStoreResource is TrackedResourceRequired<SecretStoreProperties, "sec
   name: ResourceNameString;
 }
 
-@doc("The properties of SecretStore")
+@doc("The properties of SecretStore.")
 model SecretStoreProperties {
   ...GlobalScopedResource;
 

@@ -1546,7 +1546,7 @@ type SecretStoreListSecretsResult struct {
 	Type *SecretStoreDataType
 }
 
-// SecretStoreProperties - The properties of SecretStore
+// SecretStoreProperties - The properties of SecretStore.
 type SecretStoreProperties struct {
 	// REQUIRED; An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties
