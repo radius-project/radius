@@ -113,8 +113,8 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 // by Radius to generate custom provider configurations. Save() must be called to save
 // the generated providers config. requiredProviders contains a list of provider names
 // that are required for the module.
-func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
-	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, supportedProviders, envConfig)
+func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, ucpSupportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
+	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, ucpSupportedProviders, envConfig)
 	if err != nil {
 		return err
 	}
@@ -166,12 +166,22 @@ func newModuleConfig(moduleSource string, moduleVersion string, params ...Recipe
 }
 
 // getProviderConfigs generates the Terraform provider configurations for the required providers.
-func getProviderConfigs(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
+func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpSupportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
 	providerConfigs := make(map[string]any)
+
+	// Get recipe provider configurations from the environment configuration
+	providerConfigs = getRecipeProviderConfigs(ctx, envConfig)
+
+	// Build provider configurations for required providers excluding the ones already present in providerConfigs
 	for _, provider := range requiredProviders {
-		builder, ok := supportedProviders[provider]
+		if _, ok := providerConfigs[provider]; ok {
+			// If provider is in providerConfigs, skip this iteration
+			continue
+		}
+
+		builder, ok := ucpSupportedProviders[provider]
 		if !ok {
-			// No-op: For any other provider, Radius doesn't generate any custom configuration.
+			// No-op: For any other provider under required_providers, Radius doesn't generate any custom configuration.
 			continue
 		}
 
@@ -179,12 +189,29 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 		if err != nil {
 			return nil, err
 		}
+
 		if len(config) > 0 {
 			providerConfigs[provider] = config
 		}
 	}
 
 	return providerConfigs, nil
+}
+
+// getRecipeProviderConfigs returns the Terraform provider configurations for Terraform providers.
+func getRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
+	providerConfigs := make(map[string]any)
+
+	// If the provider is not configured, or has empty configuration, skip this iteration
+	if envConfig.RecipeConfig.Terraform.Providers != nil {
+		for provider, config := range envConfig.RecipeConfig.Terraform.Providers {
+			if len(config) > 0 {
+				providerConfigs[provider] = config
+			}
+		}
+	}
+
+	return providerConfigs
 }
 
 // AddTerraformBackend adds backend configurations to store Terraform state file for the deployment.

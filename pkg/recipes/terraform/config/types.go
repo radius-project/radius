@@ -45,6 +45,7 @@ type TerraformConfig struct {
 
 	// Provider is the Terraform provider configuration.
 	// https://developer.hashicorp.com/terraform/language/providers/configuration
+	// https://developer.hashicorp.com/terraform/language/syntax/json#provider-blocks
 	Provider map[string]any `json:"provider,omitempty"`
 
 	// Module is the Terraform module configuration.

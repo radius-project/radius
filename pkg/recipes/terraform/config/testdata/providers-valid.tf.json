@@ -9,16 +9,22 @@
     }
   },
   "provider": {
-    "aws": {
-      "region": "test-region"
-    },
-    "azurerm": {
-      "features": {},
-      "subscription_id": "test-sub"
-    },
-    "kubernetes": {
-      "config_path": "/home/radius/.kube/config"
-    }
+    "aws": [
+      {
+        "region": "test-region"
+      }
+    ],
+    "azurerm": [
+      {
+        "features": {},
+        "subscription_id": "test-sub"
+      }
+    ],
+    "kubernetes": [
+      {
+        "config_path": "/home/radius/.kube/config"
+      }
+    ]
   },
   "module": {
     "redis-azure": {

@@ -34,10 +34,10 @@ type Provider interface {
 	BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error)
 }
 
-// GetSupportedTerraformProviders returns a map of Terraform provider names to provider config builder.
-// Providers represent Terraform providers for which Radius generates custom provider configurations.
+// GetUCPSupportedTerraformProviders returns a map of Terraform provider names with configuration details stored in UCP, to provider config builder.
+// These providers represent Terraform providers for which Radius generates custom provider configurations based on credentials stored with UCP.
 // For example, the Azure subscription id is added to Azure provider config using Radius Environment's Azure provider scope.
-func GetSupportedTerraformProviders(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) map[string]Provider {
+func GetUCPSupportedTerraformProviders(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) map[string]Provider {
 	return map[string]Provider{
 		AWSProviderName:        NewAWSProvider(ucpConn, secretProvider),
 		AzureProviderName:      NewAzureProvider(ucpConn, secretProvider),

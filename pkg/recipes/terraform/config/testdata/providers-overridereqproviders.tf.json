@@ -9,9 +9,17 @@
     }
   },
   "provider": {
-    "azurerm": [
+    "aws": [
       {
-        "features": {}
+        "region": "test-region"
+      }
+    ],
+    "kubernetes": [
+      {
+        "config_path": "/home/radius/.kube/configPath1"
+      },
+      {
+        "config_path": "/home/radius/.kube/configPath2"
       }
     ]
   },

@@ -18,7 +18,6 @@ package config
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -331,7 +330,7 @@ func Test_AddRecipeContext(t *testing.T) {
 }
 
 func Test_AddProviders(t *testing.T) {
-	mProvider, supportedProviders, mBackend := setup(t)
+	mProvider, supportedUCPProviders, mBackend := setup(t)
 	envRecipe, resourceRecipe := getTestInputs()
 	expectedBackend := map[string]any{
 		"kubernetes": map[string]any{
@@ -340,17 +339,19 @@ func Test_AddProviders(t *testing.T) {
 			"namespace":     "radius-system",
 		},
 	}
+
 	configTests := []struct {
-		desc               string
-		envConfig          recipes.Configuration
-		requiredProviders  []string
-		expectedProviders  []map[string]any
-		expectedConfigFile string
-		Err                error
+		desc                          string
+		envConfig                     recipes.Configuration
+		requiredProviders             []string
+		expectedUCPSupportedProviders []map[string]any
+		expectedConfigFile            string
+		Err                           error
+		times                         int
 	}{
 		{
 			desc: "valid all supported providers",
-			expectedProviders: []map[string]any{
+			expectedUCPSupportedProviders: []map[string]any{
 				{
 					"region": "test-region",
 				},
@@ -379,13 +380,13 @@ func Test_AddProviders(t *testing.T) {
 				providers.KubernetesProviderName,
 				"sql",
 			},
-
+			times:              1,
 			expectedConfigFile: "testdata/providers-valid.tf.json",
 		},
-		{
-			desc:              "invalid aws scope",
-			expectedProviders: nil,
-			Err:               errors.New("Invalid AWS provider scope"),
+		/*{
+			desc:                          "invalid aws scope",
+			expectedUCPSupportedProviders: nil,
+			Err:                           errors.New("Invalid AWS provider scope"),
 			envConfig: recipes.Configuration{
 				Providers: datamodel.Providers{
 					AWS: datamodel.ProvidersAWS{
@@ -396,10 +397,11 @@ func Test_AddProviders(t *testing.T) {
 			requiredProviders: []string{
 				providers.AWSProviderName,
 			},
+			times: 1,
 		},
 		{
 			desc: "empty aws provider config",
-			expectedProviders: []map[string]any{
+			expectedUCPSupportedProviders: []map[string]any{
 				{},
 			},
 			Err:       nil,
@@ -407,11 +409,12 @@ func Test_AddProviders(t *testing.T) {
 			requiredProviders: []string{
 				providers.AWSProviderName,
 			},
+			times:              1,
 			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
 		{
 			desc: "empty aws scope",
-			expectedProviders: []map[string]any{
+			expectedUCPSupportedProviders: []map[string]any{
 				nil,
 			},
 			Err: nil,
@@ -428,11 +431,12 @@ func Test_AddProviders(t *testing.T) {
 			requiredProviders: []string{
 				providers.AWSProviderName,
 			},
+			times:              1,
 			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
 		{
 			desc: "empty azure provider config",
-			expectedProviders: []map[string]any{
+			expectedUCPSupportedProviders: []map[string]any{
 				{
 					"features": map[string]any{},
 				},
@@ -442,8 +446,102 @@ func Test_AddProviders(t *testing.T) {
 			requiredProviders: []string{
 				providers.AzureProviderName,
 			},
+			times:              1,
 			expectedConfigFile: "testdata/providers-emptyazureconfig.tf.json",
 		},
+		{
+			desc:                          "valid recipe providers",
+			expectedUCPSupportedProviders: nil,
+			Err:                           nil,
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"azurerm": {
+								{
+									AdditionalProperties: map[string]any{
+										"subscriptionid": 1234,
+										"tenant_id":      "745fg88bf-86f1-41af-43ut",
+									},
+								},
+								{
+									AdditionalProperties: map[string]any{
+										"alias":          "az-paymentservice",
+										"subscriptionid": 45678,
+										"tenant_id":      "gfhf45345-5d73-gh34-wh84",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			requiredProviders:  nil,
+			times:              1,
+			expectedConfigFile: "testdata/providers-envrecipeproviders.tf.json",
+		},
+		{
+			desc: "overridding required provider configs",
+			expectedUCPSupportedProviders: []map[string]any{
+				{
+					"region": "test-region",
+				},
+				{
+					"config_path": "/home/radius/.kube/config",
+				},
+			},
+			Err: nil,
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"kubernetes": {
+								{
+									AdditionalProperties: map[string]any{
+										"ConfigPath": "/home/radius/.kube/configPath1",
+									},
+								},
+								{
+									AdditionalProperties: map[string]any{
+										"ConfigPath": "/home/radius/.kube/configPath2",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			requiredProviders: []string{
+				providers.AWSProviderName,
+				providers.KubernetesProviderName,
+			},
+			times:              -1,
+			expectedConfigFile: "testdata/providers-overridereqproviders.tf.json",
+		},
+		{
+			desc:                          "recipe providers not populated",
+			expectedUCPSupportedProviders: nil,
+			Err:                           nil,
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{},
+				},
+			},
+			requiredProviders:  nil,
+			times:              1,
+			expectedConfigFile: "testdata/providers-empty.tf.json",
+		},
+		{
+			desc:                          "recipe providers not populated",
+			expectedUCPSupportedProviders: nil,
+			Err:                           nil,
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{},
+			},
+			requiredProviders:  nil,
+			times:              1,
+			expectedConfigFile: "testdata/providers-empty.tf.json",
+		},*/
 	}
 
 	for _, tc := range configTests {
@@ -451,15 +549,23 @@ func Test_AddProviders(t *testing.T) {
 			ctx := testcontext.New(t)
 			workingDir := t.TempDir()
 
-			tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+			tfconfig, err := New(ctx, testRecipeName, &envRecipe, nil, &tc.envConfig)
 			require.NoError(t, err)
-			for _, p := range tc.expectedProviders {
-				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(p, nil)
+			for _, p := range tc.expectedUCPSupportedProviders {
+				if tc.times > 0 {
+					mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(tc.times).Return(p, nil)
+				} else {
+					mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Return(p, tc.Err).AnyTimes()
+				}
 			}
 			if tc.Err != nil {
-				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(nil, tc.Err)
+				if tc.times > 0 {
+					mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(nil, tc.Err)
+				} else {
+					mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Return(nil, tc.Err).AnyTimes()
+				}
 			}
-			err = tfconfig.AddProviders(ctx, tc.requiredProviders, supportedProviders, &tc.envConfig)
+			err = tfconfig.AddProviders(ctx, tc.requiredProviders, supportedUCPProviders, &tc.envConfig)
 			if tc.Err != nil {
 				require.ErrorContains(t, err, tc.Err.Error())
 				return

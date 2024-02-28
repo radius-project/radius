@@ -11,7 +11,13 @@
   "provider": {
     "azurerm": [
       {
-        "features": {}
+        "subscriptionid": 1234,
+        "tenant_id": "745fg88bf-86f1-41af-43ut"
+      },
+      {
+        "alias": "az-paymentservice",
+        "subscriptionid": 45678,
+        "tenant_id": "gfhf45345-5d73-gh34-wh84"
       }
     ]
   },
