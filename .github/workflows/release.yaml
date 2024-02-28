@@ -152,6 +152,13 @@ jobs:
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: recipes
+      - name: Checkout radius-project/dashboard@main
+        uses: actions/checkout@v3
+        with:
+          repository: radius-project/dashboard
+          ref: main
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          path: dashboard
       - name: Set up GitHub credentials
         run: |
           git config --global user.name "Radius CI Bot"
