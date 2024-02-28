@@ -10,7 +10,6 @@
   },
   "provider": {
     "azurerm": [
-      null,
       {
         "alias": "az-paymentservice",
         "subscriptionid": 45678,

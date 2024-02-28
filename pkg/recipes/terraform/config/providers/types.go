@@ -58,7 +58,9 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 
 				// Retrieve configuration details from 'AdditionalProperties' property and add to the list.
 				for _, configDetails := range config {
-					configList = append(configList, configDetails.AdditionalProperties)
+					if configDetails.AdditionalProperties != nil && len(configDetails.AdditionalProperties) > 0 {
+						configList = append(configList, configDetails.AdditionalProperties)
+					}
 				}
 
 				providerConfigs[provider] = configList
