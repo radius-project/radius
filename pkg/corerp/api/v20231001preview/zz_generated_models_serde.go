@@ -3271,6 +3271,7 @@ func (r *Recipe) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipeConfigProperties.
 func (r RecipeConfigProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "env", r.Env)
 	populate(objectMap, "terraform", r.Terraform)
 	return json.Marshal(objectMap)
 }
@@ -3284,6 +3285,9 @@ func (r *RecipeConfigProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "env":
+				err = unpopulate(val, "Env", &r.Env)
+			delete(rawMsg, key)
 		case "terraform":
 				err = unpopulate(val, "Terraform", &r.Terraform)
 			delete(rawMsg, key)
@@ -4070,6 +4074,7 @@ func (t *TCPHealthProbeProperties) UnmarshalJSON(data []byte) error {
 func (t TerraformConfigProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "authentication", t.Authentication)
+	populate(objectMap, "providers", t.Providers)
 	return json.Marshal(objectMap)
 }
 
@@ -4084,6 +4089,9 @@ func (t *TerraformConfigProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "authentication":
 				err = unpopulate(val, "Authentication", &t.Authentication)
+			delete(rawMsg, key)
+		case "providers":
+				err = unpopulate(val, "Providers", &t.Providers)
 			delete(rawMsg, key)
 		}
 		if err != nil {

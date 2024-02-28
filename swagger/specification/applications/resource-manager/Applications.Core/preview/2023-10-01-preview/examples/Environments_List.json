@@ -24,9 +24,9 @@
                   "oidcIssuer": "https://oidcissuer/oidc"
                 }
               },
-              "providers" : {
-                "azure" : {
-                    "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+              "providers": {
+                "azure": {
+                  "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
                 }
               },
               "recipeConfig": {
@@ -34,31 +34,41 @@
                   "authentication": {
                     "git": {
                       "pat": {
-                        "dev.azure.com":{
-                          "secret":"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
+                        "dev.azure.com": {
+                          "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
                         }
                       }
                     }
+                  },
+                  "providers": {
+                    "azurerm": [
+                      {
+                        "subscriptionId": "00000000-0000-0000-0000-000000000000"
+                      }
+                    ]
                   }
+                },
+                "envVariables": {
+                  "myEnvVar": "myEnvValue"
                 }
               },
               "recipes": {
-                "Applications.Datastores/mongoDatabases":{
+                "Applications.Datastores/mongoDatabases": {
                   "cosmos-recipe": {
                     "templateKind": "bicep",
                     "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"
                   },
-                  "default":{
+                  "default": {
                     "templateKind": "bicep",
                     "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/mongo"
                   }
                 },
-                "Applications.Datastores/redisCaches":{
+                "Applications.Datastores/redisCaches": {
                   "redis-recipe": {
                     "templateKind": "bicep",
                     "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/rediscache"
                   },
-                  "default":{
+                  "default": {
                     "templateKind": "bicep",
                     "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/redis"
                   }
@@ -94,9 +104,9 @@
                   "oidcIssuer": "https://oidcissuer/oidc"
                 }
               },
-              "providers" : {
-                "aws" : {
-                    "scope":"/planes/aws/aws/accounts/140313373712/regions/us-west-2" 
+              "providers": {
+                "aws": {
+                  "scope": "/planes/aws/aws/accounts/140313373712/regions/us-west-2"
                 }
               }
             }
@@ -116,16 +126,16 @@
                   "oidcIssuer": "https://oidcissuer/oidc"
                 }
               },
-              "providers" : {
-                "azure" : {
-                    "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+              "providers": {
+                "azure": {
+                  "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
                 }
               },
               "recipes": {
-                "Applications.Datastores/mongoDatabases":{
+                "Applications.Datastores/mongoDatabases": {
                   "cosmos-recipe": {
                     "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"
-                  } 
+                  }
                 }
               }
             }

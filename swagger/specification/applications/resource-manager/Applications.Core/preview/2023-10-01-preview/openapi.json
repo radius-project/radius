@@ -3620,6 +3620,13 @@
         }
       }
     },
+    "EnvironmentVariables": {
+      "type": "object",
+      "description": "The environment variables injected during Terraform Recipe execution for the recipes in the environment.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "EphemeralVolume": {
       "type": "object",
       "description": "Specifies an ephemeral volume for a container",
@@ -4601,27 +4608,32 @@
         ]
       }
     },
+    "ProviderConfigProperties": {
+      "type": "object",
+      "description": "This configuration holds the necessary information to authenticate and interact with a provider for the recipe execution.",
+      "additionalProperties": true
+    },
     "Providers": {
       "type": "object",
-      "description": "The Cloud providers configuration",
+      "description": "The Cloud providers configuration.",
       "properties": {
         "azure": {
           "$ref": "#/definitions/ProvidersAzure",
-          "description": "The Azure cloud provider configuration"
+          "description": "The Azure cloud provider configuration."
         },
         "aws": {
           "$ref": "#/definitions/ProvidersAws",
-          "description": "The AWS cloud provider configuration"
+          "description": "The AWS cloud provider configuration."
         }
       }
     },
     "ProvidersAws": {
       "type": "object",
-      "description": "The AWS cloud provider definition",
+      "description": "The AWS cloud provider definition.",
       "properties": {
         "scope": {
           "type": "string",
-          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'"
+          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
         }
       },
       "required": [
@@ -4630,21 +4642,21 @@
     },
     "ProvidersAwsUpdate": {
       "type": "object",
-      "description": "The AWS cloud provider definition",
+      "description": "The AWS cloud provider definition.",
       "properties": {
         "scope": {
           "type": "string",
-          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'"
+          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
         }
       }
     },
     "ProvidersAzure": {
       "type": "object",
-      "description": "The Azure cloud provider definition",
+      "description": "The Azure cloud provider definition.",
       "properties": {
         "scope": {
           "type": "string",
-          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
+          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'."
         }
       },
       "required": [
@@ -4653,25 +4665,25 @@
     },
     "ProvidersAzureUpdate": {
       "type": "object",
-      "description": "The Azure cloud provider definition",
+      "description": "The Azure cloud provider definition.",
       "properties": {
         "scope": {
           "type": "string",
-          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
+          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'."
         }
       }
     },
     "ProvidersUpdate": {
       "type": "object",
-      "description": "The Cloud providers configuration",
+      "description": "The Cloud providers configuration.",
       "properties": {
         "azure": {
           "$ref": "#/definitions/ProvidersAzureUpdate",
-          "description": "The Azure cloud provider configuration"
+          "description": "The Azure cloud provider configuration."
         },
         "aws": {
           "$ref": "#/definitions/ProvidersAwsUpdate",
-          "description": "The AWS cloud provider configuration"
+          "description": "The AWS cloud provider configuration."
         }
       }
     },
@@ -4755,6 +4767,10 @@
         "terraform": {
           "$ref": "#/definitions/TerraformConfigProperties",
           "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
+        },
+        "env": {
+          "$ref": "#/definitions/EnvironmentVariables",
+          "description": "Environment variables injected during Terraform Recipe execution for the recipes in the environment."
         }
       }
     },
@@ -4764,11 +4780,11 @@
       "properties": {
         "resourceType": {
           "type": "string",
-          "description": "Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'"
+          "description": "Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'."
         },
         "name": {
           "type": "string",
-          "description": "The name of the recipe registered to the environment"
+          "description": "The name of the recipe registered to the environment."
         }
       },
       "required": [
@@ -4822,7 +4838,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment",
+          "description": "Key/value parameters to pass to the recipe template at deployment.",
           "properties": {}
         }
       },
@@ -4846,7 +4862,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment",
+          "description": "Key/value parameters to pass to the recipe template at deployment.",
           "properties": {}
         }
       },
@@ -5279,6 +5295,17 @@
         "authentication": {
           "$ref": "#/definitions/AuthConfig",
           "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git."
+        },
+        "providers": {
+          "type": "object",
+          "description": "Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration.",
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/definitions/ProviderConfigProperties"
+            },
+            "type": "array",
+            "x-ms-identifiers": []
+          }
         }
       }
     },

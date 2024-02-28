@@ -39,7 +39,6 @@ const (
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-
 	converted := &datamodel.Environment{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -204,9 +203,15 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 					}
 				}
 			}
+
+			recipeConfig.Terraform.Providers = toRecipeConfigTerraformProvidersDatamodel(config)
 		}
+
+		recipeConfig.Env = toRecipeConfigEnvDatamodel(config)
+
 		return recipeConfig
 	}
+
 	return datamodel.RecipeConfigProperties{}
 }
 
@@ -229,9 +234,15 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 					}
 				}
 			}
+
+			recipeConfig.Terraform.Providers = fromRecipeConfigTerraformProvidersDatamodel(config)
 		}
+
+		recipeConfig.Env = fromRecipeConfigEnvDatamodel(config)
+
 		return recipeConfig
 	}
+
 	return nil
 }
 
@@ -393,5 +404,65 @@ func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipePr
 			PlainHTTP:    to.Ptr(e.PlainHTTP),
 		}
 	}
+
 	return nil
+}
+
+func toRecipeConfigTerraformProvidersDatamodel(config *RecipeConfigProperties) map[string][]datamodel.ProviderConfigProperties {
+	if config.Terraform == nil || config.Terraform.Providers == nil {
+		return nil
+	}
+
+	dm := map[string][]datamodel.ProviderConfigProperties{}
+	for k, v := range config.Terraform.Providers {
+		dm[k] = []datamodel.ProviderConfigProperties{}
+
+		for _, providerAdditionalProperties := range v {
+			dm[k] = append(dm[k], datamodel.ProviderConfigProperties{
+				AdditionalProperties: providerAdditionalProperties,
+			})
+		}
+	}
+
+	return dm
+}
+
+func fromRecipeConfigTerraformProvidersDatamodel(config datamodel.RecipeConfigProperties) map[string][]map[string]any {
+	if config.Terraform.Providers == nil {
+		return nil
+	}
+
+	providers := map[string][]map[string]any{}
+	for k, v := range config.Terraform.Providers {
+		providers[k] = []map[string]any{}
+		for _, provider := range v {
+			providers[k] = append(providers[k], provider.AdditionalProperties)
+		}
+	}
+
+	return providers
+}
+
+func toRecipeConfigEnvDatamodel(config *RecipeConfigProperties) datamodel.EnvironmentVariables {
+	if config.Env == nil {
+		return datamodel.EnvironmentVariables{}
+	}
+
+	additionalProperties := map[string]string{}
+	for k, v := range config.Env {
+		additionalProperties[k] = to.String(v)
+	}
+
+	return datamodel.EnvironmentVariables{
+		AdditionalProperties: additionalProperties,
+	}
+}
+
+func fromRecipeConfigEnvDatamodel(config datamodel.RecipeConfigProperties) map[string]*string {
+	env := map[string]*string{}
+	for k, v := range config.Env.AdditionalProperties {
+		env[k] = to.Ptr(v)
+	}
+
+	return env
 }
