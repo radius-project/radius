@@ -88,6 +88,12 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
+	// Set environment variables for the Terraform process.
+	err = e.setEnvironmentVariables(ctx, tf, options.EnvConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	// Run TF Init and Apply in the working directory
 	state, err := initAndApply(ctx, tf)
 	if err != nil {
@@ -192,6 +198,24 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	return map[string]any{
 		"parameters": result.Parameters,
 	}, nil
+}
+
+// setEnvironmentVariables sets environment variables for the Terraform process by reading values from the environment configuration.
+// Terraform process will use environment variables as input for the recipe deployment.
+func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, envConfig *recipes.Configuration) error {
+	if envConfig != nil && envConfig.RecipeConfig.Env.AdditionalProperties != nil {
+		envVars := map[string]string{}
+
+		for key, value := range envConfig.RecipeConfig.Env.AdditionalProperties {
+			envVars[key] = value
+		}
+
+		if err := tf.SetEnv(envVars); err != nil {
+			return fmt.Errorf("failed to set environment variables: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
