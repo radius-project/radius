@@ -68,7 +68,7 @@ model GlobalScopedResource {
   environment?: string;
 
   @doc("Fully qualified resource ID for the application")
-  application?: string;
+  application: string;
 
   @doc("The status of the asynchronous operation.")
   @visibility("read")
