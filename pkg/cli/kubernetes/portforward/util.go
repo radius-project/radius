@@ -19,11 +19,9 @@ package portforward
 import (
 	"context"
 
-	"github.com/radius-project/radius/pkg/kubernetes"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	k8sclient "k8s.io/client-go/kubernetes"
 )
 
@@ -39,16 +37,11 @@ const (
 // This is useful because we frequently run a port-forward right after completion of a Radius
 // deployment. We want to make sure we're port-forwarding to fresh replicas, not the ones
 // that are being scaled-down.
-func findStaleReplicaSets(ctx context.Context, client k8sclient.Interface, namespace, applicationName, desiredRevision string) (map[string]bool, error) {
+func findStaleReplicaSets(ctx context.Context, client k8sclient.Interface, namespace, desiredRevision string, labelSelector labels.Selector) (map[string]bool, error) {
 	outdated := map[string]bool{}
 
-	req, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{applicationName})
-	if err != nil {
-		return nil, err
-	}
-
 	sets, err := client.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.NewSelector().Add(*req).String(),
+		LabelSelector: labelSelector.String(),
 	})
 	if err != nil {
 		return nil, err

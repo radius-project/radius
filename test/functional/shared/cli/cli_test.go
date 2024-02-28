@@ -397,13 +397,26 @@ func Test_Run_Portforward(t *testing.T) {
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanLines)
 
-	rgx := regexp.MustCompile(`.*\[port-forward\] .* from localhost:(.*) -> ::.*`)
+	dashboardRegex := regexp.MustCompile(`.* dashboard \[port-forward\] .* from localhost:(.*) -> ::.*`)
+	appRegex := regexp.MustCompile(`.* k8s-cli-run-portforward \[port-forward\] .* from localhost:(.*) -> ::.*`)
 
 	for scanner.Scan() {
 		line := scanner.Text()
 		output.WriteString(line)
 		output.WriteString("\n")
-		matches := rgx.FindSubmatch([]byte(line))
+
+		dashboardMatches := dashboardRegex.FindSubmatch([]byte(line))
+		if len(dashboardMatches) == 2 {
+			t.Log("found matching output", line)
+
+			// Found the portforward local port.
+			port, err := strconv.Atoi(string(dashboardMatches[1]))
+			require.NoErrorf(t, err, "port is not an integer")
+			t.Logf("found local port %d", port)
+			require.Equal(t, 7007, port, "dashboard port should be 7007")
+		}
+
+		matches := appRegex.FindSubmatch([]byte(line))
 		if len(matches) == 2 {
 			t.Log("found matching output", line)
 

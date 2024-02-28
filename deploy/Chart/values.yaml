@@ -71,3 +71,15 @@ rp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+
+dashboard:
+  enabled: true
+  containerPort: 7007
+  image: ghcr.io/radius-project/dashboard
+  # Default tag uses Chart AppVersion.
+  # tag: latest
+  resources:
+    requests:
+      memory: "60Mi"
+    limits:
+      memory: "300Mi"
