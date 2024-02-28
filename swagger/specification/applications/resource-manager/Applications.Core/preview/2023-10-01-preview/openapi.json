@@ -5129,7 +5129,6 @@
         }
       },
       "required": [
-        "application",
         "data"
       ]
     },
