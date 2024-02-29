@@ -37,6 +37,7 @@ func Test_Azure_Credential_Operations(t *testing.T) {
 		runAzureCredentialTests(t, resourceURL, collectionURL, roundTripper, getAzureTestCredentialObject(), getExpectedAzureTestCredentialObject())
 	})
 
+	test.RequiredFeatures = []RequiredFeature{"Azure"}
 	test.Test(t)
 }
 

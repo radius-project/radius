@@ -37,6 +37,7 @@ func Test_AWS_Credential_Operations(t *testing.T) {
 		runAWSCredentialTests(t, resourceURL, collectionURL, roundTripper, getAWSTestCredentialObject(), getExpectedAWSTestCredentialObject())
 	})
 
+	test.RequiredFeatures = []RequiredFeature{"AWS"}
 	test.Test(t)
 }
 

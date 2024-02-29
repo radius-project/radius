@@ -46,10 +46,9 @@ var (
 func Test_AWS_DeleteResource(t *testing.T) {
 	ctx := context.Background()
 
-	bucketName := generateS3BucketName()
-	setupTestAWSResource(t, ctx, bucketName)
-
 	test := NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		bucketName := generateS3BucketName()
+		setupTestAWSResource(t, ctx, bucketName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
 		require.NoError(t, err)
 
@@ -101,16 +100,16 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		require.True(t, deleteSucceeded)
 	})
 
+	test.RequiredFeatures = []RequiredFeature{FeatureAWS}
 	test.Test(t)
 }
 
 func Test_AWS_ListResources(t *testing.T) {
 	ctx := context.Background()
 
-	var bucketName = generateS3BucketName()
-	setupTestAWSResource(t, ctx, bucketName)
-
 	test := NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		var bucketName = generateS3BucketName()
+		setupTestAWSResource(t, ctx, bucketName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
 		require.NoError(t, err)
 
@@ -140,6 +139,7 @@ func Test_AWS_ListResources(t *testing.T) {
 		require.GreaterOrEqual(t, len(body["value"]), 1)
 	})
 
+	test.RequiredFeatures = []RequiredFeature{FeatureAWS}
 	test.Test(t)
 }
 
