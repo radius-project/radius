@@ -25,8 +25,6 @@ import (
 	"sync"
 	"testing"
 
-	cli "github.com/radius-project/radius/pkg/cli"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/test"
@@ -147,29 +145,9 @@ func (ct UCPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 			panic(fmt.Sprintf("unsupported feature: %s", feature))
 		}
 
-		exists := credentialExists(t, credential)
+		exists := validation.DoesCredentialExist(t, credential)
 		if !exists {
 			t.Skip(message)
 		}
 	}
-}
-
-func credentialExists(t *testing.T, credential string) bool {
-	ctx := testcontext.New(t)
-
-	config, err := cli.LoadConfig("")
-	require.NoError(t, err, "failed to read radius config")
-
-	workspace, err := cli.GetWorkspace(config, "")
-	require.NoError(t, err, "failed to read default workspace")
-	require.NotNil(t, workspace, "default workspace is not set")
-
-	t.Logf("Loaded workspace: %s (%s)", workspace.Name, workspace.FmtConnection())
-
-	credentialsClient, err := connections.DefaultFactory.CreateCredentialManagementClient(ctx, *workspace)
-	require.NoError(t, err, "failed to create credentials client")
-	cred, err := credentialsClient.Get(ctx, credential)
-	require.NoError(t, err, "failed to get credentials")
-
-	return cred.CloudProviderStatus.Enabled
 }

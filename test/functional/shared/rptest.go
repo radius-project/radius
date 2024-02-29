@@ -53,6 +53,8 @@ const (
 	daprFeatureMessage       = "This test requires Dapr installed in your Kubernetes cluster. Please install Dapr by following the instructions at https://docs.dapr.io/operations/hosting/kubernetes/kubernetes-deploy/."
 	secretProviderClassesCRD = "secretproviderclasses.secrets-store.csi.x-k8s.io"
 	csiDriverMessage         = "This test requires secret store CSI driver. Please install it by following https://secrets-store-csi-driver.sigs.k8s.io/."
+	awsMessage               = "This test requires AWS. Please configure the test environment to include an AWS provider."
+	azureMessage             = "This test requires Azure. Please configure the test environment to include an Azure provider."
 )
 
 // RequiredFeature is used to specify an optional feature that is required
@@ -67,6 +69,23 @@ const (
 	// FeatureCSIDriver should be used with required features to indicate a test dependency
 	// on the CSI driver.
 	FeatureCSIDriver RequiredFeature = "CSIDriver"
+
+	// FeatureAWS should be used with required features to indicate a test dependency on AWS cloud provider.
+	FeatureAWS RequiredFeature = "AWS"
+
+	// FeatureAzure should be used with required features to indicate a test dependency on Azure cloud provider.
+	FeatureAzure RequiredFeature = "Azure"
+)
+
+// RequiredFeatureValidatorType is used to specify the type of validator to use
+type RequiredFeatureValidatorType string
+
+const (
+	// Use CRD to check for required features
+	RequiredFeatureValidatorTypeCRD = "ValidatorCRD"
+
+	// Use cloud provider API to check for required features
+	RequiredFeatureValidatorTypeCloud = "ValidatorCloud"
 )
 
 type TestStep struct {
@@ -185,23 +204,44 @@ func (ct RPTest) CleanUpExtensionResources(resources []unstructured.Unstructured
 // returns an error if there is an issue.
 func (ct RPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 	for _, feature := range ct.RequiredFeatures {
-		var crd, message string
+		var crd, message, credential string
+		var validatorType RequiredFeatureValidatorType
 		switch feature {
 		case FeatureDapr:
 			crd = daprComponentCRD
 			message = daprFeatureMessage
+			validatorType = RequiredFeatureValidatorTypeCRD
 		case FeatureCSIDriver:
 			crd = secretProviderClassesCRD
 			message = csiDriverMessage
+			validatorType = RequiredFeatureValidatorTypeCRD
+		case FeatureAWS:
+			message = awsMessage
+			credential = "aws"
+			validatorType = RequiredFeatureValidatorTypeCloud
+		case FeatureAzure:
+			message = azureMessage
+			credential = "azure"
+			validatorType = RequiredFeatureValidatorTypeCloud
 		default:
 			panic(fmt.Sprintf("unsupported feature: %s", feature))
 		}
 
-		err := ct.Options.Client.Get(ctx, client.ObjectKey{Name: crd}, &apiextv1.CustomResourceDefinition{})
-		if apierrors.IsNotFound(err) {
-			t.Skip(message)
-		} else if err != nil {
-			require.NoError(t, err, "failed to check for required features")
+		switch validatorType {
+		case RequiredFeatureValidatorTypeCRD:
+			err := ct.Options.Client.Get(ctx, client.ObjectKey{Name: crd}, &apiextv1.CustomResourceDefinition{})
+			if apierrors.IsNotFound(err) {
+				t.Skip(message)
+			} else if err != nil {
+				require.NoError(t, err, "failed to check for required features")
+			}
+		case RequiredFeatureValidatorTypeCloud:
+			exists := validation.DoesCredentialExist(t, credential)
+			if !exists {
+				t.Skip(message)
+			}
+		default:
+			panic(fmt.Sprintf("unsupported required features validator type: %s", validatorType))
 		}
 	}
 }

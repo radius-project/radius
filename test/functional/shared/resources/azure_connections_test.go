@@ -63,5 +63,6 @@ func Test_AzureConnections(t *testing.T) {
 		},
 	})
 
+	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureAzure}
 	test.Test(t)
 }
