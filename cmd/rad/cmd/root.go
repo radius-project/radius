@@ -283,8 +283,8 @@ func initSubCommands() {
 	appStatusCmd, _ := app_status.NewCommand(framework)
 	applicationCmd.AddCommand(appStatusCmd)
 
-	appConnectionsCmd, _ := app_graph.NewCommand(framework)
-	applicationCmd.AddCommand(appConnectionsCmd)
+	appGraphCmd, _ := app_graph.NewCommand(framework)
+	applicationCmd.AddCommand(appGraphCmd)
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
 	envCmd.AddCommand(envSwitchCmd)
