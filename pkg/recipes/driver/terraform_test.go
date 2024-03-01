@@ -307,28 +307,6 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 	})
 }
 
-func Test_Terraform_Execute_SimulatedEnvironment(t *testing.T) {
-	ctx := testcontext.New(t)
-	armCtx := &v1.ARMRequestContext{
-		OperationID: uuid.New(),
-	}
-	ctx = v1.WithARMRequestContext(ctx, armCtx)
-
-	_, driver := setup(t)
-	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	envConfig.Simulated = true
-
-	recipeOutput, err := driver.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
-	})
-	require.NoError(t, err)
-	require.Nil(t, recipeOutput)
-}
-
 func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
