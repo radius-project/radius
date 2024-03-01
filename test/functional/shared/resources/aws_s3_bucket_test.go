@@ -129,5 +129,6 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 		},
 	})
 
+	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureAWS}
 	test.Test(t)
 }

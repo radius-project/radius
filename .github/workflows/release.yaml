@@ -37,7 +37,8 @@ jobs:
   generate_release_note:
     name: Generate release note from template
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'main'
+    # We should only create the release note if this is a pull request against main
+    if: github.repository == 'radius-project/radius' && github.event_name == 'pull_request' && github.base_ref == 'main'
     env:
       RELNOTE_FOUND: false
     steps:
@@ -151,6 +152,13 @@ jobs:
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: recipes
+      - name: Checkout radius-project/dashboard@main
+        uses: actions/checkout@v3
+        with:
+          repository: radius-project/dashboard
+          ref: main
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          path: dashboard
       - name: Set up GitHub credentials
         run: |
           git config --global user.name "Radius CI Bot"
@@ -214,3 +222,7 @@ jobs:
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh recipes ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
+      - name: Release radius-project/dashboard version ${{ steps.get-version.outputs.release-version }}
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-create-tag-and-branch.sh dashboard ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}

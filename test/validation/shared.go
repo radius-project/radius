@@ -24,11 +24,14 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/test/radcli"
+	"github.com/radius-project/radius/test/testcontext"
 )
 
 const (
@@ -168,4 +171,25 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 			}
 		}
 	}
+}
+
+// DoesCredentialExist checks if the credential is registered in the workspace and returns a boolean value.
+func DoesCredentialExist(t *testing.T, credential string) bool {
+	ctx := testcontext.New(t)
+
+	config, err := cli.LoadConfig("")
+	require.NoError(t, err, "failed to read radius config")
+
+	workspace, err := cli.GetWorkspace(config, "")
+	require.NoError(t, err, "failed to read default workspace")
+	require.NotNil(t, workspace, "default workspace is not set")
+
+	t.Logf("Loaded workspace: %s (%s)", workspace.Name, workspace.FmtConnection())
+
+	credentialsClient, err := connections.DefaultFactory.CreateCredentialManagementClient(ctx, *workspace)
+	require.NoError(t, err, "failed to create credentials client")
+	cred, err := credentialsClient.Get(ctx, credential)
+	require.NoError(t, err, "failed to get credentials")
+
+	return cred.CloudProviderStatus.Enabled
 }

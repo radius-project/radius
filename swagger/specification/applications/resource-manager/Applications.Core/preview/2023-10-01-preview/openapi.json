@@ -2002,6 +2002,9 @@
           },
           "Create or Update a secret store resource with valueFrom": {
             "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
+          },
+          "Create or Update a secret store resource with global scope": {
+            "$ref": "./examples/SecretStores_CreateOrUpdate_GlobalScope.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2723,35 +2726,27 @@
       "type": "object",
       "description": "The updatable properties of the ApplicationResource.",
       "properties": {
-        "compute": {
-          "$ref": "#/definitions/EnvironmentComputeUpdate",
-          "description": "The compute resource used by application environment."
-        },
-        "providers": {
-          "$ref": "#/definitions/ProvidersUpdate",
-          "description": "Cloud providers configuration for the environment."
-        },
-        "simulated": {
-          "type": "boolean",
-          "description": "Simulated environment."
-        },
-        "recipes": {
-          "type": "object",
-          "description": "Specifies Recipes linked to the Environment.",
-          "additionalProperties": {
-            "additionalProperties": {
-              "$ref": "#/definitions/RecipePropertiesUpdate"
-            },
-            "type": "object"
-          }
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "extensions": {
           "type": "array",
-          "description": "The environment extension.",
+          "description": "The application extension.",
           "items": {
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        }
+      }
+    },
+    "AuthConfig": {
+      "type": "object",
+      "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git.",
+      "properties": {
+        "git": {
+          "$ref": "#/definitions/GitAuthConfig",
+          "description": "Authentication information used to access private Terraform modules from Git repository sources."
         }
       }
     },
@@ -3507,6 +3502,10 @@
             "type": "object"
           }
         },
+        "recipeConfig": {
+          "$ref": "#/definitions/RecipeConfigProperties",
+          "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
+        },
         "extensions": {
           "type": "array",
           "description": "The environment extension.",
@@ -3607,6 +3606,10 @@
             "type": "object"
           }
         },
+        "recipeConfig": {
+          "$ref": "#/definitions/RecipeConfigProperties",
+          "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
+        },
         "extensions": {
           "type": "array",
           "description": "The environment extension.",
@@ -3615,6 +3618,13 @@
           },
           "x-ms-identifiers": []
         }
+      }
+    },
+    "EnvironmentVariables": {
+      "type": "object",
+      "description": "The environment variables injected during Terraform Recipe execution for the recipes in the environment.",
+      "additionalProperties": {
+        "type": "string"
       }
     },
     "EphemeralVolume": {
@@ -4008,6 +4018,19 @@
         "certificateFrom": {
           "type": "string",
           "description": "The resource id for the secret containing the TLS certificate and key for the gateway."
+        }
+      }
+    },
+    "GitAuthConfig": {
+      "type": "object",
+      "description": "Authentication information used to access private Terraform modules from Git repository sources.",
+      "properties": {
+        "pat": {
+          "type": "object",
+          "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms.",
+          "additionalProperties": {
+            "$ref": "#/definitions/SecretConfig"
+          }
         }
       }
     },
@@ -4585,27 +4608,32 @@
         ]
       }
     },
+    "ProviderConfigProperties": {
+      "type": "object",
+      "description": "This configuration holds the necessary information to authenticate and interact with a provider for the recipe execution.",
+      "additionalProperties": true
+    },
     "Providers": {
       "type": "object",
-      "description": "The Cloud providers configuration",
+      "description": "The Cloud providers configuration.",
       "properties": {
         "azure": {
           "$ref": "#/definitions/ProvidersAzure",
-          "description": "The Azure cloud provider configuration"
+          "description": "The Azure cloud provider configuration."
         },
         "aws": {
           "$ref": "#/definitions/ProvidersAws",
-          "description": "The AWS cloud provider configuration"
+          "description": "The AWS cloud provider configuration."
         }
       }
     },
     "ProvidersAws": {
       "type": "object",
-      "description": "The AWS cloud provider definition",
+      "description": "The AWS cloud provider definition.",
       "properties": {
         "scope": {
           "type": "string",
-          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'"
+          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
         }
       },
       "required": [
@@ -4614,21 +4642,21 @@
     },
     "ProvidersAwsUpdate": {
       "type": "object",
-      "description": "The AWS cloud provider definition",
+      "description": "The AWS cloud provider definition.",
       "properties": {
         "scope": {
           "type": "string",
-          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'"
+          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
         }
       }
     },
     "ProvidersAzure": {
       "type": "object",
-      "description": "The Azure cloud provider definition",
+      "description": "The Azure cloud provider definition.",
       "properties": {
         "scope": {
           "type": "string",
-          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
+          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'."
         }
       },
       "required": [
@@ -4637,25 +4665,25 @@
     },
     "ProvidersAzureUpdate": {
       "type": "object",
-      "description": "The Azure cloud provider definition",
+      "description": "The Azure cloud provider definition.",
       "properties": {
         "scope": {
           "type": "string",
-          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
+          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'."
         }
       }
     },
     "ProvidersUpdate": {
       "type": "object",
-      "description": "The Cloud providers configuration",
+      "description": "The Cloud providers configuration.",
       "properties": {
         "azure": {
           "$ref": "#/definitions/ProvidersAzureUpdate",
-          "description": "The Azure cloud provider configuration"
+          "description": "The Azure cloud provider configuration."
         },
         "aws": {
           "$ref": "#/definitions/ProvidersAwsUpdate",
-          "description": "The AWS cloud provider configuration"
+          "description": "The AWS cloud provider configuration."
         }
       }
     },
@@ -4732,17 +4760,31 @@
         "name"
       ]
     },
+    "RecipeConfigProperties": {
+      "type": "object",
+      "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run.",
+      "properties": {
+        "terraform": {
+          "$ref": "#/definitions/TerraformConfigProperties",
+          "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
+        },
+        "env": {
+          "$ref": "#/definitions/EnvironmentVariables",
+          "description": "Environment variables injected during Terraform Recipe execution for the recipes in the environment."
+        }
+      }
+    },
     "RecipeGetMetadata": {
       "type": "object",
       "description": "Represents the request body of the getmetadata action.",
       "properties": {
         "resourceType": {
           "type": "string",
-          "description": "Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'"
+          "description": "Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'."
         },
         "name": {
           "type": "string",
-          "description": "The name of the recipe registered to the environment"
+          "description": "The name of the recipe registered to the environment."
         }
       },
       "required": [
@@ -4796,7 +4838,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment",
+          "description": "Key/value parameters to pass to the recipe template at deployment.",
           "properties": {}
         }
       },
@@ -4820,7 +4862,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment",
+          "description": "Key/value parameters to pass to the recipe template at deployment.",
           "properties": {}
         }
       },
@@ -4966,6 +5008,16 @@
         }
       }
     },
+    "SecretConfig": {
+      "type": "object",
+      "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified."
+        }
+      }
+    },
     "SecretObjectProperties": {
       "type": "object",
       "description": "Represents secret object properties",
@@ -5077,7 +5129,6 @@
         }
       },
       "required": [
-        "application",
         "data"
       ]
     },
@@ -5236,6 +5287,27 @@
         }
       ],
       "x-ms-discriminator-value": "tcp"
+    },
+    "TerraformConfigProperties": {
+      "type": "object",
+      "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.",
+      "properties": {
+        "authentication": {
+          "$ref": "#/definitions/AuthConfig",
+          "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git."
+        },
+        "providers": {
+          "type": "object",
+          "description": "Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration.",
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/definitions/ProviderConfigProperties"
+            },
+            "type": "array",
+            "x-ms-identifiers": []
+          }
+        }
+      }
     },
     "TerraformRecipeProperties": {
       "type": "object",
