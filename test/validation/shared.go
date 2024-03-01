@@ -173,8 +173,8 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 	}
 }
 
-// CredentialExists checks if the credential is registered in the workspace and returns a boolean value.
-func CredentialExists(t *testing.T, credential string) bool {
+// DoesCredentialExist checks if the credential is registered in the workspace and returns a boolean value.
+func DoesCredentialExist(t *testing.T, credential string) bool {
 	ctx := testcontext.New(t)
 
 	config, err := cli.LoadConfig("")
