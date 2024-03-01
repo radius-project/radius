@@ -83,7 +83,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Graphs command missing application",
+			Name:          "Graph command missing application",
 			Input:         []string{"-a", "test-app"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
