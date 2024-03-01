@@ -92,7 +92,7 @@ func display(applicationResources []*v20231001preview.ApplicationGraphResource, 
 				if link == "" {
 					output.WriteString(fmt.Sprintf("  %s (%s)\n", *resource.Name, *resource.Type))
 				} else {
-					output.WriteString(fmt.Sprintf("  %s (%s) %s\n", *resource.Name, *resource.Type, link))
+					output.WriteString(fmt.Sprintf("  %s (%s)\n", link, *resource.Type))
 				}
 			}
 		}
@@ -114,5 +114,5 @@ func makeHyperlink(resource *v20231001preview.ApplicationGraphOutputResource) st
 
 	// This is the magic incantation for a console hyperlink.
 	// \x1b]8;;h { URL } \x07 { link text } \x1b]8;;\x07
-	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07\n", url, "open portal")
+	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07", url, *resource.Name)
 }
