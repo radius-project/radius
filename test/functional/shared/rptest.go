@@ -82,10 +82,10 @@ type RequiredFeatureValidatorType string
 
 const (
 	// Use CRD to check for required features
-	RequiredFeatureValidatorTypeCRD = "ValidatorCRD"
+	RequiredFeatureValidatorTypeCRD RequiredFeatureValidatorType = "ValidatorCRD"
 
 	// Use cloud provider API to check for required features
-	RequiredFeatureValidatorTypeCloud = "ValidatorCloud"
+	RequiredFeatureValidatorTypeCloud RequiredFeatureValidatorType = "ValidatorCloud"
 )
 
 type TestStep struct {
