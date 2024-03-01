@@ -20,9 +20,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
@@ -51,7 +51,7 @@ func Test_MicrosoftSQL_Manual(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), mssqlresourceid, adminUsername, adminPassword, sqlDatabse, sqlServer),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), mssqlresourceid, adminUsername, adminPassword, sqlDatabse, sqlServer),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

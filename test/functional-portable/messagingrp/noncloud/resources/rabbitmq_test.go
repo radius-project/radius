@@ -19,9 +19,9 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
@@ -32,7 +32,7 @@ func Test_RabbitMQ_Manual(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "password=guest"),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "password=guest"),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -78,7 +78,7 @@ func Test_RabbitMQ_Recipe(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "password=guest", functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "password=guest", testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

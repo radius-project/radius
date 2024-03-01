@@ -30,9 +30,9 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 
 	"github.com/stretchr/testify/require"
@@ -66,7 +66,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 
 	test := shared.NewRPTest(t, appName, []shared.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor("testdata/tutorial-environment.bicep", functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
+			Executor:                               step.NewDeployExecutor("testdata/tutorial-environment.bicep", testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 		},
@@ -130,7 +130,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at shared.RPTest, na
 	// errorChan will contain any errors created from initializing the port-forwarding session
 	errorChan := make(chan error)
 
-	go functional.ExposePod(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, namespace, container, remotePort, stopChan, portChan, errorChan)
+	go testutil.ExposePod(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, namespace, container, remotePort, stopChan, portChan, errorChan)
 	defer close(stopChan)
 
 	select {

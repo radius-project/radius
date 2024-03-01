@@ -28,10 +28,10 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -62,8 +62,8 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	cli := radcli.NewCLI(t, "")
 
 	params := []string{
-		functional.GetBicepRecipeRegistry(),
-		functional.GetBicepRecipeVersion(),
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
 
 		// Avoid a conflict between app namespace and env namespace.
 		fmt.Sprintf("name=%s", environmentName),

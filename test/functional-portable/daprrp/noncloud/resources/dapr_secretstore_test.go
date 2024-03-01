@@ -20,9 +20,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
@@ -33,7 +33,7 @@ func Test_DaprSecretStore_Manual(t *testing.T) {
 
 	test := shared.NewRPTest(t, appNamespace, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -82,7 +82,7 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 
 	test := shared.NewRPTest(t, appNamespace, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
