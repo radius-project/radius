@@ -185,6 +185,30 @@ func TestGetConfiguration(t *testing.T) {
 			},
 		},
 		{
+			// Add test here for the simulated flag
+			name: "simulated env",
+			envResource: &model.EnvironmentResource{
+				Properties: &model.EnvironmentProperties{
+					Compute: &model.KubernetesCompute{
+						Kind:       to.Ptr(kind),
+						Namespace:  to.Ptr(envNamespace),
+						ResourceID: to.Ptr(envResourceId),
+					},
+					Simulated: to.Ptr(true),
+				},
+			},
+			appResource: nil,
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "default",
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				Simulated: true,
+			},
+		},
+		{
 			name: "invalid app resource",
 			envResource: &model.EnvironmentResource{
 				Properties: &model.EnvironmentProperties{
