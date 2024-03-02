@@ -21,7 +21,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -117,8 +116,8 @@ func Test_display(t *testing.T) {
 				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
 					{
 						ID:   &azureRedisID,
-						Name: to.Ptr(azureRedisName),
-						Type: to.Ptr(azureRedisType),
+						Name: &azureRedisName,
+						Type: &azureRedisType,
 					},
 				},
 				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
