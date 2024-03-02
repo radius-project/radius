@@ -41,11 +41,11 @@ func Test_display(t *testing.T) {
 		sqlRteID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte"
 		sqlRteType := "Applications.Core/httpRoutes"
 		sqlRteName := "sql-rte"
-		/*
-			sqlAppCntrID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr"
-			sqlAppCntrName := "sql-app-ctnr"
-			sqlAppCntrType := "Applications.Core/containers"
-		*/
+
+		sqlAppCntrID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr"
+		sqlAppCntrName := "sql-app-ctnr"
+		sqlAppCntrType := "Applications.Core/containers"
+
 		sqlCntrID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-ctnr"
 		sqlCntrName := "sql-ctnr"
 		sqlCntrType := "Applications.Core/containers"
@@ -97,6 +97,19 @@ func Test_display(t *testing.T) {
 				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
 			},
 			{
+				ID:                &sqlAppCntrID,
+				Name:              &sqlAppCntrName,
+				Type:              &sqlAppCntrType,
+				ProvisioningState: &provisioningStateSuccess,
+				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+					{
+						Direction: &dirInbound,
+						ID:        &sqlDbID,
+					},
+				},
+			},
+			{
 				ID:                &azureRedisID,
 				Name:              &azureRedisName,
 				Type:              &azureRedisType,
@@ -118,6 +131,11 @@ func Test_display(t *testing.T) {
 		}
 
 		expected := `Displaying application: test-app
+
+Name: sql-app-ctnr (Applications.Core/containers)
+Connections:
+  sql-db (Applications.Datastores/sqlDatabases) -> sql-app-ctnr
+Resources: (none)
 
 Name: sql-ctnr (Applications.Core/containers)
 Connections:
