@@ -126,6 +126,19 @@ func GetTerraformRecipeModuleServerURL() string {
 	return "moduleServer=" + u
 }
 
+func GetTerraformPrivateModuleSource() string {
+	u := os.Getenv("TF_RECIPE_PRIVATE_GIT_SOURCE")
+	if u == "" {
+		return "privateGitModule=git::https://github.com/radius-project/terraform-private-modules"
+	}
+	return "privateGitModule=" + u
+}
+
+func GetGitPAT() string {
+	u := os.Getenv("GITHUB_TOKEN")
+	return "pat=" + u
+}
+
 // GetAWSAccountId retrieves the AWS Account ID from the environment and returns it as a string.
 func GetAWSAccountId() string {
 	awsAccountId := os.Getenv("AWS_ACCOUNT_ID")
