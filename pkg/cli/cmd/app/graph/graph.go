@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package connections
+package graph
 
 import (
 	"context"
@@ -20,21 +20,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad app connections` command.
+// NewCommand creates an instance of the command and runner for the `rad app graph` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 	cmd := &cobra.Command{
-		Use:     "connections",
-		Aliases: []string{"graph"},
-		Short:   "Shows the connections for an application.",
-		Long:    `Shows the connections for an application`,
+		Use:     "graph",
+		Aliases: []string{"connections"},
+		Short:   "Shows the application graph for an application.",
+		Long:    `Shows the application graph for an application.`,
 		Args:    cobra.MaximumNArgs(1),
 		Example: `
-# Show connections for current application
-rad app connections
+# Show graph for current application
+rad app graph
 
-# Show connections for specified application
-rad app connections my-application`,
+# Show graph for specified application
+rad app graph my-application`,
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -46,7 +46,7 @@ rad app connections my-application`,
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad app connections` command.
+// Runner is the runner implementation for the `rad app graph` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
@@ -57,7 +57,7 @@ type Runner struct {
 	Workspace       *workspaces.Workspace
 }
 
-// NewRunner creates a new instance of the `rad app connections` runner.
+// NewRunner creates a new instance of the `rad app graph` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -66,7 +66,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad app connections` command.
+// Validate runs validation for the `rad app graph` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -107,7 +107,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad app connections` command.
+// Run runs the `rad app graph` command.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {

@@ -14,25 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package connections
+package graph
 
 import (
-	"github.com/radius-project/radius/pkg/resourcemodel"
-	"github.com/radius-project/radius/pkg/ucp/resources"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-func providerFromID(id string) string {
-	parsed, err := resources.ParseResource(id)
-	if err != nil {
-		return ""
-	}
+func Test_providerFromID(t *testing.T) {
+	t.Run("parse valid resource ID", func(t *testing.T) {
+		require.Equal(t, "aws", providerFromID(awsMemoryDBResourceID))
+		require.Equal(t, "azure", providerFromID(azureRedisCacheResourceID))
+	})
 
-	if len(parsed.ScopeSegments()) > 0 && parsed.IsUCPQualified() {
-		return parsed.ScopeSegments()[0].Type
-	} else if len(parsed.ScopeSegments()) > 0 {
-		// Relative Resource ID (ARM)
-		return resourcemodel.ProviderAzure
-	}
-
-	return ""
+	t.Run("parse invalid resource ID", func(t *testing.T) {
+		require.Equal(t, "", providerFromID("\ndkdkfkdfs\t"))
+	})
 }
