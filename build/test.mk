@@ -69,8 +69,10 @@ test-functional-kubernetes: ## Runs Kubernetes functional tests
 test-functional-shared: ## Runs shared functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/shared/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
-test-functional-msgrp: ## Runs Messaging RP functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/messagingrp/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
+test-functional-msgrp: test-functional-msgrp-noncloud
+
+test-functional-msgrp-noncloud: ## Runs Messaging RP functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/messagingrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
 
 test-functional-daprrp: ## Runs Dapr RP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/daprrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
