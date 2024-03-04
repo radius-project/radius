@@ -20,6 +20,19 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       resourceId: 'self'
       namespace: 'corerp-resources-terraform-private-env'
     }
+    recipeConfig: {
+      terraform: {
+        authentication: {
+          git: {
+            pat: {
+              'github.com':{
+                secret: moduleSecrets.id
+              }
+            }
+          }
+        }
+      }
+    }
     recipes: {
       'Applications.Core/extenders': {
         default: {
