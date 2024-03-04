@@ -63,7 +63,8 @@ test-functional-all: test-functional-ucp test-functional-kubernetes test-functio
 test-functional-ucp: ## Runs UCP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-kubernetes: test-functional-kubernetes-noncloud
+test-functional-kubernetes: test-functional-kubernetes-noncloud ## Runs all Kubernetes functional tests
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-kubernetes-noncloud: ## Runs Kubernetes functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/kubernetes/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
