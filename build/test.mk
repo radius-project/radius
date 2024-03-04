@@ -58,7 +58,7 @@ test-get-envtools:
 test-validate-cli: ## Run cli integration tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-shared test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples ## Runs all functional tests
+test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-shared test-functional-cli test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples ## Runs all functional tests
 
 test-functional-ucp: ## Runs UCP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
@@ -69,10 +69,15 @@ test-functional-kubernetes: ## Runs Kubernetes functional tests
 test-functional-shared: ## Runs shared functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/shared/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
-test-functional-msgrp: test-functional-msgrp-noncloud
+test-functional-msgrp: test-functional-msgrp-noncloud ## Runs all Messaging RP functional tests (both cloud and non-cloud)
 
 test-functional-msgrp-noncloud: ## Runs Messaging RP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/messagingrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
+
+test-functional-cli: test-functional-cli-noncloud ## Runs all cli functional tests (both cloud and non-cloud)
+
+test-functional-cli-noncloud: ## Runs cli functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/cli/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
 test-functional-daprrp: ## Runs Dapr RP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/daprrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
