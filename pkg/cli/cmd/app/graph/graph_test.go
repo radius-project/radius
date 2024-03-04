@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package connections
+package graph
 
 import (
 	"context"
@@ -41,7 +41,7 @@ func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Connections command application (positional)",
+			Name:          "Graph command application (positional)",
 			Input:         []string{"test-app"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -62,7 +62,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Connections command application (flag)",
+			Name:          "Graph command application (flag)",
 			Input:         []string{"-a", "test-app"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -83,7 +83,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Connections command missing application",
+			Name:          "Graph command missing application",
 			Input:         []string{"-a", "test-app"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -98,7 +98,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Connections command with incorrect args",
+			Name:          "Graph command with incorrect args",
 			Input:         []string{"foo", "bar"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
