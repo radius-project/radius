@@ -5,19 +5,19 @@ param environment string
 param namespace string = 'default'
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'daprrp-rs-statestore-manual'
+  name: 'dpsb-manual-app'
   properties: {
     environment: environment
   }
 }
 
 resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'dapr-sts-manual-ctnr'
+  name: 'dpsb-manual-app-ctnr'
   properties: {
     application: app.id
     connections: {
-      daprstatestore: {
-        source: statestore.id
+      daprpubsub: {
+        source: pubsubBroker.id
       }
     }
     container: {
@@ -31,7 +31,7 @@ resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'gnrc-sts-ctnr'
+        appId: 'dpsb-manual-app-ctnr'
         appPort: 3000
       }
     ]
@@ -39,23 +39,23 @@ resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
 }
 
 
-module redis '../../../shared/resources/testdata/modules/redis-selfhost.bicep' = {
-  name: 'dapr-sts-manual-redis-deployment'
+module redis '../../../../../functional/shared/resources/testdata/modules/redis-selfhost.bicep' = {
+  name: 'dpsb-manual-redis-deployment'
   params: {
-    name: 'dapr-sts-manual-redis'
+    name: 'dpsb-manual-redis'
     namespace: namespace
     application: app.name
   }
 }
 
 
-resource statestore 'Applications.Dapr/stateStores@2023-10-01-preview' = {
-  name: 'dapr-sts-manual'
+resource pubsubBroker 'Applications.Dapr/pubSubBrokers@2023-10-01-preview' = {
+  name: 'dpsb-manual'
   properties: {
     application: app.id
     environment: environment
     resourceProvisioning: 'manual'
-    type: 'state.redis'
+    type: 'pubsub.redis'
     metadata: {
       redisHost: '${redis.outputs.host}:${redis.outputs.port}'
       redisPassword: ''
