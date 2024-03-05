@@ -75,5 +75,6 @@ func Test_MicrosoftSQL_Manual(t *testing.T) {
 		},
 	})
 
+	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureAzure}
 	test.Test(t)
 }
