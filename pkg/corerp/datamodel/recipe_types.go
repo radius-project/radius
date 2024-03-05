@@ -52,7 +52,8 @@ type SecretConfig struct {
 	// The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret
 	// store must have a secret named 'pat', containing the PAT value. A secret named
 	// 'username' is optional, containing the username associated with the pat. By default no username is specified.
-	Secret string `json:"secret,omitempty"`
+	Secret     string `json:"secret,omitempty"`
+	SecretData map[string]string
 }
 
 // EnvironmentVariables represents the environment variables to be set for the recipe execution.

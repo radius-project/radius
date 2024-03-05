@@ -66,10 +66,10 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 		}
 	}
 
-	return getConfiguration(environment, application)
+	return getConfiguration(ctx, environment, application, e.ArmClientOptions)
 }
 
-func getConfiguration(environment *v20231001preview.EnvironmentResource, application *v20231001preview.ApplicationResource) (*recipes.Configuration, error) {
+func getConfiguration(ctx context.Context, environment *v20231001preview.EnvironmentResource, application *v20231001preview.ApplicationResource, opts *arm.ClientOptions) (*recipes.Configuration, error) {
 	config := recipes.Configuration{
 		Runtime:      recipes.RuntimeConfiguration{},
 		Providers:    datamodel.Providers{},
@@ -114,6 +114,17 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 
 	if environment.Properties.RecipeConfig != nil {
 		config.RecipeConfig = envDatamodel.Properties.RecipeConfig
+		secrets := config.RecipeConfig.Terraform.Authentication.Git.PAT
+		for k, v := range secrets {
+			res, err := loadSecrets(ctx, v.Secret, opts)
+			if err != nil {
+				return nil, err
+			}
+			config.RecipeConfig.Terraform.Authentication.Git.PAT[k] = datamodel.SecretConfig{
+				Secret:     v.Secret,
+				SecretData: res,
+			}
+		}
 	}
 
 	if environment.Properties.Simulated != nil && *environment.Properties.Simulated {

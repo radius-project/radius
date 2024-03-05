@@ -22,12 +22,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"golang.org/x/exp/slices"
 	"k8s.io/client-go/kubernetes"
@@ -87,9 +85,13 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		}
 	}()
 
+	url, err := recipes.GetGitURL(opts.Definition.TemplatePath)
+	if err != nil {
+		return nil, err
+	}
 	// Add credential information to .gitconfig if module source is of type git.
-	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
-		err := addSecretsToGitConfig(opts.BaseOptions.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && opts.Configuration.RecipeConfig.Terraform.Authentication.Git.PAT[url.Hostname()].SecretData != nil {
+		err := addSecretsToGitConfig(opts.Configuration.RecipeConfig.Terraform.Authentication.Git.PAT[url.Hostname()].SecretData, &opts.Recipe, opts.Definition.TemplatePath)
 		if err != nil {
 			return nil, err
 		}
@@ -103,8 +105,8 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 	})
 
 	// Unset credential information from .gitconfig if module source is of type git.
-	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
-		unsetError := unsetSecretsFromGitConfig(opts.BaseOptions.Secrets, opts.Definition.TemplatePath)
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && opts.Configuration.RecipeConfig.Terraform.Authentication.Git.PAT[url.Hostname()].SecretData != nil {
+		unsetError := unsetSecretsFromGitConfig(opts.Configuration.RecipeConfig.Terraform.Authentication.Git.PAT[url.Hostname()].SecretData, opts.Definition.TemplatePath)
 		if unsetError != nil {
 			return nil, unsetError
 		}

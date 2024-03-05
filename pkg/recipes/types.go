@@ -142,20 +142,6 @@ func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error 
 	return nil
 }
 
-// GetSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
-func GetSecretStoreID(envConfig Configuration, templatePath string) (string, error) {
-	if strings.HasPrefix(templatePath, "git::") {
-		url, err := GetGitURL(templatePath)
-		if err != nil {
-			return "", err
-		}
-
-		// get the secret store id associated with the git domain of the template path.
-		return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
-	}
-	return "", nil
-}
-
 // GetGitURL returns git url from generic git module source.
 // git::https://exmaple.com/project/module -> https://exmaple.com/project/module
 func GetGitURL(templatePath string) (*url.URL, error) {

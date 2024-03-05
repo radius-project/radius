@@ -22,31 +22,26 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-// NewSecretStoreLoader creates a new SecretsLoader instance with the given ARM Client Options.
-func NewSecretStoreLoader(armOptions *arm.ClientOptions) SecretsLoader {
-	return SecretsLoader{ArmClientOptions: armOptions}
-}
-
-// SecretsLoader struct provides functionality to get secret information from Application.Core/SecretStore resource.
-type SecretsLoader struct {
-	ArmClientOptions *arm.ClientOptions
-}
-
-func (e *SecretsLoader) LoadSecrets(ctx context.Context, secretStore string) (v20231001preview.SecretStoresClientListSecretsResponse, error) {
+func loadSecrets(ctx context.Context, secretStore string, opts *arm.ClientOptions) (map[string]string, error) {
 	secretStoreID, err := resources.ParseResource(secretStore)
 	if err != nil {
-		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+		return nil, err
 	}
 
-	client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, e.ArmClientOptions)
+	client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, opts)
 	if err != nil {
-		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+		return nil, err
 	}
 
 	secrets, err := client.ListSecrets(ctx, secretStoreID.Name(), map[string]any{}, nil)
 	if err != nil {
-		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+		return nil, err
 	}
 
-	return secrets, nil
+	output := map[string]string{}
+	for k, v := range secrets.Data {
+		output[k] = *v.Value
+	}
+
+	return output, nil
 }
