@@ -75,6 +75,6 @@ func Test_MicrosoftSQL_Manual(t *testing.T) {
 		},
 	})
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureAzure}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAzure}
 	test.Test(t)
 }
