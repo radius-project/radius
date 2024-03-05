@@ -27,9 +27,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -53,7 +53,7 @@ func Test_GatewayDNS(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -92,7 +92,7 @@ func Test_GatewayDNS(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
 
@@ -132,7 +132,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json"),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json"),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -163,7 +163,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
 
@@ -198,7 +198,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json"),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json"),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -235,7 +235,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
 
@@ -317,7 +317,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at shared.RPT
 	// errorChan will contain any errors created from initializing the port-forwarding session
 	errorChan := make(chan error)
 
-	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
+	go testutil.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
 
 	select {
 	case err := <-errorChan:

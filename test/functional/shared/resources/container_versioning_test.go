@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 
@@ -39,7 +39,7 @@ func Test_ContainerVersioning(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(containerV1, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(containerV1, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -71,7 +71,7 @@ func Test_ContainerVersioning(t *testing.T) {
 			},
 		},
 		{
-			Executor: step.NewDeployExecutor(containerV2, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(containerV2, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

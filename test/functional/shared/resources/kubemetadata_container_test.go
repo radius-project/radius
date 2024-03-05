@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,7 +46,7 @@ func Test_KubeMetadataContainer(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -81,8 +81,8 @@ func Test_KubeMetadataContainer(t *testing.T) {
 				require.Len(t, pods.Items, 1)
 				t.Logf("validated number of pods: %d", len(pods.Items))
 				pod := pods.Items[0]
-				require.True(t, functional.IsMapSubSet(expectedAnnotations, pod.Annotations))
-				require.True(t, functional.IsMapSubSet(expectedLabels, pod.Labels))
+				require.True(t, testutil.IsMapSubSet(expectedAnnotations, pod.Annotations))
+				require.True(t, testutil.IsMapSubSet(expectedLabels, pod.Labels))
 
 				// Verify deployment labels and annotations
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{
@@ -91,8 +91,8 @@ func Test_KubeMetadataContainer(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, deployments.Items, 1)
 				deployment := deployments.Items[0]
-				require.True(t, functional.IsMapSubSet(expectedAnnotations, deployment.Annotations))
-				require.True(t, functional.IsMapSubSet(expectedLabels, deployment.Labels))
+				require.True(t, testutil.IsMapSubSet(expectedAnnotations, deployment.Annotations))
+				require.True(t, testutil.IsMapSubSet(expectedLabels, deployment.Labels))
 			},
 		},
 	})

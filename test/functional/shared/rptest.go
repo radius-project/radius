@@ -236,7 +236,7 @@ func (ct RPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 				require.NoError(t, err, "failed to check for required features")
 			}
 		case RequiredFeatureValidatorTypeCloud:
-			exists := validation.DoesCredentialExist(t, credential)
+			exists := validation.AssertCredentialExists(t, credential)
 			if !exists {
 				t.Skip(message)
 			}

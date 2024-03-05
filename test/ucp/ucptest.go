@@ -145,7 +145,7 @@ func (ct UCPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 			panic(fmt.Sprintf("unsupported feature: %s", feature))
 		}
 
-		exists := validation.DoesCredentialExist(t, credential)
+		exists := validation.AssertCredentialExists(t, credential)
 		if !exists {
 			t.Skip(message)
 		}

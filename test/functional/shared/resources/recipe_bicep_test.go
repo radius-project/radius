@@ -25,9 +25,9 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +46,7 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 	name := "corerp-resources-recipe-bicep-parametersandoutputs"
 
 	// Best way to pass complex parameters is to use JSON.
-	parametersFilePath := functional.WriteBicepParameterFile(t, map[string]any{
+	parametersFilePath := testutil.WriteBicepParameterFile(t, map[string]any{
 		// These will be set on the environment as part of the recipe
 		"environmentParameters": map[string]any{
 			"a": "environment",
@@ -61,8 +61,8 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 	})
 
 	parameters := []string{
-		functional.GetBicepRecipeRegistry(),
-		functional.GetBicepRecipeVersion(),
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
 		fmt.Sprintf("recipe=%s", "parameters-outputs"),
 		"@" + parametersFilePath,
@@ -116,8 +116,8 @@ func Test_BicepRecipe_ContextParameter(t *testing.T) {
 	name := "corerp-resources-recipe-bicep-contextparameter"
 
 	parameters := []string{
-		functional.GetBicepRecipeRegistry(),
-		functional.GetBicepRecipeVersion(),
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
 		fmt.Sprintf("recipe=%s", "context-parameter"),
 	}
@@ -180,8 +180,8 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 	name := "corerp-resources-recipe-bicep-resourcecreation"
 
 	parametersStep0 := []string{
-		functional.GetBicepRecipeRegistry(),
-		functional.GetBicepRecipeVersion(),
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
 		fmt.Sprintf("recipe=%s", "resource-creation"),
 	}
@@ -277,7 +277,7 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 	name := "corerp-resources-recipe-bicep-parameternotdefined"
 
 	// Best way to pass complex parameters is to use JSON.
-	parametersFilePath := functional.WriteBicepParameterFile(t, map[string]any{
+	parametersFilePath := testutil.WriteBicepParameterFile(t, map[string]any{
 		// These will be set on the environment as part of the recipe
 		"environmentParameters": map[string]any{
 			"a": "environment",
@@ -290,8 +290,8 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 	})
 
 	parameters := []string{
-		functional.GetBicepRecipeRegistry(),
-		functional.GetBicepRecipeVersion(),
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
 		fmt.Sprintf("recipe=%s", "empty-recipe"),
 		"@" + parametersFilePath,
@@ -338,8 +338,8 @@ func Test_BicepRecipe_WrongOutput(t *testing.T) {
 	template := "testdata/corerp-resources-recipe-bicep.bicep"
 	name := "corerp-resources-recipe-bicep-wrongoutput"
 	parameters := []string{
-		functional.GetBicepRecipeRegistry(),
-		functional.GetBicepRecipeVersion(),
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
 		fmt.Sprintf("recipe=%s", "wrong-output"),
 	}
@@ -379,8 +379,8 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 	template := "testdata/corerp-resources-recipe-bicep.bicep"
 	name := "corerp-resources-recipe-bicep-langugagefailure"
 	parameters := []string{
-		functional.GetBicepRecipeRegistry(),
-		functional.GetBicepRecipeVersion(),
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
 		fmt.Sprintf("recipe=%s", "language-failure"),
 	}
@@ -432,8 +432,8 @@ func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
 	template := "testdata/corerp-resources-recipe-bicep.bicep"
 	name := "corerp-resources-recipe-bicep-resourcecreationfailure"
 	parameters := []string{
-		functional.GetBicepRecipeRegistry(),
-		functional.GetBicepRecipeVersion(),
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
 		fmt.Sprintf("recipe=%s", "resource-creation-failure"),
 	}
