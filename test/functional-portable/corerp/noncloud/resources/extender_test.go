@@ -17,10 +17,7 @@ limitations under the License.
 package resource_test
 
 import (
-	"fmt"
 	"testing"
-
-	"os"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -87,81 +84,6 @@ func Test_Extender_Recipe(t *testing.T) {
 						Name: "extender-recipe",
 						Type: validation.ExtendersResource,
 						App:  name,
-					},
-				},
-			},
-			SkipObjectValidation: true,
-		},
-	})
-
-	test.Test(t)
-}
-
-func Test_Extender_RecipeAWS(t *testing.T) {
-	awsAccountID := os.Getenv("AWS_ACCOUNT_ID")
-	awsRegion := os.Getenv("AWS_REGION")
-	// Error the test if the required environment variables are not set
-	// for running locally set the environment variables
-	if awsAccountID == "" || awsRegion == "" {
-		t.Error("This test needs the env variables AWS_ACCOUNT_ID and AWS_REGION to be set")
-	}
-
-	template := "testdata/corerp-resources-extender-aws-s3-recipe.bicep"
-	name := "corerp-resources-extenders-aws-s3-recipe"
-	appName := "corerp-resources-extenders-aws-s3-recipe-app"
-	bucketName := testutil.GenerateS3BucketName()
-	bucketID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.S3/Bucket/%s", awsAccountID, awsRegion, bucketName)
-	creationTimestamp := testutil.GetCreationTimestamp()
-
-	test := rp.NewRPTest(t, name, []rp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(
-				template,
-				"bucketName="+bucketName,
-				"creationTimestamp="+creationTimestamp,
-				testutil.GetAWSAccountId(),
-				testutil.GetAWSRegion(),
-				testutil.GetBicepRecipeRegistry(),
-				testutil.GetBicepRecipeVersion(),
-			),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: "corerp-resources-extenders-aws-s3-recipe-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
-						Name: "corerp-resources-extenders-aws-s3-recipe-app",
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name: "corerp-resources-extenders-aws-s3-recipe",
-						Type: validation.ExtendersResource,
-						App:  appName,
-						OutputResources: []validation.OutputResourceResponse{
-							{
-								ID: bucketID,
-							},
-						},
-					},
-				},
-			},
-			AWSResources: &validation.AWSResourceSet{
-				Resources: []validation.AWSResource{
-					{
-						Name:       bucketName,
-						Type:       validation.AWSS3BucketResourceType,
-						Identifier: bucketName,
-						Properties: map[string]any{
-							"BucketName": bucketName,
-							"Tags": []any{
-								map[string]any{
-									"Key":   "RadiusCreationTimestamp",
-									"Value": creationTimestamp,
-								},
-							},
-						},
-						SkipDeletion: true, // will be deleted by the recipe
 					},
 				},
 			},

@@ -33,14 +33,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/radius-project/radius/pkg/recipes"
-	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
@@ -63,7 +61,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 	envName := "corerp-resources-terraform-redis-env"
 	redisCacheName := "tf-redis-cache"
 
-	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
+	secretSuffix, err := corerp.GetSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
 	require.NoError(t, err)
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
@@ -131,7 +129,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
+		corerp.TestSecretDeletion(t, ctx, test, appName, envName, resourceID, secretNamespace, secretPrefix)
 	}
 
 	test.Test(t)
@@ -142,7 +140,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 	name := "corerp-resources-terraform-context"
 	appNamespace := "corerp-resources-terraform-context-app"
 
-	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, name, name)
+	secretSuffix, err := corerp.GetSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, name, name)
 	require.NoError(t, err)
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
@@ -224,57 +222,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-		testSecretDeletion(t, ctx, test, name, name, resourceID)
-	}
-
-	test.Test(t)
-}
-
-// Test_TerraformRecipe_AzureStorage creates an Extender resource consuming a Terraform recipe that deploys an Azure blob storage instance.
-func Test_TerraformRecipe_AzureStorage(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-azurestorage.bicep"
-	name := "corerp-resources-terraform-azstorage"
-	appName := "corerp-resources-terraform-azstorage-app"
-	envName := "corerp-resources-terraform-azstorage-env"
-
-	test := rp.NewRPTest(t, name, []rp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: envName,
-						Type: validation.EnvironmentsResource,
-					},
-					{
-						Name: appName,
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name: name,
-						Type: validation.ExtendersResource,
-						App:  appName,
-					},
-				},
-			},
-			SkipObjectValidation: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-				secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
-				require.NoError(t, err)
-
-				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
-					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
-				require.NoError(t, err)
-				require.Equal(t, secretNamespace, secret.Namespace)
-				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
-			},
-		},
-	})
-
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
-		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
+		corerp.TestSecretDeletion(t, ctx, test, name, name, resourceID, secretNamespace, secretPrefix)
 	}
 
 	test.Test(t)
@@ -392,36 +340,4 @@ func Test_TerraformRecipe_WrongOutput(t *testing.T) {
 	})
 
 	test.Test(t)
-}
-
-func testSecretDeletion(t *testing.T, ctx context.Context, test rp.RPTest, appName, envName, resourceID string) {
-	secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
-	require.NoError(t, err)
-
-	secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
-		Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
-	require.Error(t, err)
-	require.True(t, apierrors.IsNotFound(err))
-	require.Equal(t, secret, &corev1.Secret{})
-}
-
-func getSecretSuffix(resourceID, envName, appName string) (string, error) {
-	envID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/environments/" + envName
-	appID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/applications/" + appName
-
-	resourceRecipe := recipes.ResourceMetadata{
-		EnvironmentID: envID,
-		ApplicationID: appID,
-		ResourceID:    resourceID,
-		Parameters:    nil,
-	}
-
-	backend := backends.NewKubernetesBackend(nil)
-	secretMap, err := backend.BuildBackend(&resourceRecipe)
-	if err != nil {
-		return "", err
-	}
-	kubernetes := secretMap["kubernetes"].(map[string]any)
-
-	return kubernetes["secret_suffix"].(string), nil
 }
