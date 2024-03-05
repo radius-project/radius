@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -32,7 +32,7 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 	name := "daprrp-rs-statestore-manual"
 	appNamespace := "default-daprrp-rs-statestore-manual"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("namespace=%s", appNamespace)),
 			RPResources: &validation.RPResourceSet{
@@ -72,9 +72,9 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 		},
 	})
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureDapr}
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-manual", appNamespace)
 	}
 
@@ -86,7 +86,7 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 	name := "daprrp-rs-sts-recipe"
 	appNamespace := "daprrp-env-recipes-env"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
@@ -126,9 +126,9 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 		},
 	})
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureDapr}
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-recipe", appNamespace)
 	}
 

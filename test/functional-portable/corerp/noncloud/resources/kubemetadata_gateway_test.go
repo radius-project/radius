@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -36,7 +36,7 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 		"user.ann.2": "user.ann.val.2",
 	}
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -73,7 +73,7 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Check labels and annotations
 				t.Logf("Checking label, annotation values in HTTPProxy resources")
 				httpproxies, err := testutil.GetHTTPProxyList(ctx, ct.Options.Client, appNamespace, name)

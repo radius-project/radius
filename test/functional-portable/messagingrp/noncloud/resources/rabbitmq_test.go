@@ -19,7 +19,7 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -30,7 +30,7 @@ func Test_RabbitMQ_Manual(t *testing.T) {
 	name := "msgrp-resources-rabbitmq"
 	appNamespace := "default-msgrp-resources-rabbitmq"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "password=guest"),
 			RPResources: &validation.RPResourceSet{
@@ -76,7 +76,7 @@ func Test_RabbitMQ_Recipe(t *testing.T) {
 	name := "msgrp-resources-rabbitmq-recipe"
 	appNamespace := "default-msgrp-resources-rabbitmq-recipe"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "password=guest", testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{

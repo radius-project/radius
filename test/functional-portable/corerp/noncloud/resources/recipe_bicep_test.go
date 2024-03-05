@@ -25,7 +25,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -68,7 +68,7 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 		"@" + parametersFilePath,
 	}
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, parameters...),
 			RPResources: &validation.RPResourceSet{
@@ -84,7 +84,7 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
@@ -122,7 +122,7 @@ func Test_BicepRecipe_ContextParameter(t *testing.T) {
 		fmt.Sprintf("recipe=%s", "context-parameter"),
 	}
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, parameters...),
 			RPResources: &validation.RPResourceSet{
@@ -138,7 +138,7 @@ func Test_BicepRecipe_ContextParameter(t *testing.T) {
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
@@ -190,7 +190,7 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 		fmt.Sprintf("basename=%s", name),
 	}
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, "step0"), parametersStep0...),
 			RPResources: &validation.RPResourceSet{
@@ -238,7 +238,7 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 			// Trying to delete the resources can cause multiple concurrent delete requests.
 			// This currently fails.
 			SkipResourceDeletion: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
@@ -313,7 +313,7 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 		},
 	})
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployErrorExecutor(template, validate, parameters...),
 			RPResources: &validation.RPResourceSet{
@@ -354,7 +354,7 @@ func Test_BicepRecipe_WrongOutput(t *testing.T) {
 		},
 	})
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployErrorExecutor(template, validate, parameters...),
 			RPResources: &validation.RPResourceSet{
@@ -407,7 +407,7 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 		},
 	})
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployErrorExecutor(template, validate, parameters...),
 			RPResources: &validation.RPResourceSet{
@@ -466,7 +466,7 @@ func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
 		},
 	})
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployErrorExecutor(template, validate, parameters...),
 			RPResources: &validation.RPResourceSet{

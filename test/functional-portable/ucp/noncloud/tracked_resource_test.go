@@ -31,7 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	corerptest "github.com/radius-project/radius/test/functional-portable/corerp"
+	corerptest "github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

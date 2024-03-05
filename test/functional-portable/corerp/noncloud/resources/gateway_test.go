@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -51,7 +51,7 @@ func Test_GatewayDNS(t *testing.T) {
 	name := "corerp-resources-gateway-dns"
 	appNamespace := "default-corerp-resources-gateway-dns"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -90,7 +90,7 @@ func Test_GatewayDNS(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
 				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
@@ -130,7 +130,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 	name := "corerp-resources-gateway-sslpassthrough"
 	appNamespace := "default-corerp-resources-gateway-sslpassthrough"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json"),
 			RPResources: &validation.RPResourceSet{
@@ -161,7 +161,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
 				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
@@ -196,7 +196,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 	name := "corerp-resources-gateway-tlstermination"
 	appNamespace := "default-corerp-resources-gateway-tlstermination"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json"),
 			RPResources: &validation.RPResourceSet{
@@ -233,7 +233,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
 				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
@@ -281,7 +281,7 @@ func Test_Gateway_Failure(t *testing.T) {
 		},
 	})
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor:                               step.NewDeployErrorExecutor(template, validateFn),
 			SkipObjectValidation:                   true,
@@ -307,7 +307,7 @@ func Test_Gateway_Failure(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.RPTest, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig) error {
+func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 

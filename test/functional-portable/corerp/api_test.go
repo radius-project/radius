@@ -20,14 +20,14 @@ import (
 	"fmt"
 	"testing"
 
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
-
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
 
 // Test_ResourceList covers the plane and resource-group scope list APIs for all Radius resource types.
@@ -35,7 +35,7 @@ import (
 // This test exists as a smoke test that these APIs can be called safely. They are mainly used by the CLI
 // at this time, and this is a better way to get coverage.
 func Test_ResourceList(t *testing.T) {
-	options := NewRPTestOptions(t)
+	options := rp.NewRPTestOptions(t)
 
 	// Extract the scope and client options from the management client so we can make our own API calls.
 	require.IsType(t, options.ManagementClient, &clients.UCPApplicationsManagementClient{})

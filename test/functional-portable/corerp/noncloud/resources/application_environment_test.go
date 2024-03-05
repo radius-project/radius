@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -31,7 +31,7 @@ func Test_ApplicationAndEnvironment(t *testing.T) {
 	template := "testdata/corerp-resources-app-env.bicep"
 	name := "corerp-resources-app-env"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			RPResources: &validation.RPResourceSet{
@@ -48,7 +48,7 @@ func Test_ApplicationAndEnvironment(t *testing.T) {
 			},
 			// Application and Environment should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				expectedNS := []string{
 					"corerp-resources-app-env",
 					"corerp-resources-app-env-env-corerp-resources-app-env-app",

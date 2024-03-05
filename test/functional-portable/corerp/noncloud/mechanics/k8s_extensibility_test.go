@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
 	"gopkg.in/yaml.v3"
@@ -33,7 +33,7 @@ func Test_Kubernetes_Extensibility(t *testing.T) {
 	template := "testdata/k8s-extensibility/connection-string.bicep"
 	name := "corerp-mechanics-k8s-extensibility"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor:           step.NewDeployExecutor(template),
 			RPResources:        &validation.RPResourceSet{},

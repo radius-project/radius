@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -68,7 +68,7 @@ func Test_KubeMetadataCascade(t *testing.T) {
 		"radapp.io/cntr.lbl.1": "reserved.lbl.val.1",
 	}
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -95,7 +95,7 @@ func Test_KubeMetadataCascade(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				// Verify pod labels and annotations
 				label := fmt.Sprintf("radapp.io/application=%s", name)
 				pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{

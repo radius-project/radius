@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -64,7 +64,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 	appName := "demo"
 	appNamespace := "tutorial-demo"
 
-	test := corerp.NewRPTest(t, appName, []corerp.TestStep{
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
 			Executor:                               step.NewDeployExecutor("testdata/tutorial-environment.bicep", testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			SkipKubernetesOutputResourceValidation: true,
@@ -89,7 +89,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Set up pod port-forwarding for the pod
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
@@ -120,7 +120,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 	test.Test(t)
 }
 
-func testWithPortForward(t *testing.T, ctx context.Context, at corerp.RPTest, namespace string, container string, remotePort int) error {
+func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namespace string, container string, remotePort int) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 

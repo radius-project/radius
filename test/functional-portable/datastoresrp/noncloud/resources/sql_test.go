@@ -20,7 +20,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -35,7 +35,7 @@ func Test_SQLDatabase_Manual(t *testing.T) {
 	name := "dsrp-resources-sql"
 	appNamespace := "default-dsrp-resources-sql"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -82,7 +82,7 @@ func Test_SQLDatabase_Recipe(t *testing.T) {
 	template := "testdata/datastoresrp-resources-sqldb-recipe.bicep"
 	name := "dsrp-resources-sqldb-recipe"
 	appNamespace := "dsrp-resources-sqldb-recipe-app"
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{

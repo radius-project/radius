@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -32,7 +32,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	name := "radiusfunctionaltestbucket-" + uuid.New().String()
 	creationTimestamp := testutil.GetCreationTimestamp()
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "bucketName="+name, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
@@ -90,6 +90,6 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 		},
 	})
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureAWS}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAWS}
 	test.Test(t)
 }

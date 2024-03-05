@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -49,7 +49,7 @@ func Test_MicrosoftSQL_Manual(t *testing.T) {
 	sqlServer := "server=" + os.Getenv("AZURE_MSSQL_SERVER")
 	appNamespace := "default-dsrp-resources-microsoft-sql"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), mssqlresourceid, adminUsername, adminPassword, sqlDatabse, sqlServer),
 			RPResources: &validation.RPResourceSet{

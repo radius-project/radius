@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/recipes"
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
 )
@@ -47,7 +47,7 @@ func Test_Recipe_NotFound(t *testing.T) {
 		},
 	})
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployErrorExecutor(template, validate, fmt.Sprintf("basename=%s", name)),
 			RPResources: &validation.RPResourceSet{

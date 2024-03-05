@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -41,7 +41,7 @@ func Test_Container_YAMLManifest(t *testing.T) {
 	name := "corerp-resources-container-manifest"
 	appNamespace := "corerp-resources-container-manifest"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -64,7 +64,7 @@ func Test_Container_YAMLManifest(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
 				require.NoError(t, err)
 				require.Equal(t, "base-manifest-test", deploy.ObjectMeta.Annotations["source"])
@@ -107,7 +107,7 @@ func Test_Container_YAMLManifest_SideCar(t *testing.T) {
 	name := "corerp-resources-container-sidecar"
 	appNamespace := "corerp-resources-container-sidecar"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -130,7 +130,7 @@ func Test_Container_YAMLManifest_SideCar(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-sidecar", metav1.GetOptions{})
 				require.NoError(t, err)
 
@@ -153,7 +153,7 @@ func Test_Container_pod_patching(t *testing.T) {
 	name := "corerp-resources-container-podpatch"
 	appNamespace := "corerp-resources-container-podpatch"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -176,7 +176,7 @@ func Test_Container_pod_patching(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-podpatch", metav1.GetOptions{})
 				require.NoError(t, err)
 

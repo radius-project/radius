@@ -19,7 +19,7 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -30,7 +30,7 @@ func Test_PersistentVolume(t *testing.T) {
 	name := "corerp-resources-volume-azure-keyvault"
 	appNamespace := "corerp-resources-volume-azure-keyvault-app"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), testutil.GetOIDCIssuer()),
 			RPResources: &validation.RPResourceSet{
@@ -64,7 +64,6 @@ func Test_PersistentVolume(t *testing.T) {
 			},
 		},
 	})
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureCSIDriver}
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureAzure}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureCSIDriver, rp.FeatureAzure}
 	test.Test(t)
 }

@@ -19,7 +19,7 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
 )
@@ -28,7 +28,7 @@ func Test_Environment(t *testing.T) {
 	template := "testdata/corerp-resources-environment.bicep"
 	name := "corerp-resources-environment"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			RPResources: &validation.RPResourceSet{

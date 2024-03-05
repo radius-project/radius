@@ -22,7 +22,7 @@ import (
 
 	"os"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -33,7 +33,7 @@ func Test_Extender_Manual(t *testing.T) {
 	name := "corerp-resources-extender"
 	appNamespace := "default-corerp-resources-extender"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -70,7 +70,7 @@ func Test_Extender_Recipe(t *testing.T) {
 	template := "testdata/corerp-resources-extender-recipe.bicep"
 	name := "corerp-resources-extender-recipe"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
@@ -113,7 +113,7 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 	bucketID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.S3/Bucket/%s", awsAccountID, awsRegion, bucketName)
 	creationTimestamp := testutil.GetCreationTimestamp()
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(
 				template,

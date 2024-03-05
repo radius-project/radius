@@ -19,7 +19,7 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -30,7 +30,7 @@ func Test_AWS_S3Bucket(t *testing.T) {
 	name := testutil.GenerateS3BucketName()
 	creationTimestamp := testutil.GetCreationTimestamp()
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor:                               step.NewDeployExecutor(template, "bucketName="+name, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
@@ -60,7 +60,7 @@ func Test_AWS_S3Bucket(t *testing.T) {
 		},
 	})
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureAWS}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAWS}
 	test.Test(t)
 }
 
@@ -70,7 +70,7 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 	name := testutil.GenerateS3BucketName()
 	creationTimestamp := testutil.GetCreationTimestamp()
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor:                               step.NewDeployExecutor(template, "bucketName="+name, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
@@ -130,6 +130,6 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 		},
 	})
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureAWS}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAWS}
 	test.Test(t)
 }

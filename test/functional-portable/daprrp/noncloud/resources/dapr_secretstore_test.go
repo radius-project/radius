@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -31,7 +31,7 @@ func Test_DaprSecretStore_Manual(t *testing.T) {
 	name := "daprrp-rs-secretstore-manual"
 	appNamespace := "default-daprrp-rs-secretstore-manual"
 
-	test := corerp.NewRPTest(t, appNamespace, []corerp.TestStep{
+	test := rp.NewRPTest(t, appNamespace, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -64,11 +64,11 @@ func Test_DaprSecretStore_Manual(t *testing.T) {
 				},
 			},
 		},
-	}, corerp.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
+	}, rp.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureDapr}
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-manual", appNamespace)
 	}
 
@@ -80,7 +80,7 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 	name := "daprrp-rs-secretstore-recipe"
 	appNamespace := "daprrp-rs-secretstore-recipe"
 
-	test := corerp.NewRPTest(t, appNamespace, []corerp.TestStep{
+	test := rp.NewRPTest(t, appNamespace, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
@@ -113,11 +113,11 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 				},
 			},
 		},
-	}, corerp.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
+	}, rp.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureDapr}
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-recipe", appNamespace)
 	}
 

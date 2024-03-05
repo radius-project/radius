@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -37,7 +37,7 @@ func Test_AzureConnections(t *testing.T) {
 	cosmosmongodbresourceid := "cosmosmongodbresourceid=" + os.Getenv("AZURE_COSMOS_MONGODB_ACCOUNT_ID")
 	appNamespace := "default-corerp-azure-connection-database-service"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), cosmosmongodbresourceid),
 			RPResources: &validation.RPResourceSet{
@@ -63,6 +63,6 @@ func Test_AzureConnections(t *testing.T) {
 		},
 	})
 
-	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureAzure}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAzure}
 	test.Test(t)
 }

@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -37,7 +37,7 @@ func Test_Application(t *testing.T) {
 	name := "corerp-resources-application"
 	appNamespace := "corerp-resources-application-app"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			RPResources: &validation.RPResourceSet{
@@ -50,7 +50,7 @@ func Test_Application(t *testing.T) {
 			},
 			// Application should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNamespace, metav1.GetOptions{})
 				require.NoErrorf(t, err, "%s must be created", appNamespace)
 			},
@@ -65,7 +65,7 @@ func Test_ApplicationGraph(t *testing.T) {
 	name := "corerp-application-simple1"
 	appNamespace := "default-corerp-application-simple1"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -100,9 +100,9 @@ func Test_ApplicationGraph(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Verify the application graph
-				options := corerp.NewRPTestOptions(t)
+				options := rp.NewRPTestOptions(t)
 				client := options.ManagementClient
 				require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
 

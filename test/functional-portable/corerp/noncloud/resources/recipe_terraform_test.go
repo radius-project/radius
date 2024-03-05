@@ -41,7 +41,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -66,7 +66,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
 	require.NoError(t, err)
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName, "redisCacheName="+redisCacheName),
 			RPResources: &validation.RPResourceSet{
@@ -102,7 +102,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
 					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
 				require.NoError(t, err)
@@ -129,7 +129,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 		},
 	})
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
 	}
@@ -145,7 +145,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, name, name)
 	require.NoError(t, err)
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL()),
 			RPResources: &validation.RPResourceSet{
@@ -175,7 +175,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				// `k8ssecret-context` recipe should have created a secret with the populated recipe context.
 				s, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
 				require.NoError(t, err)
@@ -222,7 +222,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 		},
 	})
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 		testSecretDeletion(t, ctx, test, name, name, resourceID)
 	}
@@ -237,7 +237,7 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 	appName := "corerp-resources-terraform-azstorage-app"
 	envName := "corerp-resources-terraform-azstorage-env"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName),
 			RPResources: &validation.RPResourceSet{
@@ -258,7 +258,7 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 				secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
 				require.NoError(t, err)
@@ -272,7 +272,7 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 		},
 	})
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
 	}
@@ -307,7 +307,7 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 		"@" + parametersFilePath,
 	}
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, parameters...),
 			RPResources: &validation.RPResourceSet{
@@ -327,7 +327,7 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
@@ -372,7 +372,7 @@ func Test_TerraformRecipe_WrongOutput(t *testing.T) {
 		},
 	})
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployErrorExecutor(template, validate, parameters...),
 			RPResources: &validation.RPResourceSet{
@@ -394,7 +394,7 @@ func Test_TerraformRecipe_WrongOutput(t *testing.T) {
 	test.Test(t)
 }
 
-func testSecretDeletion(t *testing.T, ctx context.Context, test corerp.RPTest, appName, envName, resourceID string) {
+func testSecretDeletion(t *testing.T, ctx context.Context, test rp.RPTest, appName, envName, resourceID string) {
 	secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
 	require.NoError(t, err)
 

@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -36,7 +36,7 @@ func Test_NestedModules(t *testing.T) {
 	template := "testdata/corerp-mechanics-nestedmodules.bicep"
 	name := "corerp-mechanics-nestedmodules"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			RPResources: &validation.RPResourceSet{
@@ -63,7 +63,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 	appNamespace := "default-corerp-mechanics-redeploy-with-another-resource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withanotherresource.step%d.bicep"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -126,7 +126,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	appNamespace := "default-corerp-mechanics-redeploy-withupdatedresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withupdatedresource.step%d.bicep"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -172,7 +172,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				labelset := kubernetes.MakeSelectorLabels(name, "mechanicsd")
 
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{
@@ -196,7 +196,7 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 	appNamespace := "default-corerp-mechanics-redeploy-withtwoseparateresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -259,7 +259,7 @@ func Test_CommunicationCycle(t *testing.T) {
 	appNamespace := "default-corerp-mechanics-communication-cycle"
 	template := "testdata/corerp-mechanics-communication-cycle.bicep"
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -330,7 +330,7 @@ func Test_InvalidResourceIDs(t *testing.T) {
 		},
 	})
 
-	test := corerp.NewRPTest(t, name, []corerp.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployErrorExecutor(template, validate, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
