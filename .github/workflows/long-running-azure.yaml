@@ -17,9 +17,9 @@
 # This workflow performs functional tests every an hour on a pre-provisioned
 # AKS (Azure Kubernetes Service) cluster.
 #
-# There are two types of tests in Radius: functional-test and e2e-azure-test.
+# There are two types of tests in Radius: functional-test and long-running-azure.
 # 'functional-test' checks the functionality of our application using a local
-# Kubernetes cluster (kind), while 'e2e-azure-test' is executed on an AKS cluster
+# Kubernetes cluster (kind), while 'long-running-azure' is executed on an AKS cluster
 # focusing on performance and reliability.
 #
 # The test AKS cluster is pre-provisioned with various monitoring tools using the
@@ -29,12 +29,15 @@
 #
 # It's also important to note that this workflow does not build the Radius in every
 # run. Instead, Radius CLI and container images are built from the main branch every
-# 12 hours. We leverage the GitHub Actions cache to store the 'rad cli' and test
+# 24 hours. We leverage the GitHub Actions cache to store the 'rad cli' and test
 # information. On workflow initiation, it checks the last build time to determine if
 # the previous build is still valid. If valid, the workflow skips the build steps
 # and uses the cached 'rad cli' for testing.
 #
 # Grafana dashboard URL: https://radiuse2e00-dashboard-audycmffgberbghy.wus3.grafana.azure.com/
+#
+# When you want to build and deploy radius immediately from main branch rather than wait for 24 hours. 
+# You can set the FORCE_RUN environment variable to true in the workflow file and create a PR to main branch.
 
 name: Long-running test on Azure
 on:
@@ -48,6 +51,9 @@ on:
       - ".github/workflows/long-running-azure.yaml"
 
 env:
+  # This is debugging purpose.
+  FORCE_RUN: 'false'
+
   # Go version
   GOVER: "1.21.7"
   GOPROXY: https://proxy.golang.org
@@ -500,5 +506,11 @@ jobs:
               ...context.repo,
               title: `Scheduled long running test failed - Run ID: ${context.runId}`,
               labels: ['bug', 'test-failure'],
-              body: `## Bug information \n\nThis bug is generated automatically if the scheduled long running test fails. The Radius long running test operates on a schedule of every 2 hours everyday. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
+              body: `## Bug information\n\n` +
+                    `This bug is generated automatically if the scheduled long running test fails. ` + 
+                    `The Radius long running test operates on a schedule of every 2 hours everyday, ` + 
+                    `but the workflow builds and deploy Radius from main branch only every 24 hours.  ` +
+                    `It's important to understand that the test may fail due to workflow infrastructure issues, ` + 
+                    `like network problems, rather than the flakiness of the test itself. For the further investigation, ` + 
+                    `please visit [here](${process.env.ACTION_LINK}).`
             })
