@@ -66,7 +66,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	registry := strings.TrimPrefix(testutil.GetBicepRecipeRegistry(), "registry=")
 	version := strings.TrimPrefix(testutil.GetBicepRecipeVersion(), "version=")
 	resourceType := "Applications.Datastores/redisCaches"
-	file := "../../shared/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep"
+	file := "../../../functional/shared/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:ghcr.io/radius-project/dev/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
 	recipeName := "recipeName"
