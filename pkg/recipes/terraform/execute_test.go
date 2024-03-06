@@ -168,7 +168,10 @@ func TestSetEnvironmentVariables(t *testing.T) {
 
 			e := executor{}
 
-			err = e.setEnvironmentVariables(ctx, tf, tc.opts.EnvConfig)
+			if tc.opts.EnvConfig != nil {
+				err = e.setEnvironmentVariables(ctx, tf, &tc.opts.EnvConfig.RecipeConfig)
+			}
+
 			require.NoError(t, err)
 		})
 	}
