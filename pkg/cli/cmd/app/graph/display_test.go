@@ -53,6 +53,10 @@ func Test_display(t *testing.T) {
 		sqlDbName := "sql-db"
 		sqlDbType := "Applications.Datastores/sqlDatabases"
 
+		azureRedisID := "/planes/azure/local/resourcegroups/default/providers/Applications.Datastores/Microsoft.Cache/Azure"
+		azureRedisName := "redis"
+		azureRedisType := "Applications.Datastores/redis"
+
 		provisioningStateSuccess := "Succeeded"
 		dirInbound := corerpv20231001preview.DirectionInbound
 		dirOutbound := corerpv20231001preview.DirectionOutbound
@@ -104,6 +108,25 @@ func Test_display(t *testing.T) {
 					},
 				},
 			},
+			{
+				ID:                &azureRedisID,
+				Name:              &azureRedisName,
+				Type:              &azureRedisType,
+				ProvisioningState: &provisioningStateSuccess,
+				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
+					{
+						ID:   &azureRedisID,
+						Name: &azureRedisName,
+						Type: &azureRedisType,
+					},
+				},
+				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+					{
+						Direction: &dirInbound,
+						ID:        &sqlDbID,
+					},
+				},
+			},
 		}
 
 		expected := `Displaying application: test-app
@@ -123,11 +146,18 @@ Connections:
   sql-ctnr (Applications.Core/containers) -> sql-rte
 Resources: (none)
 
+Name: redis (Applications.Datastores/redis)
+Connections:
+  sql-db (Applications.Datastores/sqlDatabases) -> redis
+Resources:
+  ` + "\x1b]8;;" + `https://portal.azure.com/#@72f988bf-86f1-41af-91ab-2d7cd011db47/resource/planes/azure/local/resourcegroups/default/providers/Applications.Datastores/Microsoft.Cache/Azure` + "\aredis\x1b]8;;\a" + ` (Applications.Datastores/redis)
+
 Name: sql-db (Applications.Datastores/sqlDatabases)
 Connections: (none)
 Resources: (none)
 
 `
+
 		actual := display(graph, "test-app")
 		require.Equal(t, expected, actual)
 	})
