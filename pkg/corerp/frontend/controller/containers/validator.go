@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,6 +38,16 @@ const (
 	manifestTargetProperty = "$.properties.runtimes.kubernetes.base"
 	podTargetProperty      = "$.properties.runtimes.kubernetes.pod"
 )
+
+func isURL(input string) bool {
+	_, err := url.ParseRequestURI(input)
+
+	// if first character is a slash, it's not a URL. It's a path.
+	if input == "" || err != nil || input[0] == '/' {
+		return false
+	}
+	return true
+}
 
 // ValidateAndMutateRequest checks if the newResource has a user-defined identity and if so, returns a bad request
 // response, otherwise it sets the identity of the newResource to the identity of the oldResource if it exists.
