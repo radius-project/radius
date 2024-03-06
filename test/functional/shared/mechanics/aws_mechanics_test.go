@@ -21,16 +21,16 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.step%d.bicep"
 	name := "radiusfunctionaltestbucket-" + uuid.New().String()
-	creationTimestamp := functional.GetCreationTimestamp()
+	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{

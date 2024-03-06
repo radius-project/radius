@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
+	test "github.com/radius-project/radius/test/ucp"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +47,7 @@ var (
 func Test_AWS_DeleteResource(t *testing.T) {
 	ctx := context.Background()
 
-	test := NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		bucketName := generateS3BucketName()
 		setupTestAWSResource(t, ctx, bucketName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
@@ -100,14 +101,14 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		require.True(t, deleteSucceeded)
 	})
 
-	test.RequiredFeatures = []RequiredFeature{FeatureAWS}
-	test.Test(t)
+	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
+	myTest.Test(t)
 }
 
 func Test_AWS_ListResources(t *testing.T) {
 	ctx := context.Background()
 
-	test := NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		var bucketName = generateS3BucketName()
 		setupTestAWSResource(t, ctx, bucketName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
@@ -139,8 +140,8 @@ func Test_AWS_ListResources(t *testing.T) {
 		require.GreaterOrEqual(t, len(body["value"]), 1)
 	})
 
-	test.RequiredFeatures = []RequiredFeature{FeatureAWS}
-	test.Test(t)
+	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
+	myTest.Test(t)
 }
 
 func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string) {

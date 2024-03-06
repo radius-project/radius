@@ -41,9 +41,9 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
@@ -68,7 +68,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "appName="+appName, "redisCacheName="+redisCacheName),
+			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName, "redisCacheName="+redisCacheName),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -115,7 +115,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 				status := redis.Properties["status"].(map[string]any)
 				recipe := status["recipe"].(map[string]interface{})
 				require.Equal(t, "terraform", recipe["templateKind"].(string))
-				expectedTemplatePath := strings.Replace(functional.GetTerraformRecipeModuleServerURL()+"/kubernetes-redis.zip//modules", "moduleServer=", "", 1)
+				expectedTemplatePath := strings.Replace(testutil.GetTerraformRecipeModuleServerURL()+"/kubernetes-redis.zip//modules", "moduleServer=", "", 1)
 				require.Equal(t, expectedTemplatePath, recipe["templatePath"].(string))
 				// At present, it is not possible to verify the template version in functional tests
 				// This is verified by UTs though
@@ -147,7 +147,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL()),
+			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -239,7 +239,7 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "appName="+appName),
+			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -286,7 +286,7 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 	name := "corerp-resources-terraform-parametersandoutputs"
 
 	// Best way to pass complex parameters is to use JSON.
-	parametersFilePath := functional.WriteBicepParameterFile(t, map[string]any{
+	parametersFilePath := testutil.WriteBicepParameterFile(t, map[string]any{
 		// These will be set on the environment as part of the recipe
 		"environmentParameters": map[string]any{
 			"a": "environment",
@@ -301,7 +301,7 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 	})
 
 	parameters := []string{
-		functional.GetTerraformRecipeModuleServerURL(),
+		testutil.GetTerraformRecipeModuleServerURL(),
 		fmt.Sprintf("basename=%s", name),
 		fmt.Sprintf("moduleName=%s", "parameter-outputs"),
 		"@" + parametersFilePath,
@@ -357,7 +357,7 @@ func Test_TerraformRecipe_WrongOutput(t *testing.T) {
 	name := "corerp-resources-terraform-wrong-output"
 
 	parameters := []string{
-		functional.GetTerraformRecipeModuleServerURL(),
+		testutil.GetTerraformRecipeModuleServerURL(),
 		fmt.Sprintf("basename=%s", name),
 		fmt.Sprintf("moduleName=%s", "wrong-output"),
 	}

@@ -44,11 +44,11 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/version"
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 
@@ -63,8 +63,8 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	options := shared.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	envName := test.Steps[0].RPResources.Resources[0].Name
-	registry := strings.TrimPrefix(functional.GetBicepRecipeRegistry(), "registry=")
-	version := strings.TrimPrefix(functional.GetBicepRecipeVersion(), "version=")
+	registry := strings.TrimPrefix(testutil.GetBicepRecipeRegistry(), "registry=")
+	version := strings.TrimPrefix(testutil.GetBicepRecipeVersion(), "version=")
 	resourceType := "Applications.Datastores/redisCaches"
 	file := "../../shared/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:ghcr.io/radius-project/dev/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
@@ -124,7 +124,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 
 	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
 		showRecipeName := "redistesttf"
-		moduleServer := strings.TrimPrefix(functional.GetTerraformRecipeModuleServerURL(), "moduleServer=")
+		moduleServer := strings.TrimPrefix(testutil.GetTerraformRecipeModuleServerURL(), "moduleServer=")
 		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip//modules", moduleServer)
 		showRecipeResourceType := "Applications.Datastores/redisCaches"
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType, false)
@@ -296,7 +296,7 @@ func Test_Run_Logger(t *testing.T) {
 		"--application",
 		applicationName,
 		"--parameters",
-		functional.GetMagpieImage(),
+		testutil.GetMagpieImage(),
 	}
 
 	// 'rad run' streams logs until canceled by the user. This is why we can't 'just' run the command in
@@ -370,7 +370,7 @@ func Test_Run_Portforward(t *testing.T) {
 		"--application",
 		applicationName,
 		"--parameters",
-		functional.GetMagpieImage(),
+		testutil.GetMagpieImage(),
 	}
 
 	// 'rad run' streams logs until canceled by the user. This is why we can't 'just' run the command in
@@ -455,7 +455,7 @@ func Test_CLI(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -495,7 +495,7 @@ func Test_CLI_JSON(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -555,7 +555,7 @@ func Test_CLI_Delete(t *testing.T) {
 	t.Run("Validate rad app delete with non empty resources", func(t *testing.T) {
 		t.Logf("deploying %s from file %s", appName, templateWithResources)
 
-		err = cli.Deploy(ctx, templateFilePathWithResources, "", appName, functional.GetMagpieImage())
+		err = cli.Deploy(ctx, templateFilePathWithResources, "", appName, testutil.GetMagpieImage())
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
@@ -589,7 +589,7 @@ func Test_CLI_Delete(t *testing.T) {
 	t.Run("Validate rad app delete with resources not associated with any application", func(t *testing.T) {
 		t.Logf("deploying from file %s", templateWithResources)
 
-		err := cli.Deploy(ctx, templateFilePathWithResourcesUnassociated, "", appNameUnassociatedResources, functional.GetMagpieImage())
+		err := cli.Deploy(ctx, templateFilePathWithResourcesUnassociated, "", appNameUnassociatedResources, testutil.GetMagpieImage())
 		require.NoErrorf(t, err, "failed to deploy %s", appNameUnassociatedResources)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
@@ -625,15 +625,15 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli-parameters.bicep"
 	name := "kubernetes-cli-params"
 
-	registry, _ := functional.SetDefault()
-	parameterFilePath := functional.WriteBicepParameterFile(t, map[string]any{"registry": registry})
+	registry, _ := testutil.SetDefault()
+	parameterFilePath := testutil.WriteBicepParameterFile(t, map[string]any{"registry": registry})
 
 	// corerp-kubernetes-cli-parameters.parameters.json uses ghcr.io/radius-project/dev as a registry parameter.
 	// Use the specified tag only if the test uses ghcr.io/radius-project/dev registry. Otherwise, use latest tag.
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, functional.GetMagpieTag()),
+			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, testutil.GetMagpieTag()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -711,7 +711,7 @@ func Test_RecipeCommands(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

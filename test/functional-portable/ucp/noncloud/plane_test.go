@@ -28,11 +28,12 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/rest"
+	test "github.com/radius-project/radius/test/ucp"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_Plane_Operations(t *testing.T) {
-	test := NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		planeID := "/planes/testtype/testplane"
 		apiVersion := v20231001preview.Version
 		planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
@@ -87,13 +88,13 @@ func Test_Plane_Operations(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, statusCode)
 
 	})
-	test.Test(t)
+	myTest.Test(t)
 }
 
 func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane v20231001preview.PlaneResource) {
 	body, err := json.Marshal(plane)
 	require.NoError(t, err)
-	createRequest, err := NewUCPRequest(
+	createRequest, err := test.NewUCPRequest(
 		http.MethodPut,
 		url,
 		bytes.NewBuffer(body))
@@ -107,7 +108,7 @@ func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane
 }
 
 func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Plane, int) {
-	getRequest, err := NewUCPRequest(
+	getRequest, err := test.NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -150,7 +151,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20231
 }
 
 func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) int {
-	deleteRgRequest, err := NewUCPRequest(
+	deleteRgRequest, err := test.NewUCPRequest(
 		http.MethodDelete,
 		url,
 		nil,

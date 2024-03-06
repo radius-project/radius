@@ -60,8 +60,13 @@ test-validate-cli: ## Run cli integration tests
 
 test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-shared test-functional-cli test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples ## Runs all functional tests
 
-test-functional-ucp: ## Runs UCP functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+test-functional-ucp: test-functional-ucp-noncloud test-functional-ucp-cloud ## Runs all UCP functional tests (both cloud and non-cloud)
+
+test-functional-ucp-noncloud: ## Runs UCP functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-kubernetes: test-functional-kubernetes-noncloud ## Runs all Kubernetes functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
