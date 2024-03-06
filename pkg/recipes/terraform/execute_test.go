@@ -17,6 +17,7 @@ limitations under the License.
 package terraform
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -157,19 +158,29 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			},
 		},
 	}
-
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := testcontext.New(t)
-			workingDir := t.TempDir()
 
-			tf, err := tfexec.NewTerraform(workingDir, filepath.Join(workingDir, "terraform"))
-			require.NoError(t, err)
+			// Get the environment variables to set
+			envVars := tc.opts.EnvConfig.RecipeConfig.Env.AdditionalProperties
 
 			e := executor{}
 
-			err = e.setEnvironmentVariables(ctx, tf, tc.opts.EnvConfig)
-			require.NoError(t, err)
+			for key, expectedValue := range envVars {
+				err := os.Unsetenv(key)
+				require.NoError(t, err)
+
+				err = e.setEnvironmentVariables(ctx, tc.opts.EnvConfig)
+				require.NoError(t, err)
+
+				actualValue, ok := os.LookupEnv(key)
+				require.True(t, ok)
+				require.Equal(t, expectedValue, actualValue)
+
+				// Ensure the environment variable is unset after the test execution
+				defer os.Unsetenv(key)
+			}
 		})
 	}
 }

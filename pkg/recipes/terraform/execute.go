@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	install "github.com/hashicorp/hc-install"
@@ -89,7 +90,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Set environment variables for the Terraform process.
-	err = e.setEnvironmentVariables(ctx, tf, options.EnvConfig)
+	err = e.setEnvironmentVariables(ctx, options.EnvConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -200,18 +201,15 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	}, nil
 }
 
-// setEnvironmentVariables sets environment variables for the Terraform process by reading values from the environment configuration.
+// setEnvironmentVariables sets environment variables by reading values from the environment configuration.
 // Terraform process will use environment variables as input for the recipe deployment.
-func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, envConfig *recipes.Configuration) error {
-	if envConfig != nil && envConfig.RecipeConfig.Env.AdditionalProperties != nil {
-		envVars := map[string]string{}
+func (e executor) setEnvironmentVariables(ctx context.Context, envConfig *recipes.Configuration) error {
+	if envConfig != nil && envConfig.RecipeConfig.Env.AdditionalProperties != nil && len(envConfig.RecipeConfig.Env.AdditionalProperties) > 0 {
 
 		for key, value := range envConfig.RecipeConfig.Env.AdditionalProperties {
-			envVars[key] = value
-		}
-
-		if err := tf.SetEnv(envVars); err != nil {
-			return fmt.Errorf("failed to set environment variables: %w", err)
+			if err := os.Setenv(key, value); err != nil {
+				return fmt.Errorf("error setting environment variable %s: %w", key, err)
+			}
 		}
 	}
 
