@@ -20,11 +20,8 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/radius-project/radius/pkg/kubernetes"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -60,16 +57,8 @@ func NewApplicationWatcher(options Options) *applicationWatcher {
 func (aw *applicationWatcher) Run(ctx context.Context) error {
 	defer close(aw.done)
 
-	// We use the `radapp.io/application` label to include pods that are part of an application.
-	// This can include the user's Radius containers as well as any Kubernetes resources that are labeled
-	// as part of the application (eg: something created with a recipe).
-	req, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{aw.Options.ApplicationName})
-	if err != nil {
-		return err
-	}
-
 	deployments := aw.Options.Client.AppsV1().Deployments(aw.Options.Namespace)
-	listOptions := metav1.ListOptions{LabelSelector: labels.NewSelector().Add(*req).String()}
+	listOptions := metav1.ListOptions{LabelSelector: aw.Options.LabelSelector.String()}
 
 	// Starting a watch will populate the current state as well as give us updates
 	//

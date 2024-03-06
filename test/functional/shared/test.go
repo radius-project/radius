@@ -33,24 +33,24 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/test"
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/testutil"
 )
 
 // NewRPTestOptions sets up the test environment by loading configs, creating a test context, creating an
 // ApplicationsManagementClient, creating an AWSCloudControlClient, and returning an RPTestOptions struct.
 func NewRPTestOptions(t *testing.T) RPTestOptions {
-	registry, tag := functional.SetDefault()
+	registry, tag := testutil.SetDefault()
 	t.Logf("Using container registry: %s - set DOCKER_REGISTRY to override", registry)
 	t.Logf("Using container tag: %s - set REL_VERSION to override", tag)
 	t.Logf("Using magpie image: %s/magpiego:%s", registry, tag)
 
-	_, bicepRecipeRegistry, _ := strings.Cut(functional.GetBicepRecipeRegistry(), "=")
-	_, bicepRecipeTag, _ := strings.Cut(functional.GetBicepRecipeVersion(), "=")
+	_, bicepRecipeRegistry, _ := strings.Cut(testutil.GetBicepRecipeRegistry(), "=")
+	_, bicepRecipeTag, _ := strings.Cut(testutil.GetBicepRecipeVersion(), "=")
 	t.Logf("Using recipe registry: %s - set BICEP_RECIPE_REGISTRY to override", bicepRecipeRegistry)
 	t.Logf("Using recipe tag: %s - set BICEP_RECIPE_TAG_VERSION to override", bicepRecipeTag)
 
-	_, terraformRecipeModuleServerURL, _ := strings.Cut(functional.GetTerraformRecipeModuleServerURL(), "=")
+	_, terraformRecipeModuleServerURL, _ := strings.Cut(testutil.GetTerraformRecipeModuleServerURL(), "=")
 	t.Logf("Using terraform recipe module server URL: %s - set TF_RECIPE_MODULE_SERVER_URL to override", terraformRecipeModuleServerURL)
 
 	ctx := testcontext.New(t)

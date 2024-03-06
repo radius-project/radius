@@ -22,9 +22,9 @@ import (
 
 	"os"
 
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
@@ -35,7 +35,7 @@ func Test_Extender_Manual(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -72,7 +72,7 @@ func Test_Extender_Recipe(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -109,9 +109,9 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 	template := "testdata/corerp-resources-extender-aws-s3-recipe.bicep"
 	name := "corerp-resources-extenders-aws-s3-recipe"
 	appName := "corerp-resources-extenders-aws-s3-recipe-app"
-	bucketName := functional.GenerateS3BucketName()
+	bucketName := testutil.GenerateS3BucketName()
 	bucketID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.S3/Bucket/%s", awsAccountID, awsRegion, bucketName)
-	creationTimestamp := functional.GetCreationTimestamp()
+	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -119,10 +119,10 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 				template,
 				"bucketName="+bucketName,
 				"creationTimestamp="+creationTimestamp,
-				functional.GetAWSAccountId(),
-				functional.GetAWSRegion(),
-				functional.GetBicepRecipeRegistry(),
-				functional.GetBicepRecipeVersion(),
+				testutil.GetAWSAccountId(),
+				testutil.GetAWSRegion(),
+				testutil.GetBicepRecipeRegistry(),
+				testutil.GetBicepRecipeVersion(),
 			),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{

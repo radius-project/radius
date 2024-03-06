@@ -88,6 +88,12 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
+	// Set environment variables for the Terraform process.
+	err = e.setEnvironmentVariables(ctx, tf, options.EnvConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	// Run TF Init and Apply in the working directory
 	state, err := initAndApply(ctx, tf)
 	if err != nil {
@@ -194,6 +200,24 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	}, nil
 }
 
+// setEnvironmentVariables sets environment variables for the Terraform process by reading values from the environment configuration.
+// Terraform process will use environment variables as input for the recipe deployment.
+func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, envConfig *recipes.Configuration) error {
+	if envConfig != nil && envConfig.RecipeConfig.Env.AdditionalProperties != nil {
+		envVars := map[string]string{}
+
+		for key, value := range envConfig.RecipeConfig.Env.AdditionalProperties {
+			envVars[key] = value
+		}
+
+		if err := tf.SetEnv(envVars); err != nil {
+			return fmt.Errorf("failed to set environment variables: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
 func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -211,7 +235,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
 	logger.Info(fmt.Sprintf("Adding provider config for required providers %+v", loadedModule.RequiredProviders))
-	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
+	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetUCPConfiguredTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig); err != nil {
 		return "", err
 	}
@@ -268,6 +292,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 	// Download the Terraform module to the working directory.
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
+
 	if err := downloadModule(ctx, tf, options.EnvRecipe.TemplatePath); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
@@ -302,7 +327,10 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 	}
 
 	// Create Terraform configuration containing module information with the given recipe parameters.
-	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
+	tfConfig, err := config.New(ctx, localModuleName, options.EnvRecipe, options.ResourceRecipe, options.EnvConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
 	// Terraform Get command uses this config file to download module from the source specified in the config.

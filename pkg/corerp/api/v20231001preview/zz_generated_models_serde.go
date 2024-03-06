@@ -337,6 +337,33 @@ func (a *ApplicationResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type AuthConfig.
+func (a AuthConfig) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "git", a.Git)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AuthConfig.
+func (a *AuthConfig) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "git":
+				err = unpopulate(val, "Git", &a.Git)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultVolumeProperties.
 func (a AzureKeyVaultVolumeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -1170,6 +1197,7 @@ func (e EnvironmentProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "extensions", e.Extensions)
 	populate(objectMap, "providers", e.Providers)
 	populate(objectMap, "provisioningState", e.ProvisioningState)
+	populate(objectMap, "recipeConfig", e.RecipeConfig)
 	populate(objectMap, "recipes", e.Recipes)
 	populate(objectMap, "simulated", e.Simulated)
 	return json.Marshal(objectMap)
@@ -1195,6 +1223,9 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &e.ProvisioningState)
+			delete(rawMsg, key)
+		case "recipeConfig":
+				err = unpopulate(val, "RecipeConfig", &e.RecipeConfig)
 			delete(rawMsg, key)
 		case "recipes":
 			var recipesRaw map[string]json.RawMessage
@@ -1340,6 +1371,7 @@ func (e EnvironmentResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "compute", e.Compute)
 	populate(objectMap, "extensions", e.Extensions)
 	populate(objectMap, "providers", e.Providers)
+	populate(objectMap, "recipeConfig", e.RecipeConfig)
 	populate(objectMap, "recipes", e.Recipes)
 	populate(objectMap, "simulated", e.Simulated)
 	return json.Marshal(objectMap)
@@ -1362,6 +1394,9 @@ func (e *EnvironmentResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "providers":
 				err = unpopulate(val, "Providers", &e.Providers)
+			delete(rawMsg, key)
+		case "recipeConfig":
+				err = unpopulate(val, "RecipeConfig", &e.RecipeConfig)
 			delete(rawMsg, key)
 		case "recipes":
 			var recipesRaw map[string]json.RawMessage
@@ -2131,6 +2166,33 @@ func (g *GatewayTLS) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "sslPassthrough":
 				err = unpopulate(val, "SSLPassthrough", &g.SSLPassthrough)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", g, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GitAuthConfig.
+func (g GitAuthConfig) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "pat", g.Pat)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type GitAuthConfig.
+func (g *GitAuthConfig) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", g, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "pat":
+				err = unpopulate(val, "Pat", &g.Pat)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -3206,6 +3268,37 @@ func (r *Recipe) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type RecipeConfigProperties.
+func (r RecipeConfigProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "env", r.Env)
+	populate(objectMap, "terraform", r.Terraform)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeConfigProperties.
+func (r *RecipeConfigProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "env":
+				err = unpopulate(val, "Env", &r.Env)
+			delete(rawMsg, key)
+		case "terraform":
+				err = unpopulate(val, "Terraform", &r.Terraform)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type RecipeGetMetadata.
 func (r RecipeGetMetadata) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -3539,6 +3632,33 @@ func (r *RuntimesProperties) UnmarshalJSON(data []byte) error {
 		}
 		if err != nil {
 			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type SecretConfig.
+func (s SecretConfig) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "secret", s.Secret)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type SecretConfig.
+func (s *SecretConfig) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", s, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "secret":
+				err = unpopulate(val, "Secret", &s.Secret)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", s, err)
 		}
 	}
 	return nil
@@ -3941,6 +4061,37 @@ func (t *TCPHealthProbeProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "timeoutSeconds":
 				err = unpopulate(val, "TimeoutSeconds", &t.TimeoutSeconds)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", t, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type TerraformConfigProperties.
+func (t TerraformConfigProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "authentication", t.Authentication)
+	populate(objectMap, "providers", t.Providers)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type TerraformConfigProperties.
+func (t *TerraformConfigProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", t, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "authentication":
+				err = unpopulate(val, "Authentication", &t.Authentication)
+			delete(rawMsg, key)
+		case "providers":
+				err = unpopulate(val, "Providers", &t.Providers)
 			delete(rawMsg, key)
 		}
 		if err != nil {

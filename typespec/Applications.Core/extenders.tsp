@@ -48,7 +48,7 @@ model ExtenderResource is TrackedResourceRequired<ExtenderProperties, "extenders
   name: ResourceNameString;
 }
 
-// ExtenderResoruce allows to get the additional properties. To ensure that `additionalProperties` is true,
+// ExtenderResource allows to get the additional properties. To ensure that `additionalProperties` is true,
 // we need to extend `Record<unknown>`.
 // Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"

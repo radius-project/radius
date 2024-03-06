@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -38,10 +39,39 @@ const (
 
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
 // Parameters are populated from environment recipe and resource recipe metadata.
-func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
+func New(ctx context.Context, moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, envConfig *recipes.Configuration) (*TerraformConfig, error) {
+	path := envRecipe.TemplatePath
+
+	if envConfig != nil {
+		// Retrieving the secret store with associated with the template path.
+		// appends an URL prefix to the templatePath if secret store exists.
+		secretStore, err := recipes.GetSecretStoreID(*envConfig, envRecipe.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
+
+		if secretStore != "" {
+			// Retrieving the URL prefix, prefix will be in the format of https://<environment>-<application>-<resource>-
+			prefix, err := recipes.GetURLPrefix(resourceRecipe)
+			if err != nil {
+				return nil, err
+			}
+
+			url, err := recipes.GetGitURL(envRecipe.TemplatePath)
+			if err != nil {
+				return nil, err
+			}
+
+			// Adding URL prefix to the template path.
+			// Adding the prefix helps to access the the right credential information for git across environments.
+			// Updated template path will be added to the terraform config.
+			path = fmt.Sprintf("git::%s%s", prefix, strings.TrimPrefix(url.String(), "https://"))
+		}
+	}
+
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
-	moduleData := newModuleConfig(envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
+	moduleData := newModuleConfig(path, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
 
 	return &TerraformConfig{
 		Terraform: nil,
@@ -49,7 +79,7 @@ func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRe
 		Module: map[string]TFModuleConfig{
 			moduleName: moduleData,
 		},
-	}
+	}, nil
 }
 
 // getMainConfigFilePath returns the path of the Terraform main config file.
@@ -83,8 +113,8 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 // by Radius to generate custom provider configurations. Save() must be called to save
 // the generated providers config. requiredProviders contains a list of provider names
 // that are required for the module.
-func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
-	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, supportedProviders, envConfig)
+func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
+	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, ucpConfiguredProviders, envConfig)
 	if err != nil {
 		return err
 	}
@@ -135,13 +165,23 @@ func newModuleConfig(moduleSource string, moduleVersion string, params ...Recipe
 	return moduleConfig
 }
 
-// getProviderConfigs generates the Terraform provider configurations for the required providers.
-func getProviderConfigs(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
-	providerConfigs := make(map[string]any)
+// getProviderConfigs generates the Terraform provider configurations. This is built from a combination of environment level recipe configuration for
+// providers and the provider configurations registered with UCP. The environment level recipe configuration for providers takes precedence over UCP provider configurations.
+func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
+	// Get recipe provider configurations from the environment configuration
+	providerConfigs := providers.GetRecipeProviderConfigs(ctx, envConfig)
+
+	// Build provider configurations for required providers excluding the ones already present in providerConfigs
 	for _, provider := range requiredProviders {
-		builder, ok := supportedProviders[provider]
+		if _, ok := providerConfigs[provider]; ok {
+			// Environment level recipe configuration for providers will take precedence over
+			// UCP provider configuration (currently these include azurerm, aws, kubernetes providers)
+			continue
+		}
+
+		builder, ok := ucpConfiguredProviders[provider]
 		if !ok {
-			// No-op: For any other provider, Radius doesn't generate any custom configuration.
+			// No-op: For any other provider under required_providers, Radius doesn't generate any custom configuration.
 			continue
 		}
 

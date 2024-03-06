@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
+	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/test/testcontext"
@@ -113,4 +114,62 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 	_, err := getTerraformConfig(testcontext.New(t), workingDir, options)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file: open invalid-directory/main.tf.json: no such file or directory")
+}
+
+func TestSetEnvironmentVariables(t *testing.T) {
+	testCase := []struct {
+		name string
+		opts Options
+	}{
+		{
+			name: "set environment variables",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						Env: dm.EnvironmentVariables{
+							AdditionalProperties: map[string]string{
+								"TEST_ENV_VAR1": "value1",
+								"TEST_ENV_VAR2": "value2",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "AdditionalProperties set to nil",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						Env: dm.EnvironmentVariables{
+							AdditionalProperties: nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "no environment variables",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+			workingDir := t.TempDir()
+
+			tf, err := tfexec.NewTerraform(workingDir, filepath.Join(workingDir, "terraform"))
+			require.NoError(t, err)
+
+			e := executor{}
+
+			err = e.setEnvironmentVariables(ctx, tf, tc.opts.EnvConfig)
+			require.NoError(t, err)
+		})
+	}
 }

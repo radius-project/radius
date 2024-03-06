@@ -110,7 +110,7 @@ func (dw *deploymentWatcher) Run(ctx context.Context) error {
 
 			switch event.Type {
 			case watch.Added, watch.Modified:
-				staleReplicaSets, err := findStaleReplicaSets(ctx, dw.Options.Client, dw.Options.Namespace, dw.Options.ApplicationName, dw.Revision)
+				staleReplicaSets, err := findStaleReplicaSets(ctx, dw.Options.Client, dw.Options.Namespace, dw.Revision, dw.Options.LabelSelector)
 				if err != nil {
 					_, err := dw.Options.Out.Write([]byte(fmt.Sprintf("Cannot list ReplicaSets with error: %v \n", err)))
 					if err != nil {
