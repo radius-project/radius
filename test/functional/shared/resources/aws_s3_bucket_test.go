@@ -19,16 +19,16 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_AWS_S3Bucket(t *testing.T) {
 	template := "testdata/aws-s3-bucket.bicep"
-	name := functional.GenerateS3BucketName()
-	creationTimestamp := functional.GetCreationTimestamp()
+	name := testutil.GenerateS3BucketName()
+	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -66,8 +66,8 @@ func Test_AWS_S3Bucket(t *testing.T) {
 func Test_AWS_S3Bucket_Existing(t *testing.T) {
 	template := "testdata/aws-s3-bucket.bicep"
 	templateExisting := "testdata/aws-s3-bucket-existing.bicep"
-	name := functional.GenerateS3BucketName()
-	creationTimestamp := functional.GetCreationTimestamp()
+	name := testutil.GenerateS3BucketName()
+	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
