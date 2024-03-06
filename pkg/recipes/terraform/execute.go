@@ -225,16 +225,16 @@ func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraf
 }
 
 // splitEnvVar splits a slice of environment variables into a map of keys and values.
-func splitEnvVar(env []string) map[string]string {
-	envVars := make(map[string]string)
-	for _, item := range env {
+func splitEnvVar(envVars []string) map[string]string {
+	parsedEnvVars := make(map[string]string)
+	for _, item := range envVars {
 		splits := strings.SplitN(item, "=", 2) // Split on the first "="
 		if len(splits) == 2 {
-			envVars[splits[0]] = splits[1]
+			parsedEnvVars[splits[0]] = splits[1]
 		}
 	}
 
-	return envVars
+	return parsedEnvVars
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.

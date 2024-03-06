@@ -18,6 +18,7 @@ package terraform
 
 import (
 	"path/filepath"
+	reflect "reflect"
 	"testing"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -168,11 +169,56 @@ func TestSetEnvironmentVariables(t *testing.T) {
 
 			e := executor{}
 
-			if tc.opts.EnvConfig != nil {
-				err = e.setEnvironmentVariables(ctx, tf, &tc.opts.EnvConfig.RecipeConfig)
-			}
+			err = e.setEnvironmentVariables(ctx, tf, &tc.opts.EnvConfig.RecipeConfig)
 
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestSplitEnvVar(t *testing.T) {
+	tests := []struct {
+		name    string
+		envVars []string
+		want    map[string]string
+	}{
+		{
+			name:    "nil input",
+			envVars: nil,
+			want:    map[string]string{},
+		},
+		{
+			name:    "empty input",
+			envVars: []string{},
+			want:    map[string]string{},
+		},
+		{
+			name:    "single variable",
+			envVars: []string{"VAR1=value1"},
+			want:    map[string]string{"VAR1": "value1"},
+		},
+		{
+			name:    "multiple variables",
+			envVars: []string{"VAR1=value1", "VAR2=value2"},
+			want:    map[string]string{"VAR1": "value1", "VAR2": "value2"},
+		},
+		{
+			name:    "variable with no value",
+			envVars: []string{"VAR1="},
+			want:    map[string]string{"VAR1": ""},
+		},
+		{
+			name:    "variable with equals sign in value",
+			envVars: []string{"VAR1=value1=value2"},
+			want:    map[string]string{"VAR1": "value1=value2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := splitEnvVar(tt.envVars); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("splitEnvVar() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
