@@ -73,6 +73,8 @@ env:
   # Private Git repository where terraform module is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules"
 
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   build:
     name: Build Radius for test
