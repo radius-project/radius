@@ -436,14 +436,14 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 	appName := "corerp-resources-terraform-private-app"
 	envName := "corerp-resources-terraform-private-env"
 	redisCacheName := "tf-redis-cache-private"
-	sourcePath := fmt.Sprintf("%s/%s", functional.GetTerraformPrivateModuleSource(), "/tree/main/kubernetes-redis")
+	sourcePath := fmt.Sprintf("%s/%s", testutil.GetTerraformPrivateModuleSource(), "/tree/main/kubernetes-redis")
 
 	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
 	require.NoError(t, err)
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, "privateGitModule="+sourcePath, "appName="+appName, "redisCacheName="+redisCacheName, functional.GetGitPAT()),
+			Executor: step.NewDeployExecutor(template, "privateGitModule="+sourcePath, "appName="+appName, "redisCacheName="+redisCacheName, testutil.GetGitPAT()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
