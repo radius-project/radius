@@ -20,9 +20,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +38,7 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -76,12 +76,12 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
 				// Check labels and annotations
 				t.Logf("Checking label, annotation values in HTTPProxy resources")
-				httpproxies, err := functional.GetHTTPProxyList(ctx, ct.Options.Client, appNamespace, name)
+				httpproxies, err := testutil.GetHTTPProxyList(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				for _, httpproxy := range httpproxies.Items {
 					expectedLabels := getExpectedLabels(t, httpproxy.Name)
-					require.Truef(t, functional.IsMapSubSet(expectedLabels, httpproxy.Labels), "labels in httpproxy %v do not match expected values : ", httpproxy.Name)
-					require.Truef(t, functional.IsMapSubSet(expectedAnnotations, httpproxy.Annotations), "annotations in httpproxy %v do not match expected values", httpproxy.Name)
+					require.Truef(t, testutil.IsMapSubSet(expectedLabels, httpproxy.Labels), "labels in httpproxy %v do not match expected values : ", httpproxy.Name)
+					require.Truef(t, testutil.IsMapSubSet(expectedAnnotations, httpproxy.Annotations), "annotations in httpproxy %v do not match expected values", httpproxy.Name)
 				}
 			},
 		},

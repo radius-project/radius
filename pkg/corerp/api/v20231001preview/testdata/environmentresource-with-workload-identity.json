@@ -18,8 +18,17 @@
                 "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
             }
         },
+        "recipeConfig": {
+            "terraform": {
+                "authentication": {
+                    "git": {}
+                },
+                "providers": {}
+            },
+            "env": {}
+        },
         "recipes": {
-            "Applications.Datastores/mongoDatabases":{
+            "Applications.Datastores/mongoDatabases": {
                 "cosmos-recipe": {
                     "templateKind": "bicep",
                     "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"

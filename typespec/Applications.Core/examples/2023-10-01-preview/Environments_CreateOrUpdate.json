@@ -17,8 +17,35 @@
             "oidcIssuer": "https://oidcissuer/oidc"
           }
         },
+        "recipeConfig": {
+          "terraform": {
+            "authentication": {
+              "git": {
+                "pat": {
+                  "dev.azure.com": {
+                    "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/github"
+                  }
+                }
+              }
+            },
+            "providers": {
+              "azurerm": [
+                {
+                  "subscriptionId": "00000000-0000-0000-0000-000000000000"
+                },
+                {
+                  "tenantId": "00000000-0000-0000-0000-000000000000",
+                  "alias": "az-example-service"
+                }
+              ]
+            }
+          },
+          "env": {
+            "myEnvVar": "myEnvValue"
+          }
+        },
         "recipes": {
-          "Applications.Datastores/mongoDatabases":{
+          "Applications.Datastores/mongoDatabases": {
             "cosmos-recipe": {
               "templateKind": "bicep",
               "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"
@@ -54,13 +81,13 @@
             "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
             "namespace": "default"
           },
-          "providers" : {
-            "azure" : {
-                "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+          "providers": {
+            "azure": {
+              "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
             }
           },
           "recipes": {
-            "Applications.Datastores/mongoDatabases":{
+            "Applications.Datastores/mongoDatabases": {
               "cosmos-recipe": {
                 "templateKind": "bicep",
                 "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"

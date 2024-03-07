@@ -1,0 +1,17 @@
+{{- if .Values.dashboard.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: radius
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.dashboard.containerPort }}
+  selector:
+      app.kubernetes.io/name: dashboard
+{{- end }}
