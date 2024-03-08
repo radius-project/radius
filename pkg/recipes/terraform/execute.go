@@ -20,11 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -88,10 +91,12 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
-	// Set environment variables for the Terraform process.
-	err = e.setEnvironmentVariables(ctx, tf, options.EnvConfig)
-	if err != nil {
-		return nil, err
+	if options.EnvConfig != nil {
+		// Set environment variables for the Terraform process.
+		err = e.setEnvironmentVariables(ctx, tf, &options.EnvConfig.RecipeConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Run TF Init and Apply in the working directory
@@ -200,13 +205,14 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	}, nil
 }
 
-// setEnvironmentVariables sets environment variables for the Terraform process by reading values from the environment configuration.
+// setEnvironmentVariables sets environment variables for the Terraform process by reading values from the recipe configuration.
 // Terraform process will use environment variables as input for the recipe deployment.
-func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, envConfig *recipes.Configuration) error {
-	if envConfig != nil && envConfig.RecipeConfig.Env.AdditionalProperties != nil {
-		envVars := map[string]string{}
+func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, recipeConfig *datamodel.RecipeConfigProperties) error {
+	if recipeConfig != nil && recipeConfig.Env.AdditionalProperties != nil && len(recipeConfig.Env.AdditionalProperties) > 0 {
+		// populate envVars with the environment variables from current process
+		envVars := splitEnvVar(os.Environ())
 
-		for key, value := range envConfig.RecipeConfig.Env.AdditionalProperties {
+		for key, value := range recipeConfig.Env.AdditionalProperties {
 			envVars[key] = value
 		}
 
@@ -216,6 +222,19 @@ func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraf
 	}
 
 	return nil
+}
+
+// splitEnvVar splits a slice of environment variables into a map of keys and values.
+func splitEnvVar(envVars []string) map[string]string {
+	parsedEnvVars := make(map[string]string)
+	for _, item := range envVars {
+		splits := strings.SplitN(item, "=", 2) // Split on the first "="
+		if len(splits) == 2 {
+			parsedEnvVars[splits[0]] = splits[1]
+		}
+	}
+
+	return parsedEnvVars
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
