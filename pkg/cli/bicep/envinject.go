@@ -35,12 +35,13 @@ func InjectApplicationParam(deploymentTemplate map[string]any, parameters map[st
 }
 
 func injectParam(deploymentTemplate map[string]any, parameters map[string]map[string]any, parameter string, value string) error {
-	if deploymentTemplate["parameters"] == nil {
-		return nil
+	formalParams, err := ExtractParameters(deploymentTemplate)
+	if err != nil {
+		return err
 	}
 
-	innerParameters := deploymentTemplate["parameters"].(map[string]any)
-	if innerParameters[parameter] == nil {
+	if _, ok := formalParams[parameter]; !ok {
+		// If we got here, it means 'parameter' is not a formal parameter of the template.
 		return nil
 	}
 
