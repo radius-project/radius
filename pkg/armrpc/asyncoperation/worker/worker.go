@@ -179,8 +179,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
-				opLogger.Error(nil, errMsg)
-				failed := ctrl.NewFailedResult(v1.ErrorDetails{
+				failed := ctrl.NewFailedResult(ctx, nil, v1.ErrorDetails{
 					Code:    v1.CodeInternal,
 					Message: errMsg,
 				})
@@ -266,8 +265,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
 			if err != nil {
 				armErr := extractError(err)
-				result.SetFailed(armErr, false)
-				logger.Error(err, "Operation Failed")
+				result.SetFailed(ctx, err, armErr, false)
 			}
 
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())

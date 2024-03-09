@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
@@ -97,7 +96,6 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data, previousOutputResources, config.Simulated)
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
-			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
 			// Set the deployment status to the recipe error code.
 			recipeDataModel.Recipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
 			update := &store.Object{
@@ -111,7 +109,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-			return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
+			return ctrl.NewFailedResult(ctx, err, recipeError.ErrorDetails), nil
 		}
 		return ctrl.Result{}, err
 	}

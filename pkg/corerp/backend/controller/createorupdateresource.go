@@ -108,7 +108,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 
 	deploymentDataModel, ok := dataModel.(rpv1.DeploymentDataModel)
 	if !ok {
-		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), err
+		return ctrl.NewFailedResult(ctx, nil, v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
 	}
 
 	oldOutputResources := deploymentDataModel.OutputResources()
@@ -136,5 +136,5 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, err
+	return ctrl.Result{}, nil
 }

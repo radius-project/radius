@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testrp"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -282,7 +283,7 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 
 	t.Run("Complete DELETE FAILURE", func(t *testing.T) {
 		t.Log("completing DELETE FAILURE operation")
-		deleteCh <- backend_ctrl.NewFailedResult(v1.ErrorDetails{
+		deleteCh <- backend_ctrl.NewFailedResult(testcontext.New(t), nil, v1.ErrorDetails{
 			Code:    v1.CodeInternal,
 			Message: "Oh no!",
 		})

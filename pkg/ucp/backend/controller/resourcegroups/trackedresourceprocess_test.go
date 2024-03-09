@@ -84,6 +84,7 @@ func Test_Run(t *testing.T) {
 
 	t.Run("retry", func(t *testing.T) {
 		pc, updater, storageClient := setup(t)
+		ctx := testcontext.New(t)
 
 		storageClient.EXPECT().
 			Get(gomock.Any(), trackingID.String(), gomock.Any()).
@@ -101,33 +102,35 @@ func Test_Run(t *testing.T) {
 		updater.Result = &trackedresource.InProgressErr{}
 
 		expected := controller.Result{}
-		expected.SetFailed(v1.ErrorDetails{Code: v1.CodeConflict, Message: updater.Result.Error(), Target: trackingID.String()}, true)
+		expected.SetFailed(ctx, nil, v1.ErrorDetails{Code: v1.CodeConflict, Message: updater.Result.Error(), Target: trackingID.String()}, true)
 
-		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
+		result, err := pc.Run(ctx, &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, expected, result)
 		require.NoError(t, err)
 	})
 
 	t.Run("Failure (resource not found)", func(t *testing.T) {
 		pc, _, storageClient := setup(t)
+		ctx := testcontext.New(t)
 
 		storageClient.EXPECT().
 			Get(gomock.Any(), trackingID.String(), gomock.Any()).
 			Return(nil, &store.ErrNotFound{}).Times(1)
 
-		expected := controller.NewFailedResult(v1.ErrorDetails{
+		expected := controller.NewFailedResult(ctx, nil, v1.ErrorDetails{
 			Code:    v1.CodeNotFound,
 			Message: fmt.Sprintf("resource %q not found", trackingID.String()),
 			Target:  trackingID.String(),
 		})
 
-		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
+		result, err := pc.Run(ctx, &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, expected, result)
 		require.NoError(t, err)
 	})
 
 	t.Run("Failure (validate downstream: not found)", func(t *testing.T) {
 		pc, _, storageClient := setup(t)
+		ctx := testcontext.New(t)
 
 		storageClient.EXPECT().
 			Get(gomock.Any(), trackingID.String(), gomock.Any()).
@@ -137,19 +140,20 @@ func Test_Run(t *testing.T) {
 			Get(gomock.Any(), "/planes/"+trackingID.PlaneNamespace(), gomock.Any()).
 			Return(nil, &store.ErrNotFound{}).Times(1)
 
-		expected := controller.NewFailedResult(v1.ErrorDetails{
+		expected := controller.NewFailedResult(ctx, nil, v1.ErrorDetails{
 			Code:    v1.CodeNotFound,
 			Message: "plane \"/planes/test/local\" not found",
 			Target:  trackingID.String(),
 		})
 
-		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
+		result, err := pc.Run(ctx, &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, expected, result)
 		require.NoError(t, err)
 	})
 
 	t.Run("Failure (validate downstream: invalid downstream)", func(t *testing.T) {
 		pc, _, storageClient := setup(t)
+		ctx := testcontext.New(t)
 
 		storageClient.EXPECT().
 			Get(gomock.Any(), trackingID.String(), gomock.Any()).
@@ -159,13 +163,13 @@ func Test_Run(t *testing.T) {
 			Get(gomock.Any(), "/planes/"+trackingID.PlaneNamespace(), gomock.Any()).
 			Return(&store.Object{Data: datamodel.Plane{}}, nil).Times(1)
 
-		expected := controller.NewFailedResult(v1.ErrorDetails{
+		expected := controller.NewFailedResult(ctx, nil, v1.ErrorDetails{
 			Code:    v1.CodeInvalid,
 			Message: "unexpected plane type ",
 			Target:  trackingID.String(),
 		})
 
-		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
+		result, err := pc.Run(ctx, &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, expected, result)
 		require.NoError(t, err)
 	})

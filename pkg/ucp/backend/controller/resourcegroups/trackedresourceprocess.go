@@ -57,7 +57,7 @@ func NewTrackedResourceProcessController(opts ctrl.Options) (ctrl.Controller, er
 func (c *TrackedResourceProcessController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	resource, err := store.GetResource[datamodel.GenericResource](ctx, c.StorageClient(), request.ResourceID)
 	if errors.Is(err, &store.ErrNotFound{}) {
-		return ctrl.NewFailedResult(v1.ErrorDetails{Code: v1.CodeNotFound, Message: fmt.Sprintf("resource %q not found", request.ResourceID), Target: request.ResourceID}), nil
+		return ctrl.NewFailedResult(ctx, err, v1.ErrorDetails{Code: v1.CodeNotFound, Message: fmt.Sprintf("resource %q not found", request.ResourceID), Target: request.ResourceID}), nil
 	} else if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -69,9 +69,9 @@ func (c *TrackedResourceProcessController) Run(ctx context.Context, request *ctr
 
 	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, c.StorageClient(), originalID)
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
-		return ctrl.NewFailedResult(v1.ErrorDetails{Code: v1.CodeNotFound, Message: err.Error(), Target: request.ResourceID}), nil
+		return ctrl.NewFailedResult(ctx, err, v1.ErrorDetails{Code: v1.CodeNotFound, Message: err.Error(), Target: request.ResourceID}), nil
 	} else if errors.Is(err, &resourcegroups.InvalidError{}) {
-		return ctrl.NewFailedResult(v1.ErrorDetails{Code: v1.CodeInvalid, Message: err.Error(), Target: request.ResourceID}), nil
+		return ctrl.NewFailedResult(ctx, err, v1.ErrorDetails{Code: v1.CodeInvalid, Message: err.Error(), Target: request.ResourceID}), nil
 	} else if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to validate downstream: %w", err)
 	}
@@ -82,7 +82,7 @@ func (c *TrackedResourceProcessController) Run(ctx context.Context, request *ctr
 	if errors.Is(err, &trackedresource.InProgressErr{}) {
 		// The resource is still being processed, so we can sleep for a while.
 		result := ctrl.Result{}
-		result.SetFailed(v1.ErrorDetails{Code: v1.CodeConflict, Message: err.Error(), Target: request.ResourceID}, true)
+		result.SetFailed(ctx, err, v1.ErrorDetails{Code: v1.CodeConflict, Message: err.Error(), Target: request.ResourceID}, true)
 
 		return result, nil
 	} else if err != nil {

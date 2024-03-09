@@ -60,7 +60,7 @@ func NewDeleteResource[P interface {
 func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
 	if err != nil {
-		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+		return ctrl.NewFailedResult(ctx, err, v1.ErrorDetails{Message: err.Error()}), err
 	}
 
 	// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
@@ -95,7 +95,7 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 		})
 		if err != nil {
 			if recipeError, ok := err.(*recipes.RecipeError); ok {
-				return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
+				return ctrl.NewFailedResult(ctx, err, recipeError.ErrorDetails), nil
 			}
 			return ctrl.Result{}, err
 		}

@@ -17,7 +17,11 @@ limitations under the License.
 package controller
 
 import (
+	"context"
+	"fmt"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // Result is the response of async operation controller.
@@ -40,20 +44,24 @@ func NewCanceledResult(message string) Result {
 }
 
 // NewFailedResult creates a new Result object with the given error details and sets the failed flag to true.
-func NewFailedResult(err v1.ErrorDetails) Result {
+func NewFailedResult(ctx context.Context, err error, errorDetails v1.ErrorDetails) Result {
 	r := Result{}
-	r.SetFailed(err, false)
+	r.SetFailed(ctx, err, errorDetails, false)
+
 	return r
 }
 
 // SetFailed sets the error response with Failed status.
-func (r *Result) SetFailed(err v1.ErrorDetails, requeue bool) {
+func (r *Result) SetFailed(ctx context.Context, err error, errorDetails v1.ErrorDetails, requeue bool) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Error(err, fmt.Sprintf("Operation Failed: %s", errorDetails.Message))
+
 	if r == nil {
 		r = &Result{}
 	}
 	r.Requeue = requeue
 	r.SetProvisioningState(v1.ProvisioningStateFailed)
-	r.Error = &err
+	r.Error = &errorDetails
 }
 
 // SetCanceled sets the Result's Requeue field to false, sets the ProvisioningState to Canceled and sets the Error field
