@@ -135,7 +135,7 @@ func GetTerraformPrivateModuleSource() string {
 }
 
 func GetGitPAT() string {
-	u := os.Getenv("GH_ACCOUNT")
+	u := os.Getenv("GITHUB_TOKEN")
 	return "pat=" + u
 }
 
