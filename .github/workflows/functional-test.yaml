@@ -21,6 +21,8 @@ on:
     - cron: "30 0,4,8,12,16,20 * * 1-5"
     # Run every 12 hours on weekends.
     - cron: "30 0,12 * * 0,6"
+  # Allow manual dispatch
+  workflow_dispatch:
   # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
@@ -50,10 +52,6 @@ env:
   AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.1.0'
-  # Container registry for storing container images
-  CONTAINER_REGISTRY: ghcr.io/radius-project/dev
-  # Container registry for storing Bicep recipe artifacts
-  BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -71,11 +69,16 @@ env:
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
 
+  BICEP_RECIPE_REGISTRY: "ghcr.io/willdavsmith/radius"
+  CONTAINER_REGISTRY: "ghcr.io/willdavsmith/radius"
+  FUNCTIONAL_TEST_APP_ID: 811142
+  IMAGE_SRC: "https://github.com/willdavsmith/radius"
+
 jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
@@ -302,7 +305,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'  || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: true
       matrix:
@@ -326,7 +329,7 @@ jobs:
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
       FUNCTIONAL_TEST_APP_ID: 425843
     steps:
-      - name: Login as the GitHub App
+      - name: Get GitHub app token
         uses: tibdex/github-app-token@v1
         id: get_installation_token
         with: 
@@ -352,7 +355,6 @@ jobs:
         with:
           repository: radius-project/samples
           ref: refs/heads/edge
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: samples
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v3
@@ -414,7 +416,7 @@ jobs:
           # AZURE_OIDC_ISSUER
           eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
+          AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" | base64)
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
