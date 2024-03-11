@@ -7,7 +7,7 @@ param redisCacheName string
 param appName string
 
 @secure()
-param pat string=''
+param pat string
 
 @description('Private Git module source in generic git format.')
 param privateGitModule string

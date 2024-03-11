@@ -129,7 +129,7 @@ func GetTerraformRecipeModuleServerURL() string {
 func GetTerraformPrivateModuleSource() string {
 	u := os.Getenv("TF_RECIPE_PRIVATE_GIT_SOURCE")
 	if u == "" {
-		return "privateGitModule=git::https://github.com/radius-project/terraform-private-modules"
+		return "privateGitModule=git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
 	}
 	return "privateGitModule=" + u
 }
