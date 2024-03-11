@@ -122,6 +122,13 @@ if ($Version -eq "edge") {
     $downloadURL = "ghcr.io/${GitHubOrg}/rad/${OS}-${Arch}:latest"
     Write-Output "Downloading edge CLI from ${downloadURL}..."
     oras pull $downloadURL -o $RadiusRoot
+
+    # Check if the oras pull command was successful
+    if ($LASTEXITCODE -ne 0) {
+        Write-Output "Failed to download edge rad CLI."
+        Write-Output "Please visit https://edge.docs.radapp.io/installation for edge build installation instructions."
+        Exit 1
+    }
 }
 else {
     # Get the list of releases from GitHub
