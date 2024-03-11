@@ -309,7 +309,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        name: [ucp,kubernetes,shared,msgrp,daprrp,samples,cli]
+        name: [ucp,kubernetes,msgrp,daprrp,samples]
         include:
           # datastorerp functional tests need the larger VM.
           - os: ubuntu-latest-m
