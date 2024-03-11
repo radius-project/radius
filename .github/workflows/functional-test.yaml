@@ -92,7 +92,7 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
-      - name: Login as the GitHub App
+      - name: Get GitHub app token
         uses: tibdex/github-app-token@v1
         id: get_installation_token
         with: 
@@ -326,6 +326,8 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+    outputs:
+      test_status: ${{ steps.report_test_status.outputs.test_status }}
     steps:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@v1
@@ -628,6 +630,29 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+      - id: report_test_status
+        if: always()
+        run: |
+          if ${{ env.test_status }} == 'failure' || ${{ job.status }} == 'failure' || ${{ job.status }} == 'cancelled'; then
+            echo "test_status=failure" >> $GITHUB_OUTPUT
+            echo "test_status=failure" >> $GITHUB_ENV
+          else
+            echo "test_status=success" >> $GITHUB_OUTPUT
+          fi
+  report-test-results:
+    name: Report test results
+    needs: [build, tests]
+    runs-on: ubuntu-latest
+    if: always()
+    env:
+      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
+    steps:
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v1
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - uses: LouisBrunner/checks-action@v1.6.1
         if: always()
         with:
@@ -636,7 +661,7 @@ jobs:
           repo: ${{ github.repository }}
           sha: ${{ env.CHECKOUT_REF }}
           status: completed
-          conclusion: ${{ job.status }}
+          conclusion: ${{ needs.tests.outputs.test_status }}
           output: |
             {"summary":"Functional Test run completed. See links for more information.","title":"Functional Test Run"}
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
