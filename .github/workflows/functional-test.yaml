@@ -646,6 +646,7 @@ jobs:
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Get tests job status
         run: | 
+          # from: https://github.com/orgs/community/discussions/26526#discussioncomment-3252209
           jobstatus=$(curl -X GET -s -u "admin:${{ steps.get_installation_token.outputs.token }}" https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs | jq ".jobs[] | {job_status: .conclusion, matrix: .name}")
           # if jobstatus contains failure
           if echo "$jobstatus" | grep -q "failure"; then
@@ -655,6 +656,9 @@ jobs:
           else
             echo "TEST_STATUS=success" >> $GITHUB_ENV
           fi
+
+          echo "Test Status: $jobstatus"
+          echo "Setting test status to $TEST_STATUS"
       - uses: LouisBrunner/checks-action@v1.6.1
         if: always()
         with:
