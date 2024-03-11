@@ -644,22 +644,22 @@ jobs:
         id: get_test_status
         run: |
           # from: https://github.com/orgs/community/discussions/26526#discussioncomment-3252209
-          JOB_STATUS=$(curl -X GET -s -u "admin:${{ steps.get_installation_token.outputs.token }}" https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs | jq ".jobs[] | {job_status: .conclusion, matrix: .name}")
+          ALL_JOBS_STATUS=$(curl -X GET -s -u "admin:${{ steps.get_installation_token.outputs.token }}" https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs | jq ".jobs[] | {job_status: .conclusion}")
+          echo "All jobs status: $ALL_JOBS_STATUS"
           TEST_STATUS="success"
-          echo $JOB_STATUS | jq -c '.[]' | while read -r job; do
-            job_status=$(echo $job | jq -r '.job_status')
-            if [[ $job_status == "failure" ]]; then
+          for job_status in $(echo "$ALL_JOBS_STATUS" | jq -r '.[]'); do
+            echo "Job Status: $job_status"
+            if [[ "$job_status" == "failure" ]]; then
               echo "Found failed test. Setting test status to failure"
               TEST_STATUS="failure"
               break
-            elif [[ $job_status == "cancelled" ]]; then
+            elif [[ "$job_status" == "cancelled" ]]; then
               echo "Found cancelled test. Setting test status to cancelled"
               TEST_STATUS="cancelled"
               break
             fi
           done
 
-          echo "Job Status: $JOB_STATUS"
           echo "Test Status: $TEST_STATUS"
           echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
       - uses: LouisBrunner/checks-action@v1.6.1
