@@ -92,6 +92,10 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 		return nil, nil, err
 	}
 
+	driverWithSecrets, ok := driver.(recipedriver.DriverWithSecrets)
+	if ok {
+		driverWithSecrets.FindSecretIDs(ctx, *configuration)
+	}
 	// Retrieves the secret store id from the recipes configuration for the terraform module source of type git.
 	// secretStoreID returned will be an empty string for other types.
 	secretStore, err := recipes.GetSecretStoreID(*configuration, definition.TemplatePath)

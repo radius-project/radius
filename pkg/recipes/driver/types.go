@@ -42,6 +42,11 @@ type Driver interface {
 	GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error)
 }
 
+type DriverWithSecrets interface {
+	Driver
+	FindSecretIDs(ctx context.Context, config recipes.Configuration) ([]string, error)
+}
+
 // BaseOptions is the base options for the driver operations.
 type BaseOptions struct {
 	// Configuration is the configuration for the recipe.
