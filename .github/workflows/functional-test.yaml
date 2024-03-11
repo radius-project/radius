@@ -24,10 +24,15 @@ on:
   # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
-  workflow_run:
-    workflows: ['Approve Functional Tests']
-    types:
-      - completed
+
+  push:
+    branches:
+      - v*.*
+      - edge
+    paths:
+      - ".github/workflows/**"
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 env:
   # Go version
