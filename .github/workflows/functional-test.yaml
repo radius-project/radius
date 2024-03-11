@@ -630,15 +630,6 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-      - id: report_test_status
-        if: always()
-        run: |
-          if ${{ env.test_status }} == 'failure' || ${{ job.status }} == 'failure' || ${{ job.status }} == 'cancelled'; then
-            echo "test_status=failure" >> $GITHUB_OUTPUT
-            echo "test_status=failure" >> $GITHUB_ENV
-          else
-            echo "test_status=success" >> $GITHUB_OUTPUT
-          fi
   report-test-results:
     name: Report test results
     needs: [build, tests]
@@ -653,6 +644,17 @@ jobs:
         with: 
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+      - name: Get tests job status
+        run: | 
+          jobstatus=$(curl -X GET -s -u "admin:${{ steps.get_installation_token.outputs.token }}" https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs | jq ".jobs[] | {job_status: .conclusion, matrix: .name}")
+          # if jobstatus contains failure
+          if echo "$jobstatus" | grep -q "failure"; then
+            echo "TEST_STATUS=failure" >> $GITHUB_ENV
+          elif echo "$jobstatus" | grep -q "cancelled"; then
+            echo "TEST_STATUS=cancelled" >> $GITHUB_ENV
+          else
+            echo "TEST_STATUS=success" >> $GITHUB_ENV
+          fi
       - uses: LouisBrunner/checks-action@v1.6.1
         if: always()
         with:
@@ -661,7 +663,7 @@ jobs:
           repo: ${{ github.repository }}
           sha: ${{ env.CHECKOUT_REF }}
           status: completed
-          conclusion: ${{ needs.tests.outputs.test_status }}
+          conclusion: ${{ env.TEST_STATUS }}
           output: |
             {"summary":"Functional Test run completed. See links for more information.","title":"Functional Test Run"}
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
