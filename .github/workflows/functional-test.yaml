@@ -21,8 +21,6 @@ on:
     - cron: "30 0,4,8,12,16,20 * * 1-5"
     # Run every 12 hours on weekends.
     - cron: "30 0,12 * * 0,6"
-  # Allow manual dispatch
-  workflow_dispatch:
   # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
@@ -52,6 +50,10 @@ env:
   AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.1.0'
+  # Container registry for storing container images
+  CONTAINER_REGISTRY: ghcr.io/radius-project/dev
+  # Container registry for storing Bicep recipe artifacts
+  BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -68,17 +70,14 @@ env:
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
-
-  BICEP_RECIPE_REGISTRY: "ghcr.io/willdavsmith/radius"
-  CONTAINER_REGISTRY: "ghcr.io/willdavsmith/radius"
-  FUNCTIONAL_TEST_APP_ID: 811142
-  IMAGE_SRC: "https://github.com/willdavsmith/radius"
+  # The functional test GitHub app id
+  FUNCTIONAL_TEST_APP_ID: 425843
 
 jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
@@ -304,12 +303,16 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'  || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     strategy:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        name: [ucp,kubernetes,msgrp,daprrp,samples,shared,cli]
+        name: [ucp,kubernetes,shared,msgrp,daprrp,samples,cli]
+        include:
+          # datastorerp functional tests need the larger VM.
+          - os: ubuntu-latest-m
+            name: datastoresrp
     runs-on: ${{ matrix.os }}
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
@@ -656,7 +659,6 @@ jobs:
               TEST_STATUS="cancelled"
             fi
           done
-
           echo "Test Status: $TEST_STATUS"
           echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
       - uses: LouisBrunner/checks-action@v1.6.1
