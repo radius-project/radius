@@ -21,12 +21,11 @@ Note, this only applies when we want to update the app core image, if we need to
     ```
 1. Deploy an environment with command on kubernetes
     ```
-    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=ghcr.io/your-registry/applications-rp,rp.tag=latest,ucp.image=ghcr.io/your-registry/ucpd,ucp.tag=latest
-    go run ./cmd/rad/main.go workspace create kubernetes
-    go run ./cmd/rad/main.go group create radius-rg
-    go run ./cmd/rad/main.go switch radius-rg
-    go run ./cmd/rad/main.go env create radius-rg --namespace default
-    go run ./cmd/rad/main.go env switch radius-rg
+    go run ./cmd/rad/main.go install kubernetes \
+            --chart deploy/Chart/ \
+            --set rp.image=your-registry.azurecr.io/applications-rp,rp.tag=latest,controller.image=your-registry.azurecr.io/controller,controller.tag=latest,ucp.image=your-registry.azurecr.io/ucpd,ucp.tag=latest,de.image=ghcr.io/radius-project/deployment-engine,de.tag=latest
+    go run ./cmd/rad/main.go group create default
+    go run ./cmd/rad/main.go env create default
     ```
 1. Run a deployment. Executing `go run \cmd\rad\main.go deploy <bicep>` will deploy your file to the cluster.
 
@@ -48,7 +47,9 @@ The above steps will not configure the ability for Radius to talk with azure res
     ```
 1. Use these values in the following command:
     ```
-    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=ghcr.io/your-registry/applications-rp,rp.tag=latest,ucp.image=ghcr.io/your-registry/ucpd,ucp.tag=latest
+    go run ./cmd/rad/main.go install kubernetes \
+            --chart deploy/Chart/ \
+            --set rp.image=your-registry.azurecr.io/applications-rp,rp.tag=latest,controller.image=your-registry.azurecr.io/controller,controller.tag=latest,ucp.image=your-registry.azurecr.io/ucpd,ucp.tag=latest,de.image=ghcr.io/radius-project/deployment-engine,de.tag=latest
     go run ./cmd/rad/main.go workspace create kubernetes
     go run ./cmd/rad/main.go group create radius-rg
     go run ./cmd/rad/main.go switch radius-rg
@@ -84,3 +85,46 @@ go run ./cmd/rad/main.go workspace delete
 Another approach would be to delete and recreate the kubernetes cluster
 
 Pro tip: `kubectl config set-context --current --namespace=radius-system` to the radius-system namespace
+
+## Recipe Testing: 
+(@vishwa, @karishma)
+### Bicep Recipes: 
+### Terraform Recipes:
+- One way to create and test recipes locally is to create a a public/private git repo to host recipes and access/test it setting it's template path to the git repo location. eg:
+
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
+ ...
+        recipes: {
+      'Applications.Core/extenders': {
+        default: {
+          templateKind: 'terraform'
+          templatePath:'git::https://github.com/<username>/<reponame>'
+        }
+      }
+    }
+ ...   
+
+
+- Another way to test recipes is to convert a folder containing recipes into a http server that serves that folder locally and hosts recipes.
+  ``` 
+  python command: python3 -m http.server
+  ```
+
+## CoreRP Testing:
+(@yetkin) - How to use cosmos db as a backend where one can see individual entries stored in db.
+          - Use/share Postman Collection to test api
+
+
+## Preferred Tools used to visualize k8s logs (pros/cons)
+(@yetkin/@vishwa) 
+
+
+## Dashboard/APP Graph testing
+(Bunsen Team)
+
+## Github Pipelines
+(@vinaya, @willsmith)
+
+## Container Dev
+(??) Describe good usecases to debug using dev containers
+
