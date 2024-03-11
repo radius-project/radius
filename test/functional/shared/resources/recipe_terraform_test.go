@@ -439,7 +439,7 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 
 	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
 	require.NoError(t, err)
-	t.Logf(fmt.Sprintf("modulesource terraform git:%s",testutil.GetTerraformPrivateModuleSource()))
+	t.Logf(fmt.Sprintf("modulesource terraform git:%s", testutil.GetTerraformPrivateModuleSource()))
 	t.Logf(fmt.Sprintf("modulesource git token :%s", testutil.GetGitPAT()))
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -490,7 +490,7 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 				status := redis.Properties["status"].(map[string]any)
 				recipe := status["recipe"].(map[string]interface{})
 				require.Equal(t, "terraform", recipe["templateKind"].(string))
-				expectedTemplatePath := strings.Replace(sourcePath, "moduleServer=", "", 1)
+				expectedTemplatePath := strings.Replace(testutil.GetTerraformPrivateModuleSource(), "moduleServer=", "", 1)
 				require.Equal(t, expectedTemplatePath, recipe["templatePath"].(string))
 				// At present, it is not possible to verify the template version in functional tests
 				// This is verified by UTs though
