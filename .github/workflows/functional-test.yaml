@@ -654,7 +654,6 @@ jobs:
             elif [[ "$job_status" == "cancelled" ]]; then
               echo "Found cancelled test. Setting test status to cancelled"
               TEST_STATUS="cancelled"
-              break
             fi
           done
 
