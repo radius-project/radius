@@ -44,7 +44,9 @@ type Driver interface {
 
 type DriverWithSecrets interface {
 	Driver
-	FindSecretIDs(ctx context.Context, config recipes.Configuration) ([]string, error)
+
+	// FindSecretIDs gets the secret ID references from environment definition.
+	FindSecretIDs(ctx context.Context, config recipes.Configuration, definition recipes.EnvironmentDefinition) (string, error)
 }
 
 // BaseOptions is the base options for the driver operations.

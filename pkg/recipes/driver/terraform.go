@@ -249,6 +249,11 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	return recipeData, nil
 }
 
+func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (string, error) {
+
+	return recipes.GetSecretStoreID(envConfig, definition.TemplatePath)
+}
+
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.
 // Currently only Azure, AWS and Kubernetes providers are supported by output resources.
 func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule) ([]string, error) {
