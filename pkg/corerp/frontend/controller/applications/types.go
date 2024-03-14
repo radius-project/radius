@@ -20,7 +20,6 @@ import (
 	cntr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
 	gtwy_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
-	hrt_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/httproutes"
 	sstr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
@@ -42,7 +41,6 @@ var (
 		dapr_ctrl.DaprPubSubBrokersResourceType,
 		ext_ctrl.ResourceTypeName,
 		gtwy_ctrl.ResourceTypeName,
-		hrt_ctrl.ResourceTypeName,
 		cntr_ctrl.ResourceTypeName,
 		sstr_ctrl.ResourceTypeName,
 	}

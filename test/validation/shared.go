@@ -37,7 +37,6 @@ import (
 const (
 	EnvironmentsResource = "applications.core/environments"
 	ApplicationsResource = "applications.core/applications"
-	HttpRoutesResource   = "applications.core/httpRoutes"
 	GatewaysResource     = "applications.core/gateways"
 	ContainersResource   = "applications.core/containers"
 	VolumesResource      = "applications.core/volumes"

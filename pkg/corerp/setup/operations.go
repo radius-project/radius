@@ -100,36 +100,6 @@ var operationList = []v1.Operation{
 		IsDataAction: false,
 	},
 	{
-		Name: "Applications.Core/httproutes/read",
-		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Core",
-			Resource:    "httproutes",
-			Operation:   "List httproutes",
-			Description: "Get the list of httproutes.",
-		},
-		IsDataAction: false,
-	},
-	{
-		Name: "Applications.Core/httproutes/write",
-		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Core",
-			Resource:    "httproutes",
-			Operation:   "Create/Update httproute",
-			Description: "Create or update an httproute.",
-		},
-		IsDataAction: false,
-	},
-	{
-		Name: "Applications.Core/httproutes/delete",
-		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Core",
-			Resource:    "httproutes",
-			Operation:   "Delete httproute",
-			Description: "Delete an httproute.",
-		},
-		IsDataAction: false,
-	},
-	{
 		Name: "Applications.Core/applications/read",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Core",

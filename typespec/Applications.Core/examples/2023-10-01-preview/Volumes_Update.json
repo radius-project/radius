@@ -5,7 +5,7 @@
     "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "volumeName": "keyvault0",
     "api-version": "2023-10-01-preview",
-    "HttpRouteResource": {
+    "VolumeResource": {
       "location": "West US",
       "properties": {
         "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0"

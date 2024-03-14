@@ -38,7 +38,6 @@ import (
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
 	gtwy_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
-	hrt_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/httproutes"
 	secret_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
 	vol_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/volumes"
 )
@@ -143,30 +142,6 @@ var handlerTests = []rpctest.HandlerTestSpec{
 	}, {
 		OperationType: v1.OperationType{Type: gtwy_ctrl.ResourceTypeName, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.core/gateways/gateway0",
-		Method:        http.MethodDelete,
-	}, {
-		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationPlaneScopeList},
-		Path:          "/providers/applications.core/httproutes",
-		Method:        http.MethodGet,
-	}, {
-		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationList},
-		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes",
-		Method:        http.MethodGet,
-	}, {
-		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationGet},
-		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0",
-		Method:        http.MethodGet,
-	}, {
-		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationPut},
-		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0",
-		Method:        http.MethodPut,
-	}, {
-		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationPatch},
-		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0",
-		Method:        http.MethodPatch,
-	}, {
-		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationDelete},
-		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0",
 		Method:        http.MethodDelete,
 	}, {
 		OperationType: v1.OperationType{Type: secret_ctrl.ResourceTypeName, Method: v1.OperationPlaneScopeList},

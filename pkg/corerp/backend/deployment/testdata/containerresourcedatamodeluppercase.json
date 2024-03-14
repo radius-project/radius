@@ -49,8 +49,7 @@
       },
       "ports": {
         "web": {
-          "containerPort": 5000,
-          "provides": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application/HttpRoute/B"
+          "containerPort": 5000
         }
       }
     }
