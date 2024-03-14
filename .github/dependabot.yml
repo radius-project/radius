@@ -4,11 +4,23 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      all:
+        patterns:
+        - "*"  
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      all:
+        patterns:
+        - "*"  
   - package-ecosystem: "devcontainers"
     directory: "/.devcontainer"
     schedule:
       interval: weekly
+    groups:
+      all:
+        patterns:
+        - "*"  
