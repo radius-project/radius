@@ -63,11 +63,6 @@ func (c *ClientFactory) NewGatewaysClient() *GatewaysClient {
 	return subClient
 }
 
-func (c *ClientFactory) NewHTTPRoutesClient() *HTTPRoutesClient {
-	subClient, _ := NewHTTPRoutesClient(c.rootScope, c.credential, c.options)
-	return subClient
-}
-
 func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 	subClient, _ := NewOperationsClient(c.credential, c.options)
 	return subClient

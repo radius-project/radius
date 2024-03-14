@@ -38,31 +38,23 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
     routes: [
       {
         path: '/'
-        destination: frontendRoute.id
+        destination: 'http://http-gtwy-front-ctnr-simulatedenv:${port}'
       }
       {
         path: '/backend1'
-        destination: backendRoute.id
+        destination: 'http://http-gtwy-back-ctnr-simulatedenv:${port}'
       }
       {
         // Route /backend2 requests to the backend, and
         // transform the request to /
         path: '/backend2'
-        destination: backendRoute.id
+        destination: 'http://http-gtwy-back-ctnr-simulatedenv:${port}'
         replacePrefix: '/'
       }
     ]
   }
 }
 
-resource frontendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'http-gtwy-front-rte-simulatedenv'
-  location: location
-  properties: {
-    application: app.id
-    port: 81
-  }
-}
 
 resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'http-gtwy-front-ctnr-simulatedenv'
@@ -74,7 +66,6 @@ resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: port
-          provides: frontendRoute.id
         }
       }
       readinessProbe: {
@@ -85,19 +76,12 @@ resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
     }
     connections: {
       backend: {
-        source: backendRoute.id
+        source: 'http://http-gtwy-back-ctnr-simulatedenv:${port}'
       }
     }
   }
 }
 
-resource backendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'http-gtwy-back-rte-simulatedenv'
-  location: location
-  properties: {
-    application: app.id
-  }
-}
 
 resource backendContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'http-gtwy-back-ctnr-simulatedenv'
@@ -112,7 +96,6 @@ resource backendContainer 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: port
-          provides: backendRoute.id
         }
       }
       readinessProbe: {
