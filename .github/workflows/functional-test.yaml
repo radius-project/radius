@@ -70,6 +70,8 @@ env:
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
+  # The functional test GitHub app id
+  FUNCTIONAL_TEST_APP_ID: 425843
   # Private Git repository where terraform module for testing is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
 
@@ -81,7 +83,6 @@ jobs:
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
-      FUNCTIONAL_TEST_APP_ID: 425843
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -92,7 +93,7 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
-      - name: Login as the GitHub App
+      - name: Get GitHub app token
         uses: tibdex/github-app-token@v1
         id: get_installation_token
         with: 
@@ -326,9 +327,8 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
-      FUNCTIONAL_TEST_APP_ID: 425843
     steps:
-      - name: Login as the GitHub App
+      - name: Get GitHub app token
         uses: tibdex/github-app-token@v1
         id: get_installation_token
         with: 
@@ -354,7 +354,6 @@ jobs:
         with:
           repository: radius-project/samples
           ref: refs/heads/edge
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: samples
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v3
@@ -631,6 +630,40 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+  report-test-results:
+    name: Report test results
+    needs: [build, tests]
+    runs-on: ubuntu-latest
+    if: always()
+    env:
+      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
+    steps:
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v1
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+      - name: Get tests job status
+        id: get_test_status
+        run: |
+          # from: https://github.com/orgs/community/discussions/26526#discussioncomment-3252209
+          ALL_JOBS_STATUS=$(curl -X GET -s -u "admin:${{ steps.get_installation_token.outputs.token }}" https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs | jq ".jobs[] | {job_status: .conclusion}")
+          echo "All jobs status: $ALL_JOBS_STATUS"
+          TEST_STATUS="success"
+          for job_status in $(echo "$ALL_JOBS_STATUS" | jq -r '.[]'); do
+            echo "Job Status: $job_status"
+            if [[ "$job_status" == "failure" ]]; then
+              echo "Found failed test. Setting test status to failure"
+              TEST_STATUS="failure"
+              break
+            elif [[ "$job_status" == "cancelled" ]]; then
+              echo "Found cancelled test. Setting test status to cancelled"
+              TEST_STATUS="cancelled"
+            fi
+          done
+          echo "Test Status: $TEST_STATUS"
+          echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
       - uses: LouisBrunner/checks-action@v1.6.1
         if: always()
         with:
@@ -639,7 +672,7 @@ jobs:
           repo: ${{ github.repository }}
           sha: ${{ env.CHECKOUT_REF }}
           status: completed
-          conclusion: ${{ job.status }}
+          conclusion: ${{ steps.get_test_status.outputs.test_status }}
           output: |
             {"summary":"Functional Test run completed. See links for more information.","title":"Functional Test Run"}
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
