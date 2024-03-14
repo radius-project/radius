@@ -68,7 +68,7 @@ jobs:
         run: |
           helm lint ${{ env.HELM_CHARTS_DIR }}
       - name: Run linter
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: 'latest'
           args: --timeout=10m
