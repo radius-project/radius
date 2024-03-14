@@ -64,7 +64,7 @@ require (
 	github.com/stern/stern v1.25.0
 	github.com/stretchr/testify v1.8.4
 	github.com/vippsas/go-cosmosdb v0.0.0-20230118095602-f4e4b9f1c352
-	github.com/wI2L/jsondiff v0.2.0
+	github.com/wI2L/jsondiff v0.5.1
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.etcd.io/etcd/server/v3 v3.5.9
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0
@@ -109,9 +109,10 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/stretchr/objx v0.5.1 // indirect
-	github.com/tidwall/gjson v1.14.0 // indirect
+	github.com/tidwall/gjson v1.17.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	go.mongodb.org/mongo-driver v1.12.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
