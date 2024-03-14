@@ -48,7 +48,7 @@ jobs:
           ref: ${{ env.DOCS_BRANCH }}
       # Setup dependencies
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
           cache-dependency-path: radius/go.sum
