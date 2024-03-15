@@ -209,7 +209,7 @@ jobs:
         uses: azure/login@v1
         with:
           client-id: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
-          tenant-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          tenant-id: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
           subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -340,7 +340,7 @@ jobs:
         uses: azure/login@v1
         with:
           client-id: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
-          tenant-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          tenant-id: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
           subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2

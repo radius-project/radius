@@ -57,7 +57,7 @@ jobs:
         uses: azure/login@v1
         with:
           client-id: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
-          tenant-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          tenant-id: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
           subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       - name: Find old test resource groups
         run: |
