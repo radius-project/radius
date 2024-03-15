@@ -21,9 +21,6 @@ permissions:
   contents: read  # Required for actions/checkout
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     # Run twice a day
     - cron: "30 0,12 * * *"
