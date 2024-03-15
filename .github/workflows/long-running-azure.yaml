@@ -41,6 +41,7 @@ name: Long-running test on Azure
 permissions:
   id-token: write # Required for requesting the JWT
   contents: read  # Required for actions/checkout
+  packages: write # Required for uploading the package
 
 on:
   schedule:
