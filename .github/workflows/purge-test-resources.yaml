@@ -15,10 +15,18 @@
 # ------------------------------------------------------------
 
 name: Purge test resources
+
+permissions:
+  id-token: write # Required for requesting the JWT
+  contents: read  # Required for actions/checkout
+
 on:
   schedule:
     # Run twice a day
     - cron: "30 0,12 * * *"
+  push:
+    branches:
+      - main
 
 env:
   AZURE_RG_DELETE_LIST_FILE: 'az_rg_list.txt'
@@ -48,7 +56,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
+          client-id: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+          tenant-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       - name: Find old test resource groups
         run: |
           echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY

@@ -37,6 +37,11 @@
 # Grafana dashboard URL: https://radiuse2e00-dashboard-audycmffgberbghy.wus3.grafana.azure.com/
 
 name: Long-running test on Azure
+
+permissions:
+  id-token: write # Required for requesting the JWT
+  contents: read  # Required for actions/checkout
+
 on:
   schedule:
     # Run every 2 hours
@@ -203,7 +208,9 @@ jobs:
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: azure/login@v1
         with:
-          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
+          client-id: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+          tenant-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -332,7 +339,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
+          client-id: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
+          tenant-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
