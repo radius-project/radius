@@ -90,7 +90,7 @@ func display(applicationResources []*v20231001preview.ApplicationGraphResource, 
 			for _, resource := range resource.OutputResources {
 				link := makeHyperlink(resource)
 				if link == "" {
-					output.WriteString(fmt.Sprintf("  %s (%s)\n", *resource.Name, *resource.Type))
+					output.WriteString(fmt.Sprintf("  %s (%s)\n \n", *resource.Name, *resource.Type))
 				} else {
 					output.WriteString(fmt.Sprintf("  %s (%s)\n", link, *resource.Type))
 				}
