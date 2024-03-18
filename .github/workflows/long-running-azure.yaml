@@ -211,6 +211,7 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -341,6 +342,7 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
