@@ -211,7 +211,7 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -342,7 +342,7 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -355,7 +355,7 @@ jobs:
           az group create \
             --location ${{ env.AZURE_LOCATION }} \
             --name $RESOURCE_GROUP \
-            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --tags creationTime=$current_time
           while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
         env:
@@ -363,7 +363,7 @@ jobs:
       - name: Get kubeconf credential for AKS cluster
         run: |
           az aks get-credentials \
-            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
             --name ${{ env.AKS_CLUSTER_NAME }} --admin
         env:
@@ -408,7 +408,7 @@ jobs:
           rad env switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
 
           echo "*** Configuring Azure provider ***"
-          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
@@ -489,7 +489,7 @@ jobs:
         run: |
           # if deletion fails, purge workflow will purge the resource group and its resources later.
           az group delete \
-            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes --verbose
       - name: Clean up cluster
