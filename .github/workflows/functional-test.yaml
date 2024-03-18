@@ -384,11 +384,10 @@ jobs:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
       - name: Login to Azure
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          client-id: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
-          tenant-id: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
-          subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
@@ -464,7 +463,7 @@ jobs:
       - name: Install azure workload identity webhook chart
         run: |
           helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
-          helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+          helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -513,9 +512,9 @@ jobs:
           echo "*** Configuring Azure provider ***"
           rad env update kind-radius --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          rad credential register azure --client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+          rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-            --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+            --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
           echo "*** Configuring AWS provider ***"
           rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}

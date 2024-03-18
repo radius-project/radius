@@ -51,11 +51,10 @@ jobs:
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Login to Azure
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          client-id: ${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
-          tenant-id: ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
-          subscription-id: ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
       - name: Find old test resource groups
         run: |
           echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
