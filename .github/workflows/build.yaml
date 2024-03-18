@@ -306,12 +306,14 @@ jobs:
           mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
           helm package ${{ env.HELM_CHARTS_DIR }} --version ${{ env.CHART_VERSION }} --app-version ${{ env.REL_VERSION }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
       # TODO: Delete this step once we use GHCR as the helm chart repo.
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: az CLI login
+        run: |
+          az login --service-principal \
+            --username ${{ secrets.AZURE_SP_TESTS_APPID }} \
+            --password ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
+            --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
       # TODO: Delete this step once we use GHCR as the helm chart repo.
       - name: Push helm chart to ACR
         run: |
