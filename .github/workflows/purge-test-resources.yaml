@@ -25,6 +25,9 @@ on:
   schedule:
     # Run twice a day
     - cron: "30 0,12 * * *"
+  pull_request:
+    branches:
+      - main
 
 env:
   AZURE_RG_DELETE_LIST_FILE: 'az_rg_list.txt'
