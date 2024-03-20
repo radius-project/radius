@@ -16,7 +16,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Dapr/stateStores': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional-portable/corerp/recipes/dapr-state-store:${version}'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dapr-state-store:${version}'
         }
       }
     }

@@ -28,7 +28,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Datastores/mongoDatabases':{
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional-portable/corerp/recipes/mongodb-recipe-context:${version}' 
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/mongodb-recipe-context:${version}' 
         }
       }
     }

@@ -2,7 +2,7 @@
 
 The recipes in this folder are published as part of the PR process to:
 
-> `ghcr.io/radius-project/dev/test/functional-portable/corerp/recipes/<filename>:pr-<pr-number>`
+> `ghcr.io/radius-project/dev/test/testrecipes/test-bicep-recipes/<filename>:pr-<pr-number>`
 
 This is important because it allows us to make changes to the recipes, and test them in the same PR that contains the change.
 

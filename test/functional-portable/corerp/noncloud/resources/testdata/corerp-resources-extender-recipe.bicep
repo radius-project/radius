@@ -18,7 +18,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Core/extenders':{
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional-portable/corerp/recipes/extender-recipe:${version}' 
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/extender-recipe:${version}' 
           parameters: {
             containerImage: '${registry}/magpiego:${version}'
           }

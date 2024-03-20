@@ -27,10 +27,10 @@ TERRAFORM_MODULE_CONFIGMAP_NAME=tf-module-server-content
 publish-test-bicep-recipes: ## Publishes test recipes to <BICEP_RECIPE_REGISTRY> with version <BICEP_RECIPE_TAG_VERSION>
 	@if [ -z "$(BICEP_RECIPE_REGISTRY)" ]; then echo "Error: BICEP_RECIPE_REGISTRY must be set to a valid OCI registry"; exit 1; fi
 	
-	@echo "$(ARROW) Publishing Bicep test recipes from ./test/functional-portable/corerp/noncloud/resources/testdata/recipes/test-bicep-recipes..."
+	@echo "$(ARROW) Publishing Bicep test recipes from ./test/testrecipes/test-bicep-recipes..."
 	./.github/scripts/publish-recipes.sh \
-		./test/functional-portable/corerp/noncloud/resources/testdata/recipes/test-bicep-recipes \
-		${BICEP_RECIPE_REGISTRY}/test/functional-portable/corerp/recipes \
+		./test/testrecipes/test-bicep-recipes \
+		${BICEP_RECIPE_REGISTRY}/test/testrecipes \
 		${BICEP_RECIPE_TAG_VERSION}
 
 .PHONY: publish-test-terraform-recipes
@@ -38,9 +38,9 @@ publish-test-terraform-recipes: ## Publishes test terraform recipes to the curre
 	@echo "$(ARROW) Creating Kubernetes namespace $(TERRAFORM_MODULE_SERVER_NAMESPACE)..."
 	kubectl create namespace $(TERRAFORM_MODULE_SERVER_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
 
-	@echo "$(ARROW) Publishing Terraform test recipes from ./test/functional-portable/corerp/noncloud/resources/testdata/recipes/test-terraform-recipes..."
+	@echo "$(ARROW) Publishing Terraform test recipes from ./test/testrecipes/test-terraform-recipes..."
 	./.github/scripts/publish-test-terraform-recipes.py \
-		./test/functional-portable/corerp/noncloud/resources/testdata/recipes/test-terraform-recipes \
+		./test/testrecipes/test-terraform-recipes \
 		$(TERRAFORM_MODULE_SERVER_NAMESPACE) \
 		$(TERRAFORM_MODULE_CONFIGMAP_NAME)
 	

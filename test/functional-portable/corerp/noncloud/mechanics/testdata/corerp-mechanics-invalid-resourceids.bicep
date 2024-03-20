@@ -32,7 +32,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Dapr/pubSubBrokers': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional-portable/corerp/recipes/dapr-pubsub-broker:${version}'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dapr-pubsub-broker:${version}'
         }
       }
     }

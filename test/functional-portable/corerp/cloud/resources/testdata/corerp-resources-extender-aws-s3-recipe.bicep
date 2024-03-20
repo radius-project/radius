@@ -25,7 +25,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Core/extenders': {
         s3: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional-portable/corerp/recipes/extenders-aws-s3-recipe:${version}' 
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/extenders-aws-s3-recipe:${version}' 
           parameters: {
             bucketName: bucketName
           }

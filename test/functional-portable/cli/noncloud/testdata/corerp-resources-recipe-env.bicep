@@ -20,7 +20,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Datastores/redisCaches':{
         recipe1: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional-portable/corerp/recipes/corerp-redis-recipe:${version}'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/corerp-redis-recipe:${version}'
         }
         recipe2: {
           templateKind: 'terraform'

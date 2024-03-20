@@ -193,7 +193,7 @@ jobs:
           <summary> Click here to see the list of tools in the current test run</summary>
 
           * gotestsum ${{ env.GOTESTSUM_VER }}
-          * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY }}/test/functional-portable/corerp/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY }}/test/testrecipes/test-bicep-recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
           * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
           * applications-rp test image location: `${{ env.CONTAINER_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
           * controller test image location: `${{ env.CONTAINER_REGISTRY }}/controller:${{ steps.gen-id.outputs.REL_VERSION }}`

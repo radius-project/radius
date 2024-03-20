@@ -30,7 +30,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Core/extenders': {
         '${environmentRecipeName}': {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional-portable/corerp/recipes/${recipe}:${version}'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/${recipe}:${version}'
           parameters: environmentParameters
         }
       }
