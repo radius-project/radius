@@ -307,9 +307,6 @@ param autoScalerProfileMaxGracefulTerminationSec string = '600'
 @description('Specifies the resource id of the Log Analytics workspace.')
 param logAnalyticsWorkspaceId string
 
-@description('Specifies the workspace data retention in days.')
-param retentionInDays int = 30
-
 @description('Specifies the location.')
 param location string = resourceGroup().location
 
