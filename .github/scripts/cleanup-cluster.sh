@@ -40,7 +40,7 @@ done
 
 # Delete all test namespaces.
 echo "delete all test namespaces"
-namespaces=$(kubectl get namespace || true |
+namespaces=$(kubectl get namespace |
     grep -E '^kubernetes-interop-tutorial.*|^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^radius-test.*|^kubernetes-cli.*|^dpsb-.*|^dsrp-.*|^azstorage-workload.*|^dapr-serviceinvocation|^daprrp-rs-.*|^mynamespace.*|^demo.*|^tutorial-demo.*|^ms.+' |
     awk '{print $1}')
 for ns in $namespaces; do
