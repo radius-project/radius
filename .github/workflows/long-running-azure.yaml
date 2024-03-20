@@ -110,7 +110,7 @@ jobs:
           path: ./dist/cache
           key: radius-test-latest-
       - name: Skip build if build is still valid
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch'
         id: skip-build
         run: |
           # check if the last build time to see if we need to build again
