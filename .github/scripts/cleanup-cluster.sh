@@ -28,7 +28,7 @@ kubectl delete queuemessages.ucp.dev -n radius-system --all || true
 
 # Delete all test resources in resources without proxy resource.
 echo "delete all resources in resources.ucp.dev"
-resources=$(kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name")
+resources=$(kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" || true)
 for r in $resources; do
     if [[ $r == scope.local.* || $r == scope.aws.* || -z "$r" ]]; then
         echo "skip deletion: $r"
@@ -40,7 +40,7 @@ done
 
 # Delete all test namespaces.
 echo "delete all test namespaces"
-namespaces=$(kubectl get namespace |
+namespaces=$(kubectl get namespace || true |
     grep -E '^kubernetes-interop-tutorial.*|^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^radius-test.*|^kubernetes-cli.*|^dpsb-.*|^dsrp-.*|^azstorage-workload.*|^dapr-serviceinvocation|^daprrp-rs-.*|^mynamespace.*|^demo.*|^tutorial-demo.*|^ms.+' |
     awk '{print $1}')
 for ns in $namespaces; do
