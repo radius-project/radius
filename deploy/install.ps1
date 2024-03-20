@@ -126,7 +126,8 @@ if ($Version -eq "edge") {
     # Check if the oras pull command was successful
     if ($LASTEXITCODE -ne 0) {
         Write-Output "Failed to download edge rad CLI."
-        Write-Output "Please visit https://edge.docs.radapp.io/installation for edge build installation instructions."
+        Write-Output "If this was an authentication issue, please run 'docker logout ghcr.io' to clear any expired credentials."
+        Write-Output "Visit https://edge.docs.radapp.io/installation for edge build installation instructions."
         Exit 1
     }
 }

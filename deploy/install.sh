@@ -132,7 +132,8 @@ downloadFile() {
         # Check if the oras pull command was successfull
         if [ $? -ne 0 ]; then
             echo "Failed to download edge CLI."
-            echo "Please visit https://edge.docs.radapp.io/installation for edge CLI installation instructions."
+            echo "If this was an authentication issue, please run 'docker logout ghcr.io' to clear any expired credentials."
+            echo "Visit https://edge.docs.radapp.io/installation for edge CLI installation instructions."
             exit 1
         fi
 
