@@ -103,7 +103,7 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 		if secretStore != "" {
 			secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %w", secretStore, definition.TemplatePath, err)
+				return nil, nil, recipes.NewRecipeError(recipes.LoadSecretsFailed, fmt.Sprintf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %w", secretStore, definition.TemplatePath, err), util.RecipeSetupError, recipes.GetErrorDetails(err))
 			}
 		}
 	}
