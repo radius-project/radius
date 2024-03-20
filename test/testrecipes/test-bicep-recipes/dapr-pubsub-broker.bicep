@@ -5,7 +5,7 @@ import kubernetes as kubernetes {
 
 param context object
 
-module redis '../../modules/redis-selfhost.bicep' = {
+module redis '../../../test/testrecipes/modules/redis-selfhost.bicep' = {
   name: 'redis-${uniqueString(context.resource.id)}'
   params: {
     name: 'redis-${uniqueString(context.resource.id)}'
