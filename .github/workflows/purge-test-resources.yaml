@@ -15,6 +15,11 @@
 # ------------------------------------------------------------
 
 name: Purge test resources
+
+permissions:
+  id-token: write # Required for requesting the JWT
+  contents: read  # Required for actions/checkout
+
 on:
   schedule:
     # Run twice a day
@@ -46,9 +51,11 @@ jobs:
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Login to Azure
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
       - name: Find old test resource groups
         run: |
           echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
@@ -56,7 +63,7 @@ jobs:
           # Create the file to store the resource group list
           touch ${{ env.AZURE_RG_DELETE_LIST_FILE}}
 
-          az account set -s ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          az account set -s ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
           resource_groups=$(az group list --query "[].{Name:name, creationTime:tags.creationTime}" -o tsv)
 
           current_time=$(date +%s)
