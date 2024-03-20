@@ -17,6 +17,12 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       resourceId: 'self'
       namespace: 'corerp-resources-terraform-redis-env'
     }
+    recipeConfig: {
+      env: {
+        MY_ENV_VAR_1: 'env-var-value-1'
+        MY_ENV_VAR_2: 'env-var-value-2'
+      }
+    }
     recipes: {
       'Applications.Core/extenders': {
         default: {
