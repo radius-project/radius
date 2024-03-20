@@ -22,7 +22,7 @@ echo "cleaning up cluster"
 
 # Delete all test resources in queuemessages.
 echo "delete all resources in queuemessages.ucp.dev"
-kubectl delete queuemessages.ucp.dev -n radius-system --all
+kubectl delete queuemessages.ucp.dev -n radius-system --all || true
 
 # Testing deletion of deployment.apps.
 
