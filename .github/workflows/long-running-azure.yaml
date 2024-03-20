@@ -38,6 +38,7 @@
 
 name: Long-running test on Azure
 on:
+  workflow_dispatch:
   schedule:
     # Run every 2 hours
     - cron: "0 */2 * * *"
@@ -76,9 +77,9 @@ env:
   VALID_RADIUS_BUILD_WINDOW: 86400
 
   # The AKS cluster name
-  AKS_CLUSTER_NAME: "radiuse2e00-aks"
+  AKS_CLUSTER_NAME: "radiuse2e000-aks"
   # The resource group for AKS_CLUSTER_NAME resource.
-  AKS_RESOURCE_GROUP: "radiuse2e00"
+  AKS_RESOURCE_GROUP: "radiuse2e000"
 
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
@@ -489,7 +490,7 @@ jobs:
     name: Report test failure
     needs: [build, tests]
     runs-on: ubuntu-latest
-    if: failure() && github.repository == 'radius-project/radius'
+    if: failure() && github.repository == 'radius-project/radius' && github.event_name == 'schedule'
     steps:
       - name: Create failure issue for failing long running test run
         uses: actions/github-script@v6
