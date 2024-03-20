@@ -47,6 +47,7 @@ jobs:
           account-type: org
           org-name: radius-project
           token: ${{ secrets.GITHUB_TOKEN }}
+          token-type: github-token
   purge_azure_resources:
     name: Azure resources clean-ups
     runs-on: ubuntu-latest
