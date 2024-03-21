@@ -61,4 +61,14 @@ type TerraformDefinition struct {
 	// Backend defines where Terraform stores its state.
 	// https://developer.hashicorp.com/terraform/language/state
 	Backend map[string]interface{} `json:"backend"`
+
+	// RequiredProviders is the list of required Terraform providers.
+	RequiredProviders map[string]*RequiredProviderInfo `json:"required_providers,omitempty"`
+}
+
+// RequiredProviderInfo represents details for a provider listed under the required_providers block in a Terraform module.
+type RequiredProviderInfo struct {
+	Source               string   `json:"source,omitempty"`                // The source of the provider.
+	Version              string   `json:"version,omitempty"`               // The version of the provider.
+	ConfigurationAliases []string `json:"configuration_aliases,omitempty"` // The configuration aliases for the provider.
 }

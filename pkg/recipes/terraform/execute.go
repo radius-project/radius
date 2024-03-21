@@ -257,7 +257,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return "", err
 	}
 
-	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend(e.k8sClientSet))
+	backendConfig, err := tfConfig.AddTerraformInfrastructure(options.ResourceRecipe, backends.NewKubernetesBackend(e.k8sClientSet), loadedModule.RequiredProviders)
 	if err != nil {
 		return "", err
 	}

@@ -344,7 +344,7 @@ func Test_AddProviders(t *testing.T) {
 	configTests := []struct {
 		desc                           string
 		envConfig                      recipes.Configuration
-		requiredProviders              []string
+		requiredProviders              map[string]*RequiredProviderInfo
 		expectedUCPConfiguredProviders []map[string]any
 		expectedConfigFile             string
 		Err                            error
@@ -374,11 +374,11 @@ func Test_AddProviders(t *testing.T) {
 					},
 				},
 			},
-			requiredProviders: []string{
-				providers.AWSProviderName,
-				providers.AzureProviderName,
-				providers.KubernetesProviderName,
-				"sql",
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName:        {},
+				providers.AzureProviderName:      {},
+				providers.KubernetesProviderName: {},
+				"sql":                            {},
 			},
 			expectedConfigFile: "testdata/providers-valid.tf.json",
 		},
@@ -393,8 +393,11 @@ func Test_AddProviders(t *testing.T) {
 					},
 				},
 			},
-			requiredProviders: []string{
-				providers.AWSProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:  "hashicorp/aws",
+					Version: ">= 3.0",
+				},
 			},
 		},
 		{
@@ -404,8 +407,11 @@ func Test_AddProviders(t *testing.T) {
 			},
 			Err:       nil,
 			envConfig: recipes.Configuration{},
-			requiredProviders: []string{
-				providers.AWSProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:  "hashicorp/aws",
+					Version: ">= 3.0",
+				},
 			},
 			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
@@ -425,8 +431,11 @@ func Test_AddProviders(t *testing.T) {
 					},
 				},
 			},
-			requiredProviders: []string{
-				providers.AWSProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:  "hashicorp/aws",
+					Version: ">= 3.0",
+				},
 			},
 			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
@@ -439,8 +448,11 @@ func Test_AddProviders(t *testing.T) {
 			},
 			Err:       nil,
 			envConfig: recipes.Configuration{},
-			requiredProviders: []string{
-				providers.AzureProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AzureProviderName: {
+					Source:  "hashicorp/azurerm",
+					Version: ">= 2.0",
+				},
 			},
 			expectedConfigFile: "testdata/providers-emptyazureconfig.tf.json",
 		},
@@ -502,9 +514,15 @@ func Test_AddProviders(t *testing.T) {
 					},
 				},
 			},
-			requiredProviders: []string{
-				providers.AWSProviderName,
-				providers.KubernetesProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:  "hashicorp/aws",
+					Version: ">= 3.0",
+				},
+				providers.KubernetesProviderName: {
+					Source:  "hashicorp/kubernetes",
+					Version: ">= 2.0",
+				},
 			},
 			expectedConfigFile: "testdata/providers-overridereqproviders.tf.json",
 		},
@@ -545,7 +563,7 @@ func Test_AddProviders(t *testing.T) {
 				},
 			},
 			requiredProviders:  nil,
-			expectedConfigFile: "testdata/providers-empty.tf.json",
+			expectedConfigFile: "testdata/providers-emptyproviders.tf.json",
 		},
 		{
 			desc:                           "recipe providers and tfconfigproperties not populated",
@@ -555,7 +573,7 @@ func Test_AddProviders(t *testing.T) {
 				RecipeConfig: datamodel.RecipeConfigProperties{},
 			},
 			requiredProviders:  nil,
-			expectedConfigFile: "testdata/providers-empty.tf.json",
+			expectedConfigFile: "testdata/providers-emptyproviders.tf.json",
 		},
 		{
 			desc:                           "envConfig set to empty recipe config",
@@ -563,14 +581,14 @@ func Test_AddProviders(t *testing.T) {
 			Err:                            nil,
 			envConfig:                      recipes.Configuration{},
 			requiredProviders:              nil,
-			expectedConfigFile:             "testdata/providers-empty.tf.json",
+			expectedConfigFile:             "testdata/providers-emptyproviders.tf.json",
 		},
 		{
 			desc:                           "envConfig not populated",
 			expectedUCPConfiguredProviders: nil,
 			Err:                            nil,
 			requiredProviders:              nil,
-			expectedConfigFile:             "testdata/providers-empty.tf.json",
+			expectedConfigFile:             "testdata/providers-emptyproviders.tf.json",
 		},
 	}
 
@@ -594,7 +612,7 @@ func Test_AddProviders(t *testing.T) {
 			}
 			require.NoError(t, err)
 			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
-			_, err = tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			_, err = tfconfig.AddTerraformInfrastructure(&resourceRecipe, mBackend, tc.requiredProviders)
 			require.NoError(t, err)
 			err = tfconfig.Save(ctx, workingDir)
 			require.NoError(t, err)

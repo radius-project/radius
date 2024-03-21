@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -96,14 +97,22 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	// JSON configuration syntax for Terraform requires the file to be named with .tf.json suffix.
 	// https://developer.hashicorp.com/terraform/language/syntax/json
 
-	// Convert the Terraform config to JSON
-	jsonData, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
+	// Create a buffer to write the JSON to
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+
+	// Encode the Terraform config to JSON
+	if err := enc.Encode(cfg); err != nil {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
+	// Remove trailing newline
+	jsonData := strings.TrimSuffix(buf.String(), "\n")
+
 	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getMainConfigFilePath(workingDir)))
-	if err = os.WriteFile(getMainConfigFilePath(workingDir), jsonData, modeConfigFile); err != nil {
+	if err := os.WriteFile(getMainConfigFilePath(workingDir), []byte(jsonData), modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
 	return nil
@@ -113,7 +122,7 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 // by Radius to generate custom provider configurations. Save() must be called to save
 // the generated providers config. requiredProviders contains a list of provider names
 // that are required for the module.
-func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
+func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
 	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, ucpConfiguredProviders, envConfig)
 	if err != nil {
 		return err
@@ -167,19 +176,24 @@ func newModuleConfig(moduleSource string, moduleVersion string, params ...Recipe
 
 // getProviderConfigs generates the Terraform provider configurations. This is built from a combination of environment level recipe configuration for
 // providers and the provider configurations registered with UCP. The environment level recipe configuration for providers takes precedence over UCP provider configurations.
-func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
+func getProviderConfigs(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
 	// Get recipe provider configurations from the environment configuration
 	providerConfigs := providers.GetRecipeProviderConfigs(ctx, envConfig)
 
 	// Build provider configurations for required providers excluding the ones already present in providerConfigs
-	for _, provider := range requiredProviders {
-		if _, ok := providerConfigs[provider]; ok {
-			// Environment level recipe configuration for providers will take precedence over
-			// UCP provider configuration (currently these include azurerm, aws, kubernetes providers)
+	for providerName := range requiredProviders {
+		if _, ok := ucpConfiguredProviders[providerName]; ok { // requiredProviders can contain providers not configured with UCP
+			if _, ok := providerConfigs[providerName]; ok {
+				// Environment level recipe configuration for providers will take precedence over
+				// UCP provider configuration (currently these include azurerm, aws, kubernetes providers)
+				continue
+			}
+		} else {
+			// If the provider under required_providers is not configured with UCP, skip this iteration.
 			continue
 		}
 
-		builder, ok := ucpConfiguredProviders[provider]
+		builder, ok := ucpConfiguredProviders[providerName]
 		if !ok {
 			// No-op: For any other provider under required_providers, Radius doesn't generate any custom configuration.
 			continue
@@ -190,23 +204,26 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, ucpConf
 			return nil, err
 		}
 		if len(config) > 0 {
-			providerConfigs[provider] = config
+			providerConfigs[providerName] = config
 		}
 	}
 
 	return providerConfigs, nil
 }
 
-// AddTerraformBackend adds backend configurations to store Terraform state file for the deployment.
+// AddTerraformInfrastructure adds backend configurations to store Terraform state file for the deployment.
+// It also sets the required providers for the Terraform configuration.
 // Save() must be called to save the generated backend config.
 // Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
-func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend) (map[string]any, error) {
+func (cfg *TerraformConfig) AddTerraformInfrastructure(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend, requiredProviders map[string]*RequiredProviderInfo) (map[string]any, error) {
 	backendConfig, err := backend.BuildBackend(resourceRecipe)
 	if err != nil {
 		return nil, err
 	}
+
 	cfg.Terraform = &TerraformDefinition{
-		Backend: backendConfig,
+		Backend:           backendConfig,
+		RequiredProviders: requiredProviders,
 	}
 
 	return backendConfig, nil
