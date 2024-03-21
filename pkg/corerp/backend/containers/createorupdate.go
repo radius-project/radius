@@ -336,6 +336,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 	envVars, err := getEnvironmentVariables(container, connectedResourceMap)
 
 	// Get volumes and if Azure Keyvault volume is found, add AzureKeyVaultSecretsUserRole, AzureKeyVaultCryptoUserRole to "roles".
+	// Note: Portable resource can have a custom action api to provide Supported roles.
 	for volName, volProperties := range properties.Container.Volumes {
 		if volProperties.Kind == datamodel.Persistent {
 			volumeResource, ok := connectedResourceMap[volProperties.Persistent.Source]
