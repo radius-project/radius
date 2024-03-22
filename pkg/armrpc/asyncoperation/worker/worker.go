@@ -251,13 +251,20 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 		logger.Info("Start processing operation.")
 		result, err := asyncCtrl.Run(asyncReqCtx, asyncReq)
+		provisioningState := result.ProvisioningState()
+		errMsg := ""
+		if err != nil {
+			errMsg = err.Error()
+			provisioningState = v1.ProvisioningStateFailed
+		}
 
 		code := ""
 		if result.Error != nil {
 			code = result.Error.Code
+			errMsg = result.Error.Error()
 		}
 
-		logger.Info("Operation returned", "success", result.Error == nil, "code", code, "provisioningState", result.ProvisioningState(), "err", err)
+		logger.Info("Operation returned", "success", result.Error == nil && err == nil, "code", code, "provisioningState", provisioningState, "err", errMsg)
 
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186
