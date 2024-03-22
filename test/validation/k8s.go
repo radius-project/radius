@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	kuberneteskeys "github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -309,7 +310,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 }
 
 // ValidateObjectsRunning checks if the expected Kubernetes objects are running in the given namespace.
-func ValidateObjectsRunning(ctx context.Context, t testing.TB, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
+func ValidateObjectsRunning(ctx context.Context, t retry.TestingTB, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
 		log.Printf("validating objects in namespace %v", namespace)
@@ -380,7 +381,7 @@ func ValidateObjectsRunning(ctx context.Context, t testing.TB, k8s *kubernetes.C
 
 // ValidateNoPodsInApplication checks if there are any pods in the given namespace for the given application and waits for
 // them to be deleted if found.
-func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, namespace string, application string) {
+func ValidateNoPodsInApplication(ctx context.Context, t retry.TestingTB, k8s *kubernetes.Clientset, namespace string, application string) {
 	labelset := kuberneteskeys.MakeSelectorLabels(application, "")
 
 	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
@@ -417,7 +418,7 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 	}
 }
 
-func listPodsWithRetries(t *testing.T, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
+func listPodsWithRetries(t retry.TestingTB, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
 	// Need to retry because of AKS error: https://github.com/radius-project/radius/issues/2484
 	retries := 3
 	for i := 1; i <= retries; i++ {
@@ -442,7 +443,7 @@ type PodMonitor struct {
 
 // PodMonitor ValidateRunning watches a pod for its status to become running and checks its readiness, retrying a few times
 // if the readiness check fails. If the pod enters a failing state, an error is returned.
-func (pm PodMonitor) ValidateRunning(ctx context.Context, t testing.TB) {
+func (pm PodMonitor) ValidateRunning(ctx context.Context, t retry.TestingTB) {
 	if pm.Pod.Status.Phase == corev1.PodRunning {
 		if checkReadiness(t, &pm.Pod) {
 			return
@@ -510,7 +511,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t testing.TB) {
 	}
 }
 
-func checkReadiness(t testing.TB, pod *corev1.Pod) bool {
+func checkReadiness(t retry.TestingTB, pod *corev1.Pod) bool {
 	for _, condition := range pod.Status.Conditions {
 		if condition.Type == corev1.ContainersReady &&
 			condition.Status == corev1.ConditionTrue {
@@ -521,7 +522,7 @@ func checkReadiness(t testing.TB, pod *corev1.Pod) bool {
 	return false
 }
 
-func logPods(t *testing.T, pods []corev1.Pod) {
+func logPods(t retry.TestingTB, pods []corev1.Pod) {
 	t.Log("Found the following pods:")
 	if len(pods) == 0 {
 		t.Logf("(none)")
@@ -532,7 +533,7 @@ func logPods(t *testing.T, pods []corev1.Pod) {
 	}
 }
 
-func matchesActualLabels(t testing.TB, expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
+func matchesActualLabels(t retry.TestingTB, expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
 	remaining := []K8sObject{}
 
 	for _, expectedResource := range expectedResources {

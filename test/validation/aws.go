@@ -20,9 +20,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"testing"
 	"time"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -60,7 +60,7 @@ type AWSResourceSet struct {
 }
 
 // ValidateAWSResources checks that the expected AWS resources exist and have the expected properties.
-func ValidateAWSResources(ctx context.Context, t testing.TB, expected *AWSResourceSet, client awsclient.AWSCloudControlClient) {
+func ValidateAWSResources(ctx context.Context, t *retry.R, expected *AWSResourceSet, client awsclient.AWSCloudControlClient) {
 	for _, resource := range expected.Resources {
 		resourceType, err := GetResourceTypeName(ctx, &resource)
 		require.NoError(t, err)
@@ -181,7 +181,7 @@ func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, er
 }
 
 // assertFieldsArePresent ensures that all fields in actual exist and are equivalent in expected
-func assertFieldsArePresent(t testing.TB, actual any, expected any) {
+func assertFieldsArePresent(t *retry.R, actual any, expected any) {
 	switch actual := actual.(type) {
 	case map[string]any:
 		if expectedMap, ok := expected.(map[string]any); ok {

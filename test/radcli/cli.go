@@ -25,9 +25,9 @@ import (
 	"os/exec"
 	"path"
 	"strings"
-	"testing"
 	"time"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
@@ -36,13 +36,13 @@ const (
 )
 
 type CLI struct {
-	T                testing.TB
+	T                retry.TestingTB
 	ConfigFilePath   string
 	WorkingDirectory string
 }
 
 // NewCLI creates a new CLI instance with the given testing.T and config file path.
-func NewCLI(t testing.TB, configFilePath string) *CLI {
+func NewCLI(t retry.TestingTB, configFilePath string) *CLI {
 	return &CLI{
 		T:              t,
 		ConfigFilePath: configFilePath,

@@ -23,6 +23,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
@@ -172,7 +173,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 				labelset := kubernetes.MakeSelectorLabels(name, "mechanicsd")
 
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{

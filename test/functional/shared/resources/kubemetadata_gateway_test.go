@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
@@ -73,7 +74,7 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t testing.TB, ct shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, ct shared.RPTest) {
 				// Check labels and annotations
 				t.Logf("Checking label, annotation values in HTTPProxy resources")
 				httpproxies, err := testutil.GetHTTPProxyList(ctx, ct.Options.Client, appNamespace, name)

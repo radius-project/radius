@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -40,7 +41,7 @@ type DeployErrorExecutor struct {
 	Parameters  []string
 
 	// ValidateError is a function that can be used to validate the error when it occurs.
-	ValidateError func(testing.TB, *radcli.CLIError)
+	ValidateError func(retry.TestingTB, *radcli.CLIError)
 
 	// Application sets the `--application` command-line parameter. This is needed in cases where
 	// the application is not defined in bicep.
@@ -64,7 +65,7 @@ type DeploymentErrorDetail struct {
 }
 
 // NewDeployErrorExecutor creates a new DeployErrorExecutor instance with the given template, error code and parameters.
-func NewDeployErrorExecutor(template string, validateError func(testing.TB, *radcli.CLIError), parameters ...string) *DeployErrorExecutor {
+func NewDeployErrorExecutor(template string, validateError func(retry.TestingTB, *radcli.CLIError), parameters ...string) *DeployErrorExecutor {
 	return &DeployErrorExecutor{
 		Description:   fmt.Sprintf("deploy %s", template),
 		Template:      template,
@@ -91,7 +92,7 @@ func (d *DeployErrorExecutor) GetDescription() string {
 }
 
 // Execute deploys an application from a template file and checks that the deployment fails with the expected error code.
-func (d *DeployErrorExecutor) Execute(ctx context.Context, t testing.TB, options test.TestOptions) {
+func (d *DeployErrorExecutor) Execute(ctx context.Context, t retry.TestingTB, options test.TestOptions) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
@@ -152,8 +153,8 @@ func ValidateCode(code string) func(*testing.T, *radcli.CLIError) {
 }
 
 // ValidateSingleDetail reports success if the error code matches the expected code and the detail item is found in the error response..
-func ValidateSingleDetail(code string, detail DeploymentErrorDetail) func(testing.TB, *radcli.CLIError) {
-	return func(t testing.TB, err *radcli.CLIError) {
+func ValidateSingleDetail(code string, detail DeploymentErrorDetail) func(retry.TestingTB, *radcli.CLIError) {
+	return func(t retry.TestingTB, err *radcli.CLIError) {
 		require.Equal(t, code, err.ErrorResponse.Error.Code, "unexpected error code")
 		for _, candidate := range err.ErrorResponse.Error.Details {
 			if detail.Matches(candidate) {
@@ -166,8 +167,8 @@ func ValidateSingleDetail(code string, detail DeploymentErrorDetail) func(testin
 }
 
 // ValidateAnyDetails reports success if any of the provided error details are found in the error response.
-func ValidateAnyDetails(code string, details []DeploymentErrorDetail) func(testing.TB, *radcli.CLIError) {
-	return func(t testing.TB, err *radcli.CLIError) {
+func ValidateAnyDetails(code string, details []DeploymentErrorDetail) func(retry.TestingTB, *radcli.CLIError) {
+	return func(t retry.TestingTB, err *radcli.CLIError) {
 		require.Equal(t, code, err.ErrorResponse.Error.Code, "unexpected error code")
 		for _, detail := range details {
 			for _, candidate := range err.ErrorResponse.Error.Details {
@@ -182,8 +183,8 @@ func ValidateAnyDetails(code string, details []DeploymentErrorDetail) func(testi
 }
 
 // ValidateAllDetails reports success if all of the provided error details are found in the error response.
-func ValidateAllDetails(code string, details []DeploymentErrorDetail) func(testing.TB, *radcli.CLIError) {
-	return func(t testing.TB, err *radcli.CLIError) {
+func ValidateAllDetails(code string, details []DeploymentErrorDetail) func(retry.TestingTB, *radcli.CLIError) {
+	return func(t retry.TestingTB, err *radcli.CLIError) {
 		require.Equal(t, code, err.ErrorResponse.Error.Code, "unexpected error code")
 		for _, detail := range details {
 			matched := false

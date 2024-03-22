@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/cli"
@@ -31,7 +30,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/test/radcli"
-	"github.com/radius-project/radius/test/testcontext"
+
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 )
 
 const (
@@ -72,7 +72,7 @@ type RPResourceSet struct {
 
 // DeleteRPResource deletes an environment or application resource depending on the type of the resource passed in, and
 // returns an error if one occurs.
-func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
+func DeleteRPResource(ctx context.Context, t retry.TestingTB, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
 	if resource.Type == EnvironmentsResource {
 		t.Logf("deleting environment: %s", resource.Name)
 
@@ -103,7 +103,7 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 }
 
 // ValidateRPResources checks if the expected resources exist in the response and validates the output resources if present.
-func ValidateRPResources(ctx context.Context, t testing.TB, expected *RPResourceSet, client clients.ApplicationsManagementClient) {
+func ValidateRPResources(ctx context.Context, t retry.TestingTB, expected *RPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, expectedResource := range expected.Resources {
 		if expectedResource.Type == EnvironmentsResource {
 			envs, err := client.ListEnvironmentsInResourceGroup(ctx)
@@ -174,8 +174,8 @@ func ValidateRPResources(ctx context.Context, t testing.TB, expected *RPResource
 }
 
 // AssertCredentialExists checks if the credential is registered in the workspace and returns a boolean value.
-func AssertCredentialExists(t testing.TB, credential string) bool {
-	ctx := testcontext.New(t)
+func AssertCredentialExists(t retry.TestingTB, credential string) bool {
+	ctx := context.Background()
 
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")

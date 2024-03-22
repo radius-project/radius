@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
@@ -48,7 +49,7 @@ func Test_ApplicationAndEnvironment(t *testing.T) {
 			},
 			// Application and Environment should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 				expectedNS := []string{
 					"corerp-resources-app-env",
 					"corerp-resources-app-env-env-corerp-resources-app-env-app",

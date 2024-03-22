@@ -33,6 +33,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -59,7 +60,7 @@ const (
 	retries = 10
 )
 
-func verifyRecipeCLI(ctx context.Context, t testing.TB, test shared.RPTest) {
+func verifyRecipeCLI(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 	options := shared.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	envName := test.Steps[0].RPResources.Resources[0].Name
@@ -155,7 +156,7 @@ func verifyRecipeCLI(ctx context.Context, t testing.TB, test shared.RPTest) {
 	//})
 }
 
-func verifyCLIBasics(ctx context.Context, t testing.TB, test shared.RPTest) {
+func verifyCLIBasics(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 	options := shared.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	appName := test.Name
@@ -255,7 +256,7 @@ func verifyCLIBasics(ctx context.Context, t testing.TB, test shared.RPTest) {
 
 // callHealthEndpointOnLocalPort calls the magpie health endpoint '/healthz' with retries. It will fail the
 // test if the exceed the number of retries without success.
-func callHealthEndpointOnLocalPort(t testing.TB, retries int, port int) {
+func callHealthEndpointOnLocalPort(t retry.TestingTB, retries int, port int) {
 	healthzURL := fmt.Sprintf("http://localhost:%d/healthz", port)
 
 	retryClient := retryablehttp.NewClient()

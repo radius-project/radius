@@ -23,10 +23,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/testr"
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 )
 
 // New creates a new context with test logger for testing.
-func New(t testing.TB) context.Context {
+func New(t retry.TestingTB) context.Context {
 	ctx, _ := Wrap(t, context.Background())
 	return ctx
 }
@@ -43,7 +44,7 @@ func NewWithDeadline(t *testing.T, duration time.Duration) (context.Context, con
 }
 
 // Wrap wraps a context with test logger for testing and returns the context with cancel function.
-func Wrap(t testing.TB, ctx context.Context) (context.Context, context.CancelFunc) {
+func Wrap(t retry.TestingTB, ctx context.Context) (context.Context, context.CancelFunc) {
 	if ctx == nil {
 		ctx = context.Background()
 	}

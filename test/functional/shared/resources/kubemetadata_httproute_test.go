@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
@@ -73,7 +74,7 @@ func Test_KubeMetadataHTTPRoute(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 
 				// Verify service labels and annotations
 				service, err := test.Options.K8sClient.CoreV1().Services(appNamespace).Get(ctx, "ctnr-rte-kme-ctnr", metav1.GetOptions{})

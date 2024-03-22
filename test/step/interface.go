@@ -18,12 +18,12 @@ package step
 
 import (
 	"context"
-	"testing"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/test"
 )
 
 type Executor interface {
 	GetDescription() string
-	Execute(ctx context.Context, t testing.TB, options test.TestOptions)
+	Execute(ctx context.Context, t retry.TestingTB, options test.TestOptions)
 }

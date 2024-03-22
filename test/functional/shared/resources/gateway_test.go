@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
@@ -90,7 +91,7 @@ func Test_GatewayDNS(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t testing.TB, ct shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, ct shared.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
 				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
@@ -161,7 +162,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t testing.TB, ct shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, ct shared.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
 				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
@@ -233,7 +234,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t testing.TB, ct shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, ct shared.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
 				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
@@ -307,7 +308,7 @@ func Test_Gateway_Failure(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortForward(t testing.TB, ctx context.Context, at shared.RPTest, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig) error {
+func testGatewayWithPortForward(t retry.TestingTB, ctx context.Context, at shared.RPTest, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 
@@ -344,7 +345,7 @@ func testGatewayWithPortForward(t testing.TB, ctx context.Context, at shared.RPT
 	}
 }
 
-func testGatewayAvailability(t testing.TB, hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
+func testGatewayAvailability(t retry.TestingTB, hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
 	urlPath := strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
 	req, err := http.NewRequest(http.MethodGet, urlPath, nil)
 	if err != nil {

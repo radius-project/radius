@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
@@ -50,7 +51,7 @@ func Test_Application(t *testing.T) {
 			},
 			// Application should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNamespace, metav1.GetOptions{})
 				require.NoErrorf(t, err, "%s must be created", appNamespace)
 			},
@@ -100,7 +101,7 @@ func Test_ApplicationGraph(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t testing.TB, ct shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, ct shared.RPTest) {
 				// Verify the application graph
 				options := shared.NewRPTestOptions(t)
 				client := options.ManagementClient

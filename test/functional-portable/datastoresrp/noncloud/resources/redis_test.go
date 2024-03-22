@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
@@ -98,7 +99,7 @@ func Test_Redis_Recipe(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
-			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 				redis, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Datastores/redisCaches", "rds-recipe")
 				require.NoError(t, err)
 				require.NotNil(t, redis)

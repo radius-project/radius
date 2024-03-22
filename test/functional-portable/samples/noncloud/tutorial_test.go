@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
@@ -89,7 +90,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t testing.TB, ct shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t retry.TestingTB, ct shared.RPTest) {
 				// Set up pod port-forwarding for the pod
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
@@ -120,7 +121,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 	test.Test(t)
 }
 
-func testWithPortForward(t testing.TB, ctx context.Context, at shared.RPTest, namespace string, container string, remotePort int) error {
+func testWithPortForward(t retry.TestingTB, ctx context.Context, at shared.RPTest, namespace string, container string, remotePort int) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 
@@ -300,7 +301,7 @@ func testWithPortForward(t testing.TB, ctx context.Context, at shared.RPTest, na
 	}
 }
 
-func sendRequest(t testing.TB, req *http.Request, expectedStatusCode int) (*http.Response, error) {
+func sendRequest(t retry.TestingTB, req *http.Request, expectedStatusCode int) (*http.Response, error) {
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -313,7 +314,7 @@ func sendRequest(t testing.TB, req *http.Request, expectedStatusCode int) (*http
 	return res, nil
 }
 
-func sendGetRequest(t testing.TB, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
+func sendGetRequest(t retry.TestingTB, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, getURLPath(baseURL, path), nil)
 	if err != nil {
 		return nil, err
@@ -323,7 +324,7 @@ func sendGetRequest(t testing.TB, hostname, baseURL, path string, expectedStatus
 	return sendRequest(t, req, expectedStatusCode)
 }
 
-func sendPostRequest(t testing.TB, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
+func sendPostRequest(t retry.TestingTB, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
 	if body == nil {
 		return nil, fmt.Errorf("body cannot be nil")
 	}
@@ -339,7 +340,7 @@ func sendPostRequest(t testing.TB, hostname, baseURL, path string, body *[]byte,
 	return sendRequest(t, req, expectedStatusCode)
 }
 
-func sendPutRequest(t testing.TB, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
+func sendPutRequest(t retry.TestingTB, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
 	if body == nil {
 		return nil, fmt.Errorf("body cannot be nil")
 	}
@@ -355,7 +356,7 @@ func sendPutRequest(t testing.TB, hostname, baseURL, path string, body *[]byte, 
 	return sendRequest(t, req, expectedStatusCode)
 }
 
-func sendDeleteRequest(t testing.TB, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
+func sendDeleteRequest(t retry.TestingTB, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodDelete, getURLPath(baseURL, path), nil)
 	if err != nil {
 		return nil, err

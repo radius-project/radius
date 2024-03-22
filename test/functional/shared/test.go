@@ -18,9 +18,9 @@ package shared
 
 import (
 	"strings"
-	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/stretchr/testify/require"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -39,7 +39,7 @@ import (
 
 // NewRPTestOptions sets up the test environment by loading configs, creating a test context, creating an
 // ApplicationsManagementClient, creating an AWSCloudControlClient, and returning an RPTestOptions struct.
-func NewRPTestOptions(t testing.TB) RPTestOptions {
+func NewRPTestOptions(t retry.TestingTB) RPTestOptions {
 	registry, tag := testutil.SetDefault()
 	t.Logf("Using container registry: %s - set DOCKER_REGISTRY to override", registry)
 	t.Logf("Using container tag: %s - set REL_VERSION to override", tag)

@@ -17,8 +17,7 @@ limitations under the License.
 package test
 
 import (
-	"testing"
-
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
@@ -38,7 +37,7 @@ type TestOptions struct {
 }
 
 // NewTestOptions creates a TestOptions struct with the necessary clients and configs for testing.
-func NewTestOptions(t testing.TB) TestOptions {
+func NewTestOptions(t retry.TestingTB) TestOptions {
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
