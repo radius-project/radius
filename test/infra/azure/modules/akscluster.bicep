@@ -307,9 +307,6 @@ param autoScalerProfileMaxGracefulTerminationSec string = '600'
 @description('Specifies the resource id of the Log Analytics workspace.')
 param logAnalyticsWorkspaceId string
 
-@description('Specifies the workspace data retention in days.')
-param retentionInDays int = 30
-
 @description('Specifies the location.')
 param location string = resourceGroup().location
 
@@ -340,42 +337,8 @@ param imageCleanerIntervalHours int = 24
 @description('Specifies whether to enable Workload Identity. The default value is false.')
 param workloadIdentityEnabled bool = false
 
-// Variables
-var diagnosticSettingsName = 'diagnosticSettings'
-var logCategories = [
-  'kube-apiserver'
-  'kube-audit'
-  'kube-audit-admin'
-  'kube-controller-manager'
-  'kube-scheduler'
-  'cluster-autoscaler'
-  'cloud-controller-manager'
-  'guard'
-  'csi-azuredisk-controller'
-  'csi-azurefile-controller'
-  'csi-snapshot-controller'
-]
-var metricCategories = [
-  'AllMetrics'
-]
-var logs = [for category in logCategories: {
-  category: category
-  enabled: true
-  retentionPolicy: {
-    enabled: true
-    days: retentionInDays
-  }
-}]
-var metrics = [for category in metricCategories: {
-  category: category
-  enabled: true
-  retentionPolicy: {
-    enabled: true
-    days: retentionInDays
-  }
-}]
 
-resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
+resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
   name: name
   location: location
   tags: tags
@@ -515,7 +478,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
 }
 
 // Dapr Extension
-resource daprExtension 'Microsoft.KubernetesConfiguration/extensions@2022-04-02-preview' = if (daprEnabled) {
+resource daprExtension 'Microsoft.KubernetesConfiguration/extensions@2022-07-01' = if (daprEnabled) {
   name: 'dapr'
   scope: aksCluster
   properties: {
@@ -531,17 +494,6 @@ resource daprExtension 'Microsoft.KubernetesConfiguration/extensions@2022-04-02-
       }
     }
     configurationProtectedSettings: {}
-  }
-}
-
-// Diagnostic Settings
-resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: diagnosticSettingsName
-  scope: aksCluster
-  properties: {
-    workspaceId: logAnalyticsWorkspaceId
-    logs: logs
-    metrics: metrics
   }
 }
 

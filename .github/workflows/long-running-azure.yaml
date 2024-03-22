@@ -34,7 +34,7 @@
 # the previous build is still valid. If valid, the workflow skips the build steps
 # and uses the cached 'rad cli' for testing.
 #
-# Grafana dashboard URL: https://radiuse2e00-dashboard-audycmffgberbghy.wus3.grafana.azure.com/
+# Grafana dashboard URL:  https://radlrtest00-dashboard-e4ffc0cwggchdhba.wus3.grafana.azure.com 
 
 name: Long-running test on Azure
 
@@ -44,6 +44,8 @@ permissions:
   packages: write # Required for uploading the package
 
 on:
+  # Enable manual trigger to deploy the latest changes from main.
+  workflow_dispatch:
   schedule:
     # Run every 2 hours
     - cron: "0 */2 * * *"
@@ -82,9 +84,9 @@ env:
   VALID_RADIUS_BUILD_WINDOW: 86400
 
   # The AKS cluster name
-  AKS_CLUSTER_NAME: "radiuse2e00-aks"
+  AKS_CLUSTER_NAME: "radlrtest00-aks"
   # The resource group for AKS_CLUSTER_NAME resource.
-  AKS_RESOURCE_GROUP: "radiuse2e00"
+  AKS_RESOURCE_GROUP: "radlrtest00"
 
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
@@ -115,7 +117,7 @@ jobs:
           path: ./dist/cache
           key: radius-test-latest-
       - name: Skip build if build is still valid
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch'
         id: skip-build
         run: |
           # check if the last build time to see if we need to build again
@@ -499,7 +501,7 @@ jobs:
     name: Report test failure
     needs: [build, tests]
     runs-on: ubuntu-latest
-    if: failure() && github.repository == 'radius-project/radius'
+    if: failure() && github.repository == 'radius-project/radius' && github.event_name == 'schedule'
     steps:
       - name: Create failure issue for failing long running test run
         uses: actions/github-script@v6
