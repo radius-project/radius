@@ -64,7 +64,7 @@ func Test_Container_YAMLManifest(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
 				require.NoError(t, err)
 				require.Equal(t, "base-manifest-test", deploy.ObjectMeta.Annotations["source"])
@@ -130,7 +130,7 @@ func Test_Container_YAMLManifest_SideCar(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-sidecar", metav1.GetOptions{})
 				require.NoError(t, err)
 
@@ -176,7 +176,7 @@ func Test_Container_pod_patching(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-podpatch", metav1.GetOptions{})
 				require.NoError(t, err)
 

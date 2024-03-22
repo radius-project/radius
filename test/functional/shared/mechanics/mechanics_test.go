@@ -172,7 +172,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				labelset := kubernetes.MakeSelectorLabels(name, "mechanicsd")
 
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{

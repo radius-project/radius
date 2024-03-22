@@ -183,14 +183,14 @@ func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespa
 // ExposeIngress creates a port-forward session and sends the (assigned) local port to portChan. It exposes a pod
 // in the RadiusSystemNamespace with the selector "app.kubernetes.io/component=envoy" on the given remotePort
 // and returns the port number and an error if any.
-func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
+func ExposeIngress(t testing.TB, ctx context.Context, client *k8s.Clientset, config *rest.Config, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
 	selector := "app.kubernetes.io/component=envoy"
 	ExposePod(t, ctx, client, config, RadiusSystemNamespace, selector, remotePort, stopChan, portChan, errorChan)
 }
 
 // ExposePod creates a port-forward session. It finds a pod matching the given selector, creates an API Server URL,
 // sets up a port-forwarder, and sends the assigned port to the portChan channel.
-func ExposePod(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, namespace string, selector string, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
+func ExposePod(t testing.TB, ctx context.Context, client *k8s.Clientset, config *rest.Config, namespace string, selector string, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
 	// Find matching pods
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector, Limit: 1})
 	if err != nil {
@@ -284,7 +284,7 @@ func IsMapNonIntersecting(notExpectedMap map[string]string, actualMap map[string
 }
 
 type TestWriter struct {
-	t *testing.T
+	t testing.TB
 }
 
 // TestWriter.Write writes the given byte slice to the test log.

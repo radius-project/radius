@@ -71,7 +71,7 @@ func Test_KubeMetadataContainer(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				// Verify pod labels and annotations
 				label := fmt.Sprintf("radapp.io/application=%s", name)
 				pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{

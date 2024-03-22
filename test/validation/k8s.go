@@ -309,7 +309,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 }
 
 // ValidateObjectsRunning checks if the expected Kubernetes objects are running in the given namespace.
-func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
+func ValidateObjectsRunning(ctx context.Context, t testing.TB, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
 		log.Printf("validating objects in namespace %v", namespace)
@@ -442,7 +442,7 @@ type PodMonitor struct {
 
 // PodMonitor ValidateRunning watches a pod for its status to become running and checks its readiness, retrying a few times
 // if the readiness check fails. If the pod enters a failing state, an error is returned.
-func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
+func (pm PodMonitor) ValidateRunning(ctx context.Context, t testing.TB) {
 	if pm.Pod.Status.Phase == corev1.PodRunning {
 		if checkReadiness(t, &pm.Pod) {
 			return
@@ -510,7 +510,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	}
 }
 
-func checkReadiness(t *testing.T, pod *corev1.Pod) bool {
+func checkReadiness(t testing.TB, pod *corev1.Pod) bool {
 	for _, condition := range pod.Status.Conditions {
 		if condition.Type == corev1.ContainersReady &&
 			condition.Status == corev1.ConditionTrue {
@@ -532,7 +532,7 @@ func logPods(t *testing.T, pods []corev1.Pod) {
 	}
 }
 
-func matchesActualLabels(t *testing.T, expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
+func matchesActualLabels(t testing.TB, expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
 	remaining := []K8sObject{}
 
 	for _, expectedResource := range expectedResources {

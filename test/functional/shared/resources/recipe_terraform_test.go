@@ -102,7 +102,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
 					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
 				require.NoError(t, err)
@@ -175,7 +175,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				// `k8ssecret-context` recipe should have created a secret with the populated recipe context.
 				s, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
 				require.NoError(t, err)
@@ -258,7 +258,7 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 				secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
 				require.NoError(t, err)
@@ -327,7 +327,7 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 

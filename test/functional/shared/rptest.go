@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"sync"
 	"testing"
 	"time"
@@ -94,7 +95,7 @@ type TestStep struct {
 	K8sOutputResources                     []unstructured.Unstructured
 	K8sObjects                             *validation.K8sObjectSet
 	AWSResources                           *validation.AWSResourceSet
-	PostStepVerify                         func(ctx context.Context, t *testing.T, ct RPTest)
+	PostStepVerify                         func(ctx context.Context, t testing.TB, ct RPTest)
 	SkipKubernetesOutputResourceValidation bool
 	SkipObjectValidation                   bool
 	SkipResourceDeletion                   bool
@@ -302,7 +303,7 @@ func (ct RPTest) Test(t *testing.T) {
 
 	success := true
 	for i, step := range ct.Steps {
-		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
+		f := func(t *TestRetryCounter) {
 			defer ct.CleanUpExtensionResources(step.K8sOutputResources)
 			if !success {
 				t.Skip("skipping due to previous step failure")
@@ -353,7 +354,34 @@ func (ct RPTest) Test(t *testing.T) {
 				step.PostStepVerify(ctx, t, ct)
 				t.Logf("finished post-deploy verification for %s", step.Executor.GetDescription())
 			}
-		})
+		}
+
+		catchPanic := func(t *TestRetryCounter, f func(*TestRetryCounter)) (didPanic bool, message interface{}, stack string) {
+			didPanic = true
+
+			defer func() {
+				message = recover()
+				if didPanic {
+					stack = string(debug.Stack())
+				}
+			}()
+
+			// call the target function
+			f(t)
+			didPanic = false
+
+			return
+		}
+
+		for cnt := 0; ; cnt++ {
+			retryal := NewTestRetryCounter(3)
+			success = t.Run(fmt.Sprintf("%s %d", step.Executor.GetDescription(), cnt), func(t *testing.T) {
+				retryal.SetT(t)
+				catchPanic(retryal, f)
+				t.Logf("failed %d", cnt)
+			})
+			t.Failed()
+		}
 	}
 
 	t.Logf("beginning cleanup phase of %s", ct.Description)

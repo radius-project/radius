@@ -73,7 +73,7 @@ func Test_KubeMetadataHTTPRoute(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 
 				// Verify service labels and annotations
 				service, err := test.Options.K8sClient.CoreV1().Services(appNamespace).Get(ctx, "ctnr-rte-kme-ctnr", metav1.GetOptions{})

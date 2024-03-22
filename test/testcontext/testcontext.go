@@ -26,7 +26,7 @@ import (
 )
 
 // New creates a new context with test logger for testing.
-func New(t *testing.T) context.Context {
+func New(t testing.TB) context.Context {
 	ctx, _ := Wrap(t, context.Background())
 	return ctx
 }
@@ -43,14 +43,19 @@ func NewWithDeadline(t *testing.T, duration time.Duration) (context.Context, con
 }
 
 // Wrap wraps a context with test logger for testing and returns the context with cancel function.
-func Wrap(t *testing.T, ctx context.Context) (context.Context, context.CancelFunc) {
+func Wrap(t testing.TB, ctx context.Context) (context.Context, context.CancelFunc) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
+	tt, ok := t.(*testing.T)
+	if !ok {
+		return ctx, func() {}
+	}
+
 	// Setting verbosity so that everything gets logged.
-	ctx = logr.NewContext(ctx, testr.NewWithOptions(t, testr.Options{LogTimestamp: true, Verbosity: 10000}))
-	deadline, ok := t.Deadline()
+	ctx = logr.NewContext(ctx, testr.NewWithOptions(tt, testr.Options{LogTimestamp: true, Verbosity: 10000}))
+	deadline, ok := tt.Deadline()
 	if ok {
 		return context.WithDeadline(ctx, deadline)
 	} else {

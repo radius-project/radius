@@ -48,7 +48,7 @@ func Test_ApplicationAndEnvironment(t *testing.T) {
 			},
 			// Application and Environment should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				expectedNS := []string{
 					"corerp-resources-app-env",
 					"corerp-resources-app-env-env-corerp-resources-app-env-app",

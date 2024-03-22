@@ -36,13 +36,13 @@ const (
 )
 
 type CLI struct {
-	T                *testing.T
+	T                testing.TB
 	ConfigFilePath   string
 	WorkingDirectory string
 }
 
 // NewCLI creates a new CLI instance with the given testing.T and config file path.
-func NewCLI(t *testing.T, configFilePath string) *CLI {
+func NewCLI(t testing.TB, configFilePath string) *CLI {
 	return &CLI{
 		T:              t,
 		ConfigFilePath: configFilePath,

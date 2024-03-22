@@ -98,7 +98,7 @@ func Test_Redis_Recipe(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				redis, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Datastores/redisCaches", "rds-recipe")
 				require.NoError(t, err)
 				require.NotNil(t, redis)

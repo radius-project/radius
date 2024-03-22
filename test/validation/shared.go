@@ -103,7 +103,7 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 }
 
 // ValidateRPResources checks if the expected resources exist in the response and validates the output resources if present.
-func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResourceSet, client clients.ApplicationsManagementClient) {
+func ValidateRPResources(ctx context.Context, t testing.TB, expected *RPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, expectedResource := range expected.Resources {
 		if expectedResource.Type == EnvironmentsResource {
 			envs, err := client.ListEnvironmentsInResourceGroup(ctx)
@@ -174,7 +174,7 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 }
 
 // AssertCredentialExists checks if the credential is registered in the workspace and returns a boolean value.
-func AssertCredentialExists(t *testing.T, credential string) bool {
+func AssertCredentialExists(t testing.TB, credential string) bool {
 	ctx := testcontext.New(t)
 
 	config, err := cli.LoadConfig("")

@@ -65,7 +65,7 @@ func Test_Deployment_SimulatedEnv_BicepRecipe(t *testing.T) {
 			},
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, ct shared.RPTest) {
 				// Get pods in app namespace
 				label := fmt.Sprintf("radapp.io/application=%s", appName)
 				pods, err := ct.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{

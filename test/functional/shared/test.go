@@ -39,7 +39,7 @@ import (
 
 // NewRPTestOptions sets up the test environment by loading configs, creating a test context, creating an
 // ApplicationsManagementClient, creating an AWSCloudControlClient, and returning an RPTestOptions struct.
-func NewRPTestOptions(t *testing.T) RPTestOptions {
+func NewRPTestOptions(t testing.TB) RPTestOptions {
 	registry, tag := testutil.SetDefault()
 	t.Logf("Using container registry: %s - set DOCKER_REGISTRY to override", registry)
 	t.Logf("Using container tag: %s - set REL_VERSION to override", tag)

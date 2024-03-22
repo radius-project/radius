@@ -25,5 +25,5 @@ import (
 
 type Executor interface {
 	GetDescription() string
-	Execute(ctx context.Context, t *testing.T, options test.TestOptions)
+	Execute(ctx context.Context, t testing.TB, options test.TestOptions)
 }

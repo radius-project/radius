@@ -84,7 +84,7 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
@@ -138,7 +138,7 @@ func Test_BicepRecipe_ContextParameter(t *testing.T) {
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
@@ -238,7 +238,7 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 			// Trying to delete the resources can cause multiple concurrent delete requests.
 			// This currently fails.
 			SkipResourceDeletion: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t testing.TB, test shared.RPTest) {
 				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 

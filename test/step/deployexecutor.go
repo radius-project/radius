@@ -72,7 +72,7 @@ func (d *DeployExecutor) GetDescription() string {
 }
 
 // Execute deploys an application from a template file using the provided parameters and logs the deployment process.
-func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
+func (d *DeployExecutor) Execute(ctx context.Context, t testing.TB, options test.TestOptions) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
