@@ -130,7 +130,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 		},
 	})
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
 	}
@@ -223,7 +223,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 		},
 	})
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 		testSecretDeletion(t, ctx, test, name, name, resourceID)
 	}
@@ -273,7 +273,7 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 		},
 	})
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
 	}
@@ -395,7 +395,7 @@ func Test_TerraformRecipe_WrongOutput(t *testing.T) {
 	test.Test(t)
 }
 
-func testSecretDeletion(t *testing.T, ctx context.Context, test shared.RPTest, appName, envName, resourceID string) {
+func testSecretDeletion(t retry.TestingTB, ctx context.Context, test shared.RPTest, appName, envName, resourceID string) {
 	secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
 	require.NoError(t, err)
 

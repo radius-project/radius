@@ -296,7 +296,7 @@ func (tw TestWriter) Write(p []byte) (n int, err error) {
 
 // WriteBicepParameterFile writes a Bicep parameter file to a temporary file and returns the path to the file.
 // The temporary file will be removed when the test finishes.
-func WriteBicepParameterFile(t *testing.T, data map[string]any) string {
+func WriteBicepParameterFile(t retry.TestingTB, data map[string]any) string {
 	file := filepath.Join(t.TempDir(), uuid.New().String()+".json")
 
 	values := map[string]any{}

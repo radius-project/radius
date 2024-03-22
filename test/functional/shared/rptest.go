@@ -108,7 +108,7 @@ type RPTest struct {
 	Description      string
 	InitialResources []unstructured.Unstructured
 	Steps            []TestStep
-	PostDeleteVerify func(ctx context.Context, t *testing.T, ct RPTest)
+	PostDeleteVerify func(ctx context.Context, t retry.TestingTB, ct RPTest)
 
 	// RequiredFeatures specifies the optional features that are required
 	// for this test to run.
@@ -431,7 +431,11 @@ func (ct RPTest) Test(t *testing.T) {
 	// Custom verification is expected to use `t` to trigger its own assertions
 	if ct.PostDeleteVerify != nil {
 		t.Logf("running post-delete verification for %s", ct.Description)
-		ct.PostDeleteVerify(ctx, t, ct)
+
+		retry.Run(t, func(r *retry.R) {
+			ct.PostDeleteVerify(ctx, r, ct)
+		}, retry.WithRetryer(&retry.Counter{Count: 3, Wait: 10 * time.Second}))
+
 		t.Logf("finished post-delete verification for %s", ct.Description)
 	}
 
