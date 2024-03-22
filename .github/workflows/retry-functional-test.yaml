@@ -25,6 +25,9 @@ on:
   schedule:
     # Run every hour
     - cron: "0 1-23 * * *"
+  pull_request:
+    branches:
+      - main
 
 env:
   # Go version
