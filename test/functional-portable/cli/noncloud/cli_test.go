@@ -59,7 +59,7 @@ const (
 	retries = 10
 )
 
-func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
+func verifyRecipeCLI(ctx context.Context, t testing.TB, test shared.RPTest) {
 	options := shared.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	envName := test.Steps[0].RPResources.Resources[0].Name
@@ -80,82 +80,82 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	terraformRecipeTemplate := "Azure/cosmosdb/azurerm"
 	templateKindTerraform := "terraform"
 
-	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-	})
+	// t.Run("Validate rad recipe register", func(t *testing.T) {
+	output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
+	require.NoError(t, err)
+	require.Contains(t, output, "Successfully linked recipe")
+	//})
 
-	t.Run("Validate rad recipe register with insecure registry", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, true)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-	})
+	//t.Run("Validate rad recipe register with insecure registry", func(t *testing.T) {
+	output, err = cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, true)
+	require.NoError(t, err)
+	require.Contains(t, output, "Successfully linked recipe")
+	//})
 
-	t.Run("Validate rad recipe list", func(t *testing.T) {
-		output, err := cli.RecipeList(ctx, envName)
-		require.NoError(t, err)
-		require.Regexp(t, bicepRecipe, output)
-		require.Regexp(t, terraformRecipe, output)
-		require.Regexp(t, recipeName, output)
-		require.Regexp(t, resourceType, output)
-		require.Regexp(t, bicepRecipeTemplate, output)
-		require.Regexp(t, terraformRecipeTemplate, output)
-		require.Regexp(t, recipeTemplate, output)
-		require.Regexp(t, templateKindBicep, output)
-		require.Regexp(t, templateKindTerraform, output)
-	})
+	//t.Run("Validate rad recipe list", func(t *testing.T) {
+	output, err = cli.RecipeList(ctx, envName)
+	require.NoError(t, err)
+	require.Regexp(t, bicepRecipe, output)
+	require.Regexp(t, terraformRecipe, output)
+	require.Regexp(t, recipeName, output)
+	require.Regexp(t, resourceType, output)
+	require.Regexp(t, bicepRecipeTemplate, output)
+	require.Regexp(t, terraformRecipeTemplate, output)
+	require.Regexp(t, recipeTemplate, output)
+	require.Regexp(t, templateKindBicep, output)
+	require.Regexp(t, templateKindTerraform, output)
+	//})
 
-	t.Run("Validate rad recipe unregister", func(t *testing.T) {
-		output, err := cli.RecipeUnregister(ctx, envName, recipeName, resourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully unregistered recipe")
-	})
+	// t.Run("Validate rad recipe unregister", func(t *testing.T) {
+	output, err = cli.RecipeUnregister(ctx, envName, recipeName, resourceType)
+	require.NoError(t, err)
+	require.Contains(t, output, "Successfully unregistered recipe")
+	// })
 
-	t.Run("Validate rad recipe show", func(t *testing.T) {
-		output, err := cli.RecipeShow(ctx, envName, bicepRecipe, resourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, bicepRecipe)
-		require.Contains(t, output, bicepRecipeTemplate)
-		require.Contains(t, output, resourceType)
-		require.Contains(t, output, "redisName")
-		require.Contains(t, output, "string")
-	})
+	// t.Run("Validate rad recipe show", func(t *testing.T) {
+	output, err = cli.RecipeShow(ctx, envName, bicepRecipe, resourceType)
+	require.NoError(t, err)
+	require.Contains(t, output, bicepRecipe)
+	require.Contains(t, output, bicepRecipeTemplate)
+	require.Contains(t, output, resourceType)
+	require.Contains(t, output, "redisName")
+	require.Contains(t, output, "string")
+	// })
 
-	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
-		showRecipeName := "redistesttf"
-		moduleServer := strings.TrimPrefix(testutil.GetTerraformRecipeModuleServerURL(), "moduleServer=")
-		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip//modules", moduleServer)
-		showRecipeResourceType := "Applications.Datastores/redisCaches"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType, false)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeResourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, showRecipeName)
-		require.Contains(t, output, showRecipeTemplate)
-		require.Contains(t, output, showRecipeResourceType)
-		require.Contains(t, output, "redis_cache_name")
-		require.Contains(t, output, "string")
-	})
+	// t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
+	showRecipeName := "redistesttf"
+	moduleServer := strings.TrimPrefix(testutil.GetTerraformRecipeModuleServerURL(), "moduleServer=")
+	showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip//modules", moduleServer)
+	showRecipeResourceType := "Applications.Datastores/redisCaches"
+	output, err = cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType, false)
+	require.NoError(t, err)
+	require.Contains(t, output, "Successfully linked recipe")
+	output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeResourceType)
+	require.NoError(t, err)
+	require.Contains(t, output, showRecipeName)
+	require.Contains(t, output, showRecipeTemplate)
+	require.Contains(t, output, showRecipeResourceType)
+	require.Contains(t, output, "redis_cache_name")
+	require.Contains(t, output, "string")
+	// })
 
-	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
-		output, err := cli.BicepPublish(ctx, file, target)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully published")
-	})
+	// t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
+	output, err = cli.BicepPublish(ctx, file, target)
+	require.NoError(t, err)
+	require.Contains(t, output, "Successfully published")
+	// })
 
-	t.Run("Validate rad recipe register with recipe name conflicting with existing recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, bicepRecipe, templateKindBicep, recipeTemplate, resourceType, false)
-		require.Contains(t, output, "Successfully linked recipe")
-		require.NoError(t, err)
-		output, err = cli.RecipeList(ctx, envName)
-		require.NoError(t, err)
-		require.Regexp(t, recipeTemplate, output)
-	})
+	// t.Run("Validate rad recipe register with recipe name conflicting with existing recipe", func(t *testing.T) {
+	output, err = cli.RecipeRegister(ctx, envName, bicepRecipe, templateKindBicep, recipeTemplate, resourceType, false)
+	require.Contains(t, output, "Successfully linked recipe")
+	require.NoError(t, err)
+	output, err = cli.RecipeList(ctx, envName)
+	require.NoError(t, err)
+	require.Regexp(t, recipeTemplate, output)
+	//})
 }
 
-func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
+func verifyCLIBasics(ctx context.Context, t testing.TB, test shared.RPTest) {
 	options := shared.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	appName := test.Name
@@ -167,95 +167,95 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 	scope, err := resources.ParseScope(options.Workspace.Scope)
 	require.NoError(t, err)
 
-	t.Run("Validate rad application show", func(t *testing.T) {
-		actualOutput, err := cli.ApplicationShow(ctx, appName)
-		require.NoError(t, err)
+	//t.Run("Validate rad application show", func(t *testing.T) {
+	actualOutput, err := cli.ApplicationShow(ctx, appName)
+	require.NoError(t, err)
 
-		lines := strings.Split(actualOutput, "\n")
-		require.GreaterOrEqual(t, len(lines), 2, "Actual output should have 2 lines")
+	lines := strings.Split(actualOutput, "\n")
+	require.GreaterOrEqual(t, len(lines), 2, "Actual output should have 2 lines")
 
-		headers := strings.Fields(lines[0])
-		require.Equal(t, "RESOURCE", headers[0], "First header should be RESOURCE")
-		require.Equal(t, "TYPE", headers[1], "Second header should be TYPE")
-		require.Equal(t, "GROUP", headers[2], "Third header should be GROUP")
-		require.Equal(t, "STATE", headers[3], "Fourth header should be STATE")
+	headers := strings.Fields(lines[0])
+	require.Equal(t, "RESOURCE", headers[0], "First header should be RESOURCE")
+	require.Equal(t, "TYPE", headers[1], "Second header should be TYPE")
+	require.Equal(t, "GROUP", headers[2], "Third header should be GROUP")
+	require.Equal(t, "STATE", headers[3], "Fourth header should be STATE")
 
-		values := strings.Fields(lines[1])
-		require.Equal(t, appName, values[0], "First value should be %s", appName)
-		require.Equal(t, "Applications.Core/applications", values[1], "Second value should be Applications.Core/applications")
-		require.Equal(t, scope.Name(), values[2], "Third value should be %s", scope.Name())
-		require.Equal(t, "Succeeded", values[3], "Fourth value should be Succeeded")
-	})
+	values := strings.Fields(lines[1])
+	require.Equal(t, appName, values[0], "First value should be %s", appName)
+	require.Equal(t, "Applications.Core/applications", values[1], "Second value should be Applications.Core/applications")
+	require.Equal(t, scope.Name(), values[2], "Third value should be %s", scope.Name())
+	require.Equal(t, "Succeeded", values[3], "Fourth value should be Succeeded")
+	//})
 
-	t.Run("Validate rad resource list", func(t *testing.T) {
-		output, err := cli.ResourceList(ctx, appName)
-		require.NoError(t, err)
+	//t.Run("Validate rad resource list", func(t *testing.T) {
+	output, err := cli.ResourceList(ctx, appName)
+	require.NoError(t, err)
 
-		// Resource ordering can vary so we don't assert exact output.
-		if strings.EqualFold(appName, "kubernetes-cli") {
-			require.Regexp(t, `containerA`, output)
-			require.Regexp(t, `containerB`, output)
-		} else {
-			require.Regexp(t, `containerA-json`, output)
-			require.Regexp(t, `containerB-json`, output)
-		}
-	})
+	// Resource ordering can vary so we don't assert exact output.
+	if strings.EqualFold(appName, "kubernetes-cli") {
+		require.Regexp(t, `containerA`, output)
+		require.Regexp(t, `containerB`, output)
+	} else {
+		require.Regexp(t, `containerA-json`, output)
+		require.Regexp(t, `containerB-json`, output)
+	}
+	//})
 
-	t.Run("Validate rad resource show", func(t *testing.T) {
-		actualOutput, err := cli.ResourceShow(ctx, "containers", containerName)
-		require.NoError(t, err)
+	//t.Run("Validate rad resource show", func(t *testing.T) {
+	actualOutput, err = cli.ResourceShow(ctx, "containers", containerName)
+	require.NoError(t, err)
 
-		lines := strings.Split(actualOutput, "\n")
-		require.GreaterOrEqual(t, len(lines), 2, "Actual output should have 2 lines")
+	lines = strings.Split(actualOutput, "\n")
+	require.GreaterOrEqual(t, len(lines), 2, "Actual output should have 2 lines")
 
-		headers := strings.Fields(lines[0])
-		require.Equal(t, "RESOURCE", headers[0], "First header should be RESOURCE")
-		require.Equal(t, "TYPE", headers[1], "Second header should be TYPE")
-		require.Equal(t, "GROUP", headers[2], "Third header should be GROUP")
-		require.Equal(t, "STATE", headers[3], "Fourth header should be STATE")
+	headers = strings.Fields(lines[0])
+	require.Equal(t, "RESOURCE", headers[0], "First header should be RESOURCE")
+	require.Equal(t, "TYPE", headers[1], "Second header should be TYPE")
+	require.Equal(t, "GROUP", headers[2], "Third header should be GROUP")
+	require.Equal(t, "STATE", headers[3], "Fourth header should be STATE")
 
-		values := strings.Fields(lines[1])
-		require.Equal(t, containerName, values[0], "First value should be %s", containerName)
-		require.Equal(t, "Applications.Core/containers", values[1], "Second value should be Applications.Core/applications")
-		require.Equal(t, scope.Name(), values[2], "Third value should be %s", scope.Name())
-		require.Equal(t, "Succeeded", values[3], "Fourth value should be Succeeded")
-	})
+	values = strings.Fields(lines[1])
+	require.Equal(t, containerName, values[0], "First value should be %s", containerName)
+	require.Equal(t, "Applications.Core/containers", values[1], "Second value should be Applications.Core/applications")
+	require.Equal(t, scope.Name(), values[2], "Third value should be %s", scope.Name())
+	require.Equal(t, "Succeeded", values[3], "Fourth value should be Succeeded")
+	//})
 
-	t.Run("Validate rad resoure logs containers", func(t *testing.T) {
-		output, err := cli.ResourceLogs(ctx, appName, containerName)
-		require.NoError(t, err)
+	//t.Run("Validate rad resoure logs containers", func(t *testing.T) {
+	output, err = cli.ResourceLogs(ctx, appName, containerName)
+	require.NoError(t, err)
 
-		// We don't want to be too fragile so we're not validating the logs in depth
-		require.Contains(t, output, "Server running at http://localhost:3000")
-	})
+	// We don't want to be too fragile so we're not validating the logs in depth
+	require.Contains(t, output, "Server running at http://localhost:3000")
+	//})
 
-	t.Run("Validate rad resource expose Container", func(t *testing.T) {
-		port, err := GetAvailablePort()
-		require.NoError(t, err)
+	//t.Run("Validate rad resource expose Container", func(t *testing.T) {
+	port, err := GetAvailablePort()
+	require.NoError(t, err)
 
-		// We open a local port-forward and then make a request to it.
-		child, cancel := context.WithCancel(ctx)
+	// We open a local port-forward and then make a request to it.
+	child, cancel := context.WithCancel(ctx)
 
-		done := make(chan error)
-		go func() {
-			output, err := cli.ResourceExpose(child, appName, containerName, port, 3000)
-			t.Logf("ResourceExpose - output: %s", output)
-			done <- err
-		}()
+	done := make(chan error)
+	go func() {
+		output, err := cli.ResourceExpose(child, appName, containerName, port, 3000)
+		t.Logf("ResourceExpose - output: %s", output)
+		done <- err
+	}()
 
-		callHealthEndpointOnLocalPort(t, retries, port)
+	callHealthEndpointOnLocalPort(t, retries, port)
 
-		cancel()
-		err = <-done
+	cancel()
+	err = <-done
 
-		// The error should be due to cancellation (we can canceled the command).
-		require.Equal(t, context.Canceled, err)
-	})
+	// The error should be due to cancellation (we can canceled the command).
+	require.Equal(t, context.Canceled, err)
+	//})
 }
 
 // callHealthEndpointOnLocalPort calls the magpie health endpoint '/healthz' with retries. It will fail the
 // test if the exceed the number of retries without success.
-func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
+func callHealthEndpointOnLocalPort(t testing.TB, retries int, port int) {
 	healthzURL := fmt.Sprintf("http://localhost:%d/healthz", port)
 
 	retryClient := retryablehttp.NewClient()
