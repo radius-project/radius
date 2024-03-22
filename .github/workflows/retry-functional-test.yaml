@@ -289,15 +289,6 @@ jobs:
         with: 
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
-      - uses: LouisBrunner/checks-action@v1.6.1
-        if: always()
-        with:
-          token: ${{ steps.get_installation_token.outputs.token }}
-          name: 'Functional Test Run'
-          status: in_progress
-          repo: ${{ github.repository }}
-          sha: ${{ env.CHECKOUT_REF }}
-          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Checkout
         uses: actions/checkout@v3
         with:
