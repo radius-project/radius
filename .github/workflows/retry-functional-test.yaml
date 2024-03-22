@@ -23,8 +23,8 @@ permissions:
 
 on:
   schedule:
-    # Run every hour
-    - cron: "0 1-23 * * *"
+    # Run every 20 minutes
+    - cron: "*/20 * * * *"
 
 env:
   # Go version
