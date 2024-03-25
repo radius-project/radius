@@ -155,6 +155,20 @@ func Test_GetEnvAppResourceNames(t *testing.T) {
 			expResource: "test-redis-recipe",
 			expectedErr: true,
 		},
+		{
+			desc: "empty app and resource id",
+			metadata: ResourceMetadata{
+				Name:          "redis-azure",
+				EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+				Parameters: map[string]any{
+					"redis_cache_name": "redis-test",
+				},
+			},
+			expApp:      "",
+			expEnv:      "env1",
+			expResource: "",
+			expectedErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
@@ -281,7 +295,7 @@ func Test_GetURLPrefix(t *testing.T) {
 			expectedErr:    false,
 		},
 		{
-			desc: "success",
+			desc: "invalid-resource-id",
 			metadata: ResourceMetadata{
 				Name:          "redis-azure",
 				ApplicationID: "//planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
@@ -293,6 +307,18 @@ func Test_GetURLPrefix(t *testing.T) {
 			},
 			expectedPrefix: "",
 			expectedErr:    true,
+		},
+		{
+			desc: "empty-environment",
+			metadata: ResourceMetadata{
+				Name:          "redis-azure",
+				EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+				Parameters: map[string]any{
+					"redis_cache_name": "redis-test",
+				},
+			},
+			expectedPrefix: "https://env1-",
+			expectedErr:    false,
 		},
 	}
 	for _, tt := range tests {

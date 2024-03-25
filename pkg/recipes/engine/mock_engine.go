@@ -65,16 +65,16 @@ func (mr *MockEngineMockRecorder) Execute(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // GetRecipeMetadata mocks base method.
-func (m *MockEngine) GetRecipeMetadata(arg0 context.Context, arg1 recipes.EnvironmentDefinition) (map[string]interface{}, error) {
+func (m *MockEngine) GetRecipeMetadata(arg0 context.Context, arg1 recipes.EnvironmentDefinition, arg2 recipes.ResourceMetadata) (map[string]interface{}, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipeMetadata", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetRecipeMetadata", arg0, arg1, arg2)
 	ret0, _ := ret[0].(map[string]interface{})
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRecipeMetadata indicates an expected call of GetRecipeMetadata.
-func (mr *MockEngineMockRecorder) GetRecipeMetadata(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockEngineMockRecorder) GetRecipeMetadata(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockEngine)(nil).GetRecipeMetadata), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockEngine)(nil).GetRecipeMetadata), arg0, arg1, arg2)
 }

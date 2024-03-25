@@ -236,16 +236,30 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
 		}
 	}()
-
+	// Add credential information to .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		err := addSecretsToGitConfig(opts.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
+	}
 	recipeData, err := d.terraformExecutor.GetRecipeMetadata(ctx, terraform.Options{
 		RootDir:        requestDirPath,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		EnvConfig:      &opts.Configuration,
 	})
+
+	// Unset credential information from .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		unsetError := unsetSecretsFromGitConfig(opts.Secrets, opts.Definition.TemplatePath)
+		if unsetError != nil {
+			return nil, unsetError
+		}
+	}
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), "", recipes.GetErrorDetails(err))
 	}
-
 	return recipeData, nil
 }
 
