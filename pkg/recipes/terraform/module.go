@@ -124,10 +124,12 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 		}
 
 		if len(v.ConfigurationAliases) > 0 {
-			aliases := []string{}
-			for i, alias := range v.ConfigurationAliases {
-				// Use only Alias from ProviderRef.
-				aliases[i] = alias.Alias
+			var aliases []string
+			for _, alias := range v.ConfigurationAliases {
+				// Concatenate Name and Alias from ProviderRef.
+				if alias.Name != "" && alias.Alias != "" {
+					aliases = append(aliases, alias.Name+"."+alias.Alias)
+				}
 			}
 			if len(aliases) > 0 {
 				requiredprovider.ConfigurationAliases = aliases

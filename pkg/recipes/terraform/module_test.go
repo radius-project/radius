@@ -46,8 +46,27 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				ContextVarExists: false,
 				RequiredProviders: map[string]*config.RequiredProviderInfo{
 					"aws": {
-						Source:  "hashicorp/aws",
-						Version: ">=3.0",
+						Source:               "hashicorp/aws",
+						Version:              ">=3.0",
+						ConfigurationAliases: []string{"aws.eu-west-1", "aws.eu-west-2"},
+					},
+				},
+				ResultOutputExists: false,
+				Parameters:         map[string]any{},
+			},
+		},
+		{
+			name: "aws provider - partial information",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-module-providerpartialinfo",
+				TemplatePath: "test-module-providerpartialinfo",
+			},
+			workingDir: "testdata",
+			result: &moduleInspectResult{
+				ContextVarExists: false,
+				RequiredProviders: map[string]*config.RequiredProviderInfo{
+					"aws": {
+						Source: "hashicorp/aws",
 					},
 				},
 				ResultOutputExists: false,
