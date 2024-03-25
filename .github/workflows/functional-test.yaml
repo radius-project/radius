@@ -164,7 +164,7 @@ jobs:
       - name: Generate ID for release
         id: gen-id
         run: |
-          BASE_STR="RAD|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+          BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
           if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
             # Add run number to randomize unique id for scheduled runs.
             BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
