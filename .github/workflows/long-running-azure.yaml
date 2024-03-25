@@ -144,7 +144,14 @@ jobs:
         id: gen-id
         run: |
           if [ -z "${{ steps.skip-build.outputs.SKIP_BUILD }}" ]; then
-            BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+            if [ "$GITHUB_EVENT_NAME" == "schedule"]; then
+              BASE_STR="RADSCHEDULE|${GITHUB_RUN_NUMBER}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}"
+            else
+              BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+            fi
+            echo "RADSCHEDULE|${GITHUB_RUN_NUMBER}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}"
+            echo "RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+            echo $BASE_STR
             UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
             echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
             
