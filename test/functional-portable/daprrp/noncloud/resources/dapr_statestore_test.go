@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
@@ -74,7 +75,7 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-manual", appNamespace)
 	}
 
@@ -128,7 +129,7 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t retry.TestingTB, test shared.RPTest) {
 		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-recipe", appNamespace)
 	}
 

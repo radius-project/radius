@@ -18,8 +18,8 @@ package resource_test
 
 import (
 	"context"
-	"testing"
 
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/test/functional/shared"
@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
-func verifyDaprComponentsDeleted(ctx context.Context, t *testing.T, test shared.RPTest, resourceType, resourceName, namespace string) {
+func verifyDaprComponentsDeleted(ctx context.Context, t retry.TestingTB, test shared.RPTest, resourceType, resourceName, namespace string) {
 	resource, err := test.Options.ManagementClient.ShowResource(ctx, resourceType, resourceName)
 	require.Error(t, err)
 	require.True(t, clients.Is404Error(err))

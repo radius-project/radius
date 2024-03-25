@@ -38,6 +38,8 @@ import (
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/validation"
+
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 )
 
 var radiusControllerLogSync sync.Once
@@ -94,7 +96,7 @@ type TestStep struct {
 	K8sOutputResources                     []unstructured.Unstructured
 	K8sObjects                             *validation.K8sObjectSet
 	AWSResources                           *validation.AWSResourceSet
-	PostStepVerify                         func(ctx context.Context, t *testing.T, ct RPTest)
+	PostStepVerify                         func(ctx context.Context, t retry.TestingTB, ct RPTest)
 	SkipKubernetesOutputResourceValidation bool
 	SkipObjectValidation                   bool
 	SkipResourceDeletion                   bool
@@ -106,7 +108,7 @@ type RPTest struct {
 	Description      string
 	InitialResources []unstructured.Unstructured
 	Steps            []TestStep
-	PostDeleteVerify func(ctx context.Context, t *testing.T, ct RPTest)
+	PostDeleteVerify func(ctx context.Context, t retry.TestingTB, ct RPTest)
 
 	// RequiredFeatures specifies the optional features that are required
 	// for this test to run.
@@ -303,56 +305,59 @@ func (ct RPTest) Test(t *testing.T) {
 	success := true
 	for i, step := range ct.Steps {
 		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
-			defer ct.CleanUpExtensionResources(step.K8sOutputResources)
 			if !success {
 				t.Skip("skipping due to previous step failure")
 				return
 			}
 
-			t.Logf("running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
-			step.Executor.Execute(ctx, t, ct.Options.TestOptions)
-			t.Logf("finished running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
+			retry.Run(t, func(r *retry.R) {
+				defer ct.CleanUpExtensionResources(step.K8sOutputResources)
 
-			if step.SkipKubernetesOutputResourceValidation {
-				t.Logf("skipping validation of resources...")
-			} else if step.RPResources == nil || len(step.RPResources.Resources) == 0 {
-				require.Fail(t, "no resource set was specified and SkipKubernetesOutputResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
-			} else {
-				// Validate that all expected output resources are created
-				t.Logf("validating output resources for %s", step.Executor.GetDescription())
-				validation.ValidateRPResources(ctx, t, step.RPResources, ct.Options.ManagementClient)
-				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
-			}
+				r.Logf("running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
+				step.Executor.Execute(ctx, r, ct.Options.TestOptions)
+				r.Logf("finished running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
 
-			// Validate AWS resources if specified
-			if step.AWSResources == nil || len(step.AWSResources.Resources) == 0 {
-				t.Logf("no AWS resource set was specified, skipping validation")
-			} else {
-				// Validate that all expected output resources are created
-				t.Logf("validating output resources for %s", step.Executor.GetDescription())
-				// Use the AWS CloudControl.Get method to validate that the resources are created
-				validation.ValidateAWSResources(ctx, t, step.AWSResources, ct.Options.AWSClient)
-				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
-			}
-
-			if step.SkipObjectValidation {
-				t.Logf("skipping validation of objects...")
-			} else if step.K8sObjects == nil && len(step.K8sOutputResources) == 0 {
-				require.Fail(t, "no objects specified and SkipObjectValidation == false, either specify an object set or set SkipObjectValidation = true ")
-			} else {
-				if step.K8sObjects != nil {
-					t.Logf("validating creation of objects for %s", step.Executor.GetDescription())
-					validation.ValidateObjectsRunning(ctx, t, ct.Options.K8sClient, ct.Options.DynamicClient, *step.K8sObjects)
-					t.Logf("finished validating creation of objects for %s", step.Executor.GetDescription())
+				if step.SkipKubernetesOutputResourceValidation {
+					r.Logf("skipping validation of resources...")
+				} else if step.RPResources == nil || len(step.RPResources.Resources) == 0 {
+					require.Fail(r, "no resource set was specified and SkipKubernetesOutputResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
+				} else {
+					// Validate that all expected output resources are created
+					r.Logf("validating output resources for %s", step.Executor.GetDescription())
+					validation.ValidateRPResources(ctx, r, step.RPResources, ct.Options.ManagementClient)
+					r.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 				}
-			}
 
-			// Custom verification is expected to use `t` to trigger its own assertions
-			if step.PostStepVerify != nil {
-				t.Logf("running post-deploy verification for %s", step.Executor.GetDescription())
-				step.PostStepVerify(ctx, t, ct)
-				t.Logf("finished post-deploy verification for %s", step.Executor.GetDescription())
-			}
+				// Validate AWS resources if specified
+				if step.AWSResources == nil || len(step.AWSResources.Resources) == 0 {
+					r.Logf("no AWS resource set was specified, skipping validation")
+				} else {
+					// Validate that all expected output resources are created
+					r.Logf("validating output resources for %s", step.Executor.GetDescription())
+					// Use the AWS CloudControl.Get method to validate that the resources are created
+					validation.ValidateAWSResources(ctx, r, step.AWSResources, ct.Options.AWSClient)
+					r.Logf("finished validating output resources for %s", step.Executor.GetDescription())
+				}
+
+				if step.SkipObjectValidation {
+					r.Logf("skipping validation of objects...")
+				} else if step.K8sObjects == nil && len(step.K8sOutputResources) == 0 {
+					require.Fail(r, "no objects specified and SkipObjectValidation == false, either specify an object set or set SkipObjectValidation = true ")
+				} else {
+					if step.K8sObjects != nil {
+						r.Logf("validating creation of objects for %s", step.Executor.GetDescription())
+						validation.ValidateObjectsRunning(ctx, r, ct.Options.K8sClient, ct.Options.DynamicClient, *step.K8sObjects)
+						r.Logf("finished validating creation of objects for %s", step.Executor.GetDescription())
+					}
+				}
+
+				// Custom verification is expected to use `t` to trigger its own assertions
+				if step.PostStepVerify != nil {
+					r.Logf("running post-deploy verification for %s", step.Executor.GetDescription())
+					step.PostStepVerify(ctx, r, ct)
+					r.Logf("finished post-deploy verification for %s", step.Executor.GetDescription())
+				}
+			}, retry.WithRetryer(&retry.Counter{Count: 5, Wait: 15 * time.Second}))
 		})
 	}
 
@@ -360,71 +365,77 @@ func (ct RPTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range ct.Steps {
-		// Delete AWS resources if they were created. This delete logic is here because deleting a Radius Application
-		// will not delete the AWS resources that were created as part of the Bicep deployment.
-		if step.AWSResources != nil && len(step.AWSResources.Resources) > 0 {
-			for _, resource := range step.AWSResources.Resources {
-				if !resource.SkipDeletion {
-					t.Logf("deleting %s", resource.Name)
+		retry.Run(t, func(r *retry.R) {
+			// Delete AWS resources if they were created. This delete logic is here because deleting a Radius Application
+			// will not delete the AWS resources that were created as part of the Bicep deployment.
+			if step.AWSResources != nil && len(step.AWSResources.Resources) > 0 {
+				for _, resource := range step.AWSResources.Resources {
+					if !resource.SkipDeletion {
+						r.Logf("deleting %s", resource.Name)
 
-					// Use the AWS CloudControl.Delete method to delete the resource
-					err := validation.DeleteAWSResource(ctx, &resource, ct.Options.AWSClient)
-					if err != nil {
-						t.Logf("failed to delete %s: %s", resource.Name, err)
-					}
-
-					// Ensure that the resource is deleted with retries
-					notFound := false
-					for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
-						t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
-
-						// Use AWS CloudControl.Get method to validate that the resource is deleted
-						notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
-
-						if notFound {
-							t.Logf("AWS resource %s to be deleted was not found", resource.Identifier)
-							break
-						} else if err != nil {
-							t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
-							break
-						} else {
-							// Wait for 10 seconds
-							time.Sleep(10 * time.Second)
+						// Use the AWS CloudControl.Delete method to delete the resource
+						err := validation.DeleteAWSResource(ctx, &resource, ct.Options.AWSClient)
+						if err != nil {
+							r.Logf("failed to delete %s: %s", resource.Name, err)
 						}
-					}
 
-					require.Truef(t, notFound, "AWS resource %s was present, should be not found", resource.Identifier)
-					t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
-				} else {
-					t.Logf("skipping deletion of %s", resource.Name)
+						// Ensure that the resource is deleted with retries
+						notFound := false
+						for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
+							r.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
+
+							// Use AWS CloudControl.Get method to validate that the resource is deleted
+							notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
+
+							if notFound {
+								r.Logf("AWS resource %s to be deleted was not found", resource.Identifier)
+								break
+							} else if err != nil {
+								r.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
+								break
+							} else {
+								// Wait for 10 seconds
+								time.Sleep(30 * time.Second)
+							}
+						}
+
+						require.Truef(t, notFound, "AWS resource %s was present, should be not found", resource.Identifier)
+						r.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
+					} else {
+						r.Logf("skipping deletion of %s", resource.Name)
+					}
 				}
 			}
-		}
 
-		if (step.RPResources == nil && step.SkipKubernetesOutputResourceValidation) || step.SkipResourceDeletion {
-			continue
-		}
-
-		for _, resource := range step.RPResources.Resources {
-			t.Logf("deleting %s", resource.Name)
-			err := validation.DeleteRPResource(ctx, t, cli, ct.Options.ManagementClient, resource)
-			require.NoErrorf(t, err, "failed to delete %s", resource.Name)
-			t.Logf("finished deleting %s", ct.Description)
-
-			if step.SkipObjectValidation {
-				t.Logf("skipping validation of deletion of pods...")
-			} else {
-				t.Logf("validating deletion of pods for %s", ct.Description)
-				validation.ValidateNoPodsInApplication(ctx, t, ct.Options.K8sClient, TestNamespace, ct.Name)
-				t.Logf("finished validation of deletion of pods for %s", ct.Description)
+			if (step.RPResources == nil && step.SkipKubernetesOutputResourceValidation) || step.SkipResourceDeletion {
+				return
 			}
-		}
+
+			for _, resource := range step.RPResources.Resources {
+				r.Logf("deleting %s", resource.Name)
+				err := validation.DeleteRPResource(ctx, r, cli, ct.Options.ManagementClient, resource)
+				require.NoErrorf(r, err, "failed to delete %s", resource.Name)
+				r.Logf("finished deleting %s", ct.Description)
+
+				if step.SkipObjectValidation {
+					r.Logf("skipping validation of deletion of pods...")
+				} else {
+					r.Logf("validating deletion of pods for %s", ct.Description)
+					validation.ValidateNoPodsInApplication(ctx, r, ct.Options.K8sClient, TestNamespace, ct.Name)
+					r.Logf("finished validation of deletion of pods for %s", ct.Description)
+				}
+			}
+		}, retry.WithRetryer(&retry.Counter{Count: 5, Wait: 15 * time.Second}))
 	}
 
 	// Custom verification is expected to use `t` to trigger its own assertions
 	if ct.PostDeleteVerify != nil {
 		t.Logf("running post-delete verification for %s", ct.Description)
-		ct.PostDeleteVerify(ctx, t, ct)
+
+		retry.Run(t, func(r *retry.R) {
+			ct.PostDeleteVerify(ctx, r, ct)
+		}, retry.WithRetryer(&retry.Counter{Count: 5, Wait: 15 * time.Second}))
+
 		t.Logf("finished post-delete verification for %s", ct.Description)
 	}
 
