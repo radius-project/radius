@@ -164,8 +164,14 @@ jobs:
       - name: Generate ID for release
         id: gen-id
         run: |
-          BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
-          UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
+          if GITHUB_EVENT_NAME == 'schedule'; then
+            BASE_STR="RADSCHEDULE|${GITHUB_RUN_NUMBER}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}"
+          else
+            BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+          fi
+          echo "RADSCHEDULE|${GITHUB_RUN_NUMBER}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}"
+          echo "RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+          echo $BASE_STR
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
           
           # Set output variables to be used in the other jobs
