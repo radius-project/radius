@@ -135,6 +135,97 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 	test.Test(t)
 }
 
+// Test_TerraformRecipe_KubernetesPostgres covers the following terraform recipe scenario:
+//
+// - Create an extender resource using a Terraform recipe that deploys Postgres on Kubernetes.
+// - The recipe deployment creates a Kubernetes deployment and a Kubernetes service and a postgres db.
+func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
+	template := "testdata/corerp-resources-terraform-postgres.bicep"
+	appName := "corerp-resources-terraform-pg-app"
+	envName := "corerp-resources-terraform-pg-env"
+	extenderName := "pgs-resources-terraform-pgsapp"
+	userName := "postgres"
+	password := "abc-123-hgd-@#$'"
+
+	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+extenderName, envName, appName)
+	require.NoError(t, err)
+
+	test := shared.NewRPTest(t, appName, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "userName="+userName, "password="+password),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: envName,
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: extenderName,
+						Type: validation.ExtendersResource,
+						App:  appName,
+						OutputResources: []validation.OutputResourceResponse{
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-pg-app/providers/apps/Deployment/postgres"},
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-pg-app/providers/core/Service/postgres"},
+						},
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appName: {
+						validation.NewK8sServiceForResource(appName, "postgres").
+							ValidateLabels(false),
+						validation.NewK8sPodForResource(appName, "postgres").
+							ValidateLabels(false),
+					},
+					secretNamespace: {
+						validation.NewK8sSecretForResourceWithResourceName(secretPrefix + secretSuffix).
+							ValidateLabels(false),
+					},
+				},
+			},
+			SkipObjectValidation: true,
+			SkipResourceDeletion: true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
+					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, secretNamespace, secret.Namespace)
+				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
+
+				pg, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", extenderName)
+				require.NoError(t, err)
+				require.NotNil(t, pg)
+				status := pg.Properties["status"].(map[string]any)
+				recipe := status["recipe"].(map[string]interface{})
+				require.Equal(t, "terraform", recipe["templateKind"].(string))
+				expectedTemplatePath := strings.Replace(testutil.GetTerraformRecipeModuleServerURL()+"/postgres.zip", "moduleServer=", "", 1)
+				require.Equal(t, expectedTemplatePath, recipe["templatePath"].(string))
+
+				// At present, it is not possible to verify the template version in functional tests
+				// This is verified by UTs though
+
+				// Manually delete Kubernetes the secret that stores the Terraform state file now. The next step in the test will be the deletion
+				// of the portable resource that uses this secret for Terraform recipe. This is to verify that the test and portable resource
+				// deletion will not fail even though the secret is already deleted.
+				err = test.Options.K8sClient.CoreV1().Secrets(secretNamespace).Delete(ctx, secretPrefix+secretSuffix, metav1.DeleteOptions{})
+				require.NoError(t, err)
+			},
+		},
+	})
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + extenderName
+		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
+	}
+
+	test.Test(t)
+}
+
 func Test_TerraformRecipe_Context(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-context.bicep"
 	name := "corerp-resources-terraform-context"
