@@ -144,14 +144,13 @@ jobs:
         id: gen-id
         run: |
           if [ -z "${{ steps.skip-build.outputs.SKIP_BUILD }}" ]; then
+            BASE_STR="RAD|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
             if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
-              UNIQUE_ID="rads${GITHUB_RUN_NUMBER}"
-            else
-              BASE_STR="RAD|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
-              UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
+              # Add run number to randomize unique id for scheduled runs.
+              BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
             fi
+            UNIQUE_ID=longr$(echo $BASE_STR | sha1sum | head -c 10)
             echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
-            echo "rads${GITHUB_RUN_NUMBER}"
             
             # Set output variables to be used in the other jobs
             echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
