@@ -90,7 +90,7 @@ module aksCluster './modules/akscluster.bicep' = {
   params: {
     name: aksClusterName
     location: location
-    kubernetesVersion: '1.28.3'
+    kubernetesVersion: '1.28.5'
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
     systemAgentPoolName: 'agentpool'
     systemAgentPoolVmSize: 'Standard_D4as_v5'
