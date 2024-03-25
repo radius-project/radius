@@ -14,7 +14,11 @@
       },
       "kubernetes": {
         "source": "hashicorp/kubernetes",
-        "version": ">= 2.0"
+        "version": ">= 2.0",
+        "configuration_aliases": [
+          "kubernetes.k8s_first",
+          "kubernetes.k8s_second"
+        ]
       }
     }
   },
@@ -24,10 +28,12 @@
     },
     "kubernetes": [
       {
-        "ConfigPath": "/home/radius/.kube/configPath1"
+        "alias": "k8s_first",
+        "config_path": "/home/radius/.kube/configPath1"
       },
       {
-        "ConfigPath": "/home/radius/.kube/configPath2"
+        "alias": "k8s_second",
+        "config_path": "/home/radius/.kube/configPath2"
       }
     ]
   },

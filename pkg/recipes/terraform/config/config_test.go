@@ -408,10 +408,7 @@ func Test_AddProviders(t *testing.T) {
 			Err:       nil,
 			envConfig: recipes.Configuration{},
 			requiredProviders: map[string]*RequiredProviderInfo{
-				providers.AWSProviderName: {
-					Source:  "hashicorp/aws",
-					Version: ">= 3.0",
-				},
+				providers.AWSProviderName: {},
 			},
 			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
@@ -432,10 +429,7 @@ func Test_AddProviders(t *testing.T) {
 				},
 			},
 			requiredProviders: map[string]*RequiredProviderInfo{
-				providers.AWSProviderName: {
-					Source:  "hashicorp/aws",
-					Version: ">= 3.0",
-				},
+				providers.AWSProviderName: {},
 			},
 			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
@@ -451,7 +445,7 @@ func Test_AddProviders(t *testing.T) {
 			requiredProviders: map[string]*RequiredProviderInfo{
 				providers.AzureProviderName: {
 					Source:  "hashicorp/azurerm",
-					Version: ">= 2.0",
+					Version: "~> 2.0",
 				},
 			},
 			expectedConfigFile: "testdata/providers-emptyazureconfig.tf.json",
@@ -501,12 +495,14 @@ func Test_AddProviders(t *testing.T) {
 							"kubernetes": {
 								{
 									AdditionalProperties: map[string]any{
-										"ConfigPath": "/home/radius/.kube/configPath1",
+										"alias":       "k8s_first",
+										"config_path": "/home/radius/.kube/configPath1",
 									},
 								},
 								{
 									AdditionalProperties: map[string]any{
-										"ConfigPath": "/home/radius/.kube/configPath2",
+										"alias":       "k8s_second",
+										"config_path": "/home/radius/.kube/configPath2",
 									},
 								},
 							},
@@ -520,8 +516,9 @@ func Test_AddProviders(t *testing.T) {
 					Version: ">= 3.0",
 				},
 				providers.KubernetesProviderName: {
-					Source:  "hashicorp/kubernetes",
-					Version: ">= 2.0",
+					Source:               "hashicorp/kubernetes",
+					Version:              ">= 2.0",
+					ConfigurationAliases: []string{"kubernetes.k8s_first", "kubernetes.k8s_second"},
 				},
 			},
 			expectedConfigFile: "testdata/providers-overridereqproviders.tf.json",
