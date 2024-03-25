@@ -137,6 +137,10 @@ Update it to reflect the new release version that we would like to release ([Exa
 
 1. Verify that a release was created on Github Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
+1. In the project-radius/docs repository, run the Release docs workflow.
+
+1. In the project-radius/docs repository, run the Release samples workflow.
+
 1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius release version number being released.
 
 1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius release version number being released.
