@@ -251,34 +251,28 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 		logger.Info("Start processing operation.")
 		result, err := asyncCtrl.Run(asyncReqCtx, asyncReq)
-		provisioningState := result.ProvisioningState()
-		errMsg := ""
-		if err != nil {
-			errMsg = err.Error()
-			provisioningState = v1.ProvisioningStateFailed
+		// Update the result if an error is returned from the controller.
+		// Check that the result is empty to ensure we don't override it, it shouldn't happen.
+		// Controller should always either return non-empty error or non-empty result, but not both.
+		if err != nil && result.Error == nil {
+			armErr := extractError(err)
+			result.SetFailed(armErr, false)
 		}
 
-		code := ""
+		// Log the error if the operation failed.
 		if result.Error != nil {
-			code = result.Error.Code
-			errMsg = result.Error.Error()
+			logger.Error(result.Error, "Operation Failed")
 		}
-
-		logger.Info("Operation returned", "success", result.Error == nil && err == nil, "code", code, "provisioningState", provisioningState, "err", errMsg)
 
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186
 		// 2. When parent context is canceled or done, we need to requeue the operation to reprocess the request.
 		// Such cases should not call w.completeOperation.
 		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
-			if err != nil {
-				armErr := extractError(err)
-				result.SetFailed(armErr, false)
-				logger.Error(err, "Operation Failed")
-			}
-
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
+		logger.Info("Operation returned", "success", result.Error == nil, "provisioningState", result.ProvisioningState())
+
 		trace.SetAsyncResultStatus(result, span)
 	}()
 
