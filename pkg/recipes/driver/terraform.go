@@ -249,11 +249,14 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	return recipeData, nil
 }
 
-// FindSecretIDs is used to get the secret reference associated with git private terraform repository source.
+// FindSecretIDs is used to retrieve the secret reference associated with private terraform module source.
+// As of today, it only supports retrieving secret references associated with private git repositories.
 func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (string, error) {
 
 	// We can move the GetSecretStoreID() implementation here when we have containerization.
 	// Today we use this function in config.go to check for secretstore to add prefix to the template path.
+	// GetSecretStoreID is added outside of driver package because it created cyclic dependency between driver and config packages.
+
 	return recipes.GetSecretStoreID(envConfig, definition.TemplatePath)
 }
 

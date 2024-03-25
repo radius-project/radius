@@ -99,6 +99,7 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 		if err != nil {
 			return nil, nil, err
 		}
+
 		// Retrieves the secret values from the secret store ID provided.
 		if secretStore != "" {
 			secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
