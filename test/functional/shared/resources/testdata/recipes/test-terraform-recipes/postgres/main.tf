@@ -14,7 +14,7 @@ terraform {
 resource "kubernetes_deployment" "postgres" {
   metadata {
     name      = "postgres"
-    namespace = "postgresns"
+    namespace = var.context.runtime.kubernetes.namespace
   }
 
   spec {
@@ -53,7 +53,7 @@ resource "kubernetes_deployment" "postgres" {
 resource "kubernetes_service" "postgres" {
   metadata {
     name      = "postgres"
-    namespace = "postgresns"
+    namespace = var.context.runtime.kubernetes.namespace
   }
 
   spec {
@@ -68,17 +68,12 @@ resource "kubernetes_service" "postgres" {
   }
 }
 
-variable "port" {
-  default = 5432
-}
-
-provider "postgresql" {
-  host     = var.host
-  port     = var.port
-  password = var.password
-  sslmode  = "disable"
+resource "time_sleep" "wait_20_seconds" {
+  depends_on = [kubernetes_service.postgres]
+  create_duration = "20s"
 }
 
 resource postgresql_database "pg_db_test" {
+  depends_on = [time_sleep.wait_20_seconds]
   name = "pg_db_test"
 }
