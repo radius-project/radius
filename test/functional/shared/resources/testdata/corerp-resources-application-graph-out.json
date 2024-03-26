@@ -3,26 +3,7 @@
         "connections": [
             {
                 "direction": "Inbound",
-                "id": "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/containers/http-front-ctnr-simple1"
-            }
-        ],
-        "id": "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/httpRoutes/http-back-rte-simple1",
-        "name": "http-back-rte-simple1",
-        "outputResources": [
-            {
-                "id": "/planes/kubernetes/local/namespaces/default-corerp-application-simple1/providers/core/Service/http-back-rte-simple1",
-                "name": "http-back-rte-simple1",
-                "type": "core/Service"
-            }
-        ],
-        "provisioningState": "Succeeded",
-        "type": "Applications.Core/httpRoutes"
-    },
-    {
-        "connections": [
-            {
-                "direction": "Inbound",
-                "id": "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/httpRoutes/http-back-rte-simple1"
+                "id": "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/containers/http-front-rte-simple1"
             }
         ],
         "id": "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/containers/http-back-ctnr-simple1",
@@ -56,7 +37,7 @@
         "connections": [
             {
                 "direction": "Outbound",
-                "id": "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/httpRoutes/http-back-rte-simple1"
+                "id": "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/containers/http-back-rte-simple1"
             }
         ],
         "id": "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/containers/http-front-ctnr-simple1",

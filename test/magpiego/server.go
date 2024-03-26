@@ -28,7 +28,7 @@ var Providers = map[string]bindings.BindingProvider{
 	"DAPRSTATESTORE":  bindings.DaprStateStoreBinding,
 	"RABBITMQ":        bindings.RabbitMQBinding,
 	"DAPRSECRETSTORE": bindings.DaprSecretStoreBinding,
-	"DAPRHTTPROUTE":   bindings.DaprHttpRouteBinding,
+	"DAPRHTTP":        bindings.DaprHttpBinding,
 	"STORAGE":         bindings.StorageBinding,
 }
 

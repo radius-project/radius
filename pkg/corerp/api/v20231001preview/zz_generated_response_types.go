@@ -170,35 +170,6 @@ type GatewaysClientListByScopeResponse struct {
 	GatewayResourceListResult
 }
 
-// HTTPRoutesClientCreateOrUpdateResponse contains the response from method HTTPRoutesClient.BeginCreateOrUpdate.
-type HTTPRoutesClientCreateOrUpdateResponse struct {
-	// Radius HTTPRoute Resource.
-	HTTPRouteResource
-}
-
-// HTTPRoutesClientDeleteResponse contains the response from method HTTPRoutesClient.BeginDelete.
-type HTTPRoutesClientDeleteResponse struct {
-	// placeholder for future response values
-}
-
-// HTTPRoutesClientGetResponse contains the response from method HTTPRoutesClient.Get.
-type HTTPRoutesClientGetResponse struct {
-	// Radius HTTPRoute Resource.
-	HTTPRouteResource
-}
-
-// HTTPRoutesClientListByScopeResponse contains the response from method HTTPRoutesClient.NewListByScopePager.
-type HTTPRoutesClientListByScopeResponse struct {
-	// The response of a HttpRouteResource list operation.
-	HTTPRouteResourceListResult
-}
-
-// HTTPRoutesClientUpdateResponse contains the response from method HTTPRoutesClient.BeginUpdate.
-type HTTPRoutesClientUpdateResponse struct {
-	// Radius HTTPRoute Resource.
-	HTTPRouteResource
-}
-
 // OperationsClientListResponse contains the response from method OperationsClient.NewListPager.
 type OperationsClientListResponse struct {
 	// A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.

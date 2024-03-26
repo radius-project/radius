@@ -18,7 +18,7 @@
               "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
               "routes":[
                 {
-                  "destination": "/planes/radius/local/resourcegroups/myawsenv/providers/applications.core/httproutes/gtwy-front-rte",
+                  "destination": "http://frontend",
                   "path":"/"
                 }
               ],    
@@ -39,7 +39,7 @@
               "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
               "routes":[
                 {
-                  "destination": "/planes/radius/local/resourcegroups/myawsenv/providers/applications.core/httproutes/gtwy-back-rte",
+                  "destination": "http://frontend",
                   "path":"/backend2"
                 }
               ],    

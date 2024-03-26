@@ -28,7 +28,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -87,8 +86,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	// in the future... eg: volumes
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
-
-	// ensure that users cannot use DNS-SD and httproutes simultaneously.
 	for _, connection := range properties.Connections {
 		if isURL(connection.Source) {
 			continue
@@ -104,25 +101,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
 			azureResourceIDs = append(azureResourceIDs, resourceID)
 			continue
-		}
-
-		if resources_radius.IsRadiusResource(resourceID) {
-			radiusResourceIDs = append(radiusResourceIDs, resourceID)
-			continue
-		}
-	}
-
-	for _, port := range properties.Container.Ports {
-		provides := port.Provides
-
-		// if provides is empty, skip this port. A service for this port will be generated later on.
-		if provides == "" {
-			continue
-		}
-
-		resourceID, err := resources.ParseResource(provides)
-		if err != nil {
-			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
 
 		if resources_radius.IsRadiusResource(resourceID) {
@@ -190,7 +168,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			continue
 		}
 
-		// If source is not a URL, it must be either resource ID, invalid string, or empty (example: containerhttproute.id).
+		// If source is not a URL, it must be either resource ID, invalid string, or empty (example: myRedis.id).
 		_, err := resources.ParseResource(connection.Source)
 		if err != nil {
 			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
@@ -209,10 +187,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			properties.Container.Ports[portName] = port
 		}
 
-		// if the container has an exposed port, but no 'provides' field, it requires DNS service generation.
-		if port.Provides == "" {
-			needsServiceGeneration = true
-		}
+		// if the container has an exposed port, it requires DNS service generation.
+		needsServiceGeneration = true
 	}
 
 	dependencies := options.Dependencies
@@ -224,7 +200,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			continue
 		}
 
-		rbacOutputResources, err := r.makeRoleAssignmentsForResource(ctx, &connection, dependencies)
+		rbacOutputResources, err := r.makeRoleAssignmentsForResource(&connection, dependencies)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -245,7 +221,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	computedValues := map[string]rpv1.ComputedValueReference{}
 
 	// Create the deployment as the primary workload
-	deploymentResources, secretData, err := r.makeDeployment(ctx, baseManifest, appId.Name(), options, computedValues, resource, roles)
+	deploymentResources, secretData, err := r.makeDeployment(baseManifest, appId.Name(), options, computedValues, resource, roles)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -254,7 +230,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
 	if len(secretData) > 0 {
-		outputResources = append(outputResources, r.makeSecret(ctx, *resource, appId.Name(), secretData, options))
+		outputResources = append(outputResources, r.makeSecret(*resource, appId.Name(), secretData, options))
 	}
 
 	var servicePorts []corev1.ServicePort
@@ -274,7 +250,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 		// if a container has an exposed port, then we need to create a service for it.
 		basesrv := getServiceBase(baseManifest, appId.Name(), resource, &options)
-		serviceResource, err := r.makeService(basesrv, resource, options, ctx, servicePorts)
+		serviceResource, err := r.makeService(basesrv, resource, servicePorts)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -290,7 +266,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, servicePorts []corev1.ServicePort) (rpv1.OutputResource, error) {
+func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, servicePorts []corev1.ServicePort) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
@@ -318,18 +294,12 @@ SKIPINSERT:
 }
 
 func (r Renderer) makeDeployment(
-	ctx context.Context,
 	manifest kubeutil.ObjectManifest,
 	applicationName string,
 	options renderers.RenderOptions,
 	computedValues map[string]rpv1.ComputedValueReference,
 	resource *datamodel.ContainerResource,
 	roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
-	// Keep track of the set of routes, we will need these to generate labels later
-	routes := []struct {
-		Name string
-		Type string
-	}{}
 
 	// If the container requires azure role, it needs to configure workload identity (aka federated identity).
 	identityRequired := len(roles) > 0
@@ -352,35 +322,10 @@ func (r Renderer) makeDeployment(
 
 	ports := []corev1.ContainerPort{}
 	for _, port := range properties.Container.Ports {
-		if provides := port.Provides; provides != "" {
-			resourceId, err := resources.ParseResource(provides)
-			if err != nil {
-				return []rpv1.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
-			}
-
-			routeName := kubernetes.NormalizeResourceName(resourceId.Name())
-			routeType := resourceId.TypeSegments()[len(resourceId.TypeSegments())-1].Type
-			routeTypeParts := strings.Split(routeType, "/")
-
-			routeTypeSuffix := kubernetes.NormalizeResourceName(routeTypeParts[len(routeTypeParts)-1])
-
-			routes = append(routes, struct {
-				Name string
-				Type string
-			}{Name: routeName, Type: routeTypeSuffix})
-
-			ports = append(ports, corev1.ContainerPort{
-				// Name generation logic has to match the code in HttpRoute
-				Name:          kubernetes.GetShortenedTargetPortName(routeTypeSuffix + routeName),
-				ContainerPort: port.ContainerPort,
-				Protocol:      corev1.ProtocolTCP,
-			})
-		} else {
-			ports = append(ports, corev1.ContainerPort{
-				ContainerPort: port.ContainerPort,
-				Protocol:      corev1.ProtocolTCP,
-			})
-		}
+		ports = append(ports, corev1.ContainerPort{
+			ContainerPort: port.ContainerPort,
+			Protocol:      corev1.ProtocolTCP,
+		})
 	}
 
 	container.Image = properties.Container.Image
@@ -411,7 +356,7 @@ func (r Renderer) makeDeployment(
 	// We build the environment variable list in a stable order for testability
 	// For the values that come from connections we back them with secretData. We'll extract the values
 	// and return them.
-	env, secretData, err := getEnvVarsAndSecretData(resource, applicationName, dependencies)
+	env, secretData, err := getEnvVarsAndSecretData(resource, dependencies)
 	if err != nil {
 		return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to obtain environment variables and secret data: %w", err)
 	}
@@ -531,13 +476,6 @@ func (r Renderer) makeDeployment(
 		default:
 			return []rpv1.OutputResource{}, secretData, v1.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
 		}
-	}
-
-	// In addition to the descriptive labels, we need to attach labels for each route
-	// so that the generated services can find these pods
-	for _, routeInfo := range routes {
-		routeLabels := kubernetes.MakeRouteSelectorLabels(applicationName, routeInfo.Type, routeInfo.Name)
-		podLabels = labels.Merge(routeLabels, podLabels)
 	}
 
 	serviceAccountBase := getServiceAccountBase(manifest, applicationName, resource, &options)
@@ -678,7 +616,7 @@ func (r Renderer) makeDeployment(
 	return outputResources, secretData, nil
 }
 
-func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationName string, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte, error) {
+func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte, error) {
 	env := map[string]corev1.EnvVar{}
 	secretData := map[string][]byte{}
 	properties := resource.Properties
@@ -827,7 +765,7 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	}
 }
 
-func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) rpv1.OutputResource {
+func (r Renderer) makeSecret(resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) rpv1.OutputResource {
 	secret := corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -856,7 +794,7 @@ func (r Renderer) isIdentitySupported(kind datamodel.IAMKind) bool {
 }
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.
-func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection *datamodel.ConnectionProperties, dependencies map[string]renderers.RendererDependency) ([]rpv1.OutputResource, error) {
+func (r Renderer) makeRoleAssignmentsForResource(connection *datamodel.ConnectionProperties, dependencies map[string]renderers.RendererDependency) ([]rpv1.OutputResource, error) {
 	var roleNames []string
 	var armResourceIdentifier string
 	if connection.IAM.Kind.IsKind(datamodel.KindAzure) {

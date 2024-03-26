@@ -158,35 +158,6 @@ type GatewaysClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// HTTPRoutesClientBeginCreateOrUpdateOptions contains the optional parameters for the HTTPRoutesClient.BeginCreateOrUpdate
-// method.
-type HTTPRoutesClientBeginCreateOrUpdateOptions struct {
-	// Resumes the LRO from the provided token.
-	ResumeToken string
-}
-
-// HTTPRoutesClientBeginDeleteOptions contains the optional parameters for the HTTPRoutesClient.BeginDelete method.
-type HTTPRoutesClientBeginDeleteOptions struct {
-	// Resumes the LRO from the provided token.
-	ResumeToken string
-}
-
-// HTTPRoutesClientBeginUpdateOptions contains the optional parameters for the HTTPRoutesClient.BeginUpdate method.
-type HTTPRoutesClientBeginUpdateOptions struct {
-	// Resumes the LRO from the provided token.
-	ResumeToken string
-}
-
-// HTTPRoutesClientGetOptions contains the optional parameters for the HTTPRoutesClient.Get method.
-type HTTPRoutesClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// HTTPRoutesClientListByScopeOptions contains the optional parameters for the HTTPRoutesClient.NewListByScopePager method.
-type HTTPRoutesClientListByScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
 // OperationsClientListOptions contains the optional parameters for the OperationsClient.NewListPager method.
 type OperationsClientListOptions struct {
 	// placeholder for future optional parameters

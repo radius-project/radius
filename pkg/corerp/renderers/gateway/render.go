@@ -40,7 +40,7 @@ import (
 type Renderer struct {
 }
 
-// GetDependencyIDs parses the gateway data model to get the resource IDs of the httpRoutes and the secretStore resource ID
+// GetDependencyIDs parses the gateway data model to get the secretStore resource ID
 // from the certificateFrom property, and returns them as two slices of resource IDs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	gateway, ok := dm.(*datamodel.Gateway)
@@ -48,21 +48,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		return nil, nil, v1.ErrInvalidModelConversion
 	}
 	gtwyProperties := gateway.Properties
-
-	// Get all httpRoutes that are used by this gateway
-	for _, route := range gtwyProperties.Routes {
-		// Skip if destination is a URL. DNS-SD will resolve the route.
-		if isURL(route.Destination) {
-			continue
-		}
-
-		resourceID, err := resources.ParseResource(route.Destination)
-		if err != nil {
-			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
-		}
-
-		radiusResourceIDs = append(radiusResourceIDs, resourceID)
-	}
 
 	// Get secretStore resource ID from certificateFrom property
 	if gtwyProperties.TLS != nil && gtwyProperties.TLS.CertificateFrom != "" {
@@ -116,11 +101,11 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		},
 	}
 
-	httpRouteObjects, err := MakeRoutesHTTPProxies(ctx, options, *gateway, &gateway.Properties, gatewayName, gatewayObject, applicationName)
+	httpProxyObjects, err := MakeRoutesHTTPProxies(ctx, options, *gateway, &gateway.Properties, gatewayName, gatewayObject, applicationName)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-	outputResources = append(outputResources, httpRouteObjects...)
+	outputResources = append(outputResources, httpProxyObjects...)
 
 	return renderers.RendererOutput{
 		Resources:      outputResources,
@@ -323,7 +308,7 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 		}
 
 		// Create unique localID for dependency graph
-		localID := fmt.Sprintf("%s-%s", rpv1.LocalIDHttpRoute, routeName)
+		localID := fmt.Sprintf("%s-%s", rpv1.LocalIDHttpProxy, routeName)
 		routeResourceName := kubernetes.NormalizeResourceName(routeName)
 
 		var pathRewritePolicy *contourv1.PathRewritePolicy
@@ -401,23 +386,12 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 }
 
 func getRouteName(route *datamodel.GatewayRoute) (string, error) {
-	// if isURL, then name is hostname (DNS-SD case)
-	if isURL(route.Destination) {
-		u, err := url.Parse(route.Destination)
-		if err != nil {
-			return "", v1.NewClientErrInvalidRequest(err.Error())
-		}
-
-		return u.Hostname(), nil
-	}
-
-	// if not URL, then name is the resourceID (HTTProute case)
-	resourceID, err := resources.ParseResource(route.Destination)
+	u, err := url.Parse(route.Destination)
 	if err != nil {
 		return "", v1.NewClientErrInvalidRequest(err.Error())
 	}
 
-	return resourceID.Name(), nil
+	return u.Hostname(), nil
 }
 
 // getHostname returns the hostname of the public endpoint of the Gateway.

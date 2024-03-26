@@ -134,7 +134,6 @@ type ContainerPort struct {
 	Port          int32    `json:"port,omitempty"`
 	Scheme        string   `json:"scheme,omitempty"`
 	Protocol      Protocol `json:"protocol,omitempty"`
-	Provides      string   `json:"provides,omitempty"`
 }
 
 // Protocol - Protocol in use by the port

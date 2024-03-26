@@ -32,7 +32,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/corerp/renderers/container"
 	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
-	"github.com/radius-project/radius/pkg/corerp/renderers/httproute"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -99,30 +98,6 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			nil,
 			nil,
 			errors.New("error getting object"),
-		},
-		{
-			"http-route-put-success",
-			httproute.ResourceType,
-			"APPLICATIONS.CORE/HTTPROUTES|PUT",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString()),
-			nil,
-			false,
-			nil,
-			nil,
-			nil,
-			nil,
-		},
-		{
-			"http-route-put-not-found",
-			httproute.ResourceType,
-			"APPLICATIONS.CORE/HTTPROUTES|PUT",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString()),
-			&store.ErrNotFound{},
-			false,
-			nil,
-			nil,
-			nil,
-			nil,
 		},
 		{
 			"gateway-put-success",
@@ -296,30 +271,6 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			nil,
 			nil,
 			errors.New("error getting object"),
-		},
-		{
-			"http-route-patch-success",
-			httproute.ResourceType,
-			"APPLICATIONS.CORE/HTTPROUTES|PATCH",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString()),
-			nil,
-			false,
-			nil,
-			nil,
-			nil,
-			nil,
-		},
-		{
-			"http-route-patch-not-found",
-			httproute.ResourceType,
-			"APPLICATIONS.CORE/HTTPROUTES|PATCH",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString()),
-			&store.ErrNotFound{},
-			false,
-			nil,
-			nil,
-			nil,
-			&store.ErrNotFound{},
 		},
 		{
 			"gateway-patch-success",

@@ -37,9 +37,9 @@ func Test_display(t *testing.T) {
 	})
 
 	t.Run("complex application", func(t *testing.T) {
-		sqlRteID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte"
-		sqlRteType := "Applications.Core/httpRoutes"
-		sqlRteName := "sql-rte"
+		backendID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backend"
+		backendType := "Applications.Core/containers"
+		backendName := "backend"
 
 		sqlAppCntrID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr"
 		sqlAppCntrName := "sql-app-ctnr"
@@ -63,15 +63,15 @@ func Test_display(t *testing.T) {
 
 		graph := []*corerpv20231001preview.ApplicationGraphResource{
 			{
-				ID:                &sqlRteID,
-				Name:              &sqlRteName,
-				Type:              &sqlRteType,
+				ID:                &backendID,
+				Name:              &backendName,
+				Type:              &backendType,
 				ProvisioningState: &provisioningStateSuccess,
 				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
 				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
 					{
-						ID:        &sqlCntrID,
 						Direction: &dirInbound,
+						ID:        &sqlCntrID,
 					},
 				},
 			},
@@ -83,8 +83,8 @@ func Test_display(t *testing.T) {
 				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
 				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
 					{
+						ID:        &backendID,
 						Direction: &dirOutbound,
-						ID:        &sqlRteID,
 					},
 				},
 			},
@@ -131,6 +131,11 @@ func Test_display(t *testing.T) {
 
 		expected := `Displaying application: test-app
 
+Name: backend (Applications.Core/containers)
+Connections:
+  sql-ctnr (Applications.Core/containers) -> backend
+Resources: (none)
+
 Name: sql-app-ctnr (Applications.Core/containers)
 Connections:
   sql-db (Applications.Datastores/sqlDatabases) -> sql-app-ctnr
@@ -138,12 +143,7 @@ Resources: (none)
 
 Name: sql-ctnr (Applications.Core/containers)
 Connections:
-  sql-ctnr -> sql-rte (Applications.Core/httpRoutes)
-Resources: (none)
-
-Name: sql-rte (Applications.Core/httpRoutes)
-Connections:
-  sql-ctnr (Applications.Core/containers) -> sql-rte
+  sql-ctnr -> backend (Applications.Core/containers)
 Resources: (none)
 
 Name: redis (Applications.Datastores/redis)

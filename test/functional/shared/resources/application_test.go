@@ -80,11 +80,6 @@ func Test_ApplicationGraph(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "http-back-rte-simple1",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "http-back-ctnr-simple1",
 						Type: validation.ContainersResource,
 						App:  name,
