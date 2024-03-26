@@ -74,7 +74,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 	recipeTemplate := fmt.Sprintf("%s/recipes/local-dev/rediscaches:%s", registry, version)
 
 	bicepRecipe := "recipe1"
-	bicepRecipeTemplate := fmt.Sprintf("%s/test/testrecipes/test-bicep-recipes/corerp-redis-recipe.bicep:%s", registry, version)
+	bicepRecipeTemplate := fmt.Sprintf("%s/test/testrecipes/test-bicep-recipes/corerp-redis-recipe:%s", registry, version)
 	templateKindBicep := "bicep"
 
 	terraformRecipe := "recipe2"
