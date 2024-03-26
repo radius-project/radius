@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
 )
@@ -39,14 +39,14 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 		},
 	})
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor:                               step.NewDeployErrorExecutor(template, validate),
 			SkipKubernetesOutputResourceValidation: true,
 			K8sObjects:                             &validation.K8sObjectSet{},
 		},
 	})
-	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureDapr}
 
 	test.Test(t)
 }
