@@ -193,6 +193,7 @@ func (e *engine) GetRecipeMetadata(ctx context.Context, recipeDefinition recipes
 // Any changes to the core logic of the GetRecipeMetadata function should be made here.
 func (e *engine) getRecipeMetadataCore(ctx context.Context, recipeDefinition recipes.EnvironmentDefinition, resource recipes.ResourceMetadata) (map[string]any, error) {
 
+	// Load environment configuration to get the recipe config information which contains the secrets.
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, resource)
 	if err != nil {
 		return nil, err
@@ -207,6 +208,8 @@ func (e *engine) getRecipeMetadataCore(ctx context.Context, recipeDefinition rec
 	secrets := v20231001preview.SecretStoresClientListSecretsResponse{}
 	driverWithSecrets, ok := driver.(recipedriver.DriverWithSecrets)
 	if ok {
+
+		// Get the secret ID references associated with git private terraform repository source.
 		secretStore, err := driverWithSecrets.FindSecretIDs(ctx, *configuration, recipeDefinition)
 		if err != nil {
 			return nil, err
