@@ -30,7 +30,7 @@ publish-test-bicep-recipes: ## Publishes test recipes to <BICEP_RECIPE_REGISTRY>
 	@echo "$(ARROW) Publishing Bicep test recipes from ./test/testrecipes/test-bicep-recipes..."
 	./.github/scripts/publish-recipes.sh \
 		./test/testrecipes/test-bicep-recipes \
-		${BICEP_RECIPE_REGISTRY}/test/testrecipes \
+		${BICEP_RECIPE_REGISTRY}/test/testrecipes/test-bicep-recipes \
 		${BICEP_RECIPE_TAG_VERSION}
 
 .PHONY: publish-test-terraform-recipes
