@@ -67,14 +67,14 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 	registry := strings.TrimPrefix(testutil.GetBicepRecipeRegistry(), "registry=")
 	version := strings.TrimPrefix(testutil.GetBicepRecipeVersion(), "version=")
 	resourceType := "Applications.Datastores/redisCaches"
-	file := "../../../corerp/noncloud/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep"
+	file := "../../../testrecipes/test-bicep-recipes/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:ghcr.io/radius-project/dev/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
 	recipeName := "recipeName"
 	recipeTemplate := fmt.Sprintf("%s/recipes/local-dev/rediscaches:%s", registry, version)
 
 	bicepRecipe := "recipe1"
-	bicepRecipeTemplate := fmt.Sprintf("%s/test/functional-portable/corerp/noncloud/resources/testdata/recipes/test-bicep-recipes/corerp-redis-recipe.bicep:%s", registry, version)
+	bicepRecipeTemplate := fmt.Sprintf("%s/test/testrecipes/test-bicep-recipes/corerp-redis-recipe.bicep:%s", registry, version)
 	templateKindBicep := "bicep"
 
 	terraformRecipe := "recipe2"
