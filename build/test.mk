@@ -75,7 +75,6 @@ test-functional-kubernetes-noncloud: ## Runs Kubernetes functional tests that do
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/kubernetes/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-shared: test-functional-corerp-noncloud test-functional-corerp-cloud ## Runs all Core RP functional tests (both cloud and non-cloud)
-	@echo "$(ARROW) Running corerp functional tests"
 
 test-functional-corerp-noncloud: ## Runs corerp functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
