@@ -59,12 +59,10 @@ func runBicepRaw(args ...string) ([]byte, error) {
 		return nil, fmt.Errorf("failed executing %q: %w", fullCmd, err)
 	}
 
-	// asynchronously copy to our buffer, we don't really need to observe
+	// copy to our buffer, we don't really need to observe
 	// errors here since it's copying into memory
 	buf := bytes.Buffer{}
-	go func() {
-		_, _ = io.Copy(&buf, stdout)
-	}()
+	_, _ = io.Copy(&buf, stdout)
 
 	// Wait() will wait for us to finish draining stderr before returning the exit code
 	err = c.Wait()

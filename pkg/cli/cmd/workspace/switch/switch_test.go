@@ -109,7 +109,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Default environment is already set to %v",
+				Format: "Default workspace is already set to %v",
 				Params: []any{"current-workspace"},
 			},
 		}
