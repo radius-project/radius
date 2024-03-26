@@ -440,7 +440,10 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
 	require.NoError(t, err)
 	t.Logf(fmt.Sprintf("modulesource terraform git:%s", testutil.GetTerraformPrivateModuleSource()))
-	t.Logf(fmt.Sprintf("modulesource git token :%s", testutil.GetGitPAT()))
+	gitPat := testutil.GetGitPAT()
+	encodedString := base64.StdEncoding.EncodeToString([]byte(gitPat))
+	t.Logf(fmt.Sprintf("modulesource git token :%s", gitPat))
+	t.Logf(fmt.Sprintf("modulesource git token encoded :%s", encodedString))
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetTerraformPrivateModuleSource(), "appName="+appName, "redisCacheName="+redisCacheName, testutil.GetGitPAT()),
