@@ -165,7 +165,11 @@ jobs:
         id: gen-id
         run: |
           BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
-          UNIQUE_ID=$(echo $BASE_STR | sha1sum | head -c 10)
+          if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
+            # Add run number to randomize unique id for scheduled runs.
+            BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
+          fi
+          UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
           
           # Set output variables to be used in the other jobs
