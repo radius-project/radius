@@ -57,7 +57,7 @@ jobs:
           cp -R hack/bicep-types-radius/generated/* workflow-temp/bicep/src/Bicep.Types.Radius/generated
 
       - name: Create Pull Request in radius-project/bicep repo
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v6
         with:
           path: workflow-temp/bicep
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
