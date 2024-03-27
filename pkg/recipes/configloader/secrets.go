@@ -22,17 +22,19 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
+var _ SecretsLoader = (*secretsLoader)(nil)
+
 // NewSecretStoreLoader creates a new SecretsLoader instance with the given ARM Client Options.
 func NewSecretStoreLoader(armOptions *arm.ClientOptions) SecretsLoader {
-	return SecretsLoader{ArmClientOptions: armOptions}
+	return &secretsLoader{ArmClientOptions: armOptions}
 }
 
 // SecretsLoader struct provides functionality to get secret information from Application.Core/SecretStore resource.
-type SecretsLoader struct {
+type secretsLoader struct {
 	ArmClientOptions *arm.ClientOptions
 }
 
-func (e *SecretsLoader) LoadSecrets(ctx context.Context, secretStore string) (v20231001preview.SecretStoresClientListSecretsResponse, error) {
+func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStore string) (v20231001preview.SecretStoresClientListSecretsResponse, error) {
 	secretStoreID, err := resources.ParseResource(secretStore)
 	if err != nil {
 		return v20231001preview.SecretStoresClientListSecretsResponse{}, err

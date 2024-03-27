@@ -46,4 +46,7 @@ const (
 
 	// Used for errors with recipe configuration
 	RecipeConfigurationFailure = "RecipeConfigurationFailure"
+
+	// Used for errors encountered while loading recipe secrets.
+	LoadSecretsFailed = "LoadSecretsFailed"
 )
