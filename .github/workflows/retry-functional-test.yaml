@@ -90,7 +90,7 @@ jobs:
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
-        uses: tibdex/github-app-token@v1
+        uses: tibdex/github-app-token@v2
         id: get_installation_token
         with: 
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -105,7 +105,7 @@ jobs:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Generate ID for release
@@ -169,7 +169,7 @@ jobs:
             
             ## Test Status
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -285,7 +285,7 @@ jobs:
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
-        uses: tibdex/github-app-token@v1
+        uses: tibdex/github-app-token@v2
         id: get_installation_token
         with: 
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -303,7 +303,7 @@ jobs:
           ref: refs/heads/edge
           path: samples
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Get Go Cache path
@@ -311,7 +311,7 @@ jobs:
         run: |
           echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
           echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -320,7 +320,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Download rad CLI
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
@@ -350,7 +350,7 @@ jobs:
           while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-      - uses: azure/setup-helm@v3
+      - uses: azure/setup-helm@v4
         with:
           version: ${{ env.HELM_VER }}
       - name: Create KinD cluster
@@ -407,7 +407,7 @@ jobs:
           helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -508,7 +508,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: azure/setup-kubectl@v3
+      - uses: azure/setup-kubectl@v4
         if: always()
         with:
           version: ${{ env.KUBECTL_VER }}
