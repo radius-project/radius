@@ -34,7 +34,7 @@ type Engine interface {
 	Delete(ctx context.Context, opts DeleteOptions) error
 
 	// Gets the Recipe metadata and parameters from Recipe's template path
-	GetRecipeMetadata(ctx context.Context, recipeDefinition recipes.EnvironmentDefinition) (map[string]any, error)
+	GetRecipeMetadata(ctx context.Context, recipeDefinition recipes.EnvironmentDefinition, resource recipes.ResourceMetadata) (map[string]any, error)
 }
 
 // BaseOptions is the base options for the engine operations.

@@ -231,22 +231,52 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), "", recipes.GetErrorDetails(err))
 	}
+
 	defer func() {
 		if err := os.RemoveAll(requestDirPath); err != nil {
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
 		}
 	}()
 
+	// Add credential information to .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		err := addSecretsToGitConfig(opts.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	recipeData, err := d.terraformExecutor.GetRecipeMetadata(ctx, terraform.Options{
 		RootDir:        requestDirPath,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		EnvConfig:      &opts.Configuration,
 	})
+
+	// Unset credential information from .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		unsetError := unsetSecretsFromGitConfig(opts.Secrets, opts.Definition.TemplatePath)
+		if unsetError != nil {
+			return nil, unsetError
+		}
+	}
+
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), "", recipes.GetErrorDetails(err))
 	}
 
 	return recipeData, nil
+}
+
+// FindSecretIDs is used to retrieve the secret reference associated with private terraform module source.
+// As of today, it only supports retrieving secret references associated with private git repositories.
+func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (string, error) {
+
+	// We can move the GetSecretStoreID() implementation here when we have containerization.
+	// Today we use this function in config.go to check for secretstore to add prefix to the template path.
+	// GetSecretStoreID is added outside of driver package because it created cyclic dependency between driver and config packages.
+
+	return recipes.GetSecretStoreID(envConfig, definition.TemplatePath)
 }
 
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.

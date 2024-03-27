@@ -170,23 +170,32 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 }
 
 // GetEnvAppResourceNames returns the application, environment and resource names.
-func GetEnvAppResourceNames(resourceMetadata *ResourceMetadata) (string, string, string, error) {
-	app, err := resources.ParseResource(resourceMetadata.ApplicationID)
-	if err != nil {
-		return "", "", "", err
+func GetEnvAppResourceNames(resourceMetadata *ResourceMetadata) (environment string, application string, res string, err error) {
+	if resourceMetadata.ApplicationID != "" {
+		app, err := resources.ParseResource(resourceMetadata.ApplicationID)
+		if err != nil {
+			return "", "", "", err
+		}
+		application = app.Name()
 	}
 
-	env, err := resources.ParseResource(resourceMetadata.EnvironmentID)
-	if err != nil {
-		return "", "", "", err
+	if resourceMetadata.EnvironmentID != "" {
+		env, err := resources.ParseResource(resourceMetadata.EnvironmentID)
+		if err != nil {
+			return "", "", "", err
+		}
+		environment = env.Name()
 	}
 
-	resource, err := resources.ParseResource(resourceMetadata.ResourceID)
-	if err != nil {
-		return "", "", "", err
+	if resourceMetadata.ResourceID != "" {
+		resource, err := resources.ParseResource(resourceMetadata.ResourceID)
+		if err != nil {
+			return "", "", "", err
+		}
+		res = resource.Name()
 	}
 
-	return env.Name(), app.Name(), resource.Name(), nil
+	return
 }
 
 // GetURLPrefix returns the url prefix to be added to the template path before adding it to the .gitconfig and terraform config.
@@ -195,5 +204,19 @@ func GetURLPrefix(resourceRecipe *ResourceMetadata) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("https://%s-%s-%s-", env, app, resource), nil
+
+	prefix := "https://"
+	if env != "" {
+		prefix += fmt.Sprintf("%s-", env)
+	}
+
+	if app != "" {
+		prefix += fmt.Sprintf("%s-", app)
+	}
+
+	if resource != "" {
+		prefix += fmt.Sprintf("%s-", resource)
+	}
+
+	return prefix, nil
 }
