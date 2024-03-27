@@ -357,7 +357,7 @@ func (ct RPTest) Test(t *testing.T) {
 					step.PostStepVerify(ctx, r, ct)
 					r.Logf("finished post-deploy verification for %s", step.Executor.GetDescription())
 				}
-			}, retry.WithRetryer(&retry.Counter{Count: 5, Wait: 15 * time.Second}))
+			}, retry.WithRetryer(&retry.Counter{Count: 2, Wait: 15 * time.Second}))
 		})
 	}
 
@@ -425,7 +425,7 @@ func (ct RPTest) Test(t *testing.T) {
 					r.Logf("finished validation of deletion of pods for %s", ct.Description)
 				}
 			}
-		}, retry.WithRetryer(&retry.Counter{Count: 5, Wait: 15 * time.Second}))
+		}, retry.WithRetryer(&retry.Counter{Count: 2, Wait: 15 * time.Second}))
 	}
 
 	// Custom verification is expected to use `t` to trigger its own assertions
@@ -434,7 +434,7 @@ func (ct RPTest) Test(t *testing.T) {
 
 		retry.Run(t, func(r *retry.R) {
 			ct.PostDeleteVerify(ctx, r, ct)
-		}, retry.WithRetryer(&retry.Counter{Count: 5, Wait: 15 * time.Second}))
+		}, retry.WithRetryer(&retry.Counter{Count: 2, Wait: 15 * time.Second}))
 
 		t.Logf("finished post-delete verification for %s", ct.Description)
 	}
