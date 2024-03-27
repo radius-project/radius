@@ -28,8 +28,8 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/radcli"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -49,7 +49,7 @@ import (
 
 func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	ctx := testcontext.New(t)
-	opts := shared.NewRPTestOptions(t)
+	opts := rp.NewRPTestOptions(t)
 
 	namespace := "kubernetes-interop-tutorial"
 	environmentName := namespace + "-env"

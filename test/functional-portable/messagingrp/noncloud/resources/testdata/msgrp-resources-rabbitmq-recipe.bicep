@@ -30,7 +30,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Messaging/rabbitMQQueues': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/shared/recipes/rabbitmq-recipe:${version}'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/rabbitmq-recipe:${version}'
           parameters: {
             password: password
           }
