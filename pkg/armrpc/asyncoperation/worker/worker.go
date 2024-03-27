@@ -259,11 +259,6 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			result.SetFailed(armErr, false)
 		}
 
-		// Log the error if the operation failed.
-		if result.Error != nil {
-			logger.Error(result.Error, "Operation Failed")
-		}
-
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186
 		// 2. When parent context is canceled or done, we need to requeue the operation to reprocess the request.
@@ -271,7 +266,13 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
-		logger.Info("Operation returned", "success", result.Error == nil, "provisioningState", result.ProvisioningState())
+
+		// Log the error if the operation failed.
+		if result.Error != nil {
+			logger.Error(result.Error, "Operation Failed")
+		} else {
+			logger.Info("Operation returned", "success", result.Error == nil, "provisioningState", result.ProvisioningState())
+		}
 
 		trace.SetAsyncResultStatus(result, span)
 	}()
