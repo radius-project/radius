@@ -107,8 +107,6 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	if err := enc.Encode(cfg); err != nil {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
-
-	// Remove trailing newline
 	jsonData := strings.TrimSuffix(buf.String(), "\n")
 
 	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getMainConfigFilePath(workingDir)))
