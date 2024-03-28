@@ -375,10 +375,10 @@ func Test_AddProviders(t *testing.T) {
 				},
 			},
 			requiredProviders: map[string]*RequiredProviderInfo{
+				"sql":                            {},
 				providers.AWSProviderName:        {},
 				providers.AzureProviderName:      {},
 				providers.KubernetesProviderName: {},
-				"sql":                            {},
 			},
 			expectedConfigFile: "testdata/providers-valid.tf.json",
 		},
