@@ -344,7 +344,7 @@ func Test_AddProviders(t *testing.T) {
 	configTests := []struct {
 		desc                           string
 		envConfig                      recipes.Configuration
-		requiredProviders              []string
+		requiredProviders              map[string]*RequiredProviderInfo
 		expectedUCPConfiguredProviders []map[string]any
 		expectedConfigFile             string
 		Err                            error
@@ -374,11 +374,11 @@ func Test_AddProviders(t *testing.T) {
 					},
 				},
 			},
-			requiredProviders: []string{
-				providers.AWSProviderName,
-				providers.AzureProviderName,
-				providers.KubernetesProviderName,
-				"sql",
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"sql":                            {},
+				providers.AWSProviderName:        {},
+				providers.AzureProviderName:      {},
+				providers.KubernetesProviderName: {},
 			},
 			expectedConfigFile: "testdata/providers-valid.tf.json",
 		},
@@ -393,8 +393,11 @@ func Test_AddProviders(t *testing.T) {
 					},
 				},
 			},
-			requiredProviders: []string{
-				providers.AWSProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:  "hashicorp/aws",
+					Version: ">= 3.0",
+				},
 			},
 		},
 		{
@@ -404,8 +407,8 @@ func Test_AddProviders(t *testing.T) {
 			},
 			Err:       nil,
 			envConfig: recipes.Configuration{},
-			requiredProviders: []string{
-				providers.AWSProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {},
 			},
 			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
@@ -425,8 +428,8 @@ func Test_AddProviders(t *testing.T) {
 					},
 				},
 			},
-			requiredProviders: []string{
-				providers.AWSProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {},
 			},
 			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
@@ -439,8 +442,11 @@ func Test_AddProviders(t *testing.T) {
 			},
 			Err:       nil,
 			envConfig: recipes.Configuration{},
-			requiredProviders: []string{
-				providers.AzureProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AzureProviderName: {
+					Source:  "hashicorp/azurerm",
+					Version: "~> 2.0",
+				},
 			},
 			expectedConfigFile: "testdata/providers-emptyazureconfig.tf.json",
 		},
@@ -489,12 +495,14 @@ func Test_AddProviders(t *testing.T) {
 							"kubernetes": {
 								{
 									AdditionalProperties: map[string]any{
-										"ConfigPath": "/home/radius/.kube/configPath1",
+										"alias":       "k8s_first",
+										"config_path": "/home/radius/.kube/configPath1",
 									},
 								},
 								{
 									AdditionalProperties: map[string]any{
-										"ConfigPath": "/home/radius/.kube/configPath2",
+										"alias":       "k8s_second",
+										"config_path": "/home/radius/.kube/configPath2",
 									},
 								},
 							},
@@ -502,9 +510,16 @@ func Test_AddProviders(t *testing.T) {
 					},
 				},
 			},
-			requiredProviders: []string{
-				providers.AWSProviderName,
-				providers.KubernetesProviderName,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:  "hashicorp/aws",
+					Version: ">= 3.0",
+				},
+				providers.KubernetesProviderName: {
+					Source:               "hashicorp/kubernetes",
+					Version:              ">= 2.0",
+					ConfigurationAliases: []string{"kubernetes.k8s_first", "kubernetes.k8s_second"},
+				},
 			},
 			expectedConfigFile: "testdata/providers-overridereqproviders.tf.json",
 		},
@@ -545,7 +560,7 @@ func Test_AddProviders(t *testing.T) {
 				},
 			},
 			requiredProviders:  nil,
-			expectedConfigFile: "testdata/providers-empty.tf.json",
+			expectedConfigFile: "testdata/providers-emptyproviders.tf.json",
 		},
 		{
 			desc:                           "recipe providers and tfconfigproperties not populated",
@@ -555,7 +570,7 @@ func Test_AddProviders(t *testing.T) {
 				RecipeConfig: datamodel.RecipeConfigProperties{},
 			},
 			requiredProviders:  nil,
-			expectedConfigFile: "testdata/providers-empty.tf.json",
+			expectedConfigFile: "testdata/providers-emptyproviders.tf.json",
 		},
 		{
 			desc:                           "envConfig set to empty recipe config",
@@ -563,14 +578,14 @@ func Test_AddProviders(t *testing.T) {
 			Err:                            nil,
 			envConfig:                      recipes.Configuration{},
 			requiredProviders:              nil,
-			expectedConfigFile:             "testdata/providers-empty.tf.json",
+			expectedConfigFile:             "testdata/providers-emptyproviders.tf.json",
 		},
 		{
 			desc:                           "envConfig not populated",
 			expectedUCPConfiguredProviders: nil,
 			Err:                            nil,
 			requiredProviders:              nil,
-			expectedConfigFile:             "testdata/providers-empty.tf.json",
+			expectedConfigFile:             "testdata/providers-emptyproviders.tf.json",
 		},
 	}
 
@@ -594,7 +609,7 @@ func Test_AddProviders(t *testing.T) {
 			}
 			require.NoError(t, err)
 			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
-			_, err = tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			_, err = tfconfig.AddTerraformInfrastructure(&resourceRecipe, mBackend, tc.requiredProviders)
 			require.NoError(t, err)
 			err = tfconfig.Save(ctx, workingDir)
 			require.NoError(t, err)
@@ -662,6 +677,114 @@ func Test_AddOutputs(t *testing.T) {
 			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
 			require.NoError(t, err)
 			require.Equal(t, string(expectedConfig), string(actualConfig))
+		})
+	}
+}
+
+func TestUpdateModuleWithProviderAliases(t *testing.T) {
+	tests := []struct {
+		name               string
+		cfg                *TerraformConfig
+		expectedConfig     *TerraformConfig
+		expectedConfigFile string
+		wantErr            bool
+	}{
+		{
+			name: "Test with valid provider config",
+			cfg: &TerraformConfig{
+				Provider: map[string]any{
+					"aws": []map[string]any{
+						{
+							"alias":  "alias1",
+							"region": "us-west-2",
+						},
+						{
+							"alias":  "alias2",
+							"region": "us-east-1",
+						},
+					},
+				},
+				Module: map[string]TFModuleConfig{
+					"redis-azure": map[string]any{
+						"redis_cache_name":    "redis-test",
+						"resource_group_name": "test-rg",
+						"sku":                 "P",
+						"source":              "Azure/redis/azurerm",
+						"version":             "1.1.0",
+					},
+					"test-module": map[string]any{
+						"resource_group_name": "test-rg",
+						"sku":                 "C",
+					},
+				},
+			},
+			expectedConfig: &TerraformConfig{
+				Provider: map[string]any{
+					"aws": []map[string]any{
+						{
+							"alias":  "alias1",
+							"region": "us-west-2",
+						},
+						{
+							"alias":  "alias2",
+							"region": "us-east-1",
+						},
+					},
+				},
+				Module: map[string]TFModuleConfig{
+					"redis-azure": map[string]any{
+						"redis_cache_name":    "redis-test",
+						"resource_group_name": "test-rg",
+						"sku":                 "P",
+						"source":              "Azure/redis/azurerm",
+						"version":             "1.1.0",
+						"providers": map[string]string{
+							"aws.alias1": "aws.alias1",
+							"aws.alias2": "aws.alias2",
+						},
+					},
+					"test-module": map[string]any{
+						"resource_group_name": "test-rg",
+						"sku":                 "C",
+						"providers": map[string]string{
+							"aws.alias1": "aws.alias1",
+							"aws.alias2": "aws.alias2",
+						},
+					},
+				},
+			},
+			expectedConfigFile: "testdata/providers-modules-aliases.tf.json",
+			wantErr:            false,
+		},
+		{
+			name:    "TerraformConfig is nil",
+			cfg:     nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+			err := tt.cfg.UpdateModuleWithProviderAliases(ctx)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			workingDir := t.TempDir()
+			err = tt.cfg.Save(ctx, workingDir)
+			require.NoError(t, err)
+
+			// Assert generated config file matches expected config in JSON format.
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			require.NoError(t, err)
+			if tt.wantErr != true {
+				expectedConfig, err := os.ReadFile(tt.expectedConfigFile)
+				require.NoError(t, err)
+				require.Equal(t, string(expectedConfig), string(actualConfig))
+			}
 		})
 	}
 }

@@ -259,7 +259,13 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return "", err
 	}
 
-	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend(e.k8sClientSet))
+	// Update module configuration with aliased provider names.
+	logger.Info("Updating module providers with aliases")
+	if err := tfConfig.UpdateModuleWithProviderAliases(ctx); err != nil {
+		return "", err
+	}
+
+	backendConfig, err := tfConfig.AddTerraformInfrastructure(options.ResourceRecipe, backends.NewKubernetesBackend(e.k8sClientSet), loadedModule.RequiredProviders)
 	if err != nil {
 		return "", err
 	}

@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,8 +43,32 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 			},
 			workingDir: "testdata",
 			result: &moduleInspectResult{
-				ContextVarExists:   false,
-				RequiredProviders:  []string{"aws"},
+				ContextVarExists: false,
+				RequiredProviders: map[string]*config.RequiredProviderInfo{
+					"aws": {
+						Source:               "hashicorp/aws",
+						Version:              ">=3.0",
+						ConfigurationAliases: []string{"aws.eu-west-1", "aws.eu-west-2"},
+					},
+				},
+				ResultOutputExists: false,
+				Parameters:         map[string]any{},
+			},
+		},
+		{
+			name: "aws provider - partial information",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-module-providerpartialinfo",
+				TemplatePath: "test-module-providerpartialinfo",
+			},
+			workingDir: "testdata",
+			result: &moduleInspectResult{
+				ContextVarExists: false,
+				RequiredProviders: map[string]*config.RequiredProviderInfo{
+					"aws": {
+						Source: "hashicorp/aws",
+					},
+				},
 				ResultOutputExists: false,
 				Parameters:         map[string]any{},
 			},
@@ -56,8 +81,13 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				TemplatePath: "test-module-recipe-context-outputs",
 			},
 			result: &moduleInspectResult{
-				ContextVarExists:   true,
-				RequiredProviders:  []string{"aws"},
+				ContextVarExists: true,
+				RequiredProviders: map[string]*config.RequiredProviderInfo{
+					"aws": {
+						Source:  "hashicorp/aws",
+						Version: ">=3.0",
+					},
+				},
 				ResultOutputExists: true,
 				Parameters: map[string]any{
 					"context": map[string]any{
@@ -92,8 +122,13 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				TemplatePath: "test-submodule//submodule",
 			},
 			result: &moduleInspectResult{
-				ContextVarExists:   false,
-				RequiredProviders:  []string{"aws"},
+				ContextVarExists: false,
+				RequiredProviders: map[string]*config.RequiredProviderInfo{
+					"aws": {
+						Source:  "hashicorp/aws",
+						Version: ">=3.0",
+					},
+				},
 				ResultOutputExists: false,
 				Parameters:         map[string]any{},
 			},
