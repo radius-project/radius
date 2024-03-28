@@ -681,6 +681,114 @@ func Test_AddOutputs(t *testing.T) {
 	}
 }
 
+func TestUpdateModuleProvidersWithAliases(t *testing.T) {
+	tests := []struct {
+		name               string
+		cfg                *TerraformConfig
+		expectedConfig     *TerraformConfig
+		expectedConfigFile string
+		wantErr            bool
+	}{
+		{
+			name: "Test with valid provider config",
+			cfg: &TerraformConfig{
+				Provider: map[string]any{
+					"aws": []map[string]any{
+						{
+							"alias":  "alias1",
+							"region": "us-west-2",
+						},
+						{
+							"alias":  "alias2",
+							"region": "us-east-1",
+						},
+					},
+				},
+				Module: map[string]TFModuleConfig{
+					"redis-azure": map[string]any{
+						"redis_cache_name":    "redis-test",
+						"resource_group_name": "test-rg",
+						"sku":                 "P",
+						"source":              "Azure/redis/azurerm",
+						"version":             "1.1.0",
+					},
+					"test-module": map[string]any{
+						"resource_group_name": "test-rg",
+						"sku":                 "C",
+					},
+				},
+			},
+			expectedConfig: &TerraformConfig{
+				Provider: map[string]any{
+					"aws": []map[string]any{
+						{
+							"alias":  "alias1",
+							"region": "us-west-2",
+						},
+						{
+							"alias":  "alias2",
+							"region": "us-east-1",
+						},
+					},
+				},
+				Module: map[string]TFModuleConfig{
+					"redis-azure": map[string]any{
+						"redis_cache_name":    "redis-test",
+						"resource_group_name": "test-rg",
+						"sku":                 "P",
+						"source":              "Azure/redis/azurerm",
+						"version":             "1.1.0",
+						"providers": map[string]string{
+							"aws.alias1": "aws.alias1",
+							"aws.alias2": "aws.alias2",
+						},
+					},
+					"test-module": map[string]any{
+						"resource_group_name": "test-rg",
+						"sku":                 "C",
+						"providers": map[string]string{
+							"aws.alias1": "aws.alias1",
+							"aws.alias2": "aws.alias2",
+						},
+					},
+				},
+			},
+			expectedConfigFile: "testdata/providers-modules-aliases.tf.json",
+			wantErr:            false,
+		},
+		{
+			name:    "TerraformConfig is nil",
+			cfg:     nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+			err := tt.cfg.UpdateModuleProvidersWithAliases(ctx)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			workingDir := t.TempDir()
+			err = tt.cfg.Save(ctx, workingDir)
+			require.NoError(t, err)
+
+			// Assert generated config file matches expected config in JSON format.
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			require.NoError(t, err)
+			if tt.wantErr != true {
+				expectedConfig, err := os.ReadFile(tt.expectedConfigFile)
+				require.NoError(t, err)
+				require.Equal(t, string(expectedConfig), string(actualConfig))
+			}
+		})
+	}
+}
+
 func Test_Save_overwrite(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
