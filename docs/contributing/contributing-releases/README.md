@@ -48,7 +48,7 @@ If sample validation passes, we can start the process of creating the final rele
 
 1. In the project-radius/docs repository, run the [Release docs](https://github.com/project-radius/docs/actions/workflows/release.yaml) workflow.
 
-1. In the project-radius/docs repository, run the [Release samples](https://github.com/project-radius/samples/actions/workflows/release.yaml) workflow.
+1. In the project-radius/samples repository, run the [Release samples](https://github.com/project-radius/samples/actions/workflows/release.yaml) workflow.
 
 1. In the project-radius/radius repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: release/x.y) and use the Radius release version number being released.
 
