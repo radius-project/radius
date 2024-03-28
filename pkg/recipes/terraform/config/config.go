@@ -136,6 +136,41 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 	return nil
 }
 
+// UpdateModuleProvidersWithAliases updates the module provider configuration in the Terraform config
+// by adding aliases to the provider configurations.
+func (cfg *TerraformConfig) UpdateModuleProvidersWithAliases(ctx context.Context) error {
+	if cfg == nil {
+		return fmt.Errorf("terraform configuration is not initialized")
+	}
+
+	providerConfigs := cfg.Provider
+	moduleAliasConfig := map[string]string{}
+
+	// For each provider in the providerConfigs, if provider has a property "alias",
+	// add entry to the module provider configuration
+	for providerName, providerConfigList := range providerConfigs {
+		providerConfigDetails, ok := providerConfigList.([]map[string]any)
+		if !ok {
+			return fmt.Errorf("providerConfigList is not of type []map[string]any")
+		}
+		for _, providerConfig := range providerConfigDetails {
+			if alias, ok := providerConfig["alias"]; ok {
+				moduleAliasConfig[providerName+"."+fmt.Sprintf("%v", alias)] = providerName + "." + fmt.Sprintf("%v", alias)
+			}
+		}
+	}
+
+	// Update the module provider configuration in the Terraform config.
+	if len(moduleAliasConfig) > 0 {
+		moduleConfig := cfg.Module
+		for _, module := range moduleConfig {
+			module["providers"] = moduleAliasConfig
+		}
+	}
+
+	return nil
+}
+
 // AddRecipeContext adds RecipeContext to TerraformConfig module parameters if recipeCtx is not nil.
 // Save() must be called after adding recipe context to the module config.
 func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName string, recipeCtx *recipecontext.Context) error {

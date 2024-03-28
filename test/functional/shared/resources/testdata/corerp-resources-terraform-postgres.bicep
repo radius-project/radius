@@ -23,8 +23,8 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       terraform:{
         providers:{
           postgresql:[{
+            alias: 'pgdb-test'
             username: userName
-            port: 5432 
             password: password
             sslmode: 'disable'
           }]
@@ -32,11 +32,12 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       }
       env: {
           PGHOST: 'postgres.corerp-resources-terraform-pg-app.svc.cluster.local'
+          PGPORT: '5432'
       }
     }
     recipes: {
       'Applications.Core/extenders': {
-        default: {
+        defaultpostgres: {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/postgres.zip'
         }
@@ -65,7 +66,7 @@ resource pgsapp 'Applications.Core/extenders@2023-10-01-preview' = {
     application: app.id
     environment: env.id
     recipe: {
-      name: 'default'
+      name: 'defaultpostgres'
       parameters: {
          password: password
       }

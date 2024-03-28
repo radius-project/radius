@@ -7,6 +7,7 @@ terraform {
     postgresql = {
       source  = "cyrilgdn/postgresql"
       version = "1.16.0"
+      configuration_aliases = [postgresql.pgdb-test]
     }
   }
 }
@@ -74,6 +75,7 @@ resource "time_sleep" "wait_20_seconds" {
 }
 
 resource postgresql_database "pg_db_test" {
+  provider = postgresql.pgdb-test
   depends_on = [time_sleep.wait_20_seconds]
   name = "pg_db_test"
 }
