@@ -147,10 +147,10 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 	userName := "postgres"
 	password := "abc-123-hgd-@#$'"
 
-	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+extenderName, envName, appName)
+	secretSuffix, err := corerp.GetSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+extenderName, envName, appName)
 	require.NoError(t, err)
 
-	test := shared.NewRPTest(t, appName, []shared.TestStep{
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "userName="+userName, "password="+password),
 			RPResources: &validation.RPResourceSet{
@@ -190,7 +190,7 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 			},
 			SkipObjectValidation: true,
 			SkipResourceDeletion: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
 					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
 				require.NoError(t, err)
@@ -218,9 +218,9 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 		},
 	})
 
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + extenderName
-		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
+		corerp.TestSecretDeletion(t, ctx, test, appName, envName, resourceID, secretNamespace, secretPrefix)
 	}
 
 	test.Test(t)

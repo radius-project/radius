@@ -259,7 +259,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 	// Update module configuration with aliased provider names.
 	logger.Info("Updating module providers with aliases")
-	if err := tfConfig.UpdateModuleProvidersWithAliases(ctx); err != nil {
+	if err := tfConfig.UpdateModuleWithProviderAliases(ctx); err != nil {
 		return "", err
 	}
 
