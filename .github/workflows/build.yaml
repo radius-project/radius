@@ -130,7 +130,6 @@ jobs:
           path: |
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
-          retention-days: 5
       - name: Generate unit-test coverage files
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
@@ -334,7 +333,7 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
-          name: rad_cli_*
+          pattern: rad_cli_*
           merge-multiple: true
           path: ${{ env.RELEASE_PATH }}
       - name: generate checksum files
