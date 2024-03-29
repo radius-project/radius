@@ -72,6 +72,7 @@ jobs:
         with:
           version: 'v1.57.2'
           args: --timeout=10m
+          skip-cache: true
       - name: Run make generate
         run: make generate
       - name: Check if generated code is up to date
