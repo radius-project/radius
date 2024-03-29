@@ -317,10 +317,11 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.actor }} --password-stdin ${{ env.OCI_REGISTRY }}
           helm push ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPOSITORY }}
 
-  publish-release-test:
+  publish-release:
     name: Publish GitHub Release
     needs: ['build-and-push-cli']
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
     env:
       GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
@@ -338,26 +339,6 @@ jobs:
         run: |
           cd ${{ env.RELEASE_PATH }} && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
           ls -l ${{ env.RELEASE_PATH }}
-
-  publish-release:
-    name: Publish GitHub Release
-    needs: ['build-and-push-cli']
-    runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
-    env:
-      GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
-      - name: Download release artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: rad_cli_release
-          path: ${{ env.RELEASE_PATH }}
-      - name: generate checksum files
-        run: cd ${{ env.RELEASE_PATH }} && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
       - name: Create GitHub RC Release (pre-release and auto-generate release notes)
         if: ${{ contains(env.REL_VERSION, 'rc') }}
         run: |
