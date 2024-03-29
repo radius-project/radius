@@ -70,7 +70,7 @@ jobs:
       - name: Run linter
         uses: golangci/golangci-lint-action@v4
         with:
-          version: 'latest'
+          version: 'v1.57.2'
           args: --timeout=10m
       - name: Run make generate
         run: make generate

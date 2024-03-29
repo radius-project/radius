@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
-      - uses: oras-project/setup-oras@v1
+      - uses: oras-project/setup-oras@main
       - name: Download rad-bicep
         run: |
           oras pull ghcr.io/radius-project/radius/bicep/rad-bicep/linux-x64:latest -o ./
