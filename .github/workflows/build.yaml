@@ -127,9 +127,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
-          path: |
-            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
-            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
+          path: ${{ env.RELEASE_PATH }}
       - name: Generate unit-test coverage files
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
