@@ -117,7 +117,7 @@ jobs:
             echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Use custom actions
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Download PR data artifacts'
         if: github.event_name == 'workflow_run'
         uses: ./.github/actions/download-pr-data-artifact
@@ -153,12 +153,12 @@ jobs:
               );
             }
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Generate ID for release
@@ -344,7 +344,7 @@ jobs:
         with: 
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
-      - uses: LouisBrunner/checks-action@v1.6.1
+      - uses: LouisBrunner/checks-action@v2.0.0
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
@@ -354,12 +354,12 @@ jobs:
           sha: ${{ env.CHECKOUT_REF }}
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Checkout samples repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
@@ -676,7 +676,7 @@ jobs:
           done
           echo "Test Status: $TEST_STATUS"
           echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
-      - uses: LouisBrunner/checks-action@v1.6.1
+      - uses: LouisBrunner/checks-action@v2.0.0
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}

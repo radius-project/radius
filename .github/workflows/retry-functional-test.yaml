@@ -100,12 +100,12 @@ jobs:
           echo "CHECKOUT_REPO=youngbupark/radius" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/youngp/enable-retry-test" >> $GITHUB_ENV
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Generate ID for release
@@ -291,19 +291,19 @@ jobs:
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Checkout samples repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
           ref: refs/heads/edge
           path: samples
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Get Go Cache path
@@ -311,7 +311,7 @@ jobs:
         run: |
           echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
           echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -350,7 +350,7 @@ jobs:
           while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-      - uses: azure/setup-helm@v3
+      - uses: azure/setup-helm@v4
         with:
           version: ${{ env.HELM_VER }}
       - name: Create KinD cluster

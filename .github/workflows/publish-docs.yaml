@@ -27,7 +27,7 @@ jobs:
       GOPRIVATE: github.com/radius-project
     steps:
       - name: Checkout radius repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: radius-project/radius
           path: radius
@@ -41,14 +41,14 @@ jobs:
             echo DOCS_BRANCH="edge" >> $GITHUB_ENV
           fi
       - name: Checkout docs repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: radius-project/docs
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
       # Setup dependencies
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
           cache-dependency-path: radius/go.sum

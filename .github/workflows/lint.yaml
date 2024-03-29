@@ -38,13 +38,13 @@ jobs:
       HELM_CHARTS_DIR: deploy/Chart
     steps:
       - name: Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Setup NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
       - name: Install TypeSpec compiler
@@ -61,14 +61,14 @@ jobs:
       - name: Install controller-gen
         run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
       - name: Install helm
-        uses: Azure/setup-helm@v3
+        uses: azure/setup-helm@v4
         with:
           version: 'v3.11.1'
       - name: Run Helm linter
         run: |
           helm lint ${{ env.HELM_CHARTS_DIR }}
       - name: Run linter
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: 'latest'
           args: --timeout=10m
