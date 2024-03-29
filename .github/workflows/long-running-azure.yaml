@@ -233,7 +233,7 @@ jobs:
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
       - name: Upload CLI binary
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
           path: |
@@ -478,7 +478,7 @@ jobs:
           kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: all_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}

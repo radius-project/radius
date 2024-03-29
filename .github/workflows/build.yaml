@@ -211,7 +211,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: oras-project/setup-oras@v1
+      - uses: oras-project/setup-oras@main
         with:
           version: ${{ env.ORAS_VERSION }}
       - name: Push latest rad cli binary to GHCR (unix-like)
