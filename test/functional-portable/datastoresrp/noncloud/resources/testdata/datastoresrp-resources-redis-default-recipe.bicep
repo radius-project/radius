@@ -24,7 +24,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Datastores/redisCaches': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/shared/recipes/redis-recipe-value-backed:${version}'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/redis-recipe-value-backed:${version}'
         }
       }
     }
