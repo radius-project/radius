@@ -48,12 +48,12 @@ jobs:
           ref: ${{ env.DOCS_BRANCH }}
       # Setup dependencies
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
           cache-dependency-path: radius/go.sum
       - name: Setup NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
       - name: Install TypeSpec compiler
@@ -104,7 +104,7 @@ jobs:
           git status --porcelain -unormal -- *.md
       - name: Create pull request
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: docs
