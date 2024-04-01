@@ -82,9 +82,9 @@ jobs:
             target_arch: arm64
     steps:
       - name: Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
           cache-dependency-path: go.sum
@@ -125,25 +125,18 @@ jobs:
         run: |
           mkdir ${{ env.RELEASE_PATH }}
           cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}.exe
-      - name: Upload Release binaries 
-        uses: actions/upload-artifact@v3
-        with:
-          name: rad_cli_release
-          path: ${{ env.RELEASE_PATH }}
       - name: Upload CLI binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
-          path: |
-            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
-            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
+          path: ${{ env.RELEASE_PATH }}
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: oras-project/setup-oras@v1
+      - uses: oras-project/setup-oras@main
         with:
           version: ${{ env.ORAS_VERSION }}
       - name: Push latest rad cli binary to GHCR (unix-like)
@@ -163,23 +156,23 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
       - name: Push container images (latest)
@@ -223,9 +216,9 @@ jobs:
       OCI_REPOSITORY: 'radius-project/helm-chart' 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install helm
-        uses: Azure/setup-helm@v3
+        uses: azure/setup-helm@v4
         with:
           version: 'v3.11.1'
       - name: Parse release version and set environment variables
@@ -265,16 +258,19 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Download release artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: rad_cli_release
+          pattern: rad_cli_*
+          merge-multiple: true
           path: ${{ env.RELEASE_PATH }}
       - name: generate checksum files
-        run: cd ${{ env.RELEASE_PATH }} && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
+        run: |
+          cd ${{ env.RELEASE_PATH }} && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
+          ls -l ${{ env.RELEASE_PATH }}
       - name: Create GitHub RC Release (pre-release and auto-generate release notes)
         if: ${{ contains(env.REL_VERSION, 'rc') }}
         run: |
@@ -292,21 +288,3 @@ jobs:
             --title "Radius v${{ env.REL_VERSION }}" \
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
             --verify-tag
-
-  delete_artifacts:
-    name: Delete artifacts
-    needs: ['build-and-push-cli']
-    if: github.repository == 'radius-project/radius' && ${{ always() && !contains(needs.build-and-push-cli.result, 'failure') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete release artifacts
-        uses: geekyeggo/delete-artifact@v1
-        with:
-          name: |
-            rad_cli_windows_amd64
-            rad_cli_linux_amd64
-            rad_cli_darwin_amd64
-            rad_cli_linux_arm
-            rad_cli_darwin_arm64
-            rad_cli_linux_arm64
-          failOnError: false
