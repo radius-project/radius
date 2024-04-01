@@ -29,12 +29,12 @@ jobs:
     env: 
       RADIUS_TRIAGE_BOT_APP_ID: 417813
     steps:
-    - uses: tibdex/github-app-token@v1
+    - uses: tibdex/github-app-token@v2
       id: get_installation_token
       with: 
         app_id: ${{ env.RADIUS_TRIAGE_BOT_APP_ID }}
         private_key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
-    - uses: dessant/label-actions@v3
+    - uses: dessant/label-actions@v4
       with:
         github-token: ${{ steps.get_installation_token.outputs.token }}
         config-path: '.github/triage-bot/triage-bot-config.yaml'

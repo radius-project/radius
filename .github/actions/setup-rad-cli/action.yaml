@@ -4,7 +4,7 @@ runs:
   using: "composite"
   steps:
     - name: Set up Go ${{ env.GOVER }}
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GOVER }}
     - name: Get Go Cache path
@@ -13,7 +13,7 @@ runs:
       run: |
         echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
         echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: |
           ${{ steps.go-cache-paths.outputs.go-build }}
@@ -22,12 +22,12 @@ runs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Setup kubectl
-      uses: azure/setup-kubectl@v2.0
+      uses: azure/setup-kubectl@v4
     - name: Parse release version and set environment variables
       shell: bash
       run: python ./.github/scripts/get_release_version.py
     - name: Download release artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: rad_cli_linux_amd64
         path: dist
