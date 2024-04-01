@@ -106,7 +106,7 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          codecov_yml_path: ./codecov.yml
+          codecov_yml_path: ./.codecov.yml
           file: ./dist/unit_test/ut_coverage.out
           flags: unittests
           fail_ci_if_error: true
