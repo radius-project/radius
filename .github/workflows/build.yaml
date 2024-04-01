@@ -105,6 +105,8 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          codecov_yml_path: .github/codecov.yml
           file: ./dist/unit_test/ut_coverage.out
           flags: unittests
           fail_ci_if_error: true
