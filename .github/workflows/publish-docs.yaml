@@ -104,7 +104,7 @@ jobs:
           git status --porcelain -unormal -- *.md
       - name: Create pull request
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: docs

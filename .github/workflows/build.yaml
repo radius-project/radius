@@ -193,7 +193,7 @@ jobs:
 
             > The coverage result does not include the functional test coverage. 
       - name: Save coverage (only main push)
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         with:
           path: ./dist/cache
