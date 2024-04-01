@@ -82,17 +82,12 @@ jobs:
             target_arch: arm64
     steps:
       - name: Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
           cache-dependency-path: go.sum
-      - name: Restore the previous coverage
-        uses: actions/cache/restore@v3
-        with:
-          path: ./dist/cache
-          key: radius-coverage-
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make build
@@ -101,10 +96,17 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
           GOTESTSUM_OPTS: '--junitfile ./dist/unit_test/results.xml'
-          GOTEST_OPTS: '-race -coverprofile ./dist/ut_coverage_orig.out'
+          GOTEST_OPTS: '-race -coverprofile ./dist/unit_test/ut_coverage.out'
         run: |
+          mkdir -p ./dist/unit_test
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
           make test
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./dist/unit_test/ut_coverage.out
+          flags: unittests
+          fail_ci_if_error: false
       - name: Process Unit Test Results
         uses: ./.github/actions/process-test-results
         # Always is required here to make sure this target runs even when tests fail.
@@ -123,95 +125,18 @@ jobs:
         run: |
           mkdir ${{ env.RELEASE_PATH }}
           cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}.exe
-      - name: Upload Release binaries 
-        uses: actions/upload-artifact@v3
-        with:
-          name: rad_cli_release
-          path: ${{ env.RELEASE_PATH }}
       - name: Upload CLI binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
-          path: |
-            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
-            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
-      - name: Generate unit-test coverage files
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: |
-          # Remove mock, generated files, and datamodels from original coverage output.
-          cat ./dist/ut_coverage_orig.out | grep -v  "mock" | grep -v  "zz_" | grep -v "armrpc/rpctest" | grep -v '/datamodel/[A-za-z0-9_]*.go'  > $COVERAGE_FILE
-          # Generate reports.
-          $GO_TOOL_COVER -func=$COVERAGE_FILE -o ./dist/ut_coverage.txt
-          $GO_TOOL_COVER -html=$COVERAGE_FILE -o ./dist/ut_coverage.html
-          # Parse total coverage rate from report.
-          UT_COVERAGE=`cat ./dist/ut_coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+'`
-          echo "Test coverage : $UT_COVERAGE"
-
-          echo "ut_coverage=$UT_COVERAGE" >> $GITHUB_ENV
-
-          mkdir -p ./dist/cache
-          MAIN_COVERAGE=0
-          if [ -f "./dist/cache/ut_coverage.txt" ]; then
-            MAIN_COVERAGE=$(cat ./dist/cache/ut_coverage.txt | grep total: | grep -Eo '[0-9]+\.[0-9]+')
-          fi
-          echo "main_coverage=$MAIN_COVERAGE" >> $GITHUB_ENV
-
-          if (( $(echo "$UT_COVERAGE < $MAIN_COVERAGE" | bc -l) )) ; then
-            COLOR=red
-          else
-            COLOR=green
-          fi
-          
-          DIFF_RATE=$(echo "$UT_COVERAGE-$MAIN_COVERAGE" | bc -l)
-          echo "diff_coverage=$DIFF_RATE" >> $GITHUB_ENV
-
-          echo "coverage_img=https://img.shields.io/badge/coverage-$UT_COVERAGE%25-$COLOR" >> $GITHUB_ENV
-          # copy coverage to cache
-          cp ./dist/ut_coverage.txt ./dist/cache/
-        env:
-          COVERAGE_FILE: ./dist/ut_coverage.out
-          GO_TOOL_COVER: go tool cover
-      - name: Upload unit-test coverage artifact
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        uses: actions/upload-artifact@v3
-        with:
-          name: unit_test_coverage
-          path: |
-            ./dist/coverage_orig.out
-            ./dist/ut_coverage.out
-            ./dist/ut_coverage.txt
-            ./dist/ut_coverage.html
-      - name: Add coverage result comment
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.event.pull_request && github.event.pull_request.head.repo.full_name == github.repository
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: testcov-${{ github.run_id }}
-          number: ${{ github.event.pull_request.number }}
-          hide: true
-          hide_classify: OUTDATED
-          message: |
-            ![${{ env.ut_coverage }}](${{ env.coverage_img }})
-
-            For the detailed report, please go to `Checks tab`, click `Build and Test`, and then download `unit_test_coverage` artifact at the bottom of build page.
-
-            * Your PR branch coverage: ${{ env.ut_coverage }} %
-            * main branch coverage: ${{ env.main_coverage }} %
-            * diff coverage: ${{ env.diff_coverage }} %
-
-            > The coverage result does not include the functional test coverage. 
-      - name: Save coverage (only main push)
-        uses: actions/cache/save@v3
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
-        with:
-          path: ./dist/cache
-          key: radius-coverage-${{ github.sha }}-${{ github.run_number }}
+          path: ${{ env.RELEASE_PATH }}
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: oras-project/setup-oras@v1
+      - uses: oras-project/setup-oras@main
         with:
           version: ${{ env.ORAS_VERSION }}
       - name: Push latest rad cli binary to GHCR (unix-like)
@@ -231,23 +156,23 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
       - name: Push container images (latest)
@@ -291,9 +216,9 @@ jobs:
       OCI_REPOSITORY: 'radius-project/helm-chart' 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install helm
-        uses: Azure/setup-helm@v3
+        uses: azure/setup-helm@v4
         with:
           version: 'v3.11.1'
       - name: Parse release version and set environment variables
@@ -333,16 +258,19 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Download release artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: rad_cli_release
+          pattern: rad_cli_*
+          merge-multiple: true
           path: ${{ env.RELEASE_PATH }}
       - name: generate checksum files
-        run: cd ${{ env.RELEASE_PATH }} && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
+        run: |
+          cd ${{ env.RELEASE_PATH }} && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
+          ls -l ${{ env.RELEASE_PATH }}
       - name: Create GitHub RC Release (pre-release and auto-generate release notes)
         if: ${{ contains(env.REL_VERSION, 'rc') }}
         run: |
@@ -360,21 +288,3 @@ jobs:
             --title "Radius v${{ env.REL_VERSION }}" \
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
             --verify-tag
-
-  delete_artifacts:
-    name: Delete artifacts
-    needs: ['build-and-push-cli']
-    if: github.repository == 'radius-project/radius' && ${{ always() && !contains(needs.build-and-push-cli.result, 'failure') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete release artifacts
-        uses: geekyeggo/delete-artifact@v1
-        with:
-          name: |
-            rad_cli_windows_amd64
-            rad_cli_linux_amd64
-            rad_cli_darwin_amd64
-            rad_cli_linux_arm
-            rad_cli_darwin_arm64
-            rad_cli_linux_arm64
-          failOnError: false

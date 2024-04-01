@@ -100,7 +100,7 @@ jobs:
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
-        uses: tibdex/github-app-token@v1
+        uses: tibdex/github-app-token@v2
         id: get_installation_token
         with: 
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -117,14 +117,14 @@ jobs:
             echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Use custom actions
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Download PR data artifacts'
         if: github.event_name == 'workflow_run'
         uses: ./.github/actions/download-pr-data-artifact
         id: get-pr-number
       - name: 'Set PR context (workflow_run)'
         if: github.event_name == 'workflow_run'
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -137,7 +137,7 @@ jobs:
               `PR_NUMBER=${{ steps.get-pr-number.outputs.pr_number }}\n`);
       - name: Set DE image and tag (repository_dispatch from de-functional-test)
         if: github.event_name == 'repository_dispatch'
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
@@ -153,12 +153,12 @@ jobs:
               );
             }
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Generate ID for release
@@ -222,7 +222,7 @@ jobs:
             
             ## Test Status
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -244,7 +244,7 @@ jobs:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
       - name: Upload CLI binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
           path: |
@@ -339,12 +339,12 @@ jobs:
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
-        uses: tibdex/github-app-token@v1
+        uses: tibdex/github-app-token@v2
         id: get_installation_token
         with: 
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
-      - uses: LouisBrunner/checks-action@v1.6.1
+      - uses: LouisBrunner/checks-action@v2.0.0
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
@@ -354,19 +354,19 @@ jobs:
           sha: ${{ env.CHECKOUT_REF }}
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Checkout samples repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
           ref: refs/heads/edge
           path: samples
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
       - name: Get Go Cache path
@@ -374,7 +374,7 @@ jobs:
         run: |
           echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
           echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -383,7 +383,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Download rad CLI
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
@@ -413,7 +413,7 @@ jobs:
           while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-      - uses: azure/setup-helm@v3
+      - uses: azure/setup-helm@v4
         with:
           version: ${{ env.HELM_VER }}
       - name: Create KinD cluster
@@ -470,7 +470,7 @@ jobs:
           helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -575,7 +575,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: azure/setup-kubectl@v3
+      - uses: azure/setup-kubectl@v4
         if: always()
         with:
           version: ${{ env.KUBECTL_VER }}
@@ -590,7 +590,7 @@ jobs:
           kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -610,10 +610,10 @@ jobs:
           # Get kubernetes events and save to file
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
       - name: Upload Terraform recipe publishing logs 
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: recipes-pod-logs
+          name: ${{ matrix.name }}_recipes-pod-logs
           path: recipes/pod-logs
           if-no-files-found: error
       - uses: marocchino/sticky-pull-request-comment@v2
@@ -655,7 +655,7 @@ jobs:
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
     steps:
       - name: Get GitHub app token
-        uses: tibdex/github-app-token@v1
+        uses: tibdex/github-app-token@v2
         id: get_installation_token
         with: 
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -680,7 +680,7 @@ jobs:
           done
           echo "Test Status: $TEST_STATUS"
           echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
-      - uses: LouisBrunner/checks-action@v1.6.1
+      - uses: LouisBrunner/checks-action@v2.0.0
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
@@ -699,7 +699,7 @@ jobs:
     if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
     steps:
       - name: Create failure issue for failing scheduled run
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

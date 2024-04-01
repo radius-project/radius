@@ -43,10 +43,10 @@ jobs:
       RELNOTE_FOUND: false
     steps:
       - name: Checkout radius-project/radius
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@v4.34.2
+        uses: mikefarah/yq@v4.43.1
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
@@ -55,7 +55,7 @@ jobs:
         run: |
           ./.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }} "."
       - name: Find the previous tag
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         id: latest-release-tag
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -67,7 +67,7 @@ jobs:
             })
             return data.tag_name
       - name: Generate the release notes
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         id: generate-notes
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -125,35 +125,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout radius-project/radius@main
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: radius-project/radius
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: radius
       - name: Checkout radius-project/bicep@bicep-extensibility
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: radius-project/bicep
           ref: bicep-extensibility
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: bicep
       - name: Checkout radius-project/deployment-engine@main
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: radius-project/deployment-engine
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: deployment-engine
       - name: Checkout radius-project/recipes@main
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: radius-project/recipes
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: recipes
       - name: Checkout radius-project/dashboard@main
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: radius-project/dashboard
           ref: main
@@ -165,7 +165,7 @@ jobs:
           git config --global user.email "radiuscoreteam@service.microsoft.com"
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@v4.34.2
+        uses: mikefarah/yq@v4.43.1
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//'
@@ -175,7 +175,7 @@ jobs:
           ./radius/.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }} radius
       - name: Check if release branch exists
         id: release-branch-exists
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           result-encoding: string
           script: |
