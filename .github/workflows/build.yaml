@@ -88,11 +88,6 @@ jobs:
         with:
           go-version: ${{ env.GOVER }}
           cache-dependency-path: go.sum
-      - name: Restore the previous coverage
-        uses: actions/cache/restore@v3
-        with:
-          path: ./dist/cache
-          key: radius-coverage-
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make build
@@ -101,14 +96,14 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
           GOTESTSUM_OPTS: '--junitfile ./dist/unit_test/results.xml'
-          GOTEST_OPTS: '-race -coverprofile ./dist/ut_coverage_orig.out'
+          GOTEST_OPTS: '-race -coverprofile ./dist/unit_test/ut_coverage.out'
         run: |
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
           make test
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          file: ./dist/ut_coverage_orig.out
+          file: ./dist/unit_test/ut_coverage.out
           flags: unittests
           fail_ci_if_error: false
       - name: Process Unit Test Results
