@@ -98,6 +98,7 @@ jobs:
           GOTESTSUM_OPTS: '--junitfile ./dist/unit_test/results.xml'
           GOTEST_OPTS: '-race -coverprofile ./dist/unit_test/ut_coverage.out'
         run: |
+          mkdir -p ./dist/unit_test
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
           make test
       - name: Upload coverage to Codecov
