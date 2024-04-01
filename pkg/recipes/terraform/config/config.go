@@ -103,16 +103,18 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 
-	// Encode the Terraform config to JSON
+	// Encode the Terraform config to JSON. JSON encoding is being used to ensure that special characters
+	// in the original text are preserved when writing to the file.
 	if err := enc.Encode(cfg); err != nil {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
-	jsonData := strings.TrimSuffix(buf.String(), "\n")
 
+	jsonData := strings.TrimSuffix(buf.String(), "\n")
 	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getMainConfigFilePath(workingDir)))
 	if err := os.WriteFile(getMainConfigFilePath(workingDir), []byte(jsonData), modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
+
 	return nil
 }
 
