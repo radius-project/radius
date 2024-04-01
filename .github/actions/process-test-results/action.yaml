@@ -59,7 +59,7 @@ runs:
         files: |
           ${{ inputs.result_directory }}/processed/*.xml
     - name: 'Upload ${{ inputs.test_group_name }} Results'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: ${{ inputs.artifact_name }}
