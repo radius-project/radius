@@ -22,6 +22,9 @@ permissions:
   packages: write # Required for uploading the package
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     # Run every 4 hours on weekdays.
     - cron: "30 0,4,8,12,16,20 * * 1-5"
