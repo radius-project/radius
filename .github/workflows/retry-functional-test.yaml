@@ -546,7 +546,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: recipes-pod-logs
+          name: ${{ matrix.name }}_recipes-pod-logs
           path: recipes/pod-logs
           if-no-files-found: error
       - uses: marocchino/sticky-pull-request-comment@v2

@@ -107,7 +107,7 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
     steps:
       - name: Restore the latest cached binaries
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: ./dist/cache
           key: radius-test-latest-
@@ -261,7 +261,7 @@ jobs:
           echo "PR_NUMBER=${{ steps.gen-id.outputs.PR_NUMBER }}" >> ./dist/cache/.buildenv
           echo "BICEP_RECIPE_TAG_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
       - name: Store the latest binaries into cache
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && success()
         with:
           path: ./dist/cache
@@ -328,7 +328,7 @@ jobs:
           path: bin
       - name: Restore the latest cached binaries
         if: env.SKIP_BUILD == 'true'
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: ./dist/cache
           key: radius-test-latest-
