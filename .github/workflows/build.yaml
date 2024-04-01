@@ -102,6 +102,7 @@ jobs:
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
           make test
       - name: Upload coverage to Codecov
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         uses: codecov/codecov-action@v3
         with:
           file: ./dist/unit_test/ut_coverage.out
