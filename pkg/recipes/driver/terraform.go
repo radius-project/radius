@@ -249,6 +249,17 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	return recipeData, nil
 }
 
+// FindSecretIDs is used to retrieve the secret reference associated with private terraform module source.
+// As of today, it only supports retrieving secret references associated with private git repositories.
+func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (string, error) {
+
+	// We can move the GetSecretStoreID() implementation here when we have containerization.
+	// Today we use this function in config.go to check for secretstore to add prefix to the template path.
+	// GetSecretStoreID is added outside of driver package because it created cyclic dependency between driver and config packages.
+
+	return recipes.GetSecretStoreID(envConfig, definition.TemplatePath)
+}
+
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.
 // Currently only Azure, AWS and Kubernetes providers are supported by output resources.
 func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule) ([]string, error) {
