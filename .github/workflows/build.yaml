@@ -28,6 +28,11 @@ on:
       - features/*
       - release/*
 
+permissions:
+  contents: read  # Required for actions/checkout
+  packages: write # Required for uploading the package
+  issues: write   # Required for adding comments
+
 concurrency:
   # Cancel the previously triggered build for only PR build.
   group: build-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
