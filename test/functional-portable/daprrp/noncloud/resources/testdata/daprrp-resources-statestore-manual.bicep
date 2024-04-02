@@ -39,7 +39,7 @@ resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
 }
 
 
-module redis '../../../../../functional/shared/resources/testdata/modules/redis-selfhost.bicep' = {
+module redis '../../../../../../test/testrecipes/modules/redis-selfhost.bicep' = {
   name: 'dapr-sts-manual-redis-deployment'
   params: {
     name: 'dapr-sts-manual-redis'

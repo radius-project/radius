@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
@@ -33,7 +33,7 @@ func Test_Redis_Manual(t *testing.T) {
 	name := "dsrp-resources-redis-manual"
 	appNamespace := "default-dsrp-resources-redis-manual"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
@@ -77,7 +77,7 @@ func Test_Redis_Recipe(t *testing.T) {
 	template := "testdata/datastoresrp-resources-redis-recipe.bicep"
 	name := "dsrp-resources-redis-recipe"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
@@ -98,7 +98,7 @@ func Test_Redis_Recipe(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				redis, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Datastores/redisCaches", "rds-recipe")
 				require.NoError(t, err)
 				require.NotNil(t, redis)
@@ -106,7 +106,7 @@ func Test_Redis_Recipe(t *testing.T) {
 				recipe := status["recipe"].(map[string]interface{})
 				require.Equal(t, "bicep", recipe["templateKind"].(string))
 				templatePath := strings.Split(recipe["templatePath"].(string), ":")[0]
-				require.Equal(t, "ghcr.io/radius-project/dev/test/functional/shared/recipes/redis-recipe-value-backed", templatePath)
+				require.Equal(t, "ghcr.io/radius-project/dev/test/testrecipes/test-bicep-recipes/redis-recipe-value-backed", templatePath)
 			},
 		},
 	})
@@ -118,7 +118,7 @@ func Test_Redis_DefaultRecipe(t *testing.T) {
 	template := "testdata/datastoresrp-resources-redis-default-recipe.bicep"
 	name := "dsrp-resources-redis-default-recipe"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{

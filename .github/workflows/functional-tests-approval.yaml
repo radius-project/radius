@@ -12,6 +12,6 @@ jobs:
     environment: functional-tests
     steps:
     - name: Use custom actions
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Save PR number
       uses: ./.github/actions/save-pr-as-artifact
