@@ -108,7 +108,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           codecov_yml_path: ./.codecov.yml
           file: ./dist/unit_test/ut_coverage.out
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: true
       - name: Process Unit Test Results
         uses: ./.github/actions/process-test-results
