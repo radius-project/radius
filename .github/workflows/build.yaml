@@ -30,8 +30,9 @@ on:
 
 permissions:
   id-token: write # Required for requesting the JWT
-  checks: write   # Required for checks
   issues: write   # Required for comments
+  contents: write # Required for creating releases
+  checks: write   # Required for checks
   packages: write # Required for uploading the package
 
 concurrency:
