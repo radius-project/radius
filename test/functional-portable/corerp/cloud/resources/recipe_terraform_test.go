@@ -132,8 +132,8 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 						Type: validation.ExtendersResource,
 						App:  appName,
 						OutputResources: []validation.OutputResourceResponse{
-							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-redis-app/providers/apps/Deployment/tf-redis-cache-private"},
-							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-redis-app/providers/core/Service/tf-redis-cache-private"},
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-private-app/providers/apps/Deployment/tf-redis-cache-private"},
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-private-app/providers/core/Service/tf-redis-cache-private"},
 						},
 					},
 				},
