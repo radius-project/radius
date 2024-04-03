@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           sparse-checkout: |
             .github/scripts/radius-bot.js
           sparse-checkout-cone-mode: false
       - name: Comment analyzer
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         env:
           TEAM_SLUG: 'approvers-radius'
         with:

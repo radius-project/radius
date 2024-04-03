@@ -112,7 +112,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if strings.EqualFold(section.Default, r.WorkspaceName) {
-		r.Output.LogInfo("Default environment is already set to %v", r.WorkspaceName)
+		r.Output.LogInfo("Default workspace is already set to %v", r.WorkspaceName)
 		return nil
 	}
 

@@ -128,6 +128,15 @@ downloadFile() {
         DOWNLOAD_URL="ghcr.io/radius-project/rad/${OS}-${ARCH}:latest"
         echo "Downloading edge CLI from ${DOWNLOAD_URL}..."
         oras pull $DOWNLOAD_URL -o $RADIUS_TMP_ROOT
+
+        # Check if the oras pull command was successfull
+        if [ $? -ne 0 ]; then
+            echo "Failed to download edge CLI."
+            echo "If this was an authentication issue, please run 'docker logout ghcr.io' to clear any expired credentials."
+            echo "Visit https://edge.docs.radapp.io/installation for edge CLI installation instructions."
+            exit 1
+        fi
+
         mv $RADIUS_TMP_ROOT/rad $ARTIFACT_TMP_FILE
     else
         DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
