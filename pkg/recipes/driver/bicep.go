@@ -45,7 +45,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver Driver
 const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
