@@ -30,7 +30,7 @@ on:
 
 permissions:
   id-token: write # Required for requesting the JWT
-  issues: write   # Required for actions/checkout
+  issues: write   # Required for comments
   packages: write # Required for uploading the package
 
 concurrency:
