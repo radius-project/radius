@@ -163,7 +163,7 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 				status := redis.Properties["status"].(map[string]any)
 				recipe := status["recipe"].(map[string]interface{})
 				require.Equal(t, "terraform", recipe["templateKind"].(string))
-				expectedTemplatePath := strings.Replace(testutil.GetTerraformPrivateModuleSource(), "moduleServer=", "", 1)
+				expectedTemplatePath := strings.Replace(testutil.GetTerraformPrivateModuleSource(), "privateGitModule=", "", 1)
 				require.Equal(t, expectedTemplatePath, recipe["templatePath"].(string))
 				// At present, it is not possible to verify the template version in functional tests
 				// This is verified by UTs though
