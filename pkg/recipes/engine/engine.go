@@ -164,11 +164,28 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 		return nil, err
 	}
 
+	secrets := v20231001preview.SecretStoresClientListSecretsResponse{}
+	driverWithSecrets, ok := driver.(recipedriver.DriverWithSecrets)
+	if ok {
+		secretStore, err := driverWithSecrets.FindSecretIDs(ctx, *configuration, *definition)
+		if err != nil {
+			return nil, err
+		}
+
+		// Retrieves the secret values from the secret store ID provided.
+		if secretStore != "" {
+			secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
+			if err != nil {
+				return nil, recipes.NewRecipeError(recipes.LoadSecretsFailed, fmt.Sprintf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %s", secretStore, definition.TemplatePath, err.Error()), util.RecipeSetupError, recipes.GetErrorDetails(err))
+			}
+		}
+	}
 	err = driver.Delete(ctx, recipedriver.DeleteOptions{
 		BaseOptions: recipedriver.BaseOptions{
 			Configuration: *configuration,
 			Recipe:        recipe,
 			Definition:    *definition,
+			Secrets:       secrets,
 		},
 		OutputResources: outputResources,
 	})

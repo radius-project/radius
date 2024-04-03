@@ -135,13 +135,28 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
 		}
 	}()
-
+	// Add credential information to .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		err := addSecretsToGitConfig(opts.BaseOptions.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
+		if err != nil {
+			return err
+		}
+	}
 	err = d.terraformExecutor.Delete(ctx, terraform.Options{
 		RootDir:        requestDirPath,
 		EnvConfig:      &opts.Configuration,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 	})
+
+	// Unset credential information from .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		unsetError := unsetSecretsFromGitConfig(opts.BaseOptions.Secrets, opts.Definition.TemplatePath)
+		if unsetError != nil {
+			return unsetError
+		}
+	}
+
 	if err != nil {
 		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
 	}
