@@ -393,36 +393,32 @@ jobs:
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
             --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
       - name: Configure Radius test workspace
-        uses: nick-fields/retry@v3
-        with:
-          timeout_seconds: 30
-          max_attempts: 2
-          command: |
-            set -x
+        run: |
+          set -x
 
-            export PATH=$GITHUB_WORKSPACE/bin:$PATH
-            which rad || { echo "cannot find rad"; exit 1; }
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
 
-            echo "*** Create workspace, group and environment for test ***"
-            rad workspace create kubernetes --force
-            rad group create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
-            rad group switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
+          echo "*** Create workspace, group and environment for test ***"
+          rad workspace create kubernetes --force
+          rad group create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
+          rad group switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
 
-            # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-            rad env create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --namespace default
-            rad env switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
+          # The functional test is designed to use default namespace. So you must create the environment for default namespace.
+          rad env create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --namespace default
+          rad env switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
 
-            echo "*** Configuring Azure provider ***"
-            rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
-              --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-            rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
-              --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-              --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          echo "*** Configuring Azure provider ***"
+          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
+            --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
+            --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+            --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
-            echo "*** Configuring AWS provider ***"
-            rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-            rad credential register aws \
-              --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          echo "*** Configuring AWS provider ***"
+          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          rad credential register aws \
+            --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
       - name: Log radius installation status (failure)
         if: failure()
         run: |
@@ -434,30 +430,25 @@ jobs:
         run: |
           echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_ENV
       - name: Run functional tests
-        uses: nick-fields/retry@v3
-        with:
-          timeout_seconds: 1800
-          max_attempts: 2
-          command: |
-            # Ensure rad cli is in path before running tests.
-            export PATH=$GITHUB_WORKSPACE/bin:$PATH
-            cd $GITHUB_WORKSPACE
+        run: |
+          # Ensure rad cli is in path before running tests.
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          cd $GITHUB_WORKSPACE
 
-            which rad || { echo "cannot find rad"; exit 1; }
+          which rad || { echo "cannot find rad"; exit 1; }
 
-            # Populate the following test environment variables from JSON secret.
-            # AZURE_MONGODB_RESOURCE_ID
-            # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-            # AZURE_TABLESTORAGE_RESOURCE_ID
-            # AZURE_SERVICEBUS_RESOURCE_ID
-            # AZURE_REDIS_RESOURCE_ID
-            # AZURE_MSSQL_RESOURCE_ID
-            # AZURE_MSSQL_USERNAME
-            # AZURE_MSSQL_PASSWORD
-            eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          # Populate the following test environment variables from JSON secret.
+          # AZURE_MONGODB_RESOURCE_ID
+          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
+          # AZURE_TABLESTORAGE_RESOURCE_ID
+          # AZURE_SERVICEBUS_RESOURCE_ID
+          # AZURE_REDIS_RESOURCE_ID
+          # AZURE_MSSQL_RESOURCE_ID
+          # AZURE_MSSQL_USERNAME
+          # AZURE_MSSQL_PASSWORD
+          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-            make test-functional-all
-          on_retry_command: echo "Functional test failed. Retrying..." >> $GITHUB_STEP_SUMMARY
+          make test-functional-all
         env:
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -504,7 +495,6 @@ jobs:
             --yes --verbose
       - name: Clean up cluster
         if: always()
-        continue-on-error: true
         run: ./.github/scripts/cleanup-cluster.sh
   report-failure:
     name: Report test failure
