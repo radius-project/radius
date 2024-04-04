@@ -22,24 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 )
-
-const (
-	// module is used to build a runtime.Pipeline. This is informational text about the client that
-	// is added as part of the User-Agent header.
-	module = "v20231001preview"
-
-	// version is used to build a runtime.Pipeline. This is informational text about the client that
-	// is added as part of the User-Agent header.
-	version = "v0.0.1"
-)
-
-// NewPipeline builds a runtime.Pipeline from a Radius SDK connection. This is used to construct
-// autorest Track2 Go clients.
-func NewPipeline(connection Connection) runtime.Pipeline {
-	return runtime.NewPipeline(module, version, runtime.PipelineOptions{}, &NewClientOptions(connection).ClientOptions)
-}
 
 // NewClientOptions creates a new ARM client options object with the given connection's endpoint, audience, transport and
 // removes the authorization header policy.

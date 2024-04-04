@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -34,7 +33,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 
 		// Owned by d1
 		&appsv1.ReplicaSet{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "rs1a",
 				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
@@ -55,7 +54,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 
 		// Also owned by d1, but newer revision
 		&appsv1.ReplicaSet{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "rs1b",
 				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
@@ -76,7 +75,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 
 		// Also owned by d1, but newer revision (not newest, though)
 		&appsv1.ReplicaSet{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "rs1c",
 				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
@@ -97,7 +96,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 
 		// Owned by d2 - only one replicaset is here, so it can't be stale
 		&appsv1.ReplicaSet{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "rs2a",
 				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
@@ -118,7 +117,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 
 		// No owner, ignored
 		&appsv1.ReplicaSet{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "rs3a",
 				Namespace: "default",
 				Labels: map[string]string{
@@ -132,7 +131,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 
 		// Not part of application, ignored
 		&appsv1.ReplicaSet{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "rs4a",
 				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{
@@ -150,7 +149,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 
 		// Part of other application, ignored
 		&appsv1.ReplicaSet{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "rs5a",
 				Namespace: "default",
 				OwnerReferences: []metav1.OwnerReference{

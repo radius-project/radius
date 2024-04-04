@@ -21,15 +21,15 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
-	"github.com/radius-project/radius/pkg/armrpc/rest"
-	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	armrpcrest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/secret"
 	"github.com/radius-project/radius/pkg/ucp/store"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,7 +47,7 @@ func Test_Credential_Delete(t *testing.T) {
 		url        string
 		headerfile string
 		fn         func(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient)
-		expected   armrpc_rest.Response
+		expected   armrpcrest.Response
 		err        error
 	}{
 		{
@@ -55,7 +55,7 @@ func Test_Credential_Delete(t *testing.T) {
 			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2023-10-01-preview",
 			headerfile: testHeaderFile,
 			fn:         setupCredentialDeleteSuccessMocks,
-			expected:   rest.NewOKResponse(nil),
+			expected:   armrpcrest.NewOKResponse(nil),
 			err:        nil,
 		},
 		{
@@ -63,7 +63,7 @@ func Test_Credential_Delete(t *testing.T) {
 			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2023-10-01-preview",
 			headerfile: testHeaderFile,
 			fn:         setupNonExistentCredentialDeleteMocks,
-			expected:   armrpc_rest.NewNoContentResponse(),
+			expected:   armrpcrest.NewNoContentResponse(),
 			err:        nil,
 		},
 		{
@@ -79,7 +79,7 @@ func Test_Credential_Delete(t *testing.T) {
 			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2023-10-01-preview",
 			headerfile: testHeaderFile,
 			fn:         setupNonExistentSecretDeleteMocks,
-			expected:   armrpc_rest.NewNoContentResponse(),
+			expected:   armrpcrest.NewNoContentResponse(),
 			err:        nil,
 		},
 		{
@@ -95,7 +95,7 @@ func Test_Credential_Delete(t *testing.T) {
 			url:        "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2023-10-01-preview",
 			headerfile: testHeaderFile,
 			fn:         setupNonExistingCredentialDeleteFromStorageMocks,
-			expected:   armrpc_rest.NewNoContentResponse(),
+			expected:   armrpcrest.NewNoContentResponse(),
 			err:        nil,
 		},
 		{

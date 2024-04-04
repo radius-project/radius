@@ -19,20 +19,20 @@ import (
 	"context"
 	http "net/http"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/to"
+	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/google/uuid"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
-	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/to"
-	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
-	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
-	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*DeleteAWSResourceWithPost)(nil)
@@ -40,7 +40,7 @@ var _ armrpc_controller.Controller = (*DeleteAWSResourceWithPost)(nil)
 // DeleteAWSResourceWithPost is the controller implementation to delete an AWS resource.
 type DeleteAWSResourceWithPost struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsClients ucp_aws.Clients
+	awsClients ucpaws.Clients
 }
 
 // NewDeleteAWSResourceWithPost creates a new DeleteAWSResourceWithPost.
@@ -48,7 +48,7 @@ type DeleteAWSResourceWithPost struct {
 
 // NewDeleteAWSResourceWithPost creates a new DeleteAWSResourceWithPost controller which is used to delete an AWS resource
 // using a POST request.
-func NewDeleteAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+func NewDeleteAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucpaws.Clients) (armrpc_controller.Controller, error) {
 	return &DeleteAWSResourceWithPost{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
 		awsClients: awsClients,
@@ -84,7 +84,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
-		return ucp_aws.HandleAWSError(err)
+		return ucpaws.HandleAWSError(err)
 	}
 
 	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
@@ -104,10 +104,10 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		Identifier: aws.String(awsResourceIdentifier),
 	}, cloudControlOpts...)
 	if err != nil {
-		if awsclient.IsAWSResourceNotFoundError(err) {
+		if ucpaws.IsAWSResourceNotFoundError(err) {
 			return armrpc_rest.NewNoContentResponse(), nil
 		}
-		return awsclient.HandleAWSError(err)
+		return ucpaws.HandleAWSError(err)
 	}
 
 	operation, err := uuid.Parse(*response.ProgressEvent.RequestToken)
