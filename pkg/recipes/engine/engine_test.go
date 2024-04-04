@@ -824,3 +824,85 @@ func Test_Engine_Execute_With_Secrets_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
 }
+
+func Test_Engine_Delete_With_Secrets_Success(t *testing.T) {
+	_, _, outputResources := getRecipeInputs()
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          "mongo-azure",
+		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		Parameters: map[string]any{
+			"resourceName": "resource1",
+		},
+	}
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Authentication: datamodel.AuthConfig{
+					Git: datamodel.GitAuthConfig{
+						PAT: map[string]datamodel.SecretConfig{
+							"dev.azure.com": {
+								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	recipeDefinition := &recipes.EnvironmentDefinition{
+		Driver:       recipes.TemplateKindTerraform,
+		TemplatePath: "git://https://dev.azure.com/mongo-recipe/recipe",
+		ResourceType: "Applications.Datastores/mongoDatabases",
+	}
+	ctx := testcontext.New(t)
+	engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
+
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(recipeDefinition, nil)
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+	driverWithSecrets.EXPECT().
+		FindSecretIDs(ctx, *envConfig, *recipeDefinition).
+		Times(1).
+		Return("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit", nil)
+	secretsLoader.EXPECT().
+		LoadSecrets(ctx, gomock.Any()).
+		Times(1).
+		Return(v20231001preview.SecretStoresClientListSecretsResponse{}, nil)
+	driverWithSecrets.EXPECT().
+		Delete(ctx, recipedriver.DeleteOptions{
+			BaseOptions: recipedriver.BaseOptions{
+				Configuration: *envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    *recipeDefinition,
+			},
+			OutputResources: outputResources,
+		}).
+		Times(1).
+		Return(nil)
+
+	err := engine.Delete(ctx, DeleteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		OutputResources: outputResources,
+	})
+	require.NoError(t, err)
+}

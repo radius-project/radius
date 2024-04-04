@@ -26,8 +26,6 @@ package resource_test
 
 import (
 	"context"
-	"encoding/base64"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -96,10 +94,15 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_TerraformRecipe_Redis covers the following terraform recipe scenario:
+// Test_TerraformPrivateGitModule_KubernetesRedis covers the following terraform recipe scenario:
 //
-// - Create an extender resource using a Terraform recipe that deploys Redis on Kubernetes.
+// - Create an extender resource using a Terraform recipe stored in private terraform git repository that deploys Redis on Kubernetes.
 // - The recipe deployment creates a Kubernetes deployment and a Kubernetes service.
+//
+// This test uses a recipe stored in a private repository in radius-project organization and uses PAT from radius account, so it cannot be tested locally.
+// To run this test locally:
+// - Upload the files from test/testrecipes/test-terraform-recipes/kubernetes-redis/modules to a private repository and update the module source in testutil.GetTerraformPrivateModuleSource()
+// - Create a PAT to access the private repository and update testutil.GetGitPAT() to return the generated PAT.
 func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-private-git-repo-redis.bicep"
 	name := "corerp-resources-terraform-private-redis"
@@ -109,11 +112,6 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 
 	secretSuffix, err := corerp.GetSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
 	require.NoError(t, err)
-	t.Logf(fmt.Sprintf("modulesource terraform git:%s", testutil.GetTerraformPrivateModuleSource()))
-	gitPat := testutil.GetGitPAT()
-	encodedString := base64.StdEncoding.EncodeToString([]byte(gitPat))
-	t.Logf(fmt.Sprintf("modulesource git token :%s", gitPat))
-	t.Logf(fmt.Sprintf("modulesource git token encoded :%s", encodedString))
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, testutil.GetTerraformPrivateModuleSource(), "appName="+appName, "redisCacheName="+redisCacheName, testutil.GetGitPAT()),
