@@ -5,16 +5,15 @@ import (
 	"testing"
 
 	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ renderers.Renderer = (*noop)(nil)
@@ -27,11 +26,11 @@ const (
 type noop struct {
 }
 
-func (r *noop) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r *noop) GetDependencyIDs(ctx context.Context, resource apiv1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	return nil, nil, nil
 }
 
-func (r *noop) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *noop) Render(ctx context.Context, dm apiv1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the kubernetes metadata extension renderer can modify it
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -154,7 +153,7 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 
 func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
-		BaseResource: v1.BaseResource{
+		BaseResource: apiv1.BaseResource{
 			TrackedResource: apiv1.TrackedResource{
 				ID:   container,
 				Name: "test-container",

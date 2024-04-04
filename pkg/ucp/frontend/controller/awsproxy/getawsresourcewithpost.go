@@ -22,20 +22,20 @@ import (
 	http "net/http"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/to"
-	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSResourceWithPost)(nil)
@@ -43,11 +43,11 @@ var _ armrpc_controller.Controller = (*GetAWSResourceWithPost)(nil)
 // GetAWSResourceWithPost is the controller implementation to get an AWS resource.
 type GetAWSResourceWithPost struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsClients ucp_aws.Clients
+	awsClients ucpaws.Clients
 }
 
 // NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost controller with the given options and AWS clients.
-func NewGetAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+func NewGetAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucpaws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSResourceWithPost{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
 		awsClients: awsClients,
@@ -83,7 +83,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
-		return ucp_aws.HandleAWSError(err)
+		return ucpaws.HandleAWSError(err)
 	}
 
 	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
@@ -105,10 +105,10 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		Identifier: aws.String(awsResourceIdentifier),
 	}, cloudcontrolOpts...)
 
-	if awsclient.IsAWSResourceNotFoundError(err) {
+	if ucpaws.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.Options().PathBase, req.URL.Path), awsResourceIdentifier)), nil
 	} else if err != nil {
-		return awsclient.HandleAWSError(err)
+		return ucpaws.HandleAWSError(err)
 	}
 
 	resourceProperties := map[string]any{}

@@ -146,7 +146,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 // Delete decodes the identity data from the DeleteOptions, creates an unstructured object from the identity data,
 // and then attempts to delete the object from the Kubernetes cluster, returning an error if one occurs.
 func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOptions) error {
-	apiVersion, err := handler.lookupKubernetesAPIVersion(ctx, options.Resource.ID)
+	apiVersion, err := handler.lookupKubernetesAPIVersion(options.Resource.ID)
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOpt
 	return client.IgnoreNotFound(handler.client.Delete(ctx, &item))
 }
 
-func (handler *kubernetesHandler) lookupKubernetesAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+func (handler *kubernetesHandler) lookupKubernetesAPIVersion(id resources.ID) (string, error) {
 	group, kind, namespace, _ := resources_kubernetes.ToParts(id)
 	var resourceLists []*metav1.APIResourceList
 	var err error
