@@ -131,14 +131,16 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 	_, err = pull.Run(chartRef)
 	if err != nil {
 		// Error handling for a specific case where credentials are stale.
+		// This happens for ghcr in particular because ghcr does not use
+		// subdomains - the scope of a login is all of ghcr.io.
 		// https://github.com/helm/helm/issues/12584
 		var errUnexpectedStatus containerdErrors.ErrUnexpectedStatus
 		if errors.As(err, &errUnexpectedStatus) {
 			unwrappedErr := UnwrapAll(err)
 			unexpectedStatusErr, ok := unwrappedErr.(containerdErrors.ErrUnexpectedStatus)
 			if ok {
-				if unexpectedStatusErr.StatusCode == http.StatusForbidden {
-					return nil, fmt.Errorf("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout` and re-try the command")
+				if unexpectedStatusErr.StatusCode == http.StatusForbidden && strings.Contains(unexpectedStatusErr.RequestURL, "ghcr.io") {
+					return nil, fmt.Errorf("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout ghcr.io` and re-try the command")
 				}
 			}
 		}
