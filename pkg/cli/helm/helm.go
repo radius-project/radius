@@ -20,15 +20,18 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	containerdErrors "github.com/containerd/containerd/remotes/errors"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/registry"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -79,7 +82,6 @@ func locateChartFile(dirPath string) (string, error) {
 
 func helmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pull := helm.NewPull()
-	pull.RepoURL = repoUrl
 	pull.Settings = &cli.EnvSettings{}
 	pullopt := helm.WithConfig(config)
 	pullopt(pull)
@@ -101,8 +103,46 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 
 	pull.DestDir = dir
 
-	_, err = pull.Run(releaseName)
+	var chartRef string
+
+	if !registry.IsOCI(repoUrl) {
+		// For non-OCI registries (like contour), we need to set the repo URL
+		// to the registry URL. The chartRef is the release name.
+		// ex.
+		// pull.RepoURL = https://charts.bitnami.com/bitnami
+		// pull.Run("contour")
+		pull.RepoURL = repoUrl
+		chartRef = releaseName
+	} else {
+		// For OCI registries (like radius), we will use the
+		// repo URL + the releaseName as the chartRef.
+		// pull.Run("oci://ghcr.io/radius-project/helm-chart/radius")
+		chartRef = fmt.Sprintf("%s/%s", repoUrl, releaseName)
+
+		// Since we are using an OCI registry, we need to set the registry client
+		registryClient, err := registry.NewClient()
+		if err != nil {
+			return nil, err
+		}
+
+		pull.SetRegistryClient(registryClient)
+	}
+
+	_, err = pull.Run(chartRef)
 	if err != nil {
+		// Error handling for a specific case where credentials are stale.
+		// https://github.com/helm/helm/issues/12584
+		var errUnexpectedStatus containerdErrors.ErrUnexpectedStatus
+		if errors.As(err, &errUnexpectedStatus) {
+			unwrappedErr := UnwrapAll(err)
+			unexpectedStatusErr, ok := unwrappedErr.(containerdErrors.ErrUnexpectedStatus)
+			if ok {
+				if unexpectedStatusErr.StatusCode == http.StatusForbidden {
+					return nil, fmt.Errorf("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout` and re-try the command")
+				}
+			}
+		}
+
 		return nil, fmt.Errorf("error downloading helm chart from the registry for version: %s, release name: %s. Error: %w", version, releaseName, err)
 	}
 
@@ -135,4 +175,14 @@ func runUpgrade(upgradeClient *helm.Upgrade, releaseName string, helmChart *char
 		time.Sleep(retryTimeout)
 	}
 	return err
+}
+
+func UnwrapAll(err error) error {
+	for {
+		unwrapped := errors.Unwrap(err)
+		if unwrapped == nil {
+			return err
+		}
+		err = unwrapped
+	}
 }
