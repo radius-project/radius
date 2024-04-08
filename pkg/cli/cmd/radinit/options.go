@@ -71,7 +71,7 @@ type applicationOptions struct {
 func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspaces.Workspace, error) {
 	options := initOptions{}
 
-	err := r.enterClusterOptions(ctx, &options)
+	err := r.enterClusterOptions(&options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -104,7 +104,7 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		return nil, nil, err
 	}
 
-	err = r.enterApplicationOptions(ctx, &options)
+	err = r.enterApplicationOptions(&options)
 	if err != nil {
 		return nil, nil, err
 	}

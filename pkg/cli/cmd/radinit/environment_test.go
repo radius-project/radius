@@ -248,7 +248,7 @@ func Test_enterEnvironmentName(t *testing.T) {
 		prompter := prompt.NewMockInterface(ctrl)
 		runner := Runner{Prompter: prompter}
 
-		name, err := runner.enterEnvironmentName(context.Background())
+		name, err := runner.enterEnvironmentName()
 		require.NoError(t, err)
 		require.Equal(t, defaultEnvironmentName, name)
 	})
@@ -260,7 +260,7 @@ func Test_enterEnvironmentName(t *testing.T) {
 
 		initEnvNamePrompt(prompter, "test-name")
 
-		name, err := runner.enterEnvironmentName(context.Background())
+		name, err := runner.enterEnvironmentName()
 		require.NoError(t, err)
 		require.Equal(t, "test-name", name)
 	})
@@ -272,7 +272,7 @@ func Test_enterEnvironmentNamespace(t *testing.T) {
 		prompter := prompt.NewMockInterface(ctrl)
 		runner := Runner{Prompter: prompter}
 
-		namespace, err := runner.enterEnvironmentNamespace(context.Background())
+		namespace, err := runner.enterEnvironmentNamespace()
 		require.NoError(t, err)
 		require.Equal(t, defaultEnvironmentNamespace, namespace)
 	})
@@ -284,7 +284,7 @@ func Test_enterEnvironmentNamespace(t *testing.T) {
 
 		initNamespacePrompt(prompter, "test-namespace")
 
-		namespace, err := runner.enterEnvironmentNamespace(context.Background())
+		namespace, err := runner.enterEnvironmentNamespace()
 		require.NoError(t, err)
 		require.Equal(t, "test-namespace", namespace)
 	})

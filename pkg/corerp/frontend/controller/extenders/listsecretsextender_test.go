@@ -34,7 +34,7 @@ import (
 )
 
 func TestListSecrets_20231001Preview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+	setupTest := func() (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
 		msm := statusmanager.NewMockStatusManager(mctrl)
@@ -52,7 +52,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 	}
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
-		teardownTest, mds, msm := setupTest(t)
+		teardownTest, mds, msm := setupTest()
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
@@ -81,7 +81,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 	})
 
 	t.Run("listSecrets existing resource", func(t *testing.T) {
-		teardownTest, mds, msm := setupTest(t)
+		teardownTest, mds, msm := setupTest()
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
@@ -119,7 +119,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
-		teardownTest, mds, msm := setupTest(t)
+		teardownTest, mds, msm := setupTest()
 		defer teardownTest(t)
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
 		require.NoError(t, err)

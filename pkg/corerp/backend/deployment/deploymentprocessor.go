@@ -123,7 +123,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		envOptions.Namespace = c.KubernetesCompute.Namespace
 	}
 
-	appOptions, err := dp.getAppOptions(ctx, &app.Properties)
+	appOptions, err := dp.getAppOptions(&app.Properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -159,7 +159,7 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 	return radiusResourceModel.Renderer, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, computedValues map[string]any, putOptions *handlers.PutOptions) error {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, rendererOutput renderers.RendererOutput, computedValues map[string]any, putOptions *handlers.PutOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	or := putOptions.Resource
@@ -285,7 +285,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		resourceType := outputResource.GetResourceType()
 		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, resourceType))
 
-		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
+		err := dp.deployOutputResource(ctx, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
 			return rpv1.DeploymentOutput{}, err
 		}
@@ -467,7 +467,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 }
 
 // getAppOptions: Populates and Returns ApplicationOptions.
-func (dp *deploymentProcessor) getAppOptions(ctx context.Context, appProp *corerp_dm.ApplicationProperties) (renderers.ApplicationOptions, error) {
+func (dp *deploymentProcessor) getAppOptions(appProp *corerp_dm.ApplicationProperties) (renderers.ApplicationOptions, error) {
 	appOpts := renderers.ApplicationOptions{}
 
 	// Get Application KubernetesMetadata Info
