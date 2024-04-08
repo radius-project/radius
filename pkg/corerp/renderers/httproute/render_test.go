@@ -131,7 +131,7 @@ func TestHTTPRouteRenderer(t *testing.T) {
 			r := &Renderer{}
 
 			properties := makeHTTPRouteProperties(tt.port)
-			resource := makeResource(t, &properties)
+			resource := makeResource(&properties)
 
 			output, err := r.Render(context.Background(), resource, tt.options)
 			require.NoError(t, err)
@@ -197,7 +197,7 @@ func makeHTTPRouteProperties(port int32) datamodel.HTTPRouteProperties {
 	return properties
 }
 
-func makeResource(t *testing.T, properties *datamodel.HTTPRouteProperties) *datamodel.HTTPRoute {
+func makeResource(properties *datamodel.HTTPRouteProperties) *datamodel.HTTPRoute {
 	dm := datamodel.HTTPRoute{Properties: properties}
 	dm.Name = resourceName
 

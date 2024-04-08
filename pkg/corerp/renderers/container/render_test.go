@@ -91,7 +91,7 @@ var (
 	}
 )
 
-func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
+func makeResource(properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
 		BaseResource: apiv1.BaseResource{
 			TrackedResource: apiv1.TrackedResource{
@@ -187,7 +187,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 
 	ctx := testcontext.New(t)
 
@@ -224,7 +224,7 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 			Image: "someimage:latest",
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 
 	ctx := testcontext.New(t)
 	renderer := Renderer{}
@@ -252,7 +252,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 			Image: "test-image:latest",
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 
 	renderer := Renderer{}
 	ids, azureIDs, err := renderer.GetDependencyIDs(ctx, resource)
@@ -280,7 +280,7 @@ func Test_Render_Basic(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	ctx := testcontext.New(t)
@@ -351,7 +351,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 			WorkingDir: "/some/path",
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	ctx := testcontext.New(t)
@@ -412,7 +412,7 @@ func Test_Render_Manual(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	ctx := testcontext.New(t)
@@ -447,7 +447,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	ctx := testcontext.New(t)
@@ -493,7 +493,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	ctx := testcontext.New(t)
@@ -561,7 +561,7 @@ func Test_Render_Connections(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeRadiusResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeRadiusResourceID(t, "SomeProvider/ResourceType", "A"),
@@ -671,7 +671,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 			Image: "someimage:latest",
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeRadiusResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeRadiusResourceID(t, "SomeProvider/ResourceType", "A"),
@@ -723,7 +723,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeRadiusResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeRadiusResourceID(t, "SomeProvider/ResourceType", "A"),
@@ -778,7 +778,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			Image: "someimage:latest",
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeAzureResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeAzureResourceID(t, "SomeProvider/ResourceType", "A"),
@@ -920,7 +920,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 			Image: "testimage:latest",
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	renderer := Renderer{
@@ -990,7 +990,7 @@ func Test_Render_AzureConnectionEmptyRoleAllowed(t *testing.T) {
 			Image: "testimage:latest",
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	renderer := Renderer{
@@ -1029,7 +1029,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeRadiusResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID:     makeRadiusResourceID(t, "SomeProvider/ResourceType", "A"),
@@ -1104,7 +1104,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	resourceID, _ := resources.ParseResource(testResourceID)
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
@@ -1171,7 +1171,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	resourceID, _ := resources.ParseResource(testResourceID)
 	testVolName := "test-volume-sp"
 	dependencies := map[string]renderers.RendererDependency{
@@ -1273,7 +1273,7 @@ func Test_Render_RestartPolicy(t *testing.T) {
 		},
 		RestartPolicy: "Always",
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	ctx := testcontext.New(t)
@@ -1322,7 +1322,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeAzureResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeAzureResourceID(t, "SomeProvider/ResourceType", "A"),
@@ -1399,7 +1399,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeAzureResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeAzureResourceID(t, "SomeProvider/ResourceType", "A"),
@@ -1469,7 +1469,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeAzureResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeAzureResourceID(t, "SomeProvider/ResourceType", "A"),
@@ -1529,7 +1529,7 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeAzureResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeAzureResourceID(t, "SomeProvider/ResourceType", "A"),
@@ -1625,7 +1625,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 			},
 		}
 
-		resource := makeResource(t, properties)
+		resource := makeResource(properties)
 		ctx := testcontext.New(t)
 		renderer := Renderer{}
 		output, err := renderer.Render(ctx, resource, renderOptionsEnvAndAppKubeMetadata())
@@ -1672,7 +1672,7 @@ func Test_Render_ImagePullPolicySpecified(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	ctx := testcontext.New(t)
@@ -1734,7 +1734,7 @@ func Test_Render_StrategicPatchMerge(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(t, properties)
+	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	ctx := testcontext.New(t)
@@ -1832,7 +1832,7 @@ func Test_Render_BaseManifest(t *testing.T) {
 				},
 			}
 
-			resource := makeResource(t, tc.container)
+			resource := makeResource(tc.container)
 			dependencies := map[string]renderers.RendererDependency{}
 
 			ctx := testcontext.New(t)

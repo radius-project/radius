@@ -120,7 +120,7 @@ func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 		}
 
 		servicePortsNode := serviceNode["ports"].(map[string]any)
-		if serviceNode == nil {
+		if servicePortsNode == nil {
 			return fmt.Errorf("envoy.service.ports node not found in chart values")
 		}
 

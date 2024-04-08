@@ -72,9 +72,9 @@ func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0", ct.Properties.Environment)
 				require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)
 				if tt.emptyExt {
-					require.Equal(t, getTestKubernetesEmptyMetadataExtensions(t), ct.Properties.Extensions)
+					require.Equal(t, getTestKubernetesEmptyMetadataExtensions(), ct.Properties.Extensions)
 				} else {
-					exts := getTestKubernetesMetadataExtensions(t)
+					exts := getTestKubernetesMetadataExtensions()
 					exts = append(exts, datamodel.Extension{Kind: datamodel.KubernetesNamespaceExtension, KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "app0-ns"}})
 					require.Equal(t, exts, ct.Properties.Extensions)
 				}

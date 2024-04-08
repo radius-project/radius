@@ -95,7 +95,7 @@ func (aw *applicationWatcher) Run(ctx context.Context) error {
 			case watch.Added, watch.Modified:
 				aw.updated(ctx, deployment)
 			case watch.Deleted:
-				aw.deleted(ctx, deployment)
+				aw.deleted(deployment)
 			}
 		}
 	}
@@ -141,7 +141,7 @@ func (aw *applicationWatcher) updated(ctx context.Context, deployment *appsv1.De
 }
 
 // updated is called for each deployment that is deleted.
-func (aw *applicationWatcher) deleted(ctx context.Context, deployment *appsv1.Deployment) {
+func (aw *applicationWatcher) deleted(deployment *appsv1.Deployment) {
 	entry, ok := aw.deploymentWatchers[deployment.Name]
 	if ok {
 		entry.Cancel()

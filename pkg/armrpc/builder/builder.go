@@ -43,12 +43,10 @@ type Builder struct {
 // defaultHandlerOptions returns HandlerOption for the default operations such as getting operationStatuses and
 // operationResults.
 func defaultHandlerOptions(
-	ctx context.Context,
 	rootRouter chi.Router,
 	rootScopePath string,
 	namespace string,
-	availableOperations []v1.Operation,
-	ctrlOpts apictrl.Options) []server.HandlerOptions {
+	availableOperations []v1.Operation) []server.HandlerOptions {
 	namespace = strings.ToLower(namespace)
 
 	handlers := []server.HandlerOptions{}
@@ -122,7 +120,7 @@ func (b *Builder) ApplyAPIHandlers(ctx context.Context, r chi.Router, ctrlOpts a
 	rootScopePath := ctrlOpts.PathBase + UCPRootScopePath
 
 	// Configure the default handlers.
-	handlerOptions := defaultHandlerOptions(ctx, r, rootScopePath, b.namespaceNode.Name, b.namespaceNode.availableOperations, ctrlOpts)
+	handlerOptions := defaultHandlerOptions(r, rootScopePath, b.namespaceNode.Name, b.namespaceNode.availableOperations)
 
 	routerMap := map[string]chi.Router{}
 	for _, h := range b.registrations {

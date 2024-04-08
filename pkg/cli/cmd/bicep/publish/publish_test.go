@@ -254,7 +254,7 @@ func TestRunner_prepareDestination(t *testing.T) {
 				Destination: tt.dest,
 				PlainHTTP:   tt.plainHTTP,
 			}
-			got, err := r.prepareDestination(context.Background())
+			got, err := r.prepareDestination()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Runner.prepareDestination() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -318,7 +318,7 @@ func TestRunner_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, tests)
 }
 
-func getError(registerUrl string, statusCode int) *errcode.ErrorResponse  {
+func getError(registerUrl string, statusCode int) *errcode.ErrorResponse {
 
 	err := &errcode.ErrorResponse{
 		URL:        &url.URL{Host: registerUrl},
