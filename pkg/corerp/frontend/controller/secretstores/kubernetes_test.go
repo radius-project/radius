@@ -557,7 +557,7 @@ func TestUpsertSecret(t *testing.T) {
 		r := resp.(*rest.BadRequestResponse)
 		require.Equal(t, "'default/secret' referenced resource does not exist.", r.Body.Error.Message)
 	})
-	
+
 	t.Run("inherit old resource id for global scoped resource", func(t *testing.T) {
 		oldResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValueGlobalScope)
 		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValueEmptyResource)

@@ -139,18 +139,18 @@ func (pw *podWatcher) runForwarder(ctx context.Context) {
 	// Send notifications when ports are ready
 	go func() {
 		<-pw.forwarder.Ready()
-		pw.sendPortNotifications(pw.forwarder, KindConnected)
+		pw.sendPortNotifications(KindConnected)
 	}()
 
 	err := pw.forwarder.Run(ctx)
 	pw.forwarderDone <- err
 
-	pw.sendPortNotifications(pw.forwarder, KindDisconnected)
+	pw.sendPortNotifications(KindDisconnected)
 
 	close(pw.forwarderDone)
 }
 
-func (pw *podWatcher) sendPortNotifications(forwarder forwarder, kind StatusKind) {
+func (pw *podWatcher) sendPortNotifications(kind StatusKind) {
 	if pw.Options.StatusChan != nil {
 		// Use Radius container name if we have one.
 		containerName := pw.Pod.Labels[kubernetes.LabelRadiusResource]

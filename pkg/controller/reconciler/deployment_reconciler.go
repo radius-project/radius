@@ -362,7 +362,7 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 func (r *DeploymentReconciler) reconcileDelete(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	poller, err := r.startDeleteOperationIfNeeded(ctx, deployment, annotations)
+	poller, err := r.startDeleteOperationIfNeeded(ctx, annotations)
 	if err != nil {
 		logger.Error(err, "Unable to delete resource.")
 		r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "ResourceError", err.Error())
@@ -479,7 +479,7 @@ func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Con
 	return poller, nil, false, nil
 }
 
-func (r *DeploymentReconciler) startDeleteOperationIfNeeded(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) (Poller[v20231001preview.ContainersClientDeleteResponse], error) {
+func (r *DeploymentReconciler) startDeleteOperationIfNeeded(ctx context.Context, annotations *deploymentAnnotations) (Poller[v20231001preview.ContainersClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if annotations.Status.Container == "" {
 		logger.Info("Container is already deleted (or was never created).")

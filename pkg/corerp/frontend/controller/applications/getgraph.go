@@ -82,6 +82,6 @@ func (ctrl *GetGraph) Run(ctx context.Context, w http.ResponseWriter, req *http.
 		return nil, err
 	}
 
-	graph := computeGraph(applicationID.Name(), applicationResources, environmentResources)
+	graph := computeGraph(applicationResources, environmentResources)
 	return rest.NewOKResponse(graph), nil
 }

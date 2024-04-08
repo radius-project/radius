@@ -388,7 +388,7 @@ type PodMonitor struct {
 // if the readiness check fails. If the pod enters a failing state, an error is returned.
 func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	if pm.Pod.Status.Phase == corev1.PodRunning {
-		if checkReadiness(t, &pm.Pod) {
+		if checkReadiness(&pm.Pod) {
 			return
 		}
 	}
@@ -431,7 +431,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 
 			if pod.Status.Phase == corev1.PodRunning {
 				t.Logf("success! pod %v has status: %v", pod.Name, pod.Status)
-				if checkReadiness(t, pod) {
+				if checkReadiness(pod) {
 					return
 				}
 				if attempt >= MaxRetryAttempts {
@@ -454,7 +454,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	}
 }
 
-func checkReadiness(t *testing.T, pod *corev1.Pod) bool {
+func checkReadiness(pod *corev1.Pod) bool {
 	for _, condition := range pod.Status.Conditions {
 		if condition.Type == corev1.ContainersReady &&
 			condition.Status == corev1.ConditionTrue {
