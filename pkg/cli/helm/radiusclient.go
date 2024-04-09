@@ -141,6 +141,13 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 
 	for _, arg := range options.SetFileArgs {
+		// Continue to support: c:\\testdir\\testfile.crt
+		// and convert: c:\testdir\testfile.crt to c:/testdir/testfile.crt
+
+		if !strings.Contains(arg, "\\\\") && strings.Contains(arg, "\\") {
+			arg = strings.ReplaceAll(arg, "\\", "/")
+		}
+
 		reader := func(rs []rune) (any, error) {
 			data, err := os.ReadFile(string(rs))
 			return string(data), err
