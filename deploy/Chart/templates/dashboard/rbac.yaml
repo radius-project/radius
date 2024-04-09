@@ -10,7 +10,8 @@ metadata:
 rules:
   - apiGroups: ['api.ucp.dev']
     resources: ['*']
-    verbs: ['get', 'list']
+    # dashboard needs get, list, and post privileges for api.ucp.dev
+    verbs: ['*']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
