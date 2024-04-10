@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -144,8 +145,10 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 		// Continue to support: c:\\testdir\\testfile.crt
 		// and convert: c:\testdir\testfile.crt to c:/testdir/testfile.crt
 
-		if !strings.Contains(arg, "\\\\") && strings.Contains(arg, "\\") {
-			arg = strings.ReplaceAll(arg, "\\", "/")
+		if runtime.GOOS == "windows" {
+			if !strings.Contains(arg, "\\\\") && strings.Contains(arg, "\\") {
+				arg = strings.ReplaceAll(arg, "\\", "/")
+			}
 		}
 
 		reader := func(rs []rune) (any, error) {
