@@ -368,6 +368,12 @@ func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 					},
 				},
 			},
+			// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
+			// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
+			//
+			// This check was failing for ARM requests over HTTP. To fix this, we set InsecureAllowCredentialWithHTTP to true.
+			// The reason it was failing is because the ARM requests are made over HTTP and the bearer token is being sent in the header.
+			InsecureAllowCredentialWithHTTP: true,
 		},
 	}
 }
