@@ -89,7 +89,6 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
@@ -319,12 +318,13 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     strategy:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
         name: [ucp,kubernetes,shared,msgrp,daprrp,samples,cli]
+        name-cloud: [ucp,shared]
+        name-noncloud: [ucp,kubernetes,shared,msgrp,daprrp,samples,cli]
         include:
           # datastorerp functional tests need the larger VM.
           - os: ubuntu-latest-m
@@ -542,7 +542,8 @@ jobs:
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
-      - name: Run functional tests
+      - name: Run functional tests that do not use cloud resources
+        if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius')
         run: |
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -563,7 +564,28 @@ jobs:
           # AZURE_MSSQL_PASSWORD
           eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          make test-functional-${{ matrix.name }}
+          make test-functional-${{ matrix.name-noncloud }}-noncloud
+      - name: Run functional tests that use cloud resources
+        if: github.event_name == 'workflow_run'
+        run: |
+          # Ensure rad cli is in path before running tests.
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          cd $GITHUB_WORKSPACE
+
+          which rad || { echo "cannot find rad"; exit 1; }
+
+          # Populate the following test environment variables from JSON secret.
+          # AZURE_MONGODB_RESOURCE_ID
+          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
+          # AZURE_TABLESTORAGE_RESOURCE_ID
+          # AZURE_SERVICEBUS_RESOURCE_ID
+          # AZURE_REDIS_RESOURCE_ID
+          # AZURE_MSSQL_RESOURCE_ID
+          # AZURE_MSSQL_USERNAME
+          # AZURE_MSSQL_PASSWORD
+          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+
+          make test-functional-${{ matrix.name-cloud }}-cloud
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
