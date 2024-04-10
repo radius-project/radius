@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -142,13 +143,8 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 
 	for _, arg := range options.SetFileArgs {
-		// Continue to support: c:\\testdir\\testfile.crt
-		// and convert: c:\testdir\testfile.crt to c:/testdir/testfile.crt
-
 		if runtime.GOOS == "windows" {
-			if !strings.Contains(arg, "\\\\") && strings.Contains(arg, "\\") {
-				arg = strings.ReplaceAll(arg, "\\", "/")
-			}
+			arg = filepath.ToSlash(arg)
 		}
 
 		reader := func(rs []rune) (any, error) {
