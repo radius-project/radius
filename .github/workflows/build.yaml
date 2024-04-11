@@ -109,7 +109,7 @@ jobs:
               per_page: 10
             });
             
-            failureCount = 3;
+            failureCount = 0;
             for (const run of response.data.workflow_runs) {
               if (run.conclusion === 'failure') {
                 failureCount++;
