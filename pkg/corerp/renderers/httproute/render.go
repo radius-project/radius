@@ -70,7 +70,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		},
 	}
 
-	service, err := r.makeService(ctx, route, options)
+	service, err := r.makeService(route, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -82,7 +82,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, options renderers.RenderOptions) (rpv1.OutputResource, error) {
+func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(route.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))

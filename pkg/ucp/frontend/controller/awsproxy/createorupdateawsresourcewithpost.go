@@ -97,7 +97,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	computedResourceID := ""
 	responseProperties := map[string]any{}
 
-	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
+	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(properties, *describeTypeOutput.Schema)
 	if errors.Is(&ucp_aws.AWSMissingPropertyError{}, err) {
 		// assume that if we can't get the AWS resource identifier, we need to create the resource
 		existing = false

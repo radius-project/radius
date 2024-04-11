@@ -91,7 +91,7 @@ func addReplicaSetToDeployment(t *testing.T, ctx context.Context, clientset *fak
 	return replicaSet
 }
 
-func startInformers(ctx context.Context, clientSet *fake.Clientset, handler *kubernetesHandler) informers.SharedInformerFactory {
+func startInformers(ctx context.Context, clientSet *fake.Clientset) informers.SharedInformerFactory {
 	// Create a fake replicaset informer and start
 	informerFactory := informers.NewSharedInformerFactory(clientSet, 0)
 
@@ -318,12 +318,9 @@ func TestGetPodsInDeployment(t *testing.T) {
 	deploymentWaiter := &deploymentWaiter{
 		clientSet: fakeClient,
 	}
-	handler := &kubernetesHandler{
-		deploymentWaiter: deploymentWaiter,
-	}
 
 	ctx := context.Background()
-	informerFactory := startInformers(ctx, fakeClient, handler)
+	informerFactory := startInformers(ctx, fakeClient)
 
 	// Call the getPodsInDeployment function
 	pods, err := deploymentWaiter.getPodsInDeployment(ctx, informerFactory, deployment, replicaset)
@@ -408,12 +405,9 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 	deploymentWaiter := &deploymentWaiter{
 		clientSet: fakeClient,
 	}
-	handler := &kubernetesHandler{
-		deploymentWaiter: deploymentWaiter,
-	}
 
 	ctx := context.Background()
-	informerFactory := startInformers(ctx, fakeClient, handler)
+	informerFactory := startInformers(ctx, fakeClient)
 
 	// Call the getNewestReplicaSetForDeployment function
 	rs := deploymentWaiter.getCurrentReplicaSetForDeployment(ctx, informerFactory, deployment)
@@ -624,7 +618,7 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 
 	// Create an informer factory and add the deployment and replica set to the cache
 	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
-	addTestObjects(t, clientset, informerFactory, testDeployment, replicaSet, pod)
+	addTestObjects(t, informerFactory, testDeployment, replicaSet, pod)
 
 	// Create a done channel
 	doneCh := make(chan error)
@@ -691,7 +685,7 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 
 	// Create an informer factory and add the deployment and replica set to the cache
 	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
-	addTestObjects(t, clientset, informerFactory, testDeployment, replicaSet, pod)
+	addTestObjects(t, informerFactory, testDeployment, replicaSet, pod)
 
 	// Create a done channel
 	doneCh := make(chan error)
@@ -758,7 +752,7 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 
 	// Create an informer factory and add the deployment to the cache
 	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
-	addTestObjects(t, fakeClient, informerFactory, testDeployment, replicaSet, pod)
+	addTestObjects(t, informerFactory, testDeployment, replicaSet, pod)
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
@@ -911,7 +905,7 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 
 	// Create an informer factory and add the deployment to the cache
 	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
-	addTestObjects(t, fakeClient, informerFactory, testDeployment, replicaSet, pod)
+	addTestObjects(t, informerFactory, testDeployment, replicaSet, pod)
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
@@ -993,7 +987,7 @@ func TestCheckDeploymentStatus_ObservedGenerationMismatch(t *testing.T) {
 
 	// Create an informer factory and add the deployment to the cache
 	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
-	addTestObjects(t, fakeClient, informerFactory, generationMismatchDeployment, replicaSet, pod)
+	addTestObjects(t, informerFactory, generationMismatchDeployment, replicaSet, pod)
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
@@ -1071,7 +1065,7 @@ func TestCheckDeploymentStatus_DeploymentNotProgressing(t *testing.T) {
 
 	// Create an informer factory and add the deployment to the cache
 	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
-	addTestObjects(t, fakeClient, informerFactory, deploymentNotProgressing, replicaSet, pod)
+	addTestObjects(t, informerFactory, deploymentNotProgressing, replicaSet, pod)
 
 	deploymentNotProgressing.Status = v1.DeploymentStatus{
 		Conditions: []v1.DeploymentCondition{
@@ -1106,7 +1100,7 @@ func TestCheckDeploymentStatus_DeploymentNotProgressing(t *testing.T) {
 	require.False(t, ready)
 }
 
-func addTestObjects(t *testing.T, fakeClient *fake.Clientset, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment, replicaSet *v1.ReplicaSet, pod *corev1.Pod) {
+func addTestObjects(t *testing.T, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment, replicaSet *v1.ReplicaSet, pod *corev1.Pod) {
 	err := informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(deployment)
 	require.NoError(t, err, "Failed to add deployment to informer cache")
 	err = informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)

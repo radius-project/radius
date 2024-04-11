@@ -145,7 +145,7 @@ func TestGetValuesOrDefaultsForCertificates(t *testing.T) {
 
 	for _, tc := range certTests {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.out, getValuesOrDefaultsForCertificates(tc.name, tc.prop))
+			require.Equal(t, tc.out, getValuesOrDefaultsForCertificates(tc.prop))
 		})
 	}
 }

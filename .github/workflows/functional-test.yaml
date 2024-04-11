@@ -18,7 +18,7 @@ name: Functional tests
 
 permissions:
   id-token: write # Required for requesting the JWT
-  contents: read  # Required for actions/checkout
+  contents: read  # Required for listing the commits
   packages: write # Required for uploading the package
 
 on:
@@ -539,30 +539,25 @@ jobs:
         run: |
           make publish-test-terraform-recipes
       - name: Run functional tests
-        uses: nick-fields/retry@v3
-        with:
-          timeout_seconds: 1800
-          max_attempts: 2
-          command: |
-            # Ensure rad cli is in path before running tests.
-            export PATH=$GITHUB_WORKSPACE/bin:$PATH
-            cd $GITHUB_WORKSPACE
+        run: |
+          # Ensure rad cli is in path before running tests.
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          cd $GITHUB_WORKSPACE
 
-            which rad || { echo "cannot find rad"; exit 1; }
+          which rad || { echo "cannot find rad"; exit 1; }
 
-            # Populate the following test environment variables from JSON secret.
-            # AZURE_MONGODB_RESOURCE_ID
-            # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-            # AZURE_TABLESTORAGE_RESOURCE_ID
-            # AZURE_SERVICEBUS_RESOURCE_ID
-            # AZURE_REDIS_RESOURCE_ID
-            # AZURE_MSSQL_RESOURCE_ID
-            # AZURE_MSSQL_USERNAME
-            # AZURE_MSSQL_PASSWORD
-            eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          # Populate the following test environment variables from JSON secret.
+          # AZURE_MONGODB_RESOURCE_ID
+          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
+          # AZURE_TABLESTORAGE_RESOURCE_ID
+          # AZURE_SERVICEBUS_RESOURCE_ID
+          # AZURE_REDIS_RESOURCE_ID
+          # AZURE_MSSQL_RESOURCE_ID
+          # AZURE_MSSQL_USERNAME
+          # AZURE_MSSQL_PASSWORD
+          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-            make test-functional-${{ matrix.name }}
-          on_retry_command: echo "Functional test failed. Retrying..." >> $GITHUB_STEP_SUMMARY
+          make test-functional-${{ matrix.name }}
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}

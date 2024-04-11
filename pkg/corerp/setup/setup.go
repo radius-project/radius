@@ -22,11 +22,9 @@ import (
 	asyncctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	backend_ctrl "github.com/radius-project/radius/pkg/corerp/backend/controller"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
-	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
-
-	backend_ctrl "github.com/radius-project/radius/pkg/corerp/backend/controller"
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
@@ -34,10 +32,10 @@ import (
 	gw_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
 	secret_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
 	vol_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/volumes"
-	rp_frontend "github.com/radius-project/radius/pkg/rp/frontend"
-
 	ext_processor "github.com/radius-project/radius/pkg/corerp/processors/extenders"
 	pr_ctrl "github.com/radius-project/radius/pkg/portableresources/backend/controller"
+	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
+	rp_frontend "github.com/radius-project/radius/pkg/rp/frontend"
 )
 
 const (

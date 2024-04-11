@@ -31,6 +31,7 @@ on:
 permissions:
   id-token: write      # Required for requesting the JWT
   contents: write      # Required for creating releases
+  issues: write        # Required for creating comments
   checks: write        # Required for updating check runs
   pull-requests: write # Required for updating pull requests
   packages: write      # Required for uploading the package

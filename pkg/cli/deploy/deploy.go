@@ -20,7 +20,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/output"
 )
@@ -33,16 +32,6 @@ import (
 // deploying, and logs the deployment results and public endpoints. If an error occurs, an error is returned.
 func DeployWithProgress(ctx context.Context, options Options) (clients.DeploymentResult, error) {
 	deploymentClient, err := options.ConnectionFactory.CreateDeploymentClient(ctx, options.Workspace)
-	if err != nil {
-		return clients.DeploymentResult{}, err
-	}
-
-	err = bicep.InjectEnvironmentParam(options.Template, options.Parameters, options.Providers.Radius.EnvironmentID)
-	if err != nil {
-		return clients.DeploymentResult{}, err
-	}
-
-	err = bicep.InjectApplicationParam(options.Template, options.Parameters, options.Providers.Radius.ApplicationID)
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}

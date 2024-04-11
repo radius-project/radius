@@ -78,7 +78,7 @@ func Test_Delete_ARM(t *testing.T) {
 
 	t.Run("success - lookup API Version (default)", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleDeleteSuccess(t))
+		mux.HandleFunc(ARMResourceID, handleDeleteSuccess())
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: to.Ptr("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
@@ -105,7 +105,7 @@ func Test_Delete_ARM(t *testing.T) {
 
 	t.Run("success - lookup API Version (first available)", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleDeleteSuccess(t))
+		mux.HandleFunc(ARMResourceID, handleDeleteSuccess())
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: to.Ptr("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
@@ -295,7 +295,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 func Test_Delete_UCP(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(AWSResourceID, handleDeleteSuccess(t))
+		mux.HandleFunc(AWSResourceID, handleDeleteSuccess())
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -368,11 +368,17 @@ func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 					},
 				},
 			},
+			// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
+			// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
+			//
+			// This check was failing for ARM requests over HTTP. To fix this, we set InsecureAllowCredentialWithHTTP to true.
+			// The reason it was failing is because the ARM requests are made over HTTP and the bearer token is being sent in the header.
+			InsecureAllowCredentialWithHTTP: true,
 		},
 	}
 }
 
-func handleDeleteSuccess(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
+func handleDeleteSuccess() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		w.WriteHeader(204)

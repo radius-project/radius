@@ -25,8 +25,7 @@ import (
 	armrpcv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
-	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
@@ -36,12 +35,12 @@ var _ armrpc_controller.Controller = (*GetAWSOperationResults)(nil)
 // GetAWSOperationResults is the controller implementation to get AWS resource operation results.
 type GetAWSOperationResults struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsClients ucp_aws.Clients
+	awsClients ucpaws.Clients
 }
 
 // NewGetAWSOperationResults creates a new GetAWSOperationResults controller with the given options and AWS clients, and
 // returns it without an error.
-func NewGetAWSOperationResults(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+func NewGetAWSOperationResults(opts armrpc_controller.Options, awsClients ucpaws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationResults{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
 		awsClients: awsClients,
@@ -62,10 +61,10 @@ func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter,
 		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
 
-	if awsclient.IsAWSResourceNotFoundError(err) {
+	if ucpaws.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
-		return awsclient.HandleAWSError(err)
+		return ucpaws.HandleAWSError(err)
 	}
 
 	isTerminal := isStatusTerminal(response)

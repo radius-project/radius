@@ -21,14 +21,14 @@ import (
 	http "net/http"
 	"path"
 
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/to"
-	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 )
 
 var _ armrpc_controller.Controller = (*ListAWSResources)(nil)
@@ -36,11 +36,11 @@ var _ armrpc_controller.Controller = (*ListAWSResources)(nil)
 // ListAWSResources is the controller implementation to get/list AWS resources.
 type ListAWSResources struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsClients ucp_aws.Clients
+	awsClients ucpaws.Clients
 }
 
 // NewListAWSResources creates a new ListAWSResources controller with the given options and AWS clients.
-func NewListAWSResources(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+func NewListAWSResources(opts armrpc_controller.Options, awsClients ucpaws.Clients) (armrpc_controller.Controller, error) {
 	return &ListAWSResources{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
 		awsClients: awsClients,
@@ -62,7 +62,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudControlOpts...)
 	if err != nil {
-		return awsclient.HandleAWSError(err)
+		return ucpaws.HandleAWSError(err)
 	}
 
 	// TODO there some limitations with listing resources:

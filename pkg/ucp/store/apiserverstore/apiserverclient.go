@@ -212,7 +212,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 
 	config := store.NewDeleteConfig(options...)
 
-	err = c.doWithRetry(ctx, func() (bool, error) {
+	err = c.doWithRetry(func() (bool, error) {
 		resource := ucpv1alpha1.Resource{}
 		err := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
 		if err != nil && apierrors.IsNotFound(err) && config.ETag != "" {
@@ -290,7 +290,7 @@ func (c *APIServerClient) Save(ctx context.Context, obj *store.Object, options .
 
 	config := store.NewSaveConfig(options...)
 
-	err = c.doWithRetry(ctx, func() (bool, error) {
+	err = c.doWithRetry(func() (bool, error) {
 		found := true
 		resource := ucpv1alpha1.Resource{}
 		err = c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
@@ -355,7 +355,7 @@ func (c *APIServerClient) Save(ctx context.Context, obj *store.Object, options .
 	return err
 }
 
-func (c *APIServerClient) doWithRetry(ctx context.Context, action func() (bool, error)) error {
+func (c *APIServerClient) doWithRetry(action func() (bool, error)) error {
 	for i := 0; i < RetryCount; i++ {
 		retryable, err := action()
 		if err != nil && !retryable {

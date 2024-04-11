@@ -142,13 +142,13 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 		hostname := "localhost"
 
 		// Test base endpoint, i.e., base URL returns a 200
-		_, err := sendGetRequest(t, "hostname", baseURL, "", 200)
+		_, err := sendGetRequest("hostname", baseURL, "", 200)
 		if err != nil {
 			return err
 		}
 
 		// Test GET /api/todos (list)
-		listResponse, err := sendGetRequest(t, hostname, baseURL, "api/todos", 200)
+		listResponse, err := sendGetRequest(hostname, baseURL, "api/todos", 200)
 		if err != nil {
 			return err
 		}
@@ -180,7 +180,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 			return err
 		}
 
-		createResponse, err := sendPostRequest(t, hostname, baseURL, "api/todos", &createRequestBodyBytes, 200)
+		createResponse, err := sendPostRequest(hostname, baseURL, "api/todos", &createRequestBodyBytes, 200)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 		itemId := createdItem["id"]
 
 		// Test GET /api/todos (list)
-		listResponse, err = sendGetRequest(t, hostname, baseURL, "api/todos", 200)
+		listResponse, err = sendGetRequest(hostname, baseURL, "api/todos", 200)
 		if err != nil {
 			return err
 		}
@@ -228,7 +228,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)
 
 		// Test GET /api/todos/:id (get)
-		getResponse, err := sendGetRequest(t, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 200)
+		getResponse, err := sendGetRequest(hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 200)
 		if err != nil {
 			return err
 		}
@@ -260,19 +260,19 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 			return err
 		}
 
-		_, err = sendPutRequest(t, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), &updateRequestBodyBytes, 200)
+		_, err = sendPutRequest(hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), &updateRequestBodyBytes, 200)
 		if err != nil {
 			return err
 		}
 
 		// Test DELETE /api/todos/:id (delete)
-		_, err = sendDeleteRequest(t, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 204)
+		_, err = sendDeleteRequest(hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 204)
 		if err != nil {
 			return err
 		}
 
 		// Test GET /api/todos (list)
-		listResponse, err = sendGetRequest(t, hostname, baseURL, "api/todos", 200)
+		listResponse, err = sendGetRequest(hostname, baseURL, "api/todos", 200)
 		if err != nil {
 			return err
 		}
@@ -300,7 +300,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 	}
 }
 
-func sendRequest(t *testing.T, req *http.Request, expectedStatusCode int) (*http.Response, error) {
+func sendRequest(req *http.Request, expectedStatusCode int) (*http.Response, error) {
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -313,17 +313,17 @@ func sendRequest(t *testing.T, req *http.Request, expectedStatusCode int) (*http
 	return res, nil
 }
 
-func sendGetRequest(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
+func sendGetRequest(hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, getURLPath(baseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Host = hostname
 
-	return sendRequest(t, req, expectedStatusCode)
+	return sendRequest(req, expectedStatusCode)
 }
 
-func sendPostRequest(t *testing.T, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
+func sendPostRequest(hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
 	if body == nil {
 		return nil, fmt.Errorf("body cannot be nil")
 	}
@@ -336,10 +336,10 @@ func sendPostRequest(t *testing.T, hostname, baseURL, path string, body *[]byte,
 	req.Header.Set("Content-Type", "application/json")
 	req.Host = hostname
 
-	return sendRequest(t, req, expectedStatusCode)
+	return sendRequest(req, expectedStatusCode)
 }
 
-func sendPutRequest(t *testing.T, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
+func sendPutRequest(hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
 	if body == nil {
 		return nil, fmt.Errorf("body cannot be nil")
 	}
@@ -352,17 +352,17 @@ func sendPutRequest(t *testing.T, hostname, baseURL, path string, body *[]byte, 
 	req.Header.Set("Content-Type", "application/json")
 	req.Host = hostname
 
-	return sendRequest(t, req, expectedStatusCode)
+	return sendRequest(req, expectedStatusCode)
 }
 
-func sendDeleteRequest(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
+func sendDeleteRequest(hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodDelete, getURLPath(baseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Host = hostname
 
-	return sendRequest(t, req, expectedStatusCode)
+	return sendRequest(req, expectedStatusCode)
 }
 
 func getURLPath(baseURL, path string) string {

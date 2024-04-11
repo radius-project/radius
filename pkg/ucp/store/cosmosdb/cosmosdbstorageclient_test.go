@@ -110,12 +110,11 @@ func mustGetTestClient(t *testing.T) *CosmosDBStorageClient {
 		CollectionName: dbCollectionName,
 		MasterKey:      masterKey,
 	})
-
 	if err != nil {
 		panic(err)
 	}
 
-	if dbClient.Init(context.Background()) != nil {
+	if err := dbClient.Init(context.Background()); err != nil {
 		panic(err)
 	}
 
@@ -405,7 +404,7 @@ func TestQuery(t *testing.T) {
 	// Ex: /planes/radius/azure/resourcegroups/rg/.../environments/env
 	// is equal to /planes/radius/local/resourcegroups/rg/.../environments/env
 
-	setupTest := func(tb testing.TB) func(tb testing.TB) {
+	setupTest := func() func(tb testing.TB) {
 		// Reset arrays each time
 		ucpResources = []string{}
 		armResources = []string{}
@@ -511,7 +510,7 @@ func TestQuery(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			teardownTest := setupTest(t)
+			teardownTest := setupTest()
 			defer teardownTest(t)
 
 			// Query each ucp resource
@@ -606,7 +605,7 @@ func TestQuery(t *testing.T) {
 	}
 	for name, tc := range subscriptionIDCases {
 		t.Run(name, func(t *testing.T) {
-			teardownTest := setupTest(t)
+			teardownTest := setupTest()
 			defer teardownTest(t)
 
 			// Build the query for testing
@@ -647,7 +646,7 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 	ucpRootScope := "/planes/radius/local/resourcegroups/test-RG"
 	armResourceRootScope := "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/test-RG"
 
-	setupTest := func(tb testing.TB) func(tb testing.TB) {
+	setupTest := func() func(tb testing.TB) {
 		// 50 UCP - 50 ARM
 		for i := 0; i < 50; i++ {
 			ucpEnv := buildAndSaveTestModel(ctx, t, ucpRootScope, fmt.Sprintf("ucp-env-%d", i))
@@ -694,7 +693,7 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			teardownTest := setupTest(t)
+			teardownTest := setupTest()
 			defer teardownTest(t)
 
 			remaining := 50

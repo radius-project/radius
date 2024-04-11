@@ -19,6 +19,8 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
@@ -34,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad deploy` command.
@@ -246,6 +249,20 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	// This is the earliest point where we can inject parameters, we have
+	// to wait until the template is prepared.
+	err = r.injectAutomaticParameters(template)
+	if err != nil {
+		return err
+	}
+
+	// This is the earliest point where we can report missing parameters, we have
+	// to wait until the template is prepared.
+	err = r.reportMissingParameters(template)
+	if err != nil {
+		return err
+	}
+
 	// Create application if specified. This supports the case where the application resource
 	// is not specified in Bicep. Creating the application automatically helps us "bootstrap" in a new environment.
 	if r.ApplicationName != "" {
@@ -302,4 +319,74 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (r *Runner) injectAutomaticParameters(template map[string]any) error {
+	if r.Providers.Radius.EnvironmentID != "" {
+		err := bicep.InjectEnvironmentParam(template, r.Parameters, r.Providers.Radius.EnvironmentID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if r.Providers.Radius.ApplicationID != "" {
+		err := bicep.InjectApplicationParam(template, r.Parameters, r.Providers.Radius.ApplicationID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *Runner) reportMissingParameters(template map[string]any) error {
+	declaredParameters, err := bicep.ExtractParameters(template)
+	if err != nil {
+		return err
+	}
+
+	errors := map[string]string{}
+	for parameter := range declaredParameters {
+		// Case-invariant lookup on the user-provided values
+		match := false
+		for provided := range r.Parameters {
+			if strings.EqualFold(parameter, provided) {
+				match = true
+				break
+			}
+		}
+
+		if match {
+			// Has user-provided value
+			continue
+		}
+
+		if _, ok := bicep.DefaultValue(declaredParameters[parameter]); ok {
+			// Has default value
+			continue
+		}
+
+		// Special case the parameters that are automatically injected
+		if strings.EqualFold(parameter, "environment") {
+			errors[parameter] = "The template requires an environment. Use --environment to specify the environment name."
+		} else if strings.EqualFold(parameter, "application") {
+			errors[parameter] = "The template requires an application. Use --application to specify the application name."
+		} else {
+			errors[parameter] = fmt.Sprintf("The template requires a parameter %q. Use --parameters %s=<value> to specify the value.", parameter, parameter)
+		}
+	}
+
+	if len(errors) == 0 {
+		return nil
+	}
+
+	keys := maps.Keys(errors)
+	sort.Strings(keys)
+
+	details := []string{}
+	for _, key := range keys {
+		details = append(details, fmt.Sprintf("  - %v", errors[key]))
+	}
+
+	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", r.FilePath, strings.Join(details, "\n"))
 }

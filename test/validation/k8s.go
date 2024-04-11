@@ -138,65 +138,9 @@ func NewK8sSecretForResourceWithResourceName(resourceName string) K8sObject {
 	}
 }
 
-// ValidateDeploymentsRunning checks if the expected deployments have been created in the given namespace and logs any
-// unrecognized deployments. If all expected deployments have been created, it returns, otherwise it retries until the
-// context is done.
-func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
-	for namespace, expectedPods := range expected.Namespaces {
-		t.Logf("validating deployments in namespace %v", namespace)
-		for {
-			select {
-			case <-time.After(IntervalForDeploymentCreation):
-				t.Logf("at %s waiting for deployments in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
-
-				var err error
-				deployments, err := k8s.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
-				require.NoErrorf(t, err, "failed to list pods in namespace %v", namespace)
-
-				remaining := make([]K8sObject, len(expectedPods))
-				copy(remaining, expectedPods)
-
-				for _, actualDeployment := range deployments.Items {
-					// validate that this matches one of our expected deployment
-					index := matchesExpectedLabels(remaining, actualDeployment.Labels)
-					if index == nil {
-						// this is not a match, check if it has a Radius Application label
-						t.Log(t,
-							"unrecognized deployment, could not find a match for Deployment with namespace: %v name: %v labels: %v",
-							actualDeployment.Namespace,
-							actualDeployment.Name,
-							actualDeployment.Labels)
-						continue
-					}
-
-					// trim the list of 'remaining' deployments
-					remaining = append(remaining[:*index], remaining[*index+1:]...)
-				}
-
-				if len(remaining) == 0 {
-					return
-				}
-				for _, remainingPod := range remaining {
-					t.Logf("failed to match deployment in namespace %v with labels %v, retrying", namespace, remainingPod.Labels)
-				}
-
-			case <-ctx.Done():
-				assert.Fail(t, "timed out after waiting for deployments to be created")
-				return
-			}
-		}
-	}
-}
-
 // SaveContainerLogs watches for all pods in the given namespace and saves their container logs to disk.
 func SaveContainerLogs(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) (watchk8s.Interface, error) {
 	return watchForPods(ctx, k8s, namespace, logPrefix, "")
-}
-
-// SaveLogsForApplication watches for all radius pods that are part of the given application in a given namespace
-// and saves their container logs to disk.
-func SaveLogsForApplication(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) (watchk8s.Interface, error) {
-	return watchForPods(ctx, k8s, namespace, logPrefix, fmt.Sprintf("%s=%s", kuberneteskeys.LabelRadiusApplication, appName))
 }
 
 func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, labelSelector string) (watchk8s.Interface, error) {
@@ -444,7 +388,7 @@ type PodMonitor struct {
 // if the readiness check fails. If the pod enters a failing state, an error is returned.
 func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	if pm.Pod.Status.Phase == corev1.PodRunning {
-		if checkReadiness(t, &pm.Pod) {
+		if checkReadiness(&pm.Pod) {
 			return
 		}
 	}
@@ -487,7 +431,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 
 			if pod.Status.Phase == corev1.PodRunning {
 				t.Logf("success! pod %v has status: %v", pod.Name, pod.Status)
-				if checkReadiness(t, pod) {
+				if checkReadiness(pod) {
 					return
 				}
 				if attempt >= MaxRetryAttempts {
@@ -510,7 +454,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	}
 }
 
-func checkReadiness(t *testing.T, pod *corev1.Pod) bool {
+func checkReadiness(pod *corev1.Pod) bool {
 	for _, condition := range pod.Status.Conditions {
 		if condition.Type == corev1.ContainersReady &&
 			condition.Status == corev1.ConditionTrue {
@@ -566,24 +510,6 @@ func matchesActualLabels(t *testing.T, expectedResources []K8sObject, actualReso
 		log.Printf("Failed to validate resource of type %s with labels %s", remainingResource.GroupVersionResource.Resource, remainingResource.Labels)
 	}
 	return len(remaining) == 0
-}
-
-// returns the index if its found, otherwise nil
-func matchesExpectedLabels(expectedPods []K8sObject, labels map[string]string) *int {
-	if labels == nil {
-		return nil
-	}
-	for index, expectedPod := range expectedPods {
-
-		// we don't need to match all of the labels on the expected pod
-		matchesPod := labelsEqual(expectedPod.Labels, labels)
-
-		if matchesPod {
-			return &index
-		}
-	}
-
-	return nil
 }
 
 func labelsEqual(expectedLabels map[string]string, actualLabels map[string]string) bool {
