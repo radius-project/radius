@@ -84,6 +84,7 @@ func Test_E2E(t *testing.T) {
 	normalizeOutput := func(bts []byte) string {
 		return stripansi.Strip(strings.ReplaceAll(string(bts), "\r\n", "\n"))
 	}
+
 	waitForContains := func(t *testing.T, reader io.Reader, target string) string {
 		normalized := ""
 		teatest.WaitFor(t, reader, func(bts []byte) bool {
@@ -94,6 +95,7 @@ func Test_E2E(t *testing.T) {
 
 		return normalized
 	}
+
 	waitForInitialRender := func(t *testing.T, reader io.Reader) string {
 		return waitForContains(t, reader, ">")
 	}

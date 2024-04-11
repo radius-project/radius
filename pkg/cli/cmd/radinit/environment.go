@@ -129,12 +129,12 @@ func (r *Runner) enterEnvironmentOptions(ctx context.Context, workspace *workspa
 	}
 
 	var err error
-	options.Environment.Name, err = r.enterEnvironmentName(ctx)
+	options.Environment.Name, err = r.enterEnvironmentName()
 	if err != nil {
 		return err
 	}
 
-	options.Environment.Namespace, err = r.enterEnvironmentNamespace(ctx)
+	options.Environment.Namespace, err = r.enterEnvironmentNamespace()
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func (r *Runner) buildExistingEnvironmentList(existing []corerp.EnvironmentResou
 	return items
 }
 
-func (r *Runner) enterEnvironmentName(ctx context.Context) (string, error) {
+func (r *Runner) enterEnvironmentName() (string, error) {
 	// When no flags are specified we don't ask for a name, just use 'default'
 	if !r.Full {
 		return defaultEnvironmentName, nil
@@ -230,7 +230,7 @@ func (r *Runner) enterEnvironmentName(ctx context.Context) (string, error) {
 	return name, nil
 }
 
-func (r *Runner) enterEnvironmentNamespace(ctx context.Context) (string, error) {
+func (r *Runner) enterEnvironmentNamespace() (string, error) {
 	// When no flags are specified we don't want to ask about namespaces.
 	if !r.Full {
 		return defaultEnvironmentNamespace, nil

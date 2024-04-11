@@ -19,14 +19,13 @@ package graph
 import (
 	"testing"
 
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_display(t *testing.T) {
 	t.Run("empty graph", func(t *testing.T) {
-		graph := []*v20231001preview.ApplicationGraphResource{}
+		graph := []*corerpv20231001preview.ApplicationGraphResource{}
 		expected := `Displaying application: cool-app
 
 (empty)

@@ -16,13 +16,6 @@ limitations under the License.
 
 package version
 
-import (
-	"encoding/json"
-	"fmt"
-
-	"github.com/radius-project/radius/pkg/cli/output"
-)
-
 // Values for these are injected by the build.
 var (
 	channel      = "edge"
@@ -91,28 +84,4 @@ func Version() string {
 // Kubernetes, Dev, and potentially Azure environments
 func ChartVersion() string {
 	return chartVersion
-}
-
-// VersionString formats and returns a string containing version information in either JSON or plain text format.
-func VersionString(format string, v VersionInfo, bicepVersion string) string {
-	var displayVersion = struct {
-		Release string `json:"release"`
-		Version string `json:"version"`
-		Bicep   string `json:"bicep"`
-		Commit  string `json:"commit"`
-	}{
-		v.Release,
-		v.Version,
-		bicepVersion,
-		v.Commit,
-	}
-
-	switch format {
-	case output.FormatJson:
-		jsonStr, _ := json.MarshalIndent(displayVersion, "", "  ")
-		return fmt.Sprintln(string(jsonStr))
-	default:
-		formatStr := "Release: %s \nVersion: %s\nBicep version: %s\nCommit: %s\n"
-		return fmt.Sprintf(formatStr, displayVersion.Release, displayVersion.Version, displayVersion.Bicep, displayVersion.Commit)
-	}
 }

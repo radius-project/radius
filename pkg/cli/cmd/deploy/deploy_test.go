@@ -469,12 +469,19 @@ func Test_Run(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 
+		providers := clients.Providers{
+			Radius: &clients.RadiusProvider{
+				EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+				ApplicationID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s/applications/test-application", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			},
+		}
+
 		runner := &Runner{
 			Bicep:             bicep,
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
 			Deploy:            deployMock,
 			Output:            outputSink,
-			Providers:         nil,
+			Providers:         &providers,
 			FilePath:          "app.bicep",
 			ApplicationName:   "appdoesntexist",
 			EnvironmentName:   "envdoesntexist",
@@ -490,5 +497,165 @@ func Test_Run(t *testing.T) {
 		// All of the output in this command is being done by functions that we mock for testing, so this
 		// is always empty.
 		require.Empty(t, outputSink.Writes)
+	})
+
+	t.Run("Deployment with missing parameters", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		bicep := bicep.NewMockInterface(ctrl)
+		bicep.EXPECT().
+			PrepareTemplate("app.bicep").
+			Return(map[string]any{
+				"parameters": map[string]any{
+					"application": map[string]any{},
+					"environment": map[string]any{},
+					"location":    map[string]any{},
+					"size":        map[string]any{"defaultValue": "BIG!"},
+				},
+			}, nil).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name: "kind-kind",
+		}
+		outputSink := &output.MockOutput{}
+
+		providers := clients.Providers{
+			Radius: &clients.RadiusProvider{
+				EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			},
+		}
+
+		runner := &Runner{
+			Bicep:             bicep,
+			ConnectionFactory: &connections.MockFactory{},
+			Output:            outputSink,
+			Providers:         &providers,
+			EnvironmentName:   radcli.TestEnvironmentName,
+			FilePath:          "app.bicep",
+			Parameters:        map[string]map[string]any{},
+			Workspace:         workspace,
+		}
+
+		err := runner.Run(context.Background())
+
+		// Even though GetEnvDetails returns a 404 error, the deployment should still succeed
+		require.Error(t, err)
+
+		expected := `The template "app.bicep" could not be deployed because of the following errors:
+
+  - The template requires an application. Use --application to specify the application name.
+  - The template requires a parameter "location". Use --parameters location=<value> to specify the value.`
+		require.Equal(t, expected, err.Error())
+
+		// All of the output in this command is being done by functions that we mock for testing, so this
+		// is always empty.
+		require.Empty(t, outputSink.Writes)
+	})
+}
+
+func Test_injectAutomaticParameters(t *testing.T) {
+	template := map[string]any{
+		"parameters": map[string]any{
+			"environment": map[string]any{},
+			"application": map[string]any{},
+		},
+	}
+
+	runner := Runner{
+		Parameters: map[string]map[string]any{
+			"a": {
+				"value": "YO",
+			},
+		},
+		Providers: &clients.Providers{
+			Radius: &clients.RadiusProvider{
+				ApplicationID: "test-app",
+				EnvironmentID: "test-env",
+			},
+		},
+	}
+	err := runner.injectAutomaticParameters(template)
+	require.NoError(t, err)
+
+	expected := map[string]map[string]any{
+		"environment": {
+			"value": "test-env",
+		},
+		"application": {
+			"value": "test-app",
+		},
+		"a": {
+			"value": "YO",
+		},
+	}
+
+	require.Equal(t, expected, runner.Parameters)
+}
+
+func Test_reportMissingParameters(t *testing.T) {
+	template := map[string]any{
+		"parameters": map[string]any{
+			"a":                         map[string]any{},
+			"b":                         map[string]any{},
+			"parameterWithDefaultValue": map[string]any{"defaultValue": "!"},
+		},
+	}
+
+	t.Run("Missing parameters", func(t *testing.T) {
+		runner := Runner{
+			FilePath: "app.bicep",
+			Parameters: map[string]map[string]any{
+				"b": {
+					"value": "YO",
+				},
+			},
+		}
+		err := runner.reportMissingParameters(template)
+
+		expected := `The template "app.bicep" could not be deployed because of the following errors:
+
+  - The template requires a parameter "a". Use --parameters a=<value> to specify the value.`
+		require.Equal(t, expected, err.Error())
+	})
+
+	t.Run("All parameters provided", func(t *testing.T) {
+		runner := Runner{
+			FilePath: "app.bicep",
+			Parameters: map[string]map[string]any{
+				"a": {
+					"value": "YO",
+				},
+				"b": {
+					"value": "YO",
+				},
+			},
+		}
+		err := runner.reportMissingParameters(template)
+		require.NoError(t, err)
+	})
+
+	t.Run("All parameters provided (ignoring case)", func(t *testing.T) {
+		runner := Runner{
+			FilePath: "app.bicep",
+			Parameters: map[string]map[string]any{
+				"A": {
+					"value": "YO",
+				},
+				"B": {
+					"value": "YO",
+				},
+				"parameterWithDEfaultValue": {
+					"value": "YO",
+				},
+			},
+		}
+		err := runner.reportMissingParameters(template)
+		require.NoError(t, err)
 	})
 }

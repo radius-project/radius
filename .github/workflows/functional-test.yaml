@@ -18,7 +18,7 @@ name: Functional tests
 
 permissions:
   id-token: write # Required for requesting the JWT
-  contents: read  # Required for actions/checkout
+  contents: read  # Required for listing the commits
   packages: write # Required for uploading the package
 
 on:

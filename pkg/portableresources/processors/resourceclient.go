@@ -208,7 +208,7 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID)
 }
 
 func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resources.ID) error {
-	apiVersion, err := c.lookupKubernetesAPIVersion(ctx, id)
+	apiVersion, err := c.lookupKubernetesAPIVersion(id)
 	if err != nil {
 		return err
 	}
@@ -242,7 +242,7 @@ func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resour
 	return nil
 }
 
-func (c *resourceClient) lookupKubernetesAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+func (c *resourceClient) lookupKubernetesAPIVersion(id resources.ID) (string, error) {
 	group, kind, namespace, _ := resources_kubernetes.ToParts(id)
 	var resourceLists []*v1.APIResourceList
 	var err error

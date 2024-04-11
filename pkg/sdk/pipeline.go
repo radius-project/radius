@@ -22,24 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 )
-
-const (
-	// module is used to build a runtime.Pipeline. This is informational text about the client that
-	// is added as part of the User-Agent header.
-	module = "v20231001preview"
-
-	// version is used to build a runtime.Pipeline. This is informational text about the client that
-	// is added as part of the User-Agent header.
-	version = "v0.0.1"
-)
-
-// NewPipeline builds a runtime.Pipeline from a Radius SDK connection. This is used to construct
-// autorest Track2 Go clients.
-func NewPipeline(connection Connection) runtime.Pipeline {
-	return runtime.NewPipeline(module, version, runtime.PipelineOptions{}, &NewClientOptions(connection).ClientOptions)
-}
 
 // NewClientOptions creates a new ARM client options object with the given connection's endpoint, audience, transport and
 // removes the authorization header policy.
@@ -63,6 +46,13 @@ func NewClientOptions(connection Connection) *arm.ClientOptions {
 				&removeAuthorizationHeaderPolicy{},
 			},
 			Transport: connection.Client(),
+			// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
+			// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
+			//
+			// This check was failing for some unit tests because the ARM requests are made over HTTP and the bearer token is being sent in the header.
+			// This is a temporary fix to allow sending the bearer token over HTTP.
+			// We don't have any use cases where we send the bearer token over HTTP in production.
+			InsecureAllowCredentialWithHTTP: true,
 		},
 		DisableRPRegistration: true,
 	}

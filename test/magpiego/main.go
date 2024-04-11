@@ -1,15 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strings"
 )
 
 func main() {
-	log.Println(fmt.Sprintf("Server running at http://localhost:%s", port))
-	log.Println(fmt.Sprintf("Check http://localhost:%s/healthz for status", port))
+	log.Printf("Server running at http://localhost:%s\n", port)
+	log.Printf("Check http://localhost:%s/healthz for status\n", port)
 
 	crt := strings.TrimSpace(os.Getenv("TLS_CERT"))
 	key := strings.TrimSpace(os.Getenv("TLS_KEY"))

@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -257,15 +256,6 @@ func ExposePod(t *testing.T, ctx context.Context, client *k8s.Clientset, config 
 
 	// Send the assigned port to then portChan channel
 	portChan <- int(ports[0].Local)
-}
-
-// NewTestLogger creates a new logger that writes to the testing.T object.
-func NewTestLogger(t *testing.T) *log.Logger {
-	tw := TestWriter{t}
-	logger := log.Logger{}
-	logger.SetOutput(tw)
-
-	return &logger
 }
 
 // IsMapSubSet returns true if the expectedMap is a subset of the actualMap

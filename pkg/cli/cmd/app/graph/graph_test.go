@@ -9,18 +9,18 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,11 +29,11 @@ func Test_CommandValidation(t *testing.T) {
 }
 
 func Test_Validate(t *testing.T) {
-	application := v20231001preview.ApplicationResource{
+	application := corerpv20231001preview.ApplicationResource{
 		Name: to.Ptr("test-app"),
 		ID:   to.Ptr(applicationResourceID),
 		Type: to.Ptr("Applications.Core/applications"),
-		Properties: &v20231001preview.ApplicationProperties{
+		Properties: &corerpv20231001preview.ApplicationProperties{
 			Environment: to.Ptr(environmentResourceID),
 		},
 	}
@@ -93,7 +93,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					ShowApplication(gomock.Any(), "test-app").
-					Return(v20231001preview.ApplicationResource{}, &azcore.ResponseError{ErrorCode: v1.CodeNotFound}).
+					Return(corerpv20231001preview.ApplicationResource{}, &azcore.ResponseError{ErrorCode: v1.CodeNotFound}).
 					Times(1)
 			},
 		},

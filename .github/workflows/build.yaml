@@ -28,6 +28,14 @@ on:
       - features/*
       - release/*
 
+permissions:
+  id-token: write      # Required for requesting the JWT
+  contents: write      # Required for creating releases
+  issues: write        # Required for creating comments
+  checks: write        # Required for updating check runs
+  pull-requests: write # Required for updating pull requests
+  packages: write      # Required for uploading the package
+
 concurrency:
   # Cancel the previously triggered build for only PR build.
   group: build-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
