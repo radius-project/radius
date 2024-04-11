@@ -63,6 +63,8 @@ env:
   # URL to get source code for building the image
   IMAGE_SRC: https://github.com/radius-project/radius
 
+  ISSUE_CREATE_THRESHOLD: 2
+
 jobs:
   build-and-push-cli:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
@@ -109,7 +111,7 @@ jobs:
               per_page: 10
             });
             
-            failureCount = 0;
+            failureCount = 3;
             for (const run of response.data.workflow_runs) {
               if (run.conclusion === 'failure') {
                 failureCount++;
@@ -119,7 +121,7 @@ jobs:
             }
             return failureCount;
       - name: Check for failures
-        if: steps.count_failures.outputs.result >= 3
+        if: steps.count_failures.outputs.result >= env.ISSUE_CREATE_THRESHOLD
         run: echo "Too many failures in the last 10 runs. Skipping this run."
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
