@@ -6,27 +6,16 @@
 * **apiVersion**: '2021-10-31' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **name**: string (Required, DeployTimeConstant, Identifier): The resource name
 * **properties**: [TestType1Properties](#testtype1properties)
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Test.Rp1/testType1' (ReadOnly, DeployTimeConstant): The resource type
 
-## Function listArrayOfFoos (Test.Rp1/testType1@2021-10-31)
-* **Resource**: Test.Rp1/testType1
-* **ApiVersion**: 2021-10-31
-* **Output**: [FoosResponse](#foosresponse)[]
-
-## Function listFoos (Test.Rp1/testType1@2021-10-31)
-* **Resource**: Test.Rp1/testType1
-* **ApiVersion**: 2021-10-31
-* **Input**: [FoosRequest](#foosrequest)
+### Function listFoos
 * **Output**: [FoosResponse](#foosresponse)
-
-## TestType1Properties
-### Properties
-* **basicString**: string: Description for a basic string property.
-* **stringEnum**: 'Bar' | 'Foo': Description for a basic enum property.
+#### Parameters
+0. **someString**: string
 
 ## SystemData
 ### Properties
@@ -37,20 +26,13 @@
 * **lastModifiedBy**: string: The identity that last modified the resource.
 * **lastModifiedByType**: 'Application' | 'Key' | 'ManagedIdentity' | 'User': The type of identity that created the resource.
 
+## TestType1Properties
+### Properties
+* **basicString**: string: Description for a basic string property.
+* **stringEnum**: 'Bar' | 'Foo': Description for a basic enum property.
+
 ## TrackedResourceTags
 ### Properties
 ### Additional Properties
 * **Additional Properties Type**: string
-
-## FoosResponse
-### Properties
-* **someString**: string (ReadOnly): The foo response string
-
-## FoosRequest
-### Properties
-* **someString**: string (Required, WriteOnly): The foo request string
-
-## FoosResponse
-### Properties
-* **someString**: string (ReadOnly): The foo response string
 
