@@ -733,6 +733,31 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			expectedResponse: &recipes.RecipeOutput{},
 			expectedErr:      errors.New("terraform state is empty"),
 		},
+		{
+			desc: "Testing empty tfjson state with a check",
+			state: &tfjson.State{
+				Checks: []tfjson.CheckResultStatic{
+					{
+						Address: tfjson.CheckStaticAddress{
+							ToDisplay: "module.test",
+							Kind:      tfjson.CheckKindResource,
+							Module:    "test",
+							Mode:      tfjson.ManagedResourceMode,
+							Type:      "test",
+							Name:      "test",
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+			expectedErr: nil,
+		},
 	}
 
 	opts := ExecuteOptions{
