@@ -1,1 +1,1078 @@
-[{"1":{"Kind":1}},{"1":{"Kind":2}},{"1":{"Kind":3}},{"1":{"Kind":4}},{"1":{"Kind":5}},{"1":{"Kind":6}},{"1":{"Kind":7}},{"1":{"Kind":8}},{"6":{"Value":"Applications.Dapr/pubSubBrokers"}},{"6":{"Value":"2023-10-01-preview"}},{"2":{"Name":"Applications.Dapr/pubSubBrokers","Properties":{"id":{"Type":4,"Flags":10,"Description":"The resource id"},"name":{"Type":4,"Flags":9,"Description":"The resource name"},"type":{"Type":8,"Flags":10,"Description":"The resource type"},"apiVersion":{"Type":9,"Flags":10,"Description":"The resource api version"},"properties":{"Type":11,"Flags":1,"Description":"Dapr PubSubBroker portable resource properties"},"tags":{"Type":37,"Flags":0,"Description":"Resource tags."},"location":{"Type":4,"Flags":1,"Description":"The geo-location where the resource lives"},"systemData":{"Type":38,"Flags":2,"Description":"Metadata pertaining to creation and last modification of the resource."}}}},{"2":{"Name":"DaprPubSubBrokerProperties","Properties":{"environment":{"Type":4,"Flags":1,"Description":"Fully qualified resource ID for the environment that the portable resource is linked to"},"application":{"Type":4,"Flags":0,"Description":"Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"},"provisioningState":{"Type":19,"Flags":2,"Description":"Provisioning state of the resource at the time the operation was called"},"status":{"Type":20,"Flags":2,"Description":"Status of a resource."},"componentName":{"Type":4,"Flags":2,"Description":"The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component."},"metadata":{"Type":0,"Flags":0,"Description":"Any object"},"type":{"Type":4,"Flags":0,"Description":"Dapr component type which must matches the format used by Dapr Kubernetes configuration format"},"version":{"Type":4,"Flags":0,"Description":"Dapr component version"},"resources":{"Type":32,"Flags":0,"Description":"A collection of references to resources associated with the pubSubBroker"},"recipe":{"Type":33,"Flags":0,"Description":"The recipe used to automatically deploy underlying infrastructure for a portable resource"},"resourceProvisioning":{"Type":36,"Flags":0,"Description":"Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."}}}},{"6":{"Value":"Succeeded"}},{"6":{"Value":"Failed"}},{"6":{"Value":"Canceled"}},{"6":{"Value":"Provisioning"}},{"6":{"Value":"Updating"}},{"6":{"Value":"Deleting"}},{"6":{"Value":"Accepted"}},{"5":{"Elements":[12,13,14,15,16,17,18]}},{"2":{"Name":"ResourceStatus","Properties":{"compute":{"Type":21,"Flags":0,"Description":"Represents backing compute resource"},"recipe":{"Type":28,"Flags":2,"Description":"Recipe status at deployment time for a resource."},"outputResources":{"Type":30,"Flags":0,"Description":"Properties of an output resource"}}}},{"7":{"Name":"EnvironmentCompute","Discriminator":"kind","BaseProperties":{"resourceId":{"Type":4,"Flags":0,"Description":"The resource id of the compute resource for application environment."},"identity":{"Type":22,"Flags":0,"Description":"IdentitySettings is the external identity setting."}},"Elements":{"kubernetes":26}}},{"2":{"Name":"IdentitySettings","Properties":{"kind":{"Type":25,"Flags":1,"Description":"IdentitySettingKind is the kind of supported external identity setting"},"oidcIssuer":{"Type":4,"Flags":0,"Description":"The URI for your compute platform's OIDC issuer"},"resource":{"Type":4,"Flags":0,"Description":"The resource ID of the provisioned identity"}}}},{"6":{"Value":"undefined"}},{"6":{"Value":"azure.com.workload"}},{"5":{"Elements":[23,24]}},{"2":{"Name":"KubernetesCompute","Properties":{"namespace":{"Type":4,"Flags":1,"Description":"The namespace to use for the environment."},"kind":{"Type":27,"Flags":1,"Description":"Discriminator property for EnvironmentCompute."}}}},{"6":{"Value":"kubernetes"}},{"2":{"Name":"RecipeStatus","Properties":{"templateKind":{"Type":4,"Flags":1,"Description":"TemplateKind is the kind of the recipe template used by the portable resource upon deployment."},"templatePath":{"Type":4,"Flags":1,"Description":"TemplatePath is the path of the recipe consumed by the portable resource upon deployment."},"templateVersion":{"Type":4,"Flags":0,"Description":"TemplateVersion is the version number of the template."}}}},{"2":{"Name":"OutputResource","Properties":{"localId":{"Type":4,"Flags":0,"Description":"The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships."},"id":{"Type":4,"Flags":0,"Description":"The UCP resource ID of the underlying resource."},"radiusManaged":{"Type":2,"Flags":0,"Description":"Determines whether Radius manages the lifecycle of the underlying resource."}}}},{"3":{"ItemType":29}},{"2":{"Name":"ResourceReference","Properties":{"id":{"Type":4,"Flags":1,"Description":"Resource id of an existing resource"}}}},{"3":{"ItemType":31}},{"2":{"Name":"Recipe","Properties":{"name":{"Type":4,"Flags":1,"Description":"The name of the recipe within the environment to use"},"parameters":{"Type":0,"Flags":0,"Description":"Any object"}}}},{"6":{"Value":"recipe"}},{"6":{"Value":"manual"}},{"5":{"Elements":[34,35]}},{"2":{"Name":"TrackedResourceTags","Properties":{},"AdditionalProperties":4}},{"2":{"Name":"SystemData","Properties":{"createdBy":{"Type":4,"Flags":0,"Description":"The identity that created the resource."},"createdByType":{"Type":43,"Flags":0,"Description":"The type of identity that created the resource."},"createdAt":{"Type":4,"Flags":0,"Description":"The timestamp of resource creation (UTC)."},"lastModifiedBy":{"Type":4,"Flags":0,"Description":"The identity that last modified the resource."},"lastModifiedByType":{"Type":48,"Flags":0,"Description":"The type of identity that created the resource."},"lastModifiedAt":{"Type":4,"Flags":0,"Description":"The timestamp of resource last modification (UTC)"}}}},{"6":{"Value":"User"}},{"6":{"Value":"Application"}},{"6":{"Value":"ManagedIdentity"}},{"6":{"Value":"Key"}},{"5":{"Elements":[39,40,41,42]}},{"6":{"Value":"User"}},{"6":{"Value":"Application"}},{"6":{"Value":"ManagedIdentity"}},{"6":{"Value":"Key"}},{"5":{"Elements":[44,45,46,47]}},{"4":{"Name":"Applications.Dapr/pubSubBrokers@2023-10-01-preview","ScopeType":0,"Body":10}},{"6":{"Value":"Applications.Dapr/secretStores"}},{"6":{"Value":"2023-10-01-preview"}},{"2":{"Name":"Applications.Dapr/secretStores","Properties":{"id":{"Type":4,"Flags":10,"Description":"The resource id"},"name":{"Type":4,"Flags":9,"Description":"The resource name"},"type":{"Type":50,"Flags":10,"Description":"The resource type"},"apiVersion":{"Type":51,"Flags":10,"Description":"The resource api version"},"properties":{"Type":53,"Flags":1,"Description":"Dapr SecretStore portable resource properties"},"tags":{"Type":65,"Flags":0,"Description":"Resource tags."},"location":{"Type":4,"Flags":1,"Description":"The geo-location where the resource lives"},"systemData":{"Type":38,"Flags":2,"Description":"Metadata pertaining to creation and last modification of the resource."}}}},{"2":{"Name":"DaprSecretStoreProperties","Properties":{"environment":{"Type":4,"Flags":1,"Description":"Fully qualified resource ID for the environment that the portable resource is linked to"},"application":{"Type":4,"Flags":0,"Description":"Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"},"provisioningState":{"Type":61,"Flags":2,"Description":"Provisioning state of the resource at the time the operation was called"},"status":{"Type":20,"Flags":2,"Description":"Status of a resource."},"componentName":{"Type":4,"Flags":2,"Description":"The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component."},"metadata":{"Type":0,"Flags":0,"Description":"Any object"},"type":{"Type":4,"Flags":0,"Description":"Dapr component type which must matches the format used by Dapr Kubernetes configuration format"},"version":{"Type":4,"Flags":0,"Description":"Dapr component version"},"recipe":{"Type":33,"Flags":0,"Description":"The recipe used to automatically deploy underlying infrastructure for a portable resource"},"resourceProvisioning":{"Type":64,"Flags":0,"Description":"Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."}}}},{"6":{"Value":"Succeeded"}},{"6":{"Value":"Failed"}},{"6":{"Value":"Canceled"}},{"6":{"Value":"Provisioning"}},{"6":{"Value":"Updating"}},{"6":{"Value":"Deleting"}},{"6":{"Value":"Accepted"}},{"5":{"Elements":[54,55,56,57,58,59,60]}},{"6":{"Value":"recipe"}},{"6":{"Value":"manual"}},{"5":{"Elements":[62,63]}},{"2":{"Name":"TrackedResourceTags","Properties":{},"AdditionalProperties":4}},{"4":{"Name":"Applications.Dapr/secretStores@2023-10-01-preview","ScopeType":0,"Body":52}},{"6":{"Value":"Applications.Dapr/stateStores"}},{"6":{"Value":"2023-10-01-preview"}},{"2":{"Name":"Applications.Dapr/stateStores","Properties":{"id":{"Type":4,"Flags":10,"Description":"The resource id"},"name":{"Type":4,"Flags":9,"Description":"The resource name"},"type":{"Type":67,"Flags":10,"Description":"The resource type"},"apiVersion":{"Type":68,"Flags":10,"Description":"The resource api version"},"properties":{"Type":70,"Flags":1,"Description":"Dapr StateStore portable resource properties"},"tags":{"Type":83,"Flags":0,"Description":"Resource tags."},"location":{"Type":4,"Flags":1,"Description":"The geo-location where the resource lives"},"systemData":{"Type":38,"Flags":2,"Description":"Metadata pertaining to creation and last modification of the resource."}}}},{"2":{"Name":"DaprStateStoreProperties","Properties":{"environment":{"Type":4,"Flags":1,"Description":"Fully qualified resource ID for the environment that the portable resource is linked to"},"application":{"Type":4,"Flags":0,"Description":"Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"},"provisioningState":{"Type":78,"Flags":2,"Description":"Provisioning state of the resource at the time the operation was called"},"status":{"Type":20,"Flags":2,"Description":"Status of a resource."},"componentName":{"Type":4,"Flags":2,"Description":"The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component."},"metadata":{"Type":0,"Flags":0,"Description":"Any object"},"type":{"Type":4,"Flags":0,"Description":"Dapr component type which must matches the format used by Dapr Kubernetes configuration format"},"version":{"Type":4,"Flags":0,"Description":"Dapr component version"},"resources":{"Type":79,"Flags":0,"Description":"A collection of references to resources associated with the state store"},"recipe":{"Type":33,"Flags":0,"Description":"The recipe used to automatically deploy underlying infrastructure for a portable resource"},"resourceProvisioning":{"Type":82,"Flags":0,"Description":"Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."}}}},{"6":{"Value":"Succeeded"}},{"6":{"Value":"Failed"}},{"6":{"Value":"Canceled"}},{"6":{"Value":"Provisioning"}},{"6":{"Value":"Updating"}},{"6":{"Value":"Deleting"}},{"6":{"Value":"Accepted"}},{"5":{"Elements":[71,72,73,74,75,76,77]}},{"3":{"ItemType":31}},{"6":{"Value":"recipe"}},{"6":{"Value":"manual"}},{"5":{"Elements":[80,81]}},{"2":{"Name":"TrackedResourceTags","Properties":{},"AdditionalProperties":4}},{"4":{"Name":"Applications.Dapr/stateStores@2023-10-01-preview","ScopeType":0,"Body":69}}]
+[
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Applications.Dapr/pubSubBrokers"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2023-10-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Applications.Dapr/pubSubBrokers",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/1"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/2"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/4"
+        },
+        "flags": 1,
+        "description": "Dapr PubSubBroker portable resource properties"
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/32"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/33"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "DaprPubSubBrokerProperties",
+    "properties": {
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/12"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "status": {
+        "type": {
+          "$ref": "#/13"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "componentName": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component."
+      },
+      "metadata": {
+        "type": {
+          "$ref": "#/25"
+        },
+        "flags": 0,
+        "description": "Any object"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+      },
+      "version": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Dapr component version"
+      },
+      "resources": {
+        "type": {
+          "$ref": "#/27"
+        },
+        "flags": 0,
+        "description": "A collection of references to resources associated with the pubSubBroker"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/28"
+        },
+        "flags": 0,
+        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/31"
+        },
+        "flags": 0,
+        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/5"
+      },
+      {
+        "$ref": "#/6"
+      },
+      {
+        "$ref": "#/7"
+      },
+      {
+        "$ref": "#/8"
+      },
+      {
+        "$ref": "#/9"
+      },
+      {
+        "$ref": "#/10"
+      },
+      {
+        "$ref": "#/11"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ResourceStatus",
+    "properties": {
+      "compute": {
+        "type": {
+          "$ref": "#/14"
+        },
+        "flags": 0,
+        "description": "Represents backing compute resource"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/21"
+        },
+        "flags": 2,
+        "description": "Recipe status at deployment time for a resource."
+      },
+      "outputResources": {
+        "type": {
+          "$ref": "#/24"
+        },
+        "flags": 0,
+        "description": "Properties of an output resource"
+      }
+    }
+  },
+  {
+    "$type": "DiscriminatedObjectType",
+    "name": "EnvironmentCompute",
+    "discriminator": "kind",
+    "baseProperties": {
+      "resourceId": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The resource id of the compute resource for application environment."
+      },
+      "identity": {
+        "type": {
+          "$ref": "#/15"
+        },
+        "flags": 0,
+        "description": "IdentitySettings is the external identity setting."
+      }
+    },
+    "elements": {
+      "kubernetes": {
+        "$ref": "#/19"
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "IdentitySettings",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/18"
+        },
+        "flags": 1,
+        "description": "IdentitySettingKind is the kind of supported external identity setting"
+      },
+      "oidcIssuer": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The URI for your compute platform's OIDC issuer"
+      },
+      "resource": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The resource ID of the provisioned identity"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "undefined"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "azure.com.workload"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/16"
+      },
+      {
+        "$ref": "#/17"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "KubernetesCompute",
+    "properties": {
+      "namespace": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The namespace to use for the environment."
+      },
+      "kind": {
+        "type": {
+          "$ref": "#/20"
+        },
+        "flags": 1,
+        "description": "Discriminator property for EnvironmentCompute."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "kubernetes"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RecipeStatus",
+    "properties": {
+      "templateKind": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "TemplateKind is the kind of the recipe template used by the portable resource upon deployment."
+      },
+      "templatePath": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "TemplatePath is the path of the recipe consumed by the portable resource upon deployment."
+      },
+      "templateVersion": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "TemplateVersion is the version number of the template."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "OutputResource",
+    "properties": {
+      "localId": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships."
+      },
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The UCP resource ID of the underlying resource."
+      },
+      "radiusManaged": {
+        "type": {
+          "$ref": "#/23"
+        },
+        "flags": 0,
+        "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+      }
+    }
+  },
+  {
+    "$type": "BooleanType"
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/22"
+    }
+  },
+  {
+    "$type": "AnyType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ResourceReference",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Resource id of an existing resource"
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/26"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Recipe",
+    "properties": {
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The name of the recipe within the environment to use"
+      },
+      "parameters": {
+        "type": {
+          "$ref": "#/25"
+        },
+        "flags": 0,
+        "description": "Any object"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "recipe"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manual"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/29"
+      },
+      {
+        "$ref": "#/30"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TrackedResourceTags",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "SystemData",
+    "properties": {
+      "createdBy": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The identity that created the resource."
+      },
+      "createdByType": {
+        "type": {
+          "$ref": "#/38"
+        },
+        "flags": 0,
+        "description": "The type of identity that created the resource."
+      },
+      "createdAt": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The timestamp of resource creation (UTC)."
+      },
+      "lastModifiedBy": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The identity that last modified the resource."
+      },
+      "lastModifiedByType": {
+        "type": {
+          "$ref": "#/43"
+        },
+        "flags": 0,
+        "description": "The type of identity that created the resource."
+      },
+      "lastModifiedAt": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The timestamp of resource last modification (UTC)"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "User"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Application"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ManagedIdentity"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Key"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/34"
+      },
+      {
+        "$ref": "#/35"
+      },
+      {
+        "$ref": "#/36"
+      },
+      {
+        "$ref": "#/37"
+      }
+    ]
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "User"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Application"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ManagedIdentity"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Key"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/39"
+      },
+      {
+        "$ref": "#/40"
+      },
+      {
+        "$ref": "#/41"
+      },
+      {
+        "$ref": "#/42"
+      }
+    ]
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Applications.Dapr/pubSubBrokers@2023-10-01-preview",
+    "scopeType": 0,
+    "body": {
+      "$ref": "#/3"
+    },
+    "flags": 0,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Applications.Dapr/secretStores"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2023-10-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Applications.Dapr/secretStores",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/45"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/46"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/48"
+        },
+        "flags": 1,
+        "description": "Dapr SecretStore portable resource properties"
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/60"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/33"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "DaprSecretStoreProperties",
+    "properties": {
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/56"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "status": {
+        "type": {
+          "$ref": "#/13"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "componentName": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component."
+      },
+      "metadata": {
+        "type": {
+          "$ref": "#/25"
+        },
+        "flags": 0,
+        "description": "Any object"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+      },
+      "version": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Dapr component version"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/28"
+        },
+        "flags": 0,
+        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/59"
+        },
+        "flags": 0,
+        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/49"
+      },
+      {
+        "$ref": "#/50"
+      },
+      {
+        "$ref": "#/51"
+      },
+      {
+        "$ref": "#/52"
+      },
+      {
+        "$ref": "#/53"
+      },
+      {
+        "$ref": "#/54"
+      },
+      {
+        "$ref": "#/55"
+      }
+    ]
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "recipe"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manual"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/57"
+      },
+      {
+        "$ref": "#/58"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TrackedResourceTags",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Applications.Dapr/secretStores@2023-10-01-preview",
+    "scopeType": 0,
+    "body": {
+      "$ref": "#/47"
+    },
+    "flags": 0,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Applications.Dapr/stateStores"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2023-10-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Applications.Dapr/stateStores",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/62"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/63"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/65"
+        },
+        "flags": 1,
+        "description": "Dapr StateStore portable resource properties"
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/78"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/33"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "DaprStateStoreProperties",
+    "properties": {
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/73"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "status": {
+        "type": {
+          "$ref": "#/13"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "componentName": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component."
+      },
+      "metadata": {
+        "type": {
+          "$ref": "#/25"
+        },
+        "flags": 0,
+        "description": "Any object"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+      },
+      "version": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Dapr component version"
+      },
+      "resources": {
+        "type": {
+          "$ref": "#/74"
+        },
+        "flags": 0,
+        "description": "A collection of references to resources associated with the state store"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/28"
+        },
+        "flags": 0,
+        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/77"
+        },
+        "flags": 0,
+        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/66"
+      },
+      {
+        "$ref": "#/67"
+      },
+      {
+        "$ref": "#/68"
+      },
+      {
+        "$ref": "#/69"
+      },
+      {
+        "$ref": "#/70"
+      },
+      {
+        "$ref": "#/71"
+      },
+      {
+        "$ref": "#/72"
+      }
+    ]
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/26"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "recipe"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manual"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/75"
+      },
+      {
+        "$ref": "#/76"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TrackedResourceTags",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Applications.Dapr/stateStores@2023-10-01-preview",
+    "scopeType": 0,
+    "body": {
+      "$ref": "#/64"
+    },
+    "flags": 0,
+    "functions": {}
+  }
+]
