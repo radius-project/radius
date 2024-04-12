@@ -16,17 +16,9 @@
 
 import { ChoiceSchema, CodeModel, HttpMethod, HttpParameter, HttpRequest, HttpResponse, ImplementationLocation, ObjectSchema, Operation, Parameter, ParameterLocation, Request, Response, Schema, SchemaResponse, SealedChoiceSchema, Metadata } from "@autorest/codemodel";
 import { Channel, AutorestExtensionHost } from "@autorest/extension-base";
-import { keys, Dictionary, values, groupBy, uniqBy } from 'lodash';
+import { keys, Dictionary, values, groupBy } from 'lodash';
 import { success, failure, Result } from './utils';
-
-export enum ScopeType {
-  Unknown = 0,
-  Tenant = 1 << 0,
-  ManagementGroup = 1 << 1,
-  Subscription = 1 << 2,
-  ResourceGroup = 1 << 3,
-  Extension = 1 << 4,
-}
+import { ScopeType }  from 'bicep-types';
 
 export interface ResourceDescriptor {
   scopeType: ScopeType;
@@ -40,7 +32,7 @@ export interface ProviderDefinition {
   namespace: string;
   apiVersion: string;
   resourcesByType: Dictionary<ResourceDefinition[]>;
-  resourceActions: ResourceListActionDefinition[];
+  resourceFunctions: Dictionary<ResourceListActionDefinition[]>;
 }
 
 export interface ResourceDefinition {
@@ -189,7 +181,7 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
           namespace,
           apiVersion,
           resourcesByType: {},
-          resourceActions: [],
+          resourceFunctions: {}
         };
       }
     }
@@ -297,7 +289,7 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
 
     for (const namespace of keys(providerDefinitions)) {
       providerDefinitions[namespace].resourcesByType = collapseDefinitions(resourcesByProvider[namespace]);
-      providerDefinitions[namespace].resourceActions = collapseActions(actionsByProvider[namespace]);
+      providerDefinitions[namespace].resourceFunctions = groupByType(actionsByProvider[namespace]);
     }
 
     return values(providerDefinitions);
@@ -569,12 +561,6 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     const collapsedResources = Object.values(resourcesByType).flatMap(collapseDefinitionScopes);
 
     return groupByType(collapsedResources);
-  }
-
-  function collapseActions(actions: ResourceListActionDefinition[]) {
-    const actionsByType = groupByType(actions);
-
-    return Object.values(actionsByType).flatMap(actions => uniqBy(actions, x => x.actionName.toLowerCase()));
   }
 
   return getProviderDefinitions();
