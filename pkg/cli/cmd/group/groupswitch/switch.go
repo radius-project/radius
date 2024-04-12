@@ -131,7 +131,6 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
