@@ -167,6 +167,16 @@ func Test_Run(t *testing.T) {
 			actualConfig, err := cli.ReadWorkspaceSection(config)
 			require.NoError(t, err)
 			require.Equal(t, expectedConfig, actualConfig)
+
+			expected := []any{
+				output.LogOutput{
+					Format: "Switched to resource group %q",
+					Params: []any{"a"},
+				},
+			}
+
+			require.Equal(t, expected, outputSink.Writes)
+
 		})
 
 		t.Run("Switch (not existent)", func(t *testing.T) {
