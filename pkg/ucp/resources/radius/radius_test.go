@@ -26,7 +26,7 @@ import (
 
 func Test_IsRadiusResource(t *testing.T) {
 	values := []struct {
-		testID   resources.ID
+		testID   *resources.ID
 		expected bool
 	}{
 		{

@@ -45,7 +45,7 @@ func NewRenderer(armConfig *armauth.ArmConfig) renderers.Renderer {
 }
 
 // GetDependencyIDs returns nil for the resourceIDs, radiusResourceIDs and an error.
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]*resources.ID, []*resources.ID, error) {
 	return nil, nil, nil
 }
 

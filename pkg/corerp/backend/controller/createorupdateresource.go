@@ -47,7 +47,7 @@ func NewCreateOrUpdateResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateResource{ctrl.NewBaseAsyncController(opts)}, nil
 }
 
-func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
+func getDataModel(id *resources.ID) (v1.DataModelInterface, error) {
 	resourceType := strings.ToLower(id.Type())
 	switch resourceType {
 	case strings.ToLower(container.ResourceType):

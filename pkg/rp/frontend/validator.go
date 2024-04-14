@@ -39,7 +39,7 @@ func PrepareRadiusResource[P interface {
 	newProp := P(newResource).ResourceMetadata()
 
 	if !oldProp.EqualLinkedResource(newProp) {
-		return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
+		return rest.NewLinkedResourceUpdateErrorResponse(&serviceCtx.ResourceID, oldProp, newProp), nil
 	}
 
 	// Keep outputresource from existing resource since the incoming request hasn't had an outputresource

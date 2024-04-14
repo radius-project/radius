@@ -51,7 +51,7 @@ type resolver func(any) (string, corerpv20231001preview.Direction, error)
 
 // listAllResourcesByApplication takes a context, applicationID and clientOptions
 // and returns a slice of GenericResources in the application and also an error if one occurs.
-func listAllResourcesByApplication(ctx context.Context, applicationID resources.ID, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+func listAllResourcesByApplication(ctx context.Context, applicationID *resources.ID, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	for _, resourceType := range resourceTypesList {
 		resourceList, err := listAllResourcesOfTypeInApplication(ctx, applicationID, resourceType, clientOptions)
@@ -65,7 +65,7 @@ func listAllResourcesByApplication(ctx context.Context, applicationID resources.
 
 // listAllResourcesOfTypeInApplication takes in a context, an application ID and a
 // resource type and returns a slice of GenericResources of that type in the application and an error if one occurs.
-func listAllResourcesOfTypeInApplication(ctx context.Context, applicationID resources.ID, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+func listAllResourcesOfTypeInApplication(ctx context.Context, applicationID *resources.ID, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	resourceList, err := listAllResourcesByType(ctx, applicationID.RootScope(), resourceType, clientOptions)
 	if err != nil {
@@ -132,7 +132,7 @@ func isResourceInApplication(resource generated.GenericResource, applicationName
 
 // listAllResourcesByEnvironment takes in a context, an environment ID and a
 // resource type and returns a slice of GenericResources and an error if one occurs.
-func listAllResourcesByEnvironment(ctx context.Context, environmentID resources.ID, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+func listAllResourcesByEnvironment(ctx context.Context, environmentID *resources.ID, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	for _, resourceType := range resourceTypesList {
 		resourceList, err := listAllResourcesOfTypeInEnvironment(ctx, environmentID, resourceType, clientOptions)
@@ -147,7 +147,7 @@ func listAllResourcesByEnvironment(ctx context.Context, environmentID resources.
 
 // listAllResourcesOfTypeInEnvironment takes in a context, an environment ID and a
 // resource type and returns a slice of GenericResources and an error if one occurs.
-func listAllResourcesOfTypeInEnvironment(ctx context.Context, environmentID resources.ID, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+func listAllResourcesOfTypeInEnvironment(ctx context.Context, environmentID *resources.ID, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	resourceList, err := listAllResourcesByType(ctx, environmentID.RootScope(), resourceType, clientOptions)
 	if err != nil {

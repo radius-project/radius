@@ -56,13 +56,13 @@ func NewListSecrets(opts ctrl.Options) (ctrl.Controller, error) {
 // secret is not found, an error is returned. Currently, we support only kubernetes secret store.
 func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	resource, _, err := l.GetResource(ctx, serviceCtx.ResourceID)
+	resource, _, err := l.GetResource(ctx, &serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
 
 	if resource == nil {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+		return rest.NewNotFoundResponse(&serviceCtx.ResourceID), nil
 	}
 
 	ksecret, err := getSecretFromOutputResources(resource.Properties.Status.OutputResources, l.Options())

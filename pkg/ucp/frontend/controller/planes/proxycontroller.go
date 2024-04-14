@@ -83,7 +83,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 		return nil, err
 	}
 	if plane == nil {
-		restResponse := armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID)
+		restResponse := armrpc_rest.NewNotFoundResponse(&serviceCtx.ResourceID)
 		return restResponse, nil
 	}
 
@@ -105,7 +105,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 		}
 		if existingRG == nil {
 			logger.Info(fmt.Sprintf("Resource group %s not found in db", serviceCtx.ResourceID))
-			restResponse := armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID)
+			restResponse := armrpc_rest.NewNotFoundResponse(&serviceCtx.ResourceID)
 			return restResponse, nil
 		}
 	}

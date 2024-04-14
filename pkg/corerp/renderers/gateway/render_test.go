@@ -113,7 +113,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	require.Len(t, radiusResourceIDs, 2)
 	require.Len(t, resourceIDs, 0)
 
-	expectedRadiusResourceIDs := []resources.ID{
+	expectedRadiusResourceIDs := []*resources.ID{
 		makeResourceID(t, testRouteAResourceID),
 		makeResourceID(t, testRouteBResourceID),
 	}
@@ -1366,7 +1366,7 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 					},
 				},
 			},
-			OutputResources: map[string]resources.ID{
+			OutputResources: map[string]*resources.ID{
 				"Secret": resources_kubernetes.IDFromParts(
 					resources_kubernetes.PlaneNameTODO,
 					"",
@@ -1569,7 +1569,7 @@ func makeDependentResource(properties datamodel.HTTPRouteProperties) *datamodel.
 
 	return &dm
 }
-func makeResourceID(t *testing.T, resourceID string) resources.ID {
+func makeResourceID(t *testing.T, resourceID string) *resources.ID {
 	id, err := resources.ParseResource(resourceID)
 	require.NoError(t, err)
 

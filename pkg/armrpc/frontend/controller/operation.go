@@ -96,7 +96,7 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 }
 
 // GetResource is the helper to get the resource via storage client.
-func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out *T, etag string, err error) {
+func (c *Operation[P, T]) GetResource(ctx context.Context, id *resources.ID) (out *T, etag string, err error) {
 	etag = ""
 	out = new(T)
 	var res *store.Object
@@ -134,7 +134,7 @@ func (c *Operation[P, T]) PrepareResource(ctx context.Context, req *http.Request
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	if req.Method == http.MethodPatch && oldResource == nil {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+		return rest.NewNotFoundResponse(&serviceCtx.ResourceID), nil
 	}
 
 	if err := ValidateETag(*serviceCtx, etag); err != nil {
@@ -223,7 +223,7 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 		respCode = http.StatusCreated
 	}
 
-	response := rest.NewAsyncOperationResponse(versioned, serviceCtx.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion, "", "")
+	response := rest.NewAsyncOperationResponse(versioned, serviceCtx.Location, respCode, &serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion, "", "")
 	if c.resourceOptions.AsyncOperationRetryAfter != 0 {
 		response.RetryAfter = c.resourceOptions.AsyncOperationRetryAfter
 	}

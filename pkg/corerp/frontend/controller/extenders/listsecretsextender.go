@@ -58,7 +58,7 @@ func (ctrl *ListSecretsExtender) Run(ctx context.Context, w http.ResponseWriter,
 	}
 
 	if resource == nil {
-		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
+		return rest.NewNotFoundResponse(&sCtx.ResourceID), nil
 	}
 
 	secrets := map[string]string{}

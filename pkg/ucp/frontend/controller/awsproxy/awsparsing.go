@@ -108,9 +108,8 @@ func readPropertiesFromBody(req *http.Request) (map[string]any, error) {
 	return properties, nil
 }
 
-func computeResourceID(id resources.ID, resourceID string) string {
-	computedID := strings.Split(id.String(), "/:")[0] + resources.SegmentSeparator + resourceID
-	return computedID
+func computeResourceID(id *resources.ID, resourceID string) string {
+	return strings.Split(id.String(), "/:")[0] + resources.SegmentSeparator + resourceID
 }
 
 // Extract Region from  a URI like /apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/817312594854/regions/us-west-2/providers/...

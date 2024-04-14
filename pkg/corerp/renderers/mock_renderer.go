@@ -37,11 +37,11 @@ func (m *MockRenderer) EXPECT() *MockRendererMockRecorder {
 }
 
 // GetDependencyIDs mocks base method.
-func (m *MockRenderer) GetDependencyIDs(arg0 context.Context, arg1 v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (m *MockRenderer) GetDependencyIDs(arg0 context.Context, arg1 v1.DataModelInterface) ([]*resources.ID, []*resources.ID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDependencyIDs", arg0, arg1)
-	ret0, _ := ret[0].([]resources.ID)
-	ret1, _ := ret[1].([]resources.ID)
+	ret0, _ := ret[0].([]*resources.ID)
+	ret1, _ := ret[1].([]*resources.ID)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }

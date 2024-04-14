@@ -175,6 +175,6 @@ type mockUpdater struct {
 	Result error
 }
 
-func (u *mockUpdater) Update(ctx context.Context, downstreamURL string, originalID resources.ID, version string) error {
+func (u *mockUpdater) Update(ctx context.Context, downstreamURL string, originalID *resources.ID, version string) error {
 	return u.Result
 }

@@ -37,7 +37,7 @@ type Renderer struct {
 }
 
 // GetDependencyIDs returns nils for the resourceIDs, radiusResourceIDs and an error.
-func (r Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) (radiusResourceIDs []resources.ID, resourceIDs []resources.ID, err error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) (radiusResourceIDs []*resources.ID, resourceIDs []*resources.ID, err error) {
 	return nil, nil, nil
 }
 

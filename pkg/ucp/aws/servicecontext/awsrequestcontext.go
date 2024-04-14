@@ -36,5 +36,5 @@ func AWSRequestContextFromContext(ctx context.Context) *AWSRequestContext {
 
 // ResourceTypeInAWSFormat returns the AWS resource type.
 func (c *AWSRequestContext) ResourceTypeInAWSFormat() string {
-	return resources_aws.ToAWSResourceType(c.ResourceID)
+	return resources_aws.ToAWSResourceType(&c.ResourceID)
 }

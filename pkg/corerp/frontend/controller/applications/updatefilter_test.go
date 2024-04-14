@@ -91,7 +91,7 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)
-		armctx := &v1.ARMRequestContext{ResourceID: id}
+		armctx := &v1.ARMRequestContext{ResourceID: *id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
 		resp, err := CreateAppScopedNamespace(ctx, newResource, old, &opts)
@@ -139,7 +139,7 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)
-		armctx := &v1.ARMRequestContext{ResourceID: id}
+		armctx := &v1.ARMRequestContext{ResourceID: *id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
 		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
@@ -188,7 +188,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 
 		id, err := resources.ParseResource(longAppID)
 		require.NoError(t, err)
-		armctx := &v1.ARMRequestContext{ResourceID: id}
+		armctx := &v1.ARMRequestContext{ResourceID: *id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
 		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
@@ -223,7 +223,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)
-		armctx := &v1.ARMRequestContext{ResourceID: id}
+		armctx := &v1.ARMRequestContext{ResourceID: *id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
 		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
@@ -268,7 +268,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)
-		armctx := &v1.ARMRequestContext{ResourceID: id}
+		armctx := &v1.ARMRequestContext{ResourceID: *id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
 		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
@@ -306,7 +306,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)
-		armctx := &v1.ARMRequestContext{ResourceID: id}
+		armctx := &v1.ARMRequestContext{ResourceID: *id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
 		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
@@ -357,7 +357,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)
-		armctx := &v1.ARMRequestContext{ResourceID: id}
+		armctx := &v1.ARMRequestContext{ResourceID: *id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
 		resp, err := CreateAppScopedNamespace(ctx, newResource, old, &opts)

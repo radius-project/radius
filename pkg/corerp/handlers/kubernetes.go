@@ -166,7 +166,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOpt
 	return client.IgnoreNotFound(handler.client.Delete(ctx, &item))
 }
 
-func (handler *kubernetesHandler) lookupKubernetesAPIVersion(id resources.ID) (string, error) {
+func (handler *kubernetesHandler) lookupKubernetesAPIVersion(id *resources.ID) (string, error) {
 	group, kind, namespace, _ := resources_kubernetes.ToParts(id)
 	var resourceLists []*metav1.APIResourceList
 	var err error

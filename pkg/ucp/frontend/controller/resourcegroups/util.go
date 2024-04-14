@@ -63,7 +63,7 @@ func (e *InvalidError) Is(err error) bool {
 // ValidateDownstream can be used to find and validate the downstream URL for a resource.
 // Returns NotFoundError for the case where the plane or resource group does not exist.
 // Returns InvalidError for cases where the data is invalid, like when the resource provider is not configured.
-func ValidateDownstream(ctx context.Context, client store.StorageClient, id resources.ID) (*url.URL, error) {
+func ValidateDownstream(ctx context.Context, client store.StorageClient, id *resources.ID) (*url.URL, error) {
 	planeID, err := resources.ParseScope(id.PlaneScope())
 	if err != nil {
 		// Not expected to happen.

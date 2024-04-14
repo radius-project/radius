@@ -89,8 +89,9 @@ func TestBaseResource_UpdateMetadata(t *testing.T) {
 
 	armCtx := &ARMRequestContext{Location: "global"}
 	var err error
-	armCtx.ResourceID, err = resources.ParseResource(newResourceID)
+	resourceID, err := resources.ParseResource(newResourceID)
 	require.NoError(t, err)
+	armCtx.ResourceID = *resourceID
 
 	t.Run("update metadata from incoming request", func(t *testing.T) {
 		newResource.UpdateMetadata(armCtx, nil)

@@ -399,7 +399,7 @@ func normalizeName(name string) string {
 	return sb.String()
 }
 
-func resourceName(id resources.ID) string {
+func resourceName(id *resources.ID) string {
 	// The kubernetes resource names we use are built according to the following format
 	//
 	// resource.<resource name>.<id hash> (for a resource)
@@ -515,7 +515,7 @@ func createLabelSelector(query store.Query) (labels.Selector, error) {
 	return selector, nil
 }
 
-func findIndex(resource *ucpv1alpha1.Resource, id resources.ID) *int {
+func findIndex(resource *ucpv1alpha1.Resource, id *resources.ID) *int {
 	for i, entry := range resource.Entries {
 		if strings.EqualFold(entry.ID, id.String()) {
 			index := i
@@ -546,7 +546,7 @@ func readEntry(entry *ucpv1alpha1.ResourceEntry) (*store.Object, error) {
 	return &obj, nil
 }
 
-func read(resource *ucpv1alpha1.Resource, id resources.ID) (*store.Object, error) {
+func read(resource *ucpv1alpha1.Resource, id *resources.ID) (*store.Object, error) {
 	for _, entry := range resource.Entries {
 		if strings.EqualFold(entry.ID, id.String()) {
 			return readEntry(&entry)

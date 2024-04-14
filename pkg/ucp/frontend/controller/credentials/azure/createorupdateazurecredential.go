@@ -65,7 +65,7 @@ func (c *CreateOrUpdateAzureCredential) Run(ctx context.Context, w http.Response
 		return armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"), nil
 	}
 
-	old, etag, err := c.GetResource(ctx, serviceCtx.ResourceID)
+	old, etag, err := c.GetResource(ctx, &serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (c *CreateOrUpdateAzureCredential) Run(ctx context.Context, w http.Response
 		return r, err
 	}
 
-	secretName := credentials.GetSecretName(serviceCtx.ResourceID)
+	secretName := credentials.GetSecretName(&serviceCtx.ResourceID)
 	if newResource.Properties.Storage.Kind == datamodel.InternalStorageKind {
 		newResource.Properties.Storage.InternalCredential.SecretName = secretName
 	}

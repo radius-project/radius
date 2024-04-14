@@ -106,7 +106,7 @@ func MarshalOrPanic(in any) []byte {
 	return b
 }
 
-func parseOrPanic(id string) resources.ID {
+func parseOrPanic(id string) *resources.ID {
 	parsed, err := resources.Parse(id)
 	if err != nil {
 		panic(err)
@@ -115,7 +115,7 @@ func parseOrPanic(id string) resources.ID {
 	return parsed
 }
 
-func createObject(id resources.ID, data any) store.Object {
+func createObject(id *resources.ID, data any) store.Object {
 	return store.Object{
 		Metadata: store.Metadata{
 			ID:          id.String(),

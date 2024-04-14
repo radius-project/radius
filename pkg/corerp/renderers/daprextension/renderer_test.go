@@ -36,7 +36,7 @@ import (
 type noop struct {
 }
 
-func (r *noop) GetDependencyIDs(ctx context.Context, dm apiv1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r *noop) GetDependencyIDs(ctx context.Context, dm apiv1.DataModelInterface) ([]*resources.ID, []*resources.ID, error) {
 	return nil, nil, nil
 }
 

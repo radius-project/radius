@@ -556,7 +556,7 @@ func TestRunOperation_Timeout(t *testing.T) {
 		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ resources.ID, _ uuid.UUID, state v1.ProvisioningState, _ *time.Time, opError *v1.ErrorDetails) error {
+		DoAndReturn(func(_ context.Context, _ *resources.ID, _ uuid.UUID, state v1.ProvisioningState, _ *time.Time, opError *v1.ErrorDetails) error {
 			if state == v1.ProvisioningStateCanceled && strings.HasPrefix(opError.Message, "Operation (APPLICATIONS.CORE/ENVIRONMENTS|PUT) has timed out because it was processing longer than") &&
 				strings.HasPrefix(opError.Target, "/subscriptions/00000000-0000-0000-0000-000000000000") {
 				return nil

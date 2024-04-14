@@ -301,10 +301,10 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 	return parameters
 }
 
-func createDeploymentID(resourceID string, deploymentName string) (resources.ID, error) {
+func createDeploymentID(resourceID string, deploymentName string) (*resources.ID, error) {
 	parsed, err := resources.ParseResource(resourceID)
 	if err != nil {
-		return resources.ID{}, err
+		return &resources.ID{}, err
 	}
 
 	resourceGroup := parsed.FindScope(resources_radius.ScopeResourceGroups)

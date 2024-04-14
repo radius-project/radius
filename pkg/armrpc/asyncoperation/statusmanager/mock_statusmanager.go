@@ -39,7 +39,7 @@ func (m *MockStatusManager) EXPECT() *MockStatusManagerMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockStatusManager) Delete(arg0 context.Context, arg1 resources.ID, arg2 uuid.UUID) error {
+func (m *MockStatusManager) Delete(arg0 context.Context, arg1 *resources.ID, arg2 uuid.UUID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -53,7 +53,7 @@ func (mr *MockStatusManagerMockRecorder) Delete(arg0, arg1, arg2 interface{}) *g
 }
 
 // Get mocks base method.
-func (m *MockStatusManager) Get(arg0 context.Context, arg1 resources.ID, arg2 uuid.UUID) (*Status, error) {
+func (m *MockStatusManager) Get(arg0 context.Context, arg1 *resources.ID, arg2 uuid.UUID) (*Status, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*Status)
@@ -82,7 +82,7 @@ func (mr *MockStatusManagerMockRecorder) QueueAsyncOperation(arg0, arg1, arg2 in
 }
 
 // Update mocks base method.
-func (m *MockStatusManager) Update(arg0 context.Context, arg1 resources.ID, arg2 uuid.UUID, arg3 v1.ProvisioningState, arg4 *time.Time, arg5 *v1.ErrorDetails) error {
+func (m *MockStatusManager) Update(arg0 context.Context, arg1 *resources.ID, arg2 uuid.UUID, arg3 v1.ProvisioningState, arg4 *time.Time, arg5 *v1.ErrorDetails) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(error)

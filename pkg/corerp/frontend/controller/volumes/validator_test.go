@@ -40,7 +40,7 @@ var (
 	keyvaultID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0"
 )
 
-func mustParseResourceID(id string) resources.ID {
+func mustParseResourceID(id string) *resources.ID {
 	resourceID, err := resources.ParseResource(id)
 	if err != nil {
 		panic(err)
@@ -86,7 +86,7 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
+						ResourceID: *mustParseResourceID(resourceID),
 						HTTPMethod: http.MethodPut,
 					}),
 				newResource: &datamodel.VolumeResource{
@@ -108,7 +108,7 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
+						ResourceID: *mustParseResourceID(resourceID),
 						HTTPMethod: http.MethodPut,
 					}),
 				newResource: &datamodel.VolumeResource{
@@ -132,7 +132,7 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
+						ResourceID: *mustParseResourceID(resourceID),
 						HTTPMethod: http.MethodPut,
 					}),
 				newResource: &datamodel.VolumeResource{

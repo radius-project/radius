@@ -35,7 +35,7 @@ const (
 )
 
 // ToAWSResourceType takes an ID and returns a string representing the AWS resource type.
-func ToAWSResourceType(id resources.ID) string {
+func ToAWSResourceType(id *resources.ID) string {
 	parts := []string{}
 	// AWS ARNs use :: as separator.
 	for _, segment := range id.TypeSegments() {

@@ -79,7 +79,7 @@ func (r *Request) ARMRequestContext() (*v1.ARMRequestContext, error) {
 	}
 
 	rpcCtx := &v1.ARMRequestContext{
-		ResourceID:    rID,
+		ResourceID:    *rID,
 		CorrelationID: r.CorrelationID,
 		OperationID:   r.OperationID,
 		OperationType: opType,

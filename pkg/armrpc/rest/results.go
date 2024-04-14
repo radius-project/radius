@@ -240,7 +240,7 @@ type AsyncOperationResponse struct {
 	Body        any
 	Location    string
 	Code        int
-	ResourceID  resources.ID
+	ResourceID  *resources.ID
 	OperationID uuid.UUID
 	APIVersion  string
 	RootScope   string // Everything before providers namespace for constructing an Async operation header. Used for AWS planes
@@ -252,7 +252,7 @@ type AsyncOperationResponse struct {
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
-func NewAsyncOperationResponse(body any, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string, rootScope string, pathBase string) *AsyncOperationResponse {
+func NewAsyncOperationResponse(body any, location string, code int, resourceID *resources.ID, operationID uuid.UUID, apiVersion string, rootScope string, pathBase string) *AsyncOperationResponse {
 	return &AsyncOperationResponse{
 		Body:        body,
 		Location:    location,
@@ -375,7 +375,7 @@ type BadRequestResponse struct {
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
-func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *rpv1.BasicResourceProperties, newProp *rpv1.BasicResourceProperties) Response {
+func NewLinkedResourceUpdateErrorResponse(resourceID *resources.ID, oldProp *rpv1.BasicResourceProperties, newProp *rpv1.BasicResourceProperties) Response {
 	newAppEnv := ""
 	if newProp.Application != "" {
 		name := newProp.Application
@@ -525,7 +525,7 @@ func NewNotFoundMessageResponse(message string) Response {
 }
 
 // NewNotFoundResponse creates a NotFoundResponse with resource id.
-func NewNotFoundResponse(id resources.ID) Response {
+func NewNotFoundResponse(id *resources.ID) Response {
 	return &NotFoundResponse{
 		Body: v1.ErrorResponse{
 			Error: v1.ErrorDetails{

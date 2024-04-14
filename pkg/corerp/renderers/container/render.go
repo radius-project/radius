@@ -76,7 +76,7 @@ type Renderer struct {
 
 // GetDependencyIDs parses the connections, ports and volumes of a container resource to return the Radius and Azure
 // resource IDs.
-func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []*resources.ID, azureResourceIDs []*resources.ID, err error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
 		return nil, nil, v1.ErrInvalidModelConversion

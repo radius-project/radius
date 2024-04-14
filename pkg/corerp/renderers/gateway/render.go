@@ -42,7 +42,7 @@ type Renderer struct {
 
 // GetDependencyIDs parses the gateway data model to get the resource IDs of the httpRoutes and the secretStore resource ID
 // from the certificateFrom property, and returns them as two slices of resource IDs.
-func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []*resources.ID, azureResourceIDs []*resources.ID, err error) {
 	gateway, ok := dm.(*datamodel.Gateway)
 	if !ok {
 		return nil, nil, v1.ErrInvalidModelConversion

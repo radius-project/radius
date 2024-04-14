@@ -31,7 +31,7 @@ import (
 //
 // Names are computed by taking the name of the resource being tracked and appending a suffix to it based
 // on the hash of the resource ID. This ensures that the name is unique and deterministic.
-func NameFor(id resources.ID) string {
+func NameFor(id *resources.ID) string {
 	if id.IsEmpty() {
 		return ""
 	}
@@ -64,9 +64,9 @@ func NameFor(id resources.ID) string {
 }
 
 // IDFor computes the resource ID of a tracked resource entry from the original resource ID.
-func IDFor(id resources.ID) resources.ID {
+func IDFor(id *resources.ID) *resources.ID {
 	if id.IsEmpty() {
-		return resources.ID{}
+		return &resources.ID{}
 	}
 
 	// Tracking ID is the ID of the entry that will store the data.

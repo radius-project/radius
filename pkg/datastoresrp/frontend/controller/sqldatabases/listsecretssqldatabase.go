@@ -57,7 +57,7 @@ func (ctrl *ListSecretsSqlDatabase) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	if resource == nil {
-		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
+		return rest.NewNotFoundResponse(&sCtx.ResourceID), nil
 	}
 
 	sqlSecrets := datamodel.SqlDatabaseSecrets{}

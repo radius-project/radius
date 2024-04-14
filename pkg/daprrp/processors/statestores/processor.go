@@ -67,7 +67,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprStateSt
 	// Some Dapr Components can be specific to a single application, they would be application scoped and have
 	// resource.Properties.Application populated, while others could be shared across multiple applications and
 	// would not have resource.Properties.Application populated.
-	var applicationID resources.ID
+	applicationID := &resources.ID{}
 	if resource.Properties.Application != "" {
 		applicationID, err = resources.ParseResource(resource.Properties.Application)
 		if err != nil {
@@ -126,7 +126,7 @@ func (p *Processor) Delete(ctx context.Context, resource *datamodel.DaprStateSto
 	// resource.Properties.Application populated, while others could be shared across multiple applications and
 	// would not have resource.Properties.Application populated.
 	var err error
-	var applicationID resources.ID
+	var applicationID *resources.ID
 	if resource.Properties.Application != "" {
 		applicationID, err = resources.ParseResource(resource.Properties.Application)
 		if err != nil {

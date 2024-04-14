@@ -58,12 +58,12 @@ func NewGetRecipeMetadata(opts ctrl.Options, engine engine.Engine) (ctrl.Control
 // a response containing the recipe parameters.
 func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	resource, _, err := r.GetResource(ctx, serviceCtx.ResourceID)
+	resource, _, err := r.GetResource(ctx, &serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
 	if resource == nil {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+		return rest.NewNotFoundResponse(&serviceCtx.ResourceID), nil
 	}
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {

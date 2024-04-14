@@ -133,17 +133,23 @@ func Test_Run(t *testing.T) {
 
 		diagnosticsClient := clients.NewMockDiagnosticsClient(ctrl)
 		diagnosticsClient.EXPECT().
-			GetPublicEndpoint(gomock.Any(), clients.EndpointOptions{ResourceID: mustParse(t, "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-container")}).
+			GetPublicEndpoint(gomock.Any(), clients.EndpointOptions{
+				ResourceID: mustParse(t, "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-container"),
+			}).
 			Return(nil, nil).
 			Times(1)
 
 		diagnosticsClient.EXPECT().
-			GetPublicEndpoint(gomock.Any(), clients.EndpointOptions{ResourceID: mustParse(t, "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/httpRoutes/test-route")}).
+			GetPublicEndpoint(gomock.Any(), clients.EndpointOptions{
+				ResourceID: mustParse(t, "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/httpRoutes/test-route"),
+			}).
 			Return(nil, nil).
 			Times(1)
 
 		diagnosticsClient.EXPECT().
-			GetPublicEndpoint(gomock.Any(), clients.EndpointOptions{ResourceID: mustParse(t, "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/gateways/test-gateway")}).
+			GetPublicEndpoint(gomock.Any(), clients.EndpointOptions{
+				ResourceID: mustParse(t, "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/gateways/test-gateway"),
+			}).
 			Return(to.Ptr("http://some-url.example.com"), nil).
 			Times(1)
 
@@ -235,7 +241,7 @@ func Test_Run(t *testing.T) {
 	})
 }
 
-func mustParse(t *testing.T, s string) resources.ID {
+func mustParse(t *testing.T, s string) *resources.ID {
 	t.Helper()
 	id, err := resources.Parse(s)
 	require.NoError(t, err)

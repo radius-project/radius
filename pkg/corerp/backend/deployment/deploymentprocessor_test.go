@@ -188,7 +188,7 @@ func getTestRendererOutput() renderers.RendererOutput {
 	return rendererOutput
 }
 
-func getTestResourceID(id string) resources.ID {
+func getTestResourceID(id string) *resources.ID {
 	resourceID, err := resources.ParseResource(id)
 	if err != nil {
 		panic(err)
@@ -311,7 +311,7 @@ func Test_Render(t *testing.T) {
 
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		depId2, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo")
-		requiredResources := []resources.ID{depId1, depId2}
+		requiredResources := []*resources.ID{depId1, depId2}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
@@ -403,7 +403,7 @@ func Test_Render(t *testing.T) {
 		resourceID := getTestResourceID(testResource.ID)
 
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		requiredResources := []resources.ID{depId1}
+		requiredResources := []*resources.ID{depId1}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
@@ -473,7 +473,7 @@ func Test_Render(t *testing.T) {
 		resourceID := getTestResourceID(testResource.ID)
 
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		requiredResources := []resources.ID{depId1}
+		requiredResources := []*resources.ID{depId1}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
@@ -541,7 +541,7 @@ func Test_Render(t *testing.T) {
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		requiredResources := []resources.ID{depId1}
+		requiredResources := []*resources.ID{depId1}
 
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(4).Return(mocks.db, nil)
@@ -720,7 +720,7 @@ func Test_Render(t *testing.T) {
 
 		testRendererOutput.Resources[0].CreateResource.ResourceType.Provider = ""
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		requiredResources := []resources.ID{depId1}
+		requiredResources := []*resources.ID{depId1}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
@@ -790,7 +790,7 @@ func Test_Render(t *testing.T) {
 
 		testRendererOutput.Resources[0].CreateResource.ResourceType.Provider = "unknown"
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		requiredResources := []resources.ID{depId1}
+		requiredResources := []*resources.ID{depId1}
 
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(4).Return(mocks.db, nil)
@@ -1042,7 +1042,7 @@ func Test_Deploy(t *testing.T) {
 			EXPECT().
 			Put(gomock.Any(), gomock.Any()).Times(1).
 			DoAndReturn(func(ctx context.Context, options *handlers.PutOptions) (map[string]string, error) {
-				options.Resource.ID = resources.ID{}
+				options.Resource.ID = &resources.ID{}
 				return map[string]string{}, nil
 			})
 

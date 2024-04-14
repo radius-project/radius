@@ -39,7 +39,7 @@ func (m *MockDeploymentProcessor) EXPECT() *MockDeploymentProcessorMockRecorder 
 }
 
 // Delete mocks base method.
-func (m *MockDeploymentProcessor) Delete(arg0 context.Context, arg1 resources.ID, arg2 []v10.OutputResource) error {
+func (m *MockDeploymentProcessor) Delete(arg0 context.Context, arg1 *resources.ID, arg2 []v10.OutputResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -53,7 +53,7 @@ func (mr *MockDeploymentProcessorMockRecorder) Delete(arg0, arg1, arg2 interface
 }
 
 // Deploy mocks base method.
-func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (v10.DeploymentOutput, error) {
+func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 *resources.ID, arg2 renderers.RendererOutput) (v10.DeploymentOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2)
 	ret0, _ := ret[0].(v10.DeploymentOutput)
@@ -83,7 +83,7 @@ func (mr *MockDeploymentProcessorMockRecorder) FetchSecrets(arg0, arg1 interface
 }
 
 // Render mocks base method.
-func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 v1.DataModelInterface) (renderers.RendererOutput, error) {
+func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 *resources.ID, arg2 v1.DataModelInterface) (renderers.RendererOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
 	ret0, _ := ret[0].(renderers.RendererOutput)

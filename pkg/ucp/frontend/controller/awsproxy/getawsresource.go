@@ -63,7 +63,7 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
 	if ucpaws.IsAWSResourceNotFoundError(err) {
-		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+		return armrpc_rest.NewNotFoundResponse(&serviceCtx.ResourceID), nil
 	} else if err != nil {
 		return ucpaws.HandleAWSError(err)
 	}

@@ -30,7 +30,7 @@ const (
 
 // ExtractStorageParts extracts the main components of the resource id in a way that easily
 // supports our storage abstraction. Returns a tuple of the (prefix, rootScope, routingScope, resourceType)
-func ExtractStorageParts(id resources.ID) (string, string, string, string) {
+func ExtractStorageParts(id *resources.ID) (string, string, string, string) {
 	if id.IsScope() {
 		// For a scope we encode the last scope segment as the routing scope, and the previous
 		// scope segments as the root scope. This gives us the most desirable behavior for
@@ -58,7 +58,7 @@ func ExtractStorageParts(id resources.ID) (string, string, string, string) {
 }
 
 // IDMatchesQuery checks if the given ID matches the given query.
-func IDMatchesQuery(id resources.ID, query store.Query) bool {
+func IDMatchesQuery(id *resources.ID, query store.Query) bool {
 	prefix, rootScope, routingScope, resourceType := ExtractStorageParts(id)
 	if query.IsScopeQuery && !strings.EqualFold(prefix, ScopePrefix) {
 		return false

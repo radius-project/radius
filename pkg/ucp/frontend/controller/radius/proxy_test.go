@@ -76,7 +76,7 @@ func Test_Run(t *testing.T) {
 		p, storageClient, _, roundTripper, _ := createController(t)
 
 		svcContext := &v1.ARMRequestContext{
-			ResourceID: id,
+			ResourceID: *id,
 		}
 		ctx := testcontext.New(t)
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
@@ -107,7 +107,7 @@ func Test_Run(t *testing.T) {
 		p, storageClient, updater, roundTripper, _ := createController(t)
 
 		svcContext := &v1.ARMRequestContext{
-			ResourceID: id,
+			ResourceID: *id,
 		}
 		ctx := testcontext.New(t)
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
@@ -141,7 +141,7 @@ func Test_Run(t *testing.T) {
 		p, storageClient, updater, roundTripper, statusManager := createController(t)
 
 		svcContext := &v1.ARMRequestContext{
-			ResourceID: id,
+			ResourceID: *id,
 		}
 		ctx := testcontext.New(t)
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
@@ -187,7 +187,7 @@ func Test_Run(t *testing.T) {
 		p, storageClient, updater, roundTripper, _ := createController(t)
 
 		svcContext := &v1.ARMRequestContext{
-			ResourceID: id,
+			ResourceID: *id,
 		}
 		ctx := testcontext.New(t)
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
@@ -240,7 +240,7 @@ func Test_Run(t *testing.T) {
 		p, storageClient, _, _, _ := createController(t)
 
 		svcContext := &v1.ARMRequestContext{
-			ResourceID: id,
+			ResourceID: *id,
 		}
 		ctx := testcontext.New(t)
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
@@ -263,7 +263,7 @@ func Test_Run(t *testing.T) {
 		p, storageClient, _, _, _ := createController(t)
 
 		svcContext := &v1.ARMRequestContext{
-			ResourceID: id,
+			ResourceID: *id,
 		}
 		ctx := testcontext.New(t)
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
@@ -340,7 +340,7 @@ type mockUpdater struct {
 	Result error
 }
 
-func (u *mockUpdater) Update(ctx context.Context, downstreamURL string, originalID resources.ID, version string) error {
+func (u *mockUpdater) Update(ctx context.Context, downstreamURL string, originalID *resources.ID, version string) error {
 	return u.Result
 }
 

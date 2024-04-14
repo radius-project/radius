@@ -203,7 +203,7 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	}
 
 	rpcCtx := &ARMRequestContext{
-		ResourceID:      rID,
+		ResourceID:      *rID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
 		CorrelationID:   r.Header.Get(CorrelationRequestIDHeader),
 		OperationID:     uuid.New(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.

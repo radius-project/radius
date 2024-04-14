@@ -35,7 +35,7 @@ type Renderer struct {
 }
 
 // GetDependencyIDs gets the IDs of the dependencies of the given resource.
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]*resources.ID, []*resources.ID, error) {
 	// Let the inner renderer do its work
 	return r.Inner.GetDependencyIDs(ctx, resource)
 }

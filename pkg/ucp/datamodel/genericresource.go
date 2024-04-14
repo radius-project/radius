@@ -73,7 +73,7 @@ type GenericResourceProperties struct {
 }
 
 // GenericResourceFromID creates a new GenericResource from the given original resource ID and tracking ID.
-func GenericResourceFromID(originalID resources.ID, trackingID resources.ID) *GenericResource {
+func GenericResourceFromID(originalID *resources.ID, trackingID *resources.ID) *GenericResource {
 	return &GenericResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{

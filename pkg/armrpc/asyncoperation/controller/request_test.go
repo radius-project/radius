@@ -90,7 +90,7 @@ func TestRequest_ARMRequestContext(t *testing.T) {
 				AcceptLanguage: "en-US",
 			},
 			out: &v1.ARMRequestContext{
-				ResourceID:     parsedResourceID,
+				ResourceID:     *parsedResourceID,
 				CorrelationID:  "test-correlation-id",
 				OperationID:    opID,
 				OperationType:  rpctest.MustParseOperationType("APPLICATIONS.CORE/ENVIRONMENTS|PUT"),

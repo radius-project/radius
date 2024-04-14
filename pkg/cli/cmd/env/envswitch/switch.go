@@ -62,9 +62,9 @@ type Runner struct {
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
 	ApplicationName   string
-	EnvironmentId     resources.ID
+	EnvironmentId     *resources.ID
 	EnvironmentName   string
-	Scope             resources.ID
+	Scope             *resources.ID
 	ConnectionFactory connections.Factory
 }
 

@@ -131,7 +131,7 @@ func NormalizeStorageKey(storageKey string, maxLength int) (string, error) {
 
 // GenerateCosmosDBKey takes in an ID object and returns a string and an error if the resource group or resource type and
 // name fail to normalize.
-func GenerateCosmosDBKey(id resources.ID) (string, error) {
+func GenerateCosmosDBKey(id *resources.ID) (string, error) {
 	storageKeys := []string{NormalizeSubscriptionID(id.FindScope(resources_azure.ScopeSubscriptions))}
 
 	resourceGroup := id.FindScope(resources_azure.ScopeResourceGroups)

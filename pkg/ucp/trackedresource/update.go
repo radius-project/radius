@@ -107,7 +107,7 @@ type trackedResourceStateProperties struct {
 // - Database failure
 // - Optimistic concurrency failure
 // - Resource is still being provisioned (provisioning state is non-terminal)
-func (u *Updater) Update(ctx context.Context, downstream string, id resources.ID, apiVersion string) error {
+func (u *Updater) Update(ctx context.Context, downstream string, id *resources.ID, apiVersion string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	destination, err := url.Parse(downstream)
 	if err != nil {
@@ -151,7 +151,7 @@ func (u *Updater) Update(ctx context.Context, downstream string, id resources.ID
 	return fmt.Errorf("failed to update tracked resource after %d attempts", u.AttemptCount)
 }
 
-func (u *Updater) run(ctx context.Context, id resources.ID, trackingID resources.ID, destination *url.URL, apiVersion string) error {
+func (u *Updater) run(ctx context.Context, id *resources.ID, trackingID *resources.ID, destination *url.URL, apiVersion string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	obj, err := u.Store.Get(ctx, trackingID.String())
 	if errors.Is(err, &store.ErrNotFound{}) {

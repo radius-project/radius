@@ -284,12 +284,12 @@ func (c *ETCDClient) Client() *etcdclient.Client {
 	return c.client
 }
 
-func idFromKey(key []byte) (resources.ID, error) {
+func idFromKey(key []byte) (*resources.ID, error) {
 	parts := strings.Split(string(key), SectionSeparator)
 	// sample valid key:
 	// scope|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 	if len(parts) != 3 {
-		return resources.ID{}, errors.New("the etcd key '%q' is invalid because it does not have 3 sections")
+		return &resources.ID{}, errors.New("the etcd key '%q' is invalid because it does not have 3 sections")
 	}
 
 	switch parts[0] {
@@ -304,12 +304,12 @@ func idFromKey(key []byte) (resources.ID, error) {
 		return resources.Parse(parts[1] + resources.ProvidersSegment + parts[2])
 
 	default:
-		return resources.ID{}, errors.New("the etcd key '%q' is invalid because it has the wrong prefix")
+		return &resources.ID{}, errors.New("the etcd key '%q' is invalid because it has the wrong prefix")
 	}
 }
 
 // keyFromID returns the key to use for an ID. They key should be used as an exact match.
-func keyFromID(id resources.ID) string {
+func keyFromID(id *resources.ID) string {
 	prefix, rootScope, routingScope, _ := storeutil.ExtractStorageParts(id)
 	return prefix + SectionSeparator + rootScope + SectionSeparator + routingScope
 }

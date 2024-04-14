@@ -119,7 +119,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		}
 	}
 
-	computedResourceID := computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
+	computedResourceID := computeResourceID(&serviceCtx.ResourceID, awsResourceIdentifier)
 	body := map[string]any{
 		"id":         computedResourceID,
 		"name":       response.ResourceDescription.Identifier,

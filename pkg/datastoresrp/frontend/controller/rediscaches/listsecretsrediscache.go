@@ -58,13 +58,13 @@ func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWrite
 	resource, _, err := ctrl.GetResource(ctx, parsedResourceID)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{ID: parsedResourceID.String()}, err) {
-			return rest.NewNotFoundResponse(sCtx.ResourceID), nil
+			return rest.NewNotFoundResponse(&sCtx.ResourceID), nil
 		}
 		return nil, err
 	}
 
 	if resource == nil {
-		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
+		return rest.NewNotFoundResponse(&sCtx.ResourceID), nil
 	}
 
 	redisSecrets := datamodel.RedisCacheSecrets{}

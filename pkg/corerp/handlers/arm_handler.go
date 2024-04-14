@@ -53,7 +53,7 @@ func (handler *armHandler) Delete(ctx context.Context, options *DeleteOptions) e
 	return nil
 }
 
-func (handler *armHandler) getByID(ctx context.Context, id resources.ID) (*armresources.GenericResource, error) {
+func (handler *armHandler) getByID(ctx context.Context, id *resources.ID) (*armresources.GenericResource, error) {
 	client, err := clientv2.NewGenericResourceClient(id.FindScope(resources_azure.ScopeSubscriptions), &handler.arm.ClientOptions, nil)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (handler *armHandler) getByID(ctx context.Context, id resources.ID) (*armre
 	return &resp.GenericResource, nil
 }
 
-func (handler *armHandler) lookupARMAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+func (handler *armHandler) lookupARMAPIVersion(ctx context.Context, id *resources.ID) (string, error) {
 	client, err := clientv2.NewProvidersClient(id.FindScope(resources_azure.ScopeSubscriptions), &handler.arm.ClientOptions, nil)
 	if err != nil {
 		return "", err

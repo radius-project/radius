@@ -44,7 +44,7 @@ const (
 // MakeManagedIdentity parses the Azure Provider scope and creates an OutputResource with the parsed subscription ID and
 // resource group, and the given name. It returns an error if the scope is invalid or if the environment providers are not specified.
 func MakeManagedIdentity(name string, cloudProvider *datamodel.Providers) (*rpv1.OutputResource, error) {
-	var rID resources.ID
+	var rID *resources.ID
 	var err error
 	if cloudProvider != nil && cloudProvider.Azure.Scope != "" {
 		rID, err = resources.Parse(cloudProvider.Azure.Scope)

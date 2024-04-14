@@ -56,7 +56,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	if err != nil {
 		return nil, err
 	}
-	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
+	old, etag, err := e.GetResource(ctx, &serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}

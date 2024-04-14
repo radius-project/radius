@@ -57,7 +57,7 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, w http.ResponseWr
 	}
 
 	if resource == nil {
-		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
+		return rest.NewNotFoundResponse(&sCtx.ResourceID), nil
 	}
 
 	mongoSecrets := datamodel.MongoDatabaseSecrets{}

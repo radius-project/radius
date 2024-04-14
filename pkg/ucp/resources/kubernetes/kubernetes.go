@@ -52,7 +52,7 @@ var providerLookup map[string]string = map[string]string{
 }
 
 // ToParts returns the component parts of the given UCP resource ID.
-func ToParts(id resources.ID) (group, kind, namespace, name string) {
+func ToParts(id *resources.ID) (group, kind, namespace, name string) {
 	namespace = id.FindScope(ScopeNamespaces)
 	name = id.Name()
 	group = id.ProviderNamespace()
@@ -65,12 +65,12 @@ func ToParts(id resources.ID) (group, kind, namespace, name string) {
 
 // IDFromMeta returns the UCP resource ID for the given Kubernetes object specified by its GroupVersionKind
 // and ObjectMeta.
-func IDFromMeta(planeName string, gvk schema.GroupVersionKind, objectMeta metav1.ObjectMeta) resources.ID {
+func IDFromMeta(planeName string, gvk schema.GroupVersionKind, objectMeta metav1.ObjectMeta) *resources.ID {
 	return IDFromParts(planeName, gvk.Group, gvk.Kind, objectMeta.Namespace, objectMeta.Name)
 }
 
 // IDFromParts returns the UCP resource ID for the given Kubernetes object specified by its component parts.
-func IDFromParts(planeName string, group string, kind string, namespace string, name string) resources.ID {
+func IDFromParts(planeName string, group string, kind string, namespace string, name string) *resources.ID {
 	if group == "" {
 		group = "core"
 	}

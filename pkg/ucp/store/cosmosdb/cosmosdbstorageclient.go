@@ -451,7 +451,7 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 // Examples:
 // /planes/radius/local/... - Partition Key: radius/local
 // subscriptions/{guid}/... - Partition Key: {guid}
-func GetPartitionKey(id resources.ID) (string, error) {
+func GetPartitionKey(id *resources.ID) (string, error) {
 	partitionKey := NormalizeSubscriptionID(id.FindScope(resources_azure.ScopeSubscriptions))
 
 	if id.IsUCPQualified() {

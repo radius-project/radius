@@ -89,7 +89,7 @@ func (c *resourceClient) Delete(ctx context.Context, id string) error {
 	}
 }
 
-func (c *resourceClient) wrapError(id resources.ID, err error) error {
+func (c *resourceClient) wrapError(id *resources.ID, err error) error {
 	if err != nil {
 		return &ResourceError{Inner: err, ID: id.String()}
 	}
@@ -97,7 +97,7 @@ func (c *resourceClient) wrapError(id resources.ID, err error) error {
 	return nil
 }
 
-func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.ID) error {
+func (c *resourceClient) deleteAzureResource(ctx context.Context, id *resources.ID) error {
 	var err error
 	if id.IsUCPQualified() {
 		id, err = resources.ParseResource(resources.MakeRelativeID(id.ScopeSegments()[1:], id.TypeSegments(), id.ExtensionSegments()))
@@ -139,7 +139,7 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 	return nil
 }
 
-func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id *resources.ID) (string, error) {
 	client, err := clientv2.NewProvidersClient(id.FindScope(resources_azure.ScopeSubscriptions), &c.arm.ClientOptions, c.armClientOptions)
 	if err != nil {
 		return "", err
@@ -171,7 +171,7 @@ func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.I
 	return "", fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
 }
 
-func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID) error {
+func (c *resourceClient) deleteUCPResource(ctx context.Context, id *resources.ID) error {
 	// NOTE: the API version passed in here is ignored.
 	//
 	// We're using a generated client that understands Radius' currently supported API version.
@@ -207,7 +207,7 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID)
 	return nil
 }
 
-func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resources.ID) error {
+func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id *resources.ID) error {
 	apiVersion, err := c.lookupKubernetesAPIVersion(id)
 	if err != nil {
 		return err
@@ -242,7 +242,7 @@ func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resour
 	return nil
 }
 
-func (c *resourceClient) lookupKubernetesAPIVersion(id resources.ID) (string, error) {
+func (c *resourceClient) lookupKubernetesAPIVersion(id *resources.ID) (string, error) {
 	group, kind, namespace, _ := resources_kubernetes.ToParts(id)
 	var resourceLists []*v1.APIResourceList
 	var err error

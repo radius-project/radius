@@ -168,7 +168,7 @@ func (dc *ResourceDeploymentClient) createSummary(deployment *armresources.Deplo
 		return clients.DeploymentResult{}, nil
 	}
 
-	resources := []ucpresources.ID{}
+	resources := []*ucpresources.ID{}
 	for _, resource := range deployment.Properties.OutputResources {
 		if resource.ID == nil {
 			continue

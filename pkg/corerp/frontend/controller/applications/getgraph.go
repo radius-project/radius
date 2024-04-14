@@ -62,7 +62,7 @@ func (ctrl *GetGraph) Run(ctx context.Context, w http.ResponseWriter, req *http.
 		return nil, err
 	}
 	if applicationResource == nil {
-		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
+		return rest.NewNotFoundResponse(&sCtx.ResourceID), nil
 	}
 	// An application **MUST** have an environment id
 	environmentID, err := resources.Parse(applicationResource.Properties.Environment)

@@ -87,7 +87,7 @@ func (e *GetOperationResult) Run(ctx context.Context, w http.ResponseWriter, req
 
 // getOperationStatusResourceID function gets the operationResults resourceID
 // and converts it to an operationStatuses resourceID.
-func getOperationStatusResourceID(resourceID string) (resources.ID, error) {
+func getOperationStatusResourceID(resourceID string) (*resources.ID, error) {
 	id, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return id, err

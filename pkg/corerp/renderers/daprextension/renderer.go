@@ -37,7 +37,7 @@ type Renderer struct {
 }
 
 // GetDependencyIDs returns the radius and azure dependency IDs, or an error if one occurs.
-func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) ([]*resources.ID, []*resources.ID, error) {
 	radiusDependencyIDs, azureDependencyIDs, err := r.Inner.GetDependencyIDs(ctx, dm)
 	if err != nil {
 		return nil, nil, err

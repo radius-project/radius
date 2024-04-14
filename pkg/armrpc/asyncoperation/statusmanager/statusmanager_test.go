@@ -62,7 +62,7 @@ func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 }
 
 var reqCtx = &v1.ARMRequestContext{
-	ResourceID:     resources.MustParse("/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/container/container0"),
+	ResourceID:     *resources.MustParse("/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/container/container0"),
 	OperationID:    uuid.Must(uuid.NewRandom()),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",

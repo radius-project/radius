@@ -35,7 +35,7 @@ const (
 
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/radius-project/radius/pkg/corerp/renderers Renderer
 type Renderer interface {
-	GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error)
+	GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) (radiusResourceIDs []*resources.ID, azureResourceIDs []*resources.ID, err error)
 	Render(ctx context.Context, resource v1.DataModelInterface, options RenderOptions) (RendererOutput, error)
 }
 
@@ -48,7 +48,7 @@ type RenderOptions struct {
 // Represents a dependency of the resource currently being rendered. Currently dependencies are always Radius resources.
 type RendererDependency struct {
 	// ResourceID is the resource ID of the Radius resource that is the dependency.
-	ResourceID resources.ID
+	ResourceID *resources.ID
 
 	// Resource is the datamodel of dependency resource.
 	Resource v1.DataModelInterface
@@ -57,7 +57,7 @@ type RendererDependency struct {
 	ComputedValues map[string]any
 
 	// OutputResources is a map of the output resource IDs of the dependency. The map is keyed on the LocalID of the output resource.
-	OutputResources map[string]resources.ID
+	OutputResources map[string]*resources.ID
 }
 
 // EnvironmentOptions represents the options for the linked environment resource.

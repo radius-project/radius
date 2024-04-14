@@ -53,9 +53,9 @@ import (
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/radius-project/radius/pkg/corerp/backend/deployment github.com/radius-project/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
-	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error)
-	Delete(ctx context.Context, id resources.ID, outputResources []rpv1.OutputResource) error
+	Render(ctx context.Context, id *resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
+	Deploy(ctx context.Context, id *resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error)
+	Delete(ctx context.Context, id *resources.ID, outputResources []rpv1.OutputResource) error
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
 }
 
@@ -76,7 +76,7 @@ type deploymentProcessor struct {
 }
 
 type ResourceData struct {
-	ID              resources.ID // resource ID
+	ID              *resources.ID // resource ID
 	Resource        v1.DataModelInterface
 	OutputResources []rpv1.OutputResource
 	ComputedValues  map[string]any
@@ -88,7 +88,7 @@ type ResourceData struct {
 // Render fetches the resource renderer, the application, environment and application options, and the dependencies of the
 // resource being deployed, and then renders the resource using the fetched data. It returns an error if any of the fetches
 // fail or if the output resource does not have a provider specified or if the provider is not configured.
-func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
+func (dp *deploymentProcessor) Render(ctx context.Context, resourceID *resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
 	renderer, err := dp.getResourceRenderer(resourceID)
@@ -149,7 +149,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 	return rendererOutput, nil
 }
 
-func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (renderers.Renderer, error) {
+func (dp *deploymentProcessor) getResourceRenderer(resourceID *resources.ID) (renderers.Renderer, error) {
 	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(resourceID.Type())
 	if err != nil {
 		// Internal error: A resource type with unsupported app model shouldn't have reached here
@@ -215,7 +215,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, rendere
 	return nil
 }
 
-func (dp *deploymentProcessor) getApplicationAndEnvironmentForResourceID(ctx context.Context, id resources.ID) (*corerp_dm.Application, *corerp_dm.Environment, error) {
+func (dp *deploymentProcessor) getApplicationAndEnvironmentForResourceID(ctx context.Context, id *resources.ID) (*corerp_dm.Application, *corerp_dm.Environment, error) {
 	// get namespace for deploying the resource
 	// 1. fetch the resource from the DB and get the application info
 	res, err := dp.getResourceDataByID(ctx, id)
@@ -244,7 +244,7 @@ func (dp *deploymentProcessor) getApplicationAndEnvironmentForResourceID(ctx con
 // Deploy deploys the given radius resource by ordering the output resources in deployment dependency order, deploying each
 // output resource, updating static values for connections, and transforming the radius resource with computed values. It
 // returns a DeploymentOutput and an error if one occurs.
-func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, id *resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	_, env, err := dp.getApplicationAndEnvironmentForResourceID(ctx, id)
@@ -326,7 +326,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 }
 
 // Delete deletes the output resources in reverse dependency order, starting with the resource deployed last.
-func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, deployedOutputResources []rpv1.OutputResource) error {
+func (dp *deploymentProcessor) Delete(ctx context.Context, id *resources.ID, deployedOutputResources []rpv1.OutputResource) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
@@ -349,7 +349,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, depl
 }
 
 // Returns fully qualified radius resource identifier to RendererDependency map
-func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceIDs []resources.ID) (map[string]renderers.RendererDependency, error) {
+func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceIDs []*resources.ID) (map[string]renderers.RendererDependency, error) {
 	rendererDependencies := map[string]renderers.RendererDependency{}
 	for _, id := range resourceIDs {
 		rd, err := dp.getResourceDataByID(ctx, id)
@@ -479,7 +479,7 @@ func (dp *deploymentProcessor) getAppOptions(appProp *corerp_dm.ApplicationPrope
 }
 
 // getResourceDataByID fetches resource for the provided id from the data store
-func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resourceID resources.ID) (ResourceData, error) {
+func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resourceID *resources.ID) (ResourceData, error) {
 	errMsg := "failed to fetch the resource %q. Err: %w"
 	sc, err := dp.sp.GetStorageClient(ctx, resourceID.Type())
 	if err != nil {
@@ -579,14 +579,14 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData portableresources.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID *resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData portableresources.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)
 		if err != nil {
 			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
-		appID = &parsedID
+		appID = parsedID
 	} else if rp_pr.IsValidPortableResourceType(resourceID.TypeSegments()[0].Type) {
 		// Application id is optional for portable resource types
 		appID = nil
@@ -607,7 +607,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 
 func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, dependency ResourceData) (renderers.RendererDependency, error) {
 	// Get dependent resource identity
-	outputResourceIDs := map[string]resources.ID{}
+	outputResourceIDs := map[string]*resources.ID{}
 	for _, outputResource := range dependency.OutputResources {
 		outputResourceIDs[outputResource.LocalID] = outputResource.ID
 	}

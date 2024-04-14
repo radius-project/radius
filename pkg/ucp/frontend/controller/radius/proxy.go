@@ -55,7 +55,7 @@ const (
 )
 
 type updater interface {
-	Update(ctx context.Context, downstream string, id resources.ID, version string) error
+	Update(ctx context.Context, downstream string, id *resources.ID, version string) error
 }
 
 var _ armrpc_controller.Controller = (*ProxyController)(nil)
@@ -103,9 +103,9 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	id := requestCtx.ResourceID
 	relativePath := middleware.GetRelativePath(p.Options().PathBase, requestCtx.OrignalURL.Path)
 
-	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, p.StorageClient(), id)
+	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, p.StorageClient(), &id)
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
-		return armrpc_rest.NewNotFoundResponse(id), nil
+		return armrpc_rest.NewNotFoundResponse(&id), nil
 	} else if errors.Is(err, &resourcegroups.InvalidError{}) {
 		response := v1.ErrorResponse{Error: v1.ErrorDetails{Code: v1.CodeInvalid, Message: err.Error(), Target: id.String()}}
 		return armrpc_rest.NewBadRequestARMResponse(response), nil
@@ -141,7 +141,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 
 	if p.IsTerminalResponse(interceptor.Response) {
 		logger.V(ucplog.LevelDebug).Info("response is terminal, updating tracked resource synchronously")
-		err = p.UpdateTrackedResource(ctx, downstreamURL.String(), id, requestCtx.APIVersion)
+		err = p.UpdateTrackedResource(ctx, downstreamURL.String(), &id, requestCtx.APIVersion)
 		if errors.Is(err, &trackedresource.InProgressErr{}) {
 			logger.V(ucplog.LevelDebug).Info("synchronous update failed, updating tracked resource asynchronously")
 			// Continue executing
@@ -159,7 +159,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	}
 
 	// If we get here then we need to update the tracked resource, but the operation is not yet complete.
-	err = p.EnqueueTrackedResourceUpdate(ctx, id, requestCtx.APIVersion)
+	err = p.EnqueueTrackedResourceUpdate(ctx, &id, requestCtx.APIVersion)
 	if err != nil {
 		logger.Error(err, "failed to enqueue tracked resource update")
 		return nil, nil
@@ -223,19 +223,19 @@ func (p *ProxyController) IsTerminalResponse(resp *http.Response) bool {
 }
 
 // UpdateTrackedResource updates the tracked resource synchronously.
-func (p *ProxyController) UpdateTrackedResource(ctx context.Context, downstream string, id resources.ID, apiVersion string) error {
+func (p *ProxyController) UpdateTrackedResource(ctx context.Context, downstream string, id *resources.ID, apiVersion string) error {
 	return p.updater.Update(ctx, downstream, id, apiVersion)
 }
 
 // EnqueueTrackedResourceUpdate enqueues an async operation to update the tracked resource.
-func (p *ProxyController) EnqueueTrackedResourceUpdate(ctx context.Context, id resources.ID, apiVersion string) error {
+func (p *ProxyController) EnqueueTrackedResourceUpdate(ctx context.Context, id *resources.ID, apiVersion string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	trackingID := trackedresource.IDFor(id)
 
 	// Create a serviceCtx for the operation that we're going to process on the resource.
 	serviceCtx := *v1.ARMRequestContextFromContext(ctx)
-	serviceCtx.ResourceID = trackingID
+	serviceCtx.ResourceID = *trackingID
 	serviceCtx.OperationType = v1.OperationType{Type: trackingID.Type(), Method: datamodel.OperationProcess}
 
 	// Create the database entry for the tracked resource.

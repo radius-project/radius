@@ -35,7 +35,7 @@ type OutputResource struct {
 	LocalID string `json:"localID"`
 
 	// ID is the UCP resource ID of the underlying resource.
-	ID resources.ID `json:"id"`
+	ID *resources.ID `json:"id"`
 
 	// RadiusManaged determines whether Radius manages the lifecycle of the underlying resource.
 	RadiusManaged *bool `json:"radiusManaged"`

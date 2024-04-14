@@ -104,7 +104,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	} else if err != nil {
 		return ucp_aws.HandleAWSError(err)
 	} else {
-		computedResourceID = computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
+		computedResourceID = computeResourceID(&serviceCtx.ResourceID, awsResourceIdentifier)
 
 		// Create and update work differently for AWS - we need to know if the resource
 		// we're working on exists already.
@@ -192,7 +192,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		// Get the resource identifier from the progress event response
 		if response != nil && response.ProgressEvent != nil && response.ProgressEvent.Identifier != nil {
 			awsResourceIdentifier = *response.ProgressEvent.Identifier
-			computedResourceID = computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
+			computedResourceID = computeResourceID(&serviceCtx.ResourceID, awsResourceIdentifier)
 		}
 	}
 
@@ -207,6 +207,6 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		responseBody["name"] = awsResourceIdentifier
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.Options().PathBase)
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, &serviceCtx.ResourceID, operation, "", serviceCtx.ResourceID.RootScope(), p.Options().PathBase)
 	return resp, nil
 }

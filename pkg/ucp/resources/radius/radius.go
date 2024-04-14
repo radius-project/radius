@@ -39,6 +39,6 @@ const (
 )
 
 // IsRadiusResource checks if the given ID represents a resource type, and is defined in the Radius plane.
-func IsRadiusResource(id resources.ID) bool {
+func IsRadiusResource(id *resources.ID) bool {
 	return id.FindScope("radius") != "" && id.IsResource()
 }

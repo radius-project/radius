@@ -24,7 +24,7 @@ import (
 )
 
 type PublicEndpoint struct {
-	Resource ucpresources.ID
+	Resource *ucpresources.ID
 	Endpoint string
 }
 

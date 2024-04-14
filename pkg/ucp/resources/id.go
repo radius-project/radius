@@ -83,12 +83,12 @@ type KnownType struct {
 }
 
 // IDEquals compares two IDs for equality.
-func IDEquals(x ID, y ID) bool {
+func IDEquals(x *ID, y *ID) bool {
 	return strings.EqualFold(x.String(), y.String())
 }
 
 // IsEmpty checks if the ID is empty.
-func (ri ID) IsEmpty() bool {
+func (ri *ID) IsEmpty() bool {
 	return ri.id == ""
 }
 
@@ -97,7 +97,7 @@ func (ri ID) IsEmpty() bool {
 // Example:
 //
 //	/planes/radius/local
-func (ri ID) IsScope() bool {
+func (ri *ID) IsScope() bool {
 	return !ri.IsEmpty() && // Not empty
 		len(ri.typeSegments) == 0 && // Not a type
 		len(ri.extensionSegments) == 0 &&
@@ -110,7 +110,7 @@ func (ri ID) IsScope() bool {
 //
 //	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app
 //	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app/providers/Some.Other/type/my-extension
-func (ri ID) IsResource() bool {
+func (ri *ID) IsResource() bool {
 	if ri.IsEmpty() {
 		return false
 	}
@@ -129,7 +129,7 @@ func (ri ID) IsResource() bool {
 // Example:
 //
 //	/planes/radius/local/resourceGroups/resources
-func (ri ID) IsScopeCollection() bool {
+func (ri *ID) IsScopeCollection() bool {
 	return !ri.IsEmpty() && // Not empty
 		len(ri.typeSegments) == 0 && // No type segments
 		len(ri.extensionSegments) == 0 && // No extension segments
@@ -142,7 +142,7 @@ func (ri ID) IsScopeCollection() bool {
 //
 //	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications
 //	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app/providers/Some.Other/type
-func (ri ID) IsResourceCollection() bool {
+func (ri *ID) IsResourceCollection() bool {
 	if ri.IsEmpty() {
 		return false
 	}
@@ -161,7 +161,7 @@ func (ri ID) IsResourceCollection() bool {
 // Example:
 //
 //	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app/providers/Some.Other/type/my-extension
-func (ri ID) IsExtensionResource() bool {
+func (ri *ID) IsExtensionResource() bool {
 	// Has at least one extension segment, and the last one is named.
 	return len(ri.extensionSegments) > 0 && len(ri.extensionSegments[len(ri.extensionSegments)-1].Name) > 0
 }
@@ -171,38 +171,38 @@ func (ri ID) IsExtensionResource() bool {
 // Example:
 //
 //	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app/providers/Some.Other/type
-func (ri ID) IsExtensionCollection() bool {
+func (ri *ID) IsExtensionCollection() bool {
 	// Has at least one extension segment, and the last one is named.
 	return len(ri.extensionSegments) > 0 && len(ri.extensionSegments[len(ri.extensionSegments)-1].Name) == 0
 }
 
 // IsUCPQualified checks if the ID has a prefix of SegmentSeparator and PlanesSegment.
-func (ri ID) IsUCPQualified() bool {
+func (ri *ID) IsUCPQualified() bool {
 	return strings.HasPrefix(ri.id, SegmentSeparator+PlanesSegment)
 }
 
 // ScopeSegments gets the slice of root-scope segments.
-func (ri ID) ScopeSegments() []ScopeSegment {
+func (ri *ID) ScopeSegments() []ScopeSegment {
 	return ri.scopeSegments
 }
 
 // TypeSegments gets the slice of type segments.
-func (ri ID) TypeSegments() []TypeSegment {
+func (ri *ID) TypeSegments() []TypeSegment {
 	return ri.typeSegments
 }
 
 // ExtensionSegments gets the slice of extension segments.
-func (ri ID) ExtensionSegments() []TypeSegment {
+func (ri *ID) ExtensionSegments() []TypeSegment {
 	return ri.extensionSegments
 }
 
 // This function returns the "id" field of the given ID instance.
-func (ri ID) String() string {
+func (ri *ID) String() string {
 	return ri.id
 }
 
 // Method FindScope searches through the scopeSegments of the ID instance and returns the Name of the scopeType if found.
-func (ri ID) FindScope(scopeType string) string {
+func (ri *ID) FindScope(scopeType string) string {
 	for _, t := range ri.scopeSegments {
 		if strings.EqualFold(t.Type, scopeType) {
 			return t.Name
@@ -219,7 +219,7 @@ func (ri ID) FindScope(scopeType string) string {
 //
 //	/subscriptions/{guid}/resourceGroups/cool-group
 //	/planes/radius/local/resourceGroups/cool-group
-func (ri ID) RootScope() string {
+func (ri *ID) RootScope() string {
 	segments := []string{}
 	for _, t := range ri.scopeSegments {
 		segments = append(segments, t.Type)
@@ -242,7 +242,7 @@ func (ri ID) RootScope() string {
 //
 //	/subscriptions/{guid}
 //	/planes/radius/local
-func (ri ID) PlaneScope() string {
+func (ri *ID) PlaneScope() string {
 	segments := []string{}
 	for _, t := range ri.scopeSegments {
 		if !strings.EqualFold(t.Type, "resourcegroups") {
@@ -268,7 +268,7 @@ func (ri ID) PlaneScope() string {
 // Examples:
 //
 //	Applications.Core
-func (ri ID) ProviderNamespace() string {
+func (ri *ID) ProviderNamespace() string {
 	if len(ri.extensionSegments) > 0 {
 		segments := strings.Split(ri.extensionSegments[0].Type, SegmentSeparator)
 		return segments[0]
@@ -287,7 +287,7 @@ func (ri ID) ProviderNamespace() string {
 // Examples:
 //
 //	radius/local
-func (ri ID) PlaneNamespace() string {
+func (ri *ID) PlaneNamespace() string {
 	if !ri.IsUCPQualified() {
 		return ""
 	}
@@ -305,7 +305,7 @@ func (ri ID) PlaneNamespace() string {
 // Examples:
 //
 //	Applications.Core/applications/my-app
-func (ri ID) RoutingScope() string {
+func (ri *ID) RoutingScope() string {
 	segments := []string{}
 
 	if len(ri.extensionSegments) > 0 {
@@ -333,7 +333,7 @@ func (ri ID) RoutingScope() string {
 //
 //	/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/application/my-app/providers/Applications.Core/someExtensionType/my-extension
 //	=> /planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/application/my-app
-func (ri ID) ParentResource() string {
+func (ri *ID) ParentResource() string {
 	if len(ri.extensionSegments) == 0 {
 		return ""
 	}
@@ -346,7 +346,7 @@ func (ri ID) ParentResource() string {
 }
 
 // Type returns the fully-qualified resource type of a ResourceID, or an empty string if the type cannot be determined.
-func (ri ID) Type() string {
+func (ri *ID) Type() string {
 	if len(ri.extensionSegments) > 0 {
 		types := make([]string, len(ri.extensionSegments))
 		for i, t := range ri.extensionSegments {
@@ -375,7 +375,7 @@ func (ri ID) Type() string {
 }
 
 // QualifiedName gets the fully-qualified resource name (eg. `radiusv3/myapp/mycontainer`) by joining the type segments with the SegmentSeparator.
-func (ri ID) QualifiedName() string {
+func (ri *ID) QualifiedName() string {
 	names := []string{}
 	if len(ri.extensionSegments) > 0 {
 		for _, t := range ri.extensionSegments {
@@ -406,7 +406,7 @@ func (ri ID) QualifiedName() string {
 }
 
 // Name gets the resource or scope name.
-func (ri ID) Name() string {
+func (ri *ID) Name() string {
 	if len(ri.extensionSegments) > 0 {
 		return ri.extensionSegments[len(ri.extensionSegments)-1].Name
 	}
@@ -423,7 +423,7 @@ func (ri ID) Name() string {
 }
 
 // ValidateResourceType validates that the resource ID type segment matches the expected type.
-func (ri ID) ValidateResourceType(t KnownType) error {
+func (ri *ID) ValidateResourceType(t KnownType) error {
 	if len(ri.typeSegments) != len(t.Types) {
 		return invalidType(ri.id)
 	}
@@ -454,7 +454,7 @@ func invalidType(id string) error {
 
 // Append appends a resource type segment to the ID and returns the resulting ID. If the ID is UCP qualified, it will
 // return a UCP qualified ID, otherwise it will return a relative ID.
-func (ri ID) Append(resourceType TypeSegment) ID {
+func (ri *ID) Append(resourceType TypeSegment) *ID {
 	typeSegments := ri.typeSegments
 	extensionSegments := ri.extensionSegments
 	if len(ri.extensionSegments) > 0 {
@@ -481,7 +481,7 @@ func (ri ID) Append(resourceType TypeSegment) ID {
 }
 
 // Truncate removes the last type/name pair for a resource id or scope id. Calling truncate on a top level resource or scope has no effect.
-func (ri ID) Truncate() ID {
+func (ri *ID) Truncate() *ID {
 	scopeSegments := ri.scopeSegments
 	typeSegments := ri.typeSegments
 	extensionSegments := ri.extensionSegments
@@ -525,18 +525,17 @@ func (id ID) MarshalText() ([]byte, error) {
 
 // UnmarshalText implements text unmarshalling support for Resource IDs.
 func (id *ID) UnmarshalText(data []byte) error {
-	parsed, err := Parse(string(data))
+	parsedID, err := Parse(string(data))
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal text, value was not a valid resource ID: %w", err)
 	}
 
-	// Assign fields into self.
-	*id = parsed
+	*id = *parsedID
 	return nil
 }
 
 // MarshalJSON implements JSON marshalling support for Resource IDs.
-func (id ID) MarshalJSON() ([]byte, error) {
+func (id *ID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(id.String())
 }
 
@@ -554,17 +553,17 @@ func (id *ID) UnmarshalJSON(data []byte) error {
 	}
 
 	// Assign fields into self.
-	*id = parsed
+	*id = *parsed
 	return nil
 }
 
 // ParseByMethod is a helper function to extract the custom actions from the id.
 // If there is a custom action in the request, then the method will be POST. To be able
 // to get the proper type, we need to remove the custom action from the id.
-func ParseByMethod(id string, method string) (ID, error) {
+func ParseByMethod(id string, method string) (*ID, error) {
 	parsedID, err := Parse(id)
 	if err != nil {
-		return ID{}, err
+		return &ID{}, err
 	}
 
 	if method == http.MethodPost {
@@ -579,14 +578,14 @@ func ParseByMethod(id string, method string) (ID, error) {
 // Example:
 //
 //	/planes/radius/local/resourceGroups/rg1
-func ParseScope(id string) (ID, error) {
+func ParseScope(id string) (*ID, error) {
 	parsed, err := Parse(id)
 	if err != nil {
-		return ID{}, err
+		return &ID{}, err
 	}
 
 	if !parsed.IsScope() {
-		return ID{}, fmt.Errorf("%q is a valid resource id but does not refer to a scope", id)
+		return &ID{}, fmt.Errorf("%q is a valid resource id but does not refer to a scope", id)
 	}
 
 	return parsed, err
@@ -597,14 +596,14 @@ func ParseScope(id string) (ID, error) {
 // Example:
 //
 //	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app
-func ParseResource(id string) (ID, error) {
+func ParseResource(id string) (*ID, error) {
 	parsed, err := Parse(id)
 	if err != nil {
-		return ID{}, err
+		return &ID{}, err
 	}
 
 	if !parsed.IsResource() {
-		return ID{}, fmt.Errorf("%q is a valid resource id but does not refer to a resource", id)
+		return &ID{}, fmt.Errorf("%q is a valid resource id but does not refer to a resource", id)
 	}
 
 	return parsed, err
@@ -613,7 +612,7 @@ func ParseResource(id string) (ID, error) {
 // Parse parses a resource ID. Parse will parse ALL valid resource IDs in the most permissive way.
 // Most code should use a more specific function like ParseResource to parse the specific kind of ID
 // they want to handle.
-func Parse(id string) (ID, error) {
+func Parse(id string) (*ID, error) {
 	original := id
 	// We require the leading / for all IDs, and tolerate a trailing /.
 	//
@@ -621,7 +620,7 @@ func Parse(id string) (ID, error) {
 	// A URL path that contains `//example.com` could end up in the Location header and result in an open
 	// redirect.
 	if !strings.HasPrefix(id, SegmentSeparator) || strings.HasPrefix(id, SegmentSeparator+SegmentSeparator) {
-		return ID{}, invalid(original)
+		return &ID{}, invalid(original)
 	}
 
 	// trim the leading and ending / so we don't end up with an empty segment - we disallow
@@ -650,7 +649,7 @@ func Parse(id string) (ID, error) {
 		} else {
 			normalized = MakeRelativeID(nil, nil, nil)
 		}
-		return ID{
+		return &ID{
 			id: normalized,
 		}, nil
 	}
@@ -659,7 +658,7 @@ func Parse(id string) (ID, error) {
 	segments := strings.Split(id, SegmentSeparator)
 	for _, s := range segments {
 		if s == "" {
-			return ID{}, invalid(original)
+			return &ID{}, invalid(original)
 		}
 	}
 
@@ -675,7 +674,7 @@ func Parse(id string) (ID, error) {
 		if strings.ToLower(segments[i]) == ProvidersSegment {
 			if len(segments) == i+1 {
 				// Last segment is "providers"
-				return ID{}, invalid(original)
+				return &ID{}, invalid(original)
 			}
 			i++ // advance past "providers"
 			break
@@ -695,7 +694,7 @@ func Parse(id string) (ID, error) {
 			// odd number of non-providers segments inside the root scope followed by 'providers', this is invalid.
 			//
 			// eg: /planes/radius/local/resourceGroups/test-rg/|resources|/providers/....
-			return ID{}, invalid(original)
+			return &ID{}, invalid(original)
 		}
 
 		scopes = append(scopes, ScopeSegment{Type: segments[i], Name: segments[i+1]})
@@ -712,7 +711,7 @@ func Parse(id string) (ID, error) {
 			normalized = MakeRelativeID(scopes, nil, nil)
 		}
 
-		return ID{
+		return &ID{
 			id:            normalized,
 			scopeSegments: scopes,
 		}, nil
@@ -721,7 +720,7 @@ func Parse(id string) (ID, error) {
 	// Now that're past providers, we're looking for the namespace/type - that is
 	// at least 2 segments.
 	if len(segments)-i < 2 {
-		return ID{}, invalid(original)
+		return &ID{}, invalid(original)
 	}
 
 	resourceType := TypeSegment{Type: fmt.Sprintf("%s/%s", segments[i], segments[i+1])}
@@ -739,7 +738,7 @@ func Parse(id string) (ID, error) {
 		if strings.ToLower(segments[i]) == ProvidersSegment {
 			if len(segments) == i+1 {
 				// Last segment is "providers"
-				return ID{}, invalid(original)
+				return &ID{}, invalid(original)
 			}
 			i++ // advance past "providers"
 			break
@@ -770,7 +769,7 @@ func Parse(id string) (ID, error) {
 			normalized = MakeRelativeID(scopes, types, nil)
 		}
 
-		return ID{
+		return &ID{
 			id:            normalized,
 			scopeSegments: scopes,
 			typeSegments:  types,
@@ -782,7 +781,7 @@ func Parse(id string) (ID, error) {
 	// Now that're past providers, we're looking for the namespace/type - that is
 	// at least 2 segments.
 	if len(segments)-i < 2 {
-		return ID{}, invalid(original)
+		return &ID{}, invalid(original)
 	}
 
 	extensionType := TypeSegment{Type: fmt.Sprintf("%s/%s", segments[i], segments[i+1])}
@@ -820,7 +819,7 @@ func Parse(id string) (ID, error) {
 		normalized = MakeRelativeID(scopes, types, extensionTypes)
 	}
 
-	return ID{
+	return &ID{
 		id:                normalized,
 		scopeSegments:     scopes,
 		typeSegments:      types,
@@ -834,7 +833,7 @@ func invalid(id string) error {
 
 // MustParse parses a resource ID. MustParse will panic if the ID is not valid. This should only
 // be used in tests and other circumstances where the ID is known to be valid.
-func MustParse(id string) ID {
+func MustParse(id string) *ID {
 	parsed, err := Parse(id)
 	if err != nil {
 		panic(err)

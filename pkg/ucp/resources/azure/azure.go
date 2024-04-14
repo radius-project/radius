@@ -29,6 +29,6 @@ const (
 )
 
 // IsAzureResource returns true if the given resource ID is an Azure resource.
-func IsAzureResource(id resources.ID) bool {
+func IsAzureResource(id *resources.ID) bool {
 	return (id.FindScope(ScopeSubscriptions) != "" || id.FindScope(PlaneTypeAzure) != "") && id.IsResource()
 }

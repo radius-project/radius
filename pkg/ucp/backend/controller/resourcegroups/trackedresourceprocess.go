@@ -36,7 +36,7 @@ import (
 var _ ctrl.Controller = (*TrackedResourceProcessController)(nil)
 
 type updater interface {
-	Update(ctx context.Context, downstreamURL string, originalID resources.ID, version string) error
+	Update(ctx context.Context, downstreamURL string, originalID *resources.ID, version string) error
 }
 
 // TrackedResourceProcessController is the async operation controller to perform background processing on tracked resources.

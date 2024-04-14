@@ -69,7 +69,7 @@ const (
 )
 
 type ResourceProgress struct {
-	Resource ucpresources.ID
+	Resource *ucpresources.ID
 	Status   ResourceStatus
 }
 
@@ -79,7 +79,7 @@ type DeploymentOutput struct {
 }
 
 type DeploymentResult struct {
-	Resources []ucpresources.ID
+	Resources []*ucpresources.ID
 	Outputs   map[string]DeploymentOutput
 }
 
@@ -109,7 +109,7 @@ type GatewayStatus struct {
 }
 
 type EndpointOptions struct {
-	ResourceID ucpresources.ID
+	ResourceID *ucpresources.ID
 }
 
 type ExposeOptions struct {

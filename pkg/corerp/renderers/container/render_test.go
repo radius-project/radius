@@ -105,7 +105,7 @@ func makeResource(properties datamodel.ContainerProperties) *datamodel.Container
 	return &resource
 }
 
-func makeAzureResourceID(t *testing.T, resourceType string, resourceName string) resources.ID {
+func makeAzureResourceID(t *testing.T, resourceType string, resourceName string) *resources.ID {
 	id, err := resources.ParseResource(resources.MakeRelativeID(
 		[]resources.ScopeSegment{
 			{Type: "subscriptions", Name: "test-subscription"},
@@ -119,7 +119,7 @@ func makeAzureResourceID(t *testing.T, resourceType string, resourceName string)
 	return id
 }
 
-func makeRadiusResourceID(t *testing.T, resourceType string, resourceName string) resources.ID {
+func makeRadiusResourceID(t *testing.T, resourceType string, resourceName string) *resources.ID {
 	id, err := resources.ParseResource(resources.MakeRelativeID(
 		[]resources.ScopeSegment{
 			{Type: "radius", Name: "local"},
@@ -197,14 +197,14 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	require.Len(t, radiusResourceIDs, 3)
 	require.Len(t, azureResourceIDs, 1)
 
-	expectedRadiusResourceIDs := []resources.ID{
+	expectedRadiusResourceIDs := []*resources.ID{
 		makeRadiusResourceID(t, "Applications.Core/httpRoutes", "A"),
 		makeRadiusResourceID(t, "Applications.Core/httpRoutes", "B"),
 		makeRadiusResourceID(t, "Applications.Core/httpRoutes", "C"),
 	}
 	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
 
-	expectedAzureResourceIDs := []resources.ID{
+	expectedAzureResourceIDs := []*resources.ID{
 		testAzureResourceID,
 	}
 	require.ElementsMatch(t, expectedAzureResourceIDs, azureResourceIDs)
@@ -786,7 +786,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
 			},
-			OutputResources: map[string]resources.ID{
+			OutputResources: map[string]*resources.ID{
 				// This is the resource that the role assignments target!
 				"TargetLocalID": makeAzureResourceID(t, "SomeProvider/TargetResourceType", "TargetResource"),
 			},
@@ -1203,7 +1203,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 			ComputedValues: map[string]any{
 				azvolrenderer.SPCVolumeObjectSpecKey: "objectspecs",
 			},
-			OutputResources: map[string]resources.ID{
+			OutputResources: map[string]*resources.ID{
 				rpv1.LocalIDSecretProviderClass: resources_kubernetes.IDFromParts(
 					resources_kubernetes.PlaneNameTODO,
 					"secrets-store.csi.x-k8s.io",
