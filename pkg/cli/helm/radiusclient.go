@@ -21,8 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -143,10 +141,6 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 
 	for _, arg := range options.SetFileArgs {
-		if runtime.GOOS == "windows" {
-			arg = filepath.ToSlash(arg)
-		}
-
 		reader := func(rs []rune) (any, error) {
 			data, err := os.ReadFile(string(rs))
 			return string(data), err
