@@ -486,7 +486,6 @@ jobs:
         run: |
           echo ":x: functional test failed." >> $GITHUB_STEP_SUMMARY
       - name: Login to Azure
-        if: always()
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
