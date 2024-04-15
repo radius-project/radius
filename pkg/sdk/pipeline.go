@@ -46,13 +46,6 @@ func NewClientOptions(connection Connection) *arm.ClientOptions {
 				&removeAuthorizationHeaderPolicy{},
 			},
 			Transport: connection.Client(),
-			// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
-			// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
-			//
-			// This check was failing for some unit tests because the ARM requests are made over HTTP and the bearer token is being sent in the header.
-			// This is a temporary fix to allow sending the bearer token over HTTP.
-			// We don't have any use cases where we send the bearer token over HTTP in production.
-			InsecureAllowCredentialWithHTTP: true,
 		},
 		DisableRPRegistration: true,
 	}
