@@ -256,8 +256,6 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 		connections := resolveConnections(resource, connectionsPath, connectionsResolver(resources))
 		// Resolve Outbound connections based on 'routes'.
 		connections = append(connections, resolveConnections(resource, routesPath, routesPathResolver(resources))...)
-		// Resolve Inbound connections based on 'provides'.
-		connections = append(connections, resolveConnections(resource, portsPath, providersResolver)...)
 
 		sort.Slice(connections, func(i, j int) bool {
 			return to.String(connections[i].ID) < to.String(connections[j].ID)
@@ -343,8 +341,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 				}
 				connectionsByDestination[otherID] = append(connectionsByDestination[otherID], connectionInbound)
 			} else {
-				// We dont have to note anything in connectionsOutbound because 'provides' allows us to determine just the
-				// missing inbound connections to HTTPRoutes. All outbound connections are already captured by 'connections'.
+				// All outbound connections are already captured by 'connections'.
 				connectionsBySource[otherID] = append(connectionsBySource[otherID], *connection)
 			}
 		}
@@ -589,29 +586,6 @@ func routesPathResolver(resources []generated.GenericResource) resolver {
 		}
 		return sourceID, corerpv20231001preview.DirectionOutbound, nil
 	}
-}
-
-// providersResolver is specifically to support HTTPRoute.
-// Any Radius resource type that exposes a port uses the following property path to return them.
-// The port may have a 'provides' attribute that specifies a httproute.
-// This route should be parsed to find the connections between containers.
-// For example, if container A provides a route and container B consumes it,
-// then we have port.provides in container A and container.connection in container B.
-// This gives us the connection: container A --> route R --> container B.
-// Without parsing the 'provides' attribute, we would miss the connection between container A and route R.
-func providersResolver(item any) (string, corerpv20231001preview.Direction, error) {
-	data := &corerpv20231001preview.ContainerPortProperties{}
-	err := toStronglyTypedData(item, data)
-	if err != nil {
-		return "", "", err
-	}
-
-	id := to.String(data.Provides)
-	if id == "" {
-		return "", "", nil
-	}
-
-	return id, corerpv20231001preview.DirectionInbound, nil
 }
 
 // toStronglyTypedData uses JSON marshalling and unmarshalling to convert a weakly-typed

@@ -91,24 +91,6 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 		},
 	})
 
-	_ = ns.AddResource("httpRoutes", &builder.ResourceOption[*datamodel.HTTPRoute, datamodel.HTTPRoute]{
-		RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
-		ResponseConverter: converter.HTTPRouteDataModelToVersioned,
-
-		Put: builder.Operation[datamodel.HTTPRoute]{
-			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
-			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
-		},
-		Patch: builder.Operation[datamodel.HTTPRoute]{
-			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
-			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
-		},
-		Delete: builder.Operation[datamodel.HTTPRoute]{
-			AsyncJobController:       backend_ctrl.NewDeleteResource,
-			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
-		},
-	})
-
 	_ = ns.AddResource("containers", &builder.ResourceOption[*datamodel.ContainerResource, datamodel.ContainerResource]{
 		RequestConverter:  converter.ContainerDataModelFromVersioned,
 		ResponseConverter: converter.ContainerDataModelToVersioned,

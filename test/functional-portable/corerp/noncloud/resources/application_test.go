@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
@@ -80,11 +81,6 @@ func Test_ApplicationGraph(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "http-back-rte-simple1",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "http-back-ctnr-simple1",
 						Type: validation.ContainersResource,
 						App:  name,
@@ -96,7 +92,8 @@ func Test_ApplicationGraph(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "http-front-ctnr-simple1"),
 						validation.NewK8sPodForResource(name, "http-back-ctnr-simple1"),
-						validation.NewK8sServiceForResource(name, "http-back-rte-simple1"),
+						validation.NewK8sServiceForResource(name, "http-front-cntr-simple1").ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "http-back-cntr-simple1").ValidateLabels(false),
 					},
 				},
 			},
@@ -116,7 +113,22 @@ func Test_ApplicationGraph(t *testing.T) {
 				// assert that the graph is as expected
 				expected := []*v20231001preview.ApplicationGraphResource{}
 				testutil.MustUnmarshalFromFile("corerp-resources-application-graph-out.json", &expected)
-				require.ElementsMatch(t, expected, res.Resources)
+
+				// For easier comparison, we sort the resources by name.
+				sort.Slice(res.Resources, func(i, j int) bool {
+					return *res.Resources[i].Name < *res.Resources[j].Name
+				})
+				sort.Slice(expected, func(i, j int) bool {
+					return *expected[i].Name < *expected[j].Name
+				})
+
+				if len(res.Resources) != len(expected) {
+					require.ElementsMatch(t, expected, res.Resources)
+				} else {
+					for i := range res.Resources {
+						require.Equal(t, expected[i], res.Resources[i], *expected[i].Name)
+					}
+				}
 			},
 		},
 	})

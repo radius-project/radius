@@ -514,12 +514,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(corerp_dm.HTTPRouteResourceType):
-		obj := &corerp_dm.HTTPRoute{}
-		if err = resource.As(obj); err != nil {
-			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.SecretStoreResourceType):
 		obj := &corerp_dm.SecretStore{}
 		if err = resource.As(obj); err != nil {

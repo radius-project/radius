@@ -17,7 +17,6 @@ limitations under the License.
 package kubernetes
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -107,21 +106,6 @@ func MakeSelectorLabels(application string, resource string) map[string]string {
 	}
 	return map[string]string{
 		LabelRadiusApplication: application,
-	}
-}
-
-// MakeRouteSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
-// Kubernetes object.
-//
-// This function differs from MakeRouteSelectorLabels in that it's intended to *cross* resources. eg: The Service created by
-// an HttpRoute and the Deployment created by a Container.
-func MakeRouteSelectorLabels(application string, resourceType string, route string) map[string]string {
-	return map[string]string{
-		LabelRadiusApplication: NormalizeResourceName(application),
-
-		// NOTE: pods can serve multiple routes of different types. Therefore we need to encode the
-		// the route's type and name in the *key* to support multiple matches.
-		fmt.Sprintf(LabelRadiusRouteFmt, NormalizeResourceName(strings.TrimSuffix(resourceType, "Route")), NormalizeResourceName(route)): "true",
 	}
 }
 
