@@ -73,7 +73,7 @@ func listAllResourcesOfTypeInApplication(ctx context.Context, applicationID reso
 	}
 	applicationName := applicationID.Name()
 	for _, resource := range resourceList {
-		isResourceWithApplication := isResourceInApplication(resource, applicationName)
+		isResourceWithApplication := isResourceInApplication(ctx, resource, applicationName)
 		if isResourceWithApplication {
 			results = append(results, resource)
 		}
@@ -106,7 +106,7 @@ func listAllResourcesByType(ctx context.Context, rootScope string, resourceType 
 
 // isResourceInApplication takes in a context, a GenericResource and an application name and returns
 // a boolean value indicating whether the resource is in the application or not.
-func isResourceInApplication(resource generated.GenericResource, applicationName string) bool {
+func isResourceInApplication(ctx context.Context, resource generated.GenericResource, applicationName string) bool {
 	obj, found := resource.Properties["application"]
 	// A resource may not have an application associated with it.
 	if !found {
@@ -154,7 +154,7 @@ func listAllResourcesOfTypeInEnvironment(ctx context.Context, environmentID reso
 		return nil, err
 	}
 	for _, resource := range resourceList {
-		isResourceInEnvironment := isResourceInEnvironment(resource, environmentID.Name())
+		isResourceInEnvironment := isResourceInEnvironment(ctx, resource, environmentID.Name())
 		if isResourceInEnvironment {
 			results = append(results, resource)
 		}
@@ -164,7 +164,7 @@ func listAllResourcesOfTypeInEnvironment(ctx context.Context, environmentID reso
 
 // isResourceInEnvironment takes in a context, a GenericResource and an environment name and returns
 // a boolean value indicating whether the resource is in the environment or not.
-func isResourceInEnvironment(resource generated.GenericResource, environmentName string) bool {
+func isResourceInEnvironment(ctx context.Context, resource generated.GenericResource, environmentName string) bool {
 	obj, found := resource.Properties["environment"]
 	// A resource may not have an environment associated with it.
 	if !found {
@@ -194,7 +194,7 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentName
 // will display the results to a human user, so rather than failing to computeGraph the graph, we will return partial
 // results. Each ApplicationGraphResource will have a provisioning state that indicates whether the resource
 // was successfully processed or not.
-func computeGraph(applicationResources []generated.GenericResource, environmentResources []generated.GenericResource) *corerpv20231001preview.ApplicationGraphResponse {
+func computeGraph(applicationName string, applicationResources []generated.GenericResource, environmentResources []generated.GenericResource) *corerpv20231001preview.ApplicationGraphResponse {
 	if applicationResources == nil && environmentResources == nil {
 		return &corerpv20231001preview.ApplicationGraphResponse{Resources: []*corerpv20231001preview.ApplicationGraphResource{}}
 	}

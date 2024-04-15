@@ -224,7 +224,7 @@ func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *ARMD
 			}
 		}
 
-		stream, err := streamLogs(ctx, dc.K8sTypedClient, &replica, container, follow)
+		stream, err := streamLogs(ctx, dc.RestConfig, dc.K8sTypedClient, &replica, container, follow)
 		if err != nil {
 			return streams, fmt.Errorf("failed to open log stream to %s: %w", options.Resource, err)
 		}
@@ -327,7 +327,7 @@ func getAppContainerName(replica *corev1.Pod) string {
 	return resource
 }
 
-func streamLogs(ctx context.Context, client *k8s.Clientset, replica *corev1.Pod, container string, follow bool) (io.ReadCloser, error) {
+func streamLogs(ctx context.Context, config *rest.Config, client *k8s.Clientset, replica *corev1.Pod, container string, follow bool) (io.ReadCloser, error) {
 	options := &corev1.PodLogOptions{
 		Container: container,
 		Follow:    follow,

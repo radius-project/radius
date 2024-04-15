@@ -224,7 +224,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			continue
 		}
 
-		rbacOutputResources, err := r.makeRoleAssignmentsForResource(&connection, dependencies)
+		rbacOutputResources, err := r.makeRoleAssignmentsForResource(ctx, &connection, dependencies)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -245,7 +245,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	computedValues := map[string]rpv1.ComputedValueReference{}
 
 	// Create the deployment as the primary workload
-	deploymentResources, secretData, err := r.makeDeployment(baseManifest, appId.Name(), options, computedValues, resource, roles)
+	deploymentResources, secretData, err := r.makeDeployment(ctx, baseManifest, appId.Name(), options, computedValues, resource, roles)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -254,7 +254,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
 	if len(secretData) > 0 {
-		outputResources = append(outputResources, r.makeSecret(*resource, appId.Name(), secretData, options))
+		outputResources = append(outputResources, r.makeSecret(ctx, *resource, appId.Name(), secretData, options))
 	}
 
 	var servicePorts []corev1.ServicePort
@@ -274,7 +274,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 		// if a container has an exposed port, then we need to create a service for it.
 		basesrv := getServiceBase(baseManifest, appId.Name(), resource, &options)
-		serviceResource, err := r.makeService(basesrv, resource, servicePorts)
+		serviceResource, err := r.makeService(basesrv, resource, options, ctx, servicePorts)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -290,7 +290,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, servicePorts []corev1.ServicePort) (rpv1.OutputResource, error) {
+func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, servicePorts []corev1.ServicePort) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
@@ -318,6 +318,7 @@ SKIPINSERT:
 }
 
 func (r Renderer) makeDeployment(
+	ctx context.Context,
 	manifest kubeutil.ObjectManifest,
 	applicationName string,
 	options renderers.RenderOptions,
@@ -410,7 +411,7 @@ func (r Renderer) makeDeployment(
 	// We build the environment variable list in a stable order for testability
 	// For the values that come from connections we back them with secretData. We'll extract the values
 	// and return them.
-	env, secretData, err := getEnvVarsAndSecretData(resource, dependencies)
+	env, secretData, err := getEnvVarsAndSecretData(resource, applicationName, dependencies)
 	if err != nil {
 		return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to obtain environment variables and secret data: %w", err)
 	}
@@ -677,7 +678,7 @@ func (r Renderer) makeDeployment(
 	return outputResources, secretData, nil
 }
 
-func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte, error) {
+func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationName string, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte, error) {
 	env := map[string]corev1.EnvVar{}
 	secretData := map[string][]byte{}
 	properties := resource.Properties
@@ -826,7 +827,7 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	}
 }
 
-func (r Renderer) makeSecret(resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) rpv1.OutputResource {
+func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) rpv1.OutputResource {
 	secret := corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -855,7 +856,7 @@ func (r Renderer) isIdentitySupported(kind datamodel.IAMKind) bool {
 }
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.
-func (r Renderer) makeRoleAssignmentsForResource(connection *datamodel.ConnectionProperties, dependencies map[string]renderers.RendererDependency) ([]rpv1.OutputResource, error) {
+func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection *datamodel.ConnectionProperties, dependencies map[string]renderers.RendererDependency) ([]rpv1.OutputResource, error) {
 	var roleNames []string
 	var armResourceIdentifier string
 	if connection.IAM.Kind.IsKind(datamodel.KindAzure) {

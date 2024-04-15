@@ -79,7 +79,7 @@ func (r *ListResources) Run(ctx context.Context, w http.ResponseWriter, req *htt
 		return nil, err
 	}
 
-	response, err := r.createResponse(ctx, result)
+	response, err := r.createResponse(ctx, req, result)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (r *ListResources) Run(ctx context.Context, w http.ResponseWriter, req *htt
 	return armrpc_rest.NewOKResponse(response), nil
 }
 
-func (r *ListResources) createResponse(ctx context.Context, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+func (r *ListResources) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
 	items := v1.PaginatedList{}
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

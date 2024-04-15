@@ -40,7 +40,7 @@ const (
 	awsAccessKeysCreateInstructionFmt = "\nAWS IAM Access keys (Access key ID and Secret access key) are required to access and create AWS resources.\n\nFor example, you can create one using the following command:\n\033[36maws iam create-access-key\033[0m\n\nFor more information refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html.\n\n"
 )
 
-func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, error) {
+func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions) (*aws.Provider, error) {
 	r.Output.LogInfo(awsAccessKeysCreateInstructionFmt)
 
 	accessKeyID, err := r.Prompter.GetTextInput(enterAWSIAMAcessKeyIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMAcessKeyIDPlaceholder})
@@ -53,7 +53,7 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, erro
 		return nil, err
 	}
 
-	accountId, err := r.getAccountId(ctx, accessKeyID, secretAccessKey)
+	accountId, err := r.getAccountId(ctx, QueryRegion, accessKeyID, secretAccessKey)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, erro
 	}, nil
 }
 
-func (r *Runner) getAccountId(ctx context.Context, accessKeyID, secretAccessKey string) (string, error) {
+func (r *Runner) getAccountId(ctx context.Context, region, accessKeyID, secretAccessKey string) (string, error) {
 	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, QueryRegion, accessKeyID, secretAccessKey)
 	if err != nil {
 		return "", clierrors.MessageWithCause(err, "AWS credential verification failed.")

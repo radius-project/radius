@@ -220,7 +220,7 @@ func Test_GetSecretStoreID(t *testing.T) {
 						Authentication: datamodel.AuthConfig{
 							Git: datamodel.GitAuthConfig{
 								PAT: map[string]datamodel.SecretConfig{
-									"dev.azure.com": {
+									"dev.azure.com": datamodel.SecretConfig{
 										Secret: "secret-store1",
 									},
 								},

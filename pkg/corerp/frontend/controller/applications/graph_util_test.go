@@ -17,6 +17,7 @@ limitations under the License.
 package applications
 
 import (
+	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -29,6 +30,7 @@ func Test_isResourceInEnvironment(t *testing.T) {
 	id := "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/Applications/myapp"
 
 	type args struct {
+		ctx             context.Context
 		resource        generated.GenericResource
 		environmentName string
 	}
@@ -40,6 +42,7 @@ func Test_isResourceInEnvironment(t *testing.T) {
 		{
 			name: "resource is in environment",
 			args: args{
+				ctx: context.Background(),
 				resource: generated.GenericResource{
 					ID: &id,
 					Properties: map[string]interface{}{
@@ -53,6 +56,7 @@ func Test_isResourceInEnvironment(t *testing.T) {
 		{
 			name: "resource is not in environment",
 			args: args{
+				ctx: context.Background(),
 				resource: generated.GenericResource{
 					ID: &id,
 					Properties: map[string]interface{}{
@@ -66,7 +70,7 @@ func Test_isResourceInEnvironment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, isResourceInEnvironment(tt.args.resource, tt.args.environmentName))
+			require.Equal(t, tt.want, isResourceInEnvironment(tt.args.ctx, tt.args.resource, tt.args.environmentName))
 		})
 	}
 }
@@ -75,6 +79,7 @@ func Test_isResourceInApplication(t *testing.T) {
 	id := "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/Applications/myapp"
 
 	type args struct {
+		ctx             context.Context
 		resource        generated.GenericResource
 		applicationName string
 	}
@@ -86,6 +91,7 @@ func Test_isResourceInApplication(t *testing.T) {
 		{
 			name: "resource is in application",
 			args: args{
+				ctx: context.Background(),
 				resource: generated.GenericResource{
 					ID: &id,
 					Properties: map[string]interface{}{
@@ -99,6 +105,7 @@ func Test_isResourceInApplication(t *testing.T) {
 		{
 			name: "resource is not in application",
 			args: args{
+				ctx: context.Background(),
 				resource: generated.GenericResource{
 					ID: &id,
 					Properties: map[string]interface{}{
@@ -113,7 +120,7 @@ func Test_isResourceInApplication(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, isResourceInApplication(tt.args.resource, tt.args.applicationName))
+			require.Equal(t, tt.want, isResourceInApplication(tt.args.ctx, tt.args.resource, tt.args.applicationName))
 		})
 	}
 }
@@ -121,30 +128,35 @@ func Test_isResourceInApplication(t *testing.T) {
 func Test_computeGraph(t *testing.T) {
 	tests := []struct {
 		name                string
+		applicationName     string
 		appResourceDataFile string
 		envResourceDataFile string
 		expectedDataFile    string
 	}{
 		{
 			name:                "using httproute without inbound resource",
+			applicationName:     "myapp",
 			appResourceDataFile: "graph-app-httproute-in.json",
 			envResourceDataFile: "",
 			expectedDataFile:    "graph-app-httproute-out.json",
 		},
 		{
 			name:                "using httproute with inbound resource",
+			applicationName:     "myapp",
 			appResourceDataFile: "graph-app-httproute2-in.json",
 			envResourceDataFile: "",
 			expectedDataFile:    "graph-app-httproute2-out.json",
 		},
 		{
 			name:                "direct route",
+			applicationName:     "myapp",
 			appResourceDataFile: "graph-app-directroute-in.json",
 			envResourceDataFile: "",
 			expectedDataFile:    "graph-app-directroute-out.json",
 		},
 		{
 			name:                "with gateway route",
+			applicationName:     "myapp",
 			appResourceDataFile: "graph-app-gw-in.json",
 			envResourceDataFile: "",
 			expectedDataFile:    "graph-app-gw-out.json",
@@ -167,7 +179,7 @@ func Test_computeGraph(t *testing.T) {
 			expected := []*corerpv20231001preview.ApplicationGraphResource{}
 			testutil.MustUnmarshalFromFile(tt.expectedDataFile, &expected)
 
-			got := computeGraph(appResource, envResource)
+			got := computeGraph(tt.applicationName, appResource, envResource)
 			require.ElementsMatch(t, expected, got.Resources)
 		})
 	}

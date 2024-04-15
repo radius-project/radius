@@ -104,7 +104,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			},
 		},
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 
 	ctx := testcontext.New(t)
 	renderer := Renderer{}
@@ -131,7 +131,7 @@ func Test_Render_WithIPAndNoHostname(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -166,7 +166,7 @@ func Test_Render_WithIPAndPrefix(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -202,7 +202,7 @@ func Test_Render_WithIPAndFQHostname(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -237,7 +237,7 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -265,7 +265,7 @@ func Test_Render_PublicEndpointOverride(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions(testHostname, "", testPort, true, false)
 
@@ -298,7 +298,7 @@ func Test_Render_PublicEndpointOverride_OverridesAll(t *testing.T) {
 			FullyQualifiedHostname: "testagain",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions(expectedPublicEndpoint, testExternalIP, "", true, false)
 
@@ -328,7 +328,7 @@ func Test_Render_PublicEndpointOverride_WithEmptyIP(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions(expectedFQDN, "", "", true, false)
 
@@ -358,7 +358,7 @@ func Test_Render_LocalhostPublicEndpointOverride(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions(expectedFQDN, "", testPort, true, false)
 
@@ -387,7 +387,7 @@ func Test_Render_Hostname(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions(testHostname, "", "", false, false)
 
@@ -417,7 +417,7 @@ func Test_Render_Hostname_WithPort(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions(expectedFQDN, "", "32434", false, false)
 
@@ -451,7 +451,7 @@ func Test_Render_Hostname_WithPrefix(t *testing.T) {
 			Prefix: prefix,
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions(testHostname, "", "", false, false)
 
@@ -485,7 +485,7 @@ func Test_Render_Hostname_WithPrefixAndPort(t *testing.T) {
 			Prefix: prefix,
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions(testHostname, "", testPort, false, false)
 
@@ -513,7 +513,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	require.NoError(t, err)
 	appName := appId.Name()
@@ -556,7 +556,7 @@ func Test_Render_Fails_SSLPassthroughWithRoutePath(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -597,7 +597,7 @@ func Test_Render_Fails_SSLPassthroughWithMultipleRoutes(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -618,7 +618,7 @@ func Test_Render_Fails_WithNoRoute(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -643,7 +643,7 @@ func Test_Render_FQDNOverride(t *testing.T) {
 			FullyQualifiedHostname: testHostname,
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -672,7 +672,7 @@ func Test_Render_Fails_WithoutFQHostnameOrPrefix(t *testing.T) {
 		},
 		Hostname: &datamodel.GatewayPropertiesHostname{},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -702,7 +702,7 @@ func Test_Render_Single_Route(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
@@ -756,7 +756,7 @@ func Test_Render_SSLPassthrough(t *testing.T) {
 		Routes: routes,
 		TLS:    tls,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
@@ -835,7 +835,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
@@ -898,7 +898,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
@@ -983,7 +983,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
@@ -1078,7 +1078,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, routeDestination).String()): {
 			ResourceID: makeResourceID(t, routeDestination),
@@ -1138,7 +1138,7 @@ func Test_Render_WithEnvironment_KubernetesMetadata(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, true)
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
@@ -1190,7 +1190,7 @@ func Test_Render_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, true)
 	applicationOptions := getApplicationOptions(true)
@@ -1245,7 +1245,7 @@ func Test_RenderDNS_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) 
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, true)
 	applicationOptions := getApplicationOptions(true)
@@ -1299,7 +1299,7 @@ func Test_RenderDNS_WithEnvironment_KubernetesMetadata(t *testing.T) {
 		},
 		Routes: routes,
 	}
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, true)
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
@@ -1346,7 +1346,7 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 			CertificateFrom:        secretStoreResourceId,
 		},
 	})
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 
 	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
 
@@ -1535,7 +1535,7 @@ func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
 		},
 		Port: port,
 	}
-	resource := makeDependentResource(properties)
+	resource := makeDependentResource(t, properties)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{}})
 	require.NoError(t, err)
@@ -1551,7 +1551,7 @@ func makeSecretStoreResourceID(secretStoreName string) string {
 	return "/planes/radius/local/resourcegroups/test-resourcegroup/providers/Applications.Core/secretStores/" + secretStoreName
 }
 
-func makeResource(properties datamodel.GatewayProperties) *datamodel.Gateway {
+func makeResource(t *testing.T, properties datamodel.GatewayProperties) *datamodel.Gateway {
 	return &datamodel.Gateway{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -1563,7 +1563,7 @@ func makeResource(properties datamodel.GatewayProperties) *datamodel.Gateway {
 		Properties: properties,
 	}
 }
-func makeDependentResource(properties datamodel.HTTPRouteProperties) *datamodel.HTTPRoute {
+func makeDependentResource(t *testing.T, properties datamodel.HTTPRouteProperties) *datamodel.HTTPRoute {
 	dm := datamodel.HTTPRoute{Properties: &properties}
 	dm.Name = resourceName
 

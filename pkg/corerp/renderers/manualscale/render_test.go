@@ -64,8 +64,8 @@ func Test_Render_Success(t *testing.T) {
 		preplicas *int32 = &replicas
 	)
 
-	properties := makeProperties(preplicas)
-	resource := makeResource(properties)
+	properties := makeProperties(t, preplicas)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
@@ -86,8 +86,8 @@ func Test_Render_CanSpecifyZero(t *testing.T) {
 		preplicas *int32 = &replicas
 	)
 
-	properties := makeProperties(preplicas)
-	resource := makeResource(properties)
+	properties := makeProperties(t, preplicas)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
@@ -112,7 +112,7 @@ func Test_Render_NoExtension(t *testing.T) {
 		},
 	}
 
-	resource := makeResource(properties)
+	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
@@ -125,7 +125,7 @@ func Test_Render_NoExtension(t *testing.T) {
 	require.Nil(t, deployment.Spec.Replicas)
 }
 
-func makeResource(properties datamodel.ContainerProperties) *datamodel.ContainerResource {
+func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -139,7 +139,7 @@ func makeResource(properties datamodel.ContainerProperties) *datamodel.Container
 	return &resource
 }
 
-func makeProperties(replicas *int32) datamodel.ContainerProperties {
+func makeProperties(t *testing.T, replicas *int32) datamodel.ContainerProperties {
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",

@@ -17,6 +17,7 @@ limitations under the License.
 package radinit
 
 import (
+	"context"
 	"sort"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -28,9 +29,9 @@ const (
 	selectClusterPrompt = "Select the kubeconfig context to install Radius into"
 )
 
-func (r *Runner) enterClusterOptions(options *initOptions) error {
+func (r *Runner) enterClusterOptions(ctx context.Context, options *initOptions) error {
 	var err error
-	options.Cluster.Context, err = r.selectCluster()
+	options.Cluster.Context, err = r.selectCluster(ctx)
 	if err != nil {
 		return err
 	}
@@ -55,7 +56,7 @@ func (r *Runner) enterClusterOptions(options *initOptions) error {
 	return nil
 }
 
-func (r *Runner) selectCluster() (string, error) {
+func (r *Runner) selectCluster(ctx context.Context) (string, error) {
 	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
 		return "", clierrors.MessageWithCause(err, "Failed to read Kubernetes config.")

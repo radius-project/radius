@@ -75,7 +75,7 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 	if s.options.AssignRandomPorts {
 		// We need to auto-assign ports to avoid crosstalk when tests create multiple clusters. ETCD uses
 		// hardcoded ports by default.
-		peerPort, clientPort, err := s.assignPorts()
+		peerPort, clientPort, err := s.assignPorts(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to assign listening ports for etcd: %w", err)
 		}
@@ -224,7 +224,7 @@ func makeURL(port int) url.URL {
 	return *u
 }
 
-func (s *EmbeddedETCDService) assignPorts() (*int, *int, error) {
+func (s *EmbeddedETCDService) assignPorts(ctx context.Context) (*int, *int, error) {
 	listener1, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return nil, nil, err

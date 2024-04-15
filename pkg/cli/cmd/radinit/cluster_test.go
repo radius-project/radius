@@ -17,6 +17,7 @@ limitations under the License.
 package radinit
 
 import (
+	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -39,7 +40,7 @@ func Test_enterClusterOptions(t *testing.T) {
 	initHelmMockRadiusNotInstalled(helm)
 
 	options := initOptions{}
-	err := runner.enterClusterOptions(&options)
+	err := runner.enterClusterOptions(context.Background(), &options)
 	require.NoError(t, err)
 	require.Equal(t, "kind-kind", options.Cluster.Context)
 	require.Equal(t, true, options.Cluster.Install)
@@ -54,7 +55,7 @@ func Test_selectCluster(t *testing.T) {
 	initGetKubeContextSuccess(k8s)
 	initKubeContextWithKind(prompter)
 
-	name, err := runner.selectCluster()
+	name, err := runner.selectCluster(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, "kind-kind", name)
 }

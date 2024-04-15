@@ -17,6 +17,7 @@ limitations under the License.
 package awsproxy
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -32,7 +33,7 @@ import (
 
 // getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the
 // provided AWS CloudFormation type schema
-func getPrimaryIdentifiersFromSchema(schema string) ([]string, error) {
+func getPrimaryIdentifiersFromSchema(ctx context.Context, schema string) ([]string, error) {
 	schemaObject := map[string]any{}
 	err := json.Unmarshal([]byte(schema), &schemaObject)
 	if err != nil {
@@ -59,8 +60,8 @@ func getPrimaryIdentifiersFromSchema(schema string) ([]string, error) {
 
 // getPrimaryIdentifierFromMultiIdentifiers returns the primary identifier for the resource
 // when provided desired primary identifier values and the resource type schema
-func getPrimaryIdentifierFromMultiIdentifiers(properties map[string]any, schema string) (string, error) {
-	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(schema)
+func getPrimaryIdentifierFromMultiIdentifiers(ctx context.Context, properties map[string]any, schema string) (string, error) {
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
 	if err != nil {
 		return "", err
 	}

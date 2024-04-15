@@ -49,7 +49,8 @@ func Test_enterAWSCloudProvider(t *testing.T) {
 	setAWSListRegions(client, QueryRegion, "access-key-id", "secret-access-key", &ec2.DescribeRegionsOutput{Regions: ec2Regions})
 	setAWSRegionPrompt(prompter, regions, "region")
 
-	provider, err := runner.enterAWSCloudProvider(context.Background())
+	options := initOptions{}
+	provider, err := runner.enterAWSCloudProvider(context.Background(), &options)
 	require.NoError(t, err)
 
 	expected := &aws.Provider{

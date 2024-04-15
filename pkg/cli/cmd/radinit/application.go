@@ -17,6 +17,7 @@ limitations under the License.
 package radinit
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
@@ -29,7 +30,7 @@ const (
 	enterApplicationNamePlaceholder = "Enter application name..."
 )
 
-func (r *Runner) enterApplicationOptions(options *initOptions) error {
+func (r *Runner) enterApplicationOptions(ctx context.Context, options *initOptions) error {
 	var err error
 	options.Application.Scaffold, err = prompt.YesOrNoPrompt(confirmSetupApplicationPrompt, prompt.ConfirmYes, r.Prompter)
 	if err != nil {

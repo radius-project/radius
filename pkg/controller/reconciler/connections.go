@@ -27,7 +27,7 @@ import (
 // resourceToConnectionValues converts a resource to a map of connection values. This will filter out any
 // properties that should not be considered as env-vars or secrets.
 func resourceToConnectionEnvVars(name string, resource generated.GenericResource, secrets generated.GenericResourcesClientListSecretsResponse) (map[string]string, error) {
-	values, err := resourceToConnectionValues(resource)
+	values, err := resourceToConnectionValues(name, resource)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func resourceToConnectionEnvVars(name string, resource generated.GenericResource
 
 // resourceToConnectionValues converts a resource to a map of connection values. This will filter out any
 // properties that should not be considered as env-vars or secrets.
-func resourceToConnectionValues(resource generated.GenericResource) (map[string]string, error) {
+func resourceToConnectionValues(name string, resource generated.GenericResource) (map[string]string, error) {
 	values := map[string]string{}
 
 	for k, v := range resource.Properties {

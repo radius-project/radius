@@ -110,15 +110,13 @@ func (c *CosmosDBStorageClient) createDatabaseIfNotExists(ctx context.Context) e
 	if err == nil {
 		return nil
 	}
-	if !strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
+	if err != nil && !strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
 		return err
 	}
-
 	_, err = c.client.CreateDatabase(ctx, c.options.DatabaseName, nil)
 	if err != nil && strings.EqualFold(err.Error(), errIDConflictMsg) {
 		return nil
 	}
-
 	return err
 }
 
@@ -127,7 +125,7 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 	if err == nil {
 		return nil
 	}
-	if !strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
+	if err != nil && !strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
 		return err
 	}
 	opt := cosmosapi.CreateCollectionOptions{

@@ -78,7 +78,7 @@ func LoadDirectoryConfig(workingDirectory string) (*DirectoryConfig, error) {
 			// Ignore a NotExist errors, that means it's not a git repo.
 		} else if err != nil {
 			return nil, err
-		} else {
+		} else if err == nil {
 			// Git repo detected! Stop looking then!
 			break
 		}

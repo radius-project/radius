@@ -213,7 +213,7 @@ func (r *Runner) publish(ctx context.Context) error {
 	}
 
 	// Prepare Destination
-	dst, err := r.prepareDestination()
+	dst, err := r.prepareDestination(ctx)
 	if err != nil {
 		return err
 	}
@@ -264,7 +264,7 @@ func (r *Runner) prepareSource(ctx context.Context) (*memory.Store, error) {
 	return src, nil
 }
 
-func (r *Runner) prepareDestination() (*remote.Repository, error) {
+func (r *Runner) prepareDestination(ctx context.Context) (*remote.Repository, error) {
 	// Create a new credential store from Docker to get local credentials
 	ds, err := credentials.NewStoreFromDocker(credentials.StoreOptions{
 		AllowPlaintextPut: true,

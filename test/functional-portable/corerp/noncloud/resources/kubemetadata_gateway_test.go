@@ -79,7 +79,7 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 				httpproxies, err := testutil.GetHTTPProxyList(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				for _, httpproxy := range httpproxies.Items {
-					expectedLabels := getExpectedLabels(httpproxy.Name)
+					expectedLabels := getExpectedLabels(t, httpproxy.Name)
 					require.Truef(t, testutil.IsMapSubSet(expectedLabels, httpproxy.Labels), "labels in httpproxy %v do not match expected values : ", httpproxy.Name)
 					require.Truef(t, testutil.IsMapSubSet(expectedAnnotations, httpproxy.Annotations), "annotations in httpproxy %v do not match expected values", httpproxy.Name)
 				}
@@ -91,7 +91,7 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 }
 
 // getExpectedLabels returns the expected labels for the given resource name
-func getExpectedLabels(resourceName string) map[string]string {
+func getExpectedLabels(t *testing.T, resourceName string) map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/managed-by": "radius-rp",
 		"app.kubernetes.io/name":       resourceName,

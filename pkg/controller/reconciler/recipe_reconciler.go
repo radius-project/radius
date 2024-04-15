@@ -496,7 +496,7 @@ func (r *RecipeReconciler) updateSecret(ctx context.Context, recipe *radappiov1a
 		secret.Data = map[string][]byte{}
 	}
 
-	values, err := resourceToConnectionValues(result.GenericResource)
+	values, err := resourceToConnectionValues(recipe.Name, result.GenericResource)
 	if err != nil {
 		return fmt.Errorf("failed to read connection values: %w", err)
 	}

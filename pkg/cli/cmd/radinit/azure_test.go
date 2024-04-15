@@ -61,7 +61,8 @@ func Test_enterAzureCloudProvider(t *testing.T) {
 	setAzureServicePrincipalPasswordPrompt(prompter, "service-principal-password")
 	setAzureServicePrincipalTenantIDPrompt(prompter, "service-principal-tenant-id")
 
-	provider, err := runner.enterAzureCloudProvider(context.Background())
+	options := initOptions{}
+	provider, err := runner.enterAzureCloudProvider(context.Background(), &options)
 	require.NoError(t, err)
 
 	expected := &azure.Provider{
@@ -375,7 +376,7 @@ func Test_enterAzureResourceGroupName(t *testing.T) {
 
 	setAzureResourceGroupNamePrompt(prompter, "test-resource-group")
 
-	name, err := runner.enterAzureResourceGroupName()
+	name, err := runner.enterAzureResourceGroupName(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, "test-resource-group", name)
 }

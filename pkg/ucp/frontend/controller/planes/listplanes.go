@@ -63,7 +63,7 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
-	listOfPlanes, err := e.createResponse(ctx, result)
+	listOfPlanes, err := e.createResponse(ctx, req, result)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	return ok, nil
 }
 
-func (p *ListPlanes) createResponse(ctx context.Context, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	items := v1.PaginatedList{}
 

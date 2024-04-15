@@ -75,44 +75,44 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 			testName:     "Test_Render_Success",
 			expectedMaps: getTestResultMaps(),
 			setupMaps:    nil,
-			properties:   makeProperties(false, false),
+			properties:   makeProperties(t, false, false),
 		},
 		{
 			testName:     "Test_Render_CascadeKubeMetadata",
 			expectedMaps: getCascadeTestResultMaps(),
 			setupMaps:    getSetUpMaps(false, false),
-			properties:   makeProperties(false, false),
+			properties:   makeProperties(t, false, false),
 		},
 		{
 			testName:     "Test_Render_KubeMetadataCollision",
 			expectedMaps: getCascadeTestResultMaps(),
 			setupMaps:    getSetUpMaps(true, false),
-			properties:   makeProperties(false, false),
+			properties:   makeProperties(t, false, false),
 		},
 		{
 			testName:     "Test_Render_OnlyAppExtension",
 			expectedMaps: getOnlyAppTestResultMaps(),
 			setupMaps:    getSetUpMaps(false, true),
-			properties:   makeProperties(true, false),
+			properties:   makeProperties(t, true, false),
 		},
 		{
 			testName:     "Test_Render_NoExtension",
 			expectedMaps: getEmptyTestResultMaps(),
 			setupMaps:    nil,
-			properties:   makeProperties(true, false),
+			properties:   makeProperties(t, true, false),
 		},
 		{
 			testName:     "Test_ReserveKey_Collision",
 			expectedMaps: getTestResultMaps(),
 			setupMaps:    nil,
-			properties:   makeProperties(false, true),
+			properties:   makeProperties(t, false, true),
 		},
 	}
 
 	for _, tc := range testset {
 		t.Run(tc.testName, func(t *testing.T) {
 			renderer := &Renderer{Inner: &noop{}}
-			resource := makeResource(tc.properties)
+			resource := makeResource(t, tc.properties)
 			dependencies := map[string]renderers.RendererDependency{}
 			options := renderers.RenderOptions{Dependencies: dependencies}
 
@@ -151,7 +151,7 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 	}
 }
 
-func makeResource(properties datamodel.ContainerProperties) *datamodel.ContainerResource {
+func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
 		BaseResource: apiv1.BaseResource{
 			TrackedResource: apiv1.TrackedResource{
@@ -165,7 +165,7 @@ func makeResource(properties datamodel.ContainerProperties) *datamodel.Container
 	return &resource
 }
 
-func makeProperties(isEmpty bool, hasReservedKey bool) datamodel.ContainerProperties {
+func makeProperties(t *testing.T, isEmpty bool, hasReservedKey bool) datamodel.ContainerProperties {
 	if isEmpty {
 		return datamodel.ContainerProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{

@@ -78,7 +78,7 @@ func Test_Delete_ARM(t *testing.T) {
 
 	t.Run("success - lookup API Version (default)", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleDeleteSuccess())
+		mux.HandleFunc(ARMResourceID, handleDeleteSuccess(t))
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: to.Ptr("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
@@ -105,7 +105,7 @@ func Test_Delete_ARM(t *testing.T) {
 
 	t.Run("success - lookup API Version (first available)", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleDeleteSuccess())
+		mux.HandleFunc(ARMResourceID, handleDeleteSuccess(t))
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: to.Ptr("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
@@ -295,7 +295,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 func Test_Delete_UCP(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(AWSResourceID, handleDeleteSuccess())
+		mux.HandleFunc(AWSResourceID, handleDeleteSuccess(t))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -372,7 +372,7 @@ func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 	}
 }
 
-func handleDeleteSuccess() func(w http.ResponseWriter, r *http.Request) {
+func handleDeleteSuccess(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		w.WriteHeader(204)

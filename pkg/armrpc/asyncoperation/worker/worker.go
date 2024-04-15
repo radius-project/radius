@@ -192,7 +192,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			// 1. The same message is delivered twice in multiple instances.
 			// 2. provisioningState is not matched between resource and operationStatuses
 
-			dup, err := w.isDuplicated(reqCtx, op.ResourceID, op.OperationID)
+			dup, err := w.isDuplicated(reqCtx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
 			if err != nil {
 				opLogger.Error(err, "failed to check potential deduplication.")
 				return
@@ -370,7 +370,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	return nil
 }
 
-func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, resourceID string, operationID uuid.UUID) (bool, error) {
+func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID) (bool, error) {
 	rID, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return false, err

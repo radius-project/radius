@@ -44,7 +44,7 @@ var outputResource = rpv1.OutputResource{
 
 func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 	resourceID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"
-	setupTest := func() (func(tb testing.TB), *store.MockStorageClient, *ctrl.Request, *engine.MockEngine, *configloader.MockConfigurationLoader) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *ctrl.Request, *engine.MockEngine, *configloader.MockConfigurationLoader) {
 		mctrl := gomock.NewController(t)
 		msc := store.NewMockStorageClient(mctrl)
 		eng := engine.NewMockEngine(mctrl)
@@ -79,7 +79,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 
 	for _, tt := range deleteCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, req, eng, configLoader := setupTest()
+			teardownTest, msc, req, eng, configLoader := setupTest(t)
 			defer teardownTest(t)
 
 			status := rpv1.ResourceStatus{

@@ -161,6 +161,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
 			workingDir := t.TempDir()
 
 			tf, err := tfexec.NewTerraform(workingDir, filepath.Join(workingDir, "terraform"))
@@ -168,7 +169,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 
 			e := executor{}
 
-			err = e.setEnvironmentVariables(tf, &tc.opts.EnvConfig.RecipeConfig)
+			err = e.setEnvironmentVariables(ctx, tf, &tc.opts.EnvConfig.RecipeConfig)
 
 			require.NoError(t, err)
 		})

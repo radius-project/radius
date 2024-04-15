@@ -41,7 +41,7 @@ import (
 
 func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
-	setupTest := func() (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
@@ -164,7 +164,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
 	for _, tt := range putCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, mdp := setupTest()
+			teardownTest, msc, mdp := setupTest(t)
 			defer teardownTest(t)
 
 			req := &ctrl.Request{
@@ -361,7 +361,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
 	for _, tt := range patchCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, mdp := setupTest()
+			teardownTest, msc, mdp := setupTest(t)
 			defer teardownTest(t)
 
 			req := &ctrl.Request{

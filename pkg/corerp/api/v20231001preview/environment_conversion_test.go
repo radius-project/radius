@@ -189,7 +189,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							},
 						},
 					},
-					Extensions: getTestKubernetesMetadataExtensions(),
+					Extensions: getTestKubernetesMetadataExtensions(t),
 				},
 			},
 			err: nil,
@@ -231,7 +231,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							},
 						},
 					},
-					Extensions: getTestKubernetesEmptyMetadataExtensions(),
+					Extensions: getTestKubernetesEmptyMetadataExtensions(t),
 				},
 			},
 			err: nil,
@@ -273,7 +273,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							},
 						},
 					},
-					Extensions: getTestKubernetesEmptyMetadataExtensions(),
+					Extensions: getTestKubernetesEmptyMetadataExtensions(t),
 				},
 			},
 			err: nil,
@@ -539,7 +539,7 @@ func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
 	}
 }
 
-func getTestKubernetesMetadataExtensions() []datamodel.Extension {
+func getTestKubernetesMetadataExtensions(t *testing.T) []datamodel.Extension {
 	extensions := []datamodel.Extension{
 		{
 			Kind: datamodel.KubernetesMetadata,
@@ -559,7 +559,7 @@ func getTestKubernetesMetadataExtensions() []datamodel.Extension {
 	return extensions
 }
 
-func getTestKubernetesEmptyMetadataExtensions() []datamodel.Extension {
+func getTestKubernetesEmptyMetadataExtensions(t *testing.T) []datamodel.Extension {
 	extensions := []datamodel.Extension{
 		{
 			Kind: datamodel.KubernetesMetadata,

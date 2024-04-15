@@ -143,7 +143,7 @@ func Test_ApplicationWatcher_Deleted(t *testing.T) {
 	existing := aw.deploymentWatchers["test"]
 
 	// Step 2: Delete the deployment
-	aw.deleted(createDeployment("test", "1", "1"))
+	aw.deleted(ctx, createDeployment("test", "1", "1"))
 	require.NotContains(t, aw.deploymentWatchers, "test")
 
 	// watcher should have been canceled

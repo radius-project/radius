@@ -93,7 +93,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	if options.EnvConfig != nil {
 		// Set environment variables for the Terraform process.
-		err = e.setEnvironmentVariables(tf, &options.EnvConfig.RecipeConfig)
+		err = e.setEnvironmentVariables(ctx, tf, &options.EnvConfig.RecipeConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +207,7 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 // setEnvironmentVariables sets environment variables for the Terraform process by reading values from the recipe configuration.
 // Terraform process will use environment variables as input for the recipe deployment.
-func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, recipeConfig *datamodel.RecipeConfigProperties) error {
+func (e executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, recipeConfig *datamodel.RecipeConfigProperties) error {
 	if recipeConfig != nil && recipeConfig.Env.AdditionalProperties != nil && len(recipeConfig.Env.AdditionalProperties) > 0 {
 		// populate envVars with the environment variables from current process
 		envVars := splitEnvVar(os.Environ())

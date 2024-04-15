@@ -129,7 +129,7 @@ var newOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-r
 var newOutputResource = rpv1.OutputResource{ID: resources.MustParse(newOutputResourceResourceID)}
 
 func TestCreateOrUpdateResource_Run(t *testing.T) {
-	setupTest := func() (*store.MockStorageClient, *engine.MockEngine, *processors.MockResourceClient, *configloader.MockConfigurationLoader) {
+	setupTest := func(tb testing.TB) (*store.MockStorageClient, *engine.MockEngine, *processors.MockResourceClient, *configloader.MockConfigurationLoader) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
@@ -267,7 +267,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.description, func(t *testing.T) {
-			msc, eng, client, cfg := setupTest()
+			msc, eng, client, cfg := setupTest(t)
 
 			req := &ctrl.Request{
 				OperationID:      uuid.New(),

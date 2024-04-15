@@ -87,7 +87,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return ucpaws.HandleAWSError(err)
 	}
 
-	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(properties, *describeTypeOutput.Schema)
+	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{

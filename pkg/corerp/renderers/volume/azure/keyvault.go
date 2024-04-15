@@ -97,8 +97,8 @@ func (r *KeyVaultRenderer) Render(ctx context.Context, resource v1.DataModelInte
 		keyVaultObjects = append(keyVaultObjects, keySpec)
 	}
 
-	for _, cert := range secretObjects.certificates {
-		certValues := getValuesOrDefaultsForCertificates(&cert)
+	for name, cert := range secretObjects.certificates {
+		certValues := getValuesOrDefaultsForCertificates(name, &cert)
 		certSpec := azcsi.KeyVaultObject{
 			ObjectName:     cert.Name,
 			ObjectAlias:    certValues.alias,
@@ -174,7 +174,7 @@ func getValuesOrDefaultsForKeys(name string, keyObject *datamodel.KeyObjectPrope
 	}
 }
 
-func getValuesOrDefaultsForCertificates(certificateObject *datamodel.CertificateObjectProperties) objectValues {
+func getValuesOrDefaultsForCertificates(name string, certificateObject *datamodel.CertificateObjectProperties) objectValues {
 	alias := certificateObject.Alias
 	version := certificateObject.Version
 

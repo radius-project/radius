@@ -83,7 +83,7 @@ func Test_Render_Success(t *testing.T) {
 		}},
 	}
 
-	resource := makeResource(ctnrProperties)
+	resource := makeresource(t, ctnrProperties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
@@ -104,7 +104,7 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, expected, deployment.Spec.Template.Annotations)
 }
 
-func makeResource(properties datamodel.ContainerProperties) *datamodel.ContainerResource {
+func makeresource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
 		BaseResource: apiv1.BaseResource{
 			TrackedResource: apiv1.TrackedResource{

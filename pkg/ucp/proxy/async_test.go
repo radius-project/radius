@@ -40,7 +40,7 @@ func Test_ProcessAsyncOperationHeaders(t *testing.T) {
 		req = req.WithContext(ctx)
 		return req
 	}
-	createTestResponse := func(req *http.Request) *http.Response {
+	createTestResponse := func(t *testing.T, req *http.Request) *http.Response {
 		return &http.Response{
 			StatusCode: http.StatusAccepted,
 			Request:    req,
@@ -53,7 +53,7 @@ func Test_ProcessAsyncOperationHeaders(t *testing.T) {
 
 	t.Run("positive", func(t *testing.T) {
 		req := createTestRequest(t)
-		resp := createTestResponse(req)
+		resp := createTestResponse(t, req)
 		err := ProcessAsyncOperationHeaders(resp)
 		require.NoError(t, err)
 
@@ -64,7 +64,7 @@ func Test_ProcessAsyncOperationHeaders(t *testing.T) {
 	t.Run("positive path base", func(t *testing.T) {
 		req := createTestRequest(t)
 		req.Header.Set(v1.RefererHeader, "http://localhost:9443/path/base/planes/test/local/downstream-url")
-		resp := createTestResponse(req)
+		resp := createTestResponse(t, req)
 		err := ProcessAsyncOperationHeaders(resp)
 		require.NoError(t, err)
 
@@ -74,7 +74,7 @@ func Test_ProcessAsyncOperationHeaders(t *testing.T) {
 
 	t.Run("wrong-status-code", func(t *testing.T) {
 		req := createTestRequest(t)
-		resp := createTestResponse(req)
+		resp := createTestResponse(t, req)
 		resp.StatusCode = http.StatusNoContent
 		err := ProcessAsyncOperationHeaders(resp)
 		require.NoError(t, err)
@@ -86,7 +86,7 @@ func Test_ProcessAsyncOperationHeaders(t *testing.T) {
 	t.Run("no referrer", func(t *testing.T) {
 		req := createTestRequest(t)
 		req.Header.Del(v1.RefererHeader)
-		resp := createTestResponse(req)
+		resp := createTestResponse(t, req)
 		err := ProcessAsyncOperationHeaders(resp)
 		require.NoError(t, err)
 
@@ -97,7 +97,7 @@ func Test_ProcessAsyncOperationHeaders(t *testing.T) {
 	t.Run("invalid referrer", func(t *testing.T) {
 		req := createTestRequest(t)
 		req.Header.Set(v1.RefererHeader, "\ninvalid-referrer")
-		resp := createTestResponse(req)
+		resp := createTestResponse(t, req)
 		err := ProcessAsyncOperationHeaders(resp)
 		require.NoError(t, err)
 
@@ -108,7 +108,7 @@ func Test_ProcessAsyncOperationHeaders(t *testing.T) {
 	t.Run("non-UCP referrer", func(t *testing.T) {
 		req := createTestRequest(t)
 		req.Header.Set(v1.RefererHeader, "http://example.com")
-		resp := createTestResponse(req)
+		resp := createTestResponse(t, req)
 		err := ProcessAsyncOperationHeaders(resp)
 		require.NoError(t, err)
 
@@ -118,7 +118,7 @@ func Test_ProcessAsyncOperationHeaders(t *testing.T) {
 
 	t.Run("invalid response header", func(t *testing.T) {
 		req := createTestRequest(t)
-		resp := createTestResponse(req)
+		resp := createTestResponse(t, req)
 		resp.Header.Set(azureAsyncOperationHeader, "\ninvalid-header")
 		resp.Header.Set(locationHeader, "\ninvalid-header")
 		err := ProcessAsyncOperationHeaders(resp)

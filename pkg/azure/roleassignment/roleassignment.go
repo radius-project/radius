@@ -59,6 +59,9 @@ func Create(ctx context.Context, armConfig *armauth.ArmConfig, subscriptionID, p
 	pager := client.NewListForScopePager(scope, &armauthorization.RoleAssignmentsClientListForScopeOptions{
 		Filter: &requestFilter,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list role assignments: %w", err)
+	}
 
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)

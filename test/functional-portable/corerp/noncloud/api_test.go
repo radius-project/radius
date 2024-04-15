@@ -47,11 +47,12 @@ func Test_ResourceList(t *testing.T) {
 	require.NotEmpty(t, parsed.FindScope(resources_radius.ScopeResourceGroups), "workspace scope must contain resource group segment")
 
 	resourceGroupScope := parsed.String()
+	planeScope := parsed.Truncate().String()
 
 	resourceTypes := []string{"Applications.Core/applications", "Applications.Core/environments"}
 	resourceTypes = append(resourceTypes, clients.ResourceTypesList...)
 
-	listResources := func(t *testing.T, resourceType string) {
+	listResources := func(t *testing.T, rootScope string, resourceType string) {
 		ctx, cancel := testcontext.NewWithCancel(t)
 		t.Cleanup(cancel)
 		client, err := generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, clientOptions)
@@ -77,12 +78,12 @@ func Test_ResourceList(t *testing.T) {
 		resourceType := resourceType // capture range variable
 		t.Run(fmt.Sprintf("list at resource-group scope: %s", resourceType), func(t *testing.T) {
 			t.Parallel()
-			listResources(t, resourceType)
+			listResources(t, resourceGroupScope, resourceType)
 		})
 
 		t.Run(fmt.Sprintf("list at plane scope: %s", resourceType), func(t *testing.T) {
 			t.Parallel()
-			listResources(t, resourceType)
+			listResources(t, planeScope, resourceType)
 		})
 	}
 }

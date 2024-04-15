@@ -48,7 +48,7 @@ func (*ErrRadiusNotInstalled) Error() string {
 // Creating a new connection with the various New functions in this package does not call TestConnection
 // automatically. This allows a connection to be created before Radius has been installed.
 func TestConnection(ctx context.Context, connection Connection) error {
-	req, err := createHealthCheckRequest(connection.Endpoint())
+	req, err := createHealthCheckRequest(ctx, connection.Endpoint())
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func TestConnection(ctx context.Context, connection Connection) error {
 	return nil
 }
 
-func createHealthCheckRequest(url string) (*http.Request, error) {
+func createHealthCheckRequest(ctx context.Context, url string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err

@@ -106,7 +106,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourcesOfTypeInApplication(
 		return nil, err
 	}
 	for _, resource := range resourceList {
-		isResourceWithApplication := isResourceInApplication(resource, applicationName)
+		isResourceWithApplication := isResourceInApplication(ctx, resource, applicationName)
 		if isResourceWithApplication {
 			results = append(results, resource)
 		}
@@ -162,7 +162,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(
 		return nil, err
 	}
 	for _, resource := range resourceList {
-		isResourceWithApplication := isResourceInEnvironment(resource, environmentName)
+		isResourceWithApplication := isResourceInEnvironment(ctx, resource, environmentName)
 		if isResourceWithApplication {
 			results = append(results, resource)
 		}
@@ -393,7 +393,7 @@ func (amc *UCPApplicationsManagementClient) CreateEnvironment(ctx context.Contex
 
 }
 
-func isResourceInApplication(resource generated.GenericResource, applicationName string) bool {
+func isResourceInApplication(ctx context.Context, resource generated.GenericResource, applicationName string) bool {
 	obj, found := resource.Properties["application"]
 	// A resource may not have an application associated with it.
 	if !found {
@@ -417,7 +417,7 @@ func isResourceInApplication(resource generated.GenericResource, applicationName
 	return false
 }
 
-func isResourceInEnvironment(resource generated.GenericResource, environmentName string) bool {
+func isResourceInEnvironment(ctx context.Context, resource generated.GenericResource, environmentName string) bool {
 	obj, found := resource.Properties["environment"]
 	// A resource may not have an environment associated with it.
 	if !found {

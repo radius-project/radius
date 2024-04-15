@@ -17,6 +17,7 @@ limitations under the License.
 package radinit
 
 import (
+	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -33,7 +34,7 @@ func Test_enterApplicationOptions(t *testing.T) {
 		setScaffoldApplicationPromptYes(prompter)
 
 		options := initOptions{}
-		err := runner.enterApplicationOptions(&options)
+		err := runner.enterApplicationOptions(context.Background(), &options)
 		require.NoError(t, err)
 
 		require.Equal(t, applicationOptions{Scaffold: true, Name: "radinit"}, options.Application)
@@ -46,7 +47,7 @@ func Test_enterApplicationOptions(t *testing.T) {
 		setScaffoldApplicationPromptNo(prompter)
 
 		options := initOptions{}
-		err := runner.enterApplicationOptions(&options)
+		err := runner.enterApplicationOptions(context.Background(), &options)
 		require.NoError(t, err)
 
 		require.Equal(t, applicationOptions{Scaffold: false, Name: ""}, options.Application)

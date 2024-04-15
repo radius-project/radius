@@ -23,58 +23,58 @@ import (
 )
 
 func Test_ValidateKubernetesNamespace(t *testing.T) {
-	t.Run("valid", validatorPositiveTest("my-namespace0", ValidateKubernetesNamespace))
-	t.Run("capital", validatorNegativeTest("A", ValidateKubernetesNamespace))
-	t.Run("starts with number", validatorNegativeTest("000", ValidateKubernetesNamespace))
-	t.Run("empty", validatorNegativeTest("", ValidateKubernetesNamespace))
-	t.Run("too long", validatorNegativeTest(strings.Repeat("a", 64), ValidateKubernetesNamespace))
-	t.Run("ends with dash", validatorNegativeTest("a-", ValidateKubernetesNamespace))
-	t.Run("invalid character", validatorNegativeTest("a#", ValidateKubernetesNamespace))
+	t.Run("valid", validatorPositiveTest(t, "my-namespace0", ValidateKubernetesNamespace))
+	t.Run("capital", validatorNegativeTest(t, "A", ValidateKubernetesNamespace))
+	t.Run("starts with number", validatorNegativeTest(t, "000", ValidateKubernetesNamespace))
+	t.Run("empty", validatorNegativeTest(t, "", ValidateKubernetesNamespace))
+	t.Run("too long", validatorNegativeTest(t, strings.Repeat("a", 64), ValidateKubernetesNamespace))
+	t.Run("ends with dash", validatorNegativeTest(t, "a-", ValidateKubernetesNamespace))
+	t.Run("invalid character", validatorNegativeTest(t, "a#", ValidateKubernetesNamespace))
 }
 
 func Test_ValidateKubernetesNamespaceOrDefault(t *testing.T) {
-	t.Run("valid", validatorPositiveTest("my-namespace0", ValidateKubernetesNamespaceOrDefault))
-	t.Run("capital", validatorNegativeTest("A", ValidateKubernetesNamespaceOrDefault))
-	t.Run("starts with number", validatorNegativeTest("000", ValidateKubernetesNamespaceOrDefault))
-	t.Run("empty", validatorPositiveTest("", ValidateKubernetesNamespaceOrDefault))
-	t.Run("too long", validatorNegativeTest(strings.Repeat("a", 64), ValidateKubernetesNamespaceOrDefault))
-	t.Run("ends with dash", validatorNegativeTest("a-", ValidateKubernetesNamespaceOrDefault))
-	t.Run("invalid character", validatorNegativeTest("a#", ValidateKubernetesNamespaceOrDefault))
+	t.Run("valid", validatorPositiveTest(t, "my-namespace0", ValidateKubernetesNamespaceOrDefault))
+	t.Run("capital", validatorNegativeTest(t, "A", ValidateKubernetesNamespaceOrDefault))
+	t.Run("starts with number", validatorNegativeTest(t, "000", ValidateKubernetesNamespaceOrDefault))
+	t.Run("empty", validatorPositiveTest(t, "", ValidateKubernetesNamespaceOrDefault))
+	t.Run("too long", validatorNegativeTest(t, strings.Repeat("a", 64), ValidateKubernetesNamespaceOrDefault))
+	t.Run("ends with dash", validatorNegativeTest(t, "a-", ValidateKubernetesNamespaceOrDefault))
+	t.Run("invalid character", validatorNegativeTest(t, "a#", ValidateKubernetesNamespaceOrDefault))
 }
 
 func Test_ValidateResourceName(t *testing.T) {
-	t.Run("valid", validatorPositiveTest("my-resource0", ValidateResourceName))
-	t.Run("capital", validatorPositiveTest("A", ValidateResourceName))
-	t.Run("starts with number", validatorNegativeTest("000", ValidateResourceName))
-	t.Run("empty", validatorNegativeTest("", ValidateResourceName))
-	t.Run("ends with dash", validatorNegativeTest("a-", ValidateResourceName))
-	t.Run("invalid character", validatorNegativeTest("a#", ValidateResourceName))
+	t.Run("valid", validatorPositiveTest(t, "my-resource0", ValidateResourceName))
+	t.Run("capital", validatorPositiveTest(t, "A", ValidateResourceName))
+	t.Run("starts with number", validatorNegativeTest(t, "000", ValidateResourceName))
+	t.Run("empty", validatorNegativeTest(t, "", ValidateResourceName))
+	t.Run("ends with dash", validatorNegativeTest(t, "a-", ValidateResourceName))
+	t.Run("invalid character", validatorNegativeTest(t, "a#", ValidateResourceName))
 }
 
 func Test_ValidateResourceNameOrDefault(t *testing.T) {
-	t.Run("valid", validatorPositiveTest("my-resource0", ValidateResourceNameOrDefault))
-	t.Run("capital", validatorPositiveTest("A", ValidateResourceNameOrDefault))
-	t.Run("starts with number", validatorNegativeTest("000", ValidateResourceNameOrDefault))
-	t.Run("empty", validatorPositiveTest("", ValidateResourceNameOrDefault))
-	t.Run("ends with dash", validatorNegativeTest("a-", ValidateResourceNameOrDefault))
-	t.Run("invalid character", validatorNegativeTest("a#", ValidateResourceNameOrDefault))
+	t.Run("valid", validatorPositiveTest(t, "my-resource0", ValidateResourceNameOrDefault))
+	t.Run("capital", validatorPositiveTest(t, "A", ValidateResourceNameOrDefault))
+	t.Run("starts with number", validatorNegativeTest(t, "000", ValidateResourceNameOrDefault))
+	t.Run("empty", validatorPositiveTest(t, "", ValidateResourceNameOrDefault))
+	t.Run("ends with dash", validatorNegativeTest(t, "a-", ValidateResourceNameOrDefault))
+	t.Run("invalid character", validatorNegativeTest(t, "a#", ValidateResourceNameOrDefault))
 }
 
 func Test_ValidateUUIDv4(t *testing.T) {
 	// UUIDv4 is a well-known format with a documented regex, so we're just doing basic coverage here.
-	t.Run("valid", validatorPositiveTest("957a2fd1-ba34-4d02-ab11-4d046568661c", ValidateUUIDv4))
-	t.Run("invalid", validatorNegativeTest("957a2fd1-ba34-4d02-ab11-4d046568661z", ValidateUUIDv4))
-	t.Run("empty", validatorNegativeTest("", ValidateUUIDv4))
+	t.Run("valid", validatorPositiveTest(t, "957a2fd1-ba34-4d02-ab11-4d046568661c", ValidateUUIDv4))
+	t.Run("invalid", validatorNegativeTest(t, "957a2fd1-ba34-4d02-ab11-4d046568661z", ValidateUUIDv4))
+	t.Run("empty", validatorNegativeTest(t, "", ValidateUUIDv4))
 }
 
-func validatorPositiveTest(input string, validator func(string) error) func(*testing.T) {
+func validatorPositiveTest(t *testing.T, input string, validator func(string) error) func(*testing.T) {
 	return func(t *testing.T) {
 		err := validator(input)
 		require.NoError(t, err)
 	}
 }
 
-func validatorNegativeTest(input string, validator func(string) error) func(*testing.T) {
+func validatorNegativeTest(t *testing.T, input string, validator func(string) error) func(*testing.T) {
 	return func(t *testing.T) {
 		err := validator(input)
 		require.Error(t, err)

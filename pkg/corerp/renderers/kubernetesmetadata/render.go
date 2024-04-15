@@ -82,14 +82,14 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 			continue
 		}
 
-		processAnnotations(options, dep, kubeMetadataExt)
-		processLabels(options, dep, kubeMetadataExt)
+		processAnnotations(ctx, options, dep, kubeMetadataExt)
+		processLabels(ctx, options, dep, kubeMetadataExt)
 	}
 
 	return output, nil
 }
 
-func processAnnotations(options renderers.RenderOptions, dep *appsv1.Deployment, kubeMetadataExt *datamodel.KubeMetadataExtension) {
+func processAnnotations(ctx context.Context, options renderers.RenderOptions, dep *appsv1.Deployment, kubeMetadataExt *datamodel.KubeMetadataExtension) {
 	existingMetaAnnotations, existingSpecAnnotations := getAnnotations(dep)
 
 	// Create KubernetesMetadata struct to merge annotations
@@ -104,10 +104,10 @@ func processAnnotations(options renderers.RenderOptions, dep *appsv1.Deployment,
 
 	envOpts := &options.Environment
 	appOpts := &options.Application
-	if envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Annotations != nil {
+	if envOpts != nil && envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Annotations != nil {
 		ann.EnvData = envOpts.KubernetesMetadata.Annotations
 	}
-	if appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Annotations != nil {
+	if appOpts != nil && appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Annotations != nil {
 		ann.AppData = appOpts.KubernetesMetadata.Annotations
 	}
 
@@ -116,7 +116,7 @@ func processAnnotations(options renderers.RenderOptions, dep *appsv1.Deployment,
 	setAnnotations(dep, metaAnnotations, specAnnotations)
 }
 
-func processLabels(options renderers.RenderOptions, dep *appsv1.Deployment, kubeMetadataExt *datamodel.KubeMetadataExtension) {
+func processLabels(ctx context.Context, options renderers.RenderOptions, dep *appsv1.Deployment, kubeMetadataExt *datamodel.KubeMetadataExtension) {
 	existingMetaLabels, existingSpecLabels := getLabels(dep)
 
 	// Create KubernetesMetadata struct to merge labels
@@ -131,10 +131,10 @@ func processLabels(options renderers.RenderOptions, dep *appsv1.Deployment, kube
 
 	envOpts := &options.Environment
 	appOpts := &options.Application
-	if envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Labels != nil {
+	if envOpts != nil && envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Labels != nil {
 		lbl.EnvData = envOpts.KubernetesMetadata.Labels
 	}
-	if appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Labels != nil {
+	if appOpts != nil && appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Labels != nil {
 		lbl.AppData = appOpts.KubernetesMetadata.Labels
 	}
 

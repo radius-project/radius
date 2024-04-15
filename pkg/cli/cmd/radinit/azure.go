@@ -46,7 +46,7 @@ const (
 	azureServicePrincipalCreateInstructionsFmt    = "\nAn Azure service principal with a corresponding role assignment on your resource group is required to create Azure resources.\n\nFor example, you can create one using the following command:\n\033[36maz ad sp create-for-rbac --role Owner --scope /subscriptions/%s/resourceGroups/%s\033[0m\n\nFor more information refer to https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac and https://aka.ms/azadsp-more\n\n"
 )
 
-func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, error) {
+func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptions) (*azure.Provider, error) {
 	subscription, err := r.selectAzureSubscription(ctx)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (r *Runner) selectAzureResourceGroup(ctx context.Context, subscription azur
 		return r.selectExistingAzureResourceGroup(ctx, subscription)
 	}
 
-	name, err := r.enterAzureResourceGroupName()
+	name, err := r.enterAzureResourceGroupName(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -200,7 +200,7 @@ func (r *Runner) buildAzureResourceGroupList(groups []armresources.ResourceGroup
 	return names
 }
 
-func (r *Runner) enterAzureResourceGroupName() (string, error) {
+func (r *Runner) enterAzureResourceGroupName(ctx context.Context) (string, error) {
 	name, err := r.Prompter.GetTextInput(enterAzureResourceGroupNamePrompt, prompt.TextInputOptions{
 		Placeholder: enterAzureResourceGroupNamePlaceholder,
 		Validate:    prompt.ValidateResourceName,
