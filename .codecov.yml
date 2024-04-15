@@ -11,8 +11,6 @@ coverage:
         informational: true
         target: auto
         threshold: 0%
-    patch:
-      default: false
 
 ignore:
   - "**/mock_*.go"                     # ignore all mock files
