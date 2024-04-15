@@ -1008,13 +1008,6 @@
         "flags": 0,
         "description": "The protocol in use by the port"
       },
-      "provides": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Specifies a route provided by this port"
-      },
       "scheme": {
         "type": {
           "$ref": "#/0"
@@ -2471,7 +2464,7 @@
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The HttpRoute to route to. Ex - myserviceroute.id."
+        "description": "The URL or id of the service to route to. Ex - 'http://myservice'."
       },
       "replacePrefix": {
         "type": {
@@ -2554,7 +2547,7 @@
   },
   {
     "$type": "StringLiteralType",
-    "value": "Applications.Core/httpRoutes"
+    "value": "Applications.Core/secretStores"
   },
   {
     "$type": "StringLiteralType",
@@ -2562,7 +2555,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Applications.Core/httpRoutes",
+    "name": "Applications.Core/secretStores",
     "properties": {
       "id": {
         "type": {
@@ -2597,11 +2590,11 @@
           "$ref": "#/198"
         },
         "flags": 1,
-        "description": "HTTPRoute properties"
+        "description": "The properties of SecretStore"
       },
       "tags": {
         "type": {
-          "$ref": "#/207"
+          "$ref": "#/216"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2624,7 +2617,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "HttpRouteProperties",
+    "name": "SecretStoreProperties",
     "properties": {
       "environment": {
         "type": {
@@ -2637,7 +2630,7 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 1,
+        "flags": 0,
         "description": "Fully qualified resource ID for the application"
       },
       "provisioningState": {
@@ -2654,33 +2647,26 @@
         "flags": 2,
         "description": "Status of a resource."
       },
-      "hostname": {
+      "type": {
+        "type": {
+          "$ref": "#/209"
+        },
+        "flags": 0,
+        "description": "The type of SecretStore data"
+      },
+      "data": {
+        "type": {
+          "$ref": "#/215"
+        },
+        "flags": 1,
+        "description": "An object to represent key-value type secrets"
+      },
+      "resource": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The internal hostname accepting traffic for the HTTP Route. Readonly."
-      },
-      "port": {
-        "type": {
-          "$ref": "#/15"
-        },
-        "flags": 0,
-        "description": "The port number for the HTTP Route. Defaults to 80. Readonly."
-      },
-      "scheme": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 2,
-        "description": "The scheme used for traffic. Readonly."
-      },
-      "url": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 2,
-        "description": "A stable URL that that can be used to route traffic to a resource. Readonly."
+        "description": "The resource id of external secret store."
       }
     }
   },
@@ -2739,203 +2725,6 @@
     ]
   },
   {
-    "$type": "ObjectType",
-    "name": "TrackedResourceTags",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/0"
-    }
-  },
-  {
-    "$type": "ResourceType",
-    "name": "Applications.Core/httpRoutes@2023-10-01-preview",
-    "scopeType": 0,
-    "body": {
-      "$ref": "#/197"
-    },
-    "flags": 0,
-    "functions": {}
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Applications.Core/secretStores"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "2023-10-01-preview"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "Applications.Core/secretStores",
-    "properties": {
-      "id": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 10,
-        "description": "The resource id"
-      },
-      "name": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 25,
-        "description": "The resource name"
-      },
-      "type": {
-        "type": {
-          "$ref": "#/209"
-        },
-        "flags": 10,
-        "description": "The resource type"
-      },
-      "apiVersion": {
-        "type": {
-          "$ref": "#/210"
-        },
-        "flags": 10,
-        "description": "The resource api version"
-      },
-      "properties": {
-        "type": {
-          "$ref": "#/212"
-        },
-        "flags": 1,
-        "description": "The properties of SecretStore"
-      },
-      "tags": {
-        "type": {
-          "$ref": "#/230"
-        },
-        "flags": 0,
-        "description": "Resource tags."
-      },
-      "location": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The geo-location where the resource lives"
-      },
-      "systemData": {
-        "type": {
-          "$ref": "#/42"
-        },
-        "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "SecretStoreProperties",
-    "properties": {
-      "environment": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Fully qualified resource ID for the environment that the application is linked to"
-      },
-      "application": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Fully qualified resource ID for the application"
-      },
-      "provisioningState": {
-        "type": {
-          "$ref": "#/220"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "status": {
-        "type": {
-          "$ref": "#/29"
-        },
-        "flags": 2,
-        "description": "Status of a resource."
-      },
-      "type": {
-        "type": {
-          "$ref": "#/223"
-        },
-        "flags": 0,
-        "description": "The type of SecretStore data"
-      },
-      "data": {
-        "type": {
-          "$ref": "#/229"
-        },
-        "flags": 1,
-        "description": "An object to represent key-value type secrets"
-      },
-      "resource": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The resource id of external secret store."
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Succeeded"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Failed"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Canceled"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Provisioning"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Updating"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Deleting"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Accepted"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/213"
-      },
-      {
-        "$ref": "#/214"
-      },
-      {
-        "$ref": "#/215"
-      },
-      {
-        "$ref": "#/216"
-      },
-      {
-        "$ref": "#/217"
-      },
-      {
-        "$ref": "#/218"
-      },
-      {
-        "$ref": "#/219"
-      }
-    ]
-  },
-  {
     "$type": "StringLiteralType",
     "value": "generic"
   },
@@ -2947,10 +2736,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/221"
+        "$ref": "#/207"
       },
       {
-        "$ref": "#/222"
+        "$ref": "#/208"
       }
     ]
   },
@@ -2960,7 +2749,7 @@
     "properties": {
       "encoding": {
         "type": {
-          "$ref": "#/227"
+          "$ref": "#/213"
         },
         "flags": 0,
         "description": "The type of SecretValue Encoding"
@@ -2974,7 +2763,7 @@
       },
       "valueFrom": {
         "type": {
-          "$ref": "#/228"
+          "$ref": "#/214"
         },
         "flags": 0,
         "description": "The Secret value source properties"
@@ -2993,10 +2782,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/225"
+        "$ref": "#/211"
       },
       {
-        "$ref": "#/226"
+        "$ref": "#/212"
       }
     ]
   },
@@ -3025,7 +2814,7 @@
     "name": "SecretStorePropertiesData",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/224"
+      "$ref": "#/210"
     }
   },
   {
@@ -3042,14 +2831,14 @@
     "properties": {
       "type": {
         "type": {
-          "$ref": "#/234"
+          "$ref": "#/220"
         },
         "flags": 2,
         "description": "The type of SecretStore data"
       },
       "data": {
         "type": {
-          "$ref": "#/235"
+          "$ref": "#/221"
         },
         "flags": 2,
         "description": "An object to represent key-value type secrets"
@@ -3068,10 +2857,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/232"
+        "$ref": "#/218"
       },
       {
-        "$ref": "#/233"
+        "$ref": "#/219"
       }
     ]
   },
@@ -3080,14 +2869,14 @@
     "name": "SecretStoreListSecretsResultData",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/224"
+      "$ref": "#/210"
     }
   },
   {
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/231"
+      "$ref": "#/217"
     }
   },
   {
@@ -3095,13 +2884,13 @@
     "name": "Applications.Core/secretStores@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/211"
+      "$ref": "#/197"
     },
     "flags": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/236"
+          "$ref": "#/222"
         },
         "description": "listSecrets"
       }
@@ -3135,28 +2924,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/238"
+          "$ref": "#/224"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/239"
+          "$ref": "#/225"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/241"
+          "$ref": "#/227"
         },
         "flags": 1,
         "description": "Volume properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/273"
+          "$ref": "#/259"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -3198,7 +2987,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/249"
+          "$ref": "#/235"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -3213,7 +3002,7 @@
     },
     "elements": {
       "azure.com.keyvault": {
-        "$ref": "#/250"
+        "$ref": "#/236"
       }
     }
   },
@@ -3249,25 +3038,25 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/242"
+        "$ref": "#/228"
       },
       {
-        "$ref": "#/243"
+        "$ref": "#/229"
       },
       {
-        "$ref": "#/244"
+        "$ref": "#/230"
       },
       {
-        "$ref": "#/245"
+        "$ref": "#/231"
       },
       {
-        "$ref": "#/246"
+        "$ref": "#/232"
       },
       {
-        "$ref": "#/247"
+        "$ref": "#/233"
       },
       {
-        "$ref": "#/248"
+        "$ref": "#/234"
       }
     ]
   },
@@ -3277,14 +3066,14 @@
     "properties": {
       "certificates": {
         "type": {
-          "$ref": "#/263"
+          "$ref": "#/249"
         },
         "flags": 0,
         "description": "The KeyVault certificates that this volume exposes"
       },
       "keys": {
         "type": {
-          "$ref": "#/265"
+          "$ref": "#/251"
         },
         "flags": 0,
         "description": "The KeyVault keys that this volume exposes"
@@ -3298,14 +3087,14 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/271"
+          "$ref": "#/257"
         },
         "flags": 0,
         "description": "The KeyVault secrets that this volume exposes"
       },
       "kind": {
         "type": {
-          "$ref": "#/272"
+          "$ref": "#/258"
         },
         "flags": 1,
         "description": "Discriminator property for VolumeProperties."
@@ -3325,14 +3114,14 @@
       },
       "encoding": {
         "type": {
-          "$ref": "#/255"
+          "$ref": "#/241"
         },
         "flags": 0,
         "description": "Represents secret encodings"
       },
       "format": {
         "type": {
-          "$ref": "#/258"
+          "$ref": "#/244"
         },
         "flags": 0,
         "description": "Represents certificate formats"
@@ -3346,7 +3135,7 @@
       },
       "certType": {
         "type": {
-          "$ref": "#/262"
+          "$ref": "#/248"
         },
         "flags": 0,
         "description": "Represents certificate types"
@@ -3376,13 +3165,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/252"
+        "$ref": "#/238"
       },
       {
-        "$ref": "#/253"
+        "$ref": "#/239"
       },
       {
-        "$ref": "#/254"
+        "$ref": "#/240"
       }
     ]
   },
@@ -3398,10 +3187,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/256"
+        "$ref": "#/242"
       },
       {
-        "$ref": "#/257"
+        "$ref": "#/243"
       }
     ]
   },
@@ -3421,13 +3210,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/259"
+        "$ref": "#/245"
       },
       {
-        "$ref": "#/260"
+        "$ref": "#/246"
       },
       {
-        "$ref": "#/261"
+        "$ref": "#/247"
       }
     ]
   },
@@ -3436,7 +3225,7 @@
     "name": "AzureKeyVaultVolumePropertiesCertificates",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/251"
+      "$ref": "#/237"
     }
   },
   {
@@ -3471,7 +3260,7 @@
     "name": "AzureKeyVaultVolumePropertiesKeys",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/264"
+      "$ref": "#/250"
     }
   },
   {
@@ -3487,7 +3276,7 @@
       },
       "encoding": {
         "type": {
-          "$ref": "#/270"
+          "$ref": "#/256"
         },
         "flags": 0,
         "description": "Represents secret encodings"
@@ -3524,13 +3313,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/267"
+        "$ref": "#/253"
       },
       {
-        "$ref": "#/268"
+        "$ref": "#/254"
       },
       {
-        "$ref": "#/269"
+        "$ref": "#/255"
       }
     ]
   },
@@ -3539,7 +3328,7 @@
     "name": "AzureKeyVaultVolumePropertiesSecrets",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/266"
+      "$ref": "#/252"
     }
   },
   {
@@ -3559,7 +3348,7 @@
     "name": "Applications.Core/volumes@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/240"
+      "$ref": "#/226"
     },
     "flags": 0,
     "functions": {}
