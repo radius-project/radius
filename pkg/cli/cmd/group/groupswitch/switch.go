@@ -25,7 +25,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +62,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
-	Output               output.Interface
 	Workspace            *workspaces.Workspace
 	UCPResourceGroupName string
 }
@@ -73,7 +71,6 @@ func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
 	}
 }
 
@@ -131,11 +128,6 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	r.Output.LogInfo("Switched to resource group %q", r.UCPResourceGroupName)
-	return nil
+	return err
 
 }

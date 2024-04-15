@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
@@ -149,7 +148,6 @@ func Test_Run(t *testing.T) {
 				Scope: "/planes/radius/local/resourceGroups/b",
 			}
 
-			outputSink := &output.MockOutput{}
 			runner := &Runner{
 				ConfigHolder: &framework.ConfigHolder{
 					Config:         config,
@@ -158,7 +156,6 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Workspace:            workspace,
 				UCPResourceGroupName: "a",
-				Output:               outputSink,
 			}
 
 			err = runner.Run(context.Background())
@@ -167,16 +164,6 @@ func Test_Run(t *testing.T) {
 			actualConfig, err := cli.ReadWorkspaceSection(config)
 			require.NoError(t, err)
 			require.Equal(t, expectedConfig, actualConfig)
-
-			expected := []any{
-				output.LogOutput{
-					Format: "Switched to resource group %q",
-					Params: []any{"a"},
-				},
-			}
-
-			require.Equal(t, expected, outputSink.Writes)
-
 		})
 
 		t.Run("Switch (not existent)", func(t *testing.T) {
