@@ -125,9 +125,6 @@ model ContainerPortProperties {
   @doc("Protocol in use by the port")
   protocol?: PortProtocol;
 
-  @doc("Specifies a route provided by this port")
-  provides?: string;
-
   @doc("Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value")
   scheme?: string;
 

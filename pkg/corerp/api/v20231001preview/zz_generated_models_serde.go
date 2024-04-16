@@ -687,7 +687,6 @@ func (c ContainerPortProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "containerPort", c.ContainerPort)
 	populate(objectMap, "port", c.Port)
 	populate(objectMap, "protocol", c.Protocol)
-	populate(objectMap, "provides", c.Provides)
 	populate(objectMap, "scheme", c.Scheme)
 	return json.Marshal(objectMap)
 }
@@ -710,9 +709,6 @@ func (c *ContainerPortProperties) UnmarshalJSON(data []byte) error {
 		case "protocol":
 				err = unpopulate(val, "Protocol", &c.Protocol)
 			delete(rawMsg, key)
-		case "provides":
-				err = unpopulate(val, "Provides", &c.Provides)
-			delete(rawMsg, key)
 		case "scheme":
 				err = unpopulate(val, "Scheme", &c.Scheme)
 			delete(rawMsg, key)
@@ -730,7 +726,6 @@ func (c ContainerPortPropertiesUpdate) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "containerPort", c.ContainerPort)
 	populate(objectMap, "port", c.Port)
 	populate(objectMap, "protocol", c.Protocol)
-	populate(objectMap, "provides", c.Provides)
 	populate(objectMap, "scheme", c.Scheme)
 	return json.Marshal(objectMap)
 }
@@ -752,9 +747,6 @@ func (c *ContainerPortPropertiesUpdate) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "protocol":
 				err = unpopulate(val, "Protocol", &c.Protocol)
-			delete(rawMsg, key)
-		case "provides":
-				err = unpopulate(val, "Provides", &c.Provides)
 			delete(rawMsg, key)
 		case "scheme":
 				err = unpopulate(val, "Scheme", &c.Scheme)
@@ -2248,213 +2240,6 @@ func (h *HTTPGetHealthProbeProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "timeoutSeconds":
 				err = unpopulate(val, "TimeoutSeconds", &h.TimeoutSeconds)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", h, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type HTTPRouteProperties.
-func (h HTTPRouteProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "application", h.Application)
-	populate(objectMap, "environment", h.Environment)
-	populate(objectMap, "hostname", h.Hostname)
-	populate(objectMap, "port", h.Port)
-	populate(objectMap, "provisioningState", h.ProvisioningState)
-	populate(objectMap, "scheme", h.Scheme)
-	populate(objectMap, "status", h.Status)
-	populate(objectMap, "url", h.URL)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type HTTPRouteProperties.
-func (h *HTTPRouteProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", h, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &h.Application)
-			delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &h.Environment)
-			delete(rawMsg, key)
-		case "hostname":
-				err = unpopulate(val, "Hostname", &h.Hostname)
-			delete(rawMsg, key)
-		case "port":
-				err = unpopulate(val, "Port", &h.Port)
-			delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, "ProvisioningState", &h.ProvisioningState)
-			delete(rawMsg, key)
-		case "scheme":
-				err = unpopulate(val, "Scheme", &h.Scheme)
-			delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &h.Status)
-			delete(rawMsg, key)
-		case "url":
-				err = unpopulate(val, "URL", &h.URL)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", h, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResource.
-func (h HTTPRouteResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "id", h.ID)
-	populate(objectMap, "location", h.Location)
-	populate(objectMap, "name", h.Name)
-	populate(objectMap, "properties", h.Properties)
-	populate(objectMap, "systemData", h.SystemData)
-	populate(objectMap, "tags", h.Tags)
-	populate(objectMap, "type", h.Type)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type HTTPRouteResource.
-func (h *HTTPRouteResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", h, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "id":
-				err = unpopulate(val, "ID", &h.ID)
-			delete(rawMsg, key)
-		case "location":
-				err = unpopulate(val, "Location", &h.Location)
-			delete(rawMsg, key)
-		case "name":
-				err = unpopulate(val, "Name", &h.Name)
-			delete(rawMsg, key)
-		case "properties":
-				err = unpopulate(val, "Properties", &h.Properties)
-			delete(rawMsg, key)
-		case "systemData":
-				err = unpopulate(val, "SystemData", &h.SystemData)
-			delete(rawMsg, key)
-		case "tags":
-				err = unpopulate(val, "Tags", &h.Tags)
-			delete(rawMsg, key)
-		case "type":
-				err = unpopulate(val, "Type", &h.Type)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", h, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResourceListResult.
-func (h HTTPRouteResourceListResult) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "nextLink", h.NextLink)
-	populate(objectMap, "value", h.Value)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type HTTPRouteResourceListResult.
-func (h *HTTPRouteResourceListResult) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", h, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "nextLink":
-				err = unpopulate(val, "NextLink", &h.NextLink)
-			delete(rawMsg, key)
-		case "value":
-				err = unpopulate(val, "Value", &h.Value)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", h, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResourceUpdate.
-func (h HTTPRouteResourceUpdate) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "properties", h.Properties)
-	populate(objectMap, "tags", h.Tags)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type HTTPRouteResourceUpdate.
-func (h *HTTPRouteResourceUpdate) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", h, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, "Properties", &h.Properties)
-			delete(rawMsg, key)
-		case "tags":
-				err = unpopulate(val, "Tags", &h.Tags)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", h, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResourceUpdateProperties.
-func (h HTTPRouteResourceUpdateProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "application", h.Application)
-	populate(objectMap, "environment", h.Environment)
-	populate(objectMap, "hostname", h.Hostname)
-	populate(objectMap, "port", h.Port)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type HTTPRouteResourceUpdateProperties.
-func (h *HTTPRouteResourceUpdateProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", h, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &h.Application)
-			delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &h.Environment)
-			delete(rawMsg, key)
-		case "hostname":
-				err = unpopulate(val, "Hostname", &h.Hostname)
-			delete(rawMsg, key)
-		case "port":
-				err = unpopulate(val, "Port", &h.Port)
 			delete(rawMsg, key)
 		}
 		if err != nil {
