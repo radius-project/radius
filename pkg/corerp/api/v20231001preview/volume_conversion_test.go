@@ -87,7 +87,7 @@ func TestVolumeConvertFromValidation(t *testing.T) {
 	}
 
 	for _, tc := range validationTests {
-		versioned := &HTTPRouteResource{}
+		versioned := &VolumeResource{}
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}

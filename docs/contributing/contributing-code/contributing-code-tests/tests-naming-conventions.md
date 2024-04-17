@@ -7,7 +7,6 @@ Today, the [functional tests](https://github.com/radius-project/radius/tree/main
 |environment|env|
 |container|ctnr|
 |gateway|gtwy|
-|httpRoute|rte|
 |generic|gnrc|
 |servicebus|sb|
 |secretstore|scs|
@@ -32,8 +31,8 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
   ...
 }
 
-resource frontendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'gtwy-front-rte'
+resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
+  name: 'gtwy-front-cntr'
   ...
 }
 ```

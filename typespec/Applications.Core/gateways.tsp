@@ -102,7 +102,7 @@ model GatewayRoute {
   @doc("The path to match the incoming request path on. Ex - /myservice.")
   path?: string;
 
-  @doc("The HttpRoute to route to. Ex - myserviceroute.id.")
+  @doc("The URL or id of the service to route to. Ex - 'http://myservice'.")
   destination?: string;
 
   @doc("Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'")

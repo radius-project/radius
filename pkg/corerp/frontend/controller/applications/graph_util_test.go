@@ -126,18 +126,6 @@ func Test_computeGraph(t *testing.T) {
 		expectedDataFile    string
 	}{
 		{
-			name:                "using httproute without inbound resource",
-			appResourceDataFile: "graph-app-httproute-in.json",
-			envResourceDataFile: "",
-			expectedDataFile:    "graph-app-httproute-out.json",
-		},
-		{
-			name:                "using httproute with inbound resource",
-			appResourceDataFile: "graph-app-httproute2-in.json",
-			envResourceDataFile: "",
-			expectedDataFile:    "graph-app-httproute2-out.json",
-		},
-		{
 			name:                "direct route",
 			appResourceDataFile: "graph-app-directroute-in.json",
 			envResourceDataFile: "",

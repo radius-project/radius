@@ -310,9 +310,6 @@ type ContainerPortProperties struct {
 	// Protocol in use by the port
 	Protocol *PortProtocol
 
-	// Specifies a route provided by this port
-	Provides *string
-
 	// Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults
 // to 'http' or 'https' depending on the port value
 	Scheme *string
@@ -328,9 +325,6 @@ type ContainerPortPropertiesUpdate struct {
 
 	// Protocol in use by the port
 	Protocol *PortProtocol
-
-	// Specifies a route provided by this port
-	Provides *string
 
 	// Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults
 // to 'http' or 'https' depending on the port value
@@ -914,7 +908,7 @@ type GatewayResourceUpdateProperties struct {
 
 // GatewayRoute - Route attached to Gateway
 type GatewayRoute struct {
-	// The HttpRoute to route to. Ex - myserviceroute.id.
+	// The URL or id of the service to route to. Ex - 'http://myservice'.
 	Destination *string
 
 	// The path to match the incoming request path on. Ex - /myservice.
@@ -979,90 +973,6 @@ func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbePr
 		PeriodSeconds: h.PeriodSeconds,
 		TimeoutSeconds: h.TimeoutSeconds,
 	}
-}
-
-// HTTPRouteProperties - HTTPRoute properties
-type HTTPRouteProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application
-	Application *string
-
-	// Fully qualified resource ID for the environment that the application is linked to
-	Environment *string
-
-	// The internal hostname accepting traffic for the HTTP Route. Readonly.
-	Hostname *string
-
-	// The port number for the HTTP Route. Defaults to 80. Readonly.
-	Port *int32
-
-	// READ-ONLY; The status of the asynchronous operation.
-	ProvisioningState *ProvisioningState
-
-	// READ-ONLY; The scheme used for traffic. Readonly.
-	Scheme *string
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus
-
-	// READ-ONLY; A stable URL that that can be used to route traffic to a resource. Readonly.
-	URL *string
-}
-
-// HTTPRouteResource - Radius HTTPRoute Resource.
-type HTTPRouteResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string
-
-	// REQUIRED; The resource-specific properties for this resource.
-	Properties *HTTPRouteProperties
-
-	// Resource tags.
-	Tags map[string]*string
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string
-
-	// READ-ONLY; The name of the resource
-	Name *string
-
-	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
-	SystemData *SystemData
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string
-}
-
-// HTTPRouteResourceListResult - The response of a HttpRouteResource list operation.
-type HTTPRouteResourceListResult struct {
-	// REQUIRED; The HttpRouteResource items on this page
-	Value []*HTTPRouteResource
-
-	// The link to the next page of items
-	NextLink *string
-}
-
-// HTTPRouteResourceUpdate - The type used for update operations of the HttpRouteResource.
-type HTTPRouteResourceUpdate struct {
-	// The updatable properties of the HttpRouteResource.
-	Properties *HTTPRouteResourceUpdateProperties
-
-	// Resource tags.
-	Tags map[string]*string
-}
-
-// HTTPRouteResourceUpdateProperties - The updatable properties of the HttpRouteResource.
-type HTTPRouteResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application
-	Application *string
-
-	// Fully qualified resource ID for the environment that the application is linked to
-	Environment *string
-
-	// The internal hostname accepting traffic for the HTTP Route. Readonly.
-	Hostname *string
-
-	// The port number for the HTTP Route. Defaults to 80. Readonly.
-	Port *int32
 }
 
 // HealthProbeProperties - Properties for readiness/liveness probe
