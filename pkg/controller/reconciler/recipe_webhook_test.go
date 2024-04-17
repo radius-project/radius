@@ -28,6 +28,7 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	portableresources "github.com/radius-project/radius/pkg/rp/portableresources"
 	"github.com/radius-project/radius/test/testcontext"
+
 	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
@@ -266,8 +268,10 @@ func setupWebhookTest(t *testing.T) (*mockRadiusClient, client.Client) {
 			Port:    testOptions.LocalServingPort,
 			CertDir: testOptions.LocalServingCertDir,
 		}),
-		LeaderElection:     false,
-		MetricsBindAddress: "0",
+		LeaderElection: false,
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
 	})
 	require.NoError(t, err)
 
