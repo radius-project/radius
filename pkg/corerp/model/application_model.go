@@ -26,7 +26,6 @@ import (
 	azcontainer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
 	"github.com/radius-project/radius/pkg/corerp/renderers/daprextension"
 	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
-	"github.com/radius-project/radius/pkg/corerp/renderers/httproute"
 	"github.com/radius-project/radius/pkg/corerp/renderers/kubernetesmetadata"
 	"github.com/radius-project/radius/pkg/corerp/renderers/manualscale"
 	"github.com/radius-project/radius/pkg/corerp/renderers/volume"
@@ -96,10 +95,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 					},
 				},
 			},
-		},
-		{
-			ResourceType: httproute.ResourceType,
-			Renderer:     &httproute.Renderer{},
 		},
 		{
 			ResourceType: gateway.ResourceType,

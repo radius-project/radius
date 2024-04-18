@@ -73,7 +73,6 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 		port := datamodel.ContainerPort{
 			ContainerPort: to.Int32(val.ContainerPort),
 			Protocol:      toPortProtocolDataModel(val.Protocol),
-			Provides:      to.String(val.Provides),
 		}
 
 		if val.Port != nil {
@@ -200,7 +199,6 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		ports[key] = &ContainerPortProperties{
 			ContainerPort: to.Ptr(val.ContainerPort),
 			Protocol:      fromPortProtocolDataModel(val.Protocol),
-			Provides:      to.Ptr(val.Provides),
 		}
 
 		if val.Port != 0 {

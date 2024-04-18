@@ -21,17 +21,18 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
-	"github.com/radius-project/radius/pkg/controller/reconciler"
 )
 
 var (
@@ -71,10 +72,11 @@ func (s *Service) Run(ctx context.Context) error {
 	port := s.Options.Config.Server.Port
 	healthProbePort := *s.Options.Config.WorkerServer.Port
 	mgr, err := ctrl.NewManager(s.Options.K8sConfig, ctrl.Options{
-		Logger:                 logger,
-		CertDir:                s.TLSCertDir,
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
+		Logger: logger,
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: metricsAddr,
+		},
 		HealthProbeBindAddress: fmt.Sprintf(":%d", healthProbePort),
 		LeaderElection:         false,
 		LeaderElectionID:       "c85b2113.radapp.io",

@@ -40,19 +40,12 @@ resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
     }
     connections: {
       backend: {
-        source: backendRoute.id
+        source: 'http://http-back-ctnr-simple1:3000'
       }
     }
   }
 }
 
-resource backendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'http-back-rte-simple1'
-  location: location
-  properties: {
-    application: app.id
-  }
-}
 
 resource backendContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'http-back-ctnr-simple1'
@@ -65,7 +58,6 @@ resource backendContainer 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: port
-          provides: backendRoute.id
         }
       }
       readinessProbe: {

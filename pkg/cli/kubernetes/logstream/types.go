@@ -19,6 +19,8 @@ package logstream
 import (
 	"context"
 	"io"
+
+	"k8s.io/client-go/kubernetes"
 )
 
 // Options specifies the options for streaming application logs.
@@ -29,8 +31,8 @@ type Options struct {
 	// Namespace is the kubernetes namespace of the application.
 	Namespace string
 
-	// KubeContext is the name of the kubernetes context to use for connection.
-	KubeContext string
+	// KubeClient is the kubernetes client to use for connection.
+	KubeClient kubernetes.Interface
 
 	// Out is where output will be written.
 	Out io.Writer

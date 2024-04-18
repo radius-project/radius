@@ -49,18 +49,8 @@ func Test_Deployment_SimulatedEnv(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "http-gtwy-front-rte-simulatedenv",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "http-gtwy-front-ctnr-simulatedenv",
 						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "http-gtwy-back-rte-simulatedenv",
-						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{

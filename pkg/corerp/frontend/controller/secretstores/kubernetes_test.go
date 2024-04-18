@@ -119,8 +119,8 @@ func TestFromResourceID(t *testing.T) {
 		err        error
 	}{
 		{
-			resourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/httproutes/hrt0",
-			err:        errors.New("'/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/httproutes/hrt0' is the invalid resource id"),
+			resourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/c",
+			err:        errors.New("'/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/c' is the invalid resource id"),
 		},
 		{
 			resourceID: "name",
