@@ -333,7 +333,17 @@ func Test_GeneratePatch(t *testing.T) {
 			patch, err := GeneratePatch(currentStateBytes, desiredStateBytes, schemaBytes)
 			require.NoError(t, err)
 
-			require.Equal(t, testCase.expectedPatch, patch)
+			// During the update of jsondiff from 0.2.0 to 0.5.1, the valueLen property was added to the Operation struct:
+			// https://github.com/wI2L/jsondiff/commit/55095c280821a7f78781ac1eafbd187a5f3475be#diff-8b221d1ef8bed3732b54a25e03a71dabd47bc88034b268ad3f92f3c45f4744a3R40
+			// We can't set the valueLen property in the expectedPatch because it's not exported.
+			// That is why we are comparing the length and some of the fields of the operations in the expected and actual patches.
+			require.Equal(t, len(testCase.expectedPatch), len(patch))
+			for i, expectedOperation := range testCase.expectedPatch {
+				require.Equal(t, expectedOperation.Type, patch[i].Type)
+				require.Equal(t, expectedOperation.Path, patch[i].Path)
+				require.Equal(t, expectedOperation.OldValue, patch[i].OldValue)
+				require.Equal(t, expectedOperation.Value, patch[i].Value)
+			}
 		})
 	}
 }
