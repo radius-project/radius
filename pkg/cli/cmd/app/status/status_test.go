@@ -117,10 +117,6 @@ func Test_Run(t *testing.T) {
 				ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-container"),
 			},
 			{
-				Name: to.Ptr("test-route"),
-				ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/httpRoutes/test-route"),
-			},
-			{
 				Name: to.Ptr("test-gateway"),
 				ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/gateways/test-gateway"),
 			},
@@ -134,11 +130,6 @@ func Test_Run(t *testing.T) {
 		diagnosticsClient := clients.NewMockDiagnosticsClient(ctrl)
 		diagnosticsClient.EXPECT().
 			GetPublicEndpoint(gomock.Any(), clients.EndpointOptions{ResourceID: mustParse(t, "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-container")}).
-			Return(nil, nil).
-			Times(1)
-
-		diagnosticsClient.EXPECT().
-			GetPublicEndpoint(gomock.Any(), clients.EndpointOptions{ResourceID: mustParse(t, "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/httpRoutes/test-route")}).
 			Return(nil, nil).
 			Times(1)
 
@@ -172,7 +163,7 @@ func Test_Run(t *testing.T) {
 
 		applicationStatus := clients.ApplicationStatus{
 			Name:          "test-app",
-			ResourceCount: 3,
+			ResourceCount: 2,
 			Gateways: []clients.GatewayStatus{
 				{
 					Name:     "test-gateway",

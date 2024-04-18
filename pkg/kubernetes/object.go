@@ -119,17 +119,17 @@ func FindContourHTTPProxyByLocalID(resources []rpv1.OutputResource, localID stri
 			continue
 		}
 
-		httpRoute, ok := r.CreateResource.Data.(*contourv1.HTTPProxy)
+		httpProxy, ok := r.CreateResource.Data.(*contourv1.HTTPProxy)
 		if !ok {
 			continue
 		}
 
 		// If VirtualHost exists, then this is a root HTTPProxy (gateway)
-		if httpRoute.Spec.VirtualHost != nil {
+		if httpProxy.Spec.VirtualHost != nil {
 			continue
 		}
 
-		return httpRoute, r
+		return httpProxy, r
 	}
 
 	return nil, rpv1.OutputResource{}

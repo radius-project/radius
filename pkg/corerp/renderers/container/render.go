@@ -28,7 +28,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -87,8 +86,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	// in the future... eg: volumes
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
-
-	// ensure that users cannot use DNS-SD and httproutes simultaneously.
 	for _, connection := range properties.Connections {
 		if isURL(connection.Source) {
 			continue
@@ -104,25 +101,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
 			azureResourceIDs = append(azureResourceIDs, resourceID)
 			continue
-		}
-
-		if resources_radius.IsRadiusResource(resourceID) {
-			radiusResourceIDs = append(radiusResourceIDs, resourceID)
-			continue
-		}
-	}
-
-	for _, port := range properties.Container.Ports {
-		provides := port.Provides
-
-		// if provides is empty, skip this port. A service for this port will be generated later on.
-		if provides == "" {
-			continue
-		}
-
-		resourceID, err := resources.ParseResource(provides)
-		if err != nil {
-			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
 
 		if resources_radius.IsRadiusResource(resourceID) {
@@ -190,7 +168,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			continue
 		}
 
-		// If source is not a URL, it must be either resource ID, invalid string, or empty (example: containerhttproute.id).
+		// If source is not a URL, it must be either resource ID, invalid string, or empty (example: myRedis.id).
 		_, err := resources.ParseResource(connection.Source)
 		if err != nil {
 			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
@@ -209,10 +187,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			properties.Container.Ports[portName] = port
 		}
 
-		// if the container has an exposed port, but no 'provides' field, it requires DNS service generation.
-		if port.Provides == "" {
-			needsServiceGeneration = true
-		}
+		// if the container has an exposed port, it requires DNS service generation.
+		needsServiceGeneration = true
 	}
 
 	dependencies := options.Dependencies
@@ -324,11 +300,6 @@ func (r Renderer) makeDeployment(
 	computedValues map[string]rpv1.ComputedValueReference,
 	resource *datamodel.ContainerResource,
 	roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
-	// Keep track of the set of routes, we will need these to generate labels later
-	routes := []struct {
-		Name string
-		Type string
-	}{}
 
 	// If the container requires azure role, it needs to configure workload identity (aka federated identity).
 	identityRequired := len(roles) > 0
@@ -351,35 +322,10 @@ func (r Renderer) makeDeployment(
 
 	ports := []corev1.ContainerPort{}
 	for _, port := range properties.Container.Ports {
-		if provides := port.Provides; provides != "" {
-			resourceId, err := resources.ParseResource(provides)
-			if err != nil {
-				return []rpv1.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
-			}
-
-			routeName := kubernetes.NormalizeResourceName(resourceId.Name())
-			routeType := resourceId.TypeSegments()[len(resourceId.TypeSegments())-1].Type
-			routeTypeParts := strings.Split(routeType, "/")
-
-			routeTypeSuffix := kubernetes.NormalizeResourceName(routeTypeParts[len(routeTypeParts)-1])
-
-			routes = append(routes, struct {
-				Name string
-				Type string
-			}{Name: routeName, Type: routeTypeSuffix})
-
-			ports = append(ports, corev1.ContainerPort{
-				// Name generation logic has to match the code in HttpRoute
-				Name:          kubernetes.GetShortenedTargetPortName(routeTypeSuffix + routeName),
-				ContainerPort: port.ContainerPort,
-				Protocol:      corev1.ProtocolTCP,
-			})
-		} else {
-			ports = append(ports, corev1.ContainerPort{
-				ContainerPort: port.ContainerPort,
-				Protocol:      corev1.ProtocolTCP,
-			})
-		}
+		ports = append(ports, corev1.ContainerPort{
+			ContainerPort: port.ContainerPort,
+			Protocol:      corev1.ProtocolTCP,
+		})
 	}
 
 	container.Image = properties.Container.Image
@@ -530,13 +476,6 @@ func (r Renderer) makeDeployment(
 		default:
 			return []rpv1.OutputResource{}, secretData, v1.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
 		}
-	}
-
-	// In addition to the descriptive labels, we need to attach labels for each route
-	// so that the generated services can find these pods
-	for _, routeInfo := range routes {
-		routeLabels := kubernetes.MakeRouteSelectorLabels(applicationName, routeInfo.Type, routeInfo.Name)
-		podLabels = labels.Merge(routeLabels, podLabels)
 	}
 
 	serviceAccountBase := getServiceAccountBase(manifest, applicationName, resource, &options)

@@ -53,7 +53,7 @@ const (
 	LocalIDDaprPubSubBrokerKafka        = "DaprPubSubBrokerKafka"
 	LocalIDDeployment                   = "Deployment"
 	LocalIDGateway                      = "Gateway"
-	LocalIDHttpRoute                    = "HttpRoute"
+	LocalIDHttpProxy                    = "HttpProxy"
 	LocalIDKeyVault                     = "KeyVault"
 	LocalIDSecret                       = "Secret"
 	LocalIDConfigMap                    = "ConfigMap"
