@@ -29,6 +29,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.16.0
 	github.com/go-chi/chi/v5 v5.0.12
+	github.com/go-git/go-git/v5 v5.12.0
 	github.com/go-logr/logr v1.4.1
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-openapi/errors v0.22.0
@@ -111,7 +112,6 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
-	github.com/go-git/go-git/v5 v5.12.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
@@ -124,11 +124,8 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-<<<<<<< HEAD
-	github.com/pjbgf/sha1cd v0.3.0 // indirect
-=======
 	github.com/onsi/ginkgo/v2 v2.17.1 // indirect
->>>>>>> main
+	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
@@ -145,11 +142,8 @@ require (
 	golang.org/x/tools v0.20.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/api v0.170.0 // indirect
-<<<<<<< HEAD
-	gopkg.in/warnings.v0 v0.1.2 // indirect
-=======
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
->>>>>>> main
+	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
 require (
