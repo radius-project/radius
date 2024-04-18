@@ -295,7 +295,6 @@ func Test_Run(t *testing.T) {
 	logStreamOptions := <-logstreamOptionsChan
 	// Logstream is scoped to application and namespace
 	require.Equal(t, runner.ApplicationName, logStreamOptions.ApplicationName)
-	require.Equal(t, "kind-kind", logStreamOptions.KubeContext)
 	require.Equal(t, "test-namespace-app", logStreamOptions.Namespace)
 
 	appPortforwardOptions := <-appPortforwardOptionsChan
@@ -471,7 +470,6 @@ func Test_Run_NoDashboard(t *testing.T) {
 	logStreamOptions := <-logstreamOptionsChan
 	// Logstream is scoped to application and namespace
 	require.Equal(t, runner.ApplicationName, logStreamOptions.ApplicationName)
-	require.Equal(t, "kind-kind", logStreamOptions.KubeContext)
 	require.Equal(t, "test-namespace-app", logStreamOptions.Namespace)
 
 	appPortforwardOptions := <-appPortforwardOptionsChan

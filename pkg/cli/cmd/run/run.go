@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fatih/color"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	deploycmd "github.com/radius-project/radius/pkg/cli/cmd/deploy"
@@ -32,6 +31,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
+
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -244,7 +245,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return r.Logstream.Stream(ctx, logstream.Options{
 			ApplicationName: r.ApplicationName,
 			Namespace:       namespace,
-			KubeContext:     kubeContext,
+			KubeClient:      r.kubernetesClient,
 
 			// Right now we don't need an abstraction for this because we don't really
 			// run the streaming logs in unit tests.
