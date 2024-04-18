@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.11
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.18.4
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.50.0
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.156.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.157.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.6
 	github.com/aws/smithy-go v1.20.2
 	github.com/charmbracelet/bubbles v0.17.0
@@ -63,7 +63,7 @@ require (
 	github.com/stern/stern v1.28.0
 	github.com/stretchr/testify v1.9.0
 	github.com/vippsas/go-cosmosdb v0.0.0-20230118095602-f4e4b9f1c352
-	github.com/wI2L/jsondiff v0.2.0
+	github.com/wI2L/jsondiff v0.5.1
 	go.etcd.io/etcd/client/v3 v3.5.13
 	go.etcd.io/etcd/server/v3 v3.5.13
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.50.0
@@ -89,7 +89,7 @@ require (
 	k8s.io/kubectl v0.29.3
 	oras.land/oras-go/v2 v2.5.0
 	sigs.k8s.io/controller-runtime v0.17.3
-	sigs.k8s.io/secrets-store-csi-driver v1.4.2
+	sigs.k8s.io/secrets-store-csi-driver v1.4.3
 )
 
 require (
@@ -123,6 +123,7 @@ require (
 	github.com/tidwall/gjson v1.17.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
