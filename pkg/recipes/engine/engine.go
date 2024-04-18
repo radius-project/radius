@@ -216,18 +216,20 @@ func (e *engine) getDriver(ctx context.Context, recipeMetadata recipes.ResourceM
 func (e *engine) getRecipeConfigSecrets(ctx context.Context, driver recipedriver.Driver, configuration *recipes.Configuration, definition *recipes.EnvironmentDefinition) (v20231001preview.SecretStoresClientListSecretsResponse, error) {
 	secrets := v20231001preview.SecretStoresClientListSecretsResponse{}
 	driverWithSecrets, ok := driver.(recipedriver.DriverWithSecrets)
-	if ok {
-		secretStore, err := driverWithSecrets.FindSecretIDs(ctx, *configuration, *definition)
-		if err != nil {
-			return v20231001preview.SecretStoresClientListSecretsResponse{}, err
-		}
+	if !ok {
+		return secrets, nil
+	}
 
-		// Retrieves the secret values from the secret store ID provided.
-		if secretStore != "" {
-			secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
-			if err != nil {
-				return v20231001preview.SecretStoresClientListSecretsResponse{}, recipes.NewRecipeError(recipes.LoadSecretsFailed, fmt.Sprintf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %s", secretStore, definition.TemplatePath, err.Error()), util.RecipeSetupError, recipes.GetErrorDetails(err))
-			}
+	secretStore, err := driverWithSecrets.FindSecretIDs(ctx, *configuration, *definition)
+	if err != nil {
+		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+	}
+
+	// Retrieves the secret values from the secret store ID provided.
+	if secretStore != "" {
+		secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
+		if err != nil {
+			return v20231001preview.SecretStoresClientListSecretsResponse{}, recipes.NewRecipeError(recipes.LoadSecretsFailed, fmt.Sprintf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %s", secretStore, definition.TemplatePath, err.Error()), util.RecipeSetupError, recipes.GetErrorDetails(err))
 		}
 	}
 	return secrets, nil
