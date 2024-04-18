@@ -25,7 +25,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // Configuration represents kubernetes runtime and cloud provider configuration, which is used by the driver while deploying recipes.
@@ -167,33 +166,4 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 	}
 
 	return url, nil
-}
-
-// GetEnvAppResourceNames returns the application, environment and resource names.
-func GetEnvAppResourceNames(resourceMetadata *ResourceMetadata) (string, string, string, error) {
-	app, err := resources.ParseResource(resourceMetadata.ApplicationID)
-	if err != nil {
-		return "", "", "", err
-	}
-
-	env, err := resources.ParseResource(resourceMetadata.EnvironmentID)
-	if err != nil {
-		return "", "", "", err
-	}
-
-	resource, err := resources.ParseResource(resourceMetadata.ResourceID)
-	if err != nil {
-		return "", "", "", err
-	}
-
-	return env.Name(), app.Name(), resource.Name(), nil
-}
-
-// GetURLPrefix returns the url prefix to be added to the template path before adding it to the .gitconfig and terraform config.
-func GetURLPrefix(resourceRecipe *ResourceMetadata) (string, error) {
-	env, app, resource, err := GetEnvAppResourceNames(resourceRecipe)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("https://%s-%s-%s-", env, app, resource), nil
 }

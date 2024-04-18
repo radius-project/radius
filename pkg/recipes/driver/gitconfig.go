@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os/exec"
 
+	git "github.com/go-git/go-git/v5"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
 )
@@ -60,46 +61,30 @@ func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecrets
 
 	// git config key will be in the format of url.<git url with secret details>.insteadOf
 	// and value returned will the original git url domain, e.g github.com
-	return fmt.Sprintf("url.%s.insteadOf", path), url.Hostname(), nil
+	return fmt.Sprintf("url.%s.insteadOf", path), fmt.Sprintf("%s://%s", url.Scheme, url.Hostname()), nil
 }
 
 // Updates the global Git configuration with credentials for a recipe template path and prefixes the path with environment, application, and resource name to make the entry unique to each recipe execution operation.
 //
 // Retrieves the git credentials from the provided secrets object
 // and adds them to the Git config by running
-// git config --global url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
-func addSecretsToGitConfig(secrets v20231001preview.SecretStoresClientListSecretsResponse, recipeMetadata *recipes.ResourceMetadata, templatePath string) error {
+// git config --file .git/config url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
+func addSecretsToGitConfig(workingDirectory string, secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
+	// Initialize a new Git repository in the specified directory
+	_, err := git.PlainInit(workingDirectory, false)
+	if err != nil {
+		return err
+	}
+
 	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
 	if err != nil {
 		return err
 	}
 
-	prefix, err := recipes.GetURLPrefix(recipeMetadata)
-	if err != nil {
-		return err
-	}
-	urlConfigValue = fmt.Sprintf("%s%s", prefix, urlConfigValue)
-	cmd := exec.Command("git", "config", "--global", urlConfigKey, urlConfigValue)
+	cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", urlConfigKey, urlConfigValue)
 	_, err = cmd.Output()
 	if err != nil {
 		return errors.New("failed to add git config")
-	}
-
-	return nil
-}
-
-// Unset the git credentials information from .gitconfig by running
-// git config --global --unset url<template_path_domain_with_credentails>.insteadOf
-func unsetSecretsFromGitConfig(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
-	urlConfigKey, _, err := getURLConfigKeyValue(secrets, templatePath)
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command("git", "config", "--global", "--unset", urlConfigKey)
-	_, err = cmd.Output()
-	if err != nil {
-		return errors.New("failed to unset git config")
 	}
 
 	return nil

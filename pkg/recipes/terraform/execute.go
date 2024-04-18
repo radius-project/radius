@@ -346,7 +346,7 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 	}
 
 	// Create Terraform configuration containing module information with the given recipe parameters.
-	tfConfig, err := config.New(ctx, localModuleName, options.EnvRecipe, options.ResourceRecipe, options.EnvConfig)
+	tfConfig, err := config.New(ctx, localModuleName, options.EnvRecipe, options.ResourceRecipe)
 	if err != nil {
 		return nil, err
 	}

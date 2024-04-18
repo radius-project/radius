@@ -89,7 +89,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 
 	// Add credential information to .gitconfig if module source is of type git.
 	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
-		err := addSecretsToGitConfig(opts.BaseOptions.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
+		err = addSecretsToGitConfig(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
 		if err != nil {
 			return nil, err
 		}
@@ -101,14 +101,6 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 	})
-
-	// Unset credential information from .gitconfig if module source is of type git.
-	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
-		unsetError := unsetSecretsFromGitConfig(opts.BaseOptions.Secrets, opts.Definition.TemplatePath)
-		if unsetError != nil {
-			return nil, unsetError
-		}
-	}
 
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
