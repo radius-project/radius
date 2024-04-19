@@ -49,6 +49,18 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 ` // Trailing newline intentional.
 )
 
+const bicepConfigTemplate = `{
+    "experimentalFeaturesEnabled": {
+        "extensibility": true,
+        "providerRegistry": true,
+        "dynamicTypeLoading": true
+    },
+    "providers": {
+        "radius": "br:biceptypes.azurecr.io/radius:latest",
+        "aws": "br:biceptypes.azurecr.io/aws:latest"
+    }
+}`
+
 // ScaffoldApplication creates a working sample application in the provided directory
 // along with configuration for the application name.
 func ScaffoldApplication(directory string, name string) error {
@@ -60,7 +72,7 @@ func ScaffoldApplication(directory string, name string) error {
 		return err
 	}
 
-	// We NEVER overwrite app.bicep if it exists. We assume the user might have changed it, and don't
+	// We NEVER overwrite app.bicep or the bicepconfig.json if it exists. We assume the user might have changed it, and don't
 	// want them to lose their content.
 	//
 	// On the other hand, we ALWAYS overwrite rad.yaml if it exists. We assume that the reason why
@@ -69,6 +81,17 @@ func ScaffoldApplication(directory string, name string) error {
 	_, err = os.Stat(appBicepFilepath)
 	if os.IsNotExist(err) {
 		err = os.WriteFile(appBicepFilepath, []byte(appBicepTemplate), 0644)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	bicepConfigFilepath := filepath.Join(directory, "bicepconfig.json")
+	_, err = os.Stat(bicepConfigFilepath)
+	if os.IsNotExist(err) {
+		err = os.WriteFile(bicepConfigFilepath, []byte(bicepConfigTemplate), 0644)
 		if err != nil {
 			return err
 		}
