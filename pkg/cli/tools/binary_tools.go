@@ -17,21 +17,17 @@ limitations under the License.
 package tools
 
 import (
-	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path"
 	"runtime"
-
-	"github.com/radius-project/radius/pkg/version"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/file"
-	"oras.land/oras-go/v2/registry/remote"
 )
 
 const (
 	// binaryRepo is the name of the remote bicep binary repository
-	binaryRepo = "ghcr.io/radius-project/radius/bicep/rad-bicep/"
+	binaryRepo = "https://github.com/Azure/bicep/releases/latest/download/"
 )
 
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.
@@ -123,57 +119,42 @@ func GetValidPlatform(currentOS, currentArch string) (string, error) {
 	return platform, nil
 }
 
-// DownloadToFolder creates a folder and a file, uses the ORAS client to copy from the remote repository to the file,
+// DownloadToFolder creates a folder and a file, downloads the bicep binary to the file,
 // and makes the file executable by everyone. An error is returned if any of these steps fail.
 func DownloadToFolder(filepath string) error {
-	// create folders
-	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)
+	// Create the file
+	bicepBinary, err := os.Create(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
+		return err
 	}
+	defer bicepBinary.Close()
 
-	// Create a file store
-	fs, err := file.New(path.Dir(filepath))
-	if err != nil {
-		return fmt.Errorf("failed to create file store %s: %v", filepath, err)
-	}
-	defer fs.Close()
-
-	ctx := context.Background()
-	platform, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
+	// Get file extension
+	extension, err := getFileExtension()
 	if err != nil {
 		return err
 	}
 
-	// Define remote repository
-	repo, err := remote.NewRepository(binaryRepo + platform)
+	// Get the data
+	resp, err := http.Get(binaryRepo + extension)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Write the body to file
+	_, err = io.Copy(bicepBinary, resp.Body)
 	if err != nil {
 		return err
 	}
 
-	// Copy the artifact from the registry into the file store
-	tag := version.Channel()
-	if version.IsEdgeChannel() {
-		tag = "latest"
-	}
-	_, err = oras.Copy(ctx, repo, tag, fs, tag, oras.DefaultCopyOptions)
-	if err != nil {
-		return err
-	}
-
-	// Open the folder so we can mark it as executable
-	bicepBinary, err := os.Open(filepath)
-	if err != nil {
-		return fmt.Errorf("failed to open file %s: %v", filepath, err)
-	}
-
-	// get the filemode so we can mark it as executable
+	// Get the filemode so we can mark it as executable
 	file, err := bicepBinary.Stat()
 	if err != nil {
 		return fmt.Errorf("failed to read file attributes %s: %v", filepath, err)
 	}
 
-	// make file executable by everyone
+	// Make file executable by everyone
 	err = bicepBinary.Chmod(file.Mode() | 0111)
 	if err != nil {
 		return fmt.Errorf("failed to change permissions for %s: %v", filepath, err)
@@ -188,6 +169,19 @@ func getFilename(base string) (string, error) {
 		return base, nil
 	case "windows":
 		return base + ".exe", nil
+	default:
+		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+}
+
+func getFileExtension() (string, error) {
+	switch runtime.GOOS {
+	case "darwin":
+		return "bicep-osx-x64", nil
+	case "linux":
+		return "bicep-linux-x64", nil
+	case "windows":
+		return "bicep-win-x64.exe", nil
 	default:
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
