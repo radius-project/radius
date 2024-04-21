@@ -125,6 +125,7 @@ func GetTerraformRecipeModuleServerURL() string {
 	return "moduleServer=" + u
 }
 
+// GetTerraformPrivateModuleSource gets the terraform private git module source to use in tests from the environment variable TF_RECIPE_PRIVATE_GIT_SOURCE.
 func GetTerraformPrivateModuleSource() string {
 	u := os.Getenv("TF_RECIPE_PRIVATE_GIT_SOURCE")
 	if u == "" {
@@ -133,6 +134,7 @@ func GetTerraformPrivateModuleSource() string {
 	return "privateGitModule=" + u
 }
 
+// GetGitPAT gets the personal access token for the git account private modules are stored.
 func GetGitPAT() string {
 	u := os.Getenv("GH_TOKEN")
 	return "pat=" + u
