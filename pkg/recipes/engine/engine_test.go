@@ -1032,7 +1032,7 @@ func Test_Engine_Delete_With_Secrets_Success(t *testing.T) {
 		Times(1).
 		Return("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit", nil)
 	secretsLoader.EXPECT().
-		LoadSecrets(ctx, gomock.Any()).
+		LoadSecrets(ctx, "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit").
 		Times(1).
 		Return(v20231001preview.SecretStoresClientListSecretsResponse{}, nil)
 	driverWithSecrets.EXPECT().
