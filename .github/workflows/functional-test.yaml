@@ -704,7 +704,7 @@ jobs:
             response = await github.rest.actions.listWorkflowRuns({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'long-running-azure.yaml',
+              workflow_id: 'functional-test.yaml',
               event: 'schedule',
               per_page: 10
             });
