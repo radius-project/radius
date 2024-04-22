@@ -64,13 +64,13 @@ func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecrets
 	return fmt.Sprintf("url.%s.insteadOf", path), fmt.Sprintf("%s://%s", url.Scheme, url.Hostname()), nil
 }
 
-// Updates the global Git configuration with credentials for a recipe template path and prefixes the path with environment, application, and resource name to make the entry unique to each recipe execution operation.
+// Updates the local Git configuration in terraform working directory with credentials for a recipe template path and prefixes the path with environment, application, and resource name to make the entry unique to each recipe execution operation.
 //
 // Retrieves the git credentials from the provided secrets object
 // and adds them to the Git config by running
 // git config --file .git/config url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
 func addSecretsToGitConfig(workingDirectory string, secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
-	// Initialize a new Git repository in the specified directory
+	// Initialize a new Git repository in the terraform working directory.
 	_, err := git.PlainInit(workingDirectory, false)
 	if err != nil {
 		return err
