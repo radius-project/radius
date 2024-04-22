@@ -119,36 +119,6 @@
             }
           },
           {
-            "name": "Applications.Core/httpRoutes/read",
-            "isDataAction": false,
-            "display": {
-              "provider": "Applications.Core",
-              "resource": "httpRoutes",
-              "operation": "Get/List HTTP Route",
-              "description": "Get or list of HTTP Routes."
-            }
-          },
-          {
-            "name": "Applications.Core/httpRoutes/write",
-            "isDataAction": false,
-            "display": {
-              "provider": "Applications.Core",
-              "resource": "httpRoutes",
-              "operation": "Create/Update HTTP Route",
-              "description": "Create or update an HTTP Route."
-            }
-          },
-          {
-            "name": "Applications.Core/httpRoutes/delete",
-            "isDataAction": false,
-            "display": {
-              "provider": "Applications.Core",
-              "resource": "httpRoutes",
-              "operation": "Delete HTTP Route",
-              "description": "Deletes an HTTP Route."
-            }
-          },
-          {
             "name": "Applications.Core/gateways/read",
             "isDataAction": false,
             "display": {

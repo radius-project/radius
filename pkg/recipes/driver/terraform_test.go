@@ -307,28 +307,6 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 	})
 }
 
-func Test_Terraform_Execute_SimulatedEnvironment(t *testing.T) {
-	ctx := testcontext.New(t)
-	armCtx := &v1.ARMRequestContext{
-		OperationID: uuid.New(),
-	}
-	ctx = v1.WithARMRequestContext(ctx, armCtx)
-
-	_, driver := setup(t)
-	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	envConfig.Simulated = true
-
-	recipeOutput, err := driver.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
-	})
-	require.NoError(t, err)
-	require.Nil(t, recipeOutput)
-}
-
 func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
@@ -754,6 +732,31 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			state:            &tfjson.State{},
 			expectedResponse: &recipes.RecipeOutput{},
 			expectedErr:      errors.New("terraform state is empty"),
+		},
+		{
+			desc: "Testing empty tfjson state with a check",
+			state: &tfjson.State{
+				Checks: []tfjson.CheckResultStatic{
+					{
+						Address: tfjson.CheckStaticAddress{
+							ToDisplay: "module.test",
+							Kind:      tfjson.CheckKindResource,
+							Module:    "test",
+							Mode:      tfjson.ManagedResourceMode,
+							Type:      "test",
+							Name:      "test",
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+			expectedErr: nil,
 		},
 	}
 

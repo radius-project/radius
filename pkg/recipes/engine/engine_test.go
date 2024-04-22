@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
@@ -32,21 +33,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, recipedriver.MockDriver) {
+func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, recipedriver.MockDriver, recipedriver.MockDriverWithSecrets, configloader.MockSecretsLoader) {
 	ctrl := gomock.NewController(t)
-	configLoader := configloader.NewMockConfigurationLoader(ctrl)
+	cfgLoader := configloader.NewMockConfigurationLoader(ctrl)
+	secretLoader := configloader.NewMockSecretsLoader(ctrl)
 	mDriver := recipedriver.NewMockDriver(ctrl)
+	mDriverWithSecrets := recipedriver.NewMockDriverWithSecrets(ctrl)
 	options := Options{
-		ConfigurationLoader: configLoader,
+		ConfigurationLoader: cfgLoader,
+		SecretsLoader:       secretLoader,
 		Drivers: map[string]recipedriver.Driver{
 			recipes.TemplateKindBicep:     mDriver,
-			recipes.TemplateKindTerraform: mDriver,
+			recipes.TemplateKindTerraform: mDriverWithSecrets,
 		},
 	}
 	engine := engine{
 		options: options,
 	}
-	return engine, *configLoader, *mDriver
+	return engine, *cfgLoader, *mDriver, *mDriverWithSecrets, *secretLoader
 }
 
 func Test_Engine_Execute_Success(t *testing.T) {
@@ -90,7 +94,7 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
-	engine, configLoader, driver := setup(t)
+	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
 		LoadConfiguration(ctx, recipeMetadata).
@@ -120,6 +124,55 @@ func Test_Engine_Execute_Success(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
+}
+
+func Test_Engine_Execute_SimulatedEnv_Success(t *testing.T) {
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          "mongo-azure",
+		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		Parameters: map[string]any{
+			"resourceName": "resource1",
+		},
+	}
+
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+		Simulated: true,
+	}
+
+	ctx := testcontext.New(t)
+	engine, configLoader, _, _, _ := setup(t)
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
+	// Note: LoadRecipe is not called as the environment is simulated
+
+	result, err := engine.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		PreviousState: prevState,
+	})
+	require.NoError(t, err)
+	require.Nil(t, result)
 }
 
 func Test_Engine_Execute_Failure(t *testing.T) {
@@ -153,7 +206,7 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
-	engine, configLoader, driver := setup(t)
+	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
 		LoadConfiguration(ctx, recipeMetadata).
@@ -228,7 +281,7 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		ResourceType:    "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
-	engine, configLoader, driver := setup(t)
+	engine, configLoader, _, driverWithSecrets, _ := setup(t)
 
 	configLoader.EXPECT().
 		LoadConfiguration(ctx, recipeMetadata).
@@ -238,7 +291,11 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
 		Return(recipeDefinition, nil)
-	driver.EXPECT().
+	driverWithSecrets.EXPECT().
+		FindSecretIDs(ctx, *envConfig, *recipeDefinition).
+		Times(1).
+		Return("", nil)
+	driverWithSecrets.EXPECT().
 		Execute(ctx, recipedriver.ExecuteOptions{
 			BaseOptions: recipedriver.BaseOptions{
 				Configuration: *envConfig,
@@ -262,7 +319,20 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 
 func Test_Engine_InvalidDriver(t *testing.T) {
 	ctx := testcontext.New(t)
-	engine, configLoader, _ := setup(t)
+	engine, configLoader, _, _, _ := setup(t)
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
 
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       "invalid",
@@ -282,6 +352,12 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 	prevState := []string{
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
@@ -298,7 +374,21 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 
 func Test_Engine_Lookup_Error(t *testing.T) {
 	ctx := testcontext.New(t)
-	engine, configLoader, _ := setup(t)
+	engine, configLoader, _, _, _ := setup(t)
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
@@ -311,6 +401,12 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 	prevState := []string{
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
@@ -327,7 +423,8 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 
 func Test_Engine_Load_Error(t *testing.T) {
 	ctx := testcontext.New(t)
-	engine, configLoader, _ := setup(t)
+	engine, configLoader, _, _, _ := setup(t)
+
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
@@ -340,15 +437,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 	prevState := []string{
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
-	recipeDefinition := &recipes.EnvironmentDefinition{
-		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Datastores/mongoDatabases",
-	}
-	configLoader.EXPECT().
-		LoadRecipe(ctx, &recipeMetadata).
-		Times(1).
-		Return(recipeDefinition, nil)
+
 	configLoader.EXPECT().
 		LoadConfiguration(ctx, recipeMetadata).
 		Times(1).
@@ -380,7 +469,7 @@ func Test_Engine_Delete_Success(t *testing.T) {
 	}
 
 	ctx := testcontext.New(t)
-	engine, configLoader, driver := setup(t)
+	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
@@ -413,6 +502,40 @@ func Test_Engine_Delete_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_Engine_Delete_SimulatedEnv_Success(t *testing.T) {
+	recipeMetadata, _, outputResources := getRecipeInputs()
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+		Simulated: true,
+	}
+
+	ctx := testcontext.New(t)
+	engine, configLoader, _, _, _ := setup(t)
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
+	err := engine.Delete(ctx, DeleteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		OutputResources: outputResources,
+	})
+	require.NoError(t, err)
+}
+
 func Test_Engine_Delete_Error(t *testing.T) {
 	recipeMetadata, recipeDefinition, outputResources := getRecipeInputs()
 
@@ -430,7 +553,7 @@ func Test_Engine_Delete_Error(t *testing.T) {
 	}
 
 	ctx := testcontext.New(t)
-	engine, configLoader, driver := setup(t)
+	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
@@ -469,7 +592,25 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 	recipeDefinition.Driver = "invalid"
 
 	ctx := testcontext.New(t)
-	engine, configLoader, _ := setup(t)
+	engine, configLoader, _, _, _ := setup(t)
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
 
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
@@ -487,8 +628,26 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 
 func Test_Delete_Lookup_Error(t *testing.T) {
 	ctx := testcontext.New(t)
-	engine, configLoader, _ := setup(t)
+	engine, configLoader, _, _, _ := setup(t)
 	recipeMetadata, _, outputResources := getRecipeInputs()
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
 
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
@@ -507,7 +666,7 @@ func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
 	_, recipeDefinition, _ := getRecipeInputs()
 
 	ctx := testcontext.New(t)
-	engine, _, driver := setup(t)
+	engine, _, driver, _, _ := setup(t)
 	outputParams := map[string]any{"parameters": recipeDefinition.Parameters}
 
 	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
@@ -524,7 +683,7 @@ func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
 	_, recipeDefinition, _ := getRecipeInputs()
 
 	ctx := testcontext.New(t)
-	engine, _, driver := setup(t)
+	engine, _, driver, _, _ := setup(t)
 
 	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
@@ -541,7 +700,7 @@ func Test_GetRecipeMetadata_Driver_InvalidDriver(t *testing.T) {
 	recipeDefinition.Driver = "invalid"
 
 	ctx := testcontext.New(t)
-	engine, _, _ := setup(t)
+	engine, _, _, _, _ := setup(t)
 
 	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
 	require.Error(t, err)
@@ -571,4 +730,97 @@ func getRecipeInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition,
 		},
 	}
 	return recipeMetadata, recipeDefinition, outputResources
+}
+
+func Test_Engine_Execute_With_Secrets_Success(t *testing.T) {
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          "mongo-azure",
+		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		Parameters: map[string]any{
+			"resourceName": "resource1",
+		},
+	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Authentication: datamodel.AuthConfig{
+					Git: datamodel.GitAuthConfig{
+						PAT: map[string]datamodel.SecretConfig{
+							"dev.azure.com": {
+								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	recipeResult := &recipes.RecipeOutput{
+		Resources: []string{"mongoStorageAccount", "mongoDatabase"},
+		Secrets: map[string]any{
+			"connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
+		},
+		Values: map[string]any{
+			"host": "testAccount1.mongo.cosmos.azure.com",
+			"port": 10255,
+		},
+	}
+	recipeDefinition := &recipes.EnvironmentDefinition{
+		Driver:       recipes.TemplateKindTerraform,
+		TemplatePath: "git://https://dev.azure.com/mongo-recipe/recipe",
+		ResourceType: "Applications.Datastores/mongoDatabases",
+	}
+	ctx := testcontext.New(t)
+	engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(recipeDefinition, nil)
+	driverWithSecrets.EXPECT().
+		FindSecretIDs(ctx, *envConfig, *recipeDefinition).
+		Times(1).
+		Return("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit", nil)
+	secretsLoader.EXPECT().
+		LoadSecrets(ctx, gomock.Any()).
+		Times(1).
+		Return(v20231001preview.SecretStoresClientListSecretsResponse{}, nil)
+	driverWithSecrets.EXPECT().
+		Execute(ctx, recipedriver.ExecuteOptions{
+			BaseOptions: recipedriver.BaseOptions{
+				Configuration: *envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    *recipeDefinition,
+			},
+			PrevState: prevState,
+		}).
+		Times(1).
+		Return(recipeResult, nil)
+
+	result, err := engine.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		PreviousState: prevState,
+	})
+	require.NoError(t, err)
+	require.Equal(t, result, recipeResult)
 }

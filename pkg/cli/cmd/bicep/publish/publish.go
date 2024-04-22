@@ -22,16 +22,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
-	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
-
-	"net/http"
 
 	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
@@ -42,6 +40,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	credentials "oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 	"oras.land/oras-go/v2/registry/remote/retry"
 )
@@ -213,7 +212,7 @@ func (r *Runner) publish(ctx context.Context) error {
 	}
 
 	// Prepare Destination
-	dst, err := r.prepareDestination(ctx)
+	dst, err := r.prepareDestination()
 	if err != nil {
 		return err
 	}
@@ -264,7 +263,7 @@ func (r *Runner) prepareSource(ctx context.Context) (*memory.Store, error) {
 	return src, nil
 }
 
-func (r *Runner) prepareDestination(ctx context.Context) (*remote.Repository, error) {
+func (r *Runner) prepareDestination() (*remote.Repository, error) {
 	// Create a new credential store from Docker to get local credentials
 	ds, err := credentials.NewStoreFromDocker(credentials.StoreOptions{
 		AllowPlaintextPut: true,

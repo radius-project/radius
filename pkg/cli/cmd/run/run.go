@@ -22,17 +22,29 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fatih/color"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	deploycmd "github.com/radius-project/radius/pkg/cli/cmd/deploy"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/kubernetes/logstream"
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
+
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	k8sclient "k8s.io/client-go/kubernetes"
+	k8srest "k8s.io/client-go/rest"
+)
+
+const (
+	radiusSystemNamespace = "radius-system"
+	dashboardLabelName    = "dashboard"
+	dashboardLabelPartOf  = "radius"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad run` command.
@@ -83,8 +95,10 @@ rad run app.bicep --parameters @myfile.json --parameters version=latest
 // Runner is the runner implementation for the `rad run` command.
 type Runner struct {
 	deploycmd.Runner
-	Logstream   logstream.Interface
-	Portforward portforward.Interface
+	Logstream            logstream.Interface
+	Portforward          portforward.Interface
+	kubernetesClient     k8sclient.Interface
+	kubernetesRESTConfig *k8srest.Config
 }
 
 // NewRunner creates a new instance of the `rad run` runner.
@@ -159,33 +173,79 @@ func (r *Runner) Run(ctx context.Context) error {
 		return clierrors.Message("Only kubernetes runtimes are supported.")
 	}
 
-	// We start three background jobs and wait for them to complete.
+	applicationSelector, err := portforward.CreateLabelSelectorForApplication(r.ApplicationName)
+	if err != nil {
+		return err
+	}
+
+	dashboardSelector, err := portforward.CreateLabelSelectorForDashboard()
+	if err != nil {
+		return err
+	}
+
+	if r.kubernetesClient == nil && r.kubernetesRESTConfig == nil {
+		kubernetesClient, kubernetesRESTConfig, err := kubernetes.NewClientset(kubeContext)
+		if err != nil {
+			return err
+		}
+
+		r.kubernetesClient = kubernetesClient
+		r.kubernetesRESTConfig = kubernetesRESTConfig
+	}
+
+	// We start some background jobs and wait for them to complete.
 	group, ctx := errgroup.WithContext(ctx)
 
-	// 1. Display port-forward messages
-	status := make(chan portforward.StatusMessage)
+	// Display port-forward messages for application
+	applicationStatusChan := make(chan portforward.StatusMessage)
 	group.Go(func() error {
-		r.displayPortforwardMessages(status)
+		r.displayPortforwardMessages(applicationStatusChan)
 		return nil
 	})
 
-	// 2. Port-forward
+	// Port-forward application
 	group.Go(func() error {
 		return r.Portforward.Run(ctx, portforward.Options{
-			ApplicationName: r.ApplicationName,
-			Namespace:       namespace,
-			KubeContext:     kubeContext,
-			StatusChan:      status,
-			Out:             os.Stdout,
+			LabelSelector: applicationSelector,
+			Namespace:     namespace,
+			KubeContext:   kubeContext,
+			StatusChan:    applicationStatusChan,
+			Out:           os.Stdout,
+			Client:        r.kubernetesClient,
+			RESTConfig:    r.kubernetesRESTConfig,
 		})
 	})
 
-	// 3. Stream logs
+	if dashboardDeploymentExists(ctx, r.kubernetesClient, dashboardSelector) {
+		// Display port-forward messages for dashboard
+		dashboardStatusChan := make(chan portforward.StatusMessage)
+		group.Go(func() error {
+			r.displayPortforwardMessages(dashboardStatusChan)
+			return nil
+		})
+
+		// Port-forward dashboard
+		group.Go(func() error {
+			return r.Portforward.Run(ctx, portforward.Options{
+				LabelSelector: dashboardSelector,
+				Namespace:     radiusSystemNamespace,
+				KubeContext:   kubeContext,
+				StatusChan:    dashboardStatusChan,
+				Out:           os.Stdout,
+				Client:        r.kubernetesClient,
+				RESTConfig:    r.kubernetesRESTConfig,
+			})
+		})
+	} else {
+		fmt.Println("Radius Dashboard not found, please see https://docs.radapp.io/guides/tooling/dashboard for more information")
+	}
+
+	// Stream logs
 	group.Go(func() error {
 		return r.Logstream.Stream(ctx, logstream.Options{
 			ApplicationName: r.ApplicationName,
 			Namespace:       namespace,
-			KubeContext:     kubeContext,
+			KubeClient:      r.kubernetesClient,
 
 			// Right now we don't need an abstraction for this because we don't really
 			// run the streaming logs in unit tests.
@@ -214,4 +274,20 @@ func (r *Runner) displayPortforwardMessages(status <-chan portforward.StatusMess
 		// update the tests if you make changes here.
 		fmt.Printf("%s %s [port-forward] %s from localhost:%d -> ::%d\n", regular.Sprint(message.ReplicaName), bold.Sprint(message.ContainerName), message.Kind, message.LocalPort, message.RemotePort)
 	}
+}
+
+// dashboardDeploymentExists checks if a dashboard deployment exists in the given Kubernetes context.
+func dashboardDeploymentExists(ctx context.Context, kubernetesClient k8sclient.Interface, dashboardLabelSelector labels.Selector) bool {
+	deployments := kubernetesClient.AppsV1().Deployments(radiusSystemNamespace)
+	listOptions := metav1.ListOptions{LabelSelector: dashboardLabelSelector.String()}
+
+	// List all deployments that match the label selector
+	labelledDeployments, err := deployments.List(ctx, listOptions)
+	if err != nil {
+		return false
+	}
+
+	// If there are any deployments that match the dashboard label selector, return true.
+	// Otherwise, return false.
+	return len(labelledDeployments.Items) != 0
 }

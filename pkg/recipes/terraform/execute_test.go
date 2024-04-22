@@ -18,9 +18,11 @@ package terraform
 
 import (
 	"path/filepath"
+	reflect "reflect"
 	"testing"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
+	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/test/testcontext"
@@ -113,4 +115,109 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 	_, err := getTerraformConfig(testcontext.New(t), workingDir, options)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file: open invalid-directory/main.tf.json: no such file or directory")
+}
+
+func TestSetEnvironmentVariables(t *testing.T) {
+	testCase := []struct {
+		name string
+		opts Options
+	}{
+		{
+			name: "set environment variables",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						Env: dm.EnvironmentVariables{
+							AdditionalProperties: map[string]string{
+								"TEST_ENV_VAR1": "value1",
+								"TEST_ENV_VAR2": "value2",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "AdditionalProperties set to nil",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						Env: dm.EnvironmentVariables{
+							AdditionalProperties: nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "no environment variables",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			workingDir := t.TempDir()
+
+			tf, err := tfexec.NewTerraform(workingDir, filepath.Join(workingDir, "terraform"))
+			require.NoError(t, err)
+
+			e := executor{}
+
+			err = e.setEnvironmentVariables(tf, &tc.opts.EnvConfig.RecipeConfig)
+
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestSplitEnvVar(t *testing.T) {
+	tests := []struct {
+		name    string
+		envVars []string
+		want    map[string]string
+	}{
+		{
+			name:    "nil input",
+			envVars: nil,
+			want:    map[string]string{},
+		},
+		{
+			name:    "empty input",
+			envVars: []string{},
+			want:    map[string]string{},
+		},
+		{
+			name:    "single variable",
+			envVars: []string{"VAR1=value1"},
+			want:    map[string]string{"VAR1": "value1"},
+		},
+		{
+			name:    "multiple variables",
+			envVars: []string{"VAR1=value1", "VAR2=value2"},
+			want:    map[string]string{"VAR1": "value1", "VAR2": "value2"},
+		},
+		{
+			name:    "variable with no value",
+			envVars: []string{"VAR1="},
+			want:    map[string]string{"VAR1": ""},
+		},
+		{
+			name:    "variable with equals sign in value",
+			envVars: []string{"VAR1=value1=value2"},
+			want:    map[string]string{"VAR1": "value1=value2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := splitEnvVar(tt.envVars); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("splitEnvVar() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

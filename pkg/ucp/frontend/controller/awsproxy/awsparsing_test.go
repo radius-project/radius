@@ -17,7 +17,6 @@ limitations under the License.
 package awsproxy
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -26,8 +25,6 @@ import (
 )
 
 func TestGetPrimaryIdentifierFromMultiIdentifiers(t *testing.T) {
-	ctx := context.Background()
-
 	schemaObject := map[string]any{
 		"primaryIdentifier": []any{
 			"/properties/GlobalNetworkId",
@@ -45,14 +42,12 @@ func TestGetPrimaryIdentifierFromMultiIdentifiers(t *testing.T) {
 		"DeviceId":        "device-id",
 	}
 
-	resourceID, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, schema)
+	resourceID, err := getPrimaryIdentifierFromMultiIdentifiers(properties, schema)
 	require.NoError(t, err)
 	require.Equal(t, "global-network-id|device-id", resourceID)
 }
 
 func TestGetPrimaryIdentifierFromMultiIdentifiers_MissingMandatoryParameters(t *testing.T) {
-	ctx := context.Background()
-
 	schemaObject := map[string]any{
 		"primaryIdentifier": []any{
 			"/properties/GlobalNetworkId",
@@ -69,7 +64,7 @@ func TestGetPrimaryIdentifierFromMultiIdentifiers_MissingMandatoryParameters(t *
 		"GlobalNetworkId": "global-network-id",
 	}
 
-	resourceID, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, schema)
+	resourceID, err := getPrimaryIdentifierFromMultiIdentifiers(properties, schema)
 	require.Equal(t, resourceID, "")
 	require.Error(t, err)
 	require.EqualError(t, err, "mandatory property DeviceId is missing")
@@ -85,8 +80,6 @@ func TestComputeResourceID(t *testing.T) {
 }
 
 func TestGetPrimaryIdentifiersFromSchema(t *testing.T) {
-	ctx := context.Background()
-
 	schemaObject := map[string]any{
 		"primaryIdentifier": []any{
 			"/properties/GlobalNetworkId",
@@ -99,14 +92,12 @@ func TestGetPrimaryIdentifiersFromSchema(t *testing.T) {
 
 	schema := string(schemaBytes)
 
-	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(schema)
 	require.NoError(t, err)
 	require.Equal(t, []string{"/properties/GlobalNetworkId", "/properties/DeviceId"}, primaryIdentifiers)
 }
 
 func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierMissing(t *testing.T) {
-	ctx := context.Background()
-
 	schemaObject := map[string]any{}
 
 	schemaBytes, err := json.Marshal(schemaObject)
@@ -114,14 +105,12 @@ func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierMissing(t *testing.T) 
 
 	schema := string(schemaBytes)
 
-	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(schema)
 	require.Nil(t, primaryIdentifiers)
 	require.EqualError(t, err, "primaryIdentifier not found in schema")
 }
 
 func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierWrongDataType(t *testing.T) {
-	ctx := context.Background()
-
 	schemaObject := map[string]any{
 		"primaryIdentifier": "/properties/GlobalNetworkId",
 	}
@@ -131,7 +120,7 @@ func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierWrongDataType(t *testi
 
 	schema := string(schemaBytes)
 
-	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(schema)
 	require.Nil(t, primaryIdentifiers)
 	require.EqualError(t, err, "primaryIdentifier is not an array")
 }

@@ -111,9 +111,9 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "Always", ct.Properties.RestartPolicy)
 				require.Equal(t, "/app", ct.Properties.Container.WorkingDir)
 				if tt.emptyExt {
-					require.Equal(t, getTestContainerEmptyKubernetesMetadataExt(t), ct.Properties.Extensions)
+					require.Equal(t, getTestContainerEmptyKubernetesMetadataExt(), ct.Properties.Extensions)
 				} else {
-					require.Equal(t, getTestContainerExtensions(t), ct.Properties.Extensions)
+					require.Equal(t, getTestContainerExtensions(), ct.Properties.Extensions)
 				}
 
 				if r.Properties.Runtimes != nil {
@@ -259,7 +259,7 @@ func TestContainerConvertFromValidation(t *testing.T) {
 	}
 }
 
-func getTestContainerExtensions(t *testing.T) []datamodel.Extension {
+func getTestContainerExtensions() []datamodel.Extension {
 	var replicavalue int32 = 2
 	ptrreplicaval := &replicavalue
 	extensions := []datamodel.Extension{
@@ -296,7 +296,7 @@ func getTestContainerExtensions(t *testing.T) []datamodel.Extension {
 	return extensions
 }
 
-func getTestContainerEmptyKubernetesMetadataExt(t *testing.T) []datamodel.Extension {
+func getTestContainerEmptyKubernetesMetadataExt() []datamodel.Extension {
 	var replicavalue int32 = 2
 	ptrreplicaval := &replicavalue
 	extensions := []datamodel.Extension{

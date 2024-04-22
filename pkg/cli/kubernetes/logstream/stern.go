@@ -22,8 +22,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/radius-project/radius/pkg/kubernetes"
+
+	"github.com/fatih/color"
 	"github.com/stern/stern/stern"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -60,7 +61,6 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 		// the defaults of the stern CLI. The library does not provide access to stern's defaults.
 
 		// Fields used to select/filter pods
-		ContextName:         options.KubeContext,
 		Namespaces:          []string{options.Namespace},
 		PodQuery:            regexp.MustCompile(`.*`),
 		ContainerQuery:      regexp.MustCompile(`.*`),
@@ -97,7 +97,7 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 	cfg.LabelSelector = labels.NewSelector().Add(*req)
 
 	// This will block until the context is cancelled.
-	err = stern.Run(ctx, &cfg)
+	err = stern.Run(ctx, options.KubeClient, &cfg)
 	if err != nil {
 		return err
 	}

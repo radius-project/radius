@@ -32,7 +32,7 @@ import (
 
 func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, *ctrl.Request) {
+	setupTest := func() (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, *ctrl.Request) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
@@ -68,7 +68,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 
 	for _, tt := range deleteCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, mdp, req := setupTest(t)
+			teardownTest, msc, mdp, req := setupTest()
 			defer teardownTest(t)
 
 			msc.EXPECT().

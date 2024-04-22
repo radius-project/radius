@@ -144,13 +144,6 @@ func (detail DeploymentErrorDetail) Matches(candidate v1.ErrorDetails) bool {
 	return true
 }
 
-// ValidateCode reports success if the error code matches the expected code.
-func ValidateCode(code string) func(*testing.T, *radcli.CLIError) {
-	return func(t *testing.T, err *radcli.CLIError) {
-		require.Equal(t, code, err.ErrorResponse.Error.Code, "unexpected error code")
-	}
-}
-
 // ValidateSingleDetail reports success if the error code matches the expected code and the detail item is found in the error response..
 func ValidateSingleDetail(code string, detail DeploymentErrorDetail) func(*testing.T, *radcli.CLIError) {
 	return func(t *testing.T, err *radcli.CLIError) {

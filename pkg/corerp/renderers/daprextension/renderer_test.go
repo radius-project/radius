@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/kubernetes"
@@ -29,6 +28,7 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
+
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -36,11 +36,11 @@ import (
 type noop struct {
 }
 
-func (r *noop) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r *noop) GetDependencyIDs(ctx context.Context, dm apiv1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	return nil, nil, nil
 }
 
-func (r *noop) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *noop) Render(ctx context.Context, dm apiv1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the Dapr extension can modify it
 	deployment := appsv1.Deployment{}
 
@@ -83,7 +83,7 @@ func Test_Render_Success(t *testing.T) {
 		}},
 	}
 
-	resource := makeresource(t, ctnrProperties)
+	resource := makeResource(ctnrProperties)
 	dependencies := map[string]renderers.RendererDependency{}
 
 	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
@@ -104,9 +104,9 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, expected, deployment.Spec.Template.Annotations)
 }
 
-func makeresource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
+func makeResource(properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
-		BaseResource: v1.BaseResource{
+		BaseResource: apiv1.BaseResource{
 			TrackedResource: apiv1.TrackedResource{
 				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
 				Name: "test-container",

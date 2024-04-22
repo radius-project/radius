@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -36,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 const (
@@ -62,7 +64,9 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 		Scheme: scheme,
 
 		// Suppress metrics in tests to avoid conflicts.
-		MetricsBindAddress: "0",
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
 	})
 	require.NoError(t, err)
 

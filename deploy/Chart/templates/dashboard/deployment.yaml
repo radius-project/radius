@@ -1,0 +1,34 @@
+{{- if .Values.dashboard.enabled }}
+{{- $appversion := include "radius.versiontag" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: dashboard
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: radius
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dashboard
+  template:
+    metadata:
+      labels:
+        control-plane: dashboard
+        app.kubernetes.io/name: dashboard
+        app.kubernetes.io/part-of: radius
+    spec:
+      serviceAccountName: dashboard
+      containers:
+      - name: dashboard
+        image: "{{ .Values.dashboard.image }}:{{ .Values.dashboard.tag | default $appversion }}"
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: {{ .Values.dashboard.containerPort }}
+        securityContext:
+          allowPrivilegeEscalation: false
+{{- end }}

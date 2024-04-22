@@ -123,7 +123,7 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 				}
 			}()
 
-			err := host.runService(ctx, service, messages)
+			err := host.runService(ctx, service)
 			messages <- LifecycleMessage{Name: service.Name(), Err: err}
 		}()
 	}
@@ -180,7 +180,7 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 	return nil
 }
 
-func (host *Host) runService(ctx context.Context, service Service, messages chan<- LifecycleMessage) error {
+func (host *Host) runService(ctx context.Context, service Service) error {
 	// Create a new logger and context for the service to use.
 	logger := logr.FromContextOrDiscard(ctx)
 	logger = logger.WithName(service.Name())

@@ -22,10 +22,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"golang.org/x/exp/slices"
 	"k8s.io/client-go/kubernetes"
@@ -85,9 +87,12 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		}
 	}()
 
-	if opts.Configuration.Simulated {
-		logger.Info("simulated environment is set to true, skipping deployment")
-		return nil, nil
+	// Add credential information to .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		err := addSecretsToGitConfig(opts.BaseOptions.Secrets, &opts.Recipe, opts.Definition.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tfState, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
@@ -96,6 +101,15 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 	})
+
+	// Unset credential information from .gitconfig if module source is of type git.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") && !reflect.DeepEqual(opts.BaseOptions.Secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		unsetError := unsetSecretsFromGitConfig(opts.BaseOptions.Secrets, opts.Definition.TemplatePath)
+		if unsetError != nil {
+			return nil, unsetError
+		}
+	}
+
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -138,14 +152,17 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 // prepareRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
 func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition recipes.EnvironmentDefinition, tfState *tfjson.State) (*recipes.RecipeOutput, error) {
-	if tfState == nil || (*tfState == tfjson.State{}) {
+	// We need to use reflect.DeepEqual to compare the struct that has a slice with an empty struct.
+	// The reason is that Go does not allow comparison of structs that contain slices.
+	// Please see: https://go.dev/ref/spec#Comparison_operators.
+	if tfState == nil || reflect.DeepEqual(*tfState, tfjson.State{}) {
 		return &recipes.RecipeOutput{}, errors.New("terraform state is empty")
 	}
 
 	recipeResponse := &recipes.RecipeOutput{}
-	moduleOutputs := tfState.Values.Outputs
-	if moduleOutputs != nil {
+	if tfState.Values != nil && tfState.Values.Outputs != nil {
 		// We populate the recipe response from the 'result' output (if set).
+		moduleOutputs := tfState.Values.Outputs
 		if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
 			err := recipeResponse.PrepareRecipeResponse(result)
 			if err != nil {
@@ -160,9 +177,13 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 		TemplateVersion: definition.TemplateVersion,
 	}
 
-	deployedResources, err := d.getDeployedOutputResources(ctx, tfState.Values.RootModule)
-	if err != nil {
-		return &recipes.RecipeOutput{}, err
+	var deployedResources []string
+	if tfState.Values != nil && tfState.Values.RootModule != nil {
+		var err error
+		deployedResources, err = d.getDeployedOutputResources(ctx, tfState.Values.RootModule)
+		if err != nil {
+			return &recipes.RecipeOutput{}, err
+		}
 	}
 
 	uniqueResourceIDs := []string{}
@@ -233,6 +254,17 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	}
 
 	return recipeData, nil
+}
+
+// FindSecretIDs is used to retrieve the secret reference associated with private terraform module source.
+// As of today, it only supports retrieving secret references associated with private git repositories.
+func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (string, error) {
+
+	// We can move the GetSecretStoreID() implementation here when we have containerization.
+	// Today we use this function in config.go to check for secretstore to add prefix to the template path.
+	// GetSecretStoreID is added outside of driver package because it created cyclic dependency between driver and config packages.
+
+	return recipes.GetSecretStoreID(envConfig, definition.TemplatePath)
 }
 
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.

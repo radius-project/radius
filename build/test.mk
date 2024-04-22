@@ -58,28 +58,57 @@ test-get-envtools:
 test-validate-cli: ## Run cli integration tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-shared test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples ## Runs all functional tests
+test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-shared test-functional-cli test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples ## Runs all functional tests
 
-test-functional-ucp: ## Runs UCP functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+test-functional-ucp: test-functional-ucp-noncloud test-functional-ucp-cloud ## Runs all UCP functional tests (both cloud and non-cloud)
 
-test-functional-kubernetes: ## Runs Kubernetes functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+test-functional-ucp-noncloud: ## Runs UCP functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-shared: ## Runs shared functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/shared/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-msgrp: ## Runs Messaging RP functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/messagingrp/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
+test-functional-kubernetes: test-functional-kubernetes-noncloud ## Runs all Kubernetes functional tests
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-daprrp: ## Runs Dapr RP functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/daprrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+test-functional-kubernetes-noncloud: ## Runs Kubernetes functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/kubernetes/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-datastoresrp: ## Runs Datastores RP functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/datastoresrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+test-functional-shared: test-functional-corerp-noncloud test-functional-corerp-cloud ## Runs all Core RP functional tests (both cloud and non-cloud)
 
-test-functional-samples: ## Runs Samples functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+test-functional-corerp-noncloud: ## Runs corerp functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+
+test-functional-corerp-cloud: ## Runs corerp functional tests that require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+
+test-functional-msgrp: test-functional-msgrp-noncloud ## Runs all Messaging RP functional tests (both cloud and non-cloud)
+
+test-functional-msgrp-noncloud: ## Runs Messaging RP functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/messagingrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
+
+test-functional-cli: test-functional-cli-noncloud ## Runs all cli functional tests (both cloud and non-cloud)
+
+test-functional-cli-noncloud: ## Runs cli functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/cli/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+
+test-functional-daprrp: test-functional-daprrp-noncloud ## Runs all Dapr RP functional tests (both cloud and non-cloud)
+
+test-functional-daprrp-noncloud: ## Runs Dapr RP functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+
+test-functional-datastoresrp: test-functional-datastoresrp-noncloud test-functional-datastoresrp-cloud ## Runs all Datastores RP functional tests (non-cloud and cloud)
+
+test-functional-datastoresrp-noncloud: ## Runs Datastores RP functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/datastoresrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+
+test-functional-datastoresrp-cloud: ## Runs Datastores RP functional tests that require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/datastoresrp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+
+test-functional-samples: test-functional-samples-noncloud ## Runs all Samples functional tests
+
+test-functional-samples-noncloud: ## Runs Samples functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/samples/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin/rad-bicep" ./build/validate-bicep.sh

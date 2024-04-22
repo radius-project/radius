@@ -19,17 +19,17 @@ import (
 	"context"
 	http "net/http"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	armrpcv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
-	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
@@ -37,11 +37,11 @@ var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
 // GetAWSOperationStatuses is the controller implementation to get AWS resource operation status.
 type GetAWSOperationStatuses struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsClients ucp_aws.Clients
+	awsClients ucpaws.Clients
 }
 
 // NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses controller which is used to get the statuses of AWS operations.
-func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucpaws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationStatuses{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
 		awsClients: awsClients,
@@ -71,10 +71,10 @@ func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter
 		return armrpc_rest.NewNoContentResponse(), nil
 	}
 
-	if awsclient.IsAWSResourceNotFoundError(err) {
+	if ucpaws.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
-		return awsclient.HandleAWSError(err)
+		return ucpaws.HandleAWSError(err)
 	}
 
 	opStatus := getAsyncOperationStatus(response)

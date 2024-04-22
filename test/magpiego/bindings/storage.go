@@ -51,7 +51,7 @@ func StorageBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "AZURE_AUTHORITY_HOST is required"}
 	}
 
-	cred, err := newClientAssertionCredential(tenantID, clientID, authorityHost, tokenFilePath, nil)
+	cred, err := newClientAssertionCredential(tenantID, clientID, authorityHost, tokenFilePath)
 	if err != nil {
 		log.Println("Failed to create credential")
 		return BindingStatus{false, "Failed to create credential"}
@@ -97,13 +97,8 @@ type clientAssertionCredential struct {
 	lastRead        time.Time
 }
 
-// clientAssertionCredentialOptions contains optional parameters for ClientAssertionCredential.
-type clientAssertionCredentialOptions struct {
-	azcore.ClientOptions
-}
-
 // newClientAssertionCredential constructs a clientAssertionCredential. Pass nil for options to accept defaults.
-func newClientAssertionCredential(tenantID, clientID, authorityHost, file string, options *clientAssertionCredentialOptions) (*clientAssertionCredential, error) {
+func newClientAssertionCredential(tenantID, clientID, authorityHost, file string) (*clientAssertionCredential, error) {
 	c := &clientAssertionCredential{file: file}
 
 	cred := confidential.NewCredFromAssertionCallback(

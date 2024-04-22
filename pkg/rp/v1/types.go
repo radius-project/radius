@@ -55,6 +55,11 @@ func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourcePropert
 	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
 }
 
+// Method IsGlobalScopedResource checks if resource is global scoped.
+func (b *BasicResourceProperties) IsGlobalScopedResource() bool {
+	return b.Application == "" && b.Environment == ""
+}
+
 // ResourceStatus represents the output status of Radius resource.
 type ResourceStatus struct {
 	// Compute represents a resource presented in the underlying platform.

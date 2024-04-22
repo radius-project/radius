@@ -21,12 +21,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // NewEngine creates a new Engine to deploy recipe.
@@ -39,6 +41,7 @@ var _ Engine = (*engine)(nil)
 // Options represents the configuration loader and type of driver used to deploy recipe.
 type Options struct {
 	ConfigurationLoader configloader.ConfigurationLoader
+	SecretsLoader       configloader.SecretsLoader
 	Drivers             map[string]recipedriver.Driver
 }
 
@@ -71,14 +74,39 @@ func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.Rec
 // executeCore function is the core logic of the Execute function.
 // Any changes to the core logic of the Execute function should be made here.
 func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, *recipes.EnvironmentDefinition, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
+	if err != nil {
+		return nil, nil, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
+	}
+
+	// No need to try executing the recipe if it's a simulated environment.
+	if configuration.Simulated {
+		logger.Info("simulated environment enabled, skipping deployment")
+		return nil, nil, nil
+	}
+
 	definition, driver, err := e.getDriver(ctx, recipe)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
-	if err != nil {
-		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
+	secrets := v20231001preview.SecretStoresClientListSecretsResponse{}
+	driverWithSecrets, ok := driver.(recipedriver.DriverWithSecrets)
+	if ok {
+		secretStore, err := driverWithSecrets.FindSecretIDs(ctx, *configuration, *definition)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Retrieves the secret values from the secret store ID provided.
+		if secretStore != "" {
+			secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
+			if err != nil {
+				return nil, nil, recipes.NewRecipeError(recipes.LoadSecretsFailed, fmt.Sprintf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %s", secretStore, definition.TemplatePath, err.Error()), util.RecipeSetupError, recipes.GetErrorDetails(err))
+			}
+		}
 	}
 
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
@@ -86,6 +114,7 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 			Configuration: *configuration,
 			Recipe:        recipe,
 			Definition:    *definition,
+			Secrets:       secrets,
 		},
 		PrevState: prevState,
 	})
@@ -119,14 +148,20 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 // deleteCore function is the core logic of the Delete function.
 // Any changes to the core logic of the Delete function should be made here.
 func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) (*recipes.EnvironmentDefinition, error) {
-	definition, driver, err := e.getDriver(ctx, recipe)
+	logger := ucplog.FromContextOrDiscard(ctx)
+	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
 		return nil, err
 	}
 
-	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
+	if configuration.Simulated {
+		logger.Info("simulated environment enabled, skipping deleting resources")
+		return nil, nil
+	}
+
+	definition, driver, err := e.getDriver(ctx, recipe)
 	if err != nil {
-		return definition, err
+		return nil, err
 	}
 
 	err = driver.Delete(ctx, recipedriver.DeleteOptions{

@@ -32,7 +32,6 @@ import (
 	cntr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
 	gtwy_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
-	hrt_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/httproutes"
 	sstr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
@@ -60,7 +59,6 @@ var (
 		dapr_ctrl.DaprPubSubBrokersResourceType,
 		ext_ctrl.ResourceTypeName,
 		gtwy_ctrl.ResourceTypeName,
-		hrt_ctrl.ResourceTypeName,
 		cntr_ctrl.ResourceTypeName,
 		sstr_ctrl.ResourceTypeName,
 	}
@@ -106,7 +104,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourcesOfTypeInApplication(
 		return nil, err
 	}
 	for _, resource := range resourceList {
-		isResourceWithApplication := isResourceInApplication(ctx, resource, applicationName)
+		isResourceWithApplication := isResourceInApplication(resource, applicationName)
 		if isResourceWithApplication {
 			results = append(results, resource)
 		}
@@ -162,7 +160,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(
 		return nil, err
 	}
 	for _, resource := range resourceList {
-		isResourceWithApplication := isResourceInEnvironment(ctx, resource, environmentName)
+		isResourceWithApplication := isResourceInEnvironment(resource, environmentName)
 		if isResourceWithApplication {
 			results = append(results, resource)
 		}
@@ -393,7 +391,7 @@ func (amc *UCPApplicationsManagementClient) CreateEnvironment(ctx context.Contex
 
 }
 
-func isResourceInApplication(ctx context.Context, resource generated.GenericResource, applicationName string) bool {
+func isResourceInApplication(resource generated.GenericResource, applicationName string) bool {
 	obj, found := resource.Properties["application"]
 	// A resource may not have an application associated with it.
 	if !found {
@@ -417,7 +415,7 @@ func isResourceInApplication(ctx context.Context, resource generated.GenericReso
 	return false
 }
 
-func isResourceInEnvironment(ctx context.Context, resource generated.GenericResource, environmentName string) bool {
+func isResourceInEnvironment(resource generated.GenericResource, environmentName string) bool {
 	obj, found := resource.Properties["environment"]
 	// A resource may not have an environment associated with it.
 	if !found {

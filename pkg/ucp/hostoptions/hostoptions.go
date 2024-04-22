@@ -20,11 +20,9 @@ package hostoptions
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"gopkg.in/yaml.v3"
 )
 
@@ -63,14 +61,4 @@ func loadConfig(configPath string) (*UCPConfig, error) {
 	}
 
 	return conf, nil
-}
-
-// FromContext extracts ProviderConfig from http context.
-func FromContext(ctx context.Context) *UCPConfig {
-	return ctx.Value(v1.HostingConfigContextKey).(*UCPConfig)
-}
-
-// WithContext injects ProviderConfig into the given http context.
-func WithContext(ctx context.Context, cfg *UCPConfig) context.Context {
-	return context.WithValue(ctx, v1.HostingConfigContextKey, cfg)
 }

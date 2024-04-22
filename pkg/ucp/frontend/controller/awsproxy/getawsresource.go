@@ -20,15 +20,15 @@ import (
 	"encoding/json"
 	http "net/http"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/to"
-	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSResource)(nil)
@@ -36,12 +36,12 @@ var _ armrpc_controller.Controller = (*GetAWSResource)(nil)
 // GetAWSResource is the controller implementation to get AWS resource.
 type GetAWSResource struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsClients ucp_aws.Clients
+	awsClients ucpaws.Clients
 }
 
 // NewGetAWSResource creates a new GetAWSResource controller with the given options and AWS clients, and returns it or an
 // error if one occurs.
-func NewGetAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+func NewGetAWSResource(opts armrpc_controller.Options, awsClients ucpaws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSResource{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
 		awsClients: awsClients,
@@ -62,10 +62,10 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
-	if awsclient.IsAWSResourceNotFoundError(err) {
+	if ucpaws.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
-		return awsclient.HandleAWSError(err)
+		return ucpaws.HandleAWSError(err)
 	}
 
 	properties := map[string]any{}

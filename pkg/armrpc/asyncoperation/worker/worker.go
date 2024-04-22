@@ -192,7 +192,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			// 1. The same message is delivered twice in multiple instances.
 			// 2. provisioningState is not matched between resource and operationStatuses
 
-			dup, err := w.isDuplicated(reqCtx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
+			dup, err := w.isDuplicated(reqCtx, op.ResourceID, op.OperationID)
 			if err != nil {
 				opLogger.Error(err, "failed to check potential deduplication.")
 				return
@@ -251,25 +251,21 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 		logger.Info("Start processing operation.")
 		result, err := asyncCtrl.Run(asyncReqCtx, asyncReq)
-
-		code := ""
-		if result.Error != nil {
-			code = result.Error.Code
+		// Update the result if an error is returned from the controller.
+		// Check that the result is empty to ensure we don't override it, it shouldn't happen.
+		// Controller should always either return non-empty error or non-empty result, but not both.
+		if err != nil && result.Error == nil {
+			armErr := extractError(err)
+			result.SetFailed(armErr, false)
 		}
 
-		logger.Info("Operation returned", "success", result.Error == nil, "code", code, "provisioningState", result.ProvisioningState(), "err", err)
+		logger.Info("Operation returned", "success", result.Error == nil, "provisioningState", result.ProvisioningState(), "err", result.Error)
 
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186
 		// 2. When parent context is canceled or done, we need to requeue the operation to reprocess the request.
 		// Such cases should not call w.completeOperation.
 		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
-			if err != nil {
-				armErr := extractError(err)
-				result.SetFailed(armErr, false)
-				logger.Error(err, "Operation Failed")
-			}
-
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
 		trace.SetAsyncResultStatus(result, span)
@@ -374,7 +370,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	return nil
 }
 
-func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID) (bool, error) {
+func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, resourceID string, operationID uuid.UUID) (bool, error) {
 	rID, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return false, err

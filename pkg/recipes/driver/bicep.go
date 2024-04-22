@@ -45,7 +45,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver Driver
 const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
@@ -124,11 +123,6 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	}
 	if providerConfig.Az != nil {
 		logger.Info("using Azure provider", "deploymentID", deploymentID, "scope", providerConfig.Az.Value.Scope)
-	}
-
-	if opts.Configuration.Simulated {
-		logger.Info("simulated environment enabled, skipping deployment")
-		return nil, nil
 	}
 
 	poller, err := d.DeploymentClient.CreateOrUpdate(

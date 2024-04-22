@@ -32,7 +32,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/corerp/renderers/container"
 	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
-	"github.com/radius-project/radius/pkg/corerp/renderers/httproute"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -41,7 +40,7 @@ import (
 
 func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor) {
+	setupTest := func() (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)
 
 		msc := store.NewMockStorageClient(mctrl)
@@ -101,30 +100,6 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			errors.New("error getting object"),
 		},
 		{
-			"http-route-put-success",
-			httproute.ResourceType,
-			"APPLICATIONS.CORE/HTTPROUTES|PUT",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString()),
-			nil,
-			false,
-			nil,
-			nil,
-			nil,
-			nil,
-		},
-		{
-			"http-route-put-not-found",
-			httproute.ResourceType,
-			"APPLICATIONS.CORE/HTTPROUTES|PUT",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString()),
-			&store.ErrNotFound{},
-			false,
-			nil,
-			nil,
-			nil,
-			nil,
-		},
-		{
 			"gateway-put-success",
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PUT",
@@ -164,7 +139,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
 	for _, tt := range putCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, mdp := setupTest(t)
+			teardownTest, msc, mdp := setupTest()
 			defer teardownTest(t)
 
 			req := &ctrl.Request{
@@ -298,30 +273,6 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			errors.New("error getting object"),
 		},
 		{
-			"http-route-patch-success",
-			httproute.ResourceType,
-			"APPLICATIONS.CORE/HTTPROUTES|PATCH",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString()),
-			nil,
-			false,
-			nil,
-			nil,
-			nil,
-			nil,
-		},
-		{
-			"http-route-patch-not-found",
-			httproute.ResourceType,
-			"APPLICATIONS.CORE/HTTPROUTES|PATCH",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/%s", uuid.NewString()),
-			&store.ErrNotFound{},
-			false,
-			nil,
-			nil,
-			nil,
-			&store.ErrNotFound{},
-		},
-		{
 			"gateway-patch-success",
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PATCH",
@@ -361,7 +312,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
 	for _, tt := range patchCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, mdp := setupTest(t)
+			teardownTest, msc, mdp := setupTest()
 			defer teardownTest(t)
 
 			req := &ctrl.Request{

@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"testing"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -29,7 +28,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest"
 )
 
 // Radius uses the Zapr: https://github.com/go-logr/zapr which implements a logr interface
@@ -157,13 +155,6 @@ func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error
 		}
 	}
 	return logger, flushLogs, nil
-}
-
-// NewTestLogger creates a new logger zaptest logger implementation.
-func NewTestLogger(t *testing.T) (logr.Logger, error) {
-	zapLogger := zaptest.NewLogger(t)
-	logger := zapr.NewLogger(zapLogger)
-	return logger, nil
 }
 
 // WrapLogContext adds key-value pairs to the context's logger for logging purposes.

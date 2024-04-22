@@ -20,11 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -86,6 +89,14 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
 	if err != nil {
 		return nil, err
+	}
+
+	if options.EnvConfig != nil {
+		// Set environment variables for the Terraform process.
+		err = e.setEnvironmentVariables(tf, &options.EnvConfig.RecipeConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Run TF Init and Apply in the working directory
@@ -194,6 +205,38 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	}, nil
 }
 
+// setEnvironmentVariables sets environment variables for the Terraform process by reading values from the recipe configuration.
+// Terraform process will use environment variables as input for the recipe deployment.
+func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, recipeConfig *datamodel.RecipeConfigProperties) error {
+	if recipeConfig != nil && recipeConfig.Env.AdditionalProperties != nil && len(recipeConfig.Env.AdditionalProperties) > 0 {
+		// populate envVars with the environment variables from current process
+		envVars := splitEnvVar(os.Environ())
+
+		for key, value := range recipeConfig.Env.AdditionalProperties {
+			envVars[key] = value
+		}
+
+		if err := tf.SetEnv(envVars); err != nil {
+			return fmt.Errorf("failed to set environment variables: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// splitEnvVar splits a slice of environment variables into a map of keys and values.
+func splitEnvVar(envVars []string) map[string]string {
+	parsedEnvVars := make(map[string]string)
+	for _, item := range envVars {
+		splits := strings.SplitN(item, "=", 2) // Split on the first "="
+		if len(splits) == 2 {
+			parsedEnvVars[splits[0]] = splits[1]
+		}
+	}
+
+	return parsedEnvVars
+}
+
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
 func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -211,7 +254,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
 	logger.Info(fmt.Sprintf("Adding provider config for required providers %+v", loadedModule.RequiredProviders))
-	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
+	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetUCPConfiguredTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig); err != nil {
 		return "", err
 	}
@@ -268,6 +311,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 	// Download the Terraform module to the working directory.
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
+
 	if err := downloadModule(ctx, tf, options.EnvRecipe.TemplatePath); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
@@ -302,7 +346,10 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 	}
 
 	// Create Terraform configuration containing module information with the given recipe parameters.
-	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
+	tfConfig, err := config.New(ctx, localModuleName, options.EnvRecipe, options.ResourceRecipe, options.EnvConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
 	// Terraform Get command uses this config file to download module from the source specified in the config.
