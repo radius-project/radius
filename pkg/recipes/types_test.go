@@ -91,7 +91,7 @@ func Test_GetGitURL(t *testing.T) {
 	}{
 		{
 			desc:         "success",
-			templatePath: "git::https://dev.azure.com/project/module",
+			templatePath: "git::dev.azure.com/project/module",
 			expectedURL:  "https://dev.azure.com/project/module",
 			expectedErr:  false,
 		},

@@ -31,7 +31,7 @@ import (
 func getGitURLWithSecrets(secrets v20231001preview.SecretStoresClientListSecretsResponse, url *url.URL) string {
 	// accessing the secret values and creating the git url with secret information.
 	var username, pat *string
-	path := "https://"
+	path := fmt.Sprintf("%s://", url.Scheme)
 	user, ok := secrets.Data["username"]
 	if ok {
 		username = user.Value

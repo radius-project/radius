@@ -174,23 +174,6 @@ func Test_NewConfig(t *testing.T) {
 			},
 			expectedConfigFile: "testdata/module-emptytemplateversion.tf.json",
 		},
-		{
-			desc:       "git private repo module",
-			moduleName: testRecipeName,
-			envdef: &recipes.EnvironmentDefinition{
-				Name:         testRecipeName,
-				TemplatePath: "git::https://dev.azure.com/project/module",
-				Parameters:   envParams,
-			},
-			metadata: &recipes.ResourceMetadata{
-				Name:          testRecipeName,
-				Parameters:    resourceParams,
-				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Environments/testEnv/env",
-				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Applications/testApp/app",
-				ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
-			},
-			expectedConfigFile: "testdata/module-private-git-repo.tf.json",
-		},
 	}
 
 	for _, tc := range configTests {

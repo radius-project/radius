@@ -18,7 +18,6 @@ package driver
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 
@@ -26,12 +25,6 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
-
-func TestGitConfig(t *testing.T) {
-	key, value, _ := getURLConfigKeyValue(getSecretList(), "https://github.com/project/repo")
-	fmt.Print(key)
-	fmt.Print(value)
-}
 
 func TestAddConfig(t *testing.T) {
 	tests := []struct {

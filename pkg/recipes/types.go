@@ -160,10 +160,20 @@ func GetSecretStoreID(envConfig Configuration, templatePath string) (string, err
 func GetGitURL(templatePath string) (*url.URL, error) {
 	paths := strings.Split(templatePath, "git::")
 	gitUrl := paths[len(paths)-1]
+	if !hasURLSceheme(gitUrl) {
+		gitUrl = fmt.Sprintf("https://%s", gitUrl)
+	}
+
 	url, err := url.Parse(gitUrl)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse git url %s : %w", gitUrl, err)
 	}
 
 	return url, nil
+}
+
+func hasURLSceheme(url string) bool {
+
+	return len(strings.Split(url, "://")) > 1
 }
