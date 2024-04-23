@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"net/url"
 	"os/exec"
+	reflect "reflect"
+	"strings"
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -70,6 +72,10 @@ func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecrets
 // and adds them to the Git config by running
 // git config --file .git/config url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
 func addSecretsToGitConfig(workingDirectory string, secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
+
+	if !strings.HasPrefix(templatePath, "git::") || reflect.DeepEqual(secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		return nil
+	}
 	// Initialize a new Git repository in the terraform working directory.
 	_, err := git.PlainInit(workingDirectory, false)
 	if err != nil {

@@ -815,31 +815,132 @@ func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
 	_, recipeDefinition, _ := getRecipeInputs()
 
 	ctx := testcontext.New(t)
-	engine, _, driver, _, _ := setup(t)
+	engine, configLoader, driver, _, _ := setup(t)
 	outputParams := map[string]any{"parameters": recipeDefinition.Parameters}
+	recipeMetadata := recipes.ResourceMetadata{
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+	}
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
 
 	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: recipeDefinition,
+		Recipe:        recipeMetadata,
+		Definition:    recipeDefinition,
+		Configuration: *envConfig,
 	}).Times(1).Return(outputParams, nil)
 
-	recipeData, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
+	recipeData, err := engine.GetRecipeMetadata(ctx, recipeDefinition, recipeMetadata)
+	require.NoError(t, err)
+	require.Equal(t, outputParams, recipeData)
+}
+
+func Test_Engine_GetRecipeMetadata_Private_Module_Success(t *testing.T) {
+
+	recipeDefinition := &recipes.EnvironmentDefinition{
+		Driver:       recipes.TemplateKindTerraform,
+		TemplatePath: "git://https://dev.azure.com/mongo-recipe/recipe",
+		ResourceType: "Applications.Datastores/mongoDatabases",
+	}
+	ctx := testcontext.New(t)
+	engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
+	outputParams := map[string]any{"parameters": recipeDefinition.Parameters}
+	recipeMetadata := recipes.ResourceMetadata{
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+	}
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Authentication: datamodel.AuthConfig{
+					Git: datamodel.GitAuthConfig{
+						PAT: map[string]datamodel.SecretConfig{
+							"dev.azure.com": {
+								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
+	driverWithSecrets.EXPECT().
+		FindSecretIDs(ctx, *envConfig, *recipeDefinition).
+		Times(1).
+		Return("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit", nil)
+	secretsLoader.EXPECT().
+		LoadSecrets(ctx, gomock.Any()).
+		Times(1).
+		Return(v20231001preview.SecretStoresClientListSecretsResponse{}, nil)
+	driverWithSecrets.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
+		Recipe:        recipeMetadata,
+		Definition:    *recipeDefinition,
+		Configuration: *envConfig,
+	}).Times(1).Return(outputParams, nil)
+
+	recipeData, err := engine.GetRecipeMetadata(ctx, *recipeDefinition, recipeMetadata)
 	require.NoError(t, err)
 	require.Equal(t, outputParams, recipeData)
 }
 
 func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
 	_, recipeDefinition, _ := getRecipeInputs()
-
+	recipeMetadata := recipes.ResourceMetadata{
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+	}
 	ctx := testcontext.New(t)
-	engine, _, driver, _, _ := setup(t)
+	engine, configLoader, driver, _, _ := setup(t)
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
 
 	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: recipeDefinition,
+		Recipe:        recipeMetadata,
+		Definition:    recipeDefinition,
+		Configuration: *envConfig,
 	}).Times(1).Return(nil, errors.New("driver failure"))
 
-	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
+	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition, recipeMetadata)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "driver failure")
 }
@@ -847,11 +948,28 @@ func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
 func Test_GetRecipeMetadata_Driver_InvalidDriver(t *testing.T) {
 	_, recipeDefinition, _ := getRecipeInputs()
 	recipeDefinition.Driver = "invalid"
-
+	recipeMetadata := recipes.ResourceMetadata{
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+	}
 	ctx := testcontext.New(t)
-	engine, _, _, _, _ := setup(t)
-
-	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
+	engine, configLoader, _, _, _ := setup(t)
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition, recipeMetadata)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not find driver invalid")
 }

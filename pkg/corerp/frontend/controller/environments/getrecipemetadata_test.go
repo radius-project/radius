@@ -74,7 +74,9 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 				"mongodbName":    map[string]any{"type": "string"},
 			},
 		}
-		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition).Return(recipeData, nil)
+		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition, recipes.ResourceMetadata{
+			EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+		}).Return(recipeData, nil)
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
@@ -122,7 +124,9 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 				"mongodbName":    map[string]any{"type": "string"},
 			},
 		}
-		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition).Return(recipeData, nil)
+		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition, recipes.ResourceMetadata{
+			EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+		}).Return(recipeData, nil)
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
@@ -240,7 +244,9 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 			ResourceType:    *envInput.ResourceType,
 		}
 		engineErr := fmt.Errorf("could not find driver %s", "invalidDriver")
-		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition).Return(nil, engineErr)
+		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition, recipes.ResourceMetadata{
+			EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+		}).Return(nil, engineErr)
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,

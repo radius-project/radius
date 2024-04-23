@@ -82,7 +82,7 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Either recipe with name %q or resource type %q not found on environment with id %q", recipeDatamodel.Name, recipeDatamodel.ResourceType, serviceCtx.ResourceID)), nil
 	}
 
-	recipeParams, err := r.GetRecipeMetadataFromRegistry(ctx, recipeProperties, recipeDatamodel)
+	recipeParams, err := r.GetRecipeMetadataFromRegistry(ctx, recipeProperties, recipeDatamodel, resource.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 	return rest.NewOKResponse(versioned), nil
 }
 
-func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, recipeProperties datamodel.EnvironmentRecipeProperties, recipeDataModel *datamodel.Recipe) (recipeParameters map[string]any, err error) {
+func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, recipeProperties datamodel.EnvironmentRecipeProperties, recipeDataModel *datamodel.Recipe, envID string) (recipeParameters map[string]any, err error) {
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:            recipeDataModel.Name,
 		Driver:          recipeProperties.TemplateKind,
@@ -113,7 +113,9 @@ func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, r
 	}
 
 	recipeParameters = make(map[string]any)
-	recipeData, err := r.Engine.GetRecipeMetadata(ctx, recipeDefinition)
+	recipeData, err := r.Engine.GetRecipeMetadata(ctx, recipeDefinition, recipes.ResourceMetadata{
+		EnvironmentID: envID,
+	})
 	if err != nil {
 		return recipeParameters, err
 	}
