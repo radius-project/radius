@@ -81,6 +81,9 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 	terraformRecipeTemplate := "Azure/cosmosdb/azurerm"
 	templateKindTerraform := "terraform"
 
+	terraformPrivateRecipe := "recipe3"
+	terraformPrivateRecipeTemplate := "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
+
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
 		require.NoError(t, err)
@@ -136,6 +139,16 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 		require.Contains(t, output, showRecipeName)
 		require.Contains(t, output, showRecipeTemplate)
 		require.Contains(t, output, showRecipeResourceType)
+		require.Contains(t, output, "redis_cache_name")
+		require.Contains(t, output, "string")
+	})
+
+	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
+		output, err := cli.RecipeShow(ctx, envName, terraformPrivateRecipe, "Applications.Datastores/redisCaches")
+		require.NoError(t, err)
+		require.Contains(t, output, terraformPrivateRecipe)
+		require.Contains(t, output, terraformPrivateRecipeTemplate)
+		require.Contains(t, output, "Applications.Datastores/redisCaches")
 		require.Contains(t, output, "redis_cache_name")
 		require.Contains(t, output, "string")
 	})
@@ -712,7 +725,7 @@ func Test_RecipeCommands(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, testutil.GetTerraformPrivateModuleSource(), testutil.GetGitPAT(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
