@@ -41,7 +41,7 @@ resource redisContainer 'Applications.Core/containers@2023-10-01-preview' = {
   properties: {
     application: app.id
     container: {
-      image: 'redis:6.2'
+      image: 'ghcr.io/radius-project/dev/redis:6.2'
       ports: {
         redis: {
           containerPort: 6379
