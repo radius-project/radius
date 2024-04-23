@@ -101,7 +101,7 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
+	enc.SetIndent("", "  ") // Indent with 2 spaces to make the JSON file human-readable and consistent with codebase.
 
 	// Encode the Terraform config to JSON. JSON encoding is being used to ensure that special characters
 	// in the original text are preserved when writing to the file.
@@ -146,13 +146,14 @@ func (cfg *TerraformConfig) UpdateModuleWithProviderAliases(ctx context.Context)
 	providerConfigs := cfg.Provider
 	moduleAliasConfig := map[string]string{}
 
-	// For each provider in the providerConfigs, if provider has a property "alias",
-	// add entry to the module provider configuration
 	for providerName, providerConfigList := range providerConfigs {
 		providerConfigDetails, ok := providerConfigList.([]map[string]any)
 		if !ok {
 			continue
 		}
+
+		// For each provider in the providerConfigs, if provider has a property "alias",
+		// add entry to the module provider configuration
 		for _, providerConfig := range providerConfigDetails {
 			if alias, ok := providerConfig["alias"]; ok {
 				moduleAliasConfig[providerName+"."+fmt.Sprintf("%v", alias)] = providerName + "." + fmt.Sprintf("%v", alias)
@@ -215,9 +216,10 @@ func getProviderConfigs(ctx context.Context, requiredProviders map[string]*Requi
 	// Get recipe provider configurations from the environment configuration
 	providerConfigs := providers.GetRecipeProviderConfigs(ctx, envConfig)
 
-	// Build provider configurations for required providers excluding the ones already present in providerConfigs
+	// Build provider configurations for required providers excluding the ones already present in providerConfigs (environment level configuration).
+	// Required providers that are not configured with UCP will be skipped.
 	for providerName := range requiredProviders {
-		if _, ok := ucpConfiguredProviders[providerName]; ok { // requiredProviders can contain providers not configured with UCP
+		if _, ok := ucpConfiguredProviders[providerName]; ok { // Check if the provider is configured with UCP
 			if _, ok := providerConfigs[providerName]; ok {
 				// Environment level recipe configuration for providers will take precedence over
 				// UCP provider configuration (currently these include azurerm, aws, kubernetes providers)
@@ -238,6 +240,7 @@ func getProviderConfigs(ctx context.Context, requiredProviders map[string]*Requi
 		if err != nil {
 			return nil, err
 		}
+
 		if len(config) > 0 {
 			providerConfigs[providerName] = config
 		}

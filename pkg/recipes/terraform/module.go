@@ -115,10 +115,7 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 	for k, v := range mod.RequiredProviders {
 		requiredprovider := &config.RequiredProviderInfo{}
 
-		if v.Source != "" {
-			requiredprovider.Source = v.Source
-		}
-
+		requiredprovider.Source = v.Source
 		if len(v.VersionConstraints) > 0 {
 			requiredprovider.Version = strings.Join(v.VersionConstraints, ",")
 		}
