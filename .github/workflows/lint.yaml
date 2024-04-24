@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      GOVER: '1.21.7'
+      GOVER: '1.22.2'
       GOPROXY: https://proxy.golang.org
       HELM_CHARTS_DIR: deploy/Chart
     steps:

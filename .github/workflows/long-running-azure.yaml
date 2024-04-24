@@ -52,7 +52,7 @@ on:
 
 env:
   # Go version
-  GOVER: "1.21.7"
+  GOVER: "1.22.2"
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
