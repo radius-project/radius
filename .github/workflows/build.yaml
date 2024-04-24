@@ -16,6 +16,8 @@
 
 name: Build and Test
 on:
+  # Enable manual trigger
+  workflow_dispatch:
   push:
     branches:
       - main
