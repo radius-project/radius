@@ -22,6 +22,8 @@ permissions:
   packages: write # Required for uploading the package
 
 on:
+  # Enable manual trigger
+  workflow_dispatch:
   schedule:
     # Run every 4 hours on weekdays.
     - cron: "30 0,4,8,12,16,20 * * 1-5"
