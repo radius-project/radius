@@ -83,9 +83,12 @@ jobs:
               event: 'schedule',
               per_page: 10
             });
+
+            console.log(response);
             
             failureCount = 1;
             for (const run of response.data.workflow_runs) {
+              console.log(run);
               if (run.conclusion === 'failure') {
                 failureCount++;
               } else {
