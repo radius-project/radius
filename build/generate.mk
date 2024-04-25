@@ -17,7 +17,7 @@
 ##@ Generate (Code and Schema Generation)
 
 GOOS ?= $(shell go env GOOS)
-CONTROLLER_TOOLS_VERSION ?= v0.14.0
+CONTROLLER_TOOLS_VERSION ?= v0.15.0
 
 ifeq ($(GOOS),windows)
    CMD_EXT = .cmd
@@ -56,7 +56,7 @@ generate-autorest-installed:
 .PHONY: generate-controller-gen-installed
 generate-controller-gen-installed:
 	@echo "$(ARROW) Detecting controller-gen..."
-	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.14.0'"; exit 1; }
+	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0'"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-ucp-crd
