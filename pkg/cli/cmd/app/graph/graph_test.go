@@ -112,7 +112,7 @@ func Test_Validate(t *testing.T) {
 
 func Test_Run(t *testing.T) {
 	// This example is a very simple example of the application graph as an integration test.
-	// The unit tests for this package cover the more complex cases..
+	// The unit tests for this package cover the more complex cases.
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
