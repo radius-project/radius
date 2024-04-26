@@ -91,7 +91,7 @@ jobs:
               console.log(run);
               if (run.conclusion === 'failure') {
                 failureCount++;
-              } else {
+              } else if (run.conclusion === 'success') {
                 break;
               }
             }
