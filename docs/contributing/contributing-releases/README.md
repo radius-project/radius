@@ -30,6 +30,8 @@ We follow a monthly release cadence. Any contributions that have been merged thr
 
 ## Release Process
 
+For the entire release process, directly clone repositories under the radius-project organization and create branches off of them. Do not create branches in your personal forks when creating pull requests.
+
 ### Creating an RC release
 
 When starting the release process, we first kick it off by creating an RC release. If we find issues in validation, we can create additional RC releases until we feel confident in the release.
@@ -103,7 +105,7 @@ Update it to reflect the new release version that we would like to release ([Exa
    git checkout -b <USERNAME>/<BRANCHNAME>
    ```
 
-1. Cherry-pick the `version.json` changes from the previous steps in this PR. This will ensure that the version changes are included in the release branch ([Example](https://github.com/radius-project/bicep/pull/704/files)). You can get the commit hash by running `git log --oneline` in the main branch. PLEASE USE `-x` HERE TO ENSURE VERSION HISTORY IS PRESERVED.
+1. Cherry-pick the `version.json` changes from the previous steps in this PR. This will ensure that the version changes are included in the release branch ([Example](https://github.com/radius-project/bicep/pull/704/files)). You can get the commit hash by running `git log --oneline` in the bicep-extensibility branch. PLEASE USE `-x` HERE TO ENSURE VERSION HISTORY IS PRESERVED.
    ```
    git cherry-pick -x <COMMIT HASH>
    ```
@@ -129,7 +131,7 @@ Update it to reflect the new release version that we would like to release ([Exa
    git cherry-pick -x <COMMIT HASH>
    ```
 
-1. After maintainer approval, merge the pull request to `main`.
+1. After maintainer approval, merge the pull request into the release branch.
 
 1. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vx.y.z` tag. Monitor this workflow to ensure that it completes successfully.
 
@@ -200,3 +202,4 @@ Let's say we have a bug in a release that needs to be patched for an already-cre
 1. Download the Radius Bicep .vsix file from here: https://github.com/radius-project/bicep/releases. Scroll down to the most recent release and download the .vsix file.
 
 1. Upload the Radius Bicep .vsix to the [VS marketplace](https://marketplace.visualstudio.com/manage). You may need access permissions, if so, ask a maintainer. Click on the ... for Radius Bicep, then Update, then upload the .vsix file. The site will verify it then the version number should be updated to the right one.
+![alt text](image.png)
