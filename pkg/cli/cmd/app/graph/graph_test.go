@@ -126,7 +126,7 @@ func Test_Run(t *testing.T) {
 				ProvisioningState: to.Ptr(provisioningStateSuccess),
 				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
 					{
-						ID:   to.Ptr("/planes/radius/local/resourcegroups/test-group/providers/kubernetes/Deployments/demo "),
+						ID:   to.Ptr("/planes/radius/local/resourcegroups/test-group/providers/kubernetes/Deployments/demo"),
 						Type: to.Ptr("kubernetes: apps/Deployment"),
 						Name: to.Ptr("demo"),
 					},
