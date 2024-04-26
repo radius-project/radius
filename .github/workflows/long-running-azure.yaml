@@ -112,12 +112,6 @@ jobs:
       CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
       RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
     steps:
-      - name: Get GitHub app token
-        uses: tibdex/github-app-token@v2
-        id: get_installation_token
-        with: 
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Restore the latest cached binaries
         uses: actions/cache/restore@v4
         with:
@@ -315,8 +309,13 @@ jobs:
       AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-e2e-all
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
-      GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
     steps:
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v2
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -475,6 +474,7 @@ jobs:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
       - name: Collect Pod details
         if: always()
         run: |
