@@ -89,10 +89,14 @@ jobs:
             failureCount = 1;
             for (const run of response.data.workflow_runs) {
               console.log(run);
-              if (run.conclusion === 'failure') {
-                failureCount++;
-              } else if (run.conclusion === 'success') {
-                break;
+              switch (run.conclusion) {
+                case 'failure':
+                  failureCount++;
+                  break;
+                case 'success':
+                  break;
+                default:
+                  console.log(`Skipping run ${run.id} with conclusion ${run.conclusion}`)
               }
             }
             console.log(`Found ${failureCount} failed runs`);
