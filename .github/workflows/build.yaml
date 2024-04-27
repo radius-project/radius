@@ -85,16 +85,9 @@ jobs:
             });
 
             console.log(response);
-
-            k = 0
             
             failureCount = 1;
             for (const run of response.data.workflow_runs) {
-              console.log(run);
-              if (k < 5) {
-                k++;
-                continue;
-              }
               if (run.conclusion === 'failure') {
                 failureCount++;
               } else if (run.conclusion === 'success') {
