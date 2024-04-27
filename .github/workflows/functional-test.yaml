@@ -734,10 +734,14 @@ jobs:
             for (const run of response.data.workflow_runs) {
               if (run.conclusion === 'failure') {
                 failureCount++;
-              } else {
+              } else if (run.conclusion === 'success') {
+                // If we find a successful run, we can stop scanning.
                 break;
+              } else {
+                console.log(`Skipping run ${run.id} with conclusion ${run.conclusion}.`)
               }
             }
+            console.log(`Found ${failureCount} failed runs in a row.`);
             return failureCount;
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v7
