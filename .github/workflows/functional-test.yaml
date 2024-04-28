@@ -83,7 +83,7 @@ env:
   # Private Git repository where terraform module for testing is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
   # The number of failed tests to report.
-  ISSUE_CREATE_THRESHOLD: 2
+  ISSUE_CREATE_THRESHOLD: 1
 
 jobs:
   build:
@@ -717,37 +717,15 @@ jobs:
     runs-on: ubuntu-latest
     if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
     steps:
-      - name: Count recently failed tests
-        id: count_failures
-        uses: actions/github-script@v7
+      - name: Count failed runs
+        id: count_failed_runs
+        uses: ./.github/actions/count-failed-runs
         with:
-          script: |
-            response = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'functional-test.yaml',
-              event: 'schedule',
-              status: 'completed',
-              per_page: 10
-            });
-            
-            failureCount = 1;
-            for (const run of response.data.workflow_runs) {
-              if (run.conclusion === 'failure') {
-                failureCount++;
-              } else if (run.conclusion === 'success') {
-                // If we find a successful run, we can stop scanning.
-                break;
-              } else {
-                console.log(`Skipping run ${run.id} with conclusion ${run.conclusion}.`)
-              }
-            }
-            console.log(`Found ${failureCount} failed runs in a row.`);
-            return failureCount;
+          workflow_id: 'functional-test.yaml'
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v7
         # Only create an issue if there are (env.ISSUE_CREATE_THRESHOLD) failures of the recent tests.
-        if: steps.count_failures.outputs.result >= env.ISSUE_CREATE_THRESHOLD
+        if: steps.count_failed_runs.outputs.total_runs >= env.ISSUE_CREATE_THRESHOLD
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
@@ -755,5 +733,5 @@ jobs:
               ...context.repo,
               title: `Scheduled functional test failed - Run ID: ${context.runId}`,
               labels: ['bug', 'test-failure'],
-              body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails at least ${process.env.ISSUE_CREATE_THRESHOLD} times in a row. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
+              body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails more than ${process.env.ISSUE_CREATE_THRESHOLD} times in a row. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })

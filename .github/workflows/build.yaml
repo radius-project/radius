@@ -66,6 +66,18 @@ env:
   IMAGE_SRC: https://github.com/radius-project/radius
 
 jobs:
+  report-failure:
+    name: Report test failure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Count failed runs
+        id: count_failed_runs
+        uses: ./.github/actions/count-failed-runs
+        with:
+          workflow_id: 'functional-test.yaml'
+      - name: hello
+        if: steps.count_failed_runs.outputs.total_runs >= 2
+        run: echo "hello"
   build-and-push-cli:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ubuntu-latest
