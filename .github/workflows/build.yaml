@@ -77,8 +77,10 @@ jobs:
         uses: ./.github/actions/count-failed-runs
         with:
           workflow_id: 'functional-test.yaml'
-      - name: hello
-        if: steps.count_failed_runs.outputs.total_runs >= 2
+      - name: hello 1
+        run: echo ${{ steps.count_failed_runs.outputs.total_runs }}
+      - name: hello 2
+        if: steps.count_failed_runs.outputs.total_runs >= 1
         run: echo "hello"
   build-and-push-cli:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries

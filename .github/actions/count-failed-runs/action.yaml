@@ -1,16 +1,16 @@
-name: "Count failed runs"
-description: This is to count the number of consecutive failed runs.
+name: "Count completed failed runs"
+description: This actions counts the number of consecutive failed runs for a given workflow.
 inputs:
   workflow_id:
     description: 'Workflow ID to use for counting failed runs'
     required: true
-  per_page:
-    description: 'Maximum number of workflow runs to check'
-    default: '10'
-    required: false
   workflow_event:
     description: 'Maximum number of workflow runs to check'
     default: 'schedule'
+    required: false
+  per_page:
+    description: 'Number of workflow runs to check for failures'
+    default: '10'
     required: false
 outputs:
   total_runs:
@@ -44,12 +44,12 @@ runs:
             per_page: perpage
           });
 
-          console.log(response);
-
           // Scan `failure` conclusion runs to find the consecutive failures while
           // skipping the other conclusions, such as 'cancelled`.
           failureCount = 0;
           for (const run of response.data.workflow_runs) {
+            console.log(`Validating the workflow run - ID: ${run.id}, Conclusion: ${run.conclusion}.`);
+
             if (run.conclusion === 'failure') {
               failureCount++;
             } else if (run.conclusion === 'success') {
@@ -60,5 +60,6 @@ runs:
               console.log(`Skipping run ${run.id} with conclusion ${run.conclusion}.`)
             }
           }
+
           console.log(`Found ${failureCount} failed runs in a row.`);
           return failureCount;
