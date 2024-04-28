@@ -70,6 +70,8 @@ jobs:
     name: Report test failure
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
       - name: Count failed runs
         id: count_failed_runs
         uses: ./.github/actions/count-failed-runs
