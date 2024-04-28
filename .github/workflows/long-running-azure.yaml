@@ -78,9 +78,6 @@ env:
   # The valid radius build time window in seconds to rebuild radius. 24 hours = 24 * 60 * 60 = 86400
   VALID_RADIUS_BUILD_WINDOW: 86400
 
-  # The functional test GitHub app id
-  FUNCTIONAL_TEST_APP_ID: 425843
-
   # The AKS cluster name
   AKS_CLUSTER_NAME: "radlrtest00-aks"
   # The resource group for AKS_CLUSTER_NAME resource.
@@ -310,12 +307,6 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
     steps:
-      - name: Get GitHub app token
-        uses: tibdex/github-app-token@v2
-        id: get_installation_token
-        with: 
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -474,7 +465,6 @@ jobs:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
-          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
       - name: Collect Pod details
         if: always()
         run: |
@@ -522,26 +512,37 @@ jobs:
     runs-on: ubuntu-latest
     if: failure() && github.repository == 'radius-project/radius' && github.event_name == 'schedule'
     steps:
-      - name: Check if this is the consecutive failure
-        id: checkprevfail
+      - name: Count recently failed tests
+        id: count_failures
         uses: actions/github-script@v7
         with:
           script: |
             response = await github.rest.actions.listWorkflowRuns({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'functional-test.yaml',
+              workflow_id: 'long-running-azure.yaml',
               event: 'schedule',
               status: 'completed',
-              per_page: 1
+              per_page: 10
             });
-
-            const workflowRuns = response.data.workflow_runs;
-            return len(workflowRuns) > 0 && workflowRuns[0].conclusion === 'failure';
+            
+            failureCount = 1;
+            for (const run of response.data.workflow_runs) {
+              if (run.conclusion === 'failure') {
+                failureCount++;
+              } else if (run.conclusion === 'success') {
+                // If we find a successful run, we can stop scanning.
+                break;
+              } else {
+                console.log(`Skipping run ${run.id} with conclusion ${run.conclusion}.`)
+              }
+            }
+            console.log(`Found ${failureCount} failed runs in a row.`);
+            return failureCount;
       - name: Create failure issue for failing long running test run
         uses: actions/github-script@v7
         # Only create an issue if there are (env.ISSUE_CREATE_THRESHOLD) failures of the recent tests.
-        if: steps.checkprevfail.outputs.result == 'true'
+        if: steps.count_failures.outputs.result >= env.ISSUE_CREATE_THRESHOLD
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
