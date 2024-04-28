@@ -4,7 +4,7 @@ inputs:
   workflow_id:
     description: 'Workflow ID to use for counting failed runs'
     required: true
-  max_workflow_runs:
+  per_page:
     description: 'Maximum number of workflow runs to check'
     default: '10'
     required: false
@@ -22,20 +22,26 @@ runs:
     - name: Count recently failed tests
       id: count_failures
       uses: actions/github-script@v7
+      env:
+        WORKFLOWID: ${{ inputs.workflow_id }}
+        PERPAGE: ${{ inputs.per_page }}
+        WORKFLOWEVENT: ${{ inputs.workflow_event }}
       with:
         script: |
-          inputs = context.payload.inputs;
+          workflowid = process.env.WORKFLOWID;
+          perpage = parseInt(process.env.PERPAGE, 10);
+          workflowevent = process.env.WORKFLOWEVENT;
 
-          console.log(inputs)
+          console.log("workflow ID: " + workflowid + ", event: " + workflowevent + ", per_page " + perpage)
 
           // Fetch actions runs to scan the recent failure conclusion runs.
           response = await github.rest.actions.listWorkflowRuns({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            workflow_id: inputs.workflow_id,
-            event: inputs.workflow_event,
+            workflow_id: workflowid,
+            event: workflowevent,
             status: 'completed',
-            per_page: inputs.max_workflow_runs
+            per_page: perpage
           });
 
           console.log(response);
