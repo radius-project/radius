@@ -85,7 +85,7 @@ jobs:
             });
 
             const workflowRuns = response.data.workflow_runs;
-            return len(workflowRuns) > 0 && workflowRuns[0].conclusion === 'failure';
+            return workflowRuns && workflowRuns.length > 0 && workflowRuns[0].conclusion === 'failure';
       - name: Create failure issue for failing scheduled run
         if: steps.checkprevfail.outputs.result == 'true'
         run: echo "hello"
