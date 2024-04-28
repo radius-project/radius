@@ -59,7 +59,7 @@ jobs:
       - name: Install mockgen
         run: go install github.com/golang/mock/mockgen@v1.5.0
       - name: Install controller-gen
-        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
+        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
       - name: Install helm
         uses: azure/setup-helm@v4
         with:

@@ -72,7 +72,7 @@ jobs:
       - name: Install controller-gen
         run: |
           cd radius
-          go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
+          go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
       # Generate Bicep docs
       - name: Generate Bicep docs
         run: |
