@@ -28,10 +28,10 @@ runs:
           response = await github.rest.actions.listWorkflowRuns({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            workflow_id: context.inputs.workflow_id,
-            event: context.inputs.workflow_event,
+            workflow_id: core.getInput('workflow_id'),
+            event: core.getInput('workflow_event'),
             status: 'completed',
-            per_page: context.inputs.max_workflow_runs
+            per_page: core.getInput('max_workflow_runs')
           });
 
           console.log(response);
