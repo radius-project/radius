@@ -510,13 +510,21 @@ jobs:
     name: Report test failure
     needs: [build, tests]
     runs-on: ubuntu-latest
+    env:
+      CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
     if: failure() && github.repository == 'radius-project/radius' && github.event_name == 'schedule'
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
       - name: Count failed runs
         id: count_failed_runs
         uses: ./.github/actions/count-failed-runs
         with:
-          workflow_id: 'long-running-azure-test.yaml'
+          workflow_id: 'long-running-azure.yaml'
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v7
         # Only create an issue if there are (env.ISSUE_CREATE_THRESHOLD) failures of the recent tests.

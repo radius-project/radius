@@ -716,7 +716,15 @@ jobs:
     needs: [build, tests]
     runs-on: ubuntu-latest
     if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
+    env:
+      CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
       - name: Count failed runs
         id: count_failed_runs
         uses: ./.github/actions/count-failed-runs
