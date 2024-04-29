@@ -30,7 +30,7 @@ We follow a monthly release cadence. Any contributions that have been merged thr
 
 ## Release Process
 
-For the entire release process, directly clone repositories under the radius-project organization and create branches off of them. Do not create branches in your personal forks when creating pull requests.
+For the entire release process, directly clone repositories under the radius-project organization and create branches off of them. Do not create branches in your personal forks when creating pull requests. This is due to an error accessing the GitHub token when forks are used. 
 
 ### Creating an RC release
 
