@@ -346,6 +346,7 @@ func Test_AddProviders(t *testing.T) {
 		envConfig                      recipes.Configuration
 		requiredProviders              map[string]*RequiredProviderInfo
 		expectedUCPConfiguredProviders []map[string]any
+		overrideUCPProviderConfig      bool
 		expectedConfigFile             string
 		Err                            error
 	}{
@@ -481,17 +482,28 @@ func Test_AddProviders(t *testing.T) {
 			expectedConfigFile: "testdata/providers-envrecipeproviders.tf.json",
 		},
 		{
-			desc: "recipe provider config overridding required provider configs",
+			desc: "recipe provider config overridding ucp provider configs",
 			expectedUCPConfiguredProviders: []map[string]any{
 				{
 					"region": "test-region",
 				},
+				{
+					"config_path": "/home/radius/.kube/UCPconfig",
+				},
 			},
-			Err: nil,
+			Err:                       nil,
+			overrideUCPProviderConfig: true,
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
 						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"aws": {
+								{
+									AdditionalProperties: map[string]any{
+										"region": "us-west-2",
+									},
+								},
+							},
 							"kubernetes": {
 								{
 									AdditionalProperties: map[string]any{
@@ -521,7 +533,7 @@ func Test_AddProviders(t *testing.T) {
 					ConfigurationAliases: []string{"kubernetes.k8s_first", "kubernetes.k8s_second"},
 				},
 			},
-			expectedConfigFile: "testdata/providers-overridereqproviders.tf.json",
+			expectedConfigFile: "testdata/providers-overrideucpproviderconfig.tf.json",
 		},
 		{
 			desc:                           "recipe providers in env config setup but nil",
@@ -596,8 +608,10 @@ func Test_AddProviders(t *testing.T) {
 
 			tfconfig, err := New(ctx, testRecipeName, &envRecipe, &resourceRecipe, &tc.envConfig)
 			require.NoError(t, err)
-			for _, p := range tc.expectedUCPConfiguredProviders {
-				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(p, nil)
+			if !tc.overrideUCPProviderConfig {
+				for _, p := range tc.expectedUCPConfiguredProviders {
+					mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(p, nil)
+				}
 			}
 			if tc.Err != nil {
 				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(nil, tc.Err)

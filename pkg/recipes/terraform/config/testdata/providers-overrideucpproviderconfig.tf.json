@@ -23,9 +23,11 @@
     }
   },
   "provider": {
-    "aws": {
-      "region": "test-region"
-    },
+    "aws": [
+      {
+        "region": "us-west-2"
+      }
+    ],
     "kubernetes": [
       {
         "alias": "k8s_first",
