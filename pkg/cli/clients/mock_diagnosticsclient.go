@@ -9,7 +9,7 @@ import (
 	os "os"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockDiagnosticsClient is a mock of DiagnosticsClient interface.

@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 	generated "github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	v20231001preview0 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"

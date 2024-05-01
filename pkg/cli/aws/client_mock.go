@@ -10,7 +10,7 @@ import (
 
 	ec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	sts "github.com/aws/aws-sdk-go-v2/service/sts"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockClient is a mock of Client interface.

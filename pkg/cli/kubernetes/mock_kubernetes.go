@@ -7,7 +7,7 @@ package kubernetes
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 	api "k8s.io/client-go/tools/clientcmd/api"
 )
 

@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	tea "github.com/charmbracelet/bubbletea"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 	text "github.com/radius-project/radius/pkg/cli/prompt/text"
 )
 
