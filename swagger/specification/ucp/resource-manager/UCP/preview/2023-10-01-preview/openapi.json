@@ -2058,6 +2058,10 @@
           "type": "string",
           "description": "clientId for WorkloadIdentity"
         },
+        "tenantId": {
+          "type": "string",
+          "description": "tenantId for WorkloadIdentity"
+        },
         "storage": {
           "$ref": "#/definitions/CredentialStorageProperties",
           "description": "The storage properties"
@@ -2065,6 +2069,7 @@
       },
       "required": [
         "clientId",
+        "tenantId",
         "storage"
       ],
       "allOf": [

@@ -667,6 +667,7 @@ func (a AzureWorkloadIdentityProperties) MarshalJSON() ([]byte, error) {
 	objectMap["kind"] = AzureCredentialKindWorkloadIdentity
 	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "storage", a.Storage)
+	populate(objectMap, "tenantId", a.TenantID)
 	return json.Marshal(objectMap)
 }
 
@@ -690,6 +691,9 @@ func (a *AzureWorkloadIdentityProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "storage":
 			a.Storage, err = unmarshalCredentialStoragePropertiesClassification(val)
+			delete(rawMsg, key)
+		case "tenantId":
+				err = unpopulate(val, "TenantID", &a.TenantID)
 			delete(rawMsg, key)
 		}
 		if err != nil {

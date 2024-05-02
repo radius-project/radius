@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package azure
+package wi
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"path"
 	"testing"
 
-	"go.uber.org/mock/gomock"
+	"github.com/golang/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
@@ -50,7 +50,6 @@ func Test_Validate(t *testing.T) {
 			Name: "Valid Azure command",
 			Input: []string{
 				"--client-id", "abcd",
-				"--client-secret", "efgh",
 				"--tenant-id", "ijkl",
 			},
 			ExpectedValid: true,
@@ -60,7 +59,6 @@ func Test_Validate(t *testing.T) {
 			Name: "Azure command with fallback workspace",
 			Input: []string{
 				"--client-id", "abcd",
-				"--client-secret", "efgh",
 				"--tenant-id", "ijkl",
 			},
 			ExpectedValid: true,
@@ -71,7 +69,6 @@ func Test_Validate(t *testing.T) {
 			Input: []string{
 				"letsgoooooo",
 				"--client-id", "abcd",
-				"--client-secret", "efgh",
 				"--tenant-id", "ijkl",
 			},
 			ExpectedValid: false,
@@ -80,16 +77,6 @@ func Test_Validate(t *testing.T) {
 		{
 			Name: "Azure command without client-id",
 			Input: []string{
-				"--client-secret", "efgh",
-				"--tenant-id", "ijkl",
-			},
-			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
-		},
-		{
-			Name: "Azure command without client-secret",
-			Input: []string{
-				"--client-id", "abcd",
 				"--tenant-id", "ijkl",
 			},
 			ExpectedValid: false,
@@ -99,16 +86,6 @@ func Test_Validate(t *testing.T) {
 			Name: "Azure command without tenant-id",
 			Input: []string{
 				"--client-id", "abcd",
-				"--client-secret", "efgh",
-			},
-			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
-		},
-		{
-			Name: "Azure command without subscription",
-			Input: []string{
-				"--client-id", "abcd",
-				"--client-secret", "efgh",
 			},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
@@ -164,14 +141,13 @@ func Test_Run(t *testing.T) {
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(cli_credential.AzureCredential),
 				ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
-				Properties: &ucp.AzureServicePrincipalProperties{
+				Properties: &ucp.AzureWorkloadIdentityProperties{
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
-					ClientID:     to.Ptr("cool-client-id"),
-					ClientSecret: to.Ptr("cool-client-secret"),
-					TenantID:     to.Ptr("cool-tenant-id"),
-					Kind:         to.Ptr(ucp.AzureCredentialKindServicePrincipal),
+					ClientID: to.Ptr("cool-client-id"),
+					TenantID: to.Ptr("cool-tenant-id"),
+					Kind:     to.Ptr(ucp.AzureCredentialKindWorkloadIdentity),
 				},
 			}
 
@@ -199,10 +175,9 @@ func Test_Run(t *testing.T) {
 				},
 				Format: "table",
 
-				ClientID:     "cool-client-id",
-				ClientSecret: "cool-client-secret",
-				TenantID:     "cool-tenant-id",
-				KubeContext:  "my-context",
+				ClientID:    "cool-client-id",
+				TenantID:    "cool-tenant-id",
+				KubeContext: "my-context",
 			}
 
 			err = runner.Run(context.Background())

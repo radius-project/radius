@@ -32,17 +32,19 @@ func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.
 	cmd := &cobra.Command{
 		Use:   "register",
-		Short: "Register(Add or update) cloud provider credential for a Radius installation.",
+		Short: "Register (Add or update) cloud provider credential for a Radius installation.",
 		Long:  "Register (Add or update) cloud provider configuration for a Radius installation." + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for Azure with service principal authentication
-rad credential register azure --client-id <client id> --client-secret <client secret> --tenant-id <tenant id> 	
+rad credential register azure sp --client-id <client id> --client-secret <client secret> --tenant-id <tenant id>
+# Register (Add or update) cloud provider credential for Azure with workload identity authentication
+rad credential register azure wi --client-id <client id> --tenant-id <tenant id>
 # Register (Add or Update) cloud provider credential for AWS with IAM authentication
 rad credential register aws --access-key-id <access-key-id> --secret-access-key <secret-access-key>	
 `,
 	}
 
-	azure, _ := credential_register_azure.NewCommand(factory)
+	azure := credential_register_azure.NewCommand(factory)
 	cmd.AddCommand(azure)
 
 	aws, _ := credential_register_aws.NewCommand(factory)

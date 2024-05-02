@@ -271,6 +271,9 @@ type AzureWorkloadIdentityProperties struct {
 	// REQUIRED; The storage properties
 	Storage CredentialStoragePropertiesClassification
 
+	// REQUIRED; tenantId for WorkloadIdentity
+	TenantID *string
+
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }

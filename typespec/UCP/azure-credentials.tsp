@@ -105,6 +105,9 @@ model AzureWorkloadIdentityProperties extends AzureCredentialProperties {
   @doc("clientId for WorkloadIdentity")
   clientId: string;
 
+  @doc("tenantId for WorkloadIdentity")
+  tenantId: string;
+
   @doc("The storage properties")
   storage: CredentialStorageProperties;
 }
