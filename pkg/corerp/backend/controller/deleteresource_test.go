@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	deployment "github.com/radius-project/radius/pkg/corerp/backend/deployment"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestDeleteResourceRun_20231001Preview(t *testing.T) {

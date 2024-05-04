@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -31,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, recipedriver.MockDriver, recipedriver.MockDriverWithSecrets, configloader.MockSecretsLoader) {

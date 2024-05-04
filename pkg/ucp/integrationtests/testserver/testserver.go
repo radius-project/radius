@@ -31,10 +31,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-logr/logr"
-	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
+	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	backend_ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"

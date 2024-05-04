@@ -24,13 +24,13 @@ import (
 	"strings"
 	"testing"
 
-	gomock "github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	tfjson "github.com/hashicorp/terraform-json"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	gomock "go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	"github.com/radius-project/radius/test/testcontext"

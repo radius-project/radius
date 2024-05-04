@@ -104,7 +104,7 @@ generate-rad-ucp-client: generate-node-installed generate-autorest-installed tes
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:
 	@echo "$(ARROW) Detecting mockgen..."
-	@which mockgen > /dev/null || { echo "run 'go install github.com/golang/mock/mockgen@v1.5.0' to install mockgen"; exit 1; }
+	@which mockgen > /dev/null || { echo "run 'go install go.uber.org/mock/mockgen@v0.4.0' to install mockgen"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-go
