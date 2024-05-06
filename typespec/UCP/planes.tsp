@@ -38,27 +38,6 @@ using OpenAPI;
 
 namespace Ucp;
 
-@doc("The plane resource")
-model PlaneResource is TrackedResourceRequired<PlaneResourceProperties, "planes"> {
-  @key("planeType")
-  @doc("The plane type.")
-  @segment("planes")
-  @path
-  name: string;
-}
-
-@doc("Plane kinds supported.")
-enum PlaneKind {
-  @doc("UCP Native Plane")
-  UCPNative,
-
-  @doc("Azure Plane")
-  Azure,
-
-  @doc("AWS Plane")
-  AWS,
-}
-
 @doc("The Plane Name parameter.")
 model PlaneNameParameter {
   @doc("The name of the plane")
@@ -69,63 +48,31 @@ model PlaneNameParameter {
 }
 
 @doc("The UCP HTTP request base parameters.")
-model PlaneBaseParameters<
-  TResource,
-  TPlaneName extends {} = PlaneNameParameter
-> {
+model PlaneBaseParameters<TResource> {
   ...ApiVersionParameter;
   ...KeysOf<TResource>;
-  ...TPlaneName;
 }
 
-@doc("The Plane properties.")
-model PlaneResourceProperties {
+@doc("The generic representation of a plane resource")
+model GenericPlaneResource
+  is TrackedResourceRequired<GenericPlaneResourceProperties, "System.Resources/planes", "planes"> {
+  @key("planeType")
+  @doc("The plane type.")
+  @segment("planes")
+  @path
+  name: string;
+}
+
+#suppress "@azure-tools/typespec-azure-core/bad-record-type"
+@doc("The properties of the generic representation of a plane resource.")
+model GenericPlaneResourceProperties {
   @doc("The status of the asynchronous operation.")
   @visibility("read")
   provisioningState?: ProvisioningState;
-
-  @doc("The kind of plane")
-  kind: PlaneKind;
-
-  @doc("URL to forward requests to for non UCP Native Plane")
-  url?: string;
-
-  @doc("Resource Providers for UCP Native Plane")
-  resourceProviders?: Record<string>;
 }
 
 @armResourceOperations
 interface Planes {
   @doc("List all planes")
-  listPlanes is UcpResourceList<PlaneResource, ApiVersionParameter>;
-
-  @doc("List planes by type")
-  @get
-  @autoRoute
-  @armResourceRead(PlaneResource)
-  @armResourceList(PlaneResource)
-  listByType(
-    ...PlaneBaseParameters<PlaneResource, {}>,
-  ): ArmResponse<ResourceListResult<PlaneResource>> | ErrorResponse;
-
-  @doc("Get a plane by name")
-  get is UcpResourceRead<PlaneResource, PlaneBaseParameters<PlaneResource>>;
-
-  @doc("Create or update a plane")
-  createOrUpdate is UcpResourceCreateOrUpdateAsync<
-    PlaneResource,
-    PlaneBaseParameters<PlaneResource>
-  >;
-
-  @doc("Update a plane")
-  update is UcpCustomPatchAsync<
-    PlaneResource,
-    PlaneBaseParameters<PlaneResource>
-  >;
-
-  @doc("Delete a plane")
-  delete is UcpResourceDeleteAsync<
-    PlaneResource,
-    PlaneBaseParameters<PlaneResource>
-  >;
+  listPlanes is UcpResourceList<GenericPlaneResource, ApiVersionParameter>;
 }

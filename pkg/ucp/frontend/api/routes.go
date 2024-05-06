@@ -25,10 +25,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
-	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
-	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	kubernetes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
@@ -37,8 +34,8 @@ import (
 )
 
 const (
-	planeCollectionPath       = "/planes"
-	planeCollectionByTypePath = "/planes/{planeType}"
+	planeCollectionPath     = "/planes"
+	planeTypeCollectionPath = "/planes/{planeType}"
 
 	// OperationTypeKubernetesOpenAPIV2Doc is the operation type for the required OpenAPI v2 discovery document.
 	//
@@ -55,17 +52,14 @@ const (
 
 	// OperationTypePlanes is the operation type for the planes (all types) collection.
 	OperationTypePlanes = "PLANES"
-
-	// OperationTypePlanes is the operation type for the planes (specific type) endpoints
-	OperationTypePlanesByType = "PLANESBYTYPE"
 )
 
-func initModules(ctx context.Context, modules []modules.Initializer) (map[string]http.Handler, []string, error) {
+func initModules(ctx context.Context, mods []modules.Initializer) (map[string]http.Handler, []string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	planeTypes := []string{}
 	planeHandlers := map[string]http.Handler{}
-	for _, module := range modules {
+	for _, module := range mods {
 		logger.Info(fmt.Sprintf("Registering module for planeType %s", module.PlaneType()), "planeType", module.PlaneType())
 		handler, err := module.Initialize(ctx)
 		if err != nil {
@@ -88,7 +82,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
 	logger.Info("Initializing module handlers for planes.")
-	planeHandlers, registeredPlaneTypes, err := initModules(ctx, planeModules)
+	moduleHandlers, registeredPlaneTypes, err := initModules(ctx, planeModules)
 	if err != nil {
 		return err
 	}
@@ -131,63 +125,16 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 
 	// Configures planes collection and resource routes.
 	planeCollectionRouter := server.NewSubrouter(router, options.PathBase+planeCollectionPath, apiValidator)
-	planeTypeRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath, apiValidator)
-	planeNameRouter := server.NewSubrouter(router, options.PathBase+planeCollectionByTypePath+"/{planeName}", apiValidator)
 
+	// The "list all planes by type" handler is registered here.
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		// Planes resource handler registration.
 		{
-			// This is scope query unlike the default list handler.
+			// This is a custom controller because we have to use custom query logic to list planes of all types.
 			ParentRouter:      planeCollectionRouter,
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanes, Method: v1.OperationList},
 			ControllerFactory: planes_ctrl.NewListPlanes,
-		},
-		{
-			// This is scope query unlike the default list handler.
-			ParentRouter:      planeTypeRouter,
-			Method:            v1.OperationList,
-			OperationType:     &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList},
-			ControllerFactory: planes_ctrl.NewListPlanesByType,
-		},
-		{
-			ParentRouter:  planeNameRouter,
-			Method:        v1.OperationGet,
-			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationGet},
-			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return defaultoperation.NewGetResource(opt,
-					controller.ResourceOptions[datamodel.Plane]{
-						RequestConverter:  converter.PlaneDataModelFromVersioned,
-						ResponseConverter: converter.PlaneDataModelToVersioned,
-					},
-				)
-			},
-		},
-		{
-			ParentRouter:  planeNameRouter,
-			Method:        v1.OperationPut,
-			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationPut},
-			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return defaultoperation.NewDefaultSyncPut(opt,
-					controller.ResourceOptions[datamodel.Plane]{
-						RequestConverter:  converter.PlaneDataModelFromVersioned,
-						ResponseConverter: converter.PlaneDataModelToVersioned,
-					},
-				)
-			},
-		},
-		{
-			ParentRouter:  planeNameRouter,
-			Method:        v1.OperationDelete,
-			OperationType: &v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationDelete},
-			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return defaultoperation.NewDefaultSyncDelete(opt,
-					controller.ResourceOptions[datamodel.Plane]{
-						RequestConverter:  converter.PlaneDataModelFromVersioned,
-						ResponseConverter: converter.PlaneDataModelToVersioned,
-					},
-				)
-			},
 		},
 	}...)
 
@@ -203,17 +150,21 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 		}
 	}
 
-	// Catch all route paths and forward to the appropriate module handlers.
-	planeNameRouter.HandleFunc(server.CatchAllPath, func(w http.ResponseWriter, r *http.Request) {
+	// Register a catch-all route to handle requests that get dispatched to a specific plane.
+	unknownPlaneRouter := server.NewSubrouter(router, options.PathBase+planeTypeCollectionPath)
+	unknownPlaneRouter.HandleFunc(server.CatchAllPath, func(w http.ResponseWriter, r *http.Request) {
 		planeType := chi.URLParam(r, "planeType")
-		if planeType != "" {
+		handler, ok := moduleHandlers[planeType]
+		if ok {
+			logger := ucplog.FromContextOrDiscard(r.Context())
+			logger.Info("Forwarding request to plane", "plane", planeType, "path", r.URL.Path, "method", r.Method)
+
 			// Clear the route context in request context before forwarding the request to the module handler.
 			chi.RouteContext(r.Context()).Reset()
-			if planeHandler, ok := planeHandlers[planeType]; ok {
-				planeHandler.ServeHTTP(w, r)
-				return
-			}
+			handler.ServeHTTP(w, r)
+			return
 		}
+
 		// Handle invalid plane type error.
 		resp := modules.InvalidPlaneTypeErrorResponse(planeType, registeredPlaneTypes)
 		_ = resp.Apply(ctx, w, r)

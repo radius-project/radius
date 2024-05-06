@@ -46,7 +46,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		return err
 	}
 
-	err = client.CreateUCPGroup(ctx, "radius", "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
+	err = client.CreateUCPGroup(ctx, "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
 	if err != nil {

@@ -85,17 +85,17 @@ func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateApplicatio
 }
 
 // CreateUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2, arg3 string, arg4 v20231001preview0.ResourceGroupResource) error {
+func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2 string, arg3 v20231001preview0.ResourceGroupResource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateUCPGroup", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "CreateUCPGroup", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateUCPGroup indicates an expected call of CreateUCPGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateUCPGroup(arg0, arg1, arg2, arg3, arg4 any) *gomock.Call {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateUCPGroup(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateUCPGroup), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateUCPGroup), arg0, arg1, arg2, arg3)
 }
 
 // DeleteApplication mocks base method.
@@ -144,18 +144,18 @@ func (mr *MockApplicationsManagementClientMockRecorder) DeleteResource(arg0, arg
 }
 
 // DeleteUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) DeleteUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
+func (m *MockApplicationsManagementClient) DeleteUCPGroup(arg0 context.Context, arg1, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteUCPGroup", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "DeleteUCPGroup", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteUCPGroup indicates an expected call of DeleteUCPGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) DeleteUCPGroup(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteUCPGroup(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteUCPGroup), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteUCPGroup), arg0, arg1, arg2)
 }
 
 // GetEnvDetails mocks base method.
@@ -309,18 +309,18 @@ func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsInResour
 }
 
 // ListUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) ListUCPGroup(arg0 context.Context, arg1, arg2 string) ([]v20231001preview0.ResourceGroupResource, error) {
+func (m *MockApplicationsManagementClient) ListUCPGroup(arg0 context.Context, arg1 string) ([]v20231001preview0.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListUCPGroup", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ListUCPGroup", arg0, arg1)
 	ret0, _ := ret[0].([]v20231001preview0.ResourceGroupResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListUCPGroup indicates an expected call of ListUCPGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) ListUCPGroup(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockApplicationsManagementClientMockRecorder) ListUCPGroup(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListUCPGroup), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListUCPGroup), arg0, arg1)
 }
 
 // ShowApplication mocks base method.
@@ -369,16 +369,16 @@ func (mr *MockApplicationsManagementClientMockRecorder) ShowResource(arg0, arg1,
 }
 
 // ShowUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) ShowUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (v20231001preview0.ResourceGroupResource, error) {
+func (m *MockApplicationsManagementClient) ShowUCPGroup(arg0 context.Context, arg1, arg2 string) (v20231001preview0.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShowUCPGroup", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "ShowUCPGroup", arg0, arg1, arg2)
 	ret0, _ := ret[0].(v20231001preview0.ResourceGroupResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ShowUCPGroup indicates an expected call of ShowUCPGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) ShowUCPGroup(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockApplicationsManagementClientMockRecorder) ShowUCPGroup(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ShowUCPGroup), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ShowUCPGroup), arg0, arg1, arg2)
 }

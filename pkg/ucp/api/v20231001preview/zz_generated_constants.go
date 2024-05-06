@@ -77,27 +77,6 @@ func PossibleCredentialStorageKindValues() []CredentialStorageKind {
 	}
 }
 
-// PlaneKind - Plane kinds supported.
-type PlaneKind string
-
-const (
-	// PlaneKindAWS - AWS Plane
-	PlaneKindAWS PlaneKind = "AWS"
-	// PlaneKindAzure - Azure Plane
-	PlaneKindAzure PlaneKind = "Azure"
-	// PlaneKindUCPNative - UCP Native Plane
-	PlaneKindUCPNative PlaneKind = "UCPNative"
-)
-
-// PossiblePlaneKindValues returns the possible values for the PlaneKind const type.
-func PossiblePlaneKindValues() []PlaneKind {
-	return []PlaneKind{	
-		PlaneKindAWS,
-		PlaneKindAzure,
-		PlaneKindUCPNative,
-	}
-}
-
 // ProvisioningState - Provisioning state of the resource at the time the operation was called
 type ProvisioningState string
 

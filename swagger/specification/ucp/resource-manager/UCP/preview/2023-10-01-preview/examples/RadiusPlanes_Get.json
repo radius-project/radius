@@ -1,17 +1,16 @@
 {
-  "operationId": "Planes_Get",
-  "title": "Get a plane",
+  "operationId": "RadiusPlanes_Get",
+  "title": "Get a Radius plane",
   "parameters": {
     "api-version": "2023-10-01-preview",
-    "planeName": "local",
-    "planeType": "radius"
+    "planeName": "local"
   },
   "responses": {
     "200": {
       "body": {
         "id": "/planes/radius/local",
         "name": "local",
-        "type": "System.Planes/radius",
+        "type": "System.Radius/planes",
         "location": "global",
         "properties": {
           "resourceProviders": {

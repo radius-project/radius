@@ -1,6 +1,6 @@
 {
-    "location": "global",
-    "properties":{
-        "kind": "AWS"
-    }
+  "location": "global",
+  "tags": {},
+  "properties": {
+  }
 }

@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -33,7 +36,6 @@ const (
 	// PlanesSegment is the segment the planes delimiter that distinguishes between UCP and ARM resource IDs.
 	PlanesSegment = "planes"
 
-	PlaneTypePrefix   = "System.Planes"
 	ResourceGroupType = "System.Resources/resourceGroups"
 )
 
@@ -363,10 +365,24 @@ func (ri ID) Type() string {
 		return strings.Join(types, SegmentSeparator)
 	}
 
-	// Add a special case for the planes/resourcegroups resource
+	// Add a special case for scopes. These don't contain the full type in the ID, but instead
+	// follow predictable patterns.
 	if len(ri.scopeSegments) == 1 {
-		// This is a plane resource
-		return PlaneTypePrefix + SegmentSeparator + ri.scopeSegments[0].Type
+		// Plane resources are named like:
+		// /planes/{planeType} -> 'System.{planeType}/planes'
+
+		// For formatting we uppercase the first latter (title case) and need to special-case
+		// AWS because it's an initialism.
+
+		// This is just cosmetic. Type names are case-insensitive.
+		planeType := ri.scopeSegments[0].Type
+		if strings.EqualFold(ri.scopeSegments[0].Type, "aws") {
+			planeType = "AWS"
+		} else {
+			planeType = cases.Title(language.English).String(planeType)
+		}
+
+		return "System." + planeType + SegmentSeparator + "planes"
 	} else if len(ri.scopeSegments) == 2 && strings.EqualFold(ri.scopeSegments[1].Type, "resourcegroups") && !ri.IsScopeCollection() {
 		// This is a resource group resource
 		return ResourceGroupType

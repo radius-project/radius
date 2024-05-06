@@ -57,13 +57,13 @@ func Test_TrackedResources(t *testing.T) {
 	exc, err := corerp.NewExtendersClient(resourceGroupID.String(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.Connection))
 	require.NoError(t, err)
 
-	rg, err := rgc.CreateOrUpdate(ctx, "radius", "local", resourceGroupID.Name(), ucp.ResourceGroupResource{Location: to.Ptr(v1.LocationGlobal)}, nil)
+	rg, err := rgc.CreateOrUpdate(ctx, "local", resourceGroupID.Name(), ucp.ResourceGroupResource{Location: to.Ptr(v1.LocationGlobal)}, nil)
 	require.NoError(t, err)
 	log("Created resource group", rg)
 
 	t.Run("Resource group starts empty", func(t *testing.T) {
 		resources := []*ucp.GenericResource{}
-		pager := rc.NewListPager("radius", "local", resourceGroupID.Name(), nil)
+		pager := rc.NewListPager("local", resourceGroupID.Name(), nil)
 		for pager.More() {
 			page, err := pager.NextPage(ctx)
 			require.NoError(t, err)
@@ -123,7 +123,7 @@ func Test_TrackedResources(t *testing.T) {
 
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
 			resources := []*ucp.GenericResource{}
-			pager := rc.NewListPager("radius", "local", resourceGroupID.Name(), nil)
+			pager := rc.NewListPager("local", resourceGroupID.Name(), nil)
 			for pager.More() {
 				page, err := pager.NextPage(ctx)
 				require.NoError(t, err)
@@ -156,7 +156,7 @@ func Test_TrackedResources(t *testing.T) {
 	t.Run("Resource group is empty again", func(t *testing.T) {
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
 			resources := []*ucp.GenericResource{}
-			pager := rc.NewListPager("radius", "local", resourceGroupID.Name(), nil)
+			pager := rc.NewListPager("local", resourceGroupID.Name(), nil)
 			for pager.More() {
 				page, err := pager.NextPage(ctx)
 				require.NoError(t, err)
@@ -168,7 +168,7 @@ func Test_TrackedResources(t *testing.T) {
 	})
 
 	t.Run("Delete resource group", func(t *testing.T) {
-		_, err := rgc.Delete(ctx, "radius", "local", resourceGroupID.Name(), nil)
+		_, err := rgc.Delete(ctx, "local", resourceGroupID.Name(), nil)
 		require.NoError(t, err)
 	})
 }

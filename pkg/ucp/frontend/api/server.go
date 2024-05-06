@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -42,6 +43,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
 	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/rest"
 	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -190,51 +192,91 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 // configureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
 func (s *Service) configureDefaultPlanes(ctx context.Context) error {
+	for _, plane := range s.options.InitialPlanes {
+		err := s.createPlane(ctx, plane)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) createPlane(ctx context.Context, plane rest.Plane) error {
+	body, err := json.Marshal(plane)
+	if err != nil {
+		return err
+	}
+
+	resourceID, err := resources.ParseScope(plane.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(resourceID.ScopeSegments()) != 1 {
+		return fmt.Errorf("invalid plane ID: %s", plane.ID)
+	}
+
 	db, err := s.storageProvider.GetStorageClient(ctx, "ucp")
 	if err != nil {
 		return err
 	}
 
-	for _, plane := range s.options.InitialPlanes {
-		body, err := json.Marshal(plane)
-		if err != nil {
-			return err
-		}
-
-		opts := armrpc_controller.Options{
-			StorageClient: db,
-		}
-		planesCtrl, err := defaultoperation.NewDefaultSyncPut(opts,
-			armrpc_controller.ResourceOptions[datamodel.Plane]{
-				RequestConverter:  converter.PlaneDataModelFromVersioned,
-				ResponseConverter: converter.PlaneDataModelToVersioned,
-			},
-		)
-		if err != nil {
-			return err
-		}
-
-		// Using the latest API version to make a request to configure the default planes
-		url := fmt.Sprintf("%s?api-version=%s", plane.ID, versions.DefaultAPIVersion)
-		request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
-		if err != nil {
-			return err
-		}
-		request.Header.Add("Content-Type", "application/json")
-
-		// Wrap the request in an ARM RPC context because this call will bypass the middleware
-		// that normally does this for us.
-		rpcContext, err := v1.FromARMRequest(request, s.options.PathBase, s.options.Location)
-		if err != nil {
-			return err
-		}
-		wrappedCtx := v1.WithARMRequestContext(ctx, rpcContext)
-
-		_, err = planesCtrl.Run(wrappedCtx, nil, request)
-		if err != nil {
-			return err
-		}
+	opts := armrpc_controller.Options{
+		StorageClient: db,
 	}
+
+	var ctrl armrpc_controller.Controller
+	switch strings.ToLower(resourceID.ScopeSegments()[0].Type) {
+	case "aws":
+		ctrl, err = defaultoperation.NewDefaultSyncPut(opts,
+			armrpc_controller.ResourceOptions[datamodel.AWSPlane]{
+				RequestConverter:  converter.AWSPlaneDataModelFromVersioned,
+				ResponseConverter: converter.AWSPlaneDataModelToVersioned,
+			})
+
+	case "azure":
+		ctrl, err = defaultoperation.NewDefaultSyncPut(opts,
+			armrpc_controller.ResourceOptions[datamodel.AzurePlane]{
+				RequestConverter:  converter.AzurePlaneDataModelFromVersioned,
+				ResponseConverter: converter.AzurePlaneDataModelToVersioned,
+			})
+
+	case "radius":
+		ctrl, err = defaultoperation.NewDefaultSyncPut(opts,
+			armrpc_controller.ResourceOptions[datamodel.RadiusPlane]{
+				RequestConverter:  converter.RadiusPlaneDataModelFromVersioned,
+				ResponseConverter: converter.RadiusPlaneDataModelToVersioned,
+			})
+
+	default:
+		err = fmt.Errorf("invalid plane type: %s", resourceID.ScopeSegments()[0].Type)
+	}
+	if err != nil {
+		return err
+	}
+
+	// Using the latest API version to make a request to configure the default planes
+	url := fmt.Sprintf("%s?api-version=%s", plane.ID, versions.DefaultAPIVersion)
+	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	request.Header.Add("Content-Type", "application/json")
+
+	// Wrap the request in an ARM RPC context because this call will bypass the middleware
+	// that normally does this for us.
+	rpcContext, err := v1.FromARMRequest(request, s.options.PathBase, s.options.Location)
+	if err != nil {
+		return err
+	}
+	wrappedCtx := v1.WithARMRequestContext(ctx, rpcContext)
+
+	_, err = ctrl.Run(wrappedCtx, nil, request)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

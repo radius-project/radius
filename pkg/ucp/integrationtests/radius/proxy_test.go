@@ -383,10 +383,9 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 }
 
 func createRadiusPlane(ucp *testserver.TestServer, resourceProviders map[string]*string) {
-	body := v20231001preview.PlaneResource{
+	body := v20231001preview.RadiusPlaneResource{
 		Location: to.Ptr(v1.LocationGlobal),
-		Properties: &v20231001preview.PlaneResourceProperties{
-			Kind:              to.Ptr(v20231001preview.PlaneKindUCPNative),
+		Properties: &v20231001preview.RadiusPlaneResourceProperties{
 			ResourceProviders: resourceProviders,
 		},
 	}

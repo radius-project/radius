@@ -1,7 +1,8 @@
 {
-    "location": "global",
-    "id": "/planes/aws/aws",
-    "properties":{
-        "kind": "AWS"
-    }
+  "location": "global",
+  "tags": {
+    "updated": "yes"
+  },
+  "properties": {
+  }
 }

@@ -1,0 +1,9 @@
+{
+  "location": "global",
+  "tags": {
+    "updated": "yes"
+  },
+  "properties": {
+    "url": "https://management.azure.com/"
+  }
+}

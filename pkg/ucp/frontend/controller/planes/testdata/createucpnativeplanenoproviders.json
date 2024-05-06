@@ -2,7 +2,7 @@
     "location": "global",
     "id": "/planes/radius/local",
     "name": "local",
-    "type": "System.Planes/radius",
+    "type": "System.Radius/planes",
     "properties": {
         "kind": "UCPNative"
     }

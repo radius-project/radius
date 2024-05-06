@@ -17,40 +17,18 @@ limitations under the License.
 package datamodel
 
 import (
-	"strings"
-
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
-type PlaneKind string
-
-type PlaneProperties struct {
-	Kind              PlaneKind
-	URL               *string
-	ResourceProviders map[string]*string
-}
-
-// Plane represents UCP Plane.
-type Plane struct {
+// GenericPlane is the representation used for serializing planes when queried generically.
+type GenericPlane struct {
 	v1.BaseResource
 
 	// Properties is the properties of the resource.
-	Properties PlaneProperties `json:"properties"`
+	Properties any `json:"properties"`
 }
 
 // ResourceTypeName returns the type of the Plane as a string.
-func (p Plane) ResourceTypeName() string {
+func (p GenericPlane) ResourceTypeName() string {
 	return p.Type
-}
-
-// LookupResourceProvider checks if the input provider is in the list of configured providers.
-func (plane *Plane) LookupResourceProvider(key string) string {
-	var value string
-	for k, v := range plane.Properties.ResourceProviders {
-		if strings.EqualFold(k, key) {
-			value = *v
-			break
-		}
-	}
-	return value
 }

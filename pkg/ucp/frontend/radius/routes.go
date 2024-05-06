@@ -27,33 +27,85 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
+	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
 	radius_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/radius"
 	resourcegroups_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/validator"
 )
 
 const (
-	planeScope                  = "/planes/{planeType}/{planeName}"
-	resourceGroupCollectionPath = "/resourcegroups"
-	resourceGroupResourcePath   = "/resourcegroups/{resourceGroupName}"
+	planeCollectionPath         = "/planes/radius"
+	planeResourcePath           = "/planes/radius/{planeName}"
+	resourceGroupCollectionPath = planeResourcePath + "/resourcegroups"
+	resourceGroupResourcePath   = planeResourcePath + "/resourcegroups/{resourceGroupName}"
 
 	// OperationTypeUCPRadiusProxy is the operation type for proxying Radius API calls.
 	OperationTypeUCPRadiusProxy = "UCPRADIUSPROXY"
 )
 
 func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
-	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+planeScope)
+	baseRouter := server.NewSubrouter(m.router, m.options.PathBase)
 
 	apiValidator := validator.APIValidator(validator.Options{
 		SpecLoader:         m.options.SpecLoader,
 		ResourceTypeGetter: validator.UCPResourceTypeGetter,
 	})
 
+	planeResourceOptions := controller.ResourceOptions[datamodel.RadiusPlane]{
+		RequestConverter:  converter.RadiusPlaneDataModelFromVersioned,
+		ResponseConverter: converter.RadiusPlaneDataModelToVersioned,
+	}
+
+	// URLs for lifecycle of planes
+	planeResourceType := "System.Radius/planes"
+	planeCollectionRouter := server.NewSubrouter(baseRouter, planeCollectionPath, apiValidator)
+	planeResourceRouter := server.NewSubrouter(baseRouter, planeResourcePath, apiValidator)
+
+	resourceGroupResourceOptions := controller.ResourceOptions[datamodel.ResourceGroup]{
+		RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
+		ResponseConverter: converter.ResourceGroupDataModelToVersioned,
+	}
+
 	// URLs for lifecycle of resource groups
 	resourceGroupCollectionRouter := server.NewSubrouter(baseRouter, resourceGroupCollectionPath, apiValidator)
 	resourceGroupResourceRouter := server.NewSubrouter(baseRouter, resourceGroupResourcePath, apiValidator)
 
 	handlerOptions := []server.HandlerOptions{
+		{
+			// This is a scope query so we can't use the default operation.
+			ParentRouter:  planeCollectionRouter,
+			Method:        v1.OperationList,
+			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationList},
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return &planes_ctrl.ListPlanesByType[*datamodel.RadiusPlane, datamodel.RadiusPlane]{
+					Operation: controller.NewOperation(opts, planeResourceOptions),
+				}, nil
+			},
+		},
+		{
+			ParentRouter:  planeResourceRouter,
+			Method:        v1.OperationGet,
+			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationGet},
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewGetResource(opts, planeResourceOptions)
+			},
+		},
+		{
+			ParentRouter:  planeResourceRouter,
+			Method:        v1.OperationPut,
+			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationPut},
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opts, planeResourceOptions)
+			},
+		},
+		{
+			ParentRouter:  planeResourceRouter,
+			Method:        v1.OperationDelete,
+			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationDelete},
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opts, planeResourceOptions)
+			},
+		},
 		{
 			ParentRouter:      resourceGroupCollectionRouter,
 			ResourceType:      v20231001preview.ResourceGroupType,
@@ -64,39 +116,24 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter: resourceGroupResourceRouter,
 			ResourceType: v20231001preview.ResourceGroupType,
 			Method:       v1.OperationGet,
-			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return defaultoperation.NewGetResource(opt,
-					controller.ResourceOptions[datamodel.ResourceGroup]{
-						RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
-						ResponseConverter: converter.ResourceGroupDataModelToVersioned,
-					},
-				)
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewGetResource(opts, resourceGroupResourceOptions)
 			},
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
 			ResourceType: v20231001preview.ResourceGroupType,
 			Method:       v1.OperationPut,
-			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return defaultoperation.NewDefaultSyncPut(opt,
-					controller.ResourceOptions[datamodel.ResourceGroup]{
-						RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
-						ResponseConverter: converter.ResourceGroupDataModelToVersioned,
-					},
-				)
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opts, resourceGroupResourceOptions)
 			},
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
 			ResourceType: v20231001preview.ResourceGroupType,
 			Method:       v1.OperationDelete,
-			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return defaultoperation.NewDefaultSyncDelete(opt,
-					controller.ResourceOptions[datamodel.ResourceGroup]{
-						RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
-						ResponseConverter: converter.ResourceGroupDataModelToVersioned,
-					},
-				)
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opts, resourceGroupResourceOptions)
 			},
 		},
 		{
@@ -121,7 +158,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 		{
 			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/radius/{planeName}/.
-			ParentRouter:      baseRouter,
+			ParentRouter:      planeResourceRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
 			ControllerFactory: radius_ctrl.NewProxyController,
