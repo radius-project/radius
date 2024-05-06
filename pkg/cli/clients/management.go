@@ -551,14 +551,14 @@ func (amc *UCPApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 
 // CreateUCPGroup creates a new resource group in the specified plane type and plane name using the provided resource
 // group resource and returns an error if one occurs.
-func (amc *UCPApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucpv20231001.ResourceGroupResource) error {
+func (amc *UCPApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeName string, resourceGroupName string, resourceGroup ucpv20231001.ResourceGroupResource) error {
 	var resourceGroupOptions *ucpv20231001.ResourceGroupsClientCreateOrUpdateOptions
 	resourcegroupClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return err
 	}
 
-	_, err = resourcegroupClient.CreateOrUpdate(ctx, planeType, planeName, resourceGroupName, resourceGroup, resourceGroupOptions)
+	_, err = resourcegroupClient.CreateOrUpdate(ctx, planeName, resourceGroupName, resourceGroup, resourceGroupOptions)
 	if err != nil {
 		return err
 	}
@@ -568,7 +568,7 @@ func (amc *UCPApplicationsManagementClient) CreateUCPGroup(ctx context.Context, 
 
 // DeleteUCPGroup attempts to delete a UCP resource group using the provided plane type, plane name and resource group
 // name, and returns a boolean indicating success or failure and an error if one occurs.
-func (amc *UCPApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error) {
+func (amc *UCPApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error) {
 	var resourceGroupOptions *ucpv20231001.ResourceGroupsClientDeleteOptions
 	resourcegroupClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 
@@ -578,7 +578,7 @@ func (amc *UCPApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, 
 		return false, err
 	}
 
-	_, err = resourcegroupClient.Delete(ctxWithResp, planeType, planeName, resourceGroupName, resourceGroupOptions)
+	_, err = resourcegroupClient.Delete(ctxWithResp, planeName, resourceGroupName, resourceGroupOptions)
 	if err != nil {
 		return false, err
 	}
@@ -587,16 +587,16 @@ func (amc *UCPApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, 
 
 }
 
-// ShowUCPGroup is a function that retrieves a resource group from the Azure Resource Manager using the given plane type,
+// ShowUCPGroup is a function that retrieves a resource group from the UCP API using the given plane type,
 // plane name and resource group name, and returns the resource group resource or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucpv20231001.ResourceGroupResource, error) {
+func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, planeName string, resourceGroupName string) (ucpv20231001.ResourceGroupResource, error) {
 	var resourceGroupOptions *ucpv20231001.ResourceGroupsClientGetOptions
 	resourcegroupClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return ucpv20231001.ResourceGroupResource{}, err
 	}
 
-	resp, err := resourcegroupClient.Get(ctx, planeType, planeName, resourceGroupName, resourceGroupOptions)
+	resp, err := resourcegroupClient.Get(ctx, planeName, resourceGroupName, resourceGroupOptions)
 	if err != nil {
 		return ucpv20231001.ResourceGroupResource{}, err
 	}
@@ -606,7 +606,7 @@ func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, pl
 
 // ListUCPGroup is a function that retrieves a list of resource groups from the UCP API and returns them as a slice of
 // ResourceGroupResource objects. It may return an error if there is an issue with the API request.
-func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucpv20231001.ResourceGroupResource, error) {
+func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeName string) ([]ucpv20231001.ResourceGroupResource, error) {
 	var resourceGroupOptions *ucpv20231001.ResourceGroupsClientListOptions
 	resourceGroupResources := []ucpv20231001.ResourceGroupResource{}
 	resourcegroupClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
@@ -614,7 +614,7 @@ func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 		return resourceGroupResources, err
 	}
 
-	pager := resourcegroupClient.NewListPager(planeType, planeName, resourceGroupOptions)
+	pager := resourcegroupClient.NewListPager(planeName, resourceGroupOptions)
 
 	for pager.More() {
 		resp, err := pager.NextPage(ctx)

@@ -177,7 +177,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		_, err := client.ShowUCPGroup(cmd.Context(), "radius", "local", group)
+		_, err := client.ShowUCPGroup(cmd.Context(), "local", group)
 		if err != nil {
 			return clierrors.Message("The resource group %q does not exist. Run `rad env create` try again.", r.Workspace.Scope)
 		}

@@ -121,7 +121,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
 
-	err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20231001preview.ResourceGroupResource{
+	err = client.CreateUCPGroup(ctx, "local", r.UCPResourceGroupName, v20231001preview.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
 	if err != nil {

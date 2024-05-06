@@ -164,10 +164,10 @@ type ApplicationsManagementClient interface {
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
 	DeleteEnv(ctx context.Context, envName string) (bool, error)
-	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20231001preview.ResourceGroupResource) error
-	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
-	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20231001preview.ResourceGroupResource, error)
-	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20231001preview.ResourceGroupResource, error)
+	CreateUCPGroup(ctx context.Context, planeName string, resourceGroupName string, resourceGroup ucp_v20231001preview.ResourceGroupResource) error
+	DeleteUCPGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
+	ShowUCPGroup(ctx context.Context, planeName string, resourceGroupName string) (ucp_v20231001preview.ResourceGroupResource, error)
+	ListUCPGroup(ctx context.Context, planeName string) ([]ucp_v20231001preview.ResourceGroupResource, error)
 
 	// ShowRecipe shows recipe details including list of all parameters for a given recipe registered to an environment
 	ShowRecipe(ctx context.Context, environmentName string, recipe corerp.RecipeGetMetadata) (corerp.RecipeGetMetadataResponse, error)

@@ -1,9 +1,9 @@
 {
-    "location": "global",
-    "properties":{
-        "kind": "UCPNative",
-        "resourceProviders": {
-            "test": "http://localhost:9999"
-        }
+  "location": "global",
+  "tags": {},
+  "properties": {
+    "resourceProviders": {
+      "test": "http://localhost:9999"
     }
+  }
 }

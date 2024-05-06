@@ -60,9 +60,9 @@ type updater interface {
 
 var _ armrpc_controller.Controller = (*ProxyController)(nil)
 
-// ProxyController is the controller implementation to proxy requests to appropriate RP or URL.
+// ProxyController is the controller implementation to proxy requests to appropriate RP in Radius.
 type ProxyController struct {
-	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
+	armrpc_controller.Operation[*datamodel.RadiusPlane, datamodel.RadiusPlane]
 
 	// transport is the http.RoundTripper to use for proxying requests. Can be overridden for testing.
 	transport http.RoundTripper
@@ -79,16 +79,13 @@ func NewProxyController(opts armrpc_controller.Options) (armrpc_controller.Contr
 	transport := otelhttp.NewTransport(http.DefaultTransport)
 	updater := trackedresource.NewUpdater(opts.StorageClient, &http.Client{Transport: transport})
 	return &ProxyController{
-		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.Plane]{}),
+		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.RadiusPlane]{}),
 		transport: transport,
 		updater:   updater,
 	}, nil
 }
 
-// # Function Explanation
-//
-// Run() takes in a request object and context, looks up the plane and resource provider associated with the
-// request, and proxies the request to the appropriate resource provider.
+// Run processes incoming HTTP requests by proxying them to a downstream resource provider or external system.
 func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

@@ -24,7 +24,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
-	"github.com/radius-project/radius/pkg/ucp/rest"
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
@@ -69,16 +68,11 @@ func ValidateDownstream(ctx context.Context, client store.StorageClient, id reso
 		// Not expected to happen.
 		return nil, err
 	}
-
-	plane, err := store.GetResource[datamodel.Plane](ctx, client, planeID.String())
+	plane, err := store.GetResource[datamodel.RadiusPlane](ctx, client, planeID.String())
 	if errors.Is(err, &store.ErrNotFound{}) {
 		return nil, &NotFoundError{Message: fmt.Sprintf("plane %q not found", planeID.String())}
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to find plane %q: %w", planeID.String(), err)
-	}
-
-	if plane.Properties.Kind != rest.PlaneKindUCPNative {
-		return nil, &InvalidError{Message: fmt.Sprintf("unexpected plane type %s", plane.Properties.Kind)}
 	}
 
 	// If the ID contains a resource group, validate it now.

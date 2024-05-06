@@ -23,8 +23,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
@@ -50,11 +48,10 @@ func Test_Run(t *testing.T) {
 	id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
 	trackingID := trackedresource.IDFor(id)
 
-	plane := datamodel.Plane{
-		Properties: datamodel.PlaneProperties{
-			Kind: datamodel.PlaneKind(v20231001preview.PlaneKindUCPNative),
-			ResourceProviders: map[string]*string{
-				"Applications.Test": to.Ptr("https://localhost:1234"),
+	plane := datamodel.RadiusPlane{
+		Properties: datamodel.RadiusPlaneProperties{
+			ResourceProviders: map[string]string{
+				"Applications.Test": "https://localhost:1234",
 			},
 		},
 	}
@@ -140,28 +137,6 @@ func Test_Run(t *testing.T) {
 		expected := controller.NewFailedResult(v1.ErrorDetails{
 			Code:    v1.CodeNotFound,
 			Message: "plane \"/planes/test/local\" not found",
-			Target:  trackingID.String(),
-		})
-
-		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
-		require.Equal(t, expected, result)
-		require.NoError(t, err)
-	})
-
-	t.Run("Failure (validate downstream: invalid downstream)", func(t *testing.T) {
-		pc, _, storageClient := setup(t)
-
-		storageClient.EXPECT().
-			Get(gomock.Any(), trackingID.String(), gomock.Any()).
-			Return(&store.Object{Data: data}, nil).Times(1)
-
-		storageClient.EXPECT().
-			Get(gomock.Any(), "/planes/"+trackingID.PlaneNamespace(), gomock.Any()).
-			Return(&store.Object{Data: datamodel.Plane{}}, nil).Times(1)
-
-		expected := controller.NewFailedResult(v1.ErrorDetails{
-			Code:    v1.CodeInvalid,
-			Message: "unexpected plane type ",
 			Target:  trackingID.String(),
 		})
 

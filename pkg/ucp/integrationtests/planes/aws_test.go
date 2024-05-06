@@ -73,7 +73,6 @@ func Test_AWSPlane_GET_Found(t *testing.T) {
 }
 
 func Test_AWSPlane_LIST(t *testing.T) {
-	t.Skip("This functionality is currently broken. See https://github.com/radius-project/radius/issues/4878")
 
 	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()

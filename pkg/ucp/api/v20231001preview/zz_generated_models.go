@@ -87,6 +87,51 @@ type AwsCredentialResourceTagsUpdate struct {
 	Tags map[string]*string
 }
 
+// AwsPlaneResource - The AWS plane resource
+type AwsPlaneResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *AwsPlaneResourceProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// AwsPlaneResourceListResult - The response of a AwsPlaneResource list operation.
+type AwsPlaneResourceListResult struct {
+	// REQUIRED; The AwsPlaneResource items on this page
+	Value []*AwsPlaneResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// AwsPlaneResourceProperties - The Plane properties.
+type AwsPlaneResourceProperties struct {
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// AwsPlaneResourceTagsUpdate - The type used for updating tags in AwsPlaneResource resources.
+type AwsPlaneResourceTagsUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+}
+
 // AzureCredentialProperties - The base properties of Azure Credential
 type AzureCredentialProperties struct {
 	// REQUIRED; The kind of Azure credential
@@ -134,6 +179,54 @@ type AzureCredentialResourceListResult struct {
 
 // AzureCredentialResourceTagsUpdate - The type used for updating tags in AzureCredentialResource resources.
 type AzureCredentialResourceTagsUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// AzurePlaneResource - The Azure plane resource.
+type AzurePlaneResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *AzurePlaneResourceProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// AzurePlaneResourceListResult - The response of a AzurePlaneResource list operation.
+type AzurePlaneResourceListResult struct {
+	// REQUIRED; The AzurePlaneResource items on this page
+	Value []*AzurePlaneResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// AzurePlaneResourceProperties - The Plane properties.
+type AzurePlaneResourceProperties struct {
+	// REQUIRED; The URL used to proxy requests.
+	URL *string
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// AzurePlaneResourceTagsUpdate - The type used for updating tags in AzurePlaneResource resources.
+type AzurePlaneResourceTagsUpdate struct {
 	// Resource tags.
 	Tags map[string]*string
 }
@@ -229,6 +322,45 @@ type ErrorResponse struct {
 	Error *ErrorDetail
 }
 
+// GenericPlaneResource - The generic representation of a plane resource
+type GenericPlaneResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *GenericPlaneResourceProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// GenericPlaneResourceListResult - The response of a GenericPlaneResource list operation.
+type GenericPlaneResourceListResult struct {
+	// REQUIRED; The GenericPlaneResource items on this page
+	Value []*GenericPlaneResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// GenericPlaneResourceProperties - The properties of the generic representation of a plane resource.
+type GenericPlaneResourceProperties struct {
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
 // GenericResource - Represents resource data.
 type GenericResource struct {
 	// The resource-specific properties for this resource.
@@ -272,58 +404,10 @@ func (i *InternalCredentialStorageProperties) GetCredentialStorageProperties() *
 	}
 }
 
-// PlaneResource - The plane resource
-type PlaneResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string
-
-	// REQUIRED; The resource-specific properties for this resource.
-	Properties *PlaneResourceProperties
-
-	// Resource tags.
-	Tags map[string]*string
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string
-
-	// READ-ONLY; The name of the resource
-	Name *string
-
-	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
-	SystemData *SystemData
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string
-}
-
-// PlaneResourceListResult - The response of a PlaneResource list operation.
-type PlaneResourceListResult struct {
-	// REQUIRED; The PlaneResource items on this page
-	Value []*PlaneResource
-
-	// The link to the next page of items
-	NextLink *string
-}
-
-// PlaneResourceProperties - The Plane properties.
-type PlaneResourceProperties struct {
-	// REQUIRED; The kind of plane
-	Kind *PlaneKind
-
-	// Resource Providers for UCP Native Plane
-	ResourceProviders map[string]*string
-
-	// URL to forward requests to for non UCP Native Plane
-	URL *string
-
-	// READ-ONLY; The status of the asynchronous operation.
-	ProvisioningState *ProvisioningState
-}
-
-// PlaneResourceTagsUpdate - The type used for updating tags in PlaneResource resources.
-type PlaneResourceTagsUpdate struct {
-	// Resource tags.
-	Tags map[string]*string
+// PlaneNameParameter - The Plane Name parameter.
+type PlaneNameParameter struct {
+	// REQUIRED; The name of the plane
+	PlaneName *string
 }
 
 // ProxyResource - The resource model definition for a Azure Resource Manager proxy resource. It will not have tags and a
@@ -340,6 +424,54 @@ type ProxyResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// RadiusPlaneResource - The Radius plane resource.
+type RadiusPlaneResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *RadiusPlaneResourceProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// RadiusPlaneResourceListResult - The response of a RadiusPlaneResource list operation.
+type RadiusPlaneResourceListResult struct {
+	// REQUIRED; The RadiusPlaneResource items on this page
+	Value []*RadiusPlaneResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// RadiusPlaneResourceProperties - The Plane properties.
+type RadiusPlaneResourceProperties struct {
+	// REQUIRED; Resource Providers for UCP Native Plane
+	ResourceProviders map[string]*string
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// RadiusPlaneResourceTagsUpdate - The type used for updating tags in RadiusPlaneResource resources.
+type RadiusPlaneResourceTagsUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources

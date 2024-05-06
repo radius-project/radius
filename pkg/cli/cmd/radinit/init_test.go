@@ -679,7 +679,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
+				CreateUCPGroup(context.Background(), "local", "default", gomock.Any()).
 				Return(nil).
 				Times(1)
 

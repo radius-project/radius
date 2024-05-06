@@ -42,11 +42,10 @@ func NewResourcesClient(credential azcore.TokenCredential, options *arm.ClientOp
 // NewListPager - List resources in a resource group
 //
 // Generated from API version 2023-10-01-preview
-//   - planeType - The plane type.
-//   - planeName - The name of the plane
+//   - planeName - The plane name.
 //   - resourceGroupName - The name of resource group
 //   - options - ResourcesClientListOptions contains the optional parameters for the ResourcesClient.NewListPager method.
-func (client *ResourcesClient) NewListPager(planeType string, planeName string, resourceGroupName string, options *ResourcesClientListOptions) (*runtime.Pager[ResourcesClientListResponse]) {
+func (client *ResourcesClient) NewListPager(planeName string, resourceGroupName string, options *ResourcesClientListOptions) (*runtime.Pager[ResourcesClientListResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[ResourcesClientListResponse]{
 		More: func(page ResourcesClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -55,7 +54,7 @@ func (client *ResourcesClient) NewListPager(planeType string, planeName string, 
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listCreateRequest(ctx, planeType, planeName, resourceGroupName, options)
+				req, err = client.listCreateRequest(ctx, planeName, resourceGroupName, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -75,13 +74,12 @@ func (client *ResourcesClient) NewListPager(planeType string, planeName string, 
 }
 
 // listCreateRequest creates the List request.
-func (client *ResourcesClient) listCreateRequest(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourcesClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/resources"
-	if planeType == "" {
-		return nil, errors.New("parameter planeType cannot be empty")
+func (client *ResourcesClient) listCreateRequest(ctx context.Context, planeName string, resourceGroupName string, options *ResourcesClientListOptions) (*policy.Request, error) {
+	urlPath := "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}/resources"
+	if planeName == "" {
+		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
 	if resourceGroupName == "" {
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}

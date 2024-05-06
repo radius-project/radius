@@ -1,0 +1,6 @@
+{
+  "location": "global",
+  "properties": {
+    "url": "https://management.azure.com/"
+  }
+}

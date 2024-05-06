@@ -209,7 +209,7 @@ func (rgc *ResourceGroupClientImpl) CreateOrUpdate(ctx context.Context, resource
 		return ucpv20231001preview.ResourceGroupsClientCreateOrUpdateResponse{}, err
 	}
 
-	return rgc.inner.CreateOrUpdate(ctx, "radius", parsed.FindScope("radius"), resourceGroupName, resource, options)
+	return rgc.inner.CreateOrUpdate(ctx, parsed.FindScope("radius"), resourceGroupName, resource, options)
 }
 
 func (rgc *ResourceGroupClientImpl) Get(ctx context.Context, resourceGroupName string, options *ucpv20231001preview.ResourceGroupsClientGetOptions) (ucpv20231001preview.ResourceGroupsClientGetResponse, error) {
@@ -218,7 +218,7 @@ func (rgc *ResourceGroupClientImpl) Get(ctx context.Context, resourceGroupName s
 		return ucpv20231001preview.ResourceGroupsClientGetResponse{}, err
 	}
 
-	return rgc.inner.Get(ctx, "radius", parsed.FindScope("radius"), resourceGroupName, options)
+	return rgc.inner.Get(ctx, parsed.FindScope("radius"), resourceGroupName, options)
 }
 
 var _ ResourceClient = (*ResourceClientImpl)(nil)

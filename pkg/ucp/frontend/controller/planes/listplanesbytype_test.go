@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -36,8 +37,13 @@ func Test_ListPlanesByType(t *testing.T) {
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
-	planesCtrl, err := NewListPlanesByType(armrpc_controller.Options{StorageClient: mockStorageClient})
-	require.NoError(t, err)
+	ctrl := &ListPlanesByType[*datamodel.RadiusPlane, datamodel.RadiusPlane]{
+		Operation: armrpc_controller.NewOperation[*datamodel.RadiusPlane, datamodel.RadiusPlane](
+			armrpc_controller.Options{StorageClient: mockStorageClient},
+			armrpc_controller.ResourceOptions[datamodel.RadiusPlane]{
+				ResponseConverter: converter.RadiusPlaneDataModelToVersioned,
+			}),
+	}
 
 	url := "/planes/radius?api-version=2023-10-01-preview"
 
@@ -49,18 +55,21 @@ func Test_ListPlanesByType(t *testing.T) {
 
 	testPlaneId := "/planes/radius/local"
 	testPlaneName := "local"
-	testPlaneType := "planesType"
+	testPlaneType := "System.Radius/planes"
 
-	planeData := datamodel.Plane{
+	planeData := datamodel.RadiusPlane{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   testPlaneId,
-				Name: testPlaneName,
-				Type: testPlaneType,
+				ID:       testPlaneId,
+				Name:     testPlaneName,
+				Type:     testPlaneType,
+				Location: "global",
 			},
 		},
-		Properties: datamodel.PlaneProperties{
-			Kind: "AWS",
+		Properties: datamodel.RadiusPlaneProperties{
+			ResourceProviders: map[string]string{
+				"Applications.Core": "https://applications-rp",
+			},
 		},
 	}
 
@@ -76,19 +85,20 @@ func Test_ListPlanesByType(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 	ctx := rpctest.NewARMRequestContext(request)
-	actualResponse, err := planesCtrl.Run(ctx, nil, request)
+	actualResponse, err := ctrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedPlane := v20231001preview.PlaneResource{
-		ID:   &testPlaneId,
-		Name: &testPlaneName,
-		Type: &testPlaneType,
-		Tags: nil,
-		Properties: &v20231001preview.PlaneResourceProperties{
-			Kind:              to.Ptr(v20231001preview.PlaneKindAWS),
-			ResourceProviders: nil,
-			URL:               nil,
-			ProvisioningState: nil,
+	expectedPlane := v20231001preview.RadiusPlaneResource{
+		ID:       &testPlaneId,
+		Name:     &testPlaneName,
+		Type:     &testPlaneType,
+		Location: to.Ptr("global"),
+		Tags:     map[string]*string{},
+		Properties: &v20231001preview.RadiusPlaneResourceProperties{
+			ProvisioningState: to.Ptr(v20231001preview.ProvisioningState("Succeeded")),
+			ResourceProviders: map[string]*string{
+				"Applications.Core": to.Ptr("https://applications-rp"),
+			},
 		},
 	}
 
@@ -98,7 +108,17 @@ func Test_ListPlanesByType(t *testing.T) {
 		},
 	}
 
-	expectedResponse := armrpc_rest.NewOKResponse(expectedPlaneList)
+	require.IsType(t, &armrpc_rest.OKResponse{}, actualResponse)
+	actualBody := actualResponse.(*armrpc_rest.OKResponse).Body
+	require.IsType(t, &v1.PaginatedList{}, actualBody)
+	actualList := actualBody.(*v1.PaginatedList)
 
+	// SystemData includes timestamps, so blank it out for comparison
+	for i := range actualList.Value {
+		require.IsType(t, &v20231001preview.RadiusPlaneResource{}, actualList.Value[i])
+		actualList.Value[i].(*v20231001preview.RadiusPlaneResource).SystemData = nil
+	}
+
+	expectedResponse := armrpc_rest.NewOKResponse(expectedPlaneList)
 	require.Equal(t, expectedResponse, actualResponse)
 }

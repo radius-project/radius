@@ -27,71 +27,178 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
 	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/ucp/rest"
 	test "github.com/radius-project/radius/test/ucp"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_Plane_Operations(t *testing.T) {
-	myTest := test.NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		planeID := "/planes/testtype/testplane"
-		apiVersion := v20231001preview.Version
-		planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
+	apiVersion := v20231001preview.Version
 
-		// By default, we configure default planes in UCP. Verify that by calling List Planes
-		planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes?api-version=%s", url, apiVersion))
-		require.Equal(t, 2, len(planes.Value))
-
-		t.Cleanup(func() {
-			_ = deletePlane(t, roundTripper, planeURL)
+	t.Run("Default planes", func(t *testing.T) {
+		test := test.NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+			// By default, we configure default planes in UCP. Verify that by calling List Planes
+			planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes?api-version=%s", url, apiVersion))
+			require.Equal(t, 2, len(planes.Value))
 		})
-
-		// Create Plane
-		testPlane := v20231001preview.PlaneResource{
-			ID:       to.Ptr(planeID),
-			Type:     to.Ptr("System.Planes/testtype"),
-			Name:     to.Ptr("testplane"),
-			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &v20231001preview.PlaneResourceProperties{
-				Kind: to.Ptr(v20231001preview.PlaneKindUCPNative),
-				ResourceProviders: map[string]*string{
-					"example.com": to.Ptr("http://localhost:8000"),
-				},
-			},
-		}
-
-		createPlane(t, roundTripper, planeURL, testPlane)
-		createPlane(t, roundTripper, planeURL, testPlane)
-
-		testPlaneRest := rest.Plane{
-			ID:   planeID,
-			Type: "System.Planes/testtype",
-			Name: "testplane",
-			Properties: rest.PlaneProperties{
-				Kind: rest.PlaneKindUCPNative,
-				ResourceProviders: map[string]string{
-					"example.com": "http://localhost:8000",
-				},
-			},
-		}
-		// Get Plane
-		plane, statusCode := getPlane(t, roundTripper, planeURL)
-		require.Equal(t, http.StatusOK, statusCode)
-		require.Equal(t, testPlaneRest, plane)
-
-		// Delete Plane
-		statusCode = deletePlane(t, roundTripper, planeURL)
-		require.Equal(t, http.StatusOK, statusCode)
-
-		// Get Plane - Expected Not Found
-		_, statusCode = getPlane(t, roundTripper, planeURL)
-		require.Equal(t, http.StatusNotFound, statusCode)
-
+		test.Test(t)
 	})
-	myTest.Test(t)
+
+	t.Run("AWS", func(t *testing.T) {
+		test := test.NewUCPTest(t, "AWS_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+			apiVersion := v20231001preview.Version
+
+			planeID := "/planes/aws/testplane"
+			planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
+
+			t.Cleanup(func() {
+				_ = deletePlane(t, roundTripper, planeURL)
+			})
+
+			body := v20231001preview.AwsPlaneResource{
+				Location:   to.Ptr(v1.LocationGlobal),
+				Properties: &v20231001preview.AwsPlaneResourceProperties{},
+			}
+
+			createPlane(t, roundTripper, planeURL, body)
+
+			expected := v20231001preview.AwsPlaneResource{
+				ID:       to.Ptr(planeID),
+				Type:     to.Ptr("System.AWS/planes"),
+				Name:     to.Ptr("testplane"),
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &v20231001preview.AwsPlaneResourceProperties{
+					ProvisioningState: to.Ptr(v20231001preview.ProvisioningStateSucceeded),
+				},
+				Tags: map[string]*string{},
+			}
+
+			// Get Plane
+			actual, statusCode := getPlane[v20231001preview.AwsPlaneResource](t, roundTripper, planeURL)
+			require.Equal(t, http.StatusOK, statusCode)
+
+			// SystemData includes timestamps, so we can't compare it directly
+			expected.SystemData = actual.SystemData
+			require.Equal(t, expected, actual)
+
+			// Delete Plane
+			statusCode = deletePlane(t, roundTripper, planeURL)
+			require.Equal(t, http.StatusOK, statusCode)
+
+			// Get Plane - Expected Not Found
+			_, statusCode = getPlane[any](t, roundTripper, planeURL)
+			require.Equal(t, http.StatusNotFound, statusCode)
+		})
+		test.Test(t)
+	})
+
+	t.Run("Azure", func(t *testing.T) {
+		test := test.NewUCPTest(t, "Azure_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+			apiVersion := v20231001preview.Version
+
+			planeID := "/planes/azure/testplane"
+			planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
+
+			t.Cleanup(func() {
+				_ = deletePlane(t, roundTripper, planeURL)
+			})
+
+			body := v20231001preview.AzurePlaneResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &v20231001preview.AzurePlaneResourceProperties{
+					URL: to.Ptr("https://www.example.com"),
+				},
+			}
+
+			createPlane(t, roundTripper, planeURL, body)
+
+			expected := v20231001preview.AzurePlaneResource{
+				ID:       to.Ptr(planeID),
+				Type:     to.Ptr("System.Azure/planes"),
+				Name:     to.Ptr("testplane"),
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &v20231001preview.AzurePlaneResourceProperties{
+					ProvisioningState: to.Ptr(v20231001preview.ProvisioningStateSucceeded),
+					URL:               to.Ptr("https://www.example.com"),
+				},
+				Tags: map[string]*string{},
+			}
+
+			// Get Plane
+			actual, statusCode := getPlane[v20231001preview.AzurePlaneResource](t, roundTripper, planeURL)
+			require.Equal(t, http.StatusOK, statusCode)
+
+			// SystemData includes timestamps, so we can't compare it directly
+			expected.SystemData = actual.SystemData
+			require.Equal(t, expected, actual)
+
+			// Delete Plane
+			statusCode = deletePlane(t, roundTripper, planeURL)
+			require.Equal(t, http.StatusOK, statusCode)
+
+			// Get Plane - Expected Not Found
+			_, statusCode = getPlane[any](t, roundTripper, planeURL)
+			require.Equal(t, http.StatusNotFound, statusCode)
+		})
+		test.Test(t)
+	})
+
+	t.Run("Radius", func(t *testing.T) {
+		test := test.NewUCPTest(t, "Radius_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+			apiVersion := v20231001preview.Version
+
+			planeID := "/planes/radius/testplane"
+			planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
+
+			t.Cleanup(func() {
+				_ = deletePlane(t, roundTripper, planeURL)
+			})
+
+			body := v20231001preview.RadiusPlaneResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &v20231001preview.RadiusPlaneResourceProperties{
+					ResourceProviders: map[string]*string{
+						"Applications.Core": to.Ptr("https://applications.core.example.com"),
+					},
+				},
+			}
+
+			createPlane(t, roundTripper, planeURL, body)
+
+			expected := v20231001preview.RadiusPlaneResource{
+				ID:       to.Ptr(planeID),
+				Type:     to.Ptr("System.Radius/planes"),
+				Name:     to.Ptr("testplane"),
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &v20231001preview.RadiusPlaneResourceProperties{
+					ProvisioningState: to.Ptr(v20231001preview.ProvisioningStateSucceeded),
+					ResourceProviders: map[string]*string{
+						"Applications.Core": to.Ptr("https://applications.core.example.com"),
+					},
+				},
+				Tags: map[string]*string{},
+			}
+
+			// Get Plane
+			actual, statusCode := getPlane[v20231001preview.RadiusPlaneResource](t, roundTripper, planeURL)
+			require.Equal(t, http.StatusOK, statusCode)
+
+			// SystemData includes timestamps, so we can't compare it directly
+			expected.SystemData = actual.SystemData
+			require.Equal(t, expected, actual)
+
+			// Delete Plane
+			statusCode = deletePlane(t, roundTripper, planeURL)
+			require.Equal(t, http.StatusOK, statusCode)
+
+			// Get Plane - Expected Not Found
+			_, statusCode = getPlane[any](t, roundTripper, planeURL)
+			require.Equal(t, http.StatusNotFound, statusCode)
+		})
+		test.Test(t)
+	})
 }
 
-func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane v20231001preview.PlaneResource) {
+func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane any) {
 	body, err := json.Marshal(plane)
 	require.NoError(t, err)
 	createRequest, err := test.NewUCPRequest(
@@ -107,12 +214,11 @@ func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane
 	t.Logf("Plane: %s created/updated successfully", url)
 }
 
-func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Plane, int) {
+func getPlane[T any](t *testing.T, roundTripper http.RoundTripper, url string) (T, int) {
 	getRequest, err := test.NewUCPRequest(
 		http.MethodGet,
 		url,
-		nil,
-	)
+		nil)
 	require.NoError(t, err, "")
 
 	result, err := roundTripper.RoundTrip(getRequest)
@@ -122,14 +228,14 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	var plane rest.Plane
+	var plane T
 	err = json.Unmarshal(payload, &plane)
 	require.NoError(t, err)
 
 	return plane, result.StatusCode
 }
 
-func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20231001preview.PlaneResourceListResult {
+func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v1.PaginatedList {
 	listRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
@@ -145,7 +251,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20231
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	listOfPlanes := v20231001preview.PlaneResourceListResult{}
+	listOfPlanes := v1.PaginatedList{}
 	require.NoError(t, json.Unmarshal(payload, &listOfPlanes))
 	return listOfPlanes
 }

@@ -283,13 +283,13 @@ func createValidateNamespaceError(namespaceClient *namespace.MockInterface) {
 
 func createShowUCPSuccess(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
 	appManagementClient.EXPECT().
-		ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "test-resource-group").
+		ShowUCPGroup(gomock.Any(), gomock.Any(), "test-resource-group").
 		Return(testResourceGroup, nil).Times(1)
 }
 
 func createShowUCPError(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
 	appManagementClient.EXPECT().
-		ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "invalidresourcegroup").
+		ShowUCPGroup(gomock.Any(), gomock.Any(), "invalidresourcegroup").
 		Return(testResourceGroup, clierrors.Message("The resource group %q could not be found.", "invalidresourcegroup")).Times(1)
 
 }

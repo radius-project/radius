@@ -94,7 +94,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().ListUCPGroup(gomock.Any(), gomock.Any(), gomock.Any()).Return(resourceGroups, nil).Times(1)
+		appManagementClient.EXPECT().ListUCPGroup(gomock.Any(), gomock.Any()).Return(resourceGroups, nil).Times(1)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{

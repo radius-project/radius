@@ -134,7 +134,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.ResourceGroupName = scopeId.FindScope(resources_radius.ScopeResourceGroups)
 
-	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.ResourceGroupName)
+	_, err = client.ShowUCPGroup(cmd.Context(), "local", r.ResourceGroupName)
 	if clients.Is404Error(err) {
 		return clierrors.Message("Resource group %q could not be found.", r.ResourceGroupName)
 	} else if err != nil {

@@ -1,10 +1,9 @@
 {
-  "operationId": "Planes_CreateOrUpdate",
-  "title": "Create or update a plane",
+  "operationId": "RadiusPlanes_CreateOrUpdate",
+  "title": "Create or update a Radius plane",
   "parameters": {
     "api-version": "2023-10-01-preview",
     "planeName": "local",
-    "planeType": "radius",
     "Plane": {
       "location": "global",
       "properties": {
@@ -21,7 +20,7 @@
         "location": "global",
         "id": "/planes/radius/local",
         "name": "local",
-        "type": "System.Planes/radius",
+        "type": "System.Radius/planes",
         "properties": {
           "kind": "UCPNative",
           "resourceProviders": {
