@@ -44,7 +44,7 @@ func Test_Container(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "ctnr-ctnr",
+						Name: "ctnr-ctnr-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -78,7 +78,7 @@ func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "containerad",
+						Name: "containesdrad",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
