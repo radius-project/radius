@@ -33,7 +33,7 @@ resource redis 'apps/Deployment@v1' = {
           {
             // This container is the running redis instance.
             name: 'redis'
-            image: 'redis'
+            image: 'ghcr.io/radius-project/mirror/redis:6.2'
             ports: [
               {
                 containerPort: 6379
@@ -43,7 +43,7 @@ resource redis 'apps/Deployment@v1' = {
           {
             // This container will connect to redis and stream logs to stdout for aid in development.
             name: 'redis-monitor'
-            image: 'redis'
+            image: 'ghcr.io/radius-project/mirror/redis:6.2'
             args: [
               'redis-cli'
               '-h'

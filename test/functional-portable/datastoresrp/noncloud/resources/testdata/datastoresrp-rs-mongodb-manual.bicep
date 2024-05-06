@@ -43,7 +43,7 @@ resource mongoContainer 'Applications.Core/containers@2023-10-01-preview' = {
   properties: {
     application: app.id
     container: {
-      image: 'mongo:4.2'
+      image: 'ghcr.io/radius-project/mirror/mongo:4.2'
       env: {
         DBCONNECTION: mongo.connectionString()
         MONGO_INITDB_ROOT_USERNAME: username

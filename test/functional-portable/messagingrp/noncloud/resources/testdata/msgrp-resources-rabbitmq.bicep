@@ -13,7 +13,7 @@ param magpiePort int = 3000
 param environment string = 'test'
 
 @description('Specifies the image for the RabbitMQ container resource.')
-param rabbitmqImage string = 'rabbitmq:3.10'
+param rabbitmqImage string = 'ghcr.io/radius-project/mirror/rabbitmq:3.10'
 
 @description('Specifies the port for the container resource.')
 param rabbitmqPort int = 5672

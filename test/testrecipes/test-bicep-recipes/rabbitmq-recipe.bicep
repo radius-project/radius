@@ -34,7 +34,7 @@ resource rabbitmq 'apps/Deployment@v1' = {
         containers: [
           {
             name: 'rabbitmq'
-            image: 'rabbitmq:3.10'
+            image: 'ghcr.io/radius-project/mirror/rabbitmq:3.10'
             ports: [
               {
                 containerPort: 5672
