@@ -542,9 +542,12 @@ jobs:
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
-      - name: Run functional tests
+      - name: Run functional tests Changed
         run: |
+          mkdir -p ./dist/functional_test
+           echo "*** made the folder ***"
           # Ensure rad cli is in path before running tests.
+
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           cd $GITHUB_WORKSPACE
 
@@ -575,6 +578,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          GOTESTSUM_OPTS: '--junitfile ./dist/functional_test/results.xml'
       - uses: azure/setup-kubectl@v4
         if: always()
         with:
@@ -594,11 +598,20 @@ jobs:
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+      - name: Process Func Test Results
+        uses: ./.github/actions/process-test-results
+        # Always is required here to make sure this target runs even when tests fail.
+        if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
+        with:
+          test_group_name: 'Functional Tests'
+          artifact_name: 'functional_test_results'
+          result_directory: 'dist/functional_test/'    
       - name: Get Terraform recipe publishing logs
         if: always()
         run: |
           # Create pod-logs directory
           mkdir -p recipes/pod-logs
+
           # Get pod logs and save to file
           namespace="radius-test-tf-module-server"
           label="app.kubernetes.io/name=tf-module-server"
