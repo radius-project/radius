@@ -27,7 +27,7 @@ resource redis 'apps/Deployment@v1' = {
         containers: [
           {
             name: 'redis'
-            image: 'redis'
+            image: 'ghcr.io/radius-project/mirror/redis:6.2'
             ports: [
               {
                 containerPort: 6379

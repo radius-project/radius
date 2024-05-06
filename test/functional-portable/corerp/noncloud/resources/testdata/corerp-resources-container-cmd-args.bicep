@@ -26,7 +26,7 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
   properties: {
     application: app.id
     container: {
-      image: 'debian'
+      image: 'ghcr.io/radius-project/mirror/debian:latest'
       command: ['/bin/sh']
       args: ['-c', 'while true; do echo hello; sleep 10;done']
     }
