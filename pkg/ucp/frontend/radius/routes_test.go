@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -31,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
 	"github.com/radius-project/radius/pkg/ucp/secret"
 	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"go.uber.org/mock/gomock"
 )
 
 const pathBase = "/some-path-base"

@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -37,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 // The Run function is also tested by integration tests in the pkg/ucp/integrationtests/radius package.

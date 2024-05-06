@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
@@ -37,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+	"go.uber.org/mock/gomock"
 )
 
 const (

@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/ucp/store"
+	"go.uber.org/mock/gomock"
 
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
 )

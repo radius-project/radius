@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	types "github.com/radius-project/radius/pkg/cli/cmd/recipe"

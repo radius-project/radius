@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"

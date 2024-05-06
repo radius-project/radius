@@ -19,9 +19,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"

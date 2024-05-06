@@ -23,12 +23,12 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_enterAzureCloudProvider(t *testing.T) {

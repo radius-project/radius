@@ -31,8 +31,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 
 	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"

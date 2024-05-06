@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
@@ -29,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {

@@ -28,8 +28,8 @@ import (
 	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"

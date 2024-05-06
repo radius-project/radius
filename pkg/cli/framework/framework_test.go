@@ -20,9 +20,9 @@ import (
 	"errors"
 	"testing"
 
-	gomock "github.com/golang/mock/gomock"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func Test_RunCommand(t *testing.T) {

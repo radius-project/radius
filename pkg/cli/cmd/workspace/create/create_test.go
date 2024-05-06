@@ -21,7 +21,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -30,6 +29,7 @@ import (
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 

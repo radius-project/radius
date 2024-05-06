@@ -32,8 +32,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/testutil"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestDefaultAsyncPut_Create(t *testing.T) {

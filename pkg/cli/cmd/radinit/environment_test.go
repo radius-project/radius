@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/prompt"
@@ -28,6 +27,7 @@ import (
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_enterEnvironmentOptions(t *testing.T) {

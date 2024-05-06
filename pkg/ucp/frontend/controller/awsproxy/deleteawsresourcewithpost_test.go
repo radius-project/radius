@@ -27,9 +27,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"go.uber.org/mock/gomock"
 
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"

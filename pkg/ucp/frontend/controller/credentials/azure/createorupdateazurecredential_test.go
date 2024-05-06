@@ -31,9 +31,9 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/testutil"
 
-	"github.com/golang/mock/gomock"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_Azure_Credential(t *testing.T) {
