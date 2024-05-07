@@ -24,6 +24,8 @@ on:
 env:
   AWS_REGION: us-west-2
   AWS_RESOURCE_TYPES: "AWS::RDS::DBSubnetGroup,AWS::RDS::DBInstance,AWS::S3::Bucket,AWS::Logs::MetricFilter,AWS::Logs::LogGroup"
+  # The current GitHub action link
+  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
 jobs:
   purge_aws_resources:
@@ -31,6 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
     steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
