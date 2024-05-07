@@ -63,10 +63,15 @@ type TerraformDefinition struct {
 	Backend map[string]interface{} `json:"backend"`
 
 	// RequiredProviders is the list of required Terraform providers.
+	// The json serialised json field name reflects the fieldname "required_providers" expected
+	// in the terraform configuration file.
+	// ref: https://developer.hashicorp.com/terraform/language/providers/configuration
 	RequiredProviders map[string]*RequiredProviderInfo `json:"required_providers,omitempty"`
 }
 
 // RequiredProviderInfo represents details for a provider listed under the required_providers block in a Terraform module.
+// The json serialised json field names reflect the fieldnames expected in the terraform configuration file.
+// ref: https://developer.hashicorp.com/terraform/language/providers/configuration
 type RequiredProviderInfo struct {
 	Source               string   `json:"source,omitempty"`                // The source of the provider.
 	Version              string   `json:"version,omitempty"`               // The version of the provider.

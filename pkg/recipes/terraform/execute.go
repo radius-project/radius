@@ -257,16 +257,11 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return "", err
 	}
 
-	// Update module configuration with aliased provider names.
-	logger.Info("Updating module providers with aliases")
-	if err := tfConfig.UpdateModuleWithProviderAliases(ctx); err != nil {
-		return "", err
-	}
-
-	backendConfig, err := tfConfig.AddTerraformInfrastructure(options.ResourceRecipe, backends.NewKubernetesBackend(e.k8sClientSet), loadedModule.RequiredProviders)
+	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend(e.k8sClientSet))
 	if err != nil {
 		return "", err
 	}
+
 	// Retrieving the secret_suffix property from backend config to use it to verify secret creation during terraform init.
 	// This is only used for the backend of type kubernetes and should be moved inside an if block when we add more backends.
 	var secretSuffix string

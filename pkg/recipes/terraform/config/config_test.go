@@ -623,7 +623,7 @@ func Test_AddProviders(t *testing.T) {
 			}
 			require.NoError(t, err)
 			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
-			_, err = tfconfig.AddTerraformInfrastructure(&resourceRecipe, mBackend, tc.requiredProviders)
+			_, err = tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
 			require.NoError(t, err)
 			err = tfconfig.Save(ctx, workingDir)
 			require.NoError(t, err)

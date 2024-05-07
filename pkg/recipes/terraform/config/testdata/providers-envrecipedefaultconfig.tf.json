@@ -19,6 +19,9 @@
   },
   "module": {
     "redis-azure": {
+      "providers": {
+        "azurerm.az-paymentservice": "azurerm.az-paymentservice"
+      },
       "redis_cache_name": "redis-test",
       "resource_group_name": "test-rg",
       "sku": "P",

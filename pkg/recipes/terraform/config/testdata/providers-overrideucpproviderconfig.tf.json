@@ -41,6 +41,10 @@
   },
   "module": {
     "redis-azure": {
+      "providers": {
+        "kubernetes.k8s_first": "kubernetes.k8s_first",
+        "kubernetes.k8s_second": "kubernetes.k8s_second"
+      },
       "redis_cache_name": "redis-test",
       "resource_group_name": "test-rg",
       "sku": "P",

@@ -43,7 +43,8 @@ type moduleInspectResult struct {
 	// ContextVarExists is true if the module has a variable defined for recipe context.
 	ContextVarExists bool
 
-	// RequiredProviders is a list of names of required providers for the module.
+	// RequiredProviders is a map where the key is the name of required providers for the module,
+	// and the value is a pointer to a RequiredProviderInfo struct that contains the details for the provider.
 	RequiredProviders map[string]*config.RequiredProviderInfo
 
 	// ResultOutputExists is true if the module contains an output named "result".

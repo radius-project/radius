@@ -105,10 +105,27 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 
 	// Encode the Terraform config to JSON. JSON encoding is being used to ensure that special characters
 	// in the original text are preserved when writing to the file.
+	/* For example, when writing this text to file with JSON encoding (using enc.Encode(cfg)), the special characters in the following text will be preserved:
+		"required_providers": {
+				"aws": {
+					"source": "hashicorp/aws",
+					"version": ">= 3.0"
+				},
+			}
+	    However, if we were to write the text directly to the file without JSON encoding, the special characters would be escaped and be written as follows:
+		"required_providers": {
+			"aws": {
+					"source": "hashicorp/aws",
+					"version": "\u003e= 2.0"
+				},
+			}
+	*/
 	if err := enc.Encode(cfg); err != nil {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
+	// Remove trailing newline character from the JSON data so that file is written without any extra newline characters.
+	// This is to maintain consistency with the codebase.
 	jsonData := strings.TrimSuffix(buf.String(), "\n")
 	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getMainConfigFilePath(workingDir)))
 	if err := os.WriteFile(getMainConfigFilePath(workingDir), []byte(jsonData), modeConfigFile); err != nil {
@@ -118,11 +135,12 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	return nil
 }
 
-// AddProviders adds provider configurations for requiredProviders that are supported
-// by Radius to generate custom provider configurations. Save() must be called to save
-// the generated providers config. requiredProviders contains a list of provider names
+// AddProviders adds provider configurations to Terraform configuration file based on input of environment recipe configuration, requiredProviders and ucpConfiguredProviders.
+// It also updates module provider block if aliases exist and required_provider configuration to the file.
+// Save() must be called to save the generated providers config. requiredProviders contains a list of provider names
 // that are required for the module.
 func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, ucpConfiguredProviders, envConfig)
 	if err != nil {
 		return err
@@ -132,6 +150,19 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 	if len(providerConfigs) > 0 {
 		cfg.Provider = providerConfigs
 	}
+
+	// Update module configuration with aliased provider names, if they exist.
+	logger.Info("Updating module providers with aliases")
+	if err := cfg.UpdateModuleWithProviderAliases(ctx); err != nil {
+		return err
+	}
+
+	// Set the required providers for the Terraform configuration.
+	logger.Info("Update Terraform configuration with required providers")
+	if cfg.Terraform == nil {
+		cfg.Terraform = &TerraformDefinition{}
+	}
+	cfg.Terraform.RequiredProviders = requiredProviders
 
 	return nil
 }
@@ -153,7 +184,14 @@ func (cfg *TerraformConfig) UpdateModuleWithProviderAliases(ctx context.Context)
 		}
 
 		// For each provider in the providerConfigs, if provider has a property "alias",
-		// add entry to the module provider configuration
+		// add entry to the module provider configuration, per documentation:
+		// Provider configurations (those with the alias argument set) are never inherited automatically by modules,
+		// and so must always be passed explicitly using the providers map.
+		// https://developer.hashicorp.com/terraform/language/modules/develop/providers#legacy-shared-modules-with-provider-configurations
+
+		// Note: We're building configuration from user input, we're currently mapping the provider.alias names in the provider configuration
+		// to be the same as expected in module. This is being done to ensure that the provider configuration is passed to the module correctly.
+
 		for _, providerConfig := range providerConfigDetails {
 			if alias, ok := providerConfig["alias"]; ok {
 				moduleAliasConfig[providerName+"."+fmt.Sprintf("%v", alias)] = providerName + "." + fmt.Sprintf("%v", alias)
@@ -249,20 +287,19 @@ func getProviderConfigs(ctx context.Context, requiredProviders map[string]*Requi
 	return providerConfigs, nil
 }
 
-// AddTerraformInfrastructure adds backend configurations to store Terraform state file for the deployment.
-// It also sets the required providers for the Terraform configuration.
+// AddTerraformBackend adds backend configurations to store Terraform state file for the deployment.
 // Save() must be called to save the generated backend config.
 // Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
-func (cfg *TerraformConfig) AddTerraformInfrastructure(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend, requiredProviders map[string]*RequiredProviderInfo) (map[string]any, error) {
+func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend) (map[string]any, error) {
 	backendConfig, err := backend.BuildBackend(resourceRecipe)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg.Terraform = &TerraformDefinition{
-		Backend:           backendConfig,
-		RequiredProviders: requiredProviders,
+	if cfg.Terraform == nil {
+		cfg.Terraform = &TerraformDefinition{}
 	}
+	cfg.Terraform.Backend = backendConfig
 
 	return backendConfig, nil
 }
