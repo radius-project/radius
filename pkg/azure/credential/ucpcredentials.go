@@ -26,6 +26,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"go.uber.org/atomic"
@@ -102,37 +103,46 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 		return err
 	}
 
-	if s.ClientID == "" || s.ClientSecret == "" || s.TenantID == "" {
-		return errors.New("invalid azure service principal credential info")
-	}
+	switch (*s).(type) {
+	case (*datamodel.AzureServicePrincipalCredentialProperties):
+		azureServicePrincipalCredential := (*s).(*datamodel.AzureServicePrincipalCredentialProperties)
+		if azureServicePrincipalCredential.ClientID == "" || azureServicePrincipalCredential.ClientSecret == "" || azureServicePrincipalCredential.TenantID == "" {
+			return errors.New("invalid azure service principal credential info")
+		}
 
-	// Do not instantiate new client unless the secret is rotated.
-	if c.credential != nil && c.credential.ClientSecret == s.ClientSecret &&
-		c.credential.ClientID == s.ClientID && c.credential.TenantID == s.TenantID {
+		cred := (*c.credential).(*datamodel.AzureServicePrincipalCredentialProperties)
+
+		// Do not instantiate new client unless the secret is rotated.
+		if cred != nil && cred.ClientSecret == azureServicePrincipalCredential.ClientSecret &&
+			cred.ClientID == azureServicePrincipalCredential.ClientID && cred.TenantID == azureServicePrincipalCredential.TenantID {
+			c.refreshExpiry()
+			return nil
+		}
+
+		logger.Info("Retreived Azure Credential - ClientID: " + azureServicePrincipalCredential.ClientID)
+
+		// Rotate credentials by creating new ClientSecretCredential.
+		var opt *azidentity.ClientSecretCredentialOptions
+		if c.options.ClientOptions != nil {
+			opt = &azidentity.ClientSecretCredentialOptions{
+				ClientOptions: *c.options.ClientOptions,
+			}
+		}
+
+		azCred, err := azidentity.NewClientSecretCredential(azureServicePrincipalCredential.TenantID, azureServicePrincipalCredential.ClientID, azureServicePrincipalCredential.ClientSecret, opt)
+		if err != nil {
+			return err
+		}
+
+		c.tokenCred = azCred
+		c.credential = s
+
 		c.refreshExpiry()
 		return nil
+	default:
+		logger.Info("credential no work")
+		return nil
 	}
-
-	logger.Info("Retreived Azure Credential - ClientID: " + s.ClientID)
-
-	// Rotate credentials by creating new ClientSecretCredential.
-	var opt *azidentity.ClientSecretCredentialOptions
-	if c.options.ClientOptions != nil {
-		opt = &azidentity.ClientSecretCredentialOptions{
-			ClientOptions: *c.options.ClientOptions,
-		}
-	}
-
-	azCred, err := azidentity.NewClientSecretCredential(s.TenantID, s.ClientID, s.ClientSecret, opt)
-	if err != nil {
-		return err
-	}
-
-	c.tokenCred = azCred
-	c.credential = s
-
-	c.refreshExpiry()
-	return nil
 }
 
 // GetToken attempts to refresh the Azure service principal credential if it is expired and then returns an

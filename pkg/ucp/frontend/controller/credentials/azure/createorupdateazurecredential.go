@@ -61,7 +61,8 @@ func (c *CreateOrUpdateAzureCredential) Run(ctx context.Context, w http.Response
 		return nil, err
 	}
 
-	if newResource.Properties.Kind != datamodel.AzureCredentialKind {
+	if newResource.Properties.Kind != datamodel.AzureServicePrincipalCredentialKind &&
+		newResource.Properties.Kind != datamodel.AzureWorkloadIdentityCredentialKind {
 		return armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"), nil
 	}
 
@@ -86,7 +87,9 @@ func (c *CreateOrUpdateAzureCredential) Run(ctx context.Context, w http.Response
 	}
 
 	// Do not save the secret in metadata store.
-	newResource.Properties.AzureCredential.ClientSecret = ""
+	if newResource.Properties.Kind == datamodel.AzureServicePrincipalCredentialKind {
+		newResource.Properties.AzureCredential.(*datamodel.AzureServicePrincipalCredentialProperties).ClientSecret = ""
+	}
 
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := c.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)

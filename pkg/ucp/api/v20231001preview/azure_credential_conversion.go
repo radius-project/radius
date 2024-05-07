@@ -82,11 +82,39 @@ func (cr *AzureCredentialResource) getDataModelCredentialProperties() (*datamode
 		}
 
 		return &datamodel.AzureCredentialResourceProperties{
-			Kind: datamodel.AzureCredentialKind,
-			AzureCredential: &datamodel.AzureCredentialProperties{
+			Kind: datamodel.AzureServicePrincipalCredentialKind,
+			AzureCredential: &datamodel.AzureServicePrincipalCredentialProperties{
 				TenantID:     to.String(p.TenantID),
 				ClientID:     to.String(p.ClientID),
 				ClientSecret: to.String(p.ClientSecret),
+			},
+			Storage: storage,
+		}, nil
+	case *AzureWorkloadIdentityProperties:
+		var storage *datamodel.CredentialStorageProperties
+
+		switch c := p.Storage.(type) {
+		case *InternalCredentialStorageProperties:
+			if c.Kind == nil {
+				return nil, &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
+			}
+			storage = &datamodel.CredentialStorageProperties{
+				Kind: datamodel.InternalStorageKind,
+				InternalCredential: &datamodel.InternalCredentialStorageProperties{
+					SecretName: to.String(c.SecretName),
+				},
+			}
+		case nil:
+			return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"}
+		default:
+			return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())}
+		}
+
+		return &datamodel.AzureCredentialResourceProperties{
+			Kind: datamodel.AzureServicePrincipalCredentialKind,
+			AzureCredential: &datamodel.AzureWorkloadIdentityCredentialProperties{
+				TenantID: to.String(p.TenantID),
+				ClientID: to.String(p.ClientID),
 			},
 			Storage: storage,
 		}, nil
@@ -121,11 +149,18 @@ func (dst *AzureCredentialResource) ConvertFrom(src v1.DataModelInterface) error
 
 	// DO NOT convert any secret values to versioned model.
 	switch dm.Properties.Kind {
-	case datamodel.AzureCredentialKind:
+	case datamodel.AzureServicePrincipalCredentialKind:
 		dst.Properties = &AzureServicePrincipalProperties{
 			Kind:     to.Ptr(AzureCredentialKind(dm.Properties.Kind)),
-			ClientID: to.Ptr(dm.Properties.AzureCredential.ClientID),
-			TenantID: to.Ptr(dm.Properties.AzureCredential.TenantID),
+			ClientID: to.Ptr(dm.Properties.AzureCredential.(*datamodel.AzureServicePrincipalCredentialProperties).ClientID),
+			TenantID: to.Ptr(dm.Properties.AzureCredential.(*datamodel.AzureServicePrincipalCredentialProperties).TenantID),
+			Storage:  storage,
+		}
+	case datamodel.AzureWorkloadIdentityCredentialKind:
+		dst.Properties = &AzureServicePrincipalProperties{
+			Kind:     to.Ptr(AzureCredentialKind(dm.Properties.Kind)),
+			ClientID: to.Ptr(dm.Properties.AzureCredential.(*datamodel.AzureWorkloadIdentityCredentialProperties).ClientID),
+			TenantID: to.Ptr(dm.Properties.AzureCredential.(*datamodel.AzureWorkloadIdentityCredentialProperties).TenantID),
 			Storage:  storage,
 		}
 	default:

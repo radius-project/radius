@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
+	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	"github.com/radius-project/radius/pkg/ucp/secret"
@@ -119,19 +120,35 @@ func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credent
 	credentials, err := azureCredentialsProvider.Fetch(ctx, credentials.AzureCloud, "default")
 	if err != nil {
 		if errors.Is(err, &secret.ErrNotFound{}) {
-			logger.Info("AWS credentials are not registered, skipping credentials configuration.")
+			logger.Info("Azure credentials are not registered, skipping credentials configuration.")
 			return nil, nil
 		}
 
 		return nil, err
 	}
 
-	if credentials == nil || credentials.ClientID == "" || credentials.TenantID == "" || credentials.ClientSecret == "" {
+	switch (*credentials).(type) {
+	case (*ucp_datamodel.AzureServicePrincipalCredentialProperties):
+		azureServicePrincipal := (*credentials).(*ucp_datamodel.AzureServicePrincipalCredentialProperties)
+		if azureServicePrincipal == nil || azureServicePrincipal.ClientID == "" || azureServicePrincipal.TenantID == "" || azureServicePrincipal.ClientSecret == "" {
+			logger.Info("Azure service principal credentials are not registered, skipping credentials configuration.")
+			return nil, nil
+		}
+
+		return credentials, nil
+	case (*ucp_datamodel.AzureWorkloadIdentityCredentialProperties):
+		azureWorkloadIdentity := (*credentials).(*ucp_datamodel.AzureWorkloadIdentityCredentialProperties)
+		if azureWorkloadIdentity == nil || azureWorkloadIdentity.ClientID == "" || azureWorkloadIdentity.TenantID == "" {
+			logger.Info("Azure workload identity credentials are not registered, skipping credentials configuration.")
+			return nil, nil
+		}
+
+		return credentials, nil
+	default:
 		logger.Info("Azure credentials are not registered, skipping credentials configuration.")
 		return nil, nil
 	}
 
-	return credentials, nil
 }
 
 func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, credentials *credentials.AzureCredential, subscriptionID string) map[string]any {
@@ -139,10 +156,20 @@ func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, cred
 		configMap[azureSubIDParam] = subscriptionID
 	}
 
-	if credentials != nil && credentials.ClientID != "" && credentials.TenantID != "" && credentials.ClientSecret != "" {
-		configMap[azureClientIDParam] = credentials.ClientID
-		configMap[azureClientSecretParam] = credentials.ClientSecret
-		configMap[azureTenantIDParam] = credentials.TenantID
+	switch (*credentials).(type) {
+	case (*ucp_datamodel.AzureServicePrincipalCredentialProperties):
+		azureServicePrincipal := (*credentials).(*ucp_datamodel.AzureServicePrincipalCredentialProperties)
+		if azureServicePrincipal != nil || azureServicePrincipal.ClientID != "" || azureServicePrincipal.TenantID != "" || azureServicePrincipal.ClientSecret != "" {
+			configMap[azureClientIDParam] = azureServicePrincipal.ClientID
+			configMap[azureClientSecretParam] = azureServicePrincipal.ClientSecret
+			configMap[azureTenantIDParam] = azureServicePrincipal.TenantID
+		}
+	case (*ucp_datamodel.AzureWorkloadIdentityCredentialProperties):
+		azureWorkloadIdentity := (*credentials).(*ucp_datamodel.AzureWorkloadIdentityCredentialProperties)
+		if azureWorkloadIdentity != nil || azureWorkloadIdentity.ClientID != "" || azureWorkloadIdentity.TenantID != "" {
+			configMap[azureClientIDParam] = azureWorkloadIdentity.ClientID
+			configMap[azureTenantIDParam] = azureWorkloadIdentity.TenantID
+		}
 	}
 
 	return configMap

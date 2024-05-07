@@ -51,10 +51,10 @@ func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.C
 	}, nil
 }
 
-// Fetch fetches the Azure service principal credentials from UCP and the internal storage (e.g.
-// Kubernetes secret store) and returns an AzureCredential struct. If an error occurs, an error is returned.
+// Fetch fetches the Azure credentials from UCP and the internal storage (e.g. Kubernetes secret store)
+// and returns an AzureCredential struct. If an error occurs, an error is returned.
 func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AzureCredential, error) {
-	// 1. Fetch the secret name of Azure service principal credentials from UCP.
+	// 1. Fetch the secret name of Azure credentials from UCP.
 	cred, err := p.client.Get(ctx, planeName, name, &ucpapi.AzureCredentialsClientGetOptions{})
 	if err != nil {
 		return nil, err
@@ -69,10 +69,17 @@ func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name str
 		case *ucpapi.InternalCredentialStorageProperties:
 			storage = c
 		default:
-			return nil, errors.New("invalid AzureServicePrincipalProperties")
+			return nil, errors.New("invalid InternalCredentialStorageProperties")
+		}
+	case *ucpapi.AzureWorkloadIdentityProperties:
+		switch c := p.Storage.(type) {
+		case *ucpapi.InternalCredentialStorageProperties:
+			storage = c
+		default:
+			return nil, errors.New("invalid InternalCredentialStorageProperties")
 		}
 	default:
-		return nil, errors.New("invalid InternalCredentialStorageProperties")
+		return nil, errors.New("invalid AzureCredentialProperties")
 	}
 
 	secretName := to.String(storage.SecretName)

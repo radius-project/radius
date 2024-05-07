@@ -21,8 +21,10 @@ import v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 const (
 	// InternalStorageKind represents ucp credential storage type for internal credential type
 	InternalStorageKind = "Internal"
-	// AzureCredentialKind represents ucp credential kind for azure credentials.
-	AzureCredentialKind = "ServicePrincipal"
+	// AzureServicePrincipalCredentialKind represents ucp credential kind for Azure service principal credentials.
+	AzureServicePrincipalCredentialKind = "ServicePrincipal"
+	// AzureWorkloadIdentityCredentialKind represents ucp credential kind for Azure workload identity credentials.
+	AzureWorkloadIdentityCredentialKind = "WorkloadIdentity"
 	// AWSCredentialKind represents ucp credential kind for aws credentials.
 	AWSCredentialKind = "AccessKey"
 )
@@ -55,8 +57,8 @@ func (c *AWSCredential) ResourceTypeName() string {
 type AzureCredentialResourceProperties struct {
 	// Kind is the kind of azure credential resource.
 	Kind string `json:"kind,omitempty"`
-	// AzureCredential is the azure service principal credentials.
-	AzureCredential *AzureCredentialProperties `json:"azureCredential,omitempty"`
+	// AzureCredential is the azure credential resource.
+	AzureCredential AzureCredentialProperties `json:"azureCredential,omitempty"`
 	// Storage contains the properties of the storage associated with the kind.
 	Storage *CredentialStorageProperties `json:"storage,omitempty"`
 }
@@ -71,15 +73,31 @@ type AWSCredentialResourceProperties struct {
 	Storage *CredentialStorageProperties `json:"storage,omitempty"`
 }
 
-// AzureCredentialProperties contains ucp Azure credential properties.
-type AzureCredentialProperties struct {
-	// TenantID represents the tenantId of azure service principal.
+// AzureServicePrincipalCredentialProperties contains ucp Azure service principal credential properties.
+type AzureServicePrincipalCredentialProperties struct {
+	// TenantID represents the tenantId of azure service principal credential.
 	TenantID string `json:"tenantId"`
-	// ClientID represents the clientId of azure service principal.
+	// ClientID represents the clientId of azure service principal credential.
 	ClientID string `json:"clientId"`
-	// ClientSecret represents the client secret of service principal.
+	// ClientSecret represents the client secret of service principal credential.
 	ClientSecret string `json:"clientSecret,omitempty"`
 }
+
+// AzureWorkloadIdentityCredentialProperties contains ucp Azure workload identity credential properties.
+type AzureWorkloadIdentityCredentialProperties struct {
+	// TenantID represents the tenantId of azure workload identity credential.
+	TenantID string `json:"tenantId"`
+	// ClientID represents the clientId of azure service principal credential.
+	ClientID string `json:"clientId"`
+}
+
+type AzureCredentialProperties interface {
+	IsAzureCredential()
+}
+
+func (a *AzureServicePrincipalCredentialProperties) IsAzureCredential() {}
+
+func (a *AzureWorkloadIdentityCredentialProperties) IsAzureCredential() {}
 
 // AWSCredentialProperties contains ucp AWS credential properties.
 type AWSCredentialProperties struct {
