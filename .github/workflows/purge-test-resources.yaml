@@ -29,6 +29,9 @@ env:
   AZURE_RG_DELETE_LIST_FILE: "az_rg_list.txt"
   # The valid resource time window in seconds to delete the test resources. 6 hours
   VALID_RESOURCE_WINDOW: 6*60*60
+  # The current GitHub action link
+  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
 jobs:
   purge_gchr_dev:
     name: Delete old unused container images
@@ -95,9 +98,13 @@ jobs:
               echo " * $line" >> $GITHUB_STEP_SUMMARY
               az group delete --resource-group $line --yes --verbose --no-wait
           done
-      - name: Create issue for failing purge test resources run
-        uses: actions/github-script@v7
-        if: failure()
+  create_issue_on_failure:
+    name: Create issue for failing purge test resources run
+    needs: [purge_gchr_dev, purge_azure_resources]
+    runs-on: ubuntu-latest
+    if: always() && (needs.purge_gchr_dev.result == 'failure' || needs.purge_azure_resources.result == 'failure')
+    steps:
+      - uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
