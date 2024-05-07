@@ -260,6 +260,29 @@ func (a *AzureServicePrincipalProperties) GetAzureCredentialProperties() *AzureC
 	}
 }
 
+// AzureWorkloadIdentityProperties - The properties of Azure Workload Identity credential storage
+type AzureWorkloadIdentityProperties struct {
+	// REQUIRED; clientId for WorkloadIdentity
+	ClientID *string
+
+	// REQUIRED; The kind of Azure credential
+	Kind *AzureCredentialKind
+
+	// REQUIRED; The storage properties
+	Storage CredentialStoragePropertiesClassification
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// GetAzureCredentialProperties implements the AzureCredentialPropertiesClassification interface for type AzureWorkloadIdentityProperties.
+func (a *AzureWorkloadIdentityProperties) GetAzureCredentialProperties() *AzureCredentialProperties {
+	return &AzureCredentialProperties{
+		Kind: a.Kind,
+		ProvisioningState: a.ProvisioningState,
+	}
+}
+
 // ComponentsKhmx01SchemasGenericresourceAllof0 - Concrete proxy resource types can be created by aliasing this type using
 // a specific property type.
 type ComponentsKhmx01SchemasGenericresourceAllof0 struct {
