@@ -5,18 +5,13 @@
       {
         "alias": "alias1",
         "region": "us-west-2"
-      },
-      {
-        "alias": "alias2",
-        "region": "us-east-1"
       }
     ]
   },
   "module": {
     "redis-azure": {
       "providers": {
-        "aws.alias1": "aws.alias1",
-        "aws.alias2": "aws.alias2"
+        "aws.alias1": "aws.alias1"
       },
       "redis_cache_name": "redis-test",
       "resource_group_name": "test-rg",

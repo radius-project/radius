@@ -153,7 +153,7 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 
 	// Update module configuration with aliased provider names, if they exist.
 	logger.Info("Updating module providers with aliases")
-	if err := cfg.UpdateModuleWithProviderAliases(ctx); err != nil {
+	if err := cfg.UpdateModuleWithProviderAliases(ctx, requiredProviders); err != nil {
 		return err
 	}
 
@@ -169,11 +169,10 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 
 // UpdateModuleWithProviderAliases updates the module provider configuration in the Terraform config
 // by adding aliases to the provider configurations.
-func (cfg *TerraformConfig) UpdateModuleWithProviderAliases(ctx context.Context) error {
+func (cfg *TerraformConfig) UpdateModuleWithProviderAliases(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo) error {
 	if cfg == nil {
 		return fmt.Errorf("terraform configuration is not initialized")
 	}
-
 	providerConfigs := cfg.Provider
 	moduleAliasConfig := map[string]string{}
 
@@ -189,18 +188,32 @@ func (cfg *TerraformConfig) UpdateModuleWithProviderAliases(ctx context.Context)
 		// and so must always be passed explicitly using the providers map.
 		// https://developer.hashicorp.com/terraform/language/modules/develop/providers#legacy-shared-modules-with-provider-configurations
 
-		// Note: We're building configuration from user input, we're currently mapping the provider.alias names in the provider configuration
-		// to be the same as expected in module. This is being done to ensure that the provider configuration is passed to the module correctly.
+		// Note: We're building configuration from user input, we're currently mapping the provider.alias names in
+		// the required provider configuration (ConfigurationAliases) to the environment recipe provider configuration data.
+		// This is being done to ensure that the provider configuration is passed to the module correctly.
 
 		for _, providerConfig := range providerConfigDetails {
 			if alias, ok := providerConfig["alias"]; ok {
-				moduleAliasConfig[providerName+"."+fmt.Sprintf("%v", alias)] = providerName + "." + fmt.Sprintf("%v", alias)
+				aliasProviderConfig := providerName + "." + fmt.Sprintf("%v", alias)
+
+				// Check if the alias is in the required providers' configuration aliases. If there is a match, add the alias to the module provider configuration.
+				if requiredProviders[providerName] != nil && len(requiredProviders[providerName].ConfigurationAliases) > 0 {
+					for _, alias := range requiredProviders[providerName].ConfigurationAliases {
+						if alias == aliasProviderConfig {
+							moduleAliasConfig[alias] = alias
+							break
+						}
+					}
+				}
 			}
 		}
 	}
 
 	// Update the module provider configuration in the Terraform config.
 	if len(moduleAliasConfig) > 0 {
+		if cfg.Module == nil {
+			return fmt.Errorf("module configuration is not initialized")
+		}
 		moduleConfig := cfg.Module
 		for _, module := range moduleConfig {
 			module["providers"] = moduleAliasConfig

@@ -700,6 +700,7 @@ func TestUpdateModuleWithProviderAliases(t *testing.T) {
 		name               string
 		cfg                *TerraformConfig
 		expectedConfig     *TerraformConfig
+		requiredProviders  map[string]*RequiredProviderInfo
 		expectedConfigFile string
 		wantErr            bool
 	}{
@@ -726,10 +727,13 @@ func TestUpdateModuleWithProviderAliases(t *testing.T) {
 						"source":              "Azure/redis/azurerm",
 						"version":             "1.1.0",
 					},
-					"test-module": map[string]any{
-						"resource_group_name": "test-rg",
-						"sku":                 "C",
-					},
+				},
+			},
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:               "hashicorp/aws",
+					Version:              ">= 3.0",
+					ConfigurationAliases: []string{"aws.alias1", "aws.alias2"},
 				},
 			},
 			expectedConfig: &TerraformConfig{
@@ -757,30 +761,76 @@ func TestUpdateModuleWithProviderAliases(t *testing.T) {
 							"aws.alias2": "aws.alias2",
 						},
 					},
-					"test-module": map[string]any{
-						"resource_group_name": "test-rg",
-						"sku":                 "C",
-						"providers": map[string]string{
-							"aws.alias1": "aws.alias1",
-							"aws.alias2": "aws.alias2",
-						},
-					},
 				},
 			},
 			expectedConfigFile: "testdata/providers-modules-aliases.tf.json",
 			wantErr:            false,
 		},
 		{
-			name:    "TerraformConfig is nil",
-			cfg:     nil,
-			wantErr: true,
+			name: "Test with subset of required_provider aliases in provider config",
+			cfg: &TerraformConfig{
+				Provider: map[string]any{
+					"aws": []map[string]any{
+						{
+							"alias":  "alias1",
+							"region": "us-west-2",
+						},
+					},
+				},
+				Module: map[string]TFModuleConfig{
+					"redis-azure": map[string]any{
+						"redis_cache_name":    "redis-test",
+						"resource_group_name": "test-rg",
+						"sku":                 "P",
+						"source":              "Azure/redis/azurerm",
+						"version":             "1.1.0",
+					},
+				},
+			},
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:               "hashicorp/aws",
+					Version:              ">= 3.0",
+					ConfigurationAliases: []string{"aws.alias1", "aws.alias2"},
+				},
+			},
+			expectedConfig: &TerraformConfig{
+				Provider: map[string]any{
+					"aws": []map[string]any{
+						{
+							"alias":  "alias1",
+							"region": "us-west-2",
+						},
+					},
+				},
+				Module: map[string]TFModuleConfig{
+					"redis-azure": map[string]any{
+						"redis_cache_name":    "redis-test",
+						"resource_group_name": "test-rg",
+						"sku":                 "P",
+						"source":              "Azure/redis/azurerm",
+						"version":             "1.1.0",
+						"providers": map[string]string{
+							"aws.alias1": "aws.alias1",
+						},
+					},
+				},
+			},
+			expectedConfigFile: "testdata/providers-modules-subsetaliases.tf.json",
+			wantErr:            false,
+		},
+		{
+			name:              "TerraformConfig is nil",
+			requiredProviders: nil,
+			cfg:               nil,
+			wantErr:           true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := testcontext.New(t)
-			err := tt.cfg.UpdateModuleWithProviderAliases(ctx)
+			err := tt.cfg.UpdateModuleWithProviderAliases(ctx, tt.requiredProviders)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {

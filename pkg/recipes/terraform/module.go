@@ -124,7 +124,8 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 		if len(v.ConfigurationAliases) > 0 {
 			var aliases []string
 			for _, alias := range v.ConfigurationAliases {
-				// Concatenate Name and Alias from ProviderRef.
+				// Concatenate Name and Alias from ProviderRef. This is expected format of provider alias in required_provider configuration_aliases field.
+				// Ref: https://developer.hashicorp.com/terraform/language/modules/develop/providers#provider-aliases-within-modules
 				if alias.Name != "" && alias.Alias != "" {
 					aliases = append(aliases, alias.Name+"."+alias.Alias)
 				}
