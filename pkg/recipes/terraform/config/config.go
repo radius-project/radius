@@ -105,14 +105,16 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 
 	// Encode the Terraform config to JSON. JSON encoding is being used to ensure that special characters
 	// in the original text are preserved when writing to the file.
-	/* For example, when writing this text to file with JSON encoding (using enc.Encode(cfg)), the special characters in the following text will be preserved:
+	/* For example, when writing this text to file with JSON encoding (using enc.Encode(cfg)),
+	   the special characters in the following text will be preserved:
 		"required_providers": {
 				"aws": {
 					"source": "hashicorp/aws",
 					"version": ">= 3.0"
 				},
 			}
-	    However, if we were to write the text directly to the file without JSON encoding, the special characters would be escaped and be written as follows:
+	    However, if we were to write the text directly to the file without JSON encoding, t
+		the special characters would be escaped and be written as follows:
 		"required_providers": {
 			"aws": {
 					"source": "hashicorp/aws",
@@ -211,9 +213,6 @@ func (cfg *TerraformConfig) UpdateModuleWithProviderAliases(ctx context.Context,
 
 	// Update the module provider configuration in the Terraform config.
 	if len(moduleAliasConfig) > 0 {
-		if cfg.Module == nil {
-			return fmt.Errorf("module configuration is not initialized")
-		}
 		moduleConfig := cfg.Module
 		for _, module := range moduleConfig {
 			module["providers"] = moduleAliasConfig
