@@ -544,6 +544,7 @@ jobs:
           make publish-test-terraform-recipes
       - name: Run functional tests Changed
         run: |
+        
           mkdir -p ./dist/functional_test
            echo "*** made the folder ***"
           # Ensure rad cli is in path before running tests.
@@ -566,6 +567,7 @@ jobs:
 
           make test-functional-${{ matrix.name }}
         env:
+          CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -579,6 +581,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GOTESTSUM_OPTS: '--junitfile ./dist/functional_test/results.xml'
+
       - uses: azure/setup-kubectl@v4
         if: always()
         with:
