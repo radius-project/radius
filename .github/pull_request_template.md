@@ -1,6 +1,6 @@
 # Description
 
-_Please explain the changes you've made._
+_Please explain the changes you've made. _
 
 ## Type of change
 
