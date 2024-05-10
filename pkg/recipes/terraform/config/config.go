@@ -155,7 +155,7 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 
 	// Update module configuration with aliased provider names, if they exist.
 	logger.Info("Updating module providers with aliases")
-	if err := cfg.UpdateModuleWithProviderAliases(ctx, requiredProviders); err != nil {
+	if err := cfg.updateModuleWithProviderAliases(requiredProviders); err != nil {
 		return err
 	}
 
@@ -169,9 +169,9 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 	return nil
 }
 
-// UpdateModuleWithProviderAliases updates the module provider configuration in the Terraform config
+// updateModuleWithProviderAliases updates the module provider configuration in the Terraform config
 // by adding aliases to the provider configurations.
-func (cfg *TerraformConfig) UpdateModuleWithProviderAliases(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo) error {
+func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders map[string]*RequiredProviderInfo) error {
 	if cfg == nil {
 		return fmt.Errorf("terraform configuration is not initialized")
 	}

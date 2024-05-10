@@ -695,7 +695,7 @@ func Test_AddOutputs(t *testing.T) {
 	}
 }
 
-func TestUpdateModuleWithProviderAliases(t *testing.T) {
+func Test_updateModuleWithProviderAliases(t *testing.T) {
 	tests := []struct {
 		name               string
 		cfg                *TerraformConfig
@@ -879,7 +879,7 @@ func TestUpdateModuleWithProviderAliases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := testcontext.New(t)
-			err := tt.cfg.UpdateModuleWithProviderAliases(ctx, tt.requiredProviders)
+			err := tt.cfg.updateModuleWithProviderAliases(tt.requiredProviders)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
