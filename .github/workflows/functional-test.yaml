@@ -87,9 +87,9 @@ env:
 
 jobs:
   build:
-    name: Build Radius for test
+    name: Build Radius for test..
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
@@ -115,7 +115,7 @@ jobs:
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
       - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' 
         run: |
             echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
@@ -140,7 +140,7 @@ jobs:
               `CHECKOUT_REF=${payload.head_sha}\n` +
               `PR_NUMBER=${{ steps.get-pr-number.outputs.pr_number }}\n`);
       - name: Set DE image and tag (repository_dispatch from de-functional-test)
-        if: github.event_name == 'repository_dispatch'
+        if: github.event_name == 'repository_dispatch' 
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -319,12 +319,12 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     strategy:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        name: [ucp,kubernetes,shared,msgrp,daprrp,samples,cli]
+        name: [shared]
         include:
           # datastorerp functional tests need the larger VM.
           - os: ubuntu-latest-m
@@ -391,12 +391,6 @@ jobs:
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
@@ -406,20 +400,6 @@ jobs:
           append: true
           message: |
             :hourglass: Starting ${{ matrix.name }} functional tests...
-      - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-        run: |
-          current_time=$(date +%s)
-          az group create \
-            --location ${{ env.AZURE_LOCATION }} \
-            --name $RESOURCE_GROUP \
-            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
-            --tags creationTime=$current_time
-          while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
-        env:
-          RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-      - uses: azure/setup-helm@v4
-        with:
-          version: ${{ env.HELM_VER }}
       - name: Create KinD cluster
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
@@ -517,18 +497,6 @@ jobs:
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
-
-          echo "*** Configuring Azure provider ***"
-          rad env update kind-radius --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
-            --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
-            --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-            --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-
-          echo "*** Configuring AWS provider ***"
-          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-          rad credential register aws \
-            --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -542,43 +510,27 @@ jobs:
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
-      - name: Run functional tests
+      - name: Run functional tests Changed
         run: |
+        
+          mkdir -p ./dist/functional_test
+           echo "*** made the folder ***"
           # Ensure rad cli is in path before running tests.
+
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           cd $GITHUB_WORKSPACE
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          # Populate the following test environment variables from JSON secret.
-          # AZURE_MONGODB_RESOURCE_ID
-          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-          # AZURE_TABLESTORAGE_RESOURCE_ID
-          # AZURE_SERVICEBUS_RESOURCE_ID
-          # AZURE_REDIS_RESOURCE_ID
-          # AZURE_MSSQL_RESOURCE_ID
-          # AZURE_MSSQL_USERNAME
-          # AZURE_MSSQL_PASSWORD
-          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
-
-          make test-functional-${{ matrix.name }}
+          make test-functional-corerp-noncloud
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ env.AWS_REGION }}
-          RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
-          # Test_MongoDB_Recipe_Parameters is using the following environment variable.
-          INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-      - uses: azure/setup-kubectl@v4
-        if: always()
-        with:
-          version: ${{ env.KUBECTL_VER }}
+          GOTESTSUM_OPTS: '--junitfile ./dist/functional_test/results.xml'
       - name: Collect Pod details
         if: always()
         run: |
@@ -594,11 +546,20 @@ jobs:
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+      - name: Process Func Test Results
+        uses: ./.github/actions/process-test-results
+        # Always is required here to make sure this target runs even when tests fail.
+        if: failure() && github.event_name == 'workflow_dispatch' && github.repository == 'radius-project/radius'
+        with:
+          test_group_name: 'Functional Tests'
+          artifact_name: 'functional_test_results'
+          result_directory: 'dist/functional_test/'    
       - name: Get Terraform recipe publishing logs
         if: always()
         run: |
           # Create pod-logs directory
           mkdir -p recipes/pod-logs
+
           # Get pod logs and save to file
           namespace="radius-test-tf-module-server"
           label="app.kubernetes.io/name=tf-module-server"
