@@ -78,7 +78,7 @@ func Test_E2E(t *testing.T) {
 			Placeholder: "test placeholder",
 		}
 		model := NewTextModel("test prompt", options)
-		return teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 50))
+		return teatest.NewTestModel(t, model, teatest.WithInitialTermSize(18, 50))
 	}
 
 	normalizeOutput := func(bts []byte) string {
@@ -104,7 +104,7 @@ func Test_E2E(t *testing.T) {
 		tm := setup(t)
 		output := waitForInitialRender(t, tm.Output())
 
-		expected := "test prompt\n" +
+		expected := "\rtest prompt\n" +
 			"\n" +
 			"> test placeholder\n" +
 			"\n" +
@@ -127,7 +127,7 @@ func Test_E2E(t *testing.T) {
 		tm := setup(t)
 		output := waitForInitialRender(t, tm.Output())
 
-		expected := "test prompt\n" +
+		expected := "\rtest prompt\n" +
 			"\n" +
 			"> test placeholder\n" +
 			"\n" +
@@ -151,7 +151,7 @@ func Test_E2E(t *testing.T) {
 		tm := setup(t)
 		output := waitForInitialRender(t, tm.Output())
 
-		expected := "test prompt\n" +
+		expected := "\rtest prompt\n" +
 			"\n" +
 			"> test placeholder\n" +
 			"\n" +
