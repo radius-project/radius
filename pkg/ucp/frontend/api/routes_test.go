@@ -22,11 +22,13 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/test/testcontext"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_Routes(t *testing.T) {
@@ -55,24 +57,24 @@ func Test_Routes(t *testing.T) {
 			Path:          "/planes",
 		},
 		{
-			OperationType: v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationList},
-			Method:        http.MethodGet,
-			Path:          "/planes/someType",
+			// Should be passed to the module.
+			Method: http.MethodGet,
+			Path:   "/planes/someType",
 		},
 		{
-			OperationType: v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationGet},
-			Method:        http.MethodGet,
-			Path:          "/planes/someType/someName",
+			// Should be passed to the module.
+			Method: http.MethodGet,
+			Path:   "/planes/someType/someName",
 		},
 		{
-			OperationType: v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationPut},
-			Method:        http.MethodPut,
-			Path:          "/planes/someType/someName",
+			// Should be passed to the module.
+			Method: http.MethodPost,
+			Path:   "/planes/someType/someName/some/other/path",
 		},
 		{
-			OperationType: v1.OperationType{Type: OperationTypePlanesByType, Method: v1.OperationDelete},
-			Method:        http.MethodDelete,
-			Path:          "/planes/someType/someName",
+			// Should be matched by the "unknown plane" route
+			Method: http.MethodPost,
+			Path:   "/planes/anotherType",
 		},
 	}
 
@@ -88,6 +90,43 @@ func Test_Routes(t *testing.T) {
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
 		r := chi.NewRouter()
-		return r, Register(ctx, r, nil, options)
+		return r, Register(ctx, r, []modules.Initializer{&testModule{}}, options)
 	})
+}
+
+func Test_Route_ToModule(t *testing.T) {
+	pathBase := "/some-path-base"
+
+	ctrl := gomock.NewController(t)
+	dataProvider := dataprovider.NewMockDataStorageProvider(ctrl)
+	dataProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
+	options := modules.Options{
+		Address:      "localhost",
+		PathBase:     pathBase,
+		DataProvider: dataProvider,
+	}
+
+	r := chi.NewRouter()
+	err := Register(testcontext.New(t), r, []modules.Initializer{&testModule{}}, options)
+	require.NoError(t, err)
+
+	tctx := chi.NewRouteContext()
+	tctx.Reset()
+
+	matched := r.Match(tctx, http.MethodGet, pathBase+"/planes/someType/someName/anotherpath")
+	require.True(t, matched)
+}
+
+type testModule struct {
+}
+
+func (m *testModule) Initialize(ctx context.Context) (http.Handler, error) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}), nil
+}
+
+func (m *testModule) PlaneType() string {
+	return "someType"
 }

@@ -31,18 +31,18 @@ import (
 
 var _ armrpc_controller.Controller = (*ListPlanes)(nil)
 
-// ListPlanes is the controller implementation to get the list of UCP planes.
+// ListPlanes is the controller implementation to get the list of all planes regardless of type.
 type ListPlanes struct {
-	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
+	armrpc_controller.Operation[*datamodel.GenericPlane, datamodel.GenericPlane]
 }
 
-// NewListPlanes creates a new controller for listing for the Plane resource type.
+// NewListPlanes creates a new controller for listing all planes regardless of type.
 func NewListPlanes(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanes{
 		Operation: armrpc_controller.NewOperation(opts,
-			armrpc_controller.ResourceOptions[datamodel.Plane]{
-				RequestConverter:  converter.PlaneDataModelFromVersioned,
-				ResponseConverter: converter.PlaneDataModelToVersioned,
+			armrpc_controller.ResourceOptions[datamodel.GenericPlane]{
+				RequestConverter:  converter.GenericPlaneDataModelFromVersioned,
+				ResponseConverter: converter.GenericPlaneDataModelToVersioned,
 			},
 		),
 	}, nil
@@ -76,13 +76,13 @@ func (p *ListPlanes) createResponse(ctx context.Context, result *store.ObjectQue
 	items := v1.PaginatedList{}
 
 	for _, item := range result.Items {
-		var plane datamodel.Plane
+		var plane datamodel.GenericPlane
 		err := item.As(&plane)
 		if err != nil {
 			return nil, err
 		}
 
-		versioned, err := converter.PlaneDataModelToVersioned(&plane, serviceCtx.APIVersion)
+		versioned, err := p.ResponseConverter()(&plane, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}

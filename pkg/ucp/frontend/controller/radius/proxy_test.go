@@ -24,19 +24,17 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 // The Run function is also tested by integration tests in the pkg/ucp/integrationtests/radius package.
@@ -62,11 +60,10 @@ func createController(t *testing.T) (*ProxyController, *store.MockStorageClient,
 func Test_Run(t *testing.T) {
 	id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
 
-	plane := datamodel.Plane{
-		Properties: datamodel.PlaneProperties{
-			Kind: datamodel.PlaneKind(v20231001preview.PlaneKindUCPNative),
-			ResourceProviders: map[string]*string{
-				"Applications.Test": to.Ptr("https://localhost:1234"),
+	plane := datamodel.RadiusPlane{
+		Properties: datamodel.RadiusPlaneProperties{
+			ResourceProviders: map[string]string{
+				"Applications.Test": "https://localhost:1234",
 			},
 		},
 	}
@@ -254,28 +251,6 @@ func Test_Run(t *testing.T) {
 
 		expected := rest.NewNotFoundResponse(id)
 
-		response, err := p.Run(ctx, w, req)
-		require.NoError(t, err)
-		require.Equal(t, expected, response)
-	})
-
-	t.Run("failure (validate downstream: invalid downstream)", func(t *testing.T) {
-		p, storageClient, _, _, _ := createController(t)
-
-		svcContext := &v1.ARMRequestContext{
-			ResourceID: id,
-		}
-		ctx := testcontext.New(t)
-		ctx = v1.WithARMRequestContext(ctx, svcContext)
-
-		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPut, id.String(), nil)
-
-		storageClient.EXPECT().
-			Get(gomock.Any(), "/planes/"+id.PlaneNamespace(), gomock.Any()).
-			Return(&store.Object{Data: datamodel.Plane{}}, nil).Times(1)
-
-		expected := rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: v1.ErrorDetails{Code: v1.CodeInvalid, Message: "unexpected plane type ", Target: id.String()}})
 		response, err := p.Run(ctx, w, req)
 		require.NoError(t, err)
 		require.Equal(t, expected, response)

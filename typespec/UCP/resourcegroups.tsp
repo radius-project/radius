@@ -68,17 +68,18 @@ model GenericResource extends ProxyResource<ResourceProperties> {
 model ResourceProperties {}
 
 @doc("The UCP HTTP request base parameters.")
-model ResourceGroupBaseParameters<TResource, TPlaneBase = PlaneResource> {
-  ...PlaneBaseParameters<TPlaneBase>;
+model ResourceGroupBaseParameters<TResource> {
+  ...PlaneBaseParameters<RadiusPlaneResource>;
   ...KeysOf<TResource>;
 }
 
+@route("/planes")
 @armResourceOperations
 interface ResourceGroups {
   @doc("List resource groups")
   list is UcpResourceList<
     ResourceGroupResource,
-    PlaneBaseParameters<PlaneResource>
+    PlaneBaseParameters<RadiusPlaneResource>
   >;
 
   @doc("Get a resource group")
@@ -106,8 +107,9 @@ interface ResourceGroups {
   >;
 }
 
+@route("/planes")
 @armResourceOperations
 interface Resources {
   @doc("List resources in a resource group")
-  list is UcpResourceList<GenericResource, PlaneBaseParameters<PlaneResource>>;
+  list is UcpResourceList<GenericResource, PlaneBaseParameters<RadiusPlaneResource>>;
 }

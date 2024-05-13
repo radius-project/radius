@@ -19,7 +19,6 @@ import (
 	http "net/http"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
@@ -29,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_ListPlanes(t *testing.T) {
@@ -50,17 +50,16 @@ func Test_ListPlanes(t *testing.T) {
 	testPlaneName := "radius"
 	testPlaneType := "planes"
 
-	planeData := datamodel.Plane{
+	planeData := datamodel.AWSPlane{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   testPlaneId,
-				Name: testPlaneName,
-				Type: testPlaneType,
+				ID:       testPlaneId,
+				Name:     testPlaneName,
+				Type:     testPlaneType,
+				Location: "global",
 			},
 		},
-		Properties: datamodel.PlaneProperties{
-			Kind: "AWS",
-		},
+		Properties: datamodel.AWSPlaneProperties{},
 	}
 
 	mockStorageClient.EXPECT().Query(gomock.Any(), query).Return(&store.ObjectQueryResult{
@@ -78,16 +77,14 @@ func Test_ListPlanes(t *testing.T) {
 	actualResponse, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedPlane := v20231001preview.PlaneResource{
-		ID:   &testPlaneId,
-		Name: &testPlaneName,
-		Type: &testPlaneType,
-		Tags: nil,
-		Properties: &v20231001preview.PlaneResourceProperties{
-			Kind:              to.Ptr(v20231001preview.PlaneKindAWS),
-			ResourceProviders: nil,
-			URL:               nil,
-			ProvisioningState: nil,
+	expectedPlane := v20231001preview.GenericPlaneResource{
+		ID:       &testPlaneId,
+		Name:     &testPlaneName,
+		Type:     &testPlaneType,
+		Location: to.Ptr("global"),
+		Tags:     map[string]*string{},
+		Properties: &v20231001preview.GenericPlaneResourceProperties{
+			ProvisioningState: to.Ptr(v20231001preview.ProvisioningState("Succeeded")),
 		},
 	}
 
@@ -97,7 +94,17 @@ func Test_ListPlanes(t *testing.T) {
 		},
 	}
 
-	expectedResponse := armrpc_rest.NewOKResponse(expectedPlaneList)
+	require.IsType(t, &armrpc_rest.OKResponse{}, actualResponse)
+	actualBody := actualResponse.(*armrpc_rest.OKResponse).Body
+	require.IsType(t, &v1.PaginatedList{}, actualBody)
+	actualList := actualBody.(*v1.PaginatedList)
 
+	// SystemData includes timestamps, so blank it out for comparison
+	for i := range actualList.Value {
+		require.IsType(t, &v20231001preview.GenericPlaneResource{}, actualList.Value[i])
+		actualList.Value[i].(*v20231001preview.GenericPlaneResource).SystemData = nil
+	}
+
+	expectedResponse := armrpc_rest.NewOKResponse(expectedPlaneList)
 	require.Equal(t, expectedResponse, actualResponse)
 }

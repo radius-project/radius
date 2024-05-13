@@ -21,10 +21,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
+	"go.uber.org/mock/gomock"
 )
 
 // ControllerContext represents the context of controller tests including common mocks.

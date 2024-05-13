@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -31,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -94,7 +94,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().ListUCPGroup(gomock.Any(), gomock.Any(), gomock.Any()).Return(resourceGroups, nil).Times(1)
+		appManagementClient.EXPECT().ListUCPGroup(gomock.Any(), gomock.Any()).Return(resourceGroups, nil).Times(1)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{

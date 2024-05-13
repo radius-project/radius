@@ -43,9 +43,9 @@ func Test_Planes_GET_BadAPIVersion(t *testing.T) {
 func Test_Planes_PUT_BadAPIVersion(t *testing.T) {
 	ucp := testserver.StartWithMocks(t, api.DefaultModules)
 
-	requestBody := v20231001preview.PlaneResource{
+	requestBody := v20231001preview.RadiusPlaneResource{
 		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: &v20231001preview.PlaneResourceProperties{},
+		Properties: &v20231001preview.RadiusPlaneResourceProperties{},
 	}
 
 	response := ucp.MakeTypedRequest(http.MethodPut, "/planes/radius/local?api-version=unsupported-version", requestBody)

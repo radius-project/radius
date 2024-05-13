@@ -1,0 +1,15 @@
+{
+  "value": [
+    {
+      "id": "/planes/azure/azurecloud",
+      "name": "azurecloud",
+      "type": "System.Azure/planes",
+      "location": "global",
+      "tags": {},
+      "properties": {
+        "provisioningState": "Succeeded",
+        "url": "https://management.azure.com/"
+      }
+    }
+  ]
+}

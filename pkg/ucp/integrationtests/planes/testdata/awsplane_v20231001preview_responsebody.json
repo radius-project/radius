@@ -1,8 +1,10 @@
 {
-    "id": "/planes/aws/aws",
-    "name": "aws",
-    "properties": {
-        "kind": "AWS"
-    },
-    "type": "System.Planes/aws"
+  "id": "/planes/aws/aws",
+  "type": "System.AWS/planes",
+  "name": "aws",
+  "location": "global",
+  "tags": {},
+  "properties": {
+    "provisioningState": "Succeeded"
+  }
 }

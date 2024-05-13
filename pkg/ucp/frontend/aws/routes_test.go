@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
@@ -39,6 +39,22 @@ const pathBase = "/some-path-base"
 func Test_Routes(t *testing.T) {
 	tests := []rpctest.HandlerTestSpec{
 		{
+			OperationType: v1.OperationType{Type: "System.AWS/planes", Method: v1.OperationList},
+			Method:        http.MethodGet,
+			Path:          "/planes/aws",
+		}, {
+			OperationType: v1.OperationType{Type: "System.AWS/planes", Method: v1.OperationGet},
+			Method:        http.MethodGet,
+			Path:          "/planes/aws/someName",
+		}, {
+			OperationType: v1.OperationType{Type: "System.AWS/planes", Method: v1.OperationPut},
+			Method:        http.MethodPut,
+			Path:          "/planes/aws/someName",
+		}, {
+			OperationType: v1.OperationType{Type: "System.AWS/planes", Method: v1.OperationDelete},
+			Method:        http.MethodDelete,
+			Path:          "/planes/aws/someName",
+		}, {
 			OperationType: v1.OperationType{Type: v20231001preview.AWSCredentialType, Method: v1.OperationList},
 			Method:        http.MethodGet,
 			Path:          "/planes/aws/aws/providers/System.AWS/credentials",
@@ -111,7 +127,7 @@ func Test_Routes(t *testing.T) {
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
 		module := NewModule(options)
-		router, err := module.Initialize(ctx)
-		return router.(chi.Router), err
+		handler, err := module.Initialize(ctx)
+		return handler.(chi.Router), err
 	})
 }

@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
     env:
-      GOVER: '1.21.7'
+      GOVER: '1.22.2'
       GOPRIVATE: github.com/radius-project
     steps:
       - name: Checkout radius repository
@@ -68,11 +68,11 @@ jobs:
       - name: Install mockgen
         run: |
           cd radius
-          go install github.com/golang/mock/mockgen@v1.5.0
+          go install go.uber.org/mock/mockgen@v0.4.0
       - name: Install controller-gen
         run: |
           cd radius
-          go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
+          go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
       # Generate Bicep docs
       - name: Generate Bicep docs
         run: |

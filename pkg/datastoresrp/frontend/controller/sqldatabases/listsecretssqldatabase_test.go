@@ -30,8 +30,8 @@ import (
 	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/store"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestListSecrets_20231001Preview(t *testing.T) {

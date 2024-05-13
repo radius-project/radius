@@ -20,7 +20,7 @@ import (
 	"github.com/radius-project/radius/test/radcli"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
