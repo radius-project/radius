@@ -135,7 +135,7 @@ func Test_Run(t *testing.T) {
 		})
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), gomock.Any()).
+			GetEnvironment(gomock.Any(), gomock.Any()).
 			Return(envResource, nil).Times(1)
 
 		outputSink := &output.MockOutput{}

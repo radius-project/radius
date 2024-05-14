@@ -134,7 +134,7 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
+			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -211,7 +211,7 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
+			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -288,7 +288,7 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
+			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
 
 		outputSink := &output.MockOutput{}

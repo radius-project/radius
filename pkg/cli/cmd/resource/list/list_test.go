@@ -115,7 +115,7 @@ func Test_Run(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				ShowApplication(gomock.Any(), "test-app").
+				GetApplication(gomock.Any(), "test-app").
 				Return(v20231001preview.ApplicationResource{}, radcli.Create404Error()).Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -144,10 +144,10 @@ func Test_Run(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				ShowApplication(gomock.Any(), "test-app").
+				GetApplication(gomock.Any(), "test-app").
 				Return(v20231001preview.ApplicationResource{}, nil).Times(1)
 			appManagementClient.EXPECT().
-				ListAllResourcesOfTypeInApplication(gomock.Any(), "test-app", "containers").
+				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "containers").
 				Return(resources, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -185,7 +185,7 @@ func Test_Run(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				ListAllResourcesByType(gomock.Any(), "containers").
+				ListResourcesOfType(gomock.Any(), "containers").
 				Return(resources, nil).Times(1)
 
 			outputSink := &output.MockOutput{}

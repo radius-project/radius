@@ -19,7 +19,6 @@ package register
 import (
 	"context"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -175,7 +174,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	envResource, err := client.GetEnvDetails(ctx, r.Workspace.Environment)
+	envResource, err := client.GetEnvironment(ctx, r.Workspace.Environment)
 	if err != nil {
 		return err
 	}
@@ -210,7 +209,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	envResource.Properties.Recipes = envRecipes
 
-	err = client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
+	err = client.CreateOrUpdateEnvironment(ctx, r.Workspace.Environment, &envResource)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to register the recipe %q to the environment %q.", r.RecipeName, *envResource.ID)
 	}

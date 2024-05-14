@@ -183,7 +183,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	env, err := client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
+	env, err := client.GetEnvironment(cmd.Context(), r.EnvironmentName)
 	if err != nil {
 		// If the error is not a 404, return it
 		if !clients.Is404Error(err) {
@@ -272,7 +272,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		// Validate that the environment exists already
-		_, err = client.GetEnvDetails(ctx, r.EnvironmentName)
+		_, err = client.GetEnvironment(ctx, r.EnvironmentName)
 		if err != nil {
 			// If the error is not a 404, return it
 			if !clients.Is404Error(err) {
@@ -282,7 +282,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			// If the error is a 404, it means that the environment does not exist,
 			// but this is okay. We don't want to create an application though.
 		} else {
-			err = client.CreateApplicationIfNotFound(ctx, r.ApplicationName, v20231001preview.ApplicationResource{
+			err = client.CreateApplicationIfNotFound(ctx, r.ApplicationName, &v20231001preview.ApplicationResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.ApplicationProperties{
 					Environment: &r.Workspace.Environment,

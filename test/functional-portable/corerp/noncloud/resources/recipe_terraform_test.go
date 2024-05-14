@@ -107,7 +107,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 				require.Equal(t, secretNamespace, secret.Namespace)
 				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
 
-				redis, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				redis, err := test.Options.ManagementClient.GetResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 				require.NotNil(t, redis)
 				status := redis.Properties["status"].(map[string]any)
@@ -276,7 +276,7 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				resource, err := test.Options.ManagementClient.GetResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
 				text, err := json.MarshalIndent(resource, "", "  ")

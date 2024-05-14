@@ -116,7 +116,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.ShowUCPGroup(ctx, "local", r.UCPResourceGroupName)
+	_, err = client.GetResourceGroup(ctx, "local", r.UCPResourceGroupName)
 	if err != nil {
 		return clierrors.Message("The resource group %q does not exist. Run `rad group create` or `rad init` and try again.", r.UCPResourceGroupName)
 	}

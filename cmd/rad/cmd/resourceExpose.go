@@ -71,7 +71,7 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 		}
 
 		// Ignore applicationresource as we only check for existence of application
-		_, err = managementClient.ShowApplication(cmd.Context(), application)
+		_, err = managementClient.GetApplication(cmd.Context(), application)
 		if err != nil {
 			appNotFound := clients.Is404Error(err)
 			if !appNotFound {

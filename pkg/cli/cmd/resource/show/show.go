@@ -132,7 +132,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	resourceDetails, err := client.ShowResource(ctx, r.ResourceType, r.ResourceName)
+	resourceDetails, err := client.GetResource(ctx, r.ResourceType, r.ResourceName)
 	if err != nil {
 		return err
 	}

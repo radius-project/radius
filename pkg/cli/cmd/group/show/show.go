@@ -123,7 +123,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	resourceGroup, err := client.ShowUCPGroup(ctx, "local", r.UCPResourceGroupName)
+	resourceGroup, err := client.GetResourceGroup(ctx, "local", r.UCPResourceGroupName)
 	if err != nil {
 		return err
 	}
