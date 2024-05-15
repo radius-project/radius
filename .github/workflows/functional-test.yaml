@@ -583,8 +583,8 @@ jobs:
         # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
         if: failure() && github.repository == 'radius-project/radius'
         with:
-          test_group_name: 'Functional Tests'
-          artifact_name: 'functional_test_results'
+          test_group_name: 'Functional Tests - ${{ matrix.name }}'
+          artifact_name: 'functional_test_results-${{ matrix.name }}'
           result_directory: 'dist/functional_test/' 
       - uses: azure/setup-kubectl@v4
         if: always()
