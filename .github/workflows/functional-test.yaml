@@ -584,7 +584,7 @@ jobs:
         if: failure() && github.repository == 'radius-project/radius'
         with:
           test_group_name: 'Functional Tests - ${{ matrix.name }}'
-          artifact_name: 'functional_test_results-${{ matrix.name }}'
+          artifact_name: 'functional_test_results_${{ matrix.name }}'
           result_directory: 'dist/functional_test/' 
       - uses: azure/setup-kubectl@v4
         if: always()
