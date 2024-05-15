@@ -84,7 +84,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
 		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
+		require.Contains(t, output, "Successfully linked ..recipe")
 	})
 
 	t.Run("Validate rad recipe register with insecure registry", func(t *testing.T) {

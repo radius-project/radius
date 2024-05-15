@@ -78,7 +78,7 @@ func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "containerad",
+						Name: "containeradbc",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
