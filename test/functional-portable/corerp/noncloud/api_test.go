@@ -42,7 +42,7 @@ func Test_ResourceList(t *testing.T) {
 	scope := options.ManagementClient.(*clients.UCPApplicationsManagementClient).RootScope
 	clientOptions := options.ManagementClient.(*clients.UCPApplicationsManagementClient).ClientOptions
 
-	parsed, err := resources.ParseScope("/" + scope)
+	parsed, err := resources.ParseScope(scope)
 	require.NoError(t, err)
 	require.NotEmpty(t, parsed.FindScope(resources_radius.ScopeResourceGroups), "workspace scope must contain resource group segment")
 

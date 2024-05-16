@@ -85,7 +85,7 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				resource, err := test.Options.ManagementClient.GetResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
 				text, err := json.MarshalIndent(resource, "", "  ")
@@ -139,7 +139,7 @@ func Test_BicepRecipe_ContextParameter(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				resource, err := test.Options.ManagementClient.GetResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
 				text, err := json.MarshalIndent(resource, "", "  ")
@@ -239,7 +239,7 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 			// This currently fails.
 			SkipResourceDeletion: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				resource, err := test.Options.ManagementClient.GetResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
 				text, err := json.MarshalIndent(resource, "", "  ")

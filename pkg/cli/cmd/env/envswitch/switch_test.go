@@ -45,7 +45,7 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				createGetEnvDetailsSuccess(mocks.ApplicationManagementClient)
+				createGetEnvironmentSuccess(mocks.ApplicationManagementClient)
 			},
 		},
 		{
@@ -57,7 +57,7 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				createGetEnvDetailsError(mocks.ApplicationManagementClient)
+				createGetEnvironmentError(mocks.ApplicationManagementClient)
 			},
 		},
 		{
@@ -70,18 +70,18 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func createGetEnvDetailsSuccess(appManagementClient *clients.MockApplicationsManagementClient) {
+func createGetEnvironmentSuccess(appManagementClient *clients.MockApplicationsManagementClient) {
 	appManagementClient.EXPECT().
-		GetEnvDetails(gomock.Any(), "validEnvToSwitchTo").
+		GetEnvironment(gomock.Any(), "validEnvToSwitchTo").
 		Return(corerp.EnvironmentResource{}, nil).Times(1)
 }
 
-func createGetEnvDetailsError(appManagementClient *clients.MockApplicationsManagementClient) {
+func createGetEnvironmentError(appManagementClient *clients.MockApplicationsManagementClient) {
 	responseError := &azcore.ResponseError{}
 	responseError.ErrorCode = v1.CodeNotFound
 	err := error(responseError)
 
 	appManagementClient.EXPECT().
-		GetEnvDetails(gomock.Any(), "nonExistentEnv").
+		GetEnvironment(gomock.Any(), "nonExistentEnv").
 		Return(corerp.EnvironmentResource{}, err).Times(1)
 }

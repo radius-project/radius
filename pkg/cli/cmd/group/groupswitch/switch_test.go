@@ -138,7 +138,7 @@ func Test_Run(t *testing.T) {
 			defer ctrl.Finish()
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), gomock.Any(), "a").Return(testResourceGroup, nil)
+			appManagementClient.EXPECT().GetResourceGroup(gomock.Any(), gomock.Any(), "a").Return(testResourceGroup, nil)
 
 			workspace := &workspaces.Workspace{
 				Name: "b",
@@ -209,7 +209,7 @@ func Test_Run(t *testing.T) {
 			defer ctrl.Finish()
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), gomock.Any(), "c").Return(testResourceGroup, errors.New("resource group doesnt exist"))
+			appManagementClient.EXPECT().GetResourceGroup(gomock.Any(), gomock.Any(), "c").Return(testResourceGroup, errors.New("resource group doesnt exist"))
 
 			workspace := &workspaces.Workspace{
 				Name: "b",

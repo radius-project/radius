@@ -126,14 +126,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	application, err := client.ShowApplication(ctx, r.ApplicationName)
+	application, err := client.GetApplication(ctx, r.ApplicationName)
 	if clients.Is404Error(err) {
 		return clierrors.Message("The application %q was not found or has been deleted.", r.ApplicationName)
 	} else if err != nil {
 		return err
 	}
 
-	resourceList, err := client.ListAllResourcesByApplication(ctx, r.ApplicationName)
+	resourceList, err := client.ListResourcesInApplication(ctx, r.ApplicationName)
 	if err != nil {
 		return err
 	}

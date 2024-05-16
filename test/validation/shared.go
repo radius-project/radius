@@ -78,7 +78,7 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 		var respFromCtx *http.Response
 		ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
 
-		_, err := client.DeleteEnv(ctxWithResp, resource.Name)
+		_, err := client.DeleteEnvironment(ctxWithResp, resource.Name)
 		if err != nil {
 			return err
 		}
@@ -105,7 +105,7 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, expectedResource := range expected.Resources {
 		if expectedResource.Type == EnvironmentsResource {
-			envs, err := client.ListEnvironmentsInResourceGroup(ctx)
+			envs, err := client.ListEnvironments(ctx)
 			require.NoError(t, err)
 			require.NotEmpty(t, envs)
 
@@ -133,7 +133,7 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 
 			require.True(t, found, fmt.Sprintf("application %s was not found", expectedResource.Name))
 		} else {
-			res, err := client.ShowResource(ctx, expectedResource.Type, expectedResource.Name)
+			res, err := client.GetResource(ctx, expectedResource.Type, expectedResource.Name)
 			require.NoError(t, err)
 			require.NotNil(t, res, "resource %s with type %s does not exist", expectedResource.Name, expectedResource.Type)
 

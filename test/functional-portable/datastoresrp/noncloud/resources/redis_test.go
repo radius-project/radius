@@ -99,7 +99,7 @@ func Test_Redis_Recipe(t *testing.T) {
 			},
 			SkipObjectValidation: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				redis, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Datastores/redisCaches", "rds-recipe")
+				redis, err := test.Options.ManagementClient.GetResource(ctx, "Applications.Datastores/redisCaches", "rds-recipe")
 				require.NoError(t, err)
 				require.NotNil(t, redis)
 				status := redis.Properties["status"].(map[string]any)
