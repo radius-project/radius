@@ -19,6 +19,7 @@ package applications
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -70,6 +71,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		}
 
 		namespace := fmt.Sprintf("%s-%s", envNamespace, serviceCtx.ResourceID.Name())
+		namespace = strings.ToLower(namespace)
 		if !kubernetes.IsValidObjectName(namespace) {
 			return rest.NewBadRequestResponse(fmt.Sprintf("Application namespace '%s' could not be created: the combination of application and environment names is too long.",
 				namespace)), nil
