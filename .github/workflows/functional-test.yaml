@@ -586,6 +586,7 @@ jobs:
           test_group_name: 'Functional Tests - ${{ matrix.name }}'
           artifact_name: 'functional_test_results_${{ matrix.name }}'
           result_directory: 'dist/functional_test/' 
+          summary_file: 'dist/functional_test/summary.txt'
       - uses: azure/setup-kubectl@v4
         if: always()
         with:
@@ -731,6 +732,14 @@ jobs:
               }
             }
             return failureCount;
+      - name: Generate summary from failed tests
+        id: generate_summary
+        run: |
+          # Generate summary as text in functional_tests/processed/summary.txt contents
+          SUMMARY = $(cat dist/functional_test/summary.txt)
+
+          echo "Test Summary: $SUMMARY"
+
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v7
         # Only create an issue if there are (env.ISSUE_CREATE_THRESHOLD) failures of the recent tests.

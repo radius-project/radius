@@ -30,12 +30,14 @@ def main():
     repository_root = sys.argv[1]
     input_file = sys.argv[2]
     output_file = sys.argv[3]
+    summary_file = sys.argv[4]
 
     print(f"Processing {input_file}")
     pattern = re.compile(r"\tError Trace:\t(.*):(\d+)")
     et = xml.etree.ElementTree.parse(input_file)
     for testcase in et.findall('./testsuite/testcase'):
         failure = testcase.find('./failure')
+
         if failure is None:
             continue
         
@@ -65,6 +67,20 @@ def main():
     # Write back to file
     print(f"Writing {output_file}")
     et.write(output_file)
+
+
+    # Now generate the issue summary if output file exists
+    # Parse the XML file
+    tree = et.parse(output_file)
+
+    # Find all 'failure' elements
+    failures = tree.findall('.//failure')
+
+    with open(summary_file, 'w') as f:
+    # Print the text inside each 'failure' element
+    for failure in failures:
+        f.write(f"File: {failure.get('file')}, Line: {failure.get('line')}, Text: {failure.text}\n")
+        f.write("----------------\n")
 
 if __name__ == "__main__":
     main()

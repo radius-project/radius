@@ -1,0 +1,217 @@
+<testsuites tests="122" failures="2" errors="0" time="251.413701">
+	<testsuite tests="27" failures="0" time="0.277000" name="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" timestamp="2024-05-15T19:31:28Z">
+		<properties>
+			<property name="go.version" value="go1.22.2 linux/amd64" />
+		</properties>
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Datastores/sqlDatabases" time="0.110000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Datastores/sqlDatabases" time="0.130000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Dapr/stateStores" time="0.130000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Datastores/mongoDatabases" time="0.130000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Messaging/rabbitMQQueues" time="0.130000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Datastores/mongoDatabases" time="0.130000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Messaging/rabbitMQQueues" time="0.140000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Dapr/stateStores" time="0.140000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Datastores/redisCaches" time="0.140000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Core/applications" time="0.140000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Core/gateways" time="0.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Core/secretStores" time="0.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Core/gateways" time="0.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Core/containers" time="0.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Core/containers" time="0.060000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Core/applications" time="0.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Core/environments" time="0.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Dapr/pubSubBrokers" time="0.050000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Core/environments" time="0.060000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Core/secretStores" time="0.070000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Core/extenders" time="0.050000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Core/extenders" time="0.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Dapr/secretStores" time="0.020000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_plane_scope:_Applications.Dapr/secretStores" time="0.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Datastores/redisCaches" time="0.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList/list_at_resource-group_scope:_Applications.Dapr/pubSubBrokers" time="0.020000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud" name="Test_ResourceList" time="0.020000" />
+	</testsuite>
+	<testsuite tests="17" failures="0" time="67.039000" name="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" timestamp="2024-05-15T19:31:28Z">
+		<properties>
+			<property name="go.version" value="go1.22.2 linux/amd64" />
+		</properties>
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_Kubernetes_Extensibility/deploy_testdata/k8s-extensibility/connection-string.bicep" time="26.100000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_Kubernetes_Extensibility" time="26.280000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_InvalidResourceIDs/deploy_testdata/corerp-mechanics-invalid-resourceids.bicep" time="31.500000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_InvalidResourceIDs" time="32.229000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_NestedModules/deploy_testdata/corerp-mechanics-nestedmodules.bicep" time="37.020000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_NestedModules" time="43.390000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_CommunicationCycle/deploy_testdata/corerp-mechanics-communication-cycle.bicep" time="34.690000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_CommunicationCycle" time="44.140000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_RedeployWithAnotherResource/deploy_testdata/corerp-mechanics-redeploy-withanotherresource.step1.bicep" time="34.600000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_RedeployWithAnotherResource/deploy_testdata/corerp-mechanics-redeploy-withanotherresource.step2.bicep" time="23.720000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_RedeployWithAnotherResource" time="65.630000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_RedeployWithUpdatedResourceUpdatesResource/deploy_testdata/corerp-mechanics-redeploy-withupdatedresource.step1.bicep" time="34.670000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_RedeployWithUpdatedResourceUpdatesResource/deploy_testdata/corerp-mechanics-redeploy-withupdatedresource.step2.bicep" time="23.940000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_RedeployWithUpdatedResourceUpdatesResource" time="66.760000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_RedeployWithTwoSeparateResourcesKeepsResource/deploy_testdata/corerp-mechanics-redeploy-withtwoseparateresource.step1.bicep" time="34.680000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_RedeployWithTwoSeparateResourcesKeepsResource/deploy_testdata/corerp-mechanics-redeploy-withtwoseparateresource.step2.bicep" time="24.010000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/mechanics" name="Test_RedeployWithTwoSeparateResourcesKeepsResource" time="66.970000" />
+	</testsuite>
+	<testsuite tests="78" failures="2" time="143.641000" name="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" timestamp="2024-05-15T19:31:28Z">
+		<properties>
+			<property name="go.version" value="go1.22.2 linux/amd64" />
+		</properties>
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerDNSSD_TwoContainersDNS/deploy_testdata/corerp-resources-container-two-containers-dns.bicep" time="18.580000" file="ork/radius/radius/test/validation/shared.go" line="137">
+			<failure message="Failed" type="" file="ork/radius/radius/test/validation/shared.go" line="137">=== RUN   Test_ContainerDNSSD_TwoContainersDNS/deploy_testdata/corerp-resources-container-two-containers-dns.bicep
+    rptest.go:391: running step 0 of 1: deploy testdata/corerp-resources-container-two-containers-dns.bicep
+    deployexecutor.go:80: deploying deploy testdata/corerp-resources-container-two-containers-dns.bicep from file testdata/corerp-resources-container-two-containers-dns.bicep
+    cli.go:394: [heartbeat] command rad deploy /home/runner/work/radius/radius/test/functional-portable/corerp/noncloud/resources/testdata/corerp-resources-container-two-containers-dns.bicep --parameters magpieimage=ghcr.io/radius-project/dev/magpiego:pr-funcd84641f15a is still running after 10.000676804s
+2024/05/15 19:35:09 Start streaming Kubernetes logs - Pod ctnr-live-ready-dc6df75cf-8lv84 is in state: Running
+    cli.go:341: [rad] Building /home/runner/work/radius/radius/test/functional-portable/corerp/noncloud/resources/testdata/corerp-resources-container-two-containers-dns.bicep...
+    cli.go:341: [rad] Deploying template '/home/runner/work/radius/radius/test/functional-portable/corerp/noncloud/resources/testdata/corerp-resources-container-two-containers-dns.bicep' into environment 'kind-radius' from workspace 'kind-radius'...
+    cli.go:341: [rad] 
+    cli.go:341: [rad] Deployment In Progress...
+    cli.go:341: [rad] 
+    cli.go:341: [rad] 
+    cli.go:341: [rad] Deployment Complete
+    cli.go:341: [rad] 
+    cli.go:341: [rad] Resources:
+    cli.go:341: [rad]     corerp-resources-container-two-containers-dns Applications.Core/applications
+    cli.go:341: [rad]     containerad     Applications.Core/containers
+    cli.go:341: [rad]     containeraf     Applications.Core/containers
+    cli.go:341: [rad] 
+    deployexecutor.go:84: finished deploying deploy testdata/corerp-resources-container-two-containers-dns.bicep from file testdata/corerp-resources-container-two-containers-dns.bicep
+    rptest.go:393: finished running step 0 of 1: deploy testdata/corerp-resources-container-two-containers-dns.bicep
+    rptest.go:401: validating output resources for deploy testdata/corerp-resources-container-two-containers-dns.bicep
+    shared.go:137: 
+        	Error Trace:	/home/runner/work/radius/radius/test/validation/shared.go:137
+        	            				/home/runner/work/radius/radius/test/rp/rptest.go:402
+        	Error:      	Received unexpected error:
+        	            	GET https://127.0.0.1:46359/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/kind-radius/providers/applications.core/containers/containeradbc
+        	            	--------------------------------------------------------------------------------
+        	            	RESPONSE 404: 404 Not Found
+        	            	ERROR CODE: NotFound
+        	            	--------------------------------------------------------------------------------
+        	            	{
+        	            	  "error": {
+        	            	    "code": "NotFound",
+        	            	    "message": "the resource with id '/planes/radius/local/resourcegroups/kind-radius/providers/applications.core/containers/containeradbc' was not found",
+        	            	    "target": "/planes/radius/local/resourcegroups/kind-radius/providers/applications.core/containers/containeradbc"
+        	            	  }
+        	            	}
+        	            	--------------------------------------------------------------------------------
+        	Test:       	Test_ContainerDNSSD_TwoContainersDNS/deploy_testdata/corerp-resources-container-two-containers-dns.bicep
+    --- FAIL: Test_ContainerDNSSD_TwoContainersDNS/deploy_testdata/corerp-resources-container-two-containers-dns.bicep (18.58s)
+</failure>
+		</testcase>
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerDNSSD_TwoContainersDNS" time="24.540000">
+			<failure message="Failed" type="">=== RUN   Test_ContainerDNSSD_TwoContainersDNS
+    rptest.go:151: Using container registry: ghcr.io/radius-project/dev - set DOCKER_REGISTRY to override
+    rptest.go:152: Using container tag: pr-funcd84641f15a - set REL_VERSION to override
+    rptest.go:153: Using magpie image: ghcr.io/radius-project/dev/magpiego:pr-funcd84641f15a
+    rptest.go:157: Using recipe registry: ghcr.io/radius-project/dev - set BICEP_RECIPE_REGISTRY to override
+    rptest.go:158: Using recipe tag: pr-funcd84641f15a - set BICEP_RECIPE_TAG_VERSION to override
+    rptest.go:161: Using terraform recipe module server URL: http://tf-module-server.radius-test-tf-module-server.svc.cluster.local - set TF_RECIPE_MODULE_SERVER_URL to override
+    rptest.go:172: Loaded workspace: kind-radius (Kubernetes (context=kind-radius))
+=== PAUSE Test_ContainerDNSSD_TwoContainersDNS
+=== CONT  Test_ContainerDNSSD_TwoContainersDNS
+    rptest.go:438: beginning cleanup phase of corerp-resources-container-two-containers-dns
+    rptest.go:488: deleting corerp-resources-container-two-containers-dns
+    shared.go:97: deleting application: corerp-resources-container-two-containers-dns
+    cli.go:341: [rad] Application corerp-resources-container-two-containers-dns deleted
+    cli.go:341: [rad] 
+    rptest.go:491: finished deleting corerp-resources-container-two-containers-dns
+    rptest.go:496: validating deletion of pods for corerp-resources-container-two-containers-dns
+    k8s.go:469: Found the following pods:
+    k8s.go:471: (none)
+    rptest.go:498: finished validation of deletion of pods for corerp-resources-container-two-containers-dns
+    rptest.go:488: deleting containeradbc
+    rptest.go:491: finished deleting corerp-resources-container-two-containers-dns
+    rptest.go:496: validating deletion of pods for corerp-resources-container-two-containers-dns
+    k8s.go:469: Found the following pods:
+    k8s.go:471: (none)
+    rptest.go:498: finished validation of deletion of pods for corerp-resources-container-two-containers-dns
+    rptest.go:488: deleting containeraf
+    rptest.go:491: finished deleting corerp-resources-container-two-containers-dns
+    rptest.go:496: validating deletion of pods for corerp-resources-container-two-containers-dns
+    k8s.go:469: Found the following pods:
+    k8s.go:471: (none)
+    rptest.go:498: finished validation of deletion of pods for corerp-resources-container-two-containers-dns
+    rptest.go:515: finished cleanup phase of corerp-resources-container-two-containers-dns
+--- FAIL: Test_ContainerDNSSD_TwoContainersDNS (24.54s)
+</failure>
+		</testcase>
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ApplicationAndEnvironment/deploy_testdata/corerp-resources-app-env.bicep" time="26.610000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ApplicationAndEnvironment" time="27.880000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ContextParameter/deploy_testdata/corerp-resources-recipe-bicep.bicep" time="31.810000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ContextParameter" time="35.120000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ParametersAndOutputs/deploy_testdata/corerp-resources-recipe-bicep.bicep" time="31.720000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ParametersAndOutputs" time="40.340000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Recipe_NotFound/deploy_testdata/corerp-resources-recipe-notfound.bicep" time="31.660000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Recipe_NotFound" time="40.890000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Deployment_SimulatedEnv/deploy_testdata/corerp-resources-simulatedenv.bicep" time="36.730000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Deployment_SimulatedEnv" time="45.220000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Gateway_SSLPassthrough/deploy_testdata/corerp-resources-gateway-sslpassthrough.bicep" time="41.310000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Gateway_SSLPassthrough" time="49.120000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_TerraformRecipe_Context/deploy_testdata/corerp-resources-terraform-context.bicep" time="43.300000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_TerraformRecipe_Context" time="50.450000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_TerraformRecipe_KubernetesRedis/deploy_testdata/corerp-resources-terraform-redis.bicep" time="48.310000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_TerraformRecipe_KubernetesRedis" time="54.740000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Gateway_KubernetesMetadata/deploy_testdata/corerp-resources-gateway-kubernetesmetadata.bicep" time="21.310000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Gateway_KubernetesMetadata" time="27.420000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_LanguageFailure/deploy_testdata/corerp-resources-recipe-bicep.bicep" time="19.420000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_LanguageFailure" time="25.300000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Gateway_Failure/deploy_testdata/corerp-resources-gateway-failure.bicep" time="18.090000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Gateway_Failure" time="18.130000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_WrongOutput/deploy_testdata/corerp-resources-recipe-bicep.bicep" time="18.000000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_WrongOutput" time="24.260000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_KubeMetadataContainer/deploy_testdata/corerp-resources-kubemetadata-container.bicep" time="22.380000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_KubeMetadataContainer" time="29.740000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ResourceCreationFailure/deploy_testdata/corerp-resources-recipe-bicep.bicep" time="29.860000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ResourceCreationFailure" time="35.810000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_TerraformRecipe_WrongOutput/deploy_testdata/corerp-resources-terraform-recipe-terraform.bicep" time="31.800000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_TerraformRecipe_WrongOutput" time="73.040000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_TerraformRecipe_ParametersAndOutputs/deploy_testdata/corerp-resources-terraform-recipe-terraform.bicep" time="31.770000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_TerraformRecipe_ParametersAndOutputs" time="73.650000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_KubeMetadataCascade/deploy_testdata/corerp-resources-kubemetadata-cascade.bicep" time="21.420000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_KubeMetadataCascade" time="30.570000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Gateway_TLSTermination/deploy_testdata/corerp-resources-gateway-tlstermination.bicep" time="22.240000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Gateway_TLSTermination" time="28.730000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Environment/deploy_testdata/corerp-resources-environment.bicep" time="14.750000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Environment" time="14.870000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerManualScale/deploy_testdata/corerp-azure-container-manualscale.bicep" time="21.570000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerManualScale" time="27.540000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ParameterNotDefined/deploy_testdata/corerp-resources-recipe-bicep.bicep" time="38.350000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ParameterNotDefined" time="44.310000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_FailDueToNonExistentImage/deploy_testdata/corerp-resources-container-nonexistent-container-image.bicep" time="17.600000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_FailDueToNonExistentImage" time="17.610000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_FailDueToBadHealthProbe/deploy_testdata/corerp-resources-container-bad-healthprobe.bicep" time="23.030000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_FailDueToBadHealthProbe" time="23.050000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Extender_Recipe/deploy_testdata/corerp-resources-extender-recipe.bicep" time="25.580000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Extender_Recipe" time="32.910000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Extender_Manual/deploy_testdata/corerp-resources-extender.bicep" time="28.690000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Extender_Manual" time="35.090000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ResourceCreation/deploy_testdata/corerp-resources-recipe-bicep-resourcecreation.step0.bicep" time="12.660000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ResourceCreation/deploy_testdata/corerp-resources-recipe-bicep-resourcecreation.step1.bicep" time="33.410000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_BicepRecipe_ResourceCreation" time="46.080000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_GatewayDNS/deploy_testdata/corerp-resources-gateway-dns.bicep" time="38.150000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_GatewayDNS" time="45.070000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerWithCommandAndArgs/deploy_testdata/corerp-resources-container-cmd-args.bicep" time="21.030000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerWithCommandAndArgs" time="27.720000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_pod_patching/deploy_testdata/corerp-resources-container-pod-patching.bicep" time="20.920000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_pod_patching" time="27.520000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerDNSSD_OptionalPortScheme/deploy_testdata/corerp-resources-container-optional-port-scheme.bicep" time="21.500000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerDNSSD_OptionalPortScheme" time="27.460000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Application/deploy_testdata/corerp-resources-application.bicep" time="13.230000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Application" time="14.210000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container/deploy_testdata/corerp-resources-container.bicep" time="21.560000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container" time="27.540000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_YAMLManifest/deploy_testdata/corerp-resources-container-manifest.bicep" time="21.630000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_YAMLManifest" time="27.530000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerReadinessLiveness/deploy_testdata/corerp-resources-container-liveness-readiness.bicep" time="31.220000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerReadinessLiveness" time="37.090000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerVersioning/deploy_testdata/containers/corerp-resources-friendly-container-version-1.bicep" time="37.730000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerVersioning/deploy_testdata/containers/corerp-resources-friendly-container-version-2.bicep" time="20.660000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ContainerVersioning" time="64.470000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_YAMLManifest_SideCar/deploy_testdata/corerp-resources-container-manifest-sidecar.bicep" time="20.760000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_Container_YAMLManifest_SideCar" time="26.950000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ApplicationGraph/deploy_testdata/corerp-resources-application-graph.bicep" time="22.760000" />
+		<testcase classname="github.com/radius-project/radius/test/functional-portable/corerp/noncloud/resources" name="Test_ApplicationGraph" time="28.610000" />
+	</testsuite>
+</testsuites>
