@@ -33,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/radius-project/radius/test/functional-portable/corerp"
+	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
@@ -149,6 +150,18 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				// Test Recipe Show
+				t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
+					options := rp.NewRPTestOptions(t)
+					cli := radcli.NewCLI(t, options.ConfigFilePath)
+					output, err := cli.RecipeShow(ctx, envName, "default", "Applications.Datastores/redisCaches")
+					require.NoError(t, err)
+					require.Contains(t, output, "default")
+					require.Contains(t, output, testutil.GetTerraformPrivateModuleSource())
+					require.Contains(t, output, "Applications.Core/extenders")
+					require.Contains(t, output, "redis_cache_name")
+					require.Contains(t, output, "string")
+				})
 				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
 					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
 				require.NoError(t, err)

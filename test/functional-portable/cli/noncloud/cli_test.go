@@ -81,8 +81,8 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 	terraformRecipeTemplate := "Azure/cosmosdb/azurerm"
 	templateKindTerraform := "terraform"
 
-	terraformPrivateRecipe := "recipe3"
-	terraformPrivateRecipeTemplate := "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
+	//terraformPrivateRecipe := "recipe3"
+	//terraformPrivateRecipeTemplate := "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
@@ -143,15 +143,15 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 		require.Contains(t, output, "string")
 	})
 
-	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
-		output, err := cli.RecipeShow(ctx, envName, terraformPrivateRecipe, "Applications.Datastores/redisCaches")
-		require.NoError(t, err)
-		require.Contains(t, output, terraformPrivateRecipe)
-		require.Contains(t, output, terraformPrivateRecipeTemplate)
-		require.Contains(t, output, "Applications.Datastores/redisCaches")
-		require.Contains(t, output, "redis_cache_name")
-		require.Contains(t, output, "string")
-	})
+	// t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
+	// 	output, err := cli.RecipeShow(ctx, envName, terraformPrivateRecipe, "Applications.Datastores/redisCaches")
+	// 	require.NoError(t, err)
+	// 	require.Contains(t, output, terraformPrivateRecipe)
+	// 	require.Contains(t, output, terraformPrivateRecipeTemplate)
+	// 	require.Contains(t, output, "Applications.Datastores/redisCaches")
+	// 	require.Contains(t, output, "redis_cache_name")
+	// 	require.Contains(t, output, "string")
+	// })
 
 	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
 		output, err := cli.BicepPublish(ctx, file, target)
