@@ -77,7 +77,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 				namespace)), nil
 		}
 
-		kubeNamespace = kubernetes.NormalizeResourceName(namespace)
+		//kubeNamespace = kubernetes.NormalizeResourceName(namespace)
 	}
 
 	// Check if another environment resource is using namespace

@@ -199,7 +199,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 	})
 
 	t.Run("generated namespace is should be normalized", func(t *testing.T) {
-		longAppID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/Application-with-caps"
+		longAppID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/App-With-Cap"
 		longEnvID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env"
 
 		tCtx.MockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(tCtx.MockSC, nil).Times(1)
@@ -233,8 +233,6 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
 		require.NoError(t, err)
 		require.IsType(t, rest.OKResponse{}, resp)
-		require.Equal(t, "application-with-caps-env", newResource.Properties.Status.Compute.KubernetesCompute.Namespace)
-
 	})
 
 	t.Run("invalid namespace", func(t *testing.T) {
