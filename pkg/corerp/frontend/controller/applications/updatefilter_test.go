@@ -195,7 +195,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 		require.NoError(t, err)
 		res := resp.(*rest.BadRequestResponse)
 
-		require.Equal(t, "Application namespace 'this-is-a-very-long-environment-name-that-is-invalid-this-is-a-very-long-application-name-that-is-invalid' could not be created: the combination of application and environment names is too long.", res.Body.Error.Message)
+		require.Equal(t, "Application namespace 'this-is-a-very-long-environment-name-that-is-invalid-this-is-a-very-long-application-name-that-is-invalid' could not be created: the combination of application and environment names is not a valid kubernetes object name", res.Body.Error.Message)
 	})
 
 	t.Run("generated namespace is should be normalized", func(t *testing.T) {
