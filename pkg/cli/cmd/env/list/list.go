@@ -115,7 +115,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	environments, err := client.ListEnvironmentsInResourceGroup(ctx)
+	environments, err := client.ListEnvironments(ctx)
 	if err != nil {
 		return err
 	}

@@ -28,6 +28,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
 )
 
@@ -133,7 +135,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 	envResource.Properties.Recipes = recipeProperties
-	err = client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
+	err = client.CreateOrUpdateEnvironment(ctx, r.Workspace.Environment, &v20231001preview.EnvironmentResource{
+		Location:   to.Ptr(v1.LocationGlobal),
+		Properties: envResource.Properties,
+	})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to unregister the recipe %s from the environment %s.", r.RecipeName, *envResource.ID)
 	}

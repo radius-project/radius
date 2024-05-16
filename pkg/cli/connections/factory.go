@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -182,8 +181,7 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 	}
 
 	return &clients.UCPApplicationsManagementClient{
-		// The client expects root scope without a leading /
-		RootScope:     strings.TrimPrefix(workspace.Scope, resources.SegmentSeparator),
+		RootScope:     workspace.Scope,
 		ClientOptions: sdk.NewClientOptions(connection),
 	}, nil
 }

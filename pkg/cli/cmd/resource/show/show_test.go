@@ -110,7 +110,7 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			ShowResource(gomock.Any(), "containers", "foo").
+			GetResource(gomock.Any(), "containers", "foo").
 			Return(resource, nil).Times(1)
 
 		outputSink := &output.MockOutput{}

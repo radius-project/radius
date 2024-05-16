@@ -152,7 +152,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20231001preview.RecipeGetMetadata{Name: &r.RecipeName, ResourceType: &r.ResourceType})
+	recipeDetails, err := client.GetRecipeMetadata(ctx, r.Workspace.Environment, v20231001preview.RecipeGetMetadata{Name: &r.RecipeName, ResourceType: &r.ResourceType})
 	if err != nil {
 		return err
 	}

@@ -155,7 +155,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return nil
 	}
 
-	app, err := client.ShowApplication(ctx, r.ApplicationName)
+	app, err := client.GetApplication(ctx, r.ApplicationName)
 	if err != nil {
 		return err
 	}

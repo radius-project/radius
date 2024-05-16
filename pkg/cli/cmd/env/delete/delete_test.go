@@ -105,7 +105,7 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			DeleteEnv(gomock.Any(), "test-env").
+			DeleteEnvironment(gomock.Any(), "test-env").
 			Return(true, nil).
 			Times(1)
 
@@ -151,7 +151,7 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			DeleteEnv(gomock.Any(), "test-env").
+			DeleteEnvironment(gomock.Any(), "test-env").
 			Return(true, nil).
 			Times(1)
 
@@ -227,7 +227,7 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			DeleteEnv(gomock.Any(), "test-env").
+			DeleteEnvironment(gomock.Any(), "test-env").
 			Return(false, nil).
 			Times(1)
 

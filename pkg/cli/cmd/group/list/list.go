@@ -114,7 +114,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	resourceGroupDetails, err := client.ListUCPGroup(ctx, "local")
+	resourceGroupDetails, err := client.ListResourceGroups(ctx, "local")
 	if err != nil {
 		return err
 	}
