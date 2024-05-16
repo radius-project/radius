@@ -73,7 +73,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		namespace := fmt.Sprintf("%s-%s", envNamespace, serviceCtx.ResourceID.Name())
 		kubeNamespace = strings.ToLower(namespace)
 		if !kubernetes.IsValidObjectName(kubeNamespace) {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Application namespace '%s' could not be created: the combination of application and environment names is not a valid kubernetes object name",
+			return rest.NewBadRequestResponse(fmt.Sprintf("Application namespace '%s' could not be created: the combination of application and environment names is not a valid kubernetes object name.",
 				namespace)), nil
 		}
 	}

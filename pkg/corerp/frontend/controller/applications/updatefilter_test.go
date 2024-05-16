@@ -195,7 +195,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 		require.NoError(t, err)
 		res := resp.(*rest.BadRequestResponse)
 
-		require.Equal(t, "Application namespace 'this-is-a-very-long-environment-name-that-is-invalid-this-is-a-very-long-application-name-that-is-invalid' could not be created: the combination of application and environment names is too long.", res.Body.Error.Message)
+		require.Equal(t, "Application namespace 'this-is-a-very-long-environment-name-that-is-invalid-this-is-a-very-long-application-name-that-is-invalid' could not be created: the combination of application and environment names is not a valid kubernetes object name.", res.Body.Error.Message)
 	})
 
 	t.Run("invalid namespace", func(t *testing.T) {
@@ -230,6 +230,45 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 		require.NoError(t, err)
 		res := resp.(*rest.BadRequestResponse)
 		require.Equal(t, res.Body.Error.Message, "'invalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-name' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.")
+	})
+
+	t.Run("valid namespace with uppercase in app name", func(t *testing.T) {
+
+		upperCaseAppID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/this-is-a-very-long-application-name-that-is-invalid"
+		upperCaseEnvID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/this-is-a-very-long-environment-name-that-is-invalid"
+
+		tCtx.MockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(tCtx.MockSC, nil).Times(1)
+
+		envdm := &datamodel.Environment{
+			Properties: datamodel.EnvironmentProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.KubernetesComputeKind,
+				},
+			},
+		}
+
+		tCtx.MockSC.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			Return(rpctest.FakeStoreObject(envdm), nil)
+
+		newResource := &datamodel.Application{
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
+					Environment: upperCaseEnvID,
+				},
+			},
+		}
+
+		id, err := resources.ParseResource(upperCaseAppID)
+		require.NoError(t, err)
+		armctx := &v1.ARMRequestContext{ResourceID: id}
+		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
+		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
+		require.NoError(t, err)
+		require.IsType(t, &rest.OKResponse{}, resp)
+
 	})
 
 	t.Run("conflicted namespace in environment resource", func(t *testing.T) {
