@@ -346,7 +346,7 @@ func Test_AddProviders(t *testing.T) {
 		envConfig                      recipes.Configuration
 		requiredProviders              map[string]*RequiredProviderInfo
 		expectedUCPConfiguredProviders []map[string]any
-		overrideUCPProviderConfig      bool
+		useUCPProviderConfig           bool
 		expectedConfigFile             string
 		Err                            error
 	}{
@@ -376,12 +376,13 @@ func Test_AddProviders(t *testing.T) {
 				},
 			},
 			requiredProviders: map[string]*RequiredProviderInfo{
-				"sql":                            {},
 				providers.AWSProviderName:        {},
 				providers.AzureProviderName:      {},
 				providers.KubernetesProviderName: {},
+				"sql":                            {},
 			},
-			expectedConfigFile: "testdata/providers-valid.tf.json",
+			useUCPProviderConfig: true,
+			expectedConfigFile:   "testdata/providers-valid.tf.json",
 		},
 		{
 			desc:                           "invalid aws scope",
@@ -400,9 +401,10 @@ func Test_AddProviders(t *testing.T) {
 					Version: ">= 3.0",
 				},
 			},
+			useUCPProviderConfig: true,
 		},
 		{
-			desc: "empty aws provider config",
+			desc: "empty aws provider config with required provider",
 			expectedUCPConfiguredProviders: []map[string]any{
 				{},
 			},
@@ -411,7 +413,8 @@ func Test_AddProviders(t *testing.T) {
 			requiredProviders: map[string]*RequiredProviderInfo{
 				providers.AWSProviderName: {},
 			},
-			expectedConfigFile: "testdata/providers-empty.tf.json",
+			useUCPProviderConfig: true,
+			expectedConfigFile:   "testdata/providers-emptywithrequiredprovider.tf.json",
 		},
 		{
 			desc: "empty aws scope",
@@ -432,7 +435,8 @@ func Test_AddProviders(t *testing.T) {
 			requiredProviders: map[string]*RequiredProviderInfo{
 				providers.AWSProviderName: {},
 			},
-			expectedConfigFile: "testdata/providers-empty.tf.json",
+			useUCPProviderConfig: true,
+			expectedConfigFile:   "testdata/providers-emptywithrequiredprovider.tf.json",
 		},
 		{
 			desc: "empty azure provider config",
@@ -449,7 +453,8 @@ func Test_AddProviders(t *testing.T) {
 					Version: "~> 2.0",
 				},
 			},
-			expectedConfigFile: "testdata/providers-emptyazureconfig.tf.json",
+			useUCPProviderConfig: true,
+			expectedConfigFile:   "testdata/providers-emptyazureconfig.tf.json",
 		},
 		{
 			desc:                           "valid recipe providers in env config",
@@ -491,8 +496,8 @@ func Test_AddProviders(t *testing.T) {
 					"config_path": "/home/radius/.kube/UCPconfig",
 				},
 			},
-			Err:                       nil,
-			overrideUCPProviderConfig: true,
+			Err:                  nil,
+			useUCPProviderConfig: false,
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
@@ -572,7 +577,7 @@ func Test_AddProviders(t *testing.T) {
 				},
 			},
 			requiredProviders:  nil,
-			expectedConfigFile: "testdata/providers-emptyproviders.tf.json",
+			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
 		{
 			desc:                           "recipe providers and tfconfigproperties not populated",
@@ -582,7 +587,7 @@ func Test_AddProviders(t *testing.T) {
 				RecipeConfig: datamodel.RecipeConfigProperties{},
 			},
 			requiredProviders:  nil,
-			expectedConfigFile: "testdata/providers-emptyproviders.tf.json",
+			expectedConfigFile: "testdata/providers-empty.tf.json",
 		},
 		{
 			desc:                           "envConfig set to empty recipe config",
@@ -590,14 +595,14 @@ func Test_AddProviders(t *testing.T) {
 			Err:                            nil,
 			envConfig:                      recipes.Configuration{},
 			requiredProviders:              nil,
-			expectedConfigFile:             "testdata/providers-emptyproviders.tf.json",
+			expectedConfigFile:             "testdata/providers-empty.tf.json",
 		},
 		{
 			desc:                           "envConfig not populated",
 			expectedUCPConfiguredProviders: nil,
 			Err:                            nil,
 			requiredProviders:              nil,
-			expectedConfigFile:             "testdata/providers-emptyproviders.tf.json",
+			expectedConfigFile:             "testdata/providers-empty.tf.json",
 		},
 	}
 
@@ -608,7 +613,7 @@ func Test_AddProviders(t *testing.T) {
 
 			tfconfig, err := New(ctx, testRecipeName, &envRecipe, &resourceRecipe, &tc.envConfig)
 			require.NoError(t, err)
-			if !tc.overrideUCPProviderConfig {
+			if tc.useUCPProviderConfig {
 				for _, p := range tc.expectedUCPConfiguredProviders {
 					mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(p, nil)
 				}

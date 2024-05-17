@@ -6,6 +6,9 @@
         "namespace": "radius-system",
         "secret_suffix": "test-secret-suffix"
       }
+    },
+    "required_providers": {
+      "aws": {}
     }
   },
   "module": {

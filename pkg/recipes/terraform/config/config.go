@@ -105,23 +105,22 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 
 	// Encode the Terraform config to JSON. JSON encoding is being used to ensure that special characters
 	// in the original text are preserved when writing to the file.
-	/* For example, when writing this text to file with JSON encoding (using enc.Encode(cfg)),
-	   the special characters in the following text will be preserved:
-		"required_providers": {
-				"aws": {
-					"source": "hashicorp/aws",
-					"version": ">= 3.0"
-				},
-			}
-	    However, if we were to write the text directly to the file without JSON encoding, t
-		the special characters would be escaped and be written as follows:
-		"required_providers": {
-			"aws": {
-					"source": "hashicorp/aws",
-					"version": "\u003e= 2.0"
-				},
-			}
-	*/
+	// For example, when writing this text to file with JSON encoding (using enc.Encode(cfg)),
+	//   the special characters in the following text will be preserved:
+	//	"required_providers": {
+	//			"aws": {
+	//				"source": "hashicorp/aws",
+	//				"version": ">= 3.0"
+	//			},
+	//		}
+	//   However, if we were to write the text directly to the file without JSON encoding, t
+	//	the special characters would be escaped and be written as follows:
+	//	"required_providers": {
+	//		"aws": {
+	//				"source": "hashicorp/aws",
+	//				"version": "\u003e= 2.0"
+	//			},
+	//		}
 	if err := enc.Encode(cfg); err != nil {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
@@ -154,7 +153,7 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 	}
 
 	// Update module configuration with aliased provider names, if they exist.
-	logger.Info("Updating module providers with aliases")
+	logger.Info("Updating module config with providers aliases")
 	if err := cfg.updateModuleWithProviderAliases(requiredProviders); err != nil {
 		return err
 	}
@@ -171,26 +170,26 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 
 // updateModuleWithProviderAliases updates the module provider configuration in the Terraform config
 // by adding aliases to the provider configurations.
+// https://developer.hashicorp.com/terraform/language/syntax/json#module-blocks
 func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders map[string]*RequiredProviderInfo) error {
 	if cfg == nil {
 		return fmt.Errorf("terraform configuration is not initialized")
 	}
-	providerConfigs := cfg.Provider
 	moduleAliasConfig := map[string]string{}
 
-	for providerName, providerConfigList := range providerConfigs {
+	for providerName, providerConfigList := range cfg.Provider {
 		providerConfigDetails, ok := providerConfigList.([]map[string]any)
 		if !ok {
 			continue
 		}
 
 		// For each provider in the providerConfigs, if provider has a property "alias",
-		// add entry to the module provider configuration, per documentation:
+		// add entry to the module provider configuration.
 		// Provider configurations (those with the alias argument set) are never inherited automatically by modules,
 		// and so must always be passed explicitly using the providers map.
 		// https://developer.hashicorp.com/terraform/language/modules/develop/providers#legacy-shared-modules-with-provider-configurations
 
-		// Note: We're building configuration from user input, we're currently mapping the provider.alias names in
+		// Note: We're building configuration from user input, we're mapping the provider.alias names in
 		// the required provider configuration (ConfigurationAliases) to the environment recipe provider configuration data.
 		// This is being done to ensure that the provider configuration is passed to the module correctly.
 
@@ -268,19 +267,14 @@ func getProviderConfigs(ctx context.Context, requiredProviders map[string]*Requi
 
 	// Build provider configurations for required providers excluding the ones already present in providerConfigs (environment level configuration).
 	// Required providers that are not configured with UCP will be skipped.
-	for providerName := range requiredProviders {
-		if _, ok := ucpConfiguredProviders[providerName]; ok { // Check if the provider is configured with UCP
-			if _, ok := providerConfigs[providerName]; ok {
-				// Environment level recipe configuration for providers will take precedence over
-				// UCP provider configuration (currently these include azurerm, aws, kubernetes providers)
-				continue
-			}
-		} else {
-			// If the provider under required_providers is not configured with UCP, skip this iteration.
+	for provider := range requiredProviders {
+		if _, ok := providerConfigs[provider]; ok {
+			// Environment level recipe configuration for providers will take precedence over
+			// UCP provider configuration (currently these include azurerm, aws, kubernetes providers)
 			continue
 		}
 
-		builder, ok := ucpConfiguredProviders[providerName]
+		builder, ok := ucpConfiguredProviders[provider]
 		if !ok {
 			// No-op: For any other provider under required_providers, Radius doesn't generate any custom configuration.
 			continue
@@ -292,7 +286,7 @@ func getProviderConfigs(ctx context.Context, requiredProviders map[string]*Requi
 		}
 
 		if len(config) > 0 {
-			providerConfigs[providerName] = config
+			providerConfigs[provider] = config
 		}
 	}
 
