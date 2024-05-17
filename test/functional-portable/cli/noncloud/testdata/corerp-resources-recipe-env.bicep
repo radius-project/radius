@@ -6,10 +6,6 @@ param location string = 'global'
 param registry string
 @description('The OCI tag for test Bicep recipes.')
 param version string
-@description('Private Git module source in generic git format.')
-param privateGitModule string
-@secure()
-param pat string
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-resources-recipe-env'

@@ -81,9 +81,6 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 	terraformRecipeTemplate := "Azure/cosmosdb/azurerm"
 	templateKindTerraform := "terraform"
 
-	//terraformPrivateRecipe := "recipe3"
-	//terraformPrivateRecipeTemplate := "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
-
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
 		require.NoError(t, err)
