@@ -143,16 +143,6 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 		require.Contains(t, output, "string")
 	})
 
-	// t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
-	// 	output, err := cli.RecipeShow(ctx, envName, terraformPrivateRecipe, "Applications.Datastores/redisCaches")
-	// 	require.NoError(t, err)
-	// 	require.Contains(t, output, terraformPrivateRecipe)
-	// 	require.Contains(t, output, terraformPrivateRecipeTemplate)
-	// 	require.Contains(t, output, "Applications.Datastores/redisCaches")
-	// 	require.Contains(t, output, "redis_cache_name")
-	// 	require.Contains(t, output, "string")
-	// })
-
 	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
 		output, err := cli.BicepPublish(ctx, file, target)
 		require.NoError(t, err)
@@ -725,7 +715,7 @@ func Test_RecipeCommands(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetTerraformPrivateModuleSource(), testutil.GetGitPAT(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
