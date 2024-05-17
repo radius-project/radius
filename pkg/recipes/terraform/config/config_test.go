@@ -825,6 +825,48 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			wantErr:            false,
 		},
 		{
+			name: "Test with unmatched required_provider aliases in provider config",
+			cfg: &TerraformConfig{
+				Provider: map[string]any{
+					"aws": []map[string]any{
+						{
+							"region": "us-west-2",
+						},
+					},
+				},
+				Module: map[string]TFModuleConfig{
+					"redis-azure": map[string]any{
+						"redis_cache_name":    "redis-test",
+						"resource_group_name": "test-rg",
+						"sku":                 "P",
+						"source":              "Azure/redis/azurerm",
+						"version":             "1.1.0",
+					},
+				},
+			},
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:               "hashicorp/aws",
+					Version:              ">= 3.0",
+					ConfigurationAliases: []string{"aws.alias1"},
+				},
+			},
+			expectedConfig: &TerraformConfig{
+				Provider: nil,
+				Module: map[string]TFModuleConfig{
+					"redis-azure": map[string]any{
+						"redis_cache_name":    "redis-test",
+						"resource_group_name": "test-rg",
+						"sku":                 "P",
+						"source":              "Azure/redis/azurerm",
+						"version":             "1.1.0",
+					},
+				},
+			},
+			expectedConfigFile: "testdata/providers-modules-unmatchedaliases.tf.json",
+			wantErr:            false,
+		},
+		{
 			name: "Test with no required_provider aliases",
 			cfg: &TerraformConfig{
 				Provider: map[string]any{
@@ -878,6 +920,19 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			requiredProviders: nil,
 			cfg:               nil,
 			wantErr:           true,
+		},
+		{
+			name:              "Provider Config in unexpected format",
+			requiredProviders: nil,
+			cfg: &TerraformConfig{
+				Provider: map[string]any{
+					"aws": []string{
+						"alias:  alias1",
+						"region: us-west-2",
+					},
+				},
+			},
+			wantErr: true,
 		},
 	}
 

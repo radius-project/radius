@@ -180,7 +180,7 @@ func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders ma
 	for providerName, providerConfigList := range cfg.Provider {
 		providerConfigDetails, ok := providerConfigList.([]map[string]any)
 		if !ok {
-			continue
+			return fmt.Errorf("provider configuration for %s is not in the expected format", providerName)
 		}
 
 		// For each provider in the providerConfigs, if provider has a property "alias",
@@ -286,7 +286,7 @@ func getProviderConfigs(ctx context.Context, requiredProviders map[string]*Requi
 		}
 
 		if len(config) > 0 {
-			providerConfigs[provider] = config
+			providerConfigs[provider] = []map[string]any{config}
 		}
 	}
 
