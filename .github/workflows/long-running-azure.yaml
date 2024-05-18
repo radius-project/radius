@@ -34,13 +34,13 @@
 # the previous build is still valid. If valid, the workflow skips the build steps
 # and uses the cached 'rad cli' for testing.
 #
-# Grafana dashboard URL:  https://radlrtest00-dashboard-e4ffc0cwggchdhba.wus3.grafana.azure.com 
+# Grafana dashboard URL:  https://radlrtest00-dashboard-e4ffc0cwggchdhba.wus3.grafana.azure.com
 
 name: Long-running test on Azure
 
 permissions:
   id-token: write # Required for requesting the JWT
-  contents: read  # Required for actions/checkout
+  contents: read # Required for actions/checkout
   packages: write # Required for uploading the package
 
 on:
@@ -211,7 +211,13 @@ jobs:
           cat summary.md >> $GITHUB_STEP_SUMMARY
       - name: Setup Azure CLI
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        run: |
+          sudo apt update && sudo apt-get install curl -y
+          curl -sL https://aka.ms/InstallAzureCLIDeb -o installAzureCli.sh
+          sed -i '/curl -sLS https:\/\/packages.microsoft.com\/keys\/microsoft.asc |/d' installAzureCli.sh
+          sed -i '/gpg --dearmor -o \/etc\/apt\/keyrings\/microsoft.gpg/d' installAzureCli.sh
+          sed -i '/chmod go+r \/etc\/apt\/keyrings\/microsoft.gpg/d' installAzureCli.sh
+          sudo bash installAzureCli.sh
       - name: Login to Azure
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: azure/login@v2
@@ -313,7 +319,7 @@ jobs:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@v2
         id: get_installation_token
-        with: 
+        with:
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Checkout
@@ -534,7 +540,7 @@ jobs:
               event: 'schedule',
               per_page: 10
             });
-            
+
             failureCount = 1;
             for (const run of response.data.workflow_runs) {
               if (run.conclusion === 'failure') {

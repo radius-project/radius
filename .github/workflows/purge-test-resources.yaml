@@ -52,7 +52,13 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Setup Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        run: |
+          sudo apt update && sudo apt-get install curl -y
+          curl -sL https://aka.ms/InstallAzureCLIDeb -o installAzureCli.sh
+          sed -i '/curl -sLS https:\/\/packages.microsoft.com\/keys\/microsoft.asc |/d' installAzureCli.sh
+          sed -i '/gpg --dearmor -o \/etc\/apt\/keyrings\/microsoft.gpg/d' installAzureCli.sh
+          sed -i '/chmod go+r \/etc\/apt\/keyrings\/microsoft.gpg/d' installAzureCli.sh
+          sudo bash installAzureCli.sh
       - name: Login to Azure
         uses: azure/login@v2
         with:

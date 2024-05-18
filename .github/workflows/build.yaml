@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -31,12 +31,12 @@ on:
       - release/*
 
 permissions:
-  id-token: write      # Required for requesting the JWT
-  contents: write      # Required for creating releases
-  issues: write        # Required for creating comments
-  checks: write        # Required for updating check runs
+  id-token: write # Required for requesting the JWT
+  contents: write # Required for creating releases
+  issues: write # Required for creating comments
+  checks: write # Required for updating check runs
   pull-requests: write # Required for updating pull requests
-  packages: write      # Required for uploading the package
+  packages: write # Required for uploading the package
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
@@ -45,8 +45,8 @@ concurrency:
 
 env:
   # Go version to install
-  GOVER: '1.22.2'
-  
+  GOVER: "1.22.2"
+
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
   GOTESTSUMVERSION: 1.10.0
 
@@ -54,7 +54,7 @@ env:
   GHCR_ACTOR: rad-ci-bot
 
   # Container registry url for GitHub container registry.
-  CONTAINER_REGISTRY: 'ghcr.io/radius-project'
+  CONTAINER_REGISTRY: "ghcr.io/radius-project"
 
   # Local file path to the release binaries.
   RELEASE_PATH: ./release
@@ -105,8 +105,8 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
-          GOTESTSUM_OPTS: '--junitfile ./dist/unit_test/results.xml'
-          GOTEST_OPTS: '-race -coverprofile ./dist/unit_test/ut_coverage.out'
+          GOTESTSUM_OPTS: "--junitfile ./dist/unit_test/results.xml"
+          GOTEST_OPTS: "-race -coverprofile ./dist/unit_test/ut_coverage.out"
         run: |
           mkdir -p ./dist/unit_test
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
@@ -125,9 +125,9 @@ jobs:
         # Always is required here to make sure this target runs even when tests fail.
         if: always() && matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         with:
-          test_group_name: 'Unit Tests'
-          artifact_name: 'unit_test_results'
-          result_directory: 'dist/unit_test/'
+          test_group_name: "Unit Tests"
+          artifact_name: "unit_test_results"
+          result_directory: "dist/unit_test/"
       - name: Copy cli binaries to release (unix-like)
         if: matrix.target_os != 'windows'
         run: |
@@ -215,7 +215,7 @@ jobs:
 
   build-and-push-helm-chart:
     name: Helm chart build
-    needs: ['build-and-push-images']
+    needs: ["build-and-push-images"]
     runs-on: ubuntu-latest
     # Don't push on PR, agent will not have permission.
     if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
@@ -226,14 +226,14 @@ jobs:
       OCI_REGISTRY: ghcr.io
       # We only push the chart on pushes to main or to a tag. The versioning logic will select the right
       # version for us.
-      OCI_REPOSITORY: 'radius-project/helm-chart' 
+      OCI_REPOSITORY: "radius-project/helm-chart"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install helm
         uses: azure/setup-helm@v4
         with:
-          version: 'v3.11.1'
+          version: "v3.11.1"
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Run Helm linter
@@ -246,7 +246,13 @@ jobs:
       # TODO: Delete this step once we use GHCR as the helm chart repo.
       # Cannot use Workload Identity because azure federated identity doesn't accept wildcard tag version.
       - name: Setup Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        run: |
+          sudo apt update && sudo apt-get install curl -y
+          curl -sL https://aka.ms/InstallAzureCLIDeb -o installAzureCli.sh
+          sed -i '/curl -sLS https:\/\/packages.microsoft.com\/keys\/microsoft.asc |/d' installAzureCli.sh
+          sed -i '/gpg --dearmor -o \/etc\/apt\/keyrings\/microsoft.gpg/d' installAzureCli.sh
+          sed -i '/chmod go+r \/etc\/apt\/keyrings\/microsoft.gpg/d' installAzureCli.sh
+          sudo bash installAzureCli.sh
       - name: az CLI login
         run: |
           az login --service-principal \
@@ -264,7 +270,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    needs: ['build-and-push-cli']
+    needs: ["build-and-push-cli"]
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
     env:
