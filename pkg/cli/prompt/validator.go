@@ -78,6 +78,7 @@ func ValidateResourceName(input string) error {
 }
 
 // ValidateApplicationName checks if the given string is a valid Application name, and returns an error if it is not.
+// The rules for application name disallows upper case since we use the name to also create a kubernetes namespace for the application.
 func ValidateApplicationName(input string) error {
 	r := regexp.MustCompile("^[a-z]([a-z0-9-]*[a-z0-9])?$")
 	if r.MatchString(input) {
