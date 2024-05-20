@@ -84,6 +84,6 @@ func Test_enterApplicationName(t *testing.T) {
 		name, err := runner.enterApplicationName(func() (string, error) { return "Invalid-Name", nil })
 		require.NoError(t, err)
 		require.Equal(t, "another-name", name)
-	}
+	})
 
 }
