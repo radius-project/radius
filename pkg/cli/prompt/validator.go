@@ -79,7 +79,7 @@ func ValidateResourceName(input string) error {
 }
 
 // ValidateApplicationName checks if the given string is a valid Application name, and returns an error if it is not.
-// The rules for application name disallows upper case since we use the name to also create a kubernetes namespace for the application.
+// The rules for application name matches that of kubernetes namespace since we use the name to also create a namespace for the application.
 func ValidateApplicationName(input string) error {
 	err := ValidateKubernetesNamespace(input)
 	if err != nil {
