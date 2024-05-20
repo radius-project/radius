@@ -76,7 +76,7 @@ func (r *Runner) enterApplicationName(chooseDefault func() (string, error)) (str
 
 	name, err = r.Prompter.GetTextInput(enterApplicationNamePrompt, prompt.TextInputOptions{
 		Placeholder: enterApplicationNamePlaceholder,
-		Validate:    prompt.ValidateResourceName,
+		Validate:    prompt.ValidateApplicationName,
 	})
 	if err != nil {
 		return "", err
