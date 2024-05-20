@@ -22,9 +22,10 @@ import (
 )
 
 const (
-	invalidNamespaceNameMessage = "namespace must be 1-63 characters, made up of of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
-	invalidResourceNameMessage  = "name must be made up of alphanumeric characters and hyphens, and must begin with an alphabetic character and end with an alphanumeric character"
-	invalidUUIDv4Message        = "must be a valid UUID v4 (GUID)"
+	invalidNamespaceNameMessage   = "namespace must be 1-63 characters, made up of of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
+	invalidResourceNameMessage    = "name must be made up of alphanumeric characters and hyphens, and must begin with an alphabetic character and end with an alphanumeric character"
+	invalidApplicationNameMessage = "application name must be 1-63 characters, made up of of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
+	invalidUUIDv4Message          = "must be a valid UUID v4 (GUID)"
 
 	// ErrExitConsoleMessage is the message that is displayed when the user exits the console. This is exported for use in tests.
 	ErrExitConsoleMessage = "exiting command"
@@ -80,12 +81,11 @@ func ValidateResourceName(input string) error {
 // ValidateApplicationName checks if the given string is a valid Application name, and returns an error if it is not.
 // The rules for application name disallows upper case since we use the name to also create a kubernetes namespace for the application.
 func ValidateApplicationName(input string) error {
-	r := regexp.MustCompile("^[a-z]([a-z0-9-]*[a-z0-9])?$")
-	if r.MatchString(input) {
-		return nil
+	err := ValidateKubernetesNamespace(input)
+	if err != nil {
+		return errors.New(invalidApplicationNameMessage)
 	}
-
-	return errors.New(invalidResourceNameMessage)
+	return nil
 }
 
 // ValidateResourceName validates the user input according to ARM/UCP rules for a resource name, but also allows empty input.
