@@ -77,6 +77,16 @@ func ValidateResourceName(input string) error {
 	return errors.New(invalidResourceNameMessage)
 }
 
+// ValidateApplicationName checks if the given string is a valid Application name, and returns an error if it is not.
+func ValidateApplicationName(input string) error {
+	r := regexp.MustCompile("^[a-z]([a-z0-9-]*[a-z0-9])?$")
+	if r.MatchString(input) {
+		return nil
+	}
+
+	return errors.New(invalidResourceNameMessage)
+}
+
 // ValidateResourceName validates the user input according to ARM/UCP rules for a resource name, but also allows empty input.
 //
 // Largely matches https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules

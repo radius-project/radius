@@ -68,7 +68,7 @@ func (r *Runner) enterApplicationName(chooseDefault func() (string, error)) (str
 		return "", err
 	}
 
-	err = prompt.ValidateResourceName(name)
+	err = prompt.ValidateApplicationName(name)
 	if err == nil {
 		// Default name is a valid application name.
 		return name, nil

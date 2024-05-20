@@ -74,5 +74,16 @@ func Test_enterApplicationName(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "another-name", name)
 	})
+	t.Run("Usr is prompted for application name containing uppercase", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		prompter := prompt.NewMockInterface(ctrl)
+		runner := Runner{Prompter: prompter}
+
+		setApplicationNamePrompt(prompter, "another-name")
+
+		name, err := runner.enterApplicationName(func() (string, error) { return "Invalid-Name", nil })
+		require.NoError(t, err)
+		require.Equal(t, "another-name", name)
+	}
 
 }
