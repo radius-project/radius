@@ -43,7 +43,7 @@ func ValidateKubernetesNamespace(input string) error {
 		return nil
 	}
 
-	return errors.New(invalidResourceNameMessage)
+	return errors.New(invalidNamespaceNameMessage)
 }
 
 // ValidateKubernetesNamespaceOrDefault validates the user input according to Kubernetes rules for a namespace name, but also allows empty input.
