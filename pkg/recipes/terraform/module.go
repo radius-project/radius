@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	getter "github.com/hashicorp/go-getter"
@@ -28,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -41,8 +43,9 @@ type moduleInspectResult struct {
 	// ContextVarExists is true if the module has a variable defined for recipe context.
 	ContextVarExists bool
 
-	// RequiredProviders is a list of names of required providers for the module.
-	RequiredProviders []string
+	// RequiredProviders is a map where the key is the name of required providers for the module,
+	// and the value is a pointer to a RequiredProviderInfo struct that contains the details for the provider.
+	RequiredProviders map[string]*config.RequiredProviderInfo
 
 	// ResultOutputExists is true if the module contains an output named "result".
 	ResultOutputExists bool
@@ -91,7 +94,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
 func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*moduleInspectResult, error) {
-	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: []string{}, ResultOutputExists: false, Parameters: map[string]any{}}
+	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: map[string]*config.RequiredProviderInfo{}, ResultOutputExists: false, Parameters: map[string]any{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
@@ -109,9 +112,30 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 		result.ContextVarExists = true
 	}
 
-	// Extract the list of required providers.
-	for providerName := range mod.RequiredProviders {
-		result.RequiredProviders = append(result.RequiredProviders, providerName)
+	// Extract the details of required providers.
+	for k, v := range mod.RequiredProviders {
+		requiredprovider := &config.RequiredProviderInfo{}
+
+		requiredprovider.Source = v.Source
+		if len(v.VersionConstraints) > 0 {
+			requiredprovider.Version = strings.Join(v.VersionConstraints, ",")
+		}
+
+		if len(v.ConfigurationAliases) > 0 {
+			var aliases []string
+			for _, alias := range v.ConfigurationAliases {
+				// Concatenate Name and Alias from ProviderRef. This is expected format of provider alias in required_provider configuration_aliases field.
+				// Ref: https://developer.hashicorp.com/terraform/language/modules/develop/providers#provider-aliases-within-modules
+				if alias.Name != "" && alias.Alias != "" {
+					aliases = append(aliases, alias.Name+"."+alias.Alias)
+				}
+			}
+			if len(aliases) > 0 {
+				requiredprovider.ConfigurationAliases = aliases
+			}
+		}
+
+		result.RequiredProviders[k] = requiredprovider
 	}
 
 	// Check if an output named "result" is defined in the module.

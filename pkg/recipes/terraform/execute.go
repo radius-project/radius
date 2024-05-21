@@ -261,6 +261,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	if err != nil {
 		return "", err
 	}
+
 	// Retrieving the secret_suffix property from backend config to use it to verify secret creation during terraform init.
 	// This is only used for the backend of type kubernetes and should be moved inside an if block when we add more backends.
 	var secretSuffix string
