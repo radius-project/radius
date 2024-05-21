@@ -178,11 +178,6 @@ func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders ma
 	moduleAliasConfig := map[string]string{}
 
 	for providerName, providerConfigList := range cfg.Provider {
-		providerConfigDetails, ok := providerConfigList.([]map[string]any)
-		if !ok {
-			return fmt.Errorf("provider configuration for %s is not in the expected format", providerName)
-		}
-
 		// For each provider in the providerConfigs, if provider has a property "alias",
 		// add entry to the module provider configuration.
 		// Provider configurations (those with the alias argument set) are never inherited automatically by modules,
@@ -193,7 +188,7 @@ func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders ma
 		// the required provider configuration (ConfigurationAliases) to the environment recipe provider configuration data.
 		// This is being done to ensure that the provider configuration is passed to the module correctly.
 
-		for _, providerConfig := range providerConfigDetails {
+		for _, providerConfig := range providerConfigList {
 			if alias, ok := providerConfig["alias"]; ok {
 				aliasProviderConfig := providerName + "." + fmt.Sprintf("%v", alias)
 
@@ -261,7 +256,10 @@ func newModuleConfig(moduleSource string, moduleVersion string, params ...Recipe
 
 // getProviderConfigs generates the Terraform provider configurations. This is built from a combination of environment level recipe configuration for
 // providers and the provider configurations registered with UCP. The environment level recipe configuration for providers takes precedence over UCP provider configurations.
-func getProviderConfigs(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
+// The function returns a map where the keys are provider names and the values are slices of maps.
+// Each map in the slice represents a specific configuration for the corresponding provider.
+// This structure allows for multiple configurations per provider.
+func getProviderConfigs(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string][]map[string]any, error) {
 	// Get recipe provider configurations from the environment configuration
 	providerConfigs := providers.GetRecipeProviderConfigs(ctx, envConfig)
 

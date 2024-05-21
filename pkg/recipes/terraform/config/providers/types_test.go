@@ -13,17 +13,17 @@ func TestGetRecipeProviderConfigs(t *testing.T) {
 	testCases := []struct {
 		desc      string
 		envConfig *recipes.Configuration
-		expected  map[string]any
+		expected  map[string][]map[string]any
 	}{
 		{
 			desc:      "envConfig not set",
 			envConfig: nil,
-			expected:  map[string]any{},
+			expected:  map[string][]map[string]any{},
 		},
 		{
 			desc:      "no providers configured",
 			envConfig: &recipes.Configuration{},
-			expected:  map[string]any{},
+			expected:  map[string][]map[string]any{},
 		},
 		{
 			desc: "empty provider config",
@@ -36,7 +36,7 @@ func TestGetRecipeProviderConfigs(t *testing.T) {
 					},
 				},
 			},
-			expected: map[string]any{},
+			expected: map[string][]map[string]any{},
 		},
 		{
 			desc: "Additional Properties set to nil in provider config",
@@ -53,7 +53,7 @@ func TestGetRecipeProviderConfigs(t *testing.T) {
 					},
 				},
 			},
-			expected: map[string]any{"aws": []map[string]any{}},
+			expected: map[string][]map[string]any{"aws": []map[string]any{}},
 		},
 		{
 			desc: "provider with config",
@@ -80,7 +80,7 @@ func TestGetRecipeProviderConfigs(t *testing.T) {
 					},
 				},
 			},
-			expected: map[string]any{
+			expected: map[string][]map[string]any{
 				"azurerm": []map[string]any{
 					{
 						"subscriptionid": 1234,

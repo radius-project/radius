@@ -43,10 +43,40 @@ type TerraformConfig struct {
 	// Terraform represents number of settings related to Terraform's behavior.
 	Terraform *TerraformDefinition `json:"terraform"`
 
-	// Provider is the Terraform provider configuration.
+	// Provider represents the the configuration for Terraform providers.
+	// The key of the map is a string that represents the name of the provider.
+	// The value is a slice of maps, where each map represents a specific configuration for the provider.
+	// Each configuration map has string keys and values of any type.
+	// This structure allows for multiple configurations per provider.
+	//
+	// For example:
+	// {
+	//   "aws": [
+	//     {
+	//       "region": "us-west-2",
+	//       "version": "3.0"
+	//     },
+	//     {
+	//       "alias": "east",
+	//       "region": "us-east-1"
+	//     }
+	//   ],
+	//   "azurerm": [
+	//     {
+	//       "tenant": "my-tenantId",
+	//       "subscription_id": "my-subscriptionId"
+	//     }
+	//   ]
+	// }
+	//
+	// In this example, there are two providers: "aws" and "azurerm".
+	// The "aws" provider has two configurations: one for the "us-west-2" region and another for the "us-east-1" region with an alias "east".
+	// The "azurerm" provider has one configuration.
+	//
+	// For more information on Terraform provider configuration, refer to:
 	// https://developer.hashicorp.com/terraform/language/providers/configuration
 	// https://developer.hashicorp.com/terraform/language/syntax/json#provider-blocks
-	Provider map[string]any `json:"provider,omitempty"`
+	Provider map[string][]map[string]any `json:"provider,omitempty"`
 
 	// Module is the Terraform module configuration.
 	// https://developer.hashicorp.com/terraform/language/modules/syntax
