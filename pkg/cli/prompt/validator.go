@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	invalidNamespaceNameMessage   = "namespace must be 1-63 characters, made up of of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
+	invalidNamespaceNameMessage   = "namespace must be 1-63 characters, made up of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
 	invalidResourceNameMessage    = "name must be made up of alphanumeric characters and hyphens, and must begin with an alphabetic character and end with an alphanumeric character"
-	invalidApplicationNameMessage = "application name must be 1-63 characters, made up of of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
+	invalidApplicationNameMessage = "application name must be 1-63 characters, made up of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
 	invalidUUIDv4Message          = "must be a valid UUID v4 (GUID)"
 
 	// ErrExitConsoleMessage is the message that is displayed when the user exits the console. This is exported for use in tests.
