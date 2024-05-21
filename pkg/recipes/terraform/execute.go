@@ -29,12 +29,10 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/metrics"
-	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
-	"github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -302,35 +300,6 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	}
 
 	return secretSuffix, nil
-}
-
-// downloadAndInspect handles downloading the TF module and retrieving the necessary information
-func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Options) (*moduleInspectResult, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
-	// Download the Terraform module to the working directory.
-	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
-	downloadStartTime := time.Now()
-
-	if err := downloadModule(ctx, tf, options.EnvRecipe.TemplatePath); err != nil {
-		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
-			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
-				options.EnvRecipe, recipes.RecipeDownloadFailed))
-		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
-	}
-	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
-		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
-			options.EnvRecipe, metrics.SuccessfulOperationState))
-
-	// Load the downloaded module to retrieve providers and variables required by the module.
-	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
-	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
-	loadedModule, err := inspectModule(tf.WorkingDir(), options.EnvRecipe)
-	if err != nil {
-		return nil, err
-	}
-
-	return loadedModule, nil
 }
 
 // getTerraformConfig initializes the Terraform json config with provided module source and saves it
