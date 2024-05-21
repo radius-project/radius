@@ -146,19 +146,19 @@ func (r *Runner) Run(ctx context.Context) error {
 	var resourceList []generated.GenericResource
 
 	if r.ApplicationName == "" {
-		resourceList, err = client.ListAllResourcesByType(ctx, r.ResourceType)
+		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
 		if err != nil {
 			return err
 		}
 	} else {
-		_, err = client.ShowApplication(ctx, r.ApplicationName)
+		_, err = client.GetApplication(ctx, r.ApplicationName)
 		if clients.Is404Error(err) {
 			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
 		} else if err != nil {
 			return err
 		}
 
-		resourceList, err = client.ListAllResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+		resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
 		if err != nil {
 			return err
 		}

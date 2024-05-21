@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/proxy"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/rest"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -39,16 +38,16 @@ const (
 
 var _ armrpc_controller.Controller = (*ProxyController)(nil)
 
-// ProxyController is the controller implementation to proxy requests to appropriate RP or URL.
+// ProxyController is the controller implementation to proxy requests to Azure.
 type ProxyController struct {
-	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
+	armrpc_controller.Operation[*datamodel.AzurePlane, datamodel.AzurePlane]
 }
 
 // NewProxyController creates a new ProxyPlane controller with the given options and returns it, or returns an error if the
 // controller cannot be created.
 func NewProxyController(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ProxyController{
-		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.Plane]{}),
+		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AzurePlane]{}),
 	}, nil
 }
 
@@ -87,29 +86,6 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 		return restResponse, nil
 	}
 
-	if plane.Properties.Kind == rest.PlaneKindUCPNative {
-		// Check if the resource group exists
-		id, err := resources.Parse(newURL.Path)
-		if err != nil {
-			return nil, err
-		}
-		rgPath := id.RootScope()
-		rgID, err := resources.ParseScope(rgPath)
-		if err != nil {
-			return nil, err
-		}
-
-		existingRG, _, err := p.GetResource(ctx, rgID)
-		if err != nil {
-			return nil, err
-		}
-		if existingRG == nil {
-			logger.Info(fmt.Sprintf("Resource group %s not found in db", serviceCtx.ResourceID))
-			restResponse := armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID)
-			return restResponse, nil
-		}
-	}
-
 	// Get the resource provider
 	resourceID, err := resources.Parse(newURL.Path)
 	if err != nil {
@@ -123,23 +99,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	// Lookup the resource providers configured to determine the URL to proxy to
-	// Not using map lookups to enable case insensitive comparisons
-	// We need to preserve the case while storing data in DB and therefore iterating for case
-	// insensitive comparisons
-
-	var proxyURL string
-	if plane.Properties.Kind == rest.PlaneKindUCPNative {
-		proxyURL = plane.LookupResourceProvider(resourceID.ProviderNamespace())
-		if proxyURL == "" {
-			err = fmt.Errorf("provider %s not configured", resourceID.ProviderNamespace())
-			return nil, err
-		}
-	} else {
-		// For a non UCP-native plane, the configuration should have a URL to which
-		// all the requests will be forwarded
-		proxyURL = *plane.Properties.URL
-	}
+	proxyURL := plane.Properties.URL
 
 	downstream, err := url.Parse(proxyURL)
 	if err != nil {
@@ -177,10 +137,8 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	req.Header.Set(v1.RefererHeader, refererURL.String())
 
 	sender := proxy.NewARMProxy(options, downstream, func(builder *proxy.ReverseProxyBuilder) {
-		if plane.Properties.Kind != rest.PlaneKindUCPNative {
-			// If we're proxying to Azure then remove the planes prefix.
-			builder.Directors = append(builder.Directors, trimPlanesPrefix)
-		}
+		// Since we're proxying to Azure then remove the planes prefix.
+		builder.Directors = append(builder.Directors, trimPlanesPrefix)
 	})
 
 	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))

@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -31,12 +30,33 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
 	"github.com/radius-project/radius/pkg/ucp/secret"
 	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"go.uber.org/mock/gomock"
 )
 
 const pathBase = "/some-path-base"
 
 func Test_Routes(t *testing.T) {
 	tests := []rpctest.HandlerTestSpec{
+		{
+			OperationType: v1.OperationType{Type: "System.Radius/planes", Method: v1.OperationList},
+			Method:        http.MethodGet,
+			Path:          "/planes/radius",
+		},
+		{
+			OperationType: v1.OperationType{Type: "System.Radius/planes", Method: v1.OperationGet},
+			Method:        http.MethodGet,
+			Path:          "/planes/radius/someName",
+		},
+		{
+			OperationType: v1.OperationType{Type: "System.Radius/planes", Method: v1.OperationPut},
+			Method:        http.MethodPut,
+			Path:          "/planes/radius/someName",
+		},
+		{
+			OperationType: v1.OperationType{Type: "System.Radius/planes", Method: v1.OperationDelete},
+			Method:        http.MethodDelete,
+			Path:          "/planes/radius/someName",
+		},
 		{
 			OperationType:               v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
 			Method:                      http.MethodGet,
@@ -89,7 +109,7 @@ func Test_Routes(t *testing.T) {
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
 		module := NewModule(options)
-		router, err := module.Initialize(ctx)
-		return router.(chi.Router), err
+		handler, err := module.Initialize(ctx)
+		return handler.(chi.Router), err
 	})
 }

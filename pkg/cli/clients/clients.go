@@ -137,40 +137,74 @@ type LogStream struct {
 
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {
-	ListAllResourcesByType(ctx context.Context, resourceType string) ([]generated.GenericResource, error)
-	ListAllResourcesOfTypeInApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error)
-	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error)
-	ListAllResourcesOfTypeInEnvironment(ctx context.Context, environmentName string, resourceType string) ([]generated.GenericResource, error)
-	ListAllResourcesByEnvironment(ctx context.Context, environmentName string) ([]generated.GenericResource, error)
-	ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error)
-	DeleteResource(ctx context.Context, resourceType string, resourceName string) (bool, error)
-	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
-	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
-	GetGraph(ctx context.Context, applicationName string) (corerp.ApplicationGraphResponse, error)
+	// ListResourcesOfType lists all resources of a given type in the configured scope.
+	ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error)
 
-	// CreateOrUpdateApplication creates or updates an application.
-	CreateOrUpdateApplication(ctx context.Context, applicationName string, resource corerp.ApplicationResource) error
+	// ListResourcesOfTypeInApplication lists all resources of a given type in a given application in the configured scope.
+	ListResourcesOfTypeInApplication(ctx context.Context, applicationNameOrID string, resourceType string) ([]generated.GenericResource, error)
+
+	// ListResourcesOfTypeInEnvironment lists all resources of a given type in a given environment in the configured scope.
+	ListResourcesOfTypeInEnvironment(ctx context.Context, environmentNameOrID string, resourceType string) ([]generated.GenericResource, error)
+
+	// ListResourcesInApplication lists all resources in a given application in the configured scope.
+	ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error)
+
+	// ListResourcesInEnvironment lists all resources in a given environment in the configured scope.
+	ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error)
+
+	// GetResource retrieves a resource by its type and name (or id).
+	GetResource(ctx context.Context, resourceType string, resourceNameOrID string) (generated.GenericResource, error)
+
+	// DeleteResource deletes a resource by its type and name (or id).
+	DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string) (bool, error)
+
+	// ListApplications lists all applications in the configured scope.
+	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
+
+	// GetApplication retrieves an application by its name (or id).
+	GetApplication(ctx context.Context, applicationNameOrID string) (corerp.ApplicationResource, error)
+
+	// GetApplicationGraph retrieves the application graph of an application by its name (or id).
+	GetApplicationGraph(ctx context.Context, applicationNameOrID string) (corerp.ApplicationGraphResponse, error)
+
+	// CreateOrUpdateApplication creates or updates an application by its name (or id).
+	CreateOrUpdateApplication(ctx context.Context, applicationNameOrID string, resource *corerp.ApplicationResource) error
 
 	// CreateApplicationIfNotFound creates an application if it does not exist.
-	CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource corerp.ApplicationResource) error
+	CreateApplicationIfNotFound(ctx context.Context, applicationNameOrID string, resource *corerp.ApplicationResource) error
 
-	DeleteApplication(ctx context.Context, applicationName string) (bool, error)
-	CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerp.EnvironmentProperties) error
+	// DeleteApplication deletes an application and all of its resources by its name (or id).
+	DeleteApplication(ctx context.Context, applicationNameOrID string) (bool, error)
 
-	// ListEnvironmentsInResourceGroup lists all environments in the configured scope (assumes configured scope is a resource group)
-	ListEnvironmentsInResourceGroup(ctx context.Context) ([]corerp.EnvironmentResource, error)
+	// ListEnvironments lists all environments in the configured scope (assumes configured scope is a resource group).
+	ListEnvironments(ctx context.Context) ([]corerp.EnvironmentResource, error)
 
 	// ListEnvironmentsAll lists all environments across resource groups.
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
-	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
-	DeleteEnv(ctx context.Context, envName string) (bool, error)
-	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20231001preview.ResourceGroupResource) error
-	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
-	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20231001preview.ResourceGroupResource, error)
-	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20231001preview.ResourceGroupResource, error)
 
-	// ShowRecipe shows recipe details including list of all parameters for a given recipe registered to an environment
-	ShowRecipe(ctx context.Context, environmentName string, recipe corerp.RecipeGetMetadata) (corerp.RecipeGetMetadataResponse, error)
+	// GetEnvironment retrieves an environment by its name (in the configured scope) or resource ID.
+	GetEnvironment(ctx context.Context, environmentNameOrID string) (corerp.EnvironmentResource, error)
+
+	// GetRecipeMetadata shows recipe details including list of all parameters for a given recipe registered to an environment.
+	GetRecipeMetadata(ctx context.Context, environmentNameOrID string, recipe corerp.RecipeGetMetadata) (corerp.RecipeGetMetadataResponse, error)
+
+	// CreateOrUpdateEnvironment creates an environment by its name (or id).
+	CreateOrUpdateEnvironment(ctx context.Context, environmentNameOrID string, resource *corerp.EnvironmentResource) error
+
+	// DeleteEnvironment deletes an environment and all of its resources by its name (in the configured scope) or resource ID.
+	DeleteEnvironment(ctx context.Context, environmentNameOrID string) (bool, error)
+
+	// ListResourceGroups lists all resource groups in the configured scope.
+	ListResourceGroups(ctx context.Context, planeName string) ([]ucp_v20231001preview.ResourceGroupResource, error)
+
+	// GetResourceGroup retrieves a resource group by its name.
+	GetResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (ucp_v20231001preview.ResourceGroupResource, error)
+
+	// CreateOrUpdateResourceGroup creates a resource group by its name.
+	CreateOrUpdateResourceGroup(ctx context.Context, planeName string, resourceGroupName string, resource *ucp_v20231001preview.ResourceGroupResource) error
+
+	// DeleteResourceGroup deletes a resource group by its name.
+	DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
 }
 
 // ShallowCopy creates a shallow copy of the DeploymentParameters object by iterating through the original object and

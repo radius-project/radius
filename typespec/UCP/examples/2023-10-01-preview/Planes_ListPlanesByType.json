@@ -12,7 +12,7 @@
           {
             "id": "/planes/radius/local",
             "name": "local",
-            "type": "System.Planes/radius",
+            "type": "System.Radius/planes",
             "location": "global",
             "properties": {
               "resourceProviders": {

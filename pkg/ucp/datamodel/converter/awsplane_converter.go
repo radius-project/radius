@@ -24,11 +24,11 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
-// PlaneDataModelToVersioned converts version agnostic plane datamodel to versioned model.
-func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.VersionedModelInterface, error) {
+// AWSPlaneDataModelToVersioned converts version agnostic AWS plane datamodel to versioned model.
+func AWSPlaneDataModelToVersioned(model *datamodel.AWSPlane, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20231001preview.Version:
-		versioned := &v20231001preview.PlaneResource{}
+		versioned := &v20231001preview.AwsPlaneResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -39,11 +39,11 @@ func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.Versi
 	}
 }
 
-// PlaneDataModelFromVersioned converts versioned plane model to datamodel.
-func PlaneDataModelFromVersioned(content []byte, version string) (*datamodel.Plane, error) {
+// AWSPlaneDataModelFromVersioned converts versioned AWS plane model to datamodel.
+func AWSPlaneDataModelFromVersioned(content []byte, version string) (*datamodel.AWSPlane, error) {
 	switch version {
 	case v20231001preview.Version:
-		vm := &v20231001preview.PlaneResource{}
+		vm := &v20231001preview.AwsPlaneResource{}
 		if err := json.Unmarshal(content, vm); err != nil {
 			return nil, err
 		}
@@ -51,7 +51,7 @@ func PlaneDataModelFromVersioned(content []byte, version string) (*datamodel.Pla
 		if err != nil {
 			return nil, err
 		}
-		return dm.(*datamodel.Plane), nil
+		return dm.(*datamodel.AWSPlane), nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

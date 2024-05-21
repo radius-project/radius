@@ -1,0 +1,20 @@
+{
+  "id": "/planes/azure/azurecloud",
+  "name": "azurecloud",
+  "type": "System.Azure/planes",
+  "location": "global",
+  "systemData": {
+    "createdBy": "fakeid@live.com",
+    "createdByType": "User",
+    "createdAt": "2021-09-24T19:09:54.2403864Z",
+    "lastModifiedBy": "fakeid@live.com",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  },
+  "tags": {
+    "env": "dev"
+  },
+  "properties": {
+    "url": "https://management.azure.com"
+  }
+}

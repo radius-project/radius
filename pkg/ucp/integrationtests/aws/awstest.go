@@ -21,13 +21,13 @@ package aws
 import (
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	ucp_aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
 	"github.com/radius-project/radius/pkg/ucp/secret"
 	"github.com/radius-project/radius/pkg/ucp/store"
+	"go.uber.org/mock/gomock"
 )
 
 const (

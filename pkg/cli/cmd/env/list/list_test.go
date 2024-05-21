@@ -20,8 +20,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -97,7 +97,7 @@ func Test_Run(t *testing.T) {
 
 	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 	appManagementClient.EXPECT().
-		ListEnvironmentsInResourceGroup(gomock.Any()).
+		ListEnvironments(gomock.Any()).
 		Return(environments, nil).
 		Times(1)
 

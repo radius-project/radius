@@ -142,7 +142,7 @@ ucp:
 | Key | Description | Example |
 |-----|-------------|---------|
 | id | The ID of the UCP plane | `/planes/radius/local` | 
-| type | The type of UCP plane | `System.Planes/radius` |
+| type | The type of UCP plane | `System.Radius/planes` |
 | name | The name of the UCP plane | `ucp` |
 | properties | The properties specified on the plane | [**See below**](#properties) |
 

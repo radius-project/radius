@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -29,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -76,7 +76,7 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), "radius", "local", "testrg").Return(true, nil).Times(1)
+			appManagementClient.EXPECT().DeleteResourceGroup(gomock.Any(), "local", "testrg").Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -108,7 +108,7 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), "radius", "local", "testrg").Return(false, nil).Times(1)
+			appManagementClient.EXPECT().DeleteResourceGroup(gomock.Any(), "local", "testrg").Return(false, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 

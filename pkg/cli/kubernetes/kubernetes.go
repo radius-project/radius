@@ -36,6 +36,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/kubeutil"
+
+	// Import kubernetes auth plugins
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 var (

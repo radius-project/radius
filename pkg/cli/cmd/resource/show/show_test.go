@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -29,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 var (
@@ -110,7 +110,7 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			ShowResource(gomock.Any(), "containers", "foo").
+			GetResource(gomock.Any(), "containers", "foo").
 			Return(resource, nil).Times(1)
 
 		outputSink := &output.MockOutput{}

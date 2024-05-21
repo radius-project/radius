@@ -182,6 +182,6 @@ Enter the following commands to install all of the required tools.
 cd typespec && npm ci
 npm install -g autorest
 npm install -g oav
-go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
-go install github.com/golang/mock/mockgen@v1.5.0
+go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
+go install go.uber.org/mock/mockgen@v0.4.0
 ```

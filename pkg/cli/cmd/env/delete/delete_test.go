@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -30,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -105,7 +105,7 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			DeleteEnv(gomock.Any(), "test-env").
+			DeleteEnvironment(gomock.Any(), "test-env").
 			Return(true, nil).
 			Times(1)
 
@@ -151,7 +151,7 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			DeleteEnv(gomock.Any(), "test-env").
+			DeleteEnvironment(gomock.Any(), "test-env").
 			Return(true, nil).
 			Times(1)
 
@@ -227,7 +227,7 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			DeleteEnv(gomock.Any(), "test-env").
+			DeleteEnvironment(gomock.Any(), "test-env").
 			Return(false, nil).
 			Times(1)
 

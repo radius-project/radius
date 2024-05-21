@@ -31,10 +31,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-logr/logr"
-	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
+	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	backend_ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
@@ -454,12 +454,41 @@ func (tr *TestResponse) EqualsResponse(statusCode int, body []byte) {
 		return
 	}
 
-	var expected any
+	var expected map[string]any
 	err := json.Unmarshal(body, &expected)
 	require.NoError(tr.t, err, "unmarshalling expected response failed")
 
-	var actual any
+	var actual map[string]any
 	err = json.Unmarshal(tr.Body.Bytes(), &actual)
+
+	tr.removeSystemData(actual)
+
 	require.NoError(tr.t, err, "unmarshalling actual response failed")
 	require.EqualValues(tr.t, expected, actual, "response body did not match expected")
+	require.Equal(tr.t, statusCode, tr.Raw.StatusCode, "status code did not match expected")
+}
+
+func (tr *TestResponse) removeSystemData(responseBody map[string]any) {
+	// Delete systemData property if found, it's not stable so we don't include it in baselines.
+	_, ok := responseBody["systemData"]
+	if ok {
+		delete(responseBody, "systemData")
+		return
+	}
+
+	value, ok := responseBody["value"]
+	if !ok {
+		return
+	}
+
+	valueSlice, ok := value.([]any)
+	if !ok {
+		return
+	}
+
+	for _, v := range valueSlice {
+		if vMap, ok := v.(map[string]any); ok {
+			tr.removeSystemData(vMap)
+		}
+	}
 }

@@ -36,6 +36,35 @@ type AwsCredentialsClientUpdateResponse struct {
 	AwsCredentialResource
 }
 
+// AwsPlanesClientCreateOrUpdateResponse contains the response from method AwsPlanesClient.BeginCreateOrUpdate.
+type AwsPlanesClientCreateOrUpdateResponse struct {
+	// The AWS plane resource
+	AwsPlaneResource
+}
+
+// AwsPlanesClientDeleteResponse contains the response from method AwsPlanesClient.BeginDelete.
+type AwsPlanesClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// AwsPlanesClientGetResponse contains the response from method AwsPlanesClient.Get.
+type AwsPlanesClientGetResponse struct {
+	// The AWS plane resource
+	AwsPlaneResource
+}
+
+// AwsPlanesClientListResponse contains the response from method AwsPlanesClient.NewListPager.
+type AwsPlanesClientListResponse struct {
+	// The response of a AwsPlaneResource list operation.
+	AwsPlaneResourceListResult
+}
+
+// AwsPlanesClientUpdateResponse contains the response from method AwsPlanesClient.BeginUpdate.
+type AwsPlanesClientUpdateResponse struct {
+	// The AWS plane resource
+	AwsPlaneResource
+}
+
 // AzureCredentialsClientCreateOrUpdateResponse contains the response from method AzureCredentialsClient.CreateOrUpdate.
 type AzureCredentialsClientCreateOrUpdateResponse struct {
 	// Represents Azure Credential Resource
@@ -65,39 +94,68 @@ type AzureCredentialsClientUpdateResponse struct {
 	AzureCredentialResource
 }
 
-// PlanesClientCreateOrUpdateResponse contains the response from method PlanesClient.BeginCreateOrUpdate.
-type PlanesClientCreateOrUpdateResponse struct {
-	// The plane resource
-	PlaneResource
+// AzurePlanesClientCreateOrUpdateResponse contains the response from method AzurePlanesClient.BeginCreateOrUpdate.
+type AzurePlanesClientCreateOrUpdateResponse struct {
+	// The Azure plane resource.
+	AzurePlaneResource
 }
 
-// PlanesClientDeleteResponse contains the response from method PlanesClient.BeginDelete.
-type PlanesClientDeleteResponse struct {
+// AzurePlanesClientDeleteResponse contains the response from method AzurePlanesClient.BeginDelete.
+type AzurePlanesClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
-// PlanesClientGetResponse contains the response from method PlanesClient.Get.
-type PlanesClientGetResponse struct {
-	// The plane resource
-	PlaneResource
+// AzurePlanesClientGetResponse contains the response from method AzurePlanesClient.Get.
+type AzurePlanesClientGetResponse struct {
+	// The Azure plane resource.
+	AzurePlaneResource
 }
 
-// PlanesClientListByTypeResponse contains the response from method PlanesClient.NewListByTypePager.
-type PlanesClientListByTypeResponse struct {
-	// The response of a PlaneResource list operation.
-	PlaneResourceListResult
+// AzurePlanesClientListResponse contains the response from method AzurePlanesClient.NewListPager.
+type AzurePlanesClientListResponse struct {
+	// The response of a AzurePlaneResource list operation.
+	AzurePlaneResourceListResult
+}
+
+// AzurePlanesClientUpdateResponse contains the response from method AzurePlanesClient.BeginUpdate.
+type AzurePlanesClientUpdateResponse struct {
+	// The Azure plane resource.
+	AzurePlaneResource
 }
 
 // PlanesClientListPlanesResponse contains the response from method PlanesClient.NewListPlanesPager.
 type PlanesClientListPlanesResponse struct {
-	// The response of a PlaneResource list operation.
-	PlaneResourceListResult
+	// The response of a GenericPlaneResource list operation.
+	GenericPlaneResourceListResult
 }
 
-// PlanesClientUpdateResponse contains the response from method PlanesClient.BeginUpdate.
-type PlanesClientUpdateResponse struct {
-	// The plane resource
-	PlaneResource
+// RadiusPlanesClientCreateOrUpdateResponse contains the response from method RadiusPlanesClient.BeginCreateOrUpdate.
+type RadiusPlanesClientCreateOrUpdateResponse struct {
+	// The Radius plane resource.
+	RadiusPlaneResource
+}
+
+// RadiusPlanesClientDeleteResponse contains the response from method RadiusPlanesClient.BeginDelete.
+type RadiusPlanesClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// RadiusPlanesClientGetResponse contains the response from method RadiusPlanesClient.Get.
+type RadiusPlanesClientGetResponse struct {
+	// The Radius plane resource.
+	RadiusPlaneResource
+}
+
+// RadiusPlanesClientListResponse contains the response from method RadiusPlanesClient.NewListPager.
+type RadiusPlanesClientListResponse struct {
+	// The response of a RadiusPlaneResource list operation.
+	RadiusPlaneResourceListResult
+}
+
+// RadiusPlanesClientUpdateResponse contains the response from method RadiusPlanesClient.BeginUpdate.
+type RadiusPlanesClientUpdateResponse struct {
+	// The Radius plane resource.
+	RadiusPlaneResource
 }
 
 // ResourceGroupsClientCreateOrUpdateResponse contains the response from method ResourceGroupsClient.CreateOrUpdate.

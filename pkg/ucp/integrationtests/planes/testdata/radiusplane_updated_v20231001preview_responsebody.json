@@ -1,12 +1,14 @@
 {
-    "id": "/planes/radius/local",
-    "name": "local",
-    "properties": {
-        "kind": "UCPNative",
-        "resourceProviders": {
-            "test": "http://localhost:9999",
-            "another": "http://localhost:10000"
-        }
-    },
-    "type": "System.Planes/radius"
+  "id": "/planes/radius/local",
+  "name": "local",
+  "type": "System.Radius/planes",
+  "location": "global",
+  "tags": {},
+  "properties": {
+    "provisioningState": "Succeeded",
+    "resourceProviders": {
+      "test": "http://localhost:9999",
+      "another": "http://localhost:10000"
+    }
+  }
 }

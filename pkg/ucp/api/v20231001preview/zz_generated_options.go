@@ -33,6 +33,35 @@ type AwsCredentialsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// AwsPlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the AwsPlanesClient.BeginCreateOrUpdate
+// method.
+type AwsPlanesClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// AwsPlanesClientBeginDeleteOptions contains the optional parameters for the AwsPlanesClient.BeginDelete method.
+type AwsPlanesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// AwsPlanesClientBeginUpdateOptions contains the optional parameters for the AwsPlanesClient.BeginUpdate method.
+type AwsPlanesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// AwsPlanesClientGetOptions contains the optional parameters for the AwsPlanesClient.Get method.
+type AwsPlanesClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AwsPlanesClientListOptions contains the optional parameters for the AwsPlanesClient.NewListPager method.
+type AwsPlanesClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // AzureCredentialsClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialsClient.CreateOrUpdate
 // method.
 type AzureCredentialsClientCreateOrUpdateOptions struct {
@@ -59,36 +88,66 @@ type AzureCredentialsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// PlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the PlanesClient.BeginCreateOrUpdate method.
-type PlanesClientBeginCreateOrUpdateOptions struct {
+// AzurePlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the AzurePlanesClient.BeginCreateOrUpdate
+// method.
+type AzurePlanesClientBeginCreateOrUpdateOptions struct {
 	// Resumes the LRO from the provided token.
 	ResumeToken string
 }
 
-// PlanesClientBeginDeleteOptions contains the optional parameters for the PlanesClient.BeginDelete method.
-type PlanesClientBeginDeleteOptions struct {
+// AzurePlanesClientBeginDeleteOptions contains the optional parameters for the AzurePlanesClient.BeginDelete method.
+type AzurePlanesClientBeginDeleteOptions struct {
 	// Resumes the LRO from the provided token.
 	ResumeToken string
 }
 
-// PlanesClientBeginUpdateOptions contains the optional parameters for the PlanesClient.BeginUpdate method.
-type PlanesClientBeginUpdateOptions struct {
+// AzurePlanesClientBeginUpdateOptions contains the optional parameters for the AzurePlanesClient.BeginUpdate method.
+type AzurePlanesClientBeginUpdateOptions struct {
 	// Resumes the LRO from the provided token.
 	ResumeToken string
 }
 
-// PlanesClientGetOptions contains the optional parameters for the PlanesClient.Get method.
-type PlanesClientGetOptions struct {
+// AzurePlanesClientGetOptions contains the optional parameters for the AzurePlanesClient.Get method.
+type AzurePlanesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// PlanesClientListByTypeOptions contains the optional parameters for the PlanesClient.NewListByTypePager method.
-type PlanesClientListByTypeOptions struct {
+// AzurePlanesClientListOptions contains the optional parameters for the AzurePlanesClient.NewListPager method.
+type AzurePlanesClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
 // PlanesClientListPlanesOptions contains the optional parameters for the PlanesClient.NewListPlanesPager method.
 type PlanesClientListPlanesOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RadiusPlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the RadiusPlanesClient.BeginCreateOrUpdate
+// method.
+type RadiusPlanesClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// RadiusPlanesClientBeginDeleteOptions contains the optional parameters for the RadiusPlanesClient.BeginDelete method.
+type RadiusPlanesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// RadiusPlanesClientBeginUpdateOptions contains the optional parameters for the RadiusPlanesClient.BeginUpdate method.
+type RadiusPlanesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// RadiusPlanesClientGetOptions contains the optional parameters for the RadiusPlanesClient.Get method.
+type RadiusPlanesClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RadiusPlanesClientListOptions contains the optional parameters for the RadiusPlanesClient.NewListPager method.
+type RadiusPlanesClientListOptions struct {
 	// placeholder for future optional parameters
 }
 

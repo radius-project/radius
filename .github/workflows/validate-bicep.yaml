@@ -16,6 +16,8 @@
 
 name: Validate Bicep Code
 on:
+  # Enable manual trigger
+  workflow_dispatch:
   pull_request:
     branches:
       - main

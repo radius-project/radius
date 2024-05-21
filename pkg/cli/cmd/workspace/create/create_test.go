@@ -21,7 +21,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -30,6 +29,7 @@ import (
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
@@ -87,7 +87,7 @@ func Test_Validate(t *testing.T) {
 				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(helm.InstallState{Installed: true}, nil).Times(1)
 
 				// Resource group does not exist
-				mocks.ApplicationManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, errors.New("group does not exist")).Times(1)
+				mocks.ApplicationManagementClient.EXPECT().GetResourceGroup(gomock.Any(), "local", "rg1").Return(ucp.ResourceGroupResource{}, errors.New("group does not exist")).Times(1)
 			},
 		},
 		{
@@ -104,8 +104,8 @@ func Test_Validate(t *testing.T) {
 				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(helm.InstallState{Installed: true}, nil).Times(1)
 
 				// Resource group exists but environment does not
-				mocks.ApplicationManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
-				mocks.ApplicationManagementClient.EXPECT().GetEnvDetails(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, errors.New("environment does not exist")).Times(1)
+				mocks.ApplicationManagementClient.EXPECT().GetResourceGroup(gomock.Any(), "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
+				mocks.ApplicationManagementClient.EXPECT().GetEnvironment(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, errors.New("environment does not exist")).Times(1)
 			},
 		},
 		{
@@ -122,8 +122,8 @@ func Test_Validate(t *testing.T) {
 				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(helm.InstallState{Installed: true}, nil).Times(1)
 
 				// Resource group and environment exist
-				mocks.ApplicationManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
-				mocks.ApplicationManagementClient.EXPECT().GetEnvDetails(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, nil).Times(1)
+				mocks.ApplicationManagementClient.EXPECT().GetResourceGroup(gomock.Any(), "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
+				mocks.ApplicationManagementClient.EXPECT().GetEnvironment(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, nil).Times(1)
 			},
 		},
 	}

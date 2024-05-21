@@ -298,6 +298,37 @@ func Test_ParseValidIDs(t *testing.T) {
 			},
 			provider: "",
 			kind:     kindscopecollection,
+			typeName: "System.Test/planes",
+		},
+		{
+			id:       "/planes/azure/azurecloud/",
+			expected: "/planes/azure/azurecloud",
+			scopes: []ScopeSegment{
+				{Type: "azure", Name: "azurecloud"},
+			},
+			provider: "",
+			kind:     kindscope,
+			typeName: "System.Azure/planes",
+		},
+		{
+			id:       "/planes/aws/aws/",
+			expected: "/planes/aws/aws",
+			scopes: []ScopeSegment{
+				{Type: "aws", Name: "aws"},
+			},
+			provider: "",
+			kind:     kindscope,
+			typeName: "System.AWS/planes",
+		},
+		{
+			id:       "/planes/kubernetes/local/",
+			expected: "/planes/kubernetes/local",
+			scopes: []ScopeSegment{
+				{Type: "kubernetes", Name: "local"},
+			},
+			provider: "",
+			kind:     kindscope,
+			typeName: "System.Kubernetes/planes",
 		},
 		{
 			id:       "/planes/radius/local/",
@@ -307,6 +338,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			},
 			provider: "",
 			kind:     kindscope,
+			typeName: "System.Radius/planes",
 		},
 		{
 			id:       "/planes/radius/local/resourceGroups/r1",
@@ -1126,7 +1158,7 @@ func Test_Type(t *testing.T) {
 		{
 			desc:     "Plane resource",
 			id:       "/planes/radius/local",
-			expected: "System.Planes/radius",
+			expected: "System.Radius/planes",
 		},
 		{
 			desc:     "Resourcegroup scope",

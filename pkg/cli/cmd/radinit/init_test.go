@@ -28,8 +28,8 @@ import (
 	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -679,7 +679,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
+				CreateOrUpdateResourceGroup(context.Background(), "local", "default", gomock.Any()).
 				Return(nil).
 				Times(1)
 
@@ -699,7 +699,10 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Recipes:   tc.recipes,
 			}
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
+				CreateOrUpdateEnvironment(context.Background(), "default", &corerp.EnvironmentResource{
+					Location:   to.Ptr(v1.LocationGlobal),
+					Properties: testEnvProperties,
+				}).
 				Return(nil).
 				Times(1)
 

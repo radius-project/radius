@@ -22,6 +22,8 @@ permissions:
   packages: write # Required for uploading the package
 
 on:
+  # Enable manual trigger
+  workflow_dispatch:
   schedule:
     # Run every 4 hours on weekdays.
     - cron: "30 0,4,8,12,16,20 * * 1-5"
@@ -37,7 +39,7 @@ on:
 
 env:
   # Go version
-  GOVER: '1.21.7'
+  GOVER: '1.22.2'
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
@@ -544,6 +546,8 @@ jobs:
         run: |
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          # Make directory to capture functional test results
+          mkdir -p ./dist/functional_test 
           cd $GITHUB_WORKSPACE
 
           which rad || { echo "cannot find rad"; exit 1; }
@@ -573,6 +577,15 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          GOTESTSUM_OPTS: '--junitfile ./dist/functional_test/results.xml'
+      - name: Process Functional Test Results
+        uses: ./.github/actions/process-test-results
+        # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
+        if: failure() && github.repository == 'radius-project/radius'
+        with:
+          test_group_name: 'Functional Tests - ${{ matrix.name }}'
+          artifact_name: 'functional_test_results_${{ matrix.name }}'
+          result_directory: 'dist/functional_test/' 
       - uses: azure/setup-kubectl@v4
         if: always()
         with:

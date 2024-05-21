@@ -20,9 +20,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
+	"go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -88,7 +88,7 @@ func Test_Run(t *testing.T) {
 		defer ctrl.Finish()
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(testResourceGroup, nil)
+		appManagementClient.EXPECT().GetResourceGroup(gomock.Any(), gomock.Any(), "testrg").Return(testResourceGroup, nil)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{

@@ -52,7 +52,7 @@ on:
 
 env:
   # Go version
-  GOVER: "1.21.7"
+  GOVER: "1.22.2"
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
@@ -77,6 +77,9 @@ env:
 
   # The valid radius build time window in seconds to rebuild radius. 24 hours = 24 * 60 * 60 = 86400
   VALID_RADIUS_BUILD_WINDOW: 86400
+
+  # The functional test GitHub app id
+  FUNCTIONAL_TEST_APP_ID: 425843
 
   # The AKS cluster name
   AKS_CLUSTER_NAME: "radlrtest00-aks"
@@ -307,6 +310,12 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
     steps:
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v2
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -465,6 +474,7 @@ jobs:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
       - name: Collect Pod details
         if: always()
         run: |

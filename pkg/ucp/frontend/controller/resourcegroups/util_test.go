@@ -21,15 +21,13 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/rest"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_ValidateDownstream(t *testing.T) {
@@ -41,16 +39,15 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	downstream := "http://localhost:7443"
 
-	plane := &datamodel.Plane{
+	plane := &datamodel.RadiusPlane{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID: id.PlaneScope(),
 			},
 		},
-		Properties: datamodel.PlaneProperties{
-			Kind: rest.PlaneKindUCPNative,
-			ResourceProviders: map[string]*string{
-				"System.TestRP": to.Ptr(downstream),
+		Properties: datamodel.RadiusPlaneProperties{
+			ResourceProviders: map[string]string{
+				"System.TestRP": downstream,
 			},
 		},
 	}
@@ -139,15 +136,14 @@ func Test_ValidateDownstream(t *testing.T) {
 	})
 
 	t.Run("resource provider not found", func(t *testing.T) {
-		plane := &datamodel.Plane{
+		plane := &datamodel.RadiusPlane{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					ID: id.PlaneScope(),
 				},
 			},
-			Properties: datamodel.PlaneProperties{
-				Kind:              rest.PlaneKindUCPNative,
-				ResourceProviders: map[string]*string{},
+			Properties: datamodel.RadiusPlaneProperties{
+				ResourceProviders: map[string]string{},
 			},
 		}
 
@@ -170,16 +166,15 @@ func Test_ValidateDownstream(t *testing.T) {
 	})
 
 	t.Run("resource provider invalid URL", func(t *testing.T) {
-		plane := &datamodel.Plane{
+		plane := &datamodel.RadiusPlane{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					ID: id.PlaneScope(),
 				},
 			},
-			Properties: datamodel.PlaneProperties{
-				Kind: rest.PlaneKindUCPNative,
-				ResourceProviders: map[string]*string{
-					"System.TestRP": to.Ptr("\ninvalid"),
+			Properties: datamodel.RadiusPlaneProperties{
+				ResourceProviders: map[string]string{
+					"System.TestRP": "\ninvalid",
 				},
 			},
 		}

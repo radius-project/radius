@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
@@ -33,9 +34,11 @@ import (
 )
 
 const (
-	planeScope               = "/planes/azure/{planeName}"
-	credentialResourcePath   = "/providers/System.Azure/credentials/{credentialName}"
-	credentialCollectionPath = "/providers/System.Azure/credentials"
+	planeCollectionPath = "/planes/azure"
+	planeResourcePath   = "/planes/azure/{planeName}"
+
+	credentialResourcePath   = planeResourcePath + "/providers/System.Azure/credentials/{credentialName}"
+	credentialCollectionPath = planeResourcePath + "/providers/System.Azure/credentials"
 
 	// OperationTypeUCPAzureProxy is the operation type for proxying Azure API calls.
 	OperationTypeUCPAzureProxy = "UCPAZUREPROXY"
@@ -47,18 +50,62 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return nil, err
 	}
 
-	baseRouter := server.NewSubrouter(m.router, m.options.PathBase+planeScope)
+	baseRouter := server.NewSubrouter(m.router, m.options.PathBase)
 
-	// URL for operations on System.Azure provider.
 	apiValidator := validator.APIValidator(validator.Options{
 		SpecLoader:         m.options.SpecLoader,
 		ResourceTypeGetter: validator.UCPResourceTypeGetter,
 	})
 
+	planeResourceOptions := controller.ResourceOptions[datamodel.AzurePlane]{
+		RequestConverter:  converter.AzurePlaneDataModelFromVersioned,
+		ResponseConverter: converter.AzurePlaneDataModelToVersioned,
+	}
+
+	// URLs for lifecycle of planes
+	planeResourceType := "System.Azure/planes"
+	planeCollectionRouter := server.NewSubrouter(baseRouter, planeCollectionPath, apiValidator)
+	planeResourceRouter := server.NewSubrouter(baseRouter, planeResourcePath, apiValidator)
+
 	credentialCollectionRouter := server.NewSubrouter(baseRouter, credentialCollectionPath, apiValidator)
 	credentialResourceRouter := server.NewSubrouter(baseRouter, credentialResourcePath, apiValidator)
 
 	handlerOptions := []server.HandlerOptions{
+		{
+			// This is a scope query so we can't use the default operation.
+			ParentRouter:  planeCollectionRouter,
+			Method:        v1.OperationList,
+			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationList},
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return &planes_ctrl.ListPlanesByType[*datamodel.AzurePlane, datamodel.AzurePlane]{
+					Operation: controller.NewOperation(opts, planeResourceOptions),
+				}, nil
+			},
+		},
+		{
+			ParentRouter:  planeResourceRouter,
+			Method:        v1.OperationGet,
+			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationGet},
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewGetResource(opts, planeResourceOptions)
+			},
+		},
+		{
+			ParentRouter:  planeResourceRouter,
+			Method:        v1.OperationPut,
+			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationPut},
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opts, planeResourceOptions)
+			},
+		},
+		{
+			ParentRouter:  planeResourceRouter,
+			Method:        v1.OperationDelete,
+			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationDelete},
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opts, planeResourceOptions)
+			},
+		},
 		{
 			ParentRouter: credentialCollectionRouter,
 			ResourceType: v20231001preview.AzureCredentialType,
@@ -108,7 +155,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		// Note that the API validation is not applied for CatchAllPath(/*).
 		{
 			// Method deliberately omitted. This is a catch-all route for proxying.
-			ParentRouter:      baseRouter,
+			ParentRouter:      planeResourceRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPAzureProxy, Method: v1.OperationProxy},
 			ControllerFactory: planes_ctrl.NewProxyController,

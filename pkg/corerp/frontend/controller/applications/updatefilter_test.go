@@ -30,9 +30,9 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/k8sutil"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 const (

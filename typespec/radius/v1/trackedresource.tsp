@@ -34,6 +34,7 @@ model TrackedResourceRequired<
   TResourceFriendlyName extends valueof string = TResourceType
 > extends Azure.ResourceManager.Foundations.TrackedResourceBase {
   #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-invalid-envelope-property" "template"
+  #suppress "@azure-tools/typespec-azure-core/bad-record-type"
   @doc("The resource-specific properties for this resource.")
   @visibility("read", "create")
   @extension("x-ms-client-flatten", true)

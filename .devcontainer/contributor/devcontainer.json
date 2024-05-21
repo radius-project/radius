@@ -43,7 +43,7 @@
     },
     // Prerequisite for Code Generation, see https://github.com/radius-project/radius/tree/main/docs/contributing/contributing-code/contributing-code-prerequisites#code-generation
     // Adding workspace as safe directory to avoid permission issues
-    "postCreateCommand": "git config --global --add safe.directory /workspaces/radius && cd typespec && npm ci && npm install -g autorest && npm install -g oav && go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1 && go install github.com/golang/mock/mockgen@v1.5.0",
+    "postCreateCommand": "git config --global --add safe.directory /workspaces/radius && cd typespec && npm ci && npm install -g autorest && npm install -g oav && go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0 && go install go.uber.org/mock/mockgen@v0.4.0",
     "hostRequirements": {
         "memory": "8gb"
     },

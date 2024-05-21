@@ -24,11 +24,10 @@ import (
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 	cmd := &cobra.Command{
-		Use:     "graph",
-		Aliases: []string{"connections"},
-		Short:   "Shows the application graph for an application.",
-		Long:    `Shows the application graph for an application.`,
-		Args:    cobra.MaximumNArgs(1),
+		Use:   "graph",
+		Short: "Shows the application graph for an application.",
+		Long:  `Shows the application graph for an application.`,
+		Args:  cobra.MaximumNArgs(1),
 		Example: `
 # Show graph for current application
 rad app graph
@@ -90,7 +89,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate that the application exists
-	app, err := client.ShowApplication(cmd.Context(), r.ApplicationName)
+	app, err := client.GetApplication(cmd.Context(), r.ApplicationName)
 	if clients.Is404Error(err) {
 		return clierrors.Message("Application %q does not exist or has been deleted.", r.ApplicationName)
 	} else if err != nil {
@@ -114,7 +113,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	applicationGraphResponse, err := client.GetGraph(ctx, r.ApplicationName)
+	applicationGraphResponse, err := client.GetApplicationGraph(ctx, r.ApplicationName)
 	if err != nil {
 		return err
 	}

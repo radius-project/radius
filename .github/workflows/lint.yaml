@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      GOVER: '1.21.7'
+      GOVER: '1.22.2'
       GOPROXY: https://proxy.golang.org
       HELM_CHARTS_DIR: deploy/Chart
     steps:
@@ -57,9 +57,9 @@ jobs:
       - name: Install oav
         run: npm install -g oav@3.2.0
       - name: Install mockgen
-        run: go install github.com/golang/mock/mockgen@v1.5.0
+        run:  go install go.uber.org/mock/mockgen@v0.4.0
       - name: Install controller-gen
-        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
+        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
       - name: Install helm
         uses: azure/setup-helm@v4
         with:
@@ -68,7 +68,7 @@ jobs:
         run: |
           helm lint ${{ env.HELM_CHARTS_DIR }}
       - name: Run linter
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
         with:
           version: 'v1.57.2'
           args: --timeout=10m

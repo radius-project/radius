@@ -2,7 +2,7 @@
     "location": "global",
     "id": "/planes/azure/public",
     "name": "local",
-    "type": "System.Planes/azure",
+    "type": "System.Azure/planes",
     "properties": {
         "kind": "Azure"
     }

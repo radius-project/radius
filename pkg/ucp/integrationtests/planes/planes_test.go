@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	globalPlaneCollectionURL   = "/planes?api-version=2023-10-01-preview"
-	planeTypeCollectionURL     = "/planes/radius?api-version=2023-10-01-preview"
-	globalPlaneResponseFixture = "testdata/globalplane_v20231001preview_list_responsebody.json"
+	globalPlaneCollectionURL        = "/planes?api-version=2023-10-01-preview"
+	planeTypeCollectionURL          = "/planes/radius?api-version=2023-10-01-preview"
+	genericPlaneListResponseFixture = "testdata/genericplane_v20231001preview_list_responsebody.json"
 )
 
 func Test_AllPlanes_LIST(t *testing.T) {
@@ -37,16 +37,5 @@ func Test_AllPlanes_LIST(t *testing.T) {
 	response.EqualsFixture(200, radiusPlaneResponseFixture)
 
 	response = server.MakeRequest("GET", globalPlaneCollectionURL, nil)
-	response.EqualsFixture(200, radiusPlaneListResponseFixture)
-}
-
-func Test_AllPlanes_LIST_BY_TYPE(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
-	defer server.Close()
-
-	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)
-	response.EqualsFixture(200, radiusPlaneResponseFixture)
-
-	response = server.MakeRequest("GET", planeTypeCollectionURL, nil)
-	response.EqualsFixture(200, radiusPlaneListResponseFixture)
+	response.EqualsFixture(200, genericPlaneListResponseFixture)
 }

@@ -1,8 +1,7 @@
 {
-  "operationId": "Planes_ListByType",
-  "title": "List planes by planeType",
+  "operationId": "RadiusPlanes_List",
+  "title": "List Radius planes",
   "parameters": {
-    "planeType": "radius",
     "api-version": "2023-10-01-preview"
   },
   "responses": {
@@ -12,7 +11,7 @@
           {
             "id": "/planes/radius/local",
             "name": "local",
-            "type": "System.Planes/radius",
+            "type": "System.Radius/planes",
             "location": "global",
             "properties": {
               "resourceProviders": {
