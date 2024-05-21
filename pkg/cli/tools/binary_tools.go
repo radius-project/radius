@@ -166,6 +166,7 @@ func DownloadToFolder(filepath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %v", filepath, err)
 	}
+	defer bicepBinary.Close()
 
 	// get the filemode so we can mark it as executable
 	file, err := bicepBinary.Stat()
