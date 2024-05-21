@@ -35,7 +35,7 @@ resource "kubernetes_deployment" "redis" {
       spec {
         container {
           name  = "redis"
-          image = "redis:latest" 
+          image = "ghcr.io/radius-project/mirror/redis:6.2" 
           port {
             container_port = 6379
           }
