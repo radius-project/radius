@@ -7,17 +7,15 @@ When writing tests for our applications, it's common to use standard images for 
 
 ### New Image Pull Guideline
 
-Moving forward, we will pull standard test images from our public GHCR repository instead of Docker Hub. 
+Moving forward, we will pull standard test images from our public GHCR repository. 
 
-For example, instead of using:
-```yaml
-image: 'redis:latest'
-```
-We should now use:
+For example, moving forward, we will use:
+
 ```yaml
 image: ghcr.io/radius-project/mirror/redis:latest
 ```
-This change applies to all standard images previously pulled from Docker Hub. Please update any new tests accordingly.
+
+This change applies to all standard images. Please update any new tests accordingly.
 
 ### Adding Images to GHCR Repository
 
@@ -27,6 +25,7 @@ Our test pipelines operate on machines that utilize the AMD64 architecture. We n
 For example:
 
 Use the following command to pull an image for the AMD64 architecture:
+
 ```bash
 docker pull --platform linux/amd64 redis:latest
 ```
