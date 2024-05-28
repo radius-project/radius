@@ -55,10 +55,10 @@ func (c *AWSCredential) ResourceTypeName() string {
 
 // Azure Credential Properties represents UCP Credential Properties.
 type AzureCredentialResourceProperties struct {
-	// Kind is the kind of azure credential resource.
+	// Kind is the kind of Azure credential resource.
 	Kind string `json:"kind,omitempty"`
-	// AzureCredential is the azure credential resource.
-	AzureCredential AzureCredentialProperties `json:"azureCredential,omitempty"`
+	// AzureCredential is the Azure credentials.
+	AzureCredential *AzureCredentialProperties `json:"azureCredential,omitempty"`
 	// Storage contains the properties of the storage associated with the kind.
 	Storage *CredentialStorageProperties `json:"storage,omitempty"`
 }
@@ -91,13 +91,14 @@ type AzureWorkloadIdentityCredentialProperties struct {
 	ClientID string `json:"clientId"`
 }
 
-type AzureCredentialProperties interface {
-	IsAzureCredential()
+type AzureCredentialProperties struct {
+	// Kind is the kind of Azure credential.
+	Kind string `json:"kind,omitempty"`
+	// ServicePrincipal represents the service principal properties.
+	ServicePrincipal *AzureServicePrincipalCredentialProperties `json:"servicePrincipal,omitempty"`
+	// WorkloadIdentity represents the workload identity properties.
+	WorkloadIdentity *AzureWorkloadIdentityCredentialProperties `json:"workloadIdentity,omitempty"`
 }
-
-func (a *AzureServicePrincipalCredentialProperties) IsAzureCredential() {}
-
-func (a *AzureWorkloadIdentityCredentialProperties) IsAzureCredential() {}
 
 // AWSCredentialProperties contains ucp AWS credential properties.
 type AWSCredentialProperties struct {

@@ -40,15 +40,13 @@ var (
 )
 
 type mockAzureCredentialsProvider struct {
-	testCredential *ucp_credentials.AzureCredential
+	testCredential ucp_credentials.AzureCredential
 }
 
 func newMockAzureCredentialsProvider() *mockAzureCredentialsProvider {
 	return &mockAzureCredentialsProvider{
-		testCredential: &ucp_credentials.AzureCredential{
-			TenantID:     testAzureCredentials.TenantID,
-			ClientSecret: testAzureCredentials.ClientSecret,
-			ClientID:     testAzureCredentials.ClientID,
+		testCredential: ucp_credentials.AzureServicePrincipalCredentialProperties{
+			TenantID: "testTenantID",
 		},
 	}
 }

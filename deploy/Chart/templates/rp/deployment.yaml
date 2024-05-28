@@ -19,6 +19,9 @@ spec:
         control-plane: applications-rp
         app.kubernetes.io/name: applications-rp
         app.kubernetes.io/part-of: radius
+        {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
+        azure.workload.identity/use: "true"
+        {{- end }}
       {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"

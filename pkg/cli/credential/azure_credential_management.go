@@ -45,31 +45,29 @@ type AzureCredentialManagementClientInterface interface {
 	Delete(ctx context.Context, name string) (bool, error)
 }
 
-const (
-	AzureCredential = "azure"
-	AzurePlaneName  = "azurecloud"
-)
-
-// CloudProviderStatus is the representation of a cloud provider configuration.
-type CloudProviderStatus struct {
-	// Name is the name/kind of the provider. For right now this only supports Azure and AWS.
-	Name string
-
-	// Enabled is the enabled/disabled status of the provider.
-	Enabled bool
-}
-
-type ProviderCredentialConfiguration struct {
-	CloudProviderStatus
-
-	// AzureCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AzureCredentials *AzureCredentialProperties
-
-	// AWSCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AWSCredentials *AWSCredentialProperties
-}
-
 type AzureCredentialProperties struct {
+	// Kind of the Azure credential
+	Kind *string
+
+	// Service Principal properties
+	ServicePrincipal *AzureServicePrincipalCredentialProperties
+
+	// Workload Identity properties
+	WorkloadIdentity *AzureWorkloadIdentityCredentialProperties
+}
+
+type AzureServicePrincipalCredentialProperties struct {
+	// clientId for the Azure credential
+	ClientID *string
+
+	// The credential kind
+	Kind *string
+
+	// tenantId for the Azure credential
+	TenantID *string
+}
+
+type AzureWorkloadIdentityCredentialProperties struct {
 	// clientId for the Azure credential
 	ClientID *string
 
@@ -143,9 +141,11 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 				Enabled: true,
 			},
 			AzureCredentials: &AzureCredentialProperties{
-				ClientID: azureServicePrincipal.ClientID,
-				Kind:     (*string)(azureServicePrincipal.Kind),
-				TenantID: azureServicePrincipal.TenantID,
+				ServicePrincipal: &AzureServicePrincipalCredentialProperties{
+					ClientID: azureServicePrincipal.ClientID,
+					Kind:     (*string)(azureServicePrincipal.Kind),
+					TenantID: azureServicePrincipal.TenantID,
+				},
 			},
 		}
 
@@ -162,9 +162,11 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 				Enabled: true,
 			},
 			AzureCredentials: &AzureCredentialProperties{
-				ClientID: azureWorkloadIdentity.ClientID,
-				Kind:     (*string)(azureWorkloadIdentity.Kind),
-				TenantID: azureWorkloadIdentity.TenantID,
+				WorkloadIdentity: &AzureWorkloadIdentityCredentialProperties{
+					ClientID: azureWorkloadIdentity.ClientID,
+					Kind:     (*string)(azureWorkloadIdentity.Kind),
+					TenantID: azureWorkloadIdentity.TenantID,
+				},
 			},
 		}
 

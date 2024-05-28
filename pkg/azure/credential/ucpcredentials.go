@@ -103,14 +103,14 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 		return err
 	}
 
-	switch (*s).(type) {
-	case (*datamodel.AzureServicePrincipalCredentialProperties):
-		azureServicePrincipalCredential := (*s).(*datamodel.AzureServicePrincipalCredentialProperties)
+	switch s.Kind {
+	case datamodel.AzureServicePrincipalCredentialKind:
+		azureServicePrincipalCredential := s.ServicePrincipal
 		if azureServicePrincipalCredential.ClientID == "" || azureServicePrincipalCredential.ClientSecret == "" || azureServicePrincipalCredential.TenantID == "" {
 			return errors.New("invalid azure service principal credential info")
 		}
 
-		cred := (*c.credential).(*datamodel.AzureServicePrincipalCredentialProperties)
+		cred := c.credential.ServicePrincipal
 
 		// Do not instantiate new client unless the secret is rotated.
 		if cred != nil && cred.ClientSecret == azureServicePrincipalCredential.ClientSecret &&
@@ -139,8 +139,32 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 
 		c.refreshExpiry()
 		return nil
+	case datamodel.AzureWorkloadIdentityCredentialKind:
+		azureWorkloadIdentityCredential := s.WorkloadIdentity
+		if azureWorkloadIdentityCredential.ClientID == "" || azureWorkloadIdentityCredential.TenantID == "" {
+			return errors.New("invalid azure workload identity credential info")
+		}
+
+		logger.Info("Retreived Azure Credential - ClientID: " + azureWorkloadIdentityCredential.ClientID)
+
+		var opt *azidentity.DefaultAzureCredentialOptions
+		if c.options.ClientOptions != nil {
+			opt = &azidentity.DefaultAzureCredentialOptions{
+				ClientOptions: *c.options.ClientOptions,
+			}
+		}
+
+		azCred, err := azidentity.NewDefaultAzureCredential(opt)
+		if err != nil {
+			return err
+		}
+
+		c.tokenCred = azCred
+		c.credential = s
+
+		c.refreshExpiry()
+		return nil
 	default:
-		logger.Info("credential no work")
 		return nil
 	}
 }

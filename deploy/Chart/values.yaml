@@ -21,6 +21,9 @@ global:
   #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
   #
 
+  azureWorkloadIdentity:
+    enabled: false
+
 controller:
   image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.

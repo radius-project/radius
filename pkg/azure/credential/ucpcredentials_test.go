@@ -41,9 +41,11 @@ func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk_
 func newMockProvider() *mockProvider {
 	return &mockProvider{
 		fakeCredential: &sdk_cred.AzureCredential{
-			ClientID:     "fakeid",
-			TenantID:     "fakeid",
-			ClientSecret: "fakeSecret",
+			&ServicePrincipal: {
+				ClientID:     "fakeid",
+				TenantID:     "fakeid",
+				ClientSecret: "fakeSecret",
+			},
 		},
 	}
 }

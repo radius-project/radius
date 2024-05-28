@@ -231,7 +231,7 @@ type AzurePlaneResourceTagsUpdate struct {
 	Tags map[string]*string
 }
 
-// AzureServicePrincipalProperties - The properties of Service Principal credential storage
+// AzureServicePrincipalProperties - The properties of Azure Service Principal credential storage
 type AzureServicePrincipalProperties struct {
 	// REQUIRED; clientId for ServicePrincipal
 	ClientID *string
