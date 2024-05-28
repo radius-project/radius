@@ -15,21 +15,21 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/agnivade/levenshtein v1.1.1
 	github.com/aws/aws-sdk-go-v2 v1.27.0
-	github.com/aws/aws-sdk-go-v2/config v1.27.15
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.15
-	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.18.7
-	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.50.3
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.161.3
-	github.com/aws/aws-sdk-go-v2/service/sts v1.28.9
+	github.com/aws/aws-sdk-go-v2/config v1.27.16
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.16
+	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.18.8
+	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.51.1
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.161.4
+	github.com/aws/aws-sdk-go-v2/service/sts v1.28.10
 	github.com/aws/smithy-go v1.20.2
 	github.com/charmbracelet/bubbles v0.18.0
-	github.com/charmbracelet/bubbletea v0.26.2
-	github.com/charmbracelet/lipgloss v0.10.0
+	github.com/charmbracelet/bubbletea v0.26.3
+	github.com/charmbracelet/lipgloss v0.11.0
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20240408110044-525ba71bb562
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.17.0
 	github.com/go-chi/chi/v5 v5.0.12
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-openapi/errors v0.22.0
 	github.com/go-openapi/jsonpointer v0.21.0
@@ -45,7 +45,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gosuri/uilive v0.0.4
 	github.com/hashicorp/go-retryablehttp v0.7.6
-	github.com/hashicorp/hc-install v0.6.4
+	github.com/hashicorp/hc-install v0.7.0
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20240509232506-4708120f8f30
 	github.com/hashicorp/terraform-exec v0.21.0
 	github.com/mattn/go-isatty v0.0.20
@@ -59,28 +59,28 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
-	github.com/stern/stern v1.29.0
+	github.com/stern/stern v1.30.0
 	github.com/stretchr/testify v1.9.0
 	github.com/vippsas/go-cosmosdb v0.0.0-20230118095602-f4e4b9f1c352
 	github.com/wI2L/jsondiff v0.5.2
 	go.etcd.io/etcd/client/v3 v3.5.13
 	go.etcd.io/etcd/server/v3 v3.5.13
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.51.0
-	go.opentelemetry.io/contrib/instrumentation/runtime v0.51.0
-	go.opentelemetry.io/otel v1.26.0
-	go.opentelemetry.io/otel/exporters/prometheus v0.48.0
-	go.opentelemetry.io/otel/exporters/zipkin v1.26.0
-	go.opentelemetry.io/otel/metric v1.26.0
-	go.opentelemetry.io/otel/sdk v1.26.0
-	go.opentelemetry.io/otel/sdk/metric v1.26.0
-	go.opentelemetry.io/otel/trace v1.26.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.52.0
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.52.0
+	go.opentelemetry.io/otel v1.27.0
+	go.opentelemetry.io/otel/exporters/prometheus v0.49.0
+	go.opentelemetry.io/otel/exporters/zipkin v1.27.0
+	go.opentelemetry.io/otel/metric v1.27.0
+	go.opentelemetry.io/otel/sdk v1.27.0
+	go.opentelemetry.io/otel/sdk/metric v1.27.0
+	go.opentelemetry.io/otel/trace v1.27.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.4.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/text v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
-	helm.sh/helm/v3 v3.15.0
+	helm.sh/helm/v3 v3.15.1
 	k8s.io/api v0.30.1
 	k8s.io/apiextensions-apiserver v0.30.1
 	k8s.io/apimachinery v0.30.1
@@ -88,7 +88,7 @@ require (
 	k8s.io/client-go v0.30.1
 	k8s.io/kubectl v0.30.1
 	oras.land/oras-go/v2 v2.5.0
-	sigs.k8s.io/controller-runtime v0.18.2
+	sigs.k8s.io/controller-runtime v0.18.3
 	sigs.k8s.io/secrets-store-csi-driver v1.4.3
 )
 
@@ -105,7 +105,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/charmbracelet/x/ansi v0.1.1 // indirect
 	github.com/charmbracelet/x/exp/golden v0.0.0-20240408110044-525ba71bb562 // indirect
+	github.com/charmbracelet/x/input v0.1.0 // indirect
+	github.com/charmbracelet/x/term v0.1.1 // indirect
+	github.com/charmbracelet/x/windows v0.1.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
@@ -127,6 +131,7 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
+	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.mongodb.org/mongo-driver v1.15.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/tools v0.21.0 // indirect
@@ -155,8 +160,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.7 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.20.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.24.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.20.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.24.3 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymanbagabas/go-udiff v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -258,7 +263,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.53.0 // indirect
-	github.com/prometheus/procfs v0.14.0 // indirect
+	github.com/prometheus/procfs v0.15.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rubenv/sql-migrate v1.6.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
