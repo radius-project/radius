@@ -22,7 +22,7 @@ RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 REL_VERSION ?=latest
 DOCKER_REGISTRY ?=ghcr.io/radius-project/dev
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
-K8S_VERSION=1.23.*
+K8S_VERSION=1.30.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
 
 # Use gotestsum if available, otherwise use go test. We want to enable testing with just 'make test'
@@ -49,7 +49,7 @@ test: test-get-envtools ## Runs unit tests, excluding kubernetes controller test
 .PHONY: test-get-envtools
 test-get-envtools:
 	@echo "$(ARROW) Installing Kubebuilder test tools..."
-	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@v0.0.0-20240521074430-fbb7d370bebc)
+	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
 	@echo "$(ARROW) Instructions:"
 	@echo "$(ARROW) Set environment variable KUBEBUILDER_ASSETS for tests."
 	@echo "$(ARROW) KUBEBUILDER_ASSETS=\"$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)\""
