@@ -116,7 +116,9 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 generate-bicep-types: generate-node-installed ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
 	@echo "$(ARROW) Build autorest.bicep..."
-	cd hack/bicep-types-radius/src/autorest.bicep; \
+	cd bicep-types/src/bicep-types; \
+	npm ci && npm run build; \
+	cd ../../../hack/bicep-types-radius/src/autorest.bicep; \
 	npm ci && npm run build; \
 	cd ../generator; \
 	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
