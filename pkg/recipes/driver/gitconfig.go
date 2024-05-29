@@ -87,11 +87,44 @@ func addSecretsToGitConfig(workingDirectory string, secrets v20231001preview.Sec
 		return err
 	}
 
+	err = setGitConfigForDir(workingDirectory)
+	if err != nil {
+		return err
+	}
+
 	cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", urlConfigKey, urlConfigValue)
 	_, err = cmd.Output()
 	if err != nil {
 		return errors.New("failed to add git config")
 	}
 
+	return nil
+}
+
+// setGitConfigForDir sets a conditional include directive in the global Git configuration file.
+// This function modifies the global Git configuration to include a specific Git configuration file
+// when the repository is located in the given working directory. The `includeIf` directive is used
+// to conditionally include the configuration file located at "<workingDirectory>/.git/config".
+func setGitConfigForDir(workingDirectory string) error {
+	cmd := exec.Command("git", "config", "--global", fmt.Sprintf("includeIf.gitdir:%s/.path", workingDirectory), workingDirectory+"/.git/config")
+	_, err := cmd.Output()
+	if err != nil {
+		return errors.New("failed to add conditional include directive")
+	}
+	return nil
+}
+
+// unsetGitConfigForDir removes a conditional include directive from the global Git configuration.
+// This function modifies the global Git configuration to remove a previously set `includeIf` directive
+// for a given working directory.
+func unsetGitConfigForDir(workingDirectory string, secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
+	if !strings.HasPrefix(templatePath, "git::") || reflect.DeepEqual(secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+		return nil
+	}
+	cmd := exec.Command("git", "config", "--global", "--unset", fmt.Sprintf("includeIf.gitdir:%s/.path", workingDirectory))
+	_, err := cmd.Output()
+	if err != nil {
+		return errors.New("failed to unset conditional include directive")
+	}
 	return nil
 }

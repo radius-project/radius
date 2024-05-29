@@ -99,6 +99,11 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		EnvRecipe:      &opts.Definition,
 	})
 
+	unsetError := unsetGitConfigForDir(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
+	if unsetError != nil {
+		return nil, unsetError
+	}
+
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -137,6 +142,11 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 	})
+
+	unsetError := unsetGitConfigForDir(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
+	if unsetError != nil {
+		return unsetError
+	}
 
 	if err != nil {
 		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
@@ -251,6 +261,12 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 	})
+
+	unsetError := unsetGitConfigForDir(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
+	if unsetError != nil {
+		return nil, unsetError
+	}
+
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), "", recipes.GetErrorDetails(err))
 	}
