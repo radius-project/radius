@@ -838,7 +838,12 @@ func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
 		Definition: recipeDefinition,
 	}).Times(1).Return(outputParams, nil)
 
-	recipeData, err := engine.GetRecipeMetadata(ctx, recipeDefinition, recipeMetadata)
+	recipeData, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		RecipeDefinition: recipeDefinition,
+	})
 	require.NoError(t, err)
 	require.Equal(t, outputParams, recipeData)
 }
@@ -903,7 +908,12 @@ func Test_Engine_GetRecipeMetadata_Private_Module_Success(t *testing.T) {
 		Definition: *recipeDefinition,
 	}).Times(1).Return(outputParams, nil)
 
-	recipeData, err := engine.GetRecipeMetadata(ctx, *recipeDefinition, recipeMetadata)
+	recipeData, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		RecipeDefinition: *recipeDefinition,
+	})
 	require.NoError(t, err)
 	require.Equal(t, outputParams, recipeData)
 }
@@ -934,7 +944,12 @@ func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
 		Definition: recipeDefinition,
 	}).Times(1).Return(nil, errors.New("driver failure"))
 
-	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition, recipeMetadata)
+	_, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		RecipeDefinition: recipeDefinition,
+	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "driver failure")
 }
@@ -963,7 +978,12 @@ func Test_GetRecipeMetadata_Driver_InvalidDriver(t *testing.T) {
 		LoadConfiguration(ctx, recipeMetadata).
 		Times(1).
 		Return(envConfig, nil)
-	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition, recipeMetadata)
+	_, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		RecipeDefinition: recipeDefinition,
+	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not find driver invalid")
 }

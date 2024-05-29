@@ -74,8 +74,13 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 				"mongodbName":    map[string]any{"type": "string"},
 			},
 		}
-		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition, recipes.ResourceMetadata{
-			EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+		mEngine.EXPECT().GetRecipeMetadata(ctx, engine.GetRecipeMetadataOptions{
+			BaseOptions: engine.BaseOptions{
+				Recipe: recipes.ResourceMetadata{
+					EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+				},
+			},
+			RecipeDefinition: recipeDefinition,
 		}).Return(recipeData, nil)
 
 		opts := ctrl.Options{
@@ -124,8 +129,13 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 				"mongodbName":    map[string]any{"type": "string"},
 			},
 		}
-		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition, recipes.ResourceMetadata{
-			EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+		mEngine.EXPECT().GetRecipeMetadata(ctx, engine.GetRecipeMetadataOptions{
+			BaseOptions: engine.BaseOptions{
+				Recipe: recipes.ResourceMetadata{
+					EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+				},
+			},
+			RecipeDefinition: recipeDefinition,
 		}).Return(recipeData, nil)
 
 		opts := ctrl.Options{
@@ -244,8 +254,13 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 			ResourceType:    *envInput.ResourceType,
 		}
 		engineErr := fmt.Errorf("could not find driver %s", "invalidDriver")
-		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition, recipes.ResourceMetadata{
-			EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+		mEngine.EXPECT().GetRecipeMetadata(ctx, engine.GetRecipeMetadataOptions{
+			BaseOptions: engine.BaseOptions{
+				Recipe: recipes.ResourceMetadata{
+					EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+				},
+			},
+			RecipeDefinition: recipeDefinition,
 		}).Return(nil, engineErr)
 
 		opts := ctrl.Options{

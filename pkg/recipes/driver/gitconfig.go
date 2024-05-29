@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"net/url"
 	"os/exec"
-	reflect "reflect"
+	"reflect"
 	"strings"
 
 	git "github.com/go-git/go-git/v5"
@@ -72,14 +72,13 @@ func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecrets
 // and adds them to the Git config by running
 // git config --file .git/config url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
 func addSecretsToGitConfig(workingDirectory string, secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
-
 	if !strings.HasPrefix(templatePath, "git::") || reflect.DeepEqual(secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
 		return nil
 	}
 	// Initialize a new Git repository in the terraform working directory.
 	_, err := git.PlainInit(workingDirectory, false)
 	if err != nil {
-		return err
+		return fmt.Errorf("falied to initialize git in the working directory:%w", err)
 	}
 
 	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)

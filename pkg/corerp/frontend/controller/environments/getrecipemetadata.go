@@ -101,6 +101,8 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 	return rest.NewOKResponse(versioned), nil
 }
 
+// GetRecipeMetadataFromRegistry retrieves the recipe metadata from the registry for a given recipe name and template path, and returns
+// a response containing the recipe parameters.
 func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, recipeProperties datamodel.EnvironmentRecipeProperties, recipeDataModel *datamodel.Recipe, envID string) (recipeParameters map[string]any, err error) {
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:            recipeDataModel.Name,
@@ -113,8 +115,13 @@ func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, r
 	}
 
 	recipeParameters = make(map[string]any)
-	recipeData, err := r.Engine.GetRecipeMetadata(ctx, recipeDefinition, recipes.ResourceMetadata{
-		EnvironmentID: envID,
+	recipeData, err := r.Engine.GetRecipeMetadata(ctx, engine.GetRecipeMetadataOptions{
+		BaseOptions: engine.BaseOptions{
+			Recipe: recipes.ResourceMetadata{
+				EnvironmentID: envID,
+			},
+		},
+		RecipeDefinition: recipeDefinition,
 	})
 	if err != nil {
 		return recipeParameters, err
