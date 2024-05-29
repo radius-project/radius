@@ -75,18 +75,19 @@ func addSecretsToGitConfig(workingDirectory string, secrets v20231001preview.Sec
 	if !strings.HasPrefix(templatePath, "git::") || reflect.DeepEqual(secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
 		return nil
 	}
+
 	// Initialize a new Git repository in the terraform working directory.
 	_, err := git.PlainInit(workingDirectory, false)
 	if err != nil {
 		return fmt.Errorf("falied to initialize git in the working directory:%w", err)
 	}
 
-	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
+	err = setGitConfigForDir(workingDirectory)
 	if err != nil {
 		return err
 	}
 
-	err = setGitConfigForDir(workingDirectory)
+	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
 	if err != nil {
 		return err
 	}

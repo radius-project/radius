@@ -165,7 +165,6 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 	}
 
 	url, err := url.Parse(gitUrl)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse git url %s : %w", gitUrl, err)
 	}
