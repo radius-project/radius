@@ -43,5 +43,10 @@
       "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/48"
     }
   },
-  "resourceFunctions": {}
+  "resourceFunctions": {},
+  "settings": {
+    "name": "radius",
+    "version": "0.34.0",
+    "isSingleton": false
+  }
 }

@@ -17,6 +17,10 @@
 #### Parameters
 0. **someString**: string
 
+### Function listArrayOfFoos
+* **Output**: [FoosResponse](#foosresponse)[]
+#### Parameters
+
 ## SystemData
 ### Properties
 * **createdAt**: string: The timestamp of resource creation (UTC).
