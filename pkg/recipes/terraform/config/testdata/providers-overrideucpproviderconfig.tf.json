@@ -1,0 +1,55 @@
+{
+  "terraform": {
+    "backend": {
+      "kubernetes": {
+        "config_path": "/home/radius/.kube/config",
+        "namespace": "radius-system",
+        "secret_suffix": "test-secret-suffix"
+      }
+    },
+    "required_providers": {
+      "aws": {
+        "source": "hashicorp/aws",
+        "version": ">= 3.0"
+      },
+      "kubernetes": {
+        "source": "hashicorp/kubernetes",
+        "version": ">= 2.0",
+        "configuration_aliases": [
+          "kubernetes.k8s_first",
+          "kubernetes.k8s_second"
+        ]
+      }
+    }
+  },
+  "provider": {
+    "aws": [
+      {
+        "region": "us-west-2"
+      }
+    ],
+    "kubernetes": [
+      {
+        "alias": "k8s_first",
+        "config_path": "/home/radius/.kube/configPath1"
+      },
+      {
+        "alias": "k8s_second",
+        "config_path": "/home/radius/.kube/configPath2"
+      }
+    ]
+  },
+  "module": {
+    "redis-azure": {
+      "providers": {
+        "kubernetes.k8s_first": "kubernetes.k8s_first",
+        "kubernetes.k8s_second": "kubernetes.k8s_second"
+      },
+      "redis_cache_name": "redis-test",
+      "resource_group_name": "test-rg",
+      "sku": "P",
+      "source": "Azure/redis/azurerm",
+      "version": "1.1.0"
+    }
+  }
+}

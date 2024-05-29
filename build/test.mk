@@ -22,7 +22,7 @@ RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 REL_VERSION ?=latest
 DOCKER_REGISTRY ?=ghcr.io/radius-project/dev
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
-K8S_VERSION=1.23.*
+K8S_VERSION=1.30.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
 
 # Use gotestsum if available, otherwise use go test. We want to enable testing with just 'make test'

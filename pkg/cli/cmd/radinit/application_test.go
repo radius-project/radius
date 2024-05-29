@@ -74,5 +74,42 @@ func Test_enterApplicationName(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "another-name", name)
 	})
+	t.Run("user is prompted when application name contains uppercase", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		prompter := prompt.NewMockInterface(ctrl)
+		runner := Runner{Prompter: prompter}
+
+		setApplicationNamePrompt(prompter, "another-name")
+
+		name, err := runner.enterApplicationName(func() (string, error) { return "Invalid-Name", nil })
+		require.NoError(t, err)
+		require.Equal(t, "another-name", name)
+	})
+
+	t.Run("user is prompted when application name does not end with alphanumeric", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		prompter := prompt.NewMockInterface(ctrl)
+		runner := Runner{Prompter: prompter}
+
+		setApplicationNamePrompt(prompter, "another-name")
+
+		name, err := runner.enterApplicationName(func() (string, error) { return "test-application-", nil })
+		require.NoError(t, err)
+		require.Equal(t, "another-name", name)
+	})
+
+	t.Run("user is prompted when application name is too long", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		prompter := prompt.NewMockInterface(ctrl)
+		runner := Runner{Prompter: prompter}
+
+		setApplicationNamePrompt(prompter, "another-name")
+
+		name, err := runner.enterApplicationName(func() (string, error) {
+			return "this-is-a-very-long-environment-name-that-is-invalid-this-is-a-very-long-application-name-that-is-invalid", nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, "another-name", name)
+	})
 
 }
