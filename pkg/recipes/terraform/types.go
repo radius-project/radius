@@ -34,7 +34,7 @@ const (
 	workingDirFileMode fs.FileMode = 0700
 )
 
-//go:generate mockgen -destination=./mock_executor.go -package=terraform -self_package github.com/radius-project/radius/pkg/recipes/terraform github.com/radius-project/radius/pkg/recipes/terraform TerraformExecutor
+//go:generate mockgen -typed -destination=./mock_executor.go -package=terraform -self_package github.com/radius-project/radius/pkg/recipes/terraform github.com/radius-project/radius/pkg/recipes/terraform TerraformExecutor
 type TerraformExecutor interface {
 	// Deploy installs terraform and runs terraform init and apply on the terraform module referenced by the recipe using terraform-exec.
 	Deploy(ctx context.Context, options Options) (*tfjson.State, error)

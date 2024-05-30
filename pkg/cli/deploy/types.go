@@ -60,7 +60,7 @@ var _ Interface = (*Impl)(nil)
 type Impl struct {
 }
 
-//go:generate mockgen -destination=./mock_deploy.go -package=deploy -self_package github.com/radius-project/radius/pkg/cli/deploy github.com/radius-project/radius/pkg/cli/deploy Interface
+//go:generate mockgen -typed -destination=./mock_deploy.go -package=deploy -self_package github.com/radius-project/radius/pkg/cli/deploy github.com/radius-project/radius/pkg/cli/deploy Interface
 
 // DeployWithProgress runs a deployment and displays progress to the user. This is intended to be used
 // from the CLI and thus logs to the console.

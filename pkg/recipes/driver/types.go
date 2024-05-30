@@ -32,7 +32,7 @@ const (
 
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
 //
-//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver Driver
+//go:generate mockgen -typed -destination=./mock_driver.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver Driver
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.
 	Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error)
@@ -46,7 +46,7 @@ type Driver interface {
 
 // DriverWithSecrets is an optional interface and used when the driver needs to load secrets for recipe deployment.
 //
-//go:generate mockgen -destination=./mock_driver_with_secrets.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver DriverWithSecrets
+//go:generate mockgen -typed -destination=./mock_driver_with_secrets.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver DriverWithSecrets
 type DriverWithSecrets interface {
 	// Driver is an interface to implement recipe deployment and recipe resources deletion.
 	Driver

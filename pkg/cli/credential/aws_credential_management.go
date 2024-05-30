@@ -26,7 +26,7 @@ import (
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
-//go:generate mockgen -destination=./mock_aws_credential_management.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential AWSCredentialManagementClientInterface
+//go:generate mockgen -typed -destination=./mock_aws_credential_management.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential AWSCredentialManagementClientInterface
 
 // AWSCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AWSCredentialManagementClient struct {

@@ -157,7 +157,7 @@ func GetContextFromConfigFileIfExists(configFilePath, context string) (string, e
 	return contextName, nil
 }
 
-//go:generate mockgen -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/radius-project/radius/pkg/cli/kubernetes github.com/radius-project/radius/pkg/cli/kubernetes Interface
+//go:generate mockgen -typed -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/radius-project/radius/pkg/cli/kubernetes github.com/radius-project/radius/pkg/cli/kubernetes Interface
 type Interface interface {
 	GetKubeContext() (*api.Config, error)
 }
