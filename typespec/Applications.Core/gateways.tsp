@@ -107,6 +107,9 @@ model GatewayRoute {
 
   @doc("Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'")
   replacePrefix?: string;
+
+  @doc("Enables websocket support for the route.")
+  enableWebsockets?: boolean;
 }
 
 @armResourceOperations

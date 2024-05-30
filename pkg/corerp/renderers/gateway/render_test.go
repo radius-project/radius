@@ -1499,6 +1499,7 @@ func validateContourHTTPRoute(t *testing.T, outputResources []rpv1.OutputResourc
 					},
 				},
 				PathRewritePolicy: expectedRewrite,
+				EnableWebsockets:  false,
 			},
 		},
 	}

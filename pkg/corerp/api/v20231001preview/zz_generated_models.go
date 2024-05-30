@@ -911,6 +911,9 @@ type GatewayRoute struct {
 	// The URL or id of the service to route to. Ex - 'http://myservice'.
 	Destination *string
 
+	// Enables websocket support for the route.
+	EnableWebsockets *bool
+
 	// The path to match the incoming request path on. Ex - /myservice.
 	Path *string
 
