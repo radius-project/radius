@@ -103,7 +103,7 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), "test-env").
+			GetEnvironment(gomock.Any(), "test-env").
 			Return(environment, nil).
 			Times(1)
 
@@ -144,7 +144,7 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), "test-env").
+			GetEnvironment(gomock.Any(), "test-env").
 			Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
 			Times(1)
 

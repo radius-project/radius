@@ -203,7 +203,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	env, err := client.GetEnvDetails(ctx, r.EnvName)
+	env, err := client.GetEnvironment(ctx, r.EnvName)
 	if clients.Is404Error(err) {
 		return clierrors.Message(envNotFoundErrMessageFmt, r.EnvName)
 	} else if err != nil {
@@ -230,7 +230,10 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("Updating Environment...")
 
-	err = client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, env.Properties)
+	err = client.CreateOrUpdateEnvironment(ctx, r.EnvName, &corerp.EnvironmentResource{
+		Location:   to.Ptr(v1.LocationGlobal),
+		Properties: env.Properties,
+	})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to apply cloud provider scope to the environment %q.", r.EnvName)
 	}

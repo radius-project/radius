@@ -155,7 +155,7 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 				require.Equal(t, secretNamespace, secret.Namespace)
 				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
 
-				redis, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				redis, err := test.Options.ManagementClient.GetResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 				require.NotNil(t, redis)
 				status := redis.Properties["status"].(map[string]any)

@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      GOVER: '1.22.2'
+      GOVER: "1.22.2"
       GOPROXY: https://proxy.golang.org
       HELM_CHARTS_DIR: deploy/Chart
     steps:
@@ -46,31 +46,31 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
       - name: Install TypeSpec compiler
         run: |
           pushd typespec
           npm ci
           popd
       - name: Install autorest
-        run: npm install -g autorest@3.6.1
+        run: npm install -g autorest@3.7.1
       - name: Install oav
-        run: npm install -g oav@3.2.0
+        run: npm install -g oav@3.3.5
       - name: Install mockgen
-        run:  go install go.uber.org/mock/mockgen@v0.4.0
+        run: go install go.uber.org/mock/mockgen@v0.4.0
       - name: Install controller-gen
         run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
       - name: Install helm
         uses: azure/setup-helm@v4
         with:
-          version: 'v3.11.1'
+          version: "v3.11.1"
       - name: Run Helm linter
         run: |
           helm lint ${{ env.HELM_CHARTS_DIR }}
       - name: Run linter
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: 'v1.57.2'
+          version: "v1.57.2"
           args: --timeout=10m
           skip-cache: true
           install-mode: "binary"

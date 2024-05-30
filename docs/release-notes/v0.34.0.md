@@ -1,0 +1,86 @@
+## Announcing Radius v0.34.0
+
+Today we're happy to announce the release of Radius v0.34.0. Check out the [highlights](#highlights) below, along with the [full changelog](#full-changelog) for more details.
+
+We would like to extend our thanks to all the [new](#new-contributors) and existing contributors who helped make this release possible!
+
+## Intro to Radius
+
+If you're new to Radius, check out our website, [radapp.io](https://radapp.io), for more information. Also visit our [getting started guide](https://docs.radapp.io/getting-started/) to learn how to install Radius and create your first app.
+
+## Highlights
+
+### Viewing the Application Graph using the CLI
+Starting with this `v0.34` release, we have fully transitioned to the `rad app graph` command to view the Application Graph in the CLI. This means that the legacy command `rad app connections` will no longer be supported going forward. Learn more here: [CLI reference`rad app graph`](https://docs.radapp.io/reference/cli/rad_application_graph/)
+
+### Testing infrastructure enhancements
+The Radius team has been actively improving upon the testing coverage and infrastructure over the past couple of releases. We now have implemented a robust set of functional and long-running tests that are more reliable and cover the most recently released feature areas, including for private Terraform registries. Learn more about running the Radius test suite here: [Running Radius Tests](https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-code/contributing-code-tests/README.md)
+
+### User experience improvements with rad CLI 
+- We have fixed the `rad init` user experience for app name with capital letters to include the error message from k8s as it does not allow capital letters in namespace names
+- We have fixed the bug with `rad run` failing due to stern log collector limits. 
+
+### Terraform recipes
+We have fixed an issue with the Recipe deployment for Terraform providers that are not part of the official providers. Now Radius is enabled to load and deploy the recipe modules consuming any [Terraform provider](https://registry.terraform.io/browse/providers). Learn more about [Terraform Recipes in Radius](https://docs.radapp.io/guides/recipes/terraform/)
+
+## Breaking changes
+
+None
+
+## New contributors
+
+Welcome to our new contributors who have merged their first PR in this release!
+
+* @superbeeny made their first contribution in https://github.com/radius-project/radius/pull/7562
+* @testwill made their first contribution in https://github.com/radius-project/radius/pull/7608
+
+## Upgrading to Radius v0.34.0
+
+During our preview stage, an upgrade to Radius v0.34.0 requires a full reinstallation of the Radius control-plane, rad CLI, and all Radius apps. Stay tuned for an in-place upgrade path in the future.
+
+1. Delete any environments you have created:
+   ```bash
+   rad env delete <env-name>
+   ```
+1. Uninstall the previous version of the Radius control-plane:
+   ```bash
+   rad uninstall kubernetes
+   ```
+1. Visit the [Radius installation guide](https://docs.radapp.io/getting-started/install/) to install the latest CLI, or download a binary below
+1. Install the latest version of the Radius control-plane:
+   ```bash
+   rad install kubernetes
+   ```
+
+## Full changelog
+
+* Update build workflows to allow manual runs  by @sk593 in https://github.com/radius-project/radius/pull/7523
+* Update to final release version v0.33.0, release notes by @lakshmimsft in https://github.com/radius-project/radius/pull/7537
+* update gh to ado sync workflow to use service principals by @willtsai in https://github.com/radius-project/radius/pull/7536
+* Update long running test workflow to use GH token for terraform private registry by @sk593 in https://github.com/radius-project/radius/pull/7545
+* Update long running test workflow to use GH token for terraform private registry by @sk593 in https://github.com/radius-project/radius/pull/7553
+* remove connections as alias by @nithyatsu in https://github.com/radius-project/radius/pull/7531
+* Upgrade controller-gen to 0.15.0 by @youngbupark in https://github.com/radius-project/radius/pull/7556
+* Update Release instructions (minor updates) by @lakshmimsft in https://github.com/radius-project/radius/pull/7552
+* Fixes #7561 - adding side effect import of kubernetes auth plugins. by @superbeeny in https://github.com/radius-project/radius/pull/7562
+* Upgrade go to 1.22.2 by @youngbupark in https://github.com/radius-project/radius/pull/7559
+* Update tests to pull test images from ghcr instead of docker by @lakshmimsft in https://github.com/radius-project/radius/pull/7530
+* PR - Migrate golang/mock to uber-go/mock by @gpltaylor in https://github.com/radius-project/radius/pull/7566
+* Redesign plane resource types by @rynowak in https://github.com/radius-project/radius/pull/7499
+* Update purge test resources (both azure and aws) workflows by @ytimocin in https://github.com/radius-project/radius/pull/7551
+* Adding missing parts to the purge workflows by @ytimocin in https://github.com/radius-project/radius/pull/7571
+* Updating Purge AWS Test Resources workflow by @ytimocin in https://github.com/radius-project/radius/pull/7581
+* Update bubbletea version and the unit test by @ytimocin in https://github.com/radius-project/radius/pull/7526
+* Bump the all group across 1 directory with 2 updates by @dependabot in https://github.com/radius-project/radius/pull/7591
+* Bump the all group across 1 directory with 4 updates by @dependabot in https://github.com/radius-project/radius/pull/7587
+* Update CLI client code and add tests by @rynowak in https://github.com/radius-project/radius/pull/7594
+* add functional test results to artifacts by @nithyatsu in https://github.com/radius-project/radius/pull/7583
+* Stern - maxLogRequests option update by @ytimocin in https://github.com/radius-project/radius/pull/7578
+* Bump the all group with 16 updates by @dependabot in https://github.com/radius-project/radius/pull/7615
+* fix for purge old container by @nithyatsu in https://github.com/radius-project/radius/pull/7616
+* fix: close file by @testwill in https://github.com/radius-project/radius/pull/7608
+* Update Terraform recipe download error to include module version by @kachawla in https://github.com/radius-project/radius/pull/7620
+* fix for rad init cannot work from folders with uppercase  by @nithyatsu in https://github.com/radius-project/radius/pull/7617
+* Add required_providers block to main.tf.config, functional test for Terraform Provider by @lakshmimsft in https://github.com/radius-project/radius/pull/7364
+* Update kubebuilder to the latest working version by @sk593 in https://github.com/radius-project/radius/pull/7629
+* Release 0.34.0-rc1: Update release version with RC1 by @sk593 in https://github.com/radius-project/radius/pull/7628

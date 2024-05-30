@@ -6,20 +6,10 @@
         "namespace": "radius-system",
         "secret_suffix": "test-secret-suffix"
       }
-    }
-  },
-  "provider": {
-    "aws": {
-      "region": "test-region"
     },
-    "kubernetes": [
-      {
-        "ConfigPath": "/home/radius/.kube/configPath1"
-      },
-      {
-        "ConfigPath": "/home/radius/.kube/configPath2"
-      }
-    ]
+    "required_providers": {
+      "aws": {}
+    }
   },
   "module": {
     "redis-azure": {

@@ -6,12 +6,20 @@
         "namespace": "radius-system",
         "secret_suffix": "test-secret-suffix"
       }
+    },
+    "required_providers": {
+      "azurerm": {
+        "source": "hashicorp/azurerm",
+        "version": "~> 2.0"
+      }
     }
   },
   "provider": {
-    "azurerm": {
-      "features": {}
-    }
+    "azurerm": [
+      {
+        "features": {}
+      }
+    ]
   },
   "module": {
     "redis-azure": {

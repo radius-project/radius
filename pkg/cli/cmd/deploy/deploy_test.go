@@ -53,7 +53,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
+					GetEnvironment(gomock.Any(), radcli.TestEnvironmentName).
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -68,7 +68,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
+					GetEnvironment(gomock.Any(), radcli.TestEnvironmentName).
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 
@@ -84,7 +84,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvDetails(gomock.Any(), "prod").
+					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{
 						Properties: &v20231001preview.EnvironmentProperties{
 							Providers: &v20231001preview.Providers{
@@ -108,7 +108,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvDetails(gomock.Any(), "prod").
+					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
 					Times(1)
 
@@ -124,7 +124,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvDetails(gomock.Any(), "prod").
+					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -153,7 +153,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvDetails(gomock.Any(), "prod").
+					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -168,7 +168,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvDetails(gomock.Any(), "prod").
+					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -201,7 +201,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvDetails(gomock.Any(), gomock.Any()).
+					GetEnvironment(gomock.Any(), gomock.Any()).
 					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
 					Times(1)
 			},
@@ -376,7 +376,7 @@ func Test_Run(t *testing.T) {
 
 		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagmentMock.EXPECT().
-			GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
+			GetEnvironment(gomock.Any(), radcli.TestEnvironmentName).
 			Return(v20231001preview.EnvironmentResource{}, nil).
 			Times(1)
 		appManagmentMock.EXPECT().
@@ -446,9 +446,9 @@ func Test_Run(t *testing.T) {
 
 		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
 
-		// GetEnvDetails returns a 404 error
+		// GetEnvironment returns a 404 error
 		appManagmentMock.EXPECT().
-			GetEnvDetails(gomock.Any(), "envdoesntexist").
+			GetEnvironment(gomock.Any(), "envdoesntexist").
 			Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
 			Times(1)
 
@@ -491,7 +491,7 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 
-		// Even though GetEnvDetails returns a 404 error, the deployment should still succeed
+		// Even though GetEnvironment returns a 404 error, the deployment should still succeed
 		require.NoError(t, err)
 
 		// All of the output in this command is being done by functions that we mock for testing, so this
@@ -544,7 +544,7 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 
-		// Even though GetEnvDetails returns a 404 error, the deployment should still succeed
+		// Even though GetEnvironment returns a 404 error, the deployment should still succeed
 		require.Error(t, err)
 
 		expected := `The template "app.bicep" could not be deployed because of the following errors:

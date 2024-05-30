@@ -47,8 +47,8 @@ func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *
 
 // GetRecipeProviderConfigs returns the Terraform provider configurations for Terraform providers
 // specified under the RecipeConfig/Terraform/Providers section under environment configuration.
-func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
-	providerConfigs := make(map[string]any)
+func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration) map[string][]map[string]any {
+	providerConfigs := make(map[string][]map[string]any)
 
 	// If the provider is not configured, or has empty configuration, skip this iteration
 	if envConfig != nil && envConfig.RecipeConfig.Terraform.Providers != nil {
