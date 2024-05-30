@@ -26,23 +26,49 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_credentialFormat_Azure(t *testing.T) {
+func Test_credentialFormat_Azure_ServicePrincipal(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
 		CloudProviderStatus: credential.CloudProviderStatus{
 			Name:    "test",
 			Enabled: true,
 		},
 		AzureCredentials: &credential.AzureCredentialProperties{
-			ClientID: to.Ptr("test-client-id"),
-			TenantID: to.Ptr("test-tenant-id"),
+			Kind: to.Ptr("ServicePrincipal"),
+			ServicePrincipal: &credential.AzureServicePrincipalCredentialProperties{
+				ClientID: to.Ptr("test-client-id"),
+				TenantID: to.Ptr("test-tenant-id"),
+			},
 		},
 	}
 
 	buffer := &bytes.Buffer{}
-	err := output.Write(output.FormatTable, obj, buffer, credentialFormat("azure"))
+	err := output.Write(output.FormatTable, obj, buffer, credentialFormat("azure", obj))
 	require.NoError(t, err)
 
-	expected := "NAME      REGISTERED  CLIENTID        TENANTID\ntest      true        test-client-id  test-tenant-id\n"
+	expected := "NAME      REGISTERED  KIND              CLIENTID        TENANTID\ntest      true        ServicePrincipal  test-client-id  test-tenant-id\n"
+	require.Equal(t, expected, buffer.String())
+}
+
+func Test_credentialFormat_Azure_WorkloadIdentity(t *testing.T) {
+	obj := credential.ProviderCredentialConfiguration{
+		CloudProviderStatus: credential.CloudProviderStatus{
+			Name:    "test",
+			Enabled: true,
+		},
+		AzureCredentials: &credential.AzureCredentialProperties{
+			Kind: to.Ptr("WorkloadIdentity"),
+			WorkloadIdentity: &credential.AzureWorkloadIdentityCredentialProperties{
+				ClientID: to.Ptr("test-client-id"),
+				TenantID: to.Ptr("test-tenant-id"),
+			},
+		},
+	}
+
+	buffer := &bytes.Buffer{}
+	err := output.Write(output.FormatTable, obj, buffer, credentialFormat("azure", obj))
+	require.NoError(t, err)
+
+	expected := "NAME      REGISTERED  KIND              CLIENTID        TENANTID\ntest      true        WorkloadIdentity  test-client-id  test-tenant-id\n"
 	require.Equal(t, expected, buffer.String())
 }
 
@@ -58,7 +84,7 @@ func Test_credentialFormat_AWS(t *testing.T) {
 	}
 
 	buffer := &bytes.Buffer{}
-	err := output.Write(output.FormatTable, obj, buffer, credentialFormat("aws"))
+	err := output.Write(output.FormatTable, obj, buffer, credentialFormat("aws", obj))
 	require.NoError(t, err)
 
 	expected := "NAME      REGISTERED  ACCESSKEYID\ntest      true        test-access-key-id\n"

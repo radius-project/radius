@@ -19,32 +19,70 @@ package show
 import (
 	"strings"
 
+	"github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/output"
+)
+
+const (
+	AzureServicePrincipalCredentialKind = "ServicePrincipal"
+	AzureWorkloadIdentityCredentialKind = "WorkloadIdentity"
 )
 
 // credentialFormat function returns a FormatterOptions struct based on the credentialType parameter, which can
 // be either "azure" or "aws".
-func credentialFormat(credentialType string) output.FormatterOptions {
+func credentialFormat(credentialType string, providers credential.ProviderCredentialConfiguration) output.FormatterOptions {
 	if strings.EqualFold(credentialType, "azure") {
-		return output.FormatterOptions{
-			Columns: []output.Column{
-				{
-					Heading:  "NAME",
-					JSONPath: "{ .Name }",
+		switch *providers.AzureCredentials.Kind {
+		case AzureServicePrincipalCredentialKind:
+			return output.FormatterOptions{
+				Columns: []output.Column{
+					{
+						Heading:  "NAME",
+						JSONPath: "{ .Name }",
+					},
+					{
+						Heading:  "REGISTERED",
+						JSONPath: "{ .Enabled }",
+					},
+					{
+						Heading:  "KIND",
+						JSONPath: "{ .AzureCredentials.Kind }",
+					},
+					{
+						Heading:  "CLIENTID",
+						JSONPath: "{ .AzureCredentials.ServicePrincipal.ClientID }",
+					},
+					{
+						Heading:  "TENANTID",
+						JSONPath: "{ .AzureCredentials.ServicePrincipal.TenantID }",
+					},
 				},
-				{
-					Heading:  "REGISTERED",
-					JSONPath: "{ .Enabled }",
+			}
+		case AzureWorkloadIdentityCredentialKind:
+			return output.FormatterOptions{
+				Columns: []output.Column{
+					{
+						Heading:  "NAME",
+						JSONPath: "{ .Name }",
+					},
+					{
+						Heading:  "REGISTERED",
+						JSONPath: "{ .Enabled }",
+					},
+					{
+						Heading:  "KIND",
+						JSONPath: "{ .AzureCredentials.Kind }",
+					},
+					{
+						Heading:  "CLIENTID",
+						JSONPath: "{ .AzureCredentials.WorkloadIdentity.ClientID }",
+					},
+					{
+						Heading:  "TENANTID",
+						JSONPath: "{ .AzureCredentials.WorkloadIdentity.TenantID }",
+					},
 				},
-				{
-					Heading:  "CLIENTID",
-					JSONPath: "{ .AzureCredentials.ClientID }",
-				},
-				{
-					Heading:  "TENANTID",
-					JSONPath: "{ .AzureCredentials.TenantID }",
-				},
-			},
+			}
 		}
 	} else if strings.EqualFold(credentialType, "aws") {
 		return output.FormatterOptions{

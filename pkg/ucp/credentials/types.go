@@ -28,11 +28,21 @@ const (
 
 	// AWSPublic represents the aws public cloud plane name for UCP.
 	AWSPublic = "aws"
+
+	// AzureServicePrincipalCredentialKind represents the kind of Azure service principal credential.
+	AzureServicePrincipalCredentialKind = ucp_dm.AzureServicePrincipalCredentialKind
+
+	// AzureWorkloadIdentityCredentialKind represents the kind of Azure workload identity credential.
+	AzureWorkloadIdentityCredentialKind = ucp_dm.AzureWorkloadIdentityCredentialKind
 )
 
 type (
 	// AzureCredential represents a credential for Azure AD.
 	AzureCredential = ucp_dm.AzureCredentialProperties
+	// AzureServicePrincipalCredential represents a credential for Azure AD service principal.
+	AzureServicePrincipalCredential = ucp_dm.AzureServicePrincipalCredentialProperties
+	// AzureWorkloadIdentityCredential represents a credential for Azure AD workload identity.
+	AzureWorkloadIdentityCredential = ucp_dm.AzureWorkloadIdentityCredentialProperties
 	// AWSCredential represents a credential for AWS IAM.
 	AWSCredential = ucp_dm.AWSCredentialProperties
 )

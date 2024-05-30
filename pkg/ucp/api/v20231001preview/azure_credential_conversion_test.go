@@ -36,7 +36,7 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 		err      error
 	}{
 		{
-			filename: "credentialresource-azure.json",
+			filename: "credentialresource-azure-serviceprincipal.json",
 			expected: &datamodel.AzureCredential{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
@@ -55,9 +55,45 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 				Properties: &datamodel.AzureCredentialResourceProperties{
 					Kind: "ServicePrincipal",
 					AzureCredential: &datamodel.AzureCredentialProperties{
-						TenantID:     "00000000-0000-0000-0000-000000000000",
-						ClientID:     "00000000-0000-0000-0000-000000000000",
-						ClientSecret: "secret",
+						Kind: datamodel.AzureServicePrincipalCredentialKind,
+						ServicePrincipal: &datamodel.AzureServicePrincipalCredentialProperties{
+							TenantID:     "00000000-0000-0000-0000-000000000000",
+							ClientID:     "00000000-0000-0000-0000-000000000000",
+							ClientSecret: "secret",
+						},
+					},
+					Storage: &datamodel.CredentialStorageProperties{
+						Kind:               datamodel.InternalStorageKind,
+						InternalCredential: &datamodel.InternalCredentialStorageProperties{},
+					},
+				},
+			},
+		},
+		{
+			filename: "credentialresource-azure-workloadidentity.json",
+			expected: &datamodel.AzureCredential{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+						Name:     "default",
+						Type:     "System.Azure/credentials",
+						Location: "west-us-2",
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						UpdatedAPIVersion: Version,
+					},
+				},
+				Properties: &datamodel.AzureCredentialResourceProperties{
+					Kind: "WorkloadIdentity",
+					AzureCredential: &datamodel.AzureCredentialProperties{
+						Kind: datamodel.AzureWorkloadIdentityCredentialKind,
+						WorkloadIdentity: &datamodel.AzureWorkloadIdentityCredentialProperties{
+							TenantID: "00000000-0000-0000-0000-000000000000",
+							ClientID: "00000000-0000-0000-0000-000000000000",
+						},
 					},
 					Storage: &datamodel.CredentialStorageProperties{
 						Kind:               datamodel.InternalStorageKind,
@@ -114,7 +150,7 @@ func TestAzureCredentialConvertDataModelToVersioned(t *testing.T) {
 		err      error
 	}{
 		{
-			filename: "credentialresourcedatamodel-azure.json",
+			filename: "credentialresourcedatamodel-azure-serviceprincipal.json",
 			expected: &AzureCredentialResource{
 				ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
 				Name:     to.Ptr("default"),
@@ -125,6 +161,27 @@ func TestAzureCredentialConvertDataModelToVersioned(t *testing.T) {
 				},
 				Properties: &AzureServicePrincipalProperties{
 					Kind:     to.Ptr(AzureCredentialKindServicePrincipal),
+					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+					TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+					Storage: &InternalCredentialStorageProperties{
+						Kind:       to.Ptr(CredentialStorageKindInternal),
+						SecretName: to.Ptr("azure-azurecloud-default"),
+					},
+				},
+			},
+		},
+		{
+			filename: "credentialresourcedatamodel-azure-workloadidentity.json",
+			expected: &AzureCredentialResource{
+				ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+				Name:     to.Ptr("default"),
+				Type:     to.Ptr("System.Azure/credentials"),
+				Location: to.Ptr("west-us-2"),
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				Properties: &AzureWorkloadIdentityProperties{
+					Kind:     to.Ptr(AzureCredentialKindWorkloadIdentity),
 					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
