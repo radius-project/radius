@@ -46,7 +46,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		return err
 	}
 
-	err = client.CreateUCPGroup(ctx, "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
+	err = client.CreateOrUpdateResourceGroup(ctx, "local", r.Options.Environment.Name, &ucp.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
 	if err != nil {
@@ -82,7 +82,10 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		Recipes:   recipes,
 	}
 
-	err = client.CreateEnvironment(ctx, r.Options.Environment.Name, v1.LocationGlobal, &envProperties)
+	err = client.CreateOrUpdateEnvironment(ctx, r.Options.Environment.Name, &corerp.EnvironmentResource{
+		Location:   to.Ptr(v1.LocationGlobal),
+		Properties: &envProperties,
+	})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create environment.")
 	}

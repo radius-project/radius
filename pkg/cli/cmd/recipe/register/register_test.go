@@ -160,10 +160,11 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), gomock.Any()).
+			GetEnvironment(gomock.Any(), gomock.Any()).
 			Return(envResource, nil).Times(1)
+
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
+			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -229,11 +230,12 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), gomock.Any()).
+			GetEnvironment(gomock.Any(), gomock.Any()).
 			Return(envResource, nil).
 			Times(1)
+
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
+			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
 			Return(expectedError).
 			Times(1)
 
@@ -260,7 +262,7 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), gomock.Any()).
+			GetEnvironment(gomock.Any(), gomock.Any()).
 			Return(v20231001preview.EnvironmentResource{}, expectedError).
 			Times(1)
 
@@ -311,10 +313,11 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), gomock.Any()).
+			GetEnvironment(gomock.Any(), gomock.Any()).
 			Return(envResource, nil).Times(1)
+
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
+			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -367,10 +370,11 @@ func Test_Run(t *testing.T) {
 		}
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), gomock.Any()).
+			GetEnvironment(gomock.Any(), gomock.Any()).
 			Return(envResource, nil).Times(1)
+
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
+			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -419,10 +423,11 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetEnvDetails(gomock.Any(), gomock.Any()).
+			GetEnvironment(gomock.Any(), gomock.Any()).
 			Return(envResource, nil).Times(1)
+
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
+			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}

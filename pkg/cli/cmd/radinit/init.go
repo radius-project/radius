@@ -237,7 +237,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		// Initialize the application resource if it's not found. This supports the scenario where the application
 		// resource is not defined in bicep.
-		err = client.CreateApplicationIfNotFound(ctx, r.Options.Application.Name, corerp.ApplicationResource{
+		err = client.CreateApplicationIfNotFound(ctx, r.Options.Application.Name, &corerp.ApplicationResource{
 			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &corerp.ApplicationProperties{
 				Environment: &r.Workspace.Environment,

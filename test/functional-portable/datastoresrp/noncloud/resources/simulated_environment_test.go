@@ -75,11 +75,11 @@ func Test_Deployment_SimulatedEnv_BicepRecipe(t *testing.T) {
 				// Verify no actual pods are deployed
 				require.Equal(t, 0, len(pods.Items))
 
-				env, err := ct.Options.ManagementClient.GetEnvDetails(ctx, envName)
+				env, err := ct.Options.ManagementClient.GetEnvironment(ctx, envName)
 				require.NoError(t, err)
 				require.True(t, *env.Properties.Simulated)
 
-				resources, err := ct.Options.ManagementClient.ListAllResourcesByApplication(ctx, appName)
+				resources, err := ct.Options.ManagementClient.ListResourcesInApplication(ctx, appName)
 				require.NoError(t, err)
 				require.Equal(t, 2, len(resources))
 				require.Equal(t, mongoDBName, *resources[0].Name)

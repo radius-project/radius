@@ -18,6 +18,7 @@ package logstream
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"text/template"
 	"time"
@@ -48,7 +49,6 @@ type Impl struct {
 // Stream() configures and runs Stern, a library for streaming logs from Kubernetes pods, with custom filters and output formats
 // based on the provided parameters. It returns an error if there is an issue configuring or running Stern.
 func (i *Impl) Stream(ctx context.Context, options Options) error {
-
 	// The functionality of the package is provided almost entirely be github.com/stern/stern.
 	// Under the covers, stern is watching pods based on a set of filters and then piping
 	// all of the matching logstreams to the writer.
@@ -81,7 +81,7 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 		ErrOut:     options.Out,
 
 		// Limit the number of concurrent log fetch function unlike Kubernetes client rate limitter.
-		MaxLogRequests: 10,
+		MaxLogRequests: 50,
 	}
 
 	// This is the only Radius-specific customization we make.
@@ -99,7 +99,10 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 	// This will block until the context is cancelled.
 	err = stern.Run(ctx, options.KubeClient, &cfg)
 	if err != nil {
-		return err
+		// Not returning the error and just logging is intentional!
+		// We don't want the process to exit if there's an error streaming logs.
+		// We just want to log the error and continue.
+		fmt.Println("Error running stern: ", err)
 	}
 
 	return nil

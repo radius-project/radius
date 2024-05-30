@@ -97,7 +97,7 @@ func Test_Run(t *testing.T) {
 
 	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 	appManagementClient.EXPECT().
-		ListEnvironmentsInResourceGroup(gomock.Any()).
+		ListEnvironments(gomock.Any()).
 		Return(environments, nil).
 		Times(1)
 

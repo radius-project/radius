@@ -113,7 +113,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	envResource, err := client.GetEnvDetails(ctx, r.Workspace.Environment)
+	envResource, err := client.GetEnvironment(ctx, r.Workspace.Environment)
 	if err != nil {
 		return err
 	}

@@ -679,7 +679,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				CreateUCPGroup(context.Background(), "local", "default", gomock.Any()).
+				CreateOrUpdateResourceGroup(context.Background(), "local", "default", gomock.Any()).
 				Return(nil).
 				Times(1)
 
@@ -699,7 +699,10 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Recipes:   tc.recipes,
 			}
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
+				CreateOrUpdateEnvironment(context.Background(), "default", &corerp.EnvironmentResource{
+					Location:   to.Ptr(v1.LocationGlobal),
+					Properties: testEnvProperties,
+				}).
 				Return(nil).
 				Times(1)
 

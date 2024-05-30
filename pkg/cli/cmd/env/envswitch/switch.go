@@ -118,7 +118,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate that the environment exists
-	_, err = client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
+	_, err = client.GetEnvironment(cmd.Context(), r.EnvironmentName)
 	if clients.Is404Error(err) {
 		return clierrors.Message("Unable to switch environments as requested environment %s does not exist.", r.EnvironmentName)
 	} else if err != nil {

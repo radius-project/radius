@@ -31,7 +31,7 @@ import (
 )
 
 func verifyDaprComponentsDeleted(ctx context.Context, t *testing.T, test rp.RPTest, resourceType, resourceName, namespace string) {
-	resource, err := test.Options.ManagementClient.ShowResource(ctx, resourceType, resourceName)
+	resource, err := test.Options.ManagementClient.GetResource(ctx, resourceType, resourceName)
 	require.Error(t, err)
 	require.True(t, clients.Is404Error(err))
 	require.Equal(t, generated.GenericResource{}, resource)

@@ -22,9 +22,10 @@ import (
 )
 
 const (
-	invalidNamespaceNameMessage = "namespace must be 1-63 characters, made up of of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
-	invalidResourceNameMessage  = "name must be made up of alphanumeric characters and hyphens, and must begin with an alphabetic character and end with an alphanumeric character"
-	invalidUUIDv4Message        = "must be a valid UUID v4 (GUID)"
+	invalidNamespaceNameMessage   = "namespace must be 1-63 characters, made up of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
+	invalidResourceNameMessage    = "name must be made up of alphanumeric characters and hyphens, and must begin with an alphabetic character and end with an alphanumeric character"
+	invalidApplicationNameMessage = "application name must be 1-63 characters, made up of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character"
+	invalidUUIDv4Message          = "must be a valid UUID v4 (GUID)"
 
 	// ErrExitConsoleMessage is the message that is displayed when the user exits the console. This is exported for use in tests.
 	ErrExitConsoleMessage = "exiting command"
@@ -42,7 +43,7 @@ func ValidateKubernetesNamespace(input string) error {
 		return nil
 	}
 
-	return errors.New(invalidResourceNameMessage)
+	return errors.New(invalidNamespaceNameMessage)
 }
 
 // ValidateKubernetesNamespaceOrDefault validates the user input according to Kubernetes rules for a namespace name, but also allows empty input.
@@ -75,6 +76,16 @@ func ValidateResourceName(input string) error {
 	}
 
 	return errors.New(invalidResourceNameMessage)
+}
+
+// ValidateApplicationName checks if the given string is a valid Application name, and returns an error if it is not.
+// The rules for application name matches that of kubernetes namespace since we use the name to also create a namespace for the application.
+func ValidateApplicationName(input string) error {
+	err := ValidateKubernetesNamespace(input)
+	if err != nil {
+		return errors.New(invalidApplicationNameMessage)
+	}
+	return nil
 }
 
 // ValidateResourceName validates the user input according to ARM/UCP rules for a resource name, but also allows empty input.

@@ -156,7 +156,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	deleted, err := client.DeleteEnv(ctx, r.EnvironmentName)
+	deleted, err := client.DeleteEnvironment(ctx, r.EnvironmentName)
 	if err != nil {
 		return err
 	}
