@@ -186,15 +186,18 @@ func (e *engine) GetRecipeMetadata(ctx context.Context, opts GetRecipeMetadataOp
 // Any changes to the core logic of the GetRecipeMetadata function should be made here.
 func (e *engine) getRecipeMetadataCore(ctx context.Context, opts GetRecipeMetadataOptions) (map[string]any, error) {
 	// Load environment configuration to get the recipe config information which contains the secrets.
+	// Secrets are needed to download terraform recipes from private module sources, currently for private git repositories.
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, opts.Recipe)
 	if err != nil {
 		return nil, err
 	}
+
 	// Determine Recipe driver type
 	driver, ok := e.options.Drivers[opts.RecipeDefinition.Driver]
 	if !ok {
 		return nil, fmt.Errorf("could not find driver %s", opts.RecipeDefinition.Driver)
 	}
+
 	secrets, err := e.getRecipeConfigSecrets(ctx, driver, configuration, &opts.RecipeDefinition)
 	if err != nil {
 		return nil, err

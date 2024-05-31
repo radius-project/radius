@@ -66,7 +66,8 @@ func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecrets
 	return fmt.Sprintf("url.%s.insteadOf", path), fmt.Sprintf("%s://%s", url.Scheme, url.Hostname()), nil
 }
 
-// Updates the local Git configuration in terraform working directory with credentials for a recipe template path and prefixes the path with environment, application, and resource name to make the entry unique to each recipe execution operation.
+// Updates the local Git configuration in terraform working directory with credentials for a recipe template path, and global git configuration with includeif directive to point to the local config file
+// in the working directory which will be used when terraform(in turn calls git) runs from that working directory.
 //
 // Retrieves the git credentials from the provided secrets object
 // and adds them to the Git config by running
@@ -111,6 +112,7 @@ func setGitConfigForDir(workingDirectory string) error {
 	if err != nil {
 		return errors.New("failed to add conditional include directive")
 	}
+
 	return nil
 }
 
@@ -121,10 +123,12 @@ func unsetGitConfigForDir(workingDirectory string, secrets v20231001preview.Secr
 	if !strings.HasPrefix(templatePath, "git::") || reflect.DeepEqual(secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
 		return nil
 	}
+
 	cmd := exec.Command("git", "config", "--global", "--unset", fmt.Sprintf("includeIf.gitdir:%s/.path", workingDirectory))
 	_, err := cmd.Output()
 	if err != nil {
 		return errors.New("failed to unset conditional include directive")
 	}
+
 	return nil
 }

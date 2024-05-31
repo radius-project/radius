@@ -160,7 +160,8 @@ func GetSecretStoreID(envConfig Configuration, templatePath string) (string, err
 func GetGitURL(templatePath string) (*url.URL, error) {
 	paths := strings.Split(templatePath, "git::")
 	gitUrl := paths[len(paths)-1]
-	if !hasURLScheme(gitUrl) {
+
+	if !(len(strings.Split(gitUrl, "://")) > 1) {
 		gitUrl = fmt.Sprintf("https://%s", gitUrl)
 	}
 
@@ -170,9 +171,4 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 	}
 
 	return url, nil
-}
-
-func hasURLScheme(url string) bool {
-
-	return len(strings.Split(url, "://")) > 1
 }

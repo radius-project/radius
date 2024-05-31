@@ -169,28 +169,3 @@ func Test_GetSecretStoreID(t *testing.T) {
 		})
 	}
 }
-
-func Test_HasURLScheme(t *testing.T) {
-	tests := []struct {
-		desc   string
-		url    string
-		result bool
-	}{
-		{
-			desc:   "has scheme",
-			url:    "https://dev.azue.com",
-			result: true,
-		},
-		{
-			desc:   "no scheme",
-			url:    "dev.azure.com",
-			result: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			require.Equal(t, tt.result, hasURLScheme(tt.url))
-		})
-	}
-
-}
