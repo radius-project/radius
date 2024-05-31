@@ -282,7 +282,7 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 	// Today we use this function in config.go to check for secretstore to add prefix to the template path.
 	// GetSecretStoreID is added outside of driver package because it created cyclic dependency between driver and config packages.
 
-	return recipes.GetSecretStoreID(envConfig, definition.TemplatePath)
+	return GetSecretStoreID(envConfig, definition.TemplatePath)
 }
 
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.

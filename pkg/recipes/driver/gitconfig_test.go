@@ -164,3 +164,35 @@ func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
 		os.Setenv("HOME", prevGitConfigEnv)
 	}, nil
 }
+
+func Test_GetGitURL(t *testing.T) {
+	tests := []struct {
+		desc         string
+		templatePath string
+		expectedURL  string
+		expectedErr  bool
+	}{
+		{
+			desc:         "success",
+			templatePath: "git::dev.azure.com/project/module",
+			expectedURL:  "https://dev.azure.com/project/module",
+			expectedErr:  false,
+		},
+		{
+			desc:         "invalid url",
+			templatePath: "git::https://dev.az  ure.com/project/module",
+			expectedErr:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			url, err := GetGitURL(tt.templatePath)
+			if !tt.expectedErr {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedURL, url.String())
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}

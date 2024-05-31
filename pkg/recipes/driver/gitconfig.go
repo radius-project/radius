@@ -26,7 +26,6 @@ import (
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/recipes"
 )
 
 // getGitURLWithSecrets returns the git URL with secrets information added.
@@ -54,7 +53,7 @@ func getGitURLWithSecrets(secrets v20231001preview.SecretStoresClientListSecrets
 // get the secret values pat and username from secrets and create a git url in
 // the format : https://<username>:<pat>@<git>.com and adds it to gitconfig
 func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) (string, string, error) {
-	url, err := recipes.GetGitURL(templatePath)
+	url, err := GetGitURL(templatePath)
 	if err != nil {
 		return "", "", err
 	}
@@ -131,4 +130,22 @@ func unsetGitConfigForDir(workingDirectory string, secrets v20231001preview.Secr
 	}
 
 	return nil
+}
+
+// GetGitURL returns git url from generic git module source.
+// git::https://exmaple.com/project/module -> https://exmaple.com/project/module
+func GetGitURL(templatePath string) (*url.URL, error) {
+	paths := strings.Split(templatePath, "git::")
+	gitUrl := paths[len(paths)-1]
+
+	if !(len(strings.Split(gitUrl, "://")) > 1) {
+		gitUrl = fmt.Sprintf("https://%s", gitUrl)
+	}
+
+	url, err := url.Parse(gitUrl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse git url %s : %w", gitUrl, err)
+	}
+
+	return url, nil
 }

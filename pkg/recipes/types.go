@@ -19,9 +19,6 @@ package recipes
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"net/url"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -139,36 +136,4 @@ func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error 
 	}
 
 	return nil
-}
-
-// GetSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
-func GetSecretStoreID(envConfig Configuration, templatePath string) (string, error) {
-	if strings.HasPrefix(templatePath, "git::") {
-		url, err := GetGitURL(templatePath)
-		if err != nil {
-			return "", err
-		}
-
-		// get the secret store id associated with the git domain of the template path.
-		return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
-	}
-	return "", nil
-}
-
-// GetGitURL returns git url from generic git module source.
-// git::https://exmaple.com/project/module -> https://exmaple.com/project/module
-func GetGitURL(templatePath string) (*url.URL, error) {
-	paths := strings.Split(templatePath, "git::")
-	gitUrl := paths[len(paths)-1]
-
-	if !(len(strings.Split(gitUrl, "://")) > 1) {
-		gitUrl = fmt.Sprintf("https://%s", gitUrl)
-	}
-
-	url, err := url.Parse(gitUrl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse git url %s : %w", gitUrl, err)
-	}
-
-	return url, nil
 }

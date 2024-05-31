@@ -19,7 +19,6 @@ package recipes
 import (
 	"testing"
 
-	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
@@ -77,94 +76,6 @@ func TestRecipeOutput_PrepareRecipeResponse(t *testing.T) {
 				err := ro.PrepareRecipeResponse(tt.result)
 				require.Error(t, err)
 				require.Equal(t, "json: unknown field \"invalid\"", err.Error())
-			}
-		})
-	}
-}
-
-func Test_GetGitURL(t *testing.T) {
-	tests := []struct {
-		desc         string
-		templatePath string
-		expectedURL  string
-		expectedErr  bool
-	}{
-		{
-			desc:         "success",
-			templatePath: "git::dev.azure.com/project/module",
-			expectedURL:  "https://dev.azure.com/project/module",
-			expectedErr:  false,
-		},
-		{
-			desc:         "invalid url",
-			templatePath: "git::https://dev.az  ure.com/project/module",
-			expectedErr:  true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			url, err := GetGitURL(tt.templatePath)
-			if !tt.expectedErr {
-				require.NoError(t, err)
-				require.Equal(t, tt.expectedURL, url.String())
-			} else {
-				require.Error(t, err)
-			}
-		})
-	}
-
-}
-
-func Test_GetSecretStoreID(t *testing.T) {
-	tests := []struct {
-		desc                string
-		envConfig           Configuration
-		templatePath        string
-		expectedSecretStore string
-		expectedErr         bool
-	}{
-		{
-			desc: "success",
-			envConfig: Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Terraform: datamodel.TerraformConfigProperties{
-						Authentication: datamodel.AuthConfig{
-							Git: datamodel.GitAuthConfig{
-								PAT: map[string]datamodel.SecretConfig{
-									"dev.azure.com": {
-										Secret: "secret-store1",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			templatePath:        "git::https://dev.azure.com/project/module",
-			expectedSecretStore: "secret-store1",
-			expectedErr:         false,
-		},
-		{
-			desc:                "empty config",
-			templatePath:        "git::https://dev.azure.com/project/module",
-			expectedSecretStore: "",
-			expectedErr:         false,
-		},
-		{
-			desc:                "invalid template path",
-			templatePath:        "git::https://dev.azu  re.com/project/module",
-			expectedSecretStore: "",
-			expectedErr:         true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			ss, err := GetSecretStoreID(tt.envConfig, tt.templatePath)
-			if !tt.expectedErr {
-				require.NoError(t, err)
-				require.Equal(t, ss, tt.expectedSecretStore)
-			} else {
-				require.Error(t, err)
 			}
 		})
 	}
