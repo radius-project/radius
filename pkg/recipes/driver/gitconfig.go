@@ -50,6 +50,8 @@ func getGitURLWithSecrets(secrets v20231001preview.SecretStoresClientListSecrets
 }
 
 // getURLConfigKeyValue is used to get the key and value details of the url config.
+// get the secret values pat and username from secrets and create a git url in
+// the format : https://<username>:<pat>@<git>.com
 func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) (string, string, error) {
 	url, err := GetGitURL(templatePath)
 	if err != nil {
