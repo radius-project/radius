@@ -18,6 +18,7 @@ package driver
 
 import (
 	"context"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -84,4 +85,18 @@ type DeleteOptions struct {
 
 	// OutputResources is the list of output resources for the recipe.
 	OutputResources []rpv1.OutputResource
+}
+
+// GetSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
+func GetSecretStoreID(envConfig recipes.Configuration, templatePath string) (string, error) {
+	if strings.HasPrefix(templatePath, "git::") {
+		url, err := GetGitURL(templatePath)
+		if err != nil {
+			return "", err
+		}
+
+		// get the secret store id associated with the git domain of the template path.
+		return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
+	}
+	return "", nil
 }
