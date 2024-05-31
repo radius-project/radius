@@ -155,7 +155,7 @@ Update it to reflect the new release version that we would like to release ([Exa
 
 1. Download the Radius Bicep .vsix file from here: https://github.com/radius-project/bicep/releases. Scroll down to the most recent release and download the .vsix file.
 
-1. Upload the Radius Bicep .vsix to the [VS marketplace](https://marketplace.visualstudio.com/manage). You may need access permissions, if so, ask a maintainer. Click on the ... for Radius Bicep, then Update, then upload the .vsix file. The site will verify it then the version number should be updated to the right one.
+1. Upload the Radius Bicep .vsix to the [VS marketplace](https://marketplace.visualstudio.com/manage/publishers/ms-azuretools). You may need access permissions, if so, ask @sk593 or @willdavsmith. Click on the ... for Radius Bicep, then Update, then upload the .vsix file. The site will verify it then the version number should be updated to the right one.
 
 ## Patching
 
@@ -203,5 +203,5 @@ Let's say we have a bug in a release that needs to be patched for an already-cre
 
 1. Download the Radius Bicep .vsix file from here: https://github.com/radius-project/bicep/releases. Scroll down to the most recent release and download the .vsix file.
 
-1. Upload the Radius Bicep .vsix to the [VS marketplace](https://marketplace.visualstudio.com/manage). You may need access permissions, if so, ask a maintainer. Click on the ... for Radius Bicep, then Update, then upload the .vsix file. The site will verify it then the version number should be updated to the right one.
+1. Upload the Radius Bicep .vsix to the [VS marketplace](https://marketplace.visualstudio.com/manage/publishers/ms-azuretools). You may need access permissions, if so, ask @sk593 or @willdavsmith. Click on the ... for Radius Bicep, then Update, then upload the .vsix file. The site will verify it then the version number should be updated to the right one.
 ![alt text](image.png)
