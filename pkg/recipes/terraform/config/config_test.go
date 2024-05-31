@@ -18,6 +18,7 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -601,11 +602,20 @@ func Test_AddProviders(t *testing.T) {
 			require.NoError(t, err)
 
 			// assert
-			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			var actualConfig, expectedConfig map[string]any
+
+			actualConfigBytes, err := os.ReadFile(getMainConfigFilePath(workingDir))
 			require.NoError(t, err)
-			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			err = json.Unmarshal(actualConfigBytes, &actualConfig)
 			require.NoError(t, err)
-			require.Equal(t, string(expectedConfig), string(actualConfig))
+
+			expectedConfigBytes, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			err = json.Unmarshal(expectedConfigBytes, &expectedConfig)
+			require.NoError(t, err)
+
+			// This performs a deep comparison of the two maps.
+			require.Equal(t, expectedConfig, actualConfig)
 		})
 	}
 }
@@ -680,7 +690,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			name: "Test with valid provider config",
 			cfg: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -710,7 +720,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			},
 			expectedConfig: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -742,7 +752,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			name: "Test with subset of required_provider aliases in provider config",
 			cfg: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -768,7 +778,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			},
 			expectedConfig: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -795,7 +805,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			name: "Test with unmatched required_provider aliases in provider config",
 			cfg: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"region": "us-west-2",
 						},
@@ -837,7 +847,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			name: "Test with no required_provider aliases",
 			cfg: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -862,7 +872,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			},
 			expectedConfig: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
