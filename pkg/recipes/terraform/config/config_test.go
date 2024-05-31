@@ -614,9 +614,11 @@ func Test_AddProviders(t *testing.T) {
 			err = json.Unmarshal(expectedConfigBytes, &expectedConfig)
 			require.NoError(t, err)
 
-			if tc.desc == "valid all supported providers" {
+			// For tests with multiple UCPConfigured providers and 'useUCPProviderConfig' set to true, we validate test based on count of provider configurations and matching provider names (keys).
+			if len(tc.expectedUCPConfiguredProviders) > 1 && tc.useUCPProviderConfig == true {
+
 				// The AddProviders function accepts a map of UCPConfigured providers. As maps in Go do not guarantee iteration order, the sequence of providers in the resulting configuration can vary.
-				// The mock call to BuildConfig() anticipates a specific provider configuration output in a fixed order. (ln 619)
+				// The mock call to BuildConfig() anticipates a specific provider configuration output in a fixed order.
 				// Due to potential discrepancies in order, a deep comparison of the two maps is not feasible. Instead, we compare the count and match keys of provider configurations.
 				expectedProviderMap := expectedConfig["provider"].(map[string]any)
 				actualProviderMap := actualConfig["provider"].(map[string]any)
