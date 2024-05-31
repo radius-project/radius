@@ -68,6 +68,8 @@ Follow the steps below to create an RC release.
 
 1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius RC release version number being released.
 
+   > The `edge` branch needs to be upmerged with the previous release branch before this happens. To upmerge the `edge` branch, create a new branch off of the `edge` branch and run `git merge origin/v<previous-release-number>`. For example, if the current release is `v0.34`, the command would be `git merge origin/v0.33`. Then, push these changes to the new branch and create a PR against `edge`. Run the `Test Samples` workflow once the upmerge PR has been merged to `edge`. 
+      
    > If this workflow run fails, then there should be further investigation. Try checking the logs to see what failed and why, and checking if there is already an issue open for this failure in the samples repo. Sometimes, the workflow run will fail because of flaky tests. Try re-running, and if the failure is persistent, then file an issue in the samples repo and raise it with the maintainers.
 
 1. If these workflows pass, then the release candidate has been successfully created and validated. We can now proceed to creating the final release. If the workflows fail, then we need to fix the issues and create a new RC release.
@@ -80,7 +82,7 @@ Follow the steps below to create a final release.
 
 1. Clone the [radius-project/bicep](https://github.com/radius-project/bicep) repo locally, or use your existing local copy.
    ```
-   git clone git@github.com:radius-project/radius.git
+   git clone git@github.com:radius-project/bicep.git
    ```
 
 1. Create a new branch from `bicep-extensibility`.
