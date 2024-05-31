@@ -50,8 +50,6 @@ func getGitURLWithSecrets(secrets v20231001preview.SecretStoresClientListSecrets
 }
 
 // getURLConfigKeyValue is used to get the key and value details of the url config.
-// get the secret values pat and username from secrets and create a git url in
-// the format : https://<username>:<pat>@<git>.com and adds it to gitconfig
 func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) (string, string, error) {
 	url, err := GetGitURL(templatePath)
 	if err != nil {
@@ -109,7 +107,7 @@ func setGitConfigForDir(workingDirectory string) error {
 	cmd := exec.Command("git", "config", "--global", fmt.Sprintf("includeIf.gitdir:%s/.path", workingDirectory), workingDirectory+"/.git/config")
 	_, err := cmd.Output()
 	if err != nil {
-		return errors.New("failed to add conditional include directive")
+		return fmt.Errorf("failed to add conditional include directive : %w", err)
 	}
 
 	return nil
@@ -126,7 +124,7 @@ func unsetGitConfigForDir(workingDirectory string, secrets v20231001preview.Secr
 	cmd := exec.Command("git", "config", "--global", "--unset", fmt.Sprintf("includeIf.gitdir:%s/.path", workingDirectory))
 	_, err := cmd.Output()
 	if err != nil {
-		return errors.New("failed to unset conditional include directive")
+		return fmt.Errorf("failed to unset conditional includeIf directive : %w", err)
 	}
 
 	return nil
