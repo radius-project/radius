@@ -72,9 +72,10 @@ type GatewayProperties struct {
 
 // GatewayRoute represents the route attached to Gateway.
 type GatewayRoute struct {
-	Destination   string `json:"destination,omitempty"`
-	Path          string `json:"path,omitempty"`
-	ReplacePrefix string `json:"replacePrefix,omitempty"`
+	Destination      string `json:"destination,omitempty"`
+	Path             string `json:"path,omitempty"`
+	ReplacePrefix    string `json:"replacePrefix,omitempty"`
+	EnableWebsockets bool   `json:"enableWebsockets,omitempty"`
 }
 
 // GatewayPropertiesHostname - Declare hostname information for the Gateway.
