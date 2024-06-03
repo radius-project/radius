@@ -301,8 +301,8 @@ func (r *Runner) getAzureCredential() (ucp.AzureCredentialResource, error) {
 				Storage: &ucp.CredentialStorageProperties{
 					Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 				},
-				TenantID: &r.Options.CloudProviders.Azure.ServicePrincipal.TenantID,
-				ClientID: &r.Options.CloudProviders.Azure.ServicePrincipal.ClientID,
+				TenantID: &r.Options.CloudProviders.Azure.WorkloadIdentity.TenantID,
+				ClientID: &r.Options.CloudProviders.Azure.WorkloadIdentity.ClientID,
 			},
 		}, nil
 	default:

@@ -68,7 +68,7 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, 
 
 	switch credentialKind {
 	case azureServicePrincipalCredentialKind:
-		r.Output.LogInfo(azureServicePrincipalCreateInstructionsFmt)
+		r.Output.LogInfo(azureServicePrincipalCreateInstructionsFmt, subscription.ID, resourceGroup)
 
 		clientID, err := r.Prompter.GetTextInput(enterAzureCredentialAppIDPrompt, prompt.TextInputOptions{
 			Placeholder: enterAzureCredentialAppIDPlaceholder,
@@ -102,7 +102,7 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, 
 			},
 		}, nil
 	case azureWorkloadIdenityCredentialKind:
-		r.Output.LogInfo(azureWorkloadIdentityCreateInstructionsFmt, subscription.ID, resourceGroup)
+		r.Output.LogInfo(azureWorkloadIdentityCreateInstructionsFmt)
 
 		clientID, err := r.Prompter.GetTextInput(enterAzureCredentialAppIDPrompt, prompt.TextInputOptions{
 			Placeholder: enterAzureCredentialAppIDPlaceholder,

@@ -31,7 +31,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func Test_enterAzureCloudProvider(t *testing.T) {
+func Test_enterAzureCloudProvider_ServicePrincipal(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	prompter := prompt.NewMockInterface(ctrl)
 	client := azure.NewMockClient(ctrl)
@@ -56,10 +56,13 @@ func Test_enterAzureCloudProvider(t *testing.T) {
 	setAzureResourceGroups(client, subscription.ID, []armresources.ResourceGroup{resourceGroup})
 	setAzureResourceGroupPrompt(prompter, []string{*resourceGroup.Name}, *resourceGroup.Name)
 
+	// selectCredentialKind
+	setAzureCredentialKindPrompt(prompter, "Service Principal")
+
 	// service principal
-	setAzureServicePrincipalAppIDPrompt(prompter, "service-principal-app-id")
-	setAzureServicePrincipalPasswordPrompt(prompter, "service-principal-password")
-	setAzureServicePrincipalTenantIDPrompt(prompter, "service-principal-tenant-id")
+	setAzureCredentialAppIDPrompt(prompter, "service-principal-app-id")
+	setAzureCredentialPasswordPrompt(prompter, "service-principal-password")
+	setAzureCredentialTenantIDPrompt(prompter, "service-principal-tenant-id")
 
 	provider, err := runner.enterAzureCloudProvider(context.Background())
 	require.NoError(t, err)
@@ -67,7 +70,8 @@ func Test_enterAzureCloudProvider(t *testing.T) {
 	expected := &azure.Provider{
 		SubscriptionID: subscription.ID,
 		ResourceGroup:  *resourceGroup.Name,
-		ServicePrincipal: &azure.ServicePrincipal{
+		CredentialKind: "ServicePrincipal",
+		ServicePrincipal: &azure.ServicePrincipalCredential{
 			ClientID:     "service-principal-app-id",
 			ClientSecret: "service-principal-password",
 			TenantID:     "service-principal-tenant-id",
@@ -78,6 +82,58 @@ func Test_enterAzureCloudProvider(t *testing.T) {
 	expectedOutput := []any{output.LogOutput{
 		Format: azureServicePrincipalCreateInstructionsFmt,
 		Params: []any{subscription.ID, *resourceGroup.Name},
+	}}
+	require.Equal(t, expectedOutput, outputSink.Writes)
+}
+
+func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	prompter := prompt.NewMockInterface(ctrl)
+	client := azure.NewMockClient(ctrl)
+	outputSink := output.MockOutput{}
+	runner := Runner{Prompter: prompter, azureClient: client, Output: &outputSink}
+
+	subscription := azure.Subscription{
+		Name: "test-subscription",
+		ID:   "test-subscription-id",
+	}
+
+	resourceGroup := armresources.ResourceGroup{
+		Name: to.Ptr("test-resource-group"),
+	}
+
+	// selectAzureSubscription
+	setAzureSubscriptions(client, &azure.SubscriptionResult{Default: &subscription, Subscriptions: []azure.Subscription{subscription}})
+	setAzureSubscriptionConfirmPrompt(prompter, subscription.Name, prompt.ConfirmYes)
+
+	// selectAzureResourceGroup
+	setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmNo)
+	setAzureResourceGroups(client, subscription.ID, []armresources.ResourceGroup{resourceGroup})
+	setAzureResourceGroupPrompt(prompter, []string{*resourceGroup.Name}, *resourceGroup.Name)
+
+	// selectCredentialKind
+	setAzureCredentialKindPrompt(prompter, "Workload Identity")
+
+	// service principal
+	setAzureCredentialAppIDPrompt(prompter, "service-principal-app-id")
+	setAzureCredentialTenantIDPrompt(prompter, "service-principal-tenant-id")
+
+	provider, err := runner.enterAzureCloudProvider(context.Background())
+	require.NoError(t, err)
+
+	expected := &azure.Provider{
+		SubscriptionID: subscription.ID,
+		ResourceGroup:  *resourceGroup.Name,
+		CredentialKind: "WorkloadIdentity",
+		WorkloadIdentity: &azure.WorkloadIdentityCredential{
+			ClientID: "service-principal-app-id",
+			TenantID: "service-principal-tenant-id",
+		},
+	}
+	require.Equal(t, expected, provider)
+
+	expectedOutput := []any{output.LogOutput{
+		Format: azureWorkloadIdentityCreateInstructionsFmt,
 	}}
 	require.Equal(t, expectedOutput, outputSink.Writes)
 }

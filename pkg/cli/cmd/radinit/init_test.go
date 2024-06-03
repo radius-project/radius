@@ -59,13 +59,24 @@ func Test_CommandValidation(t *testing.T) {
 func Test_Validate(t *testing.T) {
 	config := radcli.LoadConfigWithWorkspace(t)
 
-	azureProvider := azure.Provider{
+	azureProviderServicePrincipal := azure.Provider{
 		SubscriptionID: "test-subscription-id",
 		ResourceGroup:  "test-resource-group",
-		ServicePrincipal: &azure.ServicePrincipal{
+		CredentialKind: "ServicePrincipal",
+		ServicePrincipal: &azure.ServicePrincipalCredential{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
 			TenantID:     "test-tenant-id",
+		},
+	}
+
+	azureProviderWorkloadIdentity := azure.Provider{
+		SubscriptionID: "test-subscription-id",
+		ResourceGroup:  "test-resource-group",
+		CredentialKind: "WorkloadIdentity",
+		WorkloadIdentity: &azure.WorkloadIdentityCredential{
+			ClientID: "test-client-id",
+			TenantID: "test-tenant-id",
 		},
 	}
 
@@ -244,7 +255,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init --full Command With Azure Cloud Provider",
+			Name:          "Init --full Command With Azure Cloud Provider - Service Principal",
 			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -267,7 +278,42 @@ func Test_Validate(t *testing.T) {
 				// Add azure provider
 				initAddCloudProviderPromptYes(mocks.Prompter)
 				initSelectCloudProvider(mocks.Prompter, azure.ProviderDisplayName)
-				setAzureCloudProvider(mocks.Prompter, mocks.AzureClient, azureProvider)
+				setAzureCloudProviderServicePrincipal(mocks.Prompter, mocks.AzureClient, azureProviderServicePrincipal)
+
+				// Don't add any other cloud providers
+				initAddCloudProviderPromptNo(mocks.Prompter)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
+			},
+		},
+		{
+			Name:          "Init --full Command With Azure Cloud Provider - Workload Identity",
+			Input:         []string{"--full"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// Choose default name and namespace
+				initEnvNamePrompt(mocks.Prompter, "default")
+				initNamespacePrompt(mocks.Prompter, "default")
+
+				// Add azure provider
+				initAddCloudProviderPromptYes(mocks.Prompter)
+				initSelectCloudProvider(mocks.Prompter, azure.ProviderDisplayName)
+				setAzureCloudProviderWorkloadIdentity(mocks.Prompter, mocks.AzureClient, azureProviderWorkloadIdentity)
 
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
@@ -609,15 +655,32 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			expectedOutput: []any{},
 		},
 		{
-			name: "`rad init --full` with Azure Provider",
+			name: "`rad init --full` with Azure Provider - Service Principal",
 			full: true,
 			azureProvider: &azure.Provider{
 				SubscriptionID: "test-subscription",
 				ResourceGroup:  "test-rg",
-				ServicePrincipal: &azure.ServicePrincipal{
+				CredentialKind: "ServicePrincipal",
+				ServicePrincipal: &azure.ServicePrincipalCredential{
 					TenantID:     "test-tenantId",
 					ClientID:     "test-clientId",
 					ClientSecret: "test-clientSecret",
+				},
+			},
+			awsProvider:    nil,
+			recipes:        nil,
+			expectedOutput: []any{},
+		},
+		{
+			name: "`rad init --full` with Azure Provider - Workload Identity",
+			full: true,
+			azureProvider: &azure.Provider{
+				SubscriptionID: "test-subscription",
+				ResourceGroup:  "test-rg",
+				CredentialKind: "WorkloadIdentity",
+				WorkloadIdentity: &azure.WorkloadIdentityCredential{
+					TenantID: "test-tenantId",
+					ClientID: "test-clientId",
 				},
 			},
 			awsProvider:    nil,
@@ -1074,29 +1137,36 @@ func setSelectAzureResourceGroupLocationPrompt(prompter *prompt.MockInterface, l
 		Times(1)
 }
 
-func setAzureServicePrincipalAppIDPrompt(prompter *prompt.MockInterface, appID string) {
+func setAzureCredentialAppIDPrompt(prompter *prompt.MockInterface, appID string) {
 	prompter.EXPECT().
-		GetTextInput(enterAzureServicePrincipalAppIDPrompt, gomock.Any()).
+		GetTextInput(enterAzureCredentialAppIDPrompt, gomock.Any()).
 		Return(appID, nil).
 		Times(1)
 }
 
-func setAzureServicePrincipalPasswordPrompt(prompter *prompt.MockInterface, password string) {
+func setAzureCredentialPasswordPrompt(prompter *prompt.MockInterface, password string) {
 	prompter.EXPECT().
-		GetTextInput(enterAzureServicePrincipalPasswordPrompt, gomock.Any()).
+		GetTextInput(enterAzureCredentialPasswordPrompt, gomock.Any()).
 		Return(password, nil).
 		Times(1)
 }
 
-func setAzureServicePrincipalTenantIDPrompt(prompter *prompt.MockInterface, tenantID string) {
+func setAzureCredentialTenantIDPrompt(prompter *prompt.MockInterface, tenantID string) {
 	prompter.EXPECT().
-		GetTextInput(enterAzureServicePrincipalTenantIDPrompt, gomock.Any()).
+		GetTextInput(enterAzureCredentialTenantIDPrompt, gomock.Any()).
 		Return(tenantID, nil).
 		Times(1)
 }
 
-// setAzureCloudProvider sets up mocks that will configure an Azure cloud provider.
-func setAzureCloudProvider(prompter *prompt.MockInterface, client *azure.MockClient, provider azure.Provider) {
+func setAzureCredentialKindPrompt(prompter *prompt.MockInterface, choice string) {
+	prompter.EXPECT().
+		GetListInput([]string{"Service Principal", "Workload Identity"}, selectAzureCredentialKindPrompt).
+		Return(choice, nil).
+		Times(1)
+}
+
+// setAzureCloudProviderServicePrincipal sets up mocks that will configure an Azure cloud provider with service principal credential.
+func setAzureCloudProviderServicePrincipal(prompter *prompt.MockInterface, client *azure.MockClient, provider azure.Provider) {
 	subscriptions := &azure.SubscriptionResult{
 		Subscriptions: []azure.Subscription{{ID: provider.SubscriptionID, Name: "test-subscription"}},
 	}
@@ -1110,9 +1180,32 @@ func setAzureCloudProvider(prompter *prompt.MockInterface, client *azure.MockCli
 	setAzureResourceGroups(client, provider.SubscriptionID, resourceGroups)
 	setAzureResourceGroupPrompt(prompter, []string{provider.ResourceGroup}, provider.ResourceGroup)
 
-	setAzureServicePrincipalAppIDPrompt(prompter, provider.ServicePrincipal.ClientID)
-	setAzureServicePrincipalPasswordPrompt(prompter, provider.ServicePrincipal.ClientSecret)
-	setAzureServicePrincipalTenantIDPrompt(prompter, provider.ServicePrincipal.TenantID)
+	setAzureCredentialKindPrompt(prompter, "Service Principal")
+
+	setAzureCredentialAppIDPrompt(prompter, provider.ServicePrincipal.ClientID)
+	setAzureCredentialPasswordPrompt(prompter, provider.ServicePrincipal.ClientSecret)
+	setAzureCredentialTenantIDPrompt(prompter, provider.ServicePrincipal.TenantID)
+}
+
+// setAzureCloudProviderWorkloadIdentity sets up mocks that will configure an Azure cloud provider with workload identity credential.
+func setAzureCloudProviderWorkloadIdentity(prompter *prompt.MockInterface, client *azure.MockClient, provider azure.Provider) {
+	subscriptions := &azure.SubscriptionResult{
+		Subscriptions: []azure.Subscription{{ID: provider.SubscriptionID, Name: "test-subscription"}},
+	}
+	subscriptions.Default = &subscriptions.Subscriptions[0]
+	resourceGroups := []armresources.ResourceGroup{{Name: to.Ptr(provider.ResourceGroup)}}
+
+	setAzureSubscriptions(client, subscriptions)
+	setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmYes)
+
+	setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmNo)
+	setAzureResourceGroups(client, provider.SubscriptionID, resourceGroups)
+	setAzureResourceGroupPrompt(prompter, []string{provider.ResourceGroup}, provider.ResourceGroup)
+
+	setAzureCredentialKindPrompt(prompter, "Workload Identity")
+
+	setAzureCredentialAppIDPrompt(prompter, provider.WorkloadIdentity.ClientID)
+	setAzureCredentialTenantIDPrompt(prompter, provider.WorkloadIdentity.TenantID)
 }
 
 func setConfirmOption(prompter *prompt.MockInterface, choice summaryResult) {
