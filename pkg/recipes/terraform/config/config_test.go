@@ -18,6 +18,7 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -117,7 +118,6 @@ func Test_NewConfig(t *testing.T) {
 		desc               string
 		moduleName         string
 		envdef             *recipes.EnvironmentDefinition
-		envConfig          *recipes.Configuration
 		metadata           *recipes.ResourceMetadata
 		expectedConfigFile string
 	}{
@@ -175,45 +175,13 @@ func Test_NewConfig(t *testing.T) {
 			},
 			expectedConfigFile: "testdata/module-emptytemplateversion.tf.json",
 		},
-		{
-			desc:       "git private repo module",
-			moduleName: testRecipeName,
-			envdef: &recipes.EnvironmentDefinition{
-				Name:         testRecipeName,
-				TemplatePath: "git::https://dev.azure.com/project/module",
-				Parameters:   envParams,
-			},
-			envConfig: &recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Terraform: datamodel.TerraformConfigProperties{
-						Authentication: datamodel.AuthConfig{
-							Git: datamodel.GitAuthConfig{
-								PAT: map[string]datamodel.SecretConfig{
-									"dev.azure.com": {
-										Secret: "secret-store1",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			metadata: &recipes.ResourceMetadata{
-				Name:          testRecipeName,
-				Parameters:    resourceParams,
-				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Environments/testEnv/env",
-				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Applications/testApp/app",
-				ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
-			},
-			expectedConfigFile: "testdata/module-private-git-repo.tf.json",
-		},
 	}
 
 	for _, tc := range configTests {
 		t.Run(tc.desc, func(t *testing.T) {
 			workingDir := t.TempDir()
 
-			tfconfig, err := New(context.Background(), testRecipeName, tc.envdef, tc.metadata, tc.envConfig)
+			tfconfig, err := New(context.Background(), testRecipeName, tc.envdef, tc.metadata)
 			require.NoError(t, err)
 
 			// validate generated config
@@ -307,7 +275,7 @@ func Test_AddRecipeContext(t *testing.T) {
 			ctx := testcontext.New(t)
 			workingDir := t.TempDir()
 
-			tfconfig, err := New(context.Background(), testRecipeName, tc.envdef, tc.metadata, nil)
+			tfconfig, err := New(context.Background(), testRecipeName, tc.envdef, tc.metadata)
 			require.NoError(t, err)
 			err = tfconfig.AddRecipeContext(ctx, tc.moduleName, tc.recipeContext)
 			if tc.err == "" {
@@ -611,7 +579,7 @@ func Test_AddProviders(t *testing.T) {
 			ctx := testcontext.New(t)
 			workingDir := t.TempDir()
 
-			tfconfig, err := New(ctx, testRecipeName, &envRecipe, &resourceRecipe, &tc.envConfig)
+			tfconfig, err := New(ctx, testRecipeName, &envRecipe, &resourceRecipe)
 			require.NoError(t, err)
 			if tc.useUCPProviderConfig {
 				for _, p := range tc.expectedUCPConfiguredProviders {
@@ -634,11 +602,20 @@ func Test_AddProviders(t *testing.T) {
 			require.NoError(t, err)
 
 			// assert
-			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			var actualConfig, expectedConfig map[string]any
+
+			actualConfigBytes, err := os.ReadFile(getMainConfigFilePath(workingDir))
 			require.NoError(t, err)
-			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			err = json.Unmarshal(actualConfigBytes, &actualConfig)
 			require.NoError(t, err)
-			require.Equal(t, string(expectedConfig), string(actualConfig))
+
+			expectedConfigBytes, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			err = json.Unmarshal(expectedConfigBytes, &expectedConfig)
+			require.NoError(t, err)
+
+			// This performs a deep comparison of the two maps.
+			require.Equal(t, expectedConfig, actualConfig)
 		})
 	}
 }
@@ -674,7 +651,7 @@ func Test_AddOutputs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+			tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe)
 			require.NoError(t, err)
 
 			err = tfconfig.AddOutputs(tc.moduleName)
@@ -713,7 +690,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			name: "Test with valid provider config",
 			cfg: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -743,7 +720,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			},
 			expectedConfig: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -775,7 +752,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			name: "Test with subset of required_provider aliases in provider config",
 			cfg: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -801,7 +778,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			},
 			expectedConfig: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -828,7 +805,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			name: "Test with unmatched required_provider aliases in provider config",
 			cfg: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"region": "us-west-2",
 						},
@@ -870,7 +847,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			name: "Test with no required_provider aliases",
 			cfg: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -895,7 +872,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			},
 			expectedConfig: &TerraformConfig{
 				Provider: map[string][]map[string]any{
-					"aws": []map[string]any{
+					"aws": {
 						{
 							"alias":  "alias1",
 							"region": "us-west-2",
@@ -953,7 +930,7 @@ func Test_Save_overwrite(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
-	tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+	tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe)
 	require.NoError(t, err)
 
 	err = tfconfig.Save(ctx, testDir)
@@ -966,7 +943,7 @@ func Test_Save_overwrite(t *testing.T) {
 func Test_Save_ConfigFileReadOnly(t *testing.T) {
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
-	tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+	tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe)
 	require.NoError(t, err)
 
 	// Create a test configuration file with read only permission.
@@ -983,7 +960,7 @@ func Test_Save_InvalidWorkingDir(t *testing.T) {
 	testDir := filepath.Join("invalid", uuid.New().String())
 	envRecipe, resourceRecipe := getTestInputs()
 
-	tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe, nil)
+	tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe)
 	require.NoError(t, err)
 
 	err = tfconfig.Save(testcontext.New(t), testDir)

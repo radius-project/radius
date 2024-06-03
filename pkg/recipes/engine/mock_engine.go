@@ -118,7 +118,7 @@ func (c *MockEngineExecuteCall) DoAndReturn(f func(context.Context, ExecuteOptio
 }
 
 // GetRecipeMetadata mocks base method.
-func (m *MockEngine) GetRecipeMetadata(arg0 context.Context, arg1 recipes.EnvironmentDefinition) (map[string]any, error) {
+func (m *MockEngine) GetRecipeMetadata(arg0 context.Context, arg1 GetRecipeMetadataOptions) (map[string]any, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRecipeMetadata", arg0, arg1)
 	ret0, _ := ret[0].(map[string]any)

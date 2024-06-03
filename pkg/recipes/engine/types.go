@@ -34,7 +34,7 @@ type Engine interface {
 	Delete(ctx context.Context, opts DeleteOptions) error
 
 	// Gets the Recipe metadata and parameters from Recipe's template path
-	GetRecipeMetadata(ctx context.Context, recipeDefinition recipes.EnvironmentDefinition) (map[string]any, error)
+	GetRecipeMetadata(ctx context.Context, opts GetRecipeMetadataOptions) (map[string]any, error)
 }
 
 // BaseOptions is the base options for the engine operations.
@@ -58,4 +58,9 @@ type DeleteOptions struct {
 
 	// OutputResources is the list of output resources for the recipe.
 	OutputResources []rpv1.OutputResource
+}
+
+type GetRecipeMetadataOptions struct {
+	BaseOptions
+	RecipeDefinition recipes.EnvironmentDefinition
 }

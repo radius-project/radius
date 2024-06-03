@@ -105,7 +105,7 @@ jobs:
     name: Create issue for failing purge test resources run
     needs: [purge_ghcr_dev, purge_azure_resources]
     runs-on: ubuntu-latest
-    if: always() && ${{ github.event_name != 'workflow_dispatch' }} && (needs.purge_ghcr_dev.result == 'failure' || needs.purge_azure_resources.result == 'failure')
+    if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
     steps:
       - uses: actions/github-script@v7
         with:
