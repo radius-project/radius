@@ -18,6 +18,7 @@ package radinit
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -277,18 +278,35 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) getAzureCredential() ucp.AzureCredentialResource {
-	return ucp.AzureCredentialResource{
-		Location: to.Ptr(v1.LocationGlobal),
-		Type:     to.Ptr(cli_credential.AzureCredential),
-		Properties: &ucp.AzureServicePrincipalProperties{
-			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+func (r *Runner) getAzureCredential() (ucp.AzureCredentialResource, error) {
+	switch r.Options.CloudProviders.Azure.CredentialKind {
+	case string(azure.AzureCredentialKindServicePrincipal):
+		return ucp.AzureCredentialResource{
+			Location: to.Ptr(v1.LocationGlobal),
+			Type:     to.Ptr(cli_credential.AzureCredential),
+			Properties: &ucp.AzureServicePrincipalProperties{
+				Storage: &ucp.CredentialStorageProperties{
+					Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				},
+				TenantID:     &r.Options.CloudProviders.Azure.ServicePrincipal.TenantID,
+				ClientID:     &r.Options.CloudProviders.Azure.ServicePrincipal.ClientID,
+				ClientSecret: &r.Options.CloudProviders.Azure.ServicePrincipal.ClientSecret,
 			},
-			TenantID:     &r.Options.CloudProviders.Azure.ServicePrincipal.TenantID,
-			ClientID:     &r.Options.CloudProviders.Azure.ServicePrincipal.ClientID,
-			ClientSecret: &r.Options.CloudProviders.Azure.ServicePrincipal.ClientSecret,
-		},
+		}, nil
+	case string(azure.AzureCredentialKindWorkloadIdentity):
+		return ucp.AzureCredentialResource{
+			Location: to.Ptr(v1.LocationGlobal),
+			Type:     to.Ptr(cli_credential.AzureCredential),
+			Properties: &ucp.AzureWorkloadIdentityProperties{
+				Storage: &ucp.CredentialStorageProperties{
+					Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				},
+				TenantID: &r.Options.CloudProviders.Azure.ServicePrincipal.TenantID,
+				ClientID: &r.Options.CloudProviders.Azure.ServicePrincipal.ClientID,
+			},
+		}, nil
+	default:
+		return ucp.AzureCredentialResource{}, fmt.Errorf("unsupported Azure credential kind: %s", r.Options.CloudProviders.Azure.CredentialKind)
 	}
 }
 
