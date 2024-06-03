@@ -145,13 +145,13 @@ func (c *MockEngineGetRecipeMetadataCall) Return(arg0 map[string]any, arg1 error
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockEngineGetRecipeMetadataCall) Do(f func(context.Context, recipes.EnvironmentDefinition) (map[string]any, error)) *MockEngineGetRecipeMetadataCall {
+func (c *MockEngineGetRecipeMetadataCall) Do(f func(context.Context, GetRecipeMetadataOptions) (map[string]any, error)) *MockEngineGetRecipeMetadataCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockEngineGetRecipeMetadataCall) DoAndReturn(f func(context.Context, recipes.EnvironmentDefinition) (map[string]any, error)) *MockEngineGetRecipeMetadataCall {
+func (c *MockEngineGetRecipeMetadataCall) DoAndReturn(f func(context.Context, GetRecipeMetadataOptions) (map[string]any, error)) *MockEngineGetRecipeMetadataCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
