@@ -34,7 +34,7 @@ import (
 // Because these interfaces are non-exported, they MUST be defined in their own file
 // and we MUST use -source on mockgen to generate mocks for them.
 
-//go:generate mockgen -typed -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient
+//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient
 
 // genericResourceClient is an interface for mocking the generated SDK client for any resource.
 type genericResourceClient interface {
