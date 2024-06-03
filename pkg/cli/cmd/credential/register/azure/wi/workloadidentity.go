@@ -62,7 +62,9 @@ calling 'rad credential register azure'.
 ` + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for Azure with service principal authentication
-rad credential register azure --client-id <client id/app id> --client-secret <client secret/password> --tenant-id <tenant id>
+rad credential register azure sp --client-id <client id/app id> --client-secret <client secret/password> --tenant-id <tenant id>
+# Register (Add or update) cloud provider credential for Azure with workload identity authentication
+rad credential register azure wi --client-id <client id/app id> --tenant-id <tenant id>
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),

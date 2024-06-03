@@ -521,7 +521,7 @@ jobs:
           echo "*** Configuring Azure provider ***"
           rad env update kind-radius --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          rad credential register azure --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
+          rad credential register azure sp --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
             --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
