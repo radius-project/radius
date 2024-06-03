@@ -106,7 +106,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad credential register azure` command.
+// Validate runs validation for the `rad credential register azure sp` command.
 //
 
 // Validate checks for the presence of a workspace, output format, client ID, client secret and tenant ID, and
@@ -152,7 +152,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad credential register azure` command.
+// Run runs the `rad credential register azure sp` command.
 //
 
 // Run registers a credential for the Azure cloud provider in the Radius installation, updates the server-side

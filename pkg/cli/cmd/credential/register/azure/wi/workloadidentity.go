@@ -95,7 +95,7 @@ type Runner struct {
 	KubeContext string
 }
 
-// NewRunner creates a new instance of the `rad credential register azure` runner.
+// NewRunner creates a new instance of the `rad credential register azure wi` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -104,10 +104,10 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad credential register azure` command.
+// Validate runs validation for the `rad credential register azure wi` command.
 //
 
-// Validate checks for the presence of a workspace, output format, client ID, client secret and tenant ID, and
+// Validate checks for the presence of a workspace, output format, client ID, and tenant ID, and
 // sets them in the Runner struct if they are present. If any of these are not present, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -144,7 +144,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad credential register azure` command.
+// Run runs the `rad credential register azure wi` command.
 //
 
 // Run registers a credential for the Azure cloud provider in the Radius installation, updates the server-side
