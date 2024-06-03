@@ -46,9 +46,10 @@ func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 	if src.Properties.Routes != nil {
 		for _, r := range src.Properties.Routes {
 			s := datamodel.GatewayRoute{
-				Destination:   to.String(r.Destination),
-				Path:          to.String(r.Path),
-				ReplacePrefix: to.String(r.ReplacePrefix),
+				Destination:      to.String(r.Destination),
+				Path:             to.String(r.Path),
+				ReplacePrefix:    to.String(r.ReplacePrefix),
+				EnableWebsockets: to.Bool(r.EnableWebsockets),
 			}
 			routes = append(routes, s)
 		}
@@ -110,9 +111,10 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	if g.Properties.Routes != nil {
 		for _, r := range g.Properties.Routes {
 			s := &GatewayRoute{
-				Destination:   to.Ptr(r.Destination),
-				Path:          to.Ptr(r.Path),
-				ReplacePrefix: to.Ptr(r.ReplacePrefix),
+				Destination:      to.Ptr(r.Destination),
+				Path:             to.Ptr(r.Path),
+				ReplacePrefix:    to.Ptr(r.ReplacePrefix),
+				EnableWebsockets: to.Ptr(r.EnableWebsockets),
 			}
 			routes = append(routes, s)
 		}

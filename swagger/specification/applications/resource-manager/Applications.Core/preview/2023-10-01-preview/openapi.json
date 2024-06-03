@@ -3700,6 +3700,10 @@
         "replacePrefix": {
           "type": "string",
           "description": "Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'"
+        },
+        "enableWebsockets": {
+          "type": "boolean",
+          "description": "Enables websocket support for the route. Defaults to false."
         }
       }
     },
