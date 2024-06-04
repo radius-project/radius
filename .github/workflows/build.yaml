@@ -65,6 +65,9 @@ env:
   # URL to get source code for building the image
   IMAGE_SRC: https://github.com/radius-project/radius
 
+  # ACR url for bicep file uploads
+  ACR: 'biceptypes.azurecr.io'
+
 jobs:
   build-and-push-cli:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
@@ -262,6 +265,41 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.actor }} --password-stdin ${{ env.OCI_REGISTRY }}
           helm push ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPOSITORY }}
 
+  build-and-push-bicep-types:
+    name: name
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - name: Detecting node
+        run: |
+          echo "Detecting node..."
+          which node > /dev/null || { echo "node is a required dependency"; exit 1; }
+          echo "OK"
+      - name: Generate Bicep extensibility types from OpenAPI specs
+        run: |
+          echo "Generating Bicep extensibility types from OpenAPI specs..."
+          echo "Build autorest.bicep..."
+          cd ./hack/bicep-types-radius/src/autorest.bicep
+          npm ci && npm run build
+          cd ../generator
+          echo "Run generator from hack/bicep-types-radius/src/generator dir"
+          npm ci && npm run generate -- --specs-dir ../../../../swagger --verbose
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.BICEP_TYPES_AZURE_CREDENTIALS }}
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          bicep --help 
+      - name: Publish bicep types 
+        run: |
+          bicep publish-provider ./hack/bicep-types-radius/generated/index.json --target br:${{ env.ACR }}/radius:${{ env.REL_VERSION }} --force
+  
   publish-release:
     name: Publish GitHub Release
     needs: ['build-and-push-cli']
