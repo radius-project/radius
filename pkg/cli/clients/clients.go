@@ -88,7 +88,7 @@ type DeploymentClient interface {
 	Deploy(ctx context.Context, options DeploymentOptions) (DeploymentResult, error)
 }
 
-//go:generate mockgen -destination=./mock_diagnosticsclient.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients DiagnosticsClient
+//go:generate mockgen -typed -destination=./mock_diagnosticsclient.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients DiagnosticsClient
 
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
 type DiagnosticsClient interface {
@@ -133,7 +133,7 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
-//go:generate mockgen -destination=./mock_applicationsclient.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients ApplicationsManagementClient
+//go:generate mockgen -typed -destination=./mock_applicationsclient.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients ApplicationsManagementClient
 
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {

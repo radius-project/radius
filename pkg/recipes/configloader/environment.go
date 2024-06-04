@@ -35,7 +35,7 @@ var (
 	ErrUnsupportedComputeKind = errors.New("unsupported compute kind in environment resource")
 )
 
-//go:generate mockgen -destination=./mock_config_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader ConfigurationLoader
+//go:generate mockgen -typed -destination=./mock_config_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader ConfigurationLoader
 
 var _ ConfigurationLoader = (*environmentLoader)(nil)
 

@@ -50,7 +50,7 @@ func TestStartDequeuer(t *testing.T) {
 		Data:        []byte("{}"),
 	}, nil)
 
-	secondCall := mockCli.EXPECT().Dequeue(gomock.Any(), gomock.Any()).Return(nil, ErrInvalidMessage).After(firstCall)
+	secondCall := mockCli.EXPECT().Dequeue(gomock.Any(), gomock.Any()).Return(nil, ErrInvalidMessage).After(firstCall.Call)
 	mockCli.EXPECT().Dequeue(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, cfg QueueClientConfig) (*Message, error) {
 			close(lastDequeueCh)
