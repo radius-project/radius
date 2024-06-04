@@ -2472,6 +2472,13 @@
         },
         "flags": 0,
         "description": "Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'"
+      },
+      "enableWebsockets": {
+        "type": {
+          "$ref": "#/39"
+        },
+        "flags": 0,
+        "description": "Enables websocket support for the route. Defaults to false."
       }
     }
   },
