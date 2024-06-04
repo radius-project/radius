@@ -18,11 +18,12 @@ import path from 'path';
 import { existsSync } from 'fs';
 import { mkdir, rm, writeFile, readFile } from 'fs/promises';
 import yargs from 'yargs';
-import { groupBy, keys, orderBy, sortBy, Dictionary } from 'lodash';
-import { TypeBaseKind } from '../types';
+import { Dictionary } from 'lodash';
+import { TypeFile, buildIndex, readTypesJson, writeIndexJson, writeIndexMarkdown, TypeSettings } from 'bicep-types'; 
 import { GeneratorConfig, getConfig } from '../config';
 import * as markdown from '@ts-common/commonmark-to-markdown'
 import * as yaml from 'js-yaml'
+import { exec } from 'child_process';
 import { copyRecursive, executeSynchronous, getLogger, lowerCaseCompare, logErr, logOut, ILogger, defaultLogger, executeCmd, findRecursive } from '../utils';
 
 const rootDir = `${__dirname}/../../../../`;
@@ -242,113 +243,50 @@ async function findReadmePaths(specsPath: string) {
 }
 
 async function buildTypeIndex(logger: ILogger, baseDir: string) {
-  const indexContent = await buildIndex(logger, baseDir);
-
-  await writeFile(
-    `${baseDir}/index.json`,
-    JSON.stringify(indexContent, null, 0));
-
-  await writeFile(
-    `${baseDir}/index.md`,
-    generateIndexMarkdown(indexContent));
-}
-
-interface TypeIndex {
-  Resources: Dictionary<TypeIndexEntry>;
-  Functions: Dictionary<Dictionary<TypeIndexEntry[]>>;
-}
-
-interface TypeIndexEntry {
-  RelativePath: string;
-  Index: number;
-}
-
-function generateIndexMarkdown(index: TypeIndex) {
-  let markdown = '# Bicep Types\n';
-
-  const byProvider = groupBy(keys(index.Resources), x => x.split('/')[0].toLowerCase());
-  for (const namespace of sortBy(keys(byProvider), x => x.toLowerCase())) {
-    markdown += `## ${namespace}\n`;
-
-    const byResourceType = groupBy(byProvider[namespace], x => x.split('@')[0].toLowerCase());
-    for (const resourceType of sortBy(keys(byResourceType), x => x.toLowerCase())) {
-      markdown += `### ${resourceType}\n`;
-
-      for (const typeString of sortBy(byResourceType[resourceType], x => x.toLowerCase())) {
-        const version = typeString.split('@')[1];
-        const jsonPath = index.Resources[typeString].RelativePath;
-        const anchor = `resource-${typeString.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase()}`
-
-        markdown += `* [${version}](${path.dirname(jsonPath)}/types.md#${anchor})\n`;
-      }
-
-      markdown += '\n';
-    }
-  }
-
-  return markdown;
-}
-
-async function buildIndex(logger: ILogger, baseDir: string): Promise<TypeIndex> {
-  const typeFiles = await findRecursive(baseDir, filePath => {
+  const typesPaths = await findRecursive(baseDir, filePath => {
     return path.basename(filePath) === 'types.json';
   });
-  
-  const resourceTypes = new Set<string>();
-  const resourceFunctions = new Set<string>();
-  const resDictionary: Dictionary<TypeIndexEntry> = {};
-  const funcDictionary: Dictionary<Dictionary<TypeIndexEntry[]>> = {};
 
-  // Use a consistent sort order so that file system differences don't generate changes
-  for (const typeFilePath of orderBy(typeFiles, f => f.toLowerCase(), 'asc')) {
-    const content = await readFile(typeFilePath, { encoding: 'utf8' });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const types = JSON.parse(content) as any[];
-    for (const type of types) {
-      const resourceType = type[TypeBaseKind.ResourceType];
-      if (resourceType) {
-        if (resourceTypes.has(resourceType.Name.toLowerCase())) {
-          logOut(logger, `WARNING: Found duplicate type "${resourceType.Name}"`);
-          continue;
-        }
-        resourceTypes.add(resourceType.Name.toLowerCase());
-  
-        resDictionary[resourceType.Name] = {
-          RelativePath: path.relative(baseDir, typeFilePath),
-          Index: types.indexOf(type),
-        };
-        
-        continue;
-      }
-
-      const resourceFunction = type[TypeBaseKind.ResourceFunctionType];
-      if (resourceFunction) {
-        const funcKey = `${resourceFunction.ResourceType}@${resourceFunction.ApiVersion}:${resourceFunction.Name}`.toLowerCase();
-        
-        const resourceTypeLower = resourceFunction.ResourceType.toLowerCase();
-        const apiVersionLower = resourceFunction.ApiVersion.toLowerCase();
-        if (resourceFunctions.has(funcKey)) {
-          logOut(logger, `WARNING: Found duplicate function "${resourceFunction.Name}" for resource type "${resourceFunction.ResourceType}@${resourceFunction.ApiVersion}"`);
-          continue;
-        }
-        resourceFunctions.add(funcKey);
-
-        funcDictionary[resourceTypeLower] = funcDictionary[resourceTypeLower] || {};
-        funcDictionary[resourceTypeLower][apiVersionLower] = funcDictionary[resourceTypeLower][apiVersionLower] || [];
-
-        funcDictionary[resourceTypeLower][apiVersionLower].push({
-          RelativePath: path.relative(baseDir, typeFilePath),
-          Index: types.indexOf(type),
-        });
-
-        continue;
-      }
-    }
+  const typeFiles: TypeFile[] = [];
+  for (const typePath of typesPaths) {
+    const content = await readFile(typePath, { encoding: 'utf8' });
+    typeFiles.push({
+      relativePath: path.relative(baseDir, typePath),
+      types: readTypesJson(content),
+    });
   }
+  const indexContent = await buildIndex(typeFiles,  log => logOut(logger, log), {name: "radius", version: await getRadiusRelease(), isSingleton: false} as TypeSettings);
 
-  return {
-    Resources: resDictionary,
-    Functions: funcDictionary,
-  }
+  await writeFile(`${baseDir}/index.json`, writeIndexJson(indexContent));
+  await writeFile(`${baseDir}/index.md`, writeIndexMarkdown(indexContent));
+}
+
+function getRadiusRelease(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    exec('rad version', (error, stdout, stderr) => {
+      if (error) {
+        reject(`error: ${error.message}`);
+        return;
+      }
+      if (stderr) {
+        reject(`stderr: ${stderr}`);
+        return;
+      }
+      const lines = stdout.split('\n');
+      if (lines.length < 2) {
+        reject('Unexpected output format');
+        return;
+      }
+      const columns = lines[1].split(/\s+/);
+      if (columns.length < 4) {
+        reject('Unexpected output format');
+        return;
+      }
+      let release = columns[0];
+      if (release === 'edge') {
+        release = 'latest';
+      }
+      resolve(release);
+    });
+  });
 }
