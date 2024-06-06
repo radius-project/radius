@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package list
+package delete
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -154,19 +155,32 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // error if there is an issue with the connection or the prompt.
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
+	app, err := client.GetApplication(ctx, r.ApplicationName)
+	if clients.Is404Error(err) {
+		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	environmentID, err := resources.ParseResource(*app.Properties.Environment)
+	if err != nil {
+		return err
+	}
+
 	if !r.Confirm {
-		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, r.EnvironmentName), prompt.ConfirmNo, r.InputPrompter)
+		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, environmentID.Name()), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			return err
 		}
 		if !confirmed {
 			return nil
 		}
-	}
-
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
 	}
 
 	deleted, err := client.DeleteApplication(ctx, r.ApplicationName)
