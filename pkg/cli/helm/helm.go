@@ -134,15 +134,9 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 		// This happens for ghcr in particular because ghcr does not use
 		// subdomains - the scope of a login is all of ghcr.io.
 		// https://github.com/helm/helm/issues/12584
-		var errUnexpectedStatus containerderrors.ErrUnexpectedStatus
-		if errors.As(err, &errUnexpectedStatus) {
-			unwrappedErr := UnwrapAll(err)
-			unexpectedStatusErr, ok := unwrappedErr.(containerderrors.ErrUnexpectedStatus)
-			if ok {
-				if unexpectedStatusErr.StatusCode == http.StatusForbidden && strings.Contains(unexpectedStatusErr.RequestURL, "ghcr.io") {
-					return nil, fmt.Errorf("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout ghcr.io` and re-try the command")
-				}
-			}
+		err := extractHelmError(err)
+		if err != nil {
+			return nil, err
 		}
 
 		return nil, fmt.Errorf("error downloading helm chart from the registry for version: %s, release name: %s. Error: %w", version, releaseName, err)
@@ -179,7 +173,26 @@ func runUpgrade(upgradeClient *helm.Upgrade, releaseName string, helmChart *char
 	return err
 }
 
-func UnwrapAll(err error) error {
+// extractHelmError is a helper function to extract a specific error
+// (403 unauthorized when downloading a helm chart from ghcr.io) from a chain of errors.
+// If the error is not found, it returns nil.
+func extractHelmError(err error) error {
+	var errUnexpectedStatus containerderrors.ErrUnexpectedStatus
+	if errors.As(err, &errUnexpectedStatus) {
+		unwrappedErr := unwrapAll(err)
+		switch unexpectedStatusErr := unwrappedErr.(type) {
+		case containerderrors.ErrUnexpectedStatus:
+			if unexpectedStatusErr.StatusCode == http.StatusForbidden && strings.Contains(unexpectedStatusErr.RequestURL, "ghcr.io") {
+				return fmt.Errorf("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout ghcr.io` and re-try the command")
+			}
+		}
+	}
+
+	return nil
+}
+
+// UnwrapAll unwraps all errors in a chain of errors and returns the root error.
+func unwrapAll(err error) error {
 	for {
 		unwrapped := errors.Unwrap(err)
 		if unwrapped == nil {
