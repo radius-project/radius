@@ -23,6 +23,8 @@ import (
 	"os"
 	"path"
 	"runtime"
+
+	"github.com/radius-project/radius/pkg/cli/clients"
 )
 
 const (
@@ -32,12 +34,12 @@ const (
 
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.
 var validPlatforms = map[string]string{
-	"windows-amd64": "windows-x64",
-	"linux-amd64":   "linux-x64",
-	"linux-arm":     "linux-arm",
-	"linux-arm64":   "linux-arm64",
-	"darwin-amd64":  "macos-x64",
-	"darwin-arm64":  "macos-arm64",
+	"windows-amd64": "bicep-win-x64",
+	"windows-arm64": "bicep-win-arm64",
+	"linux-amd64":   "bicep-linux-x64",
+	"linux-arm64":   "bicep-linux-arm64",
+	"darwin-amd64":  "bicep-osx-x64",
+	"darwin-arm64":  "bicep-osx-arm64",
 }
 
 // GetLocalFilepath returns the local binary file path. It does not verify that the file
@@ -128,15 +130,23 @@ func DownloadToFolder(filepath string) error {
 	}
 	defer bicepBinary.Close()
 
-	// Get file extension
-	extension, err := getFileExtension()
+	// Get file binary
+	binary, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return err
+	}
+
+	// Get binaryName extension
+	binaryName, err := getFilename(binary)
 	if err != nil {
 		return err
 	}
 
 	// Get the data
-	resp, err := http.Get(binaryRepo + extension)
-	if err != nil {
+	resp, err := http.Get(binaryRepo + binaryName)
+	if clients.Is404Error(err) {
+		return fmt.Errorf("unable to locate bicep binary resource %s: %v", binaryRepo+binaryName, err)
+	} else if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
@@ -168,19 +178,6 @@ func getFilename(base string) (string, error) {
 		return base, nil
 	case "windows":
 		return base + ".exe", nil
-	default:
-		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
-	}
-}
-
-func getFileExtension() (string, error) {
-	switch runtime.GOOS {
-	case "darwin":
-		return "bicep-osx-x64", nil
-	case "linux":
-		return "bicep-linux-x64", nil
-	case "windows":
-		return "bicep-win-x64.exe", nil
 	default:
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
