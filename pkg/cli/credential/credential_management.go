@@ -29,7 +29,7 @@ const (
 	AWSPlaneType   = "aws"
 )
 
-//go:generate mockgen -destination=./mock_credentialmanagementclient.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential CredentialManagementClient
+//go:generate mockgen -typed -destination=./mock_credentialmanagementclient.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential CredentialManagementClient
 
 // CredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type CredentialManagementClient interface {

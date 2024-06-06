@@ -30,7 +30,7 @@ type ConfigurationLoader interface {
 	LoadRecipe(ctx context.Context, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error)
 }
 
-//go:generate mockgen -destination=./mock_secret_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader SecretsLoader
+//go:generate mockgen -typed -destination=./mock_secret_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader SecretsLoader
 type SecretsLoader interface {
 	LoadSecrets(ctx context.Context, secretStore string) (v20231001preview.SecretStoresClientListSecretsResponse, error)
 }

@@ -35,7 +35,7 @@ const (
 	ConfirmNo = "No"
 )
 
-//go:generate mockgen -destination=./mock_prompter.go -package=prompt -self_package github.com/radius-project/radius/pkg/cli/prompt github.com/radius-project/radius/pkg/cli/prompt Interface
+//go:generate mockgen -typed -destination=./mock_prompter.go -package=prompt -self_package github.com/radius-project/radius/pkg/cli/prompt github.com/radius-project/radius/pkg/cli/prompt Interface
 
 // Interface contains operation to prompt the user interactively.
 //

@@ -24,7 +24,7 @@ import (
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 )
 
-//go:generate mockgen -destination=./mock_provider.go -package=providers -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/providers github.com/radius-project/radius/pkg/recipes/terraform/config/providers Provider
+//go:generate mockgen -typed -destination=./mock_provider.go -package=providers -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/providers github.com/radius-project/radius/pkg/recipes/terraform/config/providers Provider
 
 // Provider is an interface for generating Terraform provider configurations.
 type Provider interface {

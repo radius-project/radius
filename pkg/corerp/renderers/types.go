@@ -33,7 +33,7 @@ const (
 	DefaultSecurePort int32 = 443
 )
 
-//go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/radius-project/radius/pkg/corerp/renderers Renderer
+//go:generate mockgen -typed -destination=./mock_renderer.go -package=renderers github.com/radius-project/radius/pkg/corerp/renderers Renderer
 type Renderer interface {
 	GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error)
 	Render(ctx context.Context, resource v1.DataModelInterface, options RenderOptions) (RendererOutput, error)
