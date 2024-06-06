@@ -30,7 +30,7 @@ const (
 type Provider struct {
 	SubscriptionID   string
 	ResourceGroup    string
-	CredentialKind   string
+	CredentialKind   AzureCredentialKind
 	WorkloadIdentity *WorkloadIdentityCredential
 	ServicePrincipal *ServicePrincipalCredential
 }

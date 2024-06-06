@@ -280,7 +280,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 func (r *Runner) getAzureCredential() (ucp.AzureCredentialResource, error) {
 	switch r.Options.CloudProviders.Azure.CredentialKind {
-	case string(azure.AzureCredentialKindServicePrincipal):
+	case azure.AzureCredentialKindServicePrincipal:
 		return ucp.AzureCredentialResource{
 			Location: to.Ptr(v1.LocationGlobal),
 			Type:     to.Ptr(cli_credential.AzureCredential),
@@ -293,7 +293,7 @@ func (r *Runner) getAzureCredential() (ucp.AzureCredentialResource, error) {
 				ClientSecret: &r.Options.CloudProviders.Azure.ServicePrincipal.ClientSecret,
 			},
 		}, nil
-	case string(azure.AzureCredentialKindWorkloadIdentity):
+	case azure.AzureCredentialKindWorkloadIdentity:
 		return ucp.AzureCredentialResource{
 			Location: to.Ptr(v1.LocationGlobal),
 			Type:     to.Ptr(cli_credential.AzureCredential),

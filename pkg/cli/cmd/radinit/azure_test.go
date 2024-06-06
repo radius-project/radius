@@ -60,9 +60,9 @@ func Test_enterAzureCloudProvider_ServicePrincipal(t *testing.T) {
 	setAzureCredentialKindPrompt(prompter, "Service Principal")
 
 	// service principal
-	setAzureCredentialAppIDPrompt(prompter, "service-principal-app-id")
-	setAzureCredentialPasswordPrompt(prompter, "service-principal-password")
-	setAzureCredentialTenantIDPrompt(prompter, "service-principal-tenant-id")
+	setAzureServicePrincipalAppIDPrompt(prompter, "service-principal-app-id")
+	setAzureServicePrincipalPasswordPrompt(prompter, "service-principal-password")
+	setAzureServicePrincipalTenantIDPrompt(prompter, "service-principal-tenant-id")
 
 	provider, err := runner.enterAzureCloudProvider(context.Background())
 	require.NoError(t, err)
@@ -114,9 +114,9 @@ func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
 	// selectCredentialKind
 	setAzureCredentialKindPrompt(prompter, "Workload Identity")
 
-	// service principal
-	setAzureCredentialAppIDPrompt(prompter, "service-principal-app-id")
-	setAzureCredentialTenantIDPrompt(prompter, "service-principal-tenant-id")
+	// workload identity
+	setAzureWorkloadIdentityAppIDPrompt(prompter, "service-principal-app-id")
+	setAzureWorkloadIdentityTenantIDPrompt(prompter, "service-principal-tenant-id")
 
 	provider, err := runner.enterAzureCloudProvider(context.Background())
 	require.NoError(t, err)

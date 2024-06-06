@@ -1137,23 +1137,37 @@ func setSelectAzureResourceGroupLocationPrompt(prompter *prompt.MockInterface, l
 		Times(1)
 }
 
-func setAzureCredentialAppIDPrompt(prompter *prompt.MockInterface, appID string) {
+func setAzureServicePrincipalAppIDPrompt(prompter *prompt.MockInterface, appID string) {
 	prompter.EXPECT().
-		GetTextInput(enterAzureCredentialAppIDPrompt, gomock.Any()).
+		GetTextInput(enterAzureServicePrincipalAppIDPrompt, gomock.Any()).
 		Return(appID, nil).
 		Times(1)
 }
 
-func setAzureCredentialPasswordPrompt(prompter *prompt.MockInterface, password string) {
+func setAzureServicePrincipalPasswordPrompt(prompter *prompt.MockInterface, password string) {
 	prompter.EXPECT().
-		GetTextInput(enterAzureCredentialPasswordPrompt, gomock.Any()).
+		GetTextInput(enterAzureServicePrincipalPasswordPrompt, gomock.Any()).
 		Return(password, nil).
 		Times(1)
 }
 
-func setAzureCredentialTenantIDPrompt(prompter *prompt.MockInterface, tenantID string) {
+func setAzureServicePrincipalTenantIDPrompt(prompter *prompt.MockInterface, tenantID string) {
 	prompter.EXPECT().
-		GetTextInput(enterAzureCredentialTenantIDPrompt, gomock.Any()).
+		GetTextInput(enterAzureServicePrincipalTenantIDPrompt, gomock.Any()).
+		Return(tenantID, nil).
+		Times(1)
+}
+
+func setAzureWorkloadIdentityAppIDPrompt(prompter *prompt.MockInterface, appID string) {
+	prompter.EXPECT().
+		GetTextInput(enterAzureWorkloadIdentityAppIDPrompt, gomock.Any()).
+		Return(appID, nil).
+		Times(1)
+}
+
+func setAzureWorkloadIdentityTenantIDPrompt(prompter *prompt.MockInterface, tenantID string) {
+	prompter.EXPECT().
+		GetTextInput(enterAzureWorkloadIdentityTenantIDPrompt, gomock.Any()).
 		Return(tenantID, nil).
 		Times(1)
 }
@@ -1182,9 +1196,9 @@ func setAzureCloudProviderServicePrincipal(prompter *prompt.MockInterface, clien
 
 	setAzureCredentialKindPrompt(prompter, "Service Principal")
 
-	setAzureCredentialAppIDPrompt(prompter, provider.ServicePrincipal.ClientID)
-	setAzureCredentialPasswordPrompt(prompter, provider.ServicePrincipal.ClientSecret)
-	setAzureCredentialTenantIDPrompt(prompter, provider.ServicePrincipal.TenantID)
+	setAzureServicePrincipalAppIDPrompt(prompter, provider.ServicePrincipal.ClientID)
+	setAzureServicePrincipalPasswordPrompt(prompter, provider.ServicePrincipal.ClientSecret)
+	setAzureServicePrincipalTenantIDPrompt(prompter, provider.ServicePrincipal.TenantID)
 }
 
 // setAzureCloudProviderWorkloadIdentity sets up mocks that will configure an Azure cloud provider with workload identity credential.
@@ -1204,8 +1218,8 @@ func setAzureCloudProviderWorkloadIdentity(prompter *prompt.MockInterface, clien
 
 	setAzureCredentialKindPrompt(prompter, "Workload Identity")
 
-	setAzureCredentialAppIDPrompt(prompter, provider.WorkloadIdentity.ClientID)
-	setAzureCredentialTenantIDPrompt(prompter, provider.WorkloadIdentity.TenantID)
+	setAzureWorkloadIdentityAppIDPrompt(prompter, provider.WorkloadIdentity.ClientID)
+	setAzureWorkloadIdentityTenantIDPrompt(prompter, provider.WorkloadIdentity.TenantID)
 }
 
 func setConfirmOption(prompter *prompt.MockInterface, choice summaryResult) {

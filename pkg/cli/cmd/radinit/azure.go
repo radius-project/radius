@@ -30,24 +30,28 @@ import (
 )
 
 const (
-	confirmAzureSubscriptionPromptFmt          = "Use subscription '%v'?"
-	selectAzureSubscriptionPrompt              = "Select a subscription:"
-	confirmAzureCreateResourceGroupPrompt      = "Create a new resource group?"
-	enterAzureResourceGroupNamePrompt          = "Enter a resource group name"
-	enterAzureResourceGroupNamePlaceholder     = "Enter resource group name"
-	selectAzureResourceGroupLocationPrompt     = "Select a location for the resource group:"
-	selectAzureResourceGroupPrompt             = "Select a resource group:"
-	selectAzureCredentialKindPrompt            = "Select a credential kind for the Azure credential:"
-	enterAzureCredentialAppIDPrompt            = "Enter the `appId` of the service principal used to create Azure resources"
-	enterAzureCredentialAppIDPlaceholder       = "Enter appId..."
-	enterAzureCredentialPasswordPrompt         = "Enter the `password` of the service principal used to create Azure resources"
-	enterAzureCredentialPasswordPlaceholder    = "Enter password..."
-	enterAzureCredentialTenantIDPrompt         = "Enter the `tenantId` of the service principal used to create Azure resources"
-	enterAzureCredentialTenantIDPlaceholder    = "Enter tenantId..."
-	azureWorkloadIdentityCreateInstructionsFmt = "\nA workload identity federated credential is required to create Azure resources. Please follow the guidance at aka.ms/rad-workload-identity to set up workload identity for Radius.\n\n"
-	azureServicePrincipalCreateInstructionsFmt = "\nAn Azure service principal with a corresponding role assignment on your resource group is required to create Azure resources.\n\nFor example, you can create one using the following command:\n\033[36maz ad sp create-for-rbac --role Owner --scope /subscriptions/%s/resourceGroups/%s\033[0m\n\nFor more information refer to https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac and https://aka.ms/azadsp-more\n\n"
-	azureServicePrincipalCredentialKind        = "Service Principal"
-	azureWorkloadIdenityCredentialKind         = "Workload Identity"
+	confirmAzureSubscriptionPromptFmt             = "Use subscription '%v'?"
+	selectAzureSubscriptionPrompt                 = "Select a subscription:"
+	confirmAzureCreateResourceGroupPrompt         = "Create a new resource group?"
+	enterAzureResourceGroupNamePrompt             = "Enter a resource group name"
+	enterAzureResourceGroupNamePlaceholder        = "Enter resource group name"
+	selectAzureResourceGroupLocationPrompt        = "Select a location for the resource group:"
+	selectAzureResourceGroupPrompt                = "Select a resource group:"
+	selectAzureCredentialKindPrompt               = "Select a credential kind for the Azure credential:"
+	enterAzureServicePrincipalAppIDPrompt         = "Enter the `appId` of the service principal used to create Azure resources"
+	enterAzureServicePrincipalAppIDPlaceholder    = "Enter appId..."
+	enterAzureServicePrincipalPasswordPrompt      = "Enter the `password` of the service principal used to create Azure resources"
+	enterAzureServicePrincipalPasswordPlaceholder = "Enter password..."
+	enterAzureServicePrincipalTenantIDPrompt      = "Enter the `tenantId` of the service principal used to create Azure resources"
+	enterAzureServicePrincipalTenantIDPlaceholder = "Enter tenantId..."
+	enterAzureWorkloadIdentityAppIDPrompt         = "Enter the `appId` of the Entra ID Application"
+	enterAzureWorkloadIdentityAppIDPlaceholder    = "Enter appId..."
+	enterAzureWorkloadIdentityTenantIDPrompt      = "Enter the `tenantId` of the Entra ID Application"
+	enterAzureWorkloadIdentityTenantIDPlaceholder = "Enter tenantId..."
+	azureWorkloadIdentityCreateInstructionsFmt    = "\nA workload identity federated credential is required to create Azure resources. Please follow the guidance at aka.ms/rad-workload-identity to set up workload identity for Radius.\n\n"
+	azureServicePrincipalCreateInstructionsFmt    = "\nAn Azure service principal with a corresponding role assignment on your resource group is required to create Azure resources.\n\nFor example, you can create one using the following command:\n\033[36maz ad sp create-for-rbac --role Owner --scope /subscriptions/%s/resourceGroups/%s\033[0m\n\nFor more information refer to https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac and https://aka.ms/azadsp-more\n\n"
+	azureServicePrincipalCredentialKind           = "Service Principal"
+	azureWorkloadIdenityCredentialKind            = "Workload Identity"
 )
 
 func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, error) {
@@ -70,21 +74,21 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, 
 	case azureServicePrincipalCredentialKind:
 		r.Output.LogInfo(azureServicePrincipalCreateInstructionsFmt, subscription.ID, resourceGroup)
 
-		clientID, err := r.Prompter.GetTextInput(enterAzureCredentialAppIDPrompt, prompt.TextInputOptions{
-			Placeholder: enterAzureCredentialAppIDPlaceholder,
+		clientID, err := r.Prompter.GetTextInput(enterAzureServicePrincipalAppIDPrompt, prompt.TextInputOptions{
+			Placeholder: enterAzureServicePrincipalAppIDPlaceholder,
 			Validate:    prompt.ValidateUUIDv4,
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		clientSecret, err := r.Prompter.GetTextInput(enterAzureCredentialPasswordPrompt, prompt.TextInputOptions{Placeholder: enterAzureCredentialPasswordPlaceholder, EchoMode: textinput.EchoPassword})
+		clientSecret, err := r.Prompter.GetTextInput(enterAzureServicePrincipalPasswordPrompt, prompt.TextInputOptions{Placeholder: enterAzureServicePrincipalPasswordPlaceholder, EchoMode: textinput.EchoPassword})
 		if err != nil {
 			return nil, err
 		}
 
-		tenantID, err := r.Prompter.GetTextInput(enterAzureCredentialTenantIDPrompt, prompt.TextInputOptions{
-			Placeholder: enterAzureCredentialTenantIDPlaceholder,
+		tenantID, err := r.Prompter.GetTextInput(enterAzureServicePrincipalTenantIDPrompt, prompt.TextInputOptions{
+			Placeholder: enterAzureServicePrincipalTenantIDPlaceholder,
 			Validate:    prompt.ValidateUUIDv4,
 		})
 		if err != nil {
@@ -94,7 +98,7 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, 
 		return &azure.Provider{
 			SubscriptionID: subscription.ID,
 			ResourceGroup:  resourceGroup,
-			CredentialKind: string(azure.AzureCredentialKindServicePrincipal),
+			CredentialKind: azure.AzureCredentialKindServicePrincipal,
 			ServicePrincipal: &azure.ServicePrincipalCredential{
 				ClientID:     clientID,
 				ClientSecret: clientSecret,
@@ -104,16 +108,16 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, 
 	case azureWorkloadIdenityCredentialKind:
 		r.Output.LogInfo(azureWorkloadIdentityCreateInstructionsFmt)
 
-		clientID, err := r.Prompter.GetTextInput(enterAzureCredentialAppIDPrompt, prompt.TextInputOptions{
-			Placeholder: enterAzureCredentialAppIDPlaceholder,
+		clientID, err := r.Prompter.GetTextInput(enterAzureWorkloadIdentityAppIDPrompt, prompt.TextInputOptions{
+			Placeholder: enterAzureWorkloadIdentityAppIDPlaceholder,
 			Validate:    prompt.ValidateUUIDv4,
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		tenantID, err := r.Prompter.GetTextInput(enterAzureCredentialTenantIDPrompt, prompt.TextInputOptions{
-			Placeholder: enterAzureCredentialTenantIDPlaceholder,
+		tenantID, err := r.Prompter.GetTextInput(enterAzureWorkloadIdentityTenantIDPrompt, prompt.TextInputOptions{
+			Placeholder: enterAzureWorkloadIdentityTenantIDPlaceholder,
 			Validate:    prompt.ValidateUUIDv4,
 		})
 		if err != nil {
@@ -123,7 +127,7 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, 
 		return &azure.Provider{
 			SubscriptionID: subscription.ID,
 			ResourceGroup:  resourceGroup,
-			CredentialKind: string(azure.AzureCredentialKindWorkloadIdentity),
+			CredentialKind: azure.AzureCredentialKindWorkloadIdentity,
 			WorkloadIdentity: &azure.WorkloadIdentityCredential{
 				ClientID: clientID,
 				TenantID: tenantID,

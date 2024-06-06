@@ -129,16 +129,19 @@ func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credent
 
 	switch credentials.Kind {
 	case ucp_datamodel.AzureServicePrincipalCredentialKind:
-		azureServicePrincipal := credentials.ServicePrincipal
-		if azureServicePrincipal == nil || azureServicePrincipal.ClientID == "" || azureServicePrincipal.TenantID == "" || azureServicePrincipal.ClientSecret == "" {
+		if credentials.ServicePrincipal == nil ||
+			credentials.ServicePrincipal.ClientID == "" ||
+			credentials.ServicePrincipal.TenantID == "" ||
+			credentials.ServicePrincipal.ClientSecret == "" {
 			logger.Info("Azure service principal credentials are not registered, skipping credentials configuration.")
 			return nil, nil
 		}
 
 		return credentials, nil
 	case ucp_datamodel.AzureWorkloadIdentityCredentialKind:
-		azureWorkloadIdentity := credentials.WorkloadIdentity
-		if azureWorkloadIdentity == nil || azureWorkloadIdentity.ClientID == "" || azureWorkloadIdentity.TenantID == "" {
+		if credentials.WorkloadIdentity == nil ||
+			credentials.WorkloadIdentity.ClientID == "" ||
+			credentials.WorkloadIdentity.TenantID == "" {
 			logger.Info("Azure workload identity credentials are not registered, skipping credentials configuration.")
 			return nil, nil
 		}
@@ -158,17 +161,20 @@ func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, cred
 
 	switch credentials.Kind {
 	case ucp_datamodel.AzureServicePrincipalCredentialKind:
-		azureServicePrincipal := credentials.ServicePrincipal
-		if azureServicePrincipal != nil && azureServicePrincipal.ClientID != "" && azureServicePrincipal.TenantID != "" && azureServicePrincipal.ClientSecret != "" {
-			configMap[azureClientIDParam] = azureServicePrincipal.ClientID
-			configMap[azureClientSecretParam] = azureServicePrincipal.ClientSecret
-			configMap[azureTenantIDParam] = azureServicePrincipal.TenantID
+		if credentials.ServicePrincipal != nil &&
+			credentials.ServicePrincipal.ClientID != "" &&
+			credentials.ServicePrincipal.TenantID != "" &&
+			credentials.ServicePrincipal.ClientSecret != "" {
+			configMap[azureClientIDParam] = credentials.ServicePrincipal.ClientID
+			configMap[azureClientSecretParam] = credentials.ServicePrincipal.ClientSecret
+			configMap[azureTenantIDParam] = credentials.ServicePrincipal.TenantID
 		}
 	case ucp_datamodel.AzureWorkloadIdentityCredentialKind:
-		azureWorkloadIdentity := credentials.WorkloadIdentity
-		if azureWorkloadIdentity != nil && azureWorkloadIdentity.ClientID != "" && azureWorkloadIdentity.TenantID != "" {
-			configMap[azureClientIDParam] = azureWorkloadIdentity.ClientID
-			configMap[azureTenantIDParam] = azureWorkloadIdentity.TenantID
+		if credentials.WorkloadIdentity != nil &&
+			credentials.WorkloadIdentity.ClientID != "" &&
+			credentials.WorkloadIdentity.TenantID != "" {
+			configMap[azureClientIDParam] = credentials.WorkloadIdentity.ClientID
+			configMap[azureTenantIDParam] = credentials.WorkloadIdentity.TenantID
 		}
 	}
 

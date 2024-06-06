@@ -80,7 +80,7 @@ model AzureCredentialProperties {
 
 @doc("The properties of Azure Service Principal credential storage")
 model AzureServicePrincipalProperties extends AzureCredentialProperties {
-  @doc("Workload Identity kind")
+  @doc("Service Principal kind")
   kind: AzureCredentialKind.ServicePrincipal;
 
   @doc("clientId for ServicePrincipal")

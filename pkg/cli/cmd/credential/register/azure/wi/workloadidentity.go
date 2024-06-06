@@ -36,7 +36,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad credential create azure` command.
+// NewCommand creates an instance of the command and runner for the `rad credential create azure wi` command.
 //
 
 // NewCommand creates a new cobra command for registering an Azure cloud provider credential for a Radius installation,
@@ -58,11 +58,9 @@ Radius Environments, and Radius portable resources.
 Radius will use the provided subscription and resource group as the default target scope for Bicep deployment.
 The provided service principal must have the Contributor or Owner role assigned for the provided resource group
 in order to create or manage resources contained in the group. The resource group should be created before
-calling 'rad credential register azure'.
+calling 'rad credential register azure wi'.
 ` + common.LongDescriptionBlurb,
 		Example: `
-# Register (Add or update) cloud provider credential for Azure with service principal authentication
-rad credential register azure sp --client-id <client id/app id> --client-secret <client secret/password> --tenant-id <tenant id>
 # Register (Add or update) cloud provider credential for Azure with workload identity authentication
 rad credential register azure wi --client-id <client id/app id> --tenant-id <tenant id>
 `,
@@ -82,7 +80,7 @@ rad credential register azure wi --client-id <client id/app id> --tenant-id <ten
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad credential register azure` command.
+// Runner is the runner implementation for the `rad credential register azure wi` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory

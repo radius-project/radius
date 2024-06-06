@@ -58,7 +58,7 @@ Radius Environments, and Radius portable resources.
 Radius will use the provided subscription and resource group as the default target scope for Bicep deployment.
 The provided service principal must have the Contributor or Owner role assigned for the provided resource group
 in order to create or manage resources contained in the group. The resource group should be created before
-calling 'rad credential register azure'.
+calling 'rad credential register azure sp'.
 ` + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for Azure with service principal authentication

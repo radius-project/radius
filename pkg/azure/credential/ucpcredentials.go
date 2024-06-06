@@ -107,7 +107,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	case datamodel.AzureServicePrincipalCredentialKind:
 		azureServicePrincipalCredential := s.ServicePrincipal
 		if azureServicePrincipalCredential.ClientID == "" || azureServicePrincipalCredential.ClientSecret == "" || azureServicePrincipalCredential.TenantID == "" {
-			return errors.New("invalid azure service principal credential info")
+			return errors.New("empty clientID, tenantID, or client secret provided for Azure service principal")
 		}
 
 		// Do not instantiate new client unless the secret is rotated.
@@ -143,7 +143,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	case datamodel.AzureWorkloadIdentityCredentialKind:
 		azureWorkloadIdentityCredential := s.WorkloadIdentity
 		if azureWorkloadIdentityCredential.ClientID == "" || azureWorkloadIdentityCredential.TenantID == "" {
-			return errors.New("invalid azure workload identity credential info")
+			return errors.New("empty clientID or tenantID provided for Azure workload identity")
 		}
 
 		// Do not instantiate new client unless clientId and tenantId are changed.

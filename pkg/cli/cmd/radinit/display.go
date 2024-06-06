@@ -208,11 +208,11 @@ func (m *summaryModel) View() string {
 			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(options.CloudProviders.AWS.AccessKeyID)))
 		}
 		if options.CloudProviders.Azure != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.CredentialKind)))
+			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(string(options.CloudProviders.Azure.CredentialKind))))
 			switch options.CloudProviders.Azure.CredentialKind {
-			case string(azure.AzureCredentialKindServicePrincipal):
+			case azure.AzureCredentialKindServicePrincipal:
 				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.ServicePrincipal.ClientID)))
-			case string(azure.AzureCredentialKindWorkloadIdentity):
+			case azure.AzureCredentialKindWorkloadIdentity:
 				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.WorkloadIdentity.ClientID)))
 			}
 		}
@@ -340,7 +340,13 @@ func (m *progressModel) View() string {
 			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(options.CloudProviders.AWS.AccessKeyID)))
 		}
 		if options.CloudProviders.Azure != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.ServicePrincipal.ClientID)))
+			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(string(options.CloudProviders.Azure.CredentialKind))))
+			switch options.CloudProviders.Azure.CredentialKind {
+			case azure.AzureCredentialKindServicePrincipal:
+				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.ServicePrincipal.ClientID)))
+			case azure.AzureCredentialKindWorkloadIdentity:
+				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.WorkloadIdentity.ClientID)))
+			}
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryKubernetesExistingHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context)))
