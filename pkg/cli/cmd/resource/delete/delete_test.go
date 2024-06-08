@@ -22,11 +22,14 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -104,7 +107,17 @@ func Test_Run(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				DeleteResource(gomock.Any(), "containers", "test-container").
+				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(generated.GenericResource{
+					Properties: map[string]interface{}{
+						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
+						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
+					},
+				}, nil).
+				Times(1)
+
+			appManagementClient.EXPECT().
+				DeleteResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(false, nil).
 				Times(1)
 
@@ -114,7 +127,7 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{},
-				ResourceType:      "containers",
+				ResourceType:      "Applications.Core/containers",
 				ResourceName:      "test-container",
 				Format:            "table",
 				Confirm:           true,
@@ -126,7 +139,7 @@ func Test_Run(t *testing.T) {
 			expected := []any{
 				output.LogOutput{
 					Format: "Resource '%s' of type '%s' does not exist or has already been deleted",
-					Params: []any{"test-container", "containers"},
+					Params: []any{"test-container", "Applications.Core/containers"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -137,7 +150,16 @@ func Test_Run(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				DeleteResource(gomock.Any(), "containers", "test-container").
+				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(generated.GenericResource{
+					Properties: map[string]interface{}{
+						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
+						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
+					},
+				}, nil).
+				Times(1)
+			appManagementClient.EXPECT().
+				DeleteResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(true, nil).
 				Times(1)
 
@@ -147,7 +169,7 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{},
-				ResourceType:      "containers",
+				ResourceType:      "Applications.Core/containers",
 				ResourceName:      "test-container",
 				Format:            "table",
 				Confirm:           true,
@@ -164,19 +186,28 @@ func Test_Run(t *testing.T) {
 			require.Equal(t, expected, outputSink.Writes)
 		})
 
-		t.Run("Success: Prompt Confirmed", func(t *testing.T) {
+		t.Run("Success: Prompt Confirmed (case 1: application-scoped standard resource)", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
 			promptMock := prompt.NewMockInterface(ctrl)
 			promptMock.EXPECT().
-				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-container", "containers")).
+				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationWithApplication, "test-container", "Applications.Core/containers", "my-test-app", "my-test-env")).
 				Return(prompt.ConfirmYes, nil).
 				Times(1)
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				DeleteResource(gomock.Any(), "containers", "test-container").
+				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(generated.GenericResource{
+					Properties: map[string]interface{}{
+						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
+						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
+					},
+				}, nil).
+				Times(1)
+			appManagementClient.EXPECT().
+				DeleteResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(true, nil).
 				Times(1)
 
@@ -193,7 +224,127 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Output:            outputSink,
 				Workspace:         workspace,
-				ResourceType:      "containers",
+				ResourceType:      "Applications.Core/containers",
+				ResourceName:      "test-container",
+				Format:            "table",
+				InputPrompter:     promptMock,
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []any{
+				output.LogOutput{
+					Format: "Resource deleted",
+				},
+			}
+
+			require.Equal(t, expected, outputSink.Writes)
+		})
+
+		t.Run("Success: Prompt Confirmed (case 2: environment-scoped standard resource)", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			promptMock := prompt.NewMockInterface(ctrl)
+			promptMock.EXPECT().
+				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationWithoutApplication, "test-container", "Applications.Core/containers", "my-test-env")).
+				Return(prompt.ConfirmYes, nil).
+				Times(1)
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(generated.GenericResource{
+					Properties: map[string]interface{}{
+						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
+					},
+				}, nil).
+				Times(1)
+			appManagementClient.EXPECT().
+				DeleteResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(true, nil).
+				Times(1)
+
+			workspace := &workspaces.Workspace{
+				Connection: map[string]any{
+					"kind":    "kubernetes",
+					"context": "kind-kind",
+				},
+				Name:  "kind-kind",
+				Scope: "/planes/radius/local/resourceGroups/test-group",
+			}
+			outputSink := &output.MockOutput{}
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         workspace,
+				ResourceType:      "Applications.Core/containers",
+				ResourceName:      "test-container",
+				Format:            "table",
+				InputPrompter:     promptMock,
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []any{
+				output.LogOutput{
+					Format: "Resource deleted",
+				},
+			}
+
+			require.Equal(t, expected, outputSink.Writes)
+		})
+
+		// NOTE: this case requires an extra lookup to get the environment name.
+		t.Run("Success: Prompt Confirmed (case 3: application-scoped core resource)", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			promptMock := prompt.NewMockInterface(ctrl)
+			promptMock.EXPECT().
+				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationWithApplication, "test-container", "Applications.Core/containers", "my-test-app", "my-test-env")).
+				Return(prompt.ConfirmYes, nil).
+				Times(1)
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(generated.GenericResource{
+					Properties: map[string]interface{}{
+						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
+					},
+				}, nil).
+				Times(1)
+
+			appManagementClient.EXPECT().
+				GetApplication(gomock.Any(), "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app").
+				Return(v20231001preview.ApplicationResource{
+					Properties: &v20231001preview.ApplicationProperties{
+						Environment: to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env"),
+					},
+				}, nil).
+				Times(1)
+			appManagementClient.EXPECT().
+				DeleteResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(true, nil).
+				Times(1)
+
+			workspace := &workspaces.Workspace{
+				Connection: map[string]any{
+					"kind":    "kubernetes",
+					"context": "kind-kind",
+				},
+				Name:  "kind-kind",
+				Scope: "/planes/radius/local/resourceGroups/test-group",
+			}
+			outputSink := &output.MockOutput{}
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         workspace,
+				ResourceType:      "Applications.Core/containers",
 				ResourceName:      "test-container",
 				Format:            "table",
 				InputPrompter:     promptMock,
@@ -215,9 +366,20 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(generated.GenericResource{
+					Properties: map[string]interface{}{
+						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
+						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
+					},
+				}, nil).
+				Times(1)
+
 			promptMock := prompt.NewMockInterface(ctrl)
 			promptMock.EXPECT().
-				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-container", "containers")).
+				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationWithApplication, "test-container", "Applications.Core/containers", "my-test-app", "my-test-env")).
 				Return(prompt.ConfirmNo, nil).
 				Times(1)
 
@@ -231,12 +393,13 @@ func Test_Run(t *testing.T) {
 			}
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
-				InputPrompter: promptMock,
-				Workspace:     workspace,
-				Format:        "table",
-				Output:        outputSink,
-				ResourceType:  "containers",
-				ResourceName:  "test-container",
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				InputPrompter:     promptMock,
+				Workspace:         workspace,
+				Format:            "table",
+				Output:            outputSink,
+				ResourceType:      "Applications.Core/containers",
+				ResourceName:      "test-container",
 			}
 
 			err := runner.Run(context.Background())
@@ -245,7 +408,7 @@ func Test_Run(t *testing.T) {
 			expected := []any{
 				output.LogOutput{
 					Format: "resource %q of type %q NOT deleted",
-					Params: []any{"test-container", "containers"},
+					Params: []any{"test-container", "Applications.Core/containers"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
