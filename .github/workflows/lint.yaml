@@ -67,6 +67,11 @@ jobs:
       - name: Run Helm linter
         run: |
           helm lint ${{ env.HELM_CHARTS_DIR }}
+      - name: Run TypeSpec format check
+        run: |
+          pushd typespec
+          npx tsp format --check "**/*.tsp"
+          popd
       - name: Run linter
         uses: golangci/golangci-lint-action@v6
         with:

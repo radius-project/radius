@@ -42,57 +42,57 @@ namespace Ucp;
 
 @doc("The AWS plane resource")
 model AwsPlaneResource
-    is TrackedResourceRequired<
-        AwsPlaneResourceProperties,
-        "System.AWS/planes",
-        "planes"
-    > {
-    @doc("The plane name.")
-    @segment("aws")
-    @path
-    @key("planeName")
-    name: ResourceNameString;
+  is TrackedResourceRequired<
+    AwsPlaneResourceProperties,
+    "System.AWS/planes",
+    "planes"
+  > {
+  @doc("The plane name.")
+  @segment("aws")
+  @path
+  @key("planeName")
+  name: ResourceNameString;
 }
 
 @doc("The Plane properties.")
 model AwsPlaneResourceProperties {
-    @doc("The status of the asynchronous operation.")
-    @visibility("read")
-    provisioningState?: ProvisioningState;
+  @doc("The status of the asynchronous operation.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
 }
 
 @route("/planes")
 @armResourceOperations
 interface AwsPlanes {
-    @doc("List AWS planes")
-    @get()
-    @route("/aws")
-    @armResourceList(AwsPlaneResource)
-    list(
-        ...ApiVersionParameter,
-    ): ArmResponse<ResourceListResult<AwsPlaneResource>> | ErrorResponse;
+  @doc("List AWS planes")
+  @get
+  @route("/aws")
+  @armResourceList(AwsPlaneResource)
+  list(
+    ...ApiVersionParameter,
+  ): ArmResponse<ResourceListResult<AwsPlaneResource>> | ErrorResponse;
 
-    @doc("Get a plane by name")
-    get is UcpResourceRead<
-        AwsPlaneResource,
-        PlaneBaseParameters<AwsPlaneResource>
-    >;
+  @doc("Get a plane by name")
+  get is UcpResourceRead<
+    AwsPlaneResource,
+    PlaneBaseParameters<AwsPlaneResource>
+  >;
 
-    @doc("Create or update a plane")
-    createOrUpdate is UcpResourceCreateOrUpdateAsync<
-        AwsPlaneResource,
-        PlaneBaseParameters<AwsPlaneResource>
-    >;
+  @doc("Create or update a plane")
+  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+    AwsPlaneResource,
+    PlaneBaseParameters<AwsPlaneResource>
+  >;
 
-    @doc("Update a plane")
-    update is UcpCustomPatchAsync<
-        AwsPlaneResource,
-        PlaneBaseParameters<AwsPlaneResource>
-    >;
+  @doc("Update a plane")
+  update is UcpCustomPatchAsync<
+    AwsPlaneResource,
+    PlaneBaseParameters<AwsPlaneResource>
+  >;
 
-    @doc("Delete a plane")
-    delete is UcpResourceDeleteAsync<
-        AwsPlaneResource,
-        PlaneBaseParameters<AwsPlaneResource>
-    >;
+  @doc("Delete a plane")
+  delete is UcpResourceDeleteAsync<
+    AwsPlaneResource,
+    PlaneBaseParameters<AwsPlaneResource>
+  >;
 }

@@ -38,7 +38,7 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("Radius Volume resource.")
-model VolumeResource is TrackedResourceRequired<VolumeProperties, "volumes">{
+model VolumeResource is TrackedResourceRequired<VolumeProperties, "volumes"> {
   @doc("Volume name")
   @key("volumeName")
   @path

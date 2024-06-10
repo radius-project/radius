@@ -38,7 +38,8 @@ using OpenAPI;
 
 namespace Applications.Core;
 
-model ContainerResource is TrackedResourceRequired<ContainerProperties, "containers">{
+model ContainerResource
+  is TrackedResourceRequired<ContainerProperties, "containers"> {
   @doc("Container name")
   @path
   @key("containerName")
@@ -224,7 +225,7 @@ model ConnectionProperties {
   source: string;
 
   @doc("default environment variable override")
-  disableDefaultEnvVars?: boolean = false;
+  disableDefaultEnvVars?: boolean;
 
   @doc("iam properties")
   iam?: IamProperties;

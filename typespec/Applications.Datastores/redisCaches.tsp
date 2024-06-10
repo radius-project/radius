@@ -37,7 +37,8 @@ using OpenAPI;
 namespace Applications.Datastores;
 
 @doc("RedisCache portable resource")
-model RedisCacheResource is TrackedResourceRequired<RedisCacheProperties, "redisCaches">{
+model RedisCacheResource
+  is TrackedResourceRequired<RedisCacheProperties, "redisCaches"> {
   @path
   @doc("The name of the RedisCache portable resource resource")
   @key("redisCacheName")

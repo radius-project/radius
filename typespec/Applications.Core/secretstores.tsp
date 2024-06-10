@@ -37,7 +37,8 @@ using OpenAPI;
 
 namespace Applications.Core;
 
-model SecretStoreResource is TrackedResourceRequired<SecretStoreProperties, "secretStores">{
+model SecretStoreResource
+  is TrackedResourceRequired<SecretStoreProperties, "secretStores"> {
   @doc("SecretStore name")
   @key("secretStoreName")
   @path

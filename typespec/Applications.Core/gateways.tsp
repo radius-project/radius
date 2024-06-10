@@ -37,7 +37,8 @@ using OpenAPI;
 
 namespace Applications.Core;
 
-model GatewayResource is TrackedResourceRequired<GatewayProperties, "gateways">{
+model GatewayResource
+  is TrackedResourceRequired<GatewayProperties, "gateways"> {
   @doc("Gateway name")
   @key("gatewayName")
   @path
@@ -50,7 +51,7 @@ model GatewayProperties {
   ...ApplicationScopedResource;
 
   @doc("Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).")
-  internal?: boolean = false;
+  internal?: boolean;
 
   @doc("Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.")
   hostname?: GatewayHostname;
@@ -79,7 +80,7 @@ enum TlsMinVersion {
 @doc("TLS configuration definition for Gateway resource.")
 model GatewayTls {
   @doc("If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.")
-  sslPassthrough?: boolean = false;
+  sslPassthrough?: boolean;
 
   @doc("TLS minimum protocol version (defaults to 1.2).")
   minimumProtocolVersion?: TlsMinVersion = TlsMinVersion.tls12;
