@@ -66,9 +66,17 @@ Follow the steps below to create an RC release.
 
 1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius RC release version number being released.
 
+1. In the `radius-project/docs` repo, run the [Upmerge docs to edge](https://github.com/radius-project/docs/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
+
+   > This workflow will generate a PR which you will need to get approval and merge before proceeding.
+
+1. In the `radius-project/samples` repo, run the [Upmerge samples to edge](https://github.com/radius-project/samples/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
+
+   > This workflow will generate a PR which you will need to get approval and merge before proceeding.
+
 1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius RC release version number being released.
 
-   > The `edge` branch needs to be upmerged with the previous release branch before this happens. To upmerge the `edge` branch, create a new branch off of the `edge` branch and run `git merge origin/v<previous-release-number>`. For example, if the current release is `v0.34`, the command would be `git merge origin/v0.33`. Then, push these changes to the new branch and create a PR against `edge`. Run the `Test Samples` workflow once the upmerge PR has been merged to `edge`. 
+   > The `Test Samples` workflow should only be run once the upmerge PR has been merged to `edge`. 
       
    > If this workflow run fails, then there should be further investigation. Try checking the logs to see what failed and why, and checking if there is already an issue open for this failure in the samples repo. Sometimes, the workflow run will fail because of flaky tests. Try re-running, and if the failure is persistent, then file an issue in the samples repo and raise it with the maintainers.
 
