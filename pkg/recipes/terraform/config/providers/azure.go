@@ -39,11 +39,13 @@ import (
 const (
 	AzureProviderName = "azurerm"
 
-	azureFeaturesParam     = "features"
-	azureSubIDParam        = "subscription_id"
-	azureClientIDParam     = "client_id"
-	azureClientSecretParam = "client_secret"
-	azureTenantIDParam     = "tenant_id"
+	azureFeaturesParam               = "features"
+	azureSubIDParam                  = "subscription_id"
+	azureClientIDParam               = "client_id"
+	azureClientSecretParam           = "client_secret"
+	azureTenantIDParam               = "tenant_id"
+	azureUseAKSWorkloadIdentityParam = "use_aks_workload_identity"
+	azureUseCLIParam                 = "use_cli"
 )
 
 var _ Provider = (*azureProvider)(nil)
@@ -148,7 +150,7 @@ func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credent
 
 		return credentials, nil
 	default:
-		logger.Info("Azure credentials are not registered, skipping credentials configuration.")
+		logger.Info("Azure credential is not supported, skipping credentials configuration, kind: %s", credentials.Kind)
 		return nil, nil
 	}
 
@@ -175,6 +177,11 @@ func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, cred
 			credentials.WorkloadIdentity.TenantID != "" {
 			configMap[azureClientIDParam] = credentials.WorkloadIdentity.ClientID
 			configMap[azureTenantIDParam] = credentials.WorkloadIdentity.TenantID
+
+			// Use AKS Workload Identity for Azure provider
+			// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/aks_workload_identity#configuring-with-environment-variables
+			configMap[azureUseAKSWorkloadIdentityParam] = true
+			configMap[azureUseCLIParam] = false
 		}
 	}
 

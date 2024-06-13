@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package register
+package azure
 
 import (
 	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
@@ -24,6 +24,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the command for the `rad credential register azure` command.
+// This command is not runnable, but contains subcommands for registering Azure cloud provider credentials.
 func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.
 	cmd := &cobra.Command{

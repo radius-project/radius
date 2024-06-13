@@ -136,6 +136,9 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
+			credentialFormatOutput, err := credentialFormat(runner.Kind, provider)
+			require.NoError(t, err)
+
 			expected := []any{
 				output.LogOutput{
 					Format: "Showing credential for cloud provider %q for Radius installation %q...",
@@ -144,7 +147,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     provider,
-					Options: credentialFormat(runner.Kind, provider),
+					Options: credentialFormatOutput,
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -203,6 +206,9 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
+			credentialFormatOutput, err := credentialFormat(runner.Kind, provider)
+			require.NoError(t, err)
+
 			expected := []any{
 				output.LogOutput{
 					Format: "Showing credential for cloud provider %q for Radius installation %q...",
@@ -211,7 +217,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     provider,
-					Options: credentialFormat(runner.Kind, provider),
+					Options: credentialFormatOutput,
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

@@ -19,6 +19,7 @@ package credential
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -175,7 +176,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 		c.refreshExpiry()
 		return nil
 	default:
-		return nil
+		return errors.New(fmt.Sprintf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", s.Kind))
 	}
 }
 

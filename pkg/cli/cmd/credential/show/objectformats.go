@@ -17,23 +17,20 @@ limitations under the License.
 package show
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/output"
-)
-
-const (
-	AzureServicePrincipalCredentialKind = "ServicePrincipal"
-	AzureWorkloadIdentityCredentialKind = "WorkloadIdentity"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 // credentialFormat function returns a FormatterOptions struct based on the credentialType parameter, which can
 // be either "azure" or "aws".
-func credentialFormat(credentialType string, providers credential.ProviderCredentialConfiguration) output.FormatterOptions {
+func credentialFormat(credentialType string, providers credential.ProviderCredentialConfiguration) (output.FormatterOptions, error) {
 	if strings.EqualFold(credentialType, "azure") {
 		switch *providers.AzureCredentials.Kind {
-		case AzureServicePrincipalCredentialKind:
+		case datamodel.AzureServicePrincipalCredentialKind:
 			return output.FormatterOptions{
 				Columns: []output.Column{
 					{
@@ -57,8 +54,8 @@ func credentialFormat(credentialType string, providers credential.ProviderCreden
 						JSONPath: "{ .AzureCredentials.ServicePrincipal.TenantID }",
 					},
 				},
-			}
-		case AzureWorkloadIdentityCredentialKind:
+			}, nil
+		case datamodel.AzureWorkloadIdentityCredentialKind:
 			return output.FormatterOptions{
 				Columns: []output.Column{
 					{
@@ -82,7 +79,9 @@ func credentialFormat(credentialType string, providers credential.ProviderCreden
 						JSONPath: "{ .AzureCredentials.WorkloadIdentity.TenantID }",
 					},
 				},
-			}
+			}, nil
+		default:
+			return output.FormatterOptions{}, fmt.Errorf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", *providers.AzureCredentials.Kind)
 		}
 	} else if strings.EqualFold(credentialType, "aws") {
 		return output.FormatterOptions{
@@ -100,7 +99,8 @@ func credentialFormat(credentialType string, providers credential.ProviderCreden
 					JSONPath: "{ .AWSCredentials.AccessKeyID }",
 				},
 			},
-		}
+		}, nil
 	}
-	return output.FormatterOptions{}
+
+	return output.FormatterOptions{}, fmt.Errorf("unknown credential type: %s", credentialType)
 }

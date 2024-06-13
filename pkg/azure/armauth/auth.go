@@ -68,6 +68,8 @@ func NewArmConfig(opt *Options) (*ArmConfig, error) {
 func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	authMethod := GetAuthMethod()
 
+	// Use the Azure SDK for Go to create a credential based on the authentication method
+	// https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=go#azure-identity-client-libraries
 	switch authMethod {
 	case UCPCredentialAuth:
 		return azcred.NewUCPCredential(azcred.UCPCredentialOptions{

@@ -125,7 +125,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	if !providers.Enabled {
 		return clierrors.Message("The credentials for cloud provider %q could not be found.", r.Kind)
 	}
-	err = r.Output.WriteFormatted(r.Format, providers, credentialFormat(r.Kind, providers))
+
+	output, err := credentialFormat(r.Kind, providers)
+	if err != nil {
+		return err
+	}
+
+	err = r.Output.WriteFormatted(r.Format, providers, output)
 	if err != nil {
 		return err
 	}
