@@ -2676,7 +2676,7 @@
           "type": "object",
           "description": "environment",
           "additionalProperties": {
-            "type": "string"
+            "$ref": "#/definitions/EnvironmentVariable"
           }
         },
         "ports": {
@@ -3002,7 +3002,7 @@
           "type": "object",
           "description": "environment",
           "additionalProperties": {
-            "type": "string"
+            "$ref": "#/definitions/EnvironmentVariableUpdate"
           }
         },
         "ports": {
@@ -3317,6 +3317,89 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        }
+      }
+    },
+    "EnvironmentVariable": {
+      "type": "object",
+      "description": "Envinronment variables type",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The value of the environment variable"
+        },
+        "valueFrom": {
+          "$ref": "#/definitions/EnvironmentVariableReference",
+          "description": "The reference to the variable"
+        }
+      }
+    },
+    "EnvironmentVariableReference": {
+      "type": "object",
+      "description": "The reference to the variable",
+      "properties": {
+        "secretRef": {
+          "$ref": "#/definitions/EnvironmentVariableSecretReference",
+          "description": "The secret reference"
+        }
+      },
+      "required": [
+        "secretRef"
+      ]
+    },
+    "EnvironmentVariableReferenceUpdate": {
+      "type": "object",
+      "description": "The reference to the variable",
+      "properties": {
+        "secretRef": {
+          "$ref": "#/definitions/EnvironmentVariableSecretReferenceUpdate",
+          "description": "The secret reference"
+        }
+      }
+    },
+    "EnvironmentVariableSecretReference": {
+      "type": "object",
+      "description": "The secret reference",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The secret source identifier"
+        },
+        "key": {
+          "type": "string",
+          "description": "The secret key"
+        }
+      },
+      "required": [
+        "source",
+        "key"
+      ]
+    },
+    "EnvironmentVariableSecretReferenceUpdate": {
+      "type": "object",
+      "description": "The secret reference",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The secret source identifier"
+        },
+        "key": {
+          "type": "string",
+          "description": "The secret key"
+        }
+      }
+    },
+    "EnvironmentVariableUpdate": {
+      "type": "object",
+      "description": "Envinronment variables type",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The value of the environment variable"
+        },
+        "valueFrom": {
+          "$ref": "#/definitions/EnvironmentVariableReferenceUpdate",
+          "description": "The reference to the variable"
         }
       }
     },

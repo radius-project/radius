@@ -278,7 +278,7 @@ type Container struct {
 	Command []*string
 
 	// environment
-	Env map[string]*string
+	Env map[string]*EnvironmentVariable
 
 	// The pull policy for the container image
 	ImagePullPolicy *ImagePullPolicy
@@ -454,7 +454,7 @@ type ContainerUpdate struct {
 	Command []*string
 
 	// environment
-	Env map[string]*string
+	Env map[string]*EnvironmentVariableUpdate
 
 	// The registry and image to download and run in your container
 	Image *string
@@ -618,6 +618,54 @@ type EnvironmentResourceUpdateProperties struct {
 
 	// Simulated environment.
 	Simulated *bool
+}
+
+// EnvironmentVariable - Envinronment variables type
+type EnvironmentVariable struct {
+	// The value of the environment variable
+	Value *string
+
+	// The reference to the variable
+	ValueFrom *EnvironmentVariableReference
+}
+
+// EnvironmentVariableReference - The reference to the variable
+type EnvironmentVariableReference struct {
+	// REQUIRED; The secret reference
+	SecretRef *EnvironmentVariableSecretReference
+}
+
+// EnvironmentVariableReferenceUpdate - The reference to the variable
+type EnvironmentVariableReferenceUpdate struct {
+	// The secret reference
+	SecretRef *EnvironmentVariableSecretReferenceUpdate
+}
+
+// EnvironmentVariableSecretReference - The secret reference
+type EnvironmentVariableSecretReference struct {
+	// REQUIRED; The secret key
+	Key *string
+
+	// REQUIRED; The secret source identifier
+	Source *string
+}
+
+// EnvironmentVariableSecretReferenceUpdate - The secret reference
+type EnvironmentVariableSecretReferenceUpdate struct {
+	// The secret key
+	Key *string
+
+	// The secret source identifier
+	Source *string
+}
+
+// EnvironmentVariableUpdate - Envinronment variables type
+type EnvironmentVariableUpdate struct {
+	// The value of the environment variable
+	Value *string
+
+	// The reference to the variable
+	ValueFrom *EnvironmentVariableReferenceUpdate
 }
 
 // EphemeralVolume - Specifies an ephemeral volume for a container

@@ -91,6 +91,22 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 					return
 				}
 
+				if tt.filename == "containerresource.json" {
+					require.Equal(t, map[string]datamodel.EnvironmentVariable{
+						"DB_USER": {
+							Value: to.StringPtr("DB_USER"),
+						},
+						"DB_PASSWORD": {
+							ValueFrom: &datamodel.EnvironmentVariableReference{
+								SecretRef: &datamodel.EnvironmentVariableSecretReference{
+									Source: "secret.id",
+									Key:    "DB_PASSWORD",
+								},
+							},
+						},
+					}, ct.Properties.Container.Env)
+				}
+
 				val, ok := ct.Properties.Connections["inventory"]
 				require.True(t, ok)
 				require.Equal(t, "inventory_route_id", val.Source)
@@ -174,6 +190,22 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 					require.Equal(t, ContainerResourceProvisioning("manual"), *versioned.Properties.ResourceProvisioning)
 					require.Equal(t, []*ResourceReference{{ID: to.Ptr("/planes/test/local/providers/Test.Namespace/testResources/test-resource")}}, versioned.Properties.Resources)
 					return
+				}
+
+				if tt.filename == "containerresourcedatamodel.json" {
+					require.Equal(t, map[string]datamodel.EnvironmentVariable{
+						"DB_USER": {
+							Value: to.StringPtr("DB_USER"),
+						},
+						"DB_PASSWORD": {
+							ValueFrom: &datamodel.EnvironmentVariableReference{
+								SecretRef: &datamodel.EnvironmentVariableSecretReference{
+									Source: "secret.id",
+									Key:    "DB_PASSWORD",
+								},
+							},
+						},
+					}, r.Properties.Container.Env)
 				}
 
 				val, ok := r.Properties.Connections["inventory"]

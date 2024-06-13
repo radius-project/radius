@@ -28,6 +28,11 @@ func String(s *string) string {
 	return ""
 }
 
+// StringPtr returns a pointer to the string passed in.
+func StringPtr(s string) *string {
+	return &s
+}
+
 // StringSlice returns a string slice value for the passed string slice pointer. It returns a nil
 // slice if the pointer is nil.
 func StringSlice(s *[]string) []string {

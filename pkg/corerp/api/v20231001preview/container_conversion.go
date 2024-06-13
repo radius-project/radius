@@ -18,6 +18,7 @@ package v20231001preview
 
 import (
 	"encoding/json"
+	"fmt"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -101,6 +102,10 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 		}
 	}
 
+	convertedEnvironmentVariables, err := toEnvDataModel(src.Properties.Container.Env)
+	if err != nil {
+		return nil, err
+	}
 	converted := &datamodel.ContainerResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -123,7 +128,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 			Container: datamodel.Container{
 				Image:           to.String(src.Properties.Container.Image),
 				ImagePullPolicy: toImagePullPolicyDataModel(src.Properties.Container.ImagePullPolicy),
-				Env:             to.StringMap(src.Properties.Container.Env),
+				Env:             convertedEnvironmentVariables,
 				LivenessProbe:   livenessProbe,
 				Ports:           ports,
 				ReadinessProbe:  readinessProbe,
@@ -149,6 +154,64 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	return converted, nil
+}
+
+// toEnvDataModel: Converts from versioned datamodel to base datamodel
+func toEnvDataModel(e map[string]*EnvironmentVariable) (map[string]datamodel.EnvironmentVariable, error) {
+
+	m := map[string]datamodel.EnvironmentVariable{}
+
+	for key, val := range e {
+		if val == nil {
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Environment variable %s is nil", key))
+		}
+		if val.Value != nil && val.ValueFrom != nil {
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Environment variable %s has both value and secret value", key))
+		}
+
+		if val.Value != nil {
+			m[key] = datamodel.EnvironmentVariable{
+				Value: val.Value,
+			}
+		} else {
+			m[key] = datamodel.EnvironmentVariable{
+				ValueFrom: &datamodel.EnvironmentVariableReference{
+					SecretRef: &datamodel.EnvironmentVariableSecretReference{
+						Source: to.String(val.ValueFrom.SecretRef.Source),
+						Key:    to.String(val.ValueFrom.SecretRef.Key),
+					},
+				},
+			}
+
+		}
+
+	}
+	return m, nil
+}
+
+// fromEnvDataModel: Converts from base datamodel to versioned datamodel
+func fromEnvDataModel(e map[string]datamodel.EnvironmentVariable) map[string]*EnvironmentVariable {
+	m := map[string]*EnvironmentVariable{}
+
+	for key, val := range e {
+		if val.Value != nil {
+			m[key] = &EnvironmentVariable{
+				Value: val.Value,
+			}
+		} else {
+			m[key] = &EnvironmentVariable{
+				ValueFrom: &EnvironmentVariableReference{
+					SecretRef: &EnvironmentVariableSecretReference{
+						Source: to.Ptr(val.ValueFrom.SecretRef.Source),
+						Key:    to.Ptr(val.ValueFrom.SecretRef.Key),
+					},
+				},
+			}
+
+		}
+	}
+
+	return m
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Container resource.
@@ -250,7 +313,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		Container: &Container{
 			Image:           to.Ptr(c.Properties.Container.Image),
 			ImagePullPolicy: fromImagePullPolicyDataModel(c.Properties.Container.ImagePullPolicy),
-			Env:             *to.StringMapPtr(c.Properties.Container.Env),
+			Env:             fromEnvDataModel(c.Properties.Container.Env),
 			LivenessProbe:   livenessProbe,
 			Ports:           ports,
 			ReadinessProbe:  readinessProbe,
