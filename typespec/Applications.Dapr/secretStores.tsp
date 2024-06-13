@@ -36,7 +36,8 @@ using OpenAPI;
 namespace Applications.Dapr;
 
 @doc("Dapr SecretStore portable resource")
-model DaprSecretStoreResource is TrackedResourceRequired<DaprSecretStoreProperties, "secretStores"> {
+model DaprSecretStoreResource
+  is TrackedResourceRequired<DaprSecretStoreProperties, "secretStores"> {
   @doc("SecretStore name")
   @key("secretStoreName")
   @path

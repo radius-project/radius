@@ -6,9 +6,9 @@ TypeSpec is a language for describing cloud service APIs and generating other AP
 
 ### TypeSpec
 
-* **[Applications.Core](./Applications.Core/)**: This directory contains Applications.Core TypeSpec files to define its namespace and resource types.
-* **[Test.Resource](./Test.Resource/)**: This directory contains the template typespec files to create new namespace and resource types.
-* **[radius/v1](./radius/v1/)**: This directory contains the radius shared typespec v1 libraries used by each namespace.
+- **[Applications.Core](./Applications.Core/)**: This directory contains Applications.Core TypeSpec files to define its namespace and resource types.
+- **[Test.Resource](./Test.Resource/)**: This directory contains the template typespec files to create new namespace and resource types.
+- **[radius/v1](./radius/v1/)**: This directory contains the radius shared typespec v1 libraries used by each namespace.
 
 ### OpenAPIv2 Spec file output
 
@@ -18,25 +18,30 @@ Once you compile your typespec files, the default output OpenAPIv2 spec file wil
 
 1. Install [NodeJS 16+](https://nodejs.org/en/download)
 1. Install [TypeSpec compiler](https://microsoft.github.io/typespec/introduction/installation)
-    ```bash
-    npm install -g @typespec/compiler
-    ```
 
-## Build TypeSpec to OpenAPI swagger.
+   ```bash
+   npm install -g @typespec/compiler
+   ```
+
+## Build TypeSpec to OpenAPI swagger
 
 Radius uses [OpenAPIv2 specifications](../swagger/) for defining API and validating the API request. You can compile and emit swagger spec files by following steps.
 
 1. Install dependencies
+
    ```bash
    tsp install
    ```
+
 1. Compile and emit the swagger files
+
    ```bash
    tsp compile ./Test.Resource
    ```
-   Please ensure that you resolve all warnings and errors from the compiler.
-1. Review your emitted swagger file under [/swagger/specification/applications/resource-manager/Test.Resource](../swagger/specification/applications/resource-manager/Test.Resource).
 
+   Please ensure that you resolve all warnings and errors from the compiler.
+
+1. Review your emitted swagger file under [/swagger/specification/applications/resource-manager/Test.Resource](../swagger/specification/applications/resource-manager/Test.Resource).
 
 ## TypeSpec authoring guideline
 
@@ -57,6 +62,7 @@ tsp format **/*.tsp
 1. Create new `ResourceTypeName.tsp` file to define new resource type based on [testasyncresources.tsp](./Test.Resource/testasyncresources.tsp) or [testsyncresources.tsp](./Test.Resource/testsyncresources.tsp).
 1. Add `import "ResourceTypeName.tsp";` in `main.tsp` and remove the sample resource type tsp imports.
 1. Run the formatter and compiler
+
    ```bash
    tsp format **/*.tsp
    tsp compile ./YourNamespace
@@ -71,7 +77,7 @@ You can manage multiple API versions with the decorator of [TypeSpec.Versioning]
 
 ### Link API operation to example files with `x-ms-examples` custom property
 
-With TypeSpec, we do not need to specify the properties for `x-ms-examples`. Instead, TypeSpec emitter library has the built-in feature to link resource operations to request/response example files automatically. To leverage this feature, JSON example files needs to be located under 
+With TypeSpec, we do not need to specify the properties for `x-ms-examples`. Instead, TypeSpec emitter library has the built-in feature to link resource operations to request/response example files automatically. To leverage this feature, JSON example files needs to be located under
 `/typespec/<ResourceNamespace>/examples/<API-version>/`. `operationId` property value in example file must match `<interface name>_<operation name>`.
 
 For example, [TestSyncResource](./Test.Resource/testsyncresources.tsp) defines the following operations:
@@ -105,7 +111,7 @@ You can create [TestSyncResource_Get.json](./Test.Resource/examples/2023-08-19/T
 
 ## References
 
-* [Introduction to TypeSpec](https://microsoft.github.io/typespec/)
-* [TypeSpec Azure](https://azure.github.io/typespec-azure/)
-* [TypeSpec Samples](https://github.com/microsoft/typespec/tree/main/packages/samples)
-* [TypeSpec Azure samples](https://github.com/Azure/typespec-azure/tree/main/packages/samples/specs/resource-manager)
+- [Introduction to TypeSpec](https://microsoft.github.io/typespec/)
+- [TypeSpec Azure](https://azure.github.io/typespec-azure/)
+- [TypeSpec Samples](https://github.com/microsoft/typespec/tree/main/packages/samples)
+- [TypeSpec Azure samples](https://github.com/Azure/typespec-azure/tree/main/packages/samples/specs/resource-manager)

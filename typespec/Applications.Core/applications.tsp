@@ -39,7 +39,8 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("Radius Application resource")
-model ApplicationResource is TrackedResourceRequired<ApplicationProperties, "applications">{
+model ApplicationResource
+  is TrackedResourceRequired<ApplicationProperties, "applications"> {
   @doc("The application name")
   @path
   @key("applicationName")
@@ -47,7 +48,6 @@ model ApplicationResource is TrackedResourceRequired<ApplicationProperties, "app
   @visibility("read", "create")
   name: ResourceNameString;
 }
-
 
 @doc("Application properties")
 model ApplicationProperties {
@@ -108,11 +108,11 @@ model ApplicationGraphResource {
   outputResources: Array<ApplicationGraphOutputResource>;
 
   @doc("The connections between resources in the application graph.")
-  @extension("x-ms-identifiers",[])
+  @extension("x-ms-identifiers", [])
   connections: Array<ApplicationGraphConnection>;
 
-  @doc("provisioningState of this resource.") 
-  provisioningState: string
+  @doc("provisioningState of this resource.")
+  provisioningState: string;
 }
 
 @doc("Describes an output resource that comprises an application graph resource.")

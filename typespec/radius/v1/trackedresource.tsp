@@ -24,7 +24,7 @@ using OpenAPI;
    TrackedResourceRequired class which has the "properties" field as mandatory.
 */
 namespace Azure.ResourceManager;
- 
+
 @doc("Concrete tracked resource types can be created by aliasing this type using a specific property type.")
 @Azure.ResourceManager.Private.armResourceInternal(TProperties)
 @TypeSpec.Http.includeInapplicableMetadataInPayload(false)
