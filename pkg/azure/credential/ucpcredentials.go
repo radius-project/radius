@@ -176,7 +176,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 		c.refreshExpiry()
 		return nil
 	default:
-		return errors.New(fmt.Sprintf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", s.Kind))
+		return fmt.Errorf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", s.Kind)
 	}
 }
 
