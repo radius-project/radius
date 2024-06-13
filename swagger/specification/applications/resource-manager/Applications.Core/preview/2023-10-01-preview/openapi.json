@@ -2631,8 +2631,7 @@
         },
         "disableDefaultEnvVars": {
           "type": "boolean",
-          "description": "default environment variable override",
-          "default": false
+          "description": "default environment variable override"
         },
         "iam": {
           "$ref": "#/definitions/IamProperties",
@@ -2653,8 +2652,7 @@
         },
         "disableDefaultEnvVars": {
           "type": "boolean",
-          "description": "default environment variable override",
-          "default": false
+          "description": "default environment variable override"
         },
         "iam": {
           "$ref": "#/definitions/IamPropertiesUpdate",
@@ -3559,8 +3557,7 @@
         },
         "internal": {
           "type": "boolean",
-          "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).",
-          "default": false
+          "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet)."
         },
         "hostname": {
           "$ref": "#/definitions/GatewayHostname",
@@ -3664,8 +3661,7 @@
         },
         "internal": {
           "type": "boolean",
-          "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).",
-          "default": false
+          "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet)."
         },
         "hostname": {
           "$ref": "#/definitions/GatewayHostname",
@@ -3713,8 +3709,7 @@
       "properties": {
         "sslPassthrough": {
           "type": "boolean",
-          "description": "If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.",
-          "default": false
+          "description": "If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption."
         },
         "minimumProtocolVersion": {
           "$ref": "#/definitions/TlsMinVersion",

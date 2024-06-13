@@ -40,7 +40,8 @@ using OpenAPI;
 namespace Ucp;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-path-segment-invalid-chars"
-model AwsCredentialResource is TrackedResourceRequired<AwsCredentialProperties, "awsCredentials"> {
+model AwsCredentialResource
+  is TrackedResourceRequired<AwsCredentialProperties, "awsCredentials"> {
   @key("credentialName")
   @doc("The AWS credential name.")
   @path
