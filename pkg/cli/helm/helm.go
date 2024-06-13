@@ -179,25 +179,10 @@ func runUpgrade(upgradeClient *helm.Upgrade, releaseName string, helmChart *char
 func extractHelmError(err error) error {
 	var errUnexpectedStatus containerderrors.ErrUnexpectedStatus
 	if errors.As(err, &errUnexpectedStatus) {
-		unwrappedErr := unwrapAll(err)
-		switch unexpectedStatusErr := unwrappedErr.(type) {
-		case containerderrors.ErrUnexpectedStatus:
-			if unexpectedStatusErr.StatusCode == http.StatusForbidden && strings.Contains(unexpectedStatusErr.RequestURL, "ghcr.io") {
-				return fmt.Errorf("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout ghcr.io` and re-try the command")
-			}
+		if errUnexpectedStatus.StatusCode == http.StatusForbidden && strings.Contains(errUnexpectedStatus.RequestURL, "ghcr.io") {
+			return fmt.Errorf("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout ghcr.io` and re-try the command")
 		}
 	}
 
 	return nil
-}
-
-// UnwrapAll unwraps all errors in a chain of errors and returns the root error.
-func unwrapAll(err error) error {
-	for {
-		unwrapped := errors.Unwrap(err)
-		if unwrapped == nil {
-			return err
-		}
-		err = unwrapped
-	}
 }
