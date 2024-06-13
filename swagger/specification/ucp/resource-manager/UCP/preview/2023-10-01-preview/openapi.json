@@ -857,10 +857,10 @@
         },
         "x-ms-examples": {
           "List Azure Service Principal credentials": {
-            "$ref": "./examples/AzureCredential_List_SP.json"
+            "$ref": "./examples/AzureCredential_ServicePrincipal_List.json"
           },
           "List Azure Workload Identity credentials": {
-            "$ref": "./examples/AzureCredential_List_WI.json"
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_List.json"
           }
         },
         "x-ms-pageable": {
@@ -908,10 +908,10 @@
         },
         "x-ms-examples": {
           "Get an Azure Service Principal credential": {
-            "$ref": "./examples/AzureCredential_Get_SP.json"
+            "$ref": "./examples/AzureCredential_ServicePrincipal_Get.json"
           },
           "Get an Azure Workload Identity credential": {
-            "$ref": "./examples/AzureCredential_Get_WI.json"
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_Get.json"
           }
         }
       },
@@ -969,10 +969,10 @@
         },
         "x-ms-examples": {
           "Create or update an Azure Service Principal credential": {
-            "$ref": "./examples/AzureCredential_CreateOrUpdate_SP.json"
+            "$ref": "./examples/AzureCredential_ServicePrincipal_CreateOrUpdate.json"
           },
           "Create or update an Azure Workload Identity credential": {
-            "$ref": "./examples/AzureCredential_CreateOrUpdate_WI.json"
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_CreateOrUpdate.json"
           }
         }
       },
@@ -1024,10 +1024,10 @@
         },
         "x-ms-examples": {
           "Update an Azure Service Principal credential": {
-            "$ref": "./examples/AzureCredential_Update_SP.json"
+            "$ref": "./examples/AzureCredential_ServicePrincipal_Update.json"
           },
           "Update an Azure Workload Identity credential": {
-            "$ref": "./examples/AzureCredential_Update_WI.json"
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_Update.json"
           }
         }
       },
@@ -1070,10 +1070,10 @@
         },
         "x-ms-examples": {
           "Delete an Azure Service Principal credential": {
-            "$ref": "./examples/AzureCredential_Delete_SP.json"
+            "$ref": "./examples/AzureCredential_ServicePrincipal_Delete.json"
           },
           "Delete an Azure Workload Identity credential": {
-            "$ref": "./examples/AzureCredential_Delete_WI.json"
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_Delete.json"
           }
         }
       }
