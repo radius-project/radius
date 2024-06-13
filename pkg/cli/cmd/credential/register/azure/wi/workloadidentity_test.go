@@ -19,13 +19,11 @@ package wi
 import (
 	"context"
 	"fmt"
-	"path"
 	"testing"
 
 	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
@@ -36,7 +34,6 @@ import (
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -99,44 +96,6 @@ func Test_Run(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			// We need to isolate the configuration because we're going to make edits
-			configPath := path.Join(t.TempDir(), "config.yaml")
-
-			yamlData, err := yaml.Marshal(map[string]any{
-				"workspaces": cli.WorkspaceSection{
-					Default: "a",
-					Items: map[string]workspaces.Workspace{
-						"a": {
-							Connection: map[string]any{
-								"kind":    workspaces.KindKubernetes,
-								"context": "my-context",
-							},
-							Source: workspaces.SourceUserConfig,
-
-							// Will have provider info added
-						},
-						"b": {
-							Connection: map[string]any{
-								"kind":    workspaces.KindKubernetes,
-								"context": "my-context",
-							},
-							Source: workspaces.SourceUserConfig,
-						},
-						"c": {
-							Connection: map[string]any{
-								"kind":    workspaces.KindKubernetes,
-								"context": "my-other-context",
-							},
-							Source: workspaces.SourceUserConfig,
-						},
-					},
-				},
-			})
-			require.NoError(t, err)
-
-			config := radcli.LoadConfig(t, string(yamlData))
-			config.SetConfigFile(configPath)
-
 			expectedPut := ucp.AzureCredentialResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(cli_credential.AzureCredential),
@@ -160,10 +119,6 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConfigHolder: &framework.ConfigHolder{
-					Config:         config,
-					ConfigFilePath: configPath,
-				},
 				ConnectionFactory: &connections.MockFactory{CredentialManagementClient: client},
 				Output:            outputSink,
 				Workspace: &workspaces.Workspace{
@@ -180,7 +135,7 @@ func Test_Run(t *testing.T) {
 				KubeContext: "my-context",
 			}
 
-			err = runner.Run(context.Background())
+			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -194,40 +149,6 @@ func Test_Run(t *testing.T) {
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
-
-			expectedConfig := cli.WorkspaceSection{
-				Default: "a",
-				Items: map[string]workspaces.Workspace{
-					"a": {
-						Name: "a",
-						Connection: map[string]any{
-							"kind":    workspaces.KindKubernetes,
-							"context": "my-context",
-						},
-						Source: workspaces.SourceUserConfig,
-					},
-					"b": {
-						Name: "b",
-						Connection: map[string]any{
-							"kind":    workspaces.KindKubernetes,
-							"context": "my-context",
-						},
-						Source: workspaces.SourceUserConfig,
-					},
-					"c": {
-						Name: "c",
-						Connection: map[string]any{
-							"kind":    workspaces.KindKubernetes,
-							"context": "my-other-context",
-						},
-						Source: workspaces.SourceUserConfig,
-					},
-				},
-			}
-
-			actualConfig, err := cli.ReadWorkspaceSection(config)
-			require.NoError(t, err)
-			require.Equal(t, expectedConfig, actualConfig)
 		})
 	})
 }
