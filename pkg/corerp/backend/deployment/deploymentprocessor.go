@@ -51,7 +51,7 @@ import (
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/radius-project/radius/pkg/corerp/backend/deployment github.com/radius-project/radius/pkg/corerp/backend/deployment DeploymentProcessor
+//go:generate mockgen -typed -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/radius-project/radius/pkg/corerp/backend/deployment github.com/radius-project/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error)

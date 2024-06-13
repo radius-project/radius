@@ -24,7 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 )
 
-//go:generate mockgen -destination=./mock_namespace.go -package=namespace -self_package github.com/radius-project/radius/pkg/cli/cmd/env/namespace github.com/radius-project/radius/pkg/cli/cmd/env/namespace Interface
+//go:generate mockgen -typed -destination=./mock_namespace.go -package=namespace -self_package github.com/radius-project/radius/pkg/cli/cmd/env/namespace github.com/radius-project/radius/pkg/cli/cmd/env/namespace Interface
 type Interface interface {
 	ValidateNamespace(ctx context.Context, namespace string, workspace workspaces.Workspace) error
 }

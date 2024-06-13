@@ -722,8 +722,63 @@ func Test_Render_Single_Route(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, false)
+
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
-	validateContourHTTPRoute(t, output.Resources, "A", 80, nil, "")
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
+}
+
+func TestRender_SingleRoute_EnableWebsockets(t *testing.T) {
+	r := &Renderer{}
+
+	var routes []datamodel.GatewayRoute
+	path := "/"
+	route := datamodel.GatewayRoute{
+		Destination:      "http://A",
+		Path:             path,
+		EnableWebsockets: true,
+	}
+	routes = append(routes, route)
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
+	}
+	resource := makeResource(properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
+	expectedURL := "http://" + expectedHostname
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
+
+	expectedIncludes := []contourv1.Include{
+		{
+			Name: kubernetes.NormalizeResourceName("A"),
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: path,
+				},
+			},
+		},
+	}
+
+	expectedGatewaySpec := &contourv1.HTTPProxySpec{
+		VirtualHost: &contourv1.VirtualHost{
+			Fqdn: expectedHostname,
+		},
+		Includes: expectedIncludes,
+	}
+
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, true)
+
+	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
 }
 
 func Test_Render_SSLPassthrough(t *testing.T) {
@@ -790,8 +845,10 @@ func Test_Render_SSLPassthrough(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, false)
+
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
-	validateContourHTTPRoute(t, output.Resources, "A", 80, nil, "")
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
 }
 
 func Test_Render_Multiple_Routes(t *testing.T) {
@@ -854,9 +911,12 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
+	expectedHTTPRouteSpecA := createExpectedHTTPRouteSpec("A", 80, nil, false)
+	expectedHTTPRouteSpecB := createExpectedHTTPRouteSpec("B", 80, nil, false)
+
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
-	validateContourHTTPRoute(t, output.Resources, "A", 80, nil, "")
-	validateContourHTTPRoute(t, output.Resources, "B", 80, nil, "")
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpecA, "")
+	validateContourHTTPRoute(t, output.Resources, "B", expectedHTTPRouteSpecB, "")
 }
 
 func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
@@ -917,7 +977,10 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 			},
 		},
 	}
-	validateContourHTTPRoute(t, output.Resources, "A", 80, expectedPathRewritePolicy, "")
+
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, expectedPathRewritePolicy, false)
+
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
 }
 
 func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
@@ -1026,8 +1089,12 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 	}
-	validateContourHTTPRoute(t, output.Resources, "A", 80, nil, "")
-	validateContourHTTPRoute(t, output.Resources, "B", 80, expectedPathRewritePolicy, "")
+
+	expectedHTTPRouteSpecA := createExpectedHTTPRouteSpec("A", 80, nil, false)
+	expectedHTTPRouteSpecB := createExpectedHTTPRouteSpec("B", 80, expectedPathRewritePolicy, false)
+
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpecA, "")
+	validateContourHTTPRoute(t, output.Resources, "B", expectedHTTPRouteSpecB, "")
 }
 
 func Test_Render_WithDependencies(t *testing.T) {
@@ -1101,8 +1168,10 @@ func Test_Render_WithDependencies(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 81, nil, false)
+
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
-	validateContourHTTPRoute(t, output.Resources, "A", 81, nil, "")
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
 }
 
 func Test_Render_WithEnvironment_KubernetesMetadata(t *testing.T) {
@@ -1151,8 +1220,10 @@ func Test_Render_WithEnvironment_KubernetesMetadata(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, false)
+
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, envKubeMetadata)
-	validateContourHTTPRoute(t, output.Resources, "A", 80, nil, envKubeMetadata)
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, envKubeMetadata)
 }
 
 func Test_Render_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) {
@@ -1202,8 +1273,10 @@ func Test_Render_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, false)
+
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, envAppKubeMetadata)
-	validateContourHTTPRoute(t, output.Resources, "A", 80, nil, envAppKubeMetadata)
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, envAppKubeMetadata)
 }
 
 func Test_RenderDNS_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) {
@@ -1472,38 +1545,55 @@ func validateContourHTTPProxy(t *testing.T, outputResources []rpv1.OutputResourc
 	require.Equal(t, expectedHTTPProxySpec, &httpProxy.Spec)
 }
 
-func validateContourHTTPRoute(t *testing.T, outputResources []rpv1.OutputResource, expectedRouteName string, expectedPort int32, expectedRewrite *contourv1.PathRewritePolicy, kmeOption string) {
+// validateContourHTTPRoute validates the HTTP route of a Contour resource.
+func validateContourHTTPRoute(t *testing.T, outputResources []rpv1.OutputResource, expectedRouteName string, expectedSpec contourv1.HTTPProxySpec, metadataOption string) {
 	expectedLocalID := fmt.Sprintf("%s-%s", rpv1.LocalIDHttpProxy, expectedRouteName)
 	httpRoute, httpRouteOutputResource := kubernetes.FindContourHTTPProxyByLocalID(outputResources, expectedLocalID)
-	expectedHttpRouteOutputResource := rpv1.NewKubernetesOutputResource(expectedLocalID, httpRoute, httpRoute.ObjectMeta)
-	require.Equal(t, expectedHttpRouteOutputResource, httpRouteOutputResource)
+
+	// Validate the output resource
+	expectedOutputResource := rpv1.NewKubernetesOutputResource(expectedLocalID, httpRoute, httpRoute.ObjectMeta)
+	require.Equal(t, expectedOutputResource, httpRouteOutputResource)
+
+	// Validate the HTTP route name and namespace
 	require.Equal(t, kubernetes.NormalizeResourceName(expectedRouteName), httpRoute.Name)
 	require.Equal(t, applicationName, httpRoute.Namespace)
-	if !(kmeOption == envKubeMetadata || kmeOption == envAppKubeMetadata) {
-		require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, expectedRouteName, ResourceType), httpRoute.Labels)
+
+	// Validate the metadata
+	validateMetadata(t, httpRoute, metadataOption)
+
+	// Validate the HTTP route spec
+	require.Equal(t, expectedSpec, httpRoute.Spec)
+}
+
+// validateMetadata validates the metadata of a HTTP route.
+func validateMetadata(t *testing.T, httpRoute *contourv1.HTTPProxy, metadataOption string) {
+	if metadataOption != envKubeMetadata && metadataOption != envAppKubeMetadata {
+		expectedLabels := kubernetes.MakeDescriptiveLabels(applicationName, httpRoute.Name, ResourceType)
+		require.Equal(t, expectedLabels, httpRoute.Labels)
 	} else {
-		require.Equal(t, getExpectedMaps(false, kmeOption).metaAnn, httpRoute.Annotations)
-		require.Equal(t, getExpectedMaps(false, kmeOption).metaLbl, httpRoute.Labels)
+		expectedMaps := getExpectedMaps(false, metadataOption)
+		require.Equal(t, expectedMaps.metaAnn, httpRoute.Annotations)
+		require.Equal(t, expectedMaps.metaLbl, httpRoute.Labels)
 	}
-	require.Nil(t, httpRoute.Spec.VirtualHost)
+}
 
-	expectedServiceName := kubernetes.NormalizeResourceName(expectedRouteName)
-
-	expectedHttpRouteSpec := contourv1.HTTPProxySpec{
+// createExpectedHTTPRouteSpec creates the expected HTTP route spec for validation.
+func createExpectedHTTPRouteSpec(routeName string, port int32, rewrite *contourv1.PathRewritePolicy, enableWebsockets bool) contourv1.HTTPProxySpec {
+	serviceName := kubernetes.NormalizeResourceName(routeName)
+	return contourv1.HTTPProxySpec{
 		Routes: []contourv1.Route{
 			{
 				Services: []contourv1.Service{
 					{
-						Name: expectedServiceName,
-						Port: int(expectedPort),
+						Name: serviceName,
+						Port: int(port),
 					},
 				},
-				PathRewritePolicy: expectedRewrite,
+				PathRewritePolicy: rewrite,
+				EnableWebsockets:  enableWebsockets,
 			},
 		},
 	}
-
-	require.Equal(t, expectedHttpRouteSpec, httpRoute.Spec)
 }
 
 func makeSecretStoreResourceID(secretStoreName string) string {

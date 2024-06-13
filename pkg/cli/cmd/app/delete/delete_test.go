@@ -14,14 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package list
+package delete
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
-	"go.uber.org/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -29,8 +28,11 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -116,12 +118,22 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Show(t *testing.T) {
+func Test_Delete(t *testing.T) {
 	t.Run("Success: Application Found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(v20231001preview.ApplicationResource{
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+				},
+			}, nil).
+			Times(1)
+
 		appManagementClient.EXPECT().
 			DeleteApplication(gomock.Any(), "test-app").
 			Return(true, nil).
@@ -174,11 +186,20 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "default")).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "another-env")).
 			Return(prompt.ConfirmYes, nil).
 			Times(1)
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(v20231001preview.ApplicationResource{
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+				},
+			}, nil).
+			Times(1)
+
 		appManagementClient.EXPECT().
 			DeleteApplication(gomock.Any(), "test-app").
 			Return(true, nil).
@@ -221,19 +242,30 @@ func Test_Show(t *testing.T) {
 			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
 		}
 
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(v20231001preview.ApplicationResource{
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+				},
+			}, nil).
+			Times(1)
+
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "default")).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "another-env")).
 			Return(prompt.ConfirmNo, nil).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			InputPrompter:   promptMock,
-			Workspace:       workspace,
-			Output:          outputSink,
-			ApplicationName: "test-app",
-			EnvironmentName: "default",
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			InputPrompter:     promptMock,
+			Workspace:         workspace,
+			Output:            outputSink,
+			ApplicationName:   "test-app",
+			EnvironmentName:   "default",
 		}
 
 		err := runner.Run(context.Background())
@@ -250,6 +282,15 @@ func Test_Show(t *testing.T) {
 		defer ctrl.Finish()
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(v20231001preview.ApplicationResource{
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+				},
+			}, nil).
+			Times(1)
+
 		appManagementClient.EXPECT().
 			DeleteApplication(gomock.Any(), "test-app").
 			Return(false, nil).
@@ -302,19 +343,30 @@ func Test_Show(t *testing.T) {
 			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
 		}
 
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(v20231001preview.ApplicationResource{
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+				},
+			}, nil).
+			Times(1)
+
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "default")).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "another-env")).
 			Return("", &prompt.ErrExitConsole{}).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			InputPrompter:   promptMock,
-			Output:          outputSink,
-			Workspace:       workspace,
-			ApplicationName: "test-app",
-			EnvironmentName: "default",
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			InputPrompter:     promptMock,
+			Output:            outputSink,
+			Workspace:         workspace,
+			ApplicationName:   "test-app",
+			EnvironmentName:   "default",
 		}
 
 		err := runner.Run(context.Background())

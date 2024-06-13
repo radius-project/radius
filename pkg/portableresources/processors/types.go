@@ -58,7 +58,7 @@ func (e *ValidationError) Error() string {
 	return e.Message
 }
 
-//go:generate mockgen -destination=./mock_resourceclient.go -package=processors -self_package github.com/radius-project/radius/pkg/portableresources/processors github.com/radius-project/radius/pkg/portableresources/processors ResourceClient
+//go:generate mockgen -typed -destination=./mock_resourceclient.go -package=processors -self_package github.com/radius-project/radius/pkg/portableresources/processors github.com/radius-project/radius/pkg/portableresources/processors ResourceClient
 
 // ResourceClient is a client used by resource processors for interacting with UCP resources.
 type ResourceClient interface {

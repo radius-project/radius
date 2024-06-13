@@ -37,6 +37,9 @@ import (
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 )
 
+const secretStoreNotFound = "secretStore resource %s not found"
+const invalidSecretStoreResource = "certificateFrom must reference a secretStore resource"
+
 type Renderer struct {
 }
 
@@ -134,46 +137,46 @@ func MakeRootHTTPProxy(ctx context.Context, options renderers.RenderOptions, gat
 			secretStoreResourceId := gateway.Properties.TLS.CertificateFrom
 			secretStoreResource, ok := dependencies[secretStoreResourceId]
 			if !ok {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(secretStoreNotFound, secretStoreResourceId))
 			}
 
 			referencedResource := dependencies[secretStoreResourceId].Resource
 			if !strings.EqualFold(referencedResource.ResourceTypeName(), datamodel.SecretStoreResourceType) {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource")
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(invalidSecretStoreResource)
 			}
 
 			// Validate the secretStore resource: it must be of type certificate and have tls.crt and tls.key
 			secretStore, ok := referencedResource.(*datamodel.SecretStore)
 			if !ok {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource")
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(invalidSecretStoreResource)
 			}
 
 			if secretStore.Properties.Type != datamodel.SecretTypeCert {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource with type certificate")
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(invalidSecretStoreResource + " with type certificate")
 			}
 
 			if secretStore.Properties.Data["tls.crt"] == nil {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource with tls.crt")
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(invalidSecretStoreResource + " with tls.crt")
 			}
 
 			if secretStore.Properties.Data["tls.key"] == nil {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("certificateFrom must reference a secretStore resource with tls.key")
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(invalidSecretStoreResource + " with tls.key")
 			}
 
 			// Get the name and namespace of the Kubernetes secret resource from the secretStore OutputResources
 			if secretStoreResource.OutputResources == nil {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(secretStoreNotFound, secretStoreResourceId))
 			}
 
 			secretResourceID, ok := secretStoreResource.OutputResources[rpv1.LocalIDSecret]
 			if !ok {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(secretStoreNotFound, secretStoreResourceId))
 			}
 
 			secretName := secretResourceID.Name()
 			secretNamespace := secretResourceID.FindScope(resources_kubernetes.ScopeNamespaces)
 			if secretNamespace == "" {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
+				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(secretStoreNotFound, secretStoreResourceId))
 			}
 
 			contourTLSConfig = &contourv1.TLS{
@@ -193,6 +196,7 @@ func MakeRootHTTPProxy(ctx context.Context, options renderers.RenderOptions, gat
 		if sslPassthrough && (route.Path != "" || route.ReplacePrefix != "") {
 			return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with sslPassthrough set to true")
 		}
+
 		routeName, err := getRouteName(&route)
 		if err != nil {
 			return rpv1.OutputResource{}, err
@@ -200,9 +204,11 @@ func MakeRootHTTPProxy(ctx context.Context, options renderers.RenderOptions, gat
 
 		routeResourceName := kubernetes.NormalizeResourceName(routeName)
 		prefix := route.Path
+
 		if sslPassthrough {
 			prefix = "/"
 		}
+
 		includes = append(includes, contourv1.Include{
 			Name: routeResourceName,
 			Conditions: []contourv1.MatchCondition{
@@ -270,6 +276,7 @@ func MakeRootHTTPProxy(ctx context.Context, options renderers.RenderOptions, gat
 			Includes:    includes,
 		},
 	}
+
 	if sslPassthrough {
 		rootHTTPProxy.Spec.TCPProxy = tcpProxy
 	}
@@ -292,14 +299,12 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 				return []rpv1.OutputResource{}, err
 			}
 			port = urlPort
-
 		} else {
 			routeProperties := dependencies[route.Destination]
 			routePort, ok := routeProperties.ComputedValues["port"].(float64)
 			if ok {
 				port = int32(routePort)
 			}
-
 		}
 
 		routeName, err := getRouteName(&route)
@@ -335,13 +340,11 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 							} else {
 								object.Spec.Routes[i].PathRewritePolicy.ReplacePrefix = append(object.Spec.Routes[i].PathRewritePolicy.ReplacePrefix, pathRewritePolicy.ReplacePrefix[0])
 							}
-
 							break outer
 						}
 					}
 				}
 			}
-
 			continue
 		}
 
@@ -366,6 +369,7 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 							},
 						},
 						PathRewritePolicy: pathRewritePolicy,
+						EnableWebsockets:  route.EnableWebsockets,
 					},
 				},
 			},

@@ -2101,6 +2101,7 @@ func (g *GatewayResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 func (g GatewayRoute) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "destination", g.Destination)
+	populate(objectMap, "enableWebsockets", g.EnableWebsockets)
 	populate(objectMap, "path", g.Path)
 	populate(objectMap, "replacePrefix", g.ReplacePrefix)
 	return json.Marshal(objectMap)
@@ -2117,6 +2118,9 @@ func (g *GatewayRoute) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "destination":
 				err = unpopulate(val, "Destination", &g.Destination)
+			delete(rawMsg, key)
+		case "enableWebsockets":
+				err = unpopulate(val, "EnableWebsockets", &g.EnableWebsockets)
 			delete(rawMsg, key)
 		case "path":
 				err = unpopulate(val, "Path", &g.Path)
