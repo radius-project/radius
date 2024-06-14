@@ -139,7 +139,7 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 			return nil, clierrors.Message("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout ghcr.io` and re-try the command")
 		}
 
-		return nil, fmt.Errorf("error downloading helm chart from the registry for version: %s, release name: %s. Error: %w", version, releaseName, err)
+		return nil, clierrors.MessageWithCause(err, fmt.Sprintf("error downloading helm chart from the registry for version: %s, release name: %s", version, releaseName))
 	}
 
 	chartPath, err := locateChartFile(dir)
