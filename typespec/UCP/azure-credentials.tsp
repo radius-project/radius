@@ -64,6 +64,7 @@ model AzureCredentialResource
 enum AzureCredentialKind {
   @doc("The Service Principal Credential")
   ServicePrincipal,
+
   @doc("The Workload Identity Credential")
   WorkloadIdentity,
 }
