@@ -117,17 +117,17 @@ jobs:
       - name: Set up checkout target (pull_request)
         if: github.event_name == 'pull_request'
         run: |
-            echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-            echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Use custom actions
         uses: actions/checkout@v4
       - name: 'Download PR data artifacts'
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'pull_request'
         uses: ./.github/actions/download-pr-data-artifact
         id: get-pr-number
-      - name: 'Set PR context (workflow_run)'
-        if: github.event_name == 'workflow_run'
+      - name: 'Set PR context'
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
