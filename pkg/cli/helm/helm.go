@@ -27,6 +27,7 @@ import (
 	"time"
 
 	containerderrors "github.com/containerd/containerd/remotes/errors"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -134,9 +135,8 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 		// This happens for ghcr in particular because ghcr does not use
 		// subdomains - the scope of a login is all of ghcr.io.
 		// https://github.com/helm/helm/issues/12584
-		err := extractHelmError(err)
-		if err != nil {
-			return nil, err
+		if isHelm403Error(err) {
+			return nil, clierrors.Message("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout ghcr.io` and re-try the command")
 		}
 
 		return nil, fmt.Errorf("error downloading helm chart from the registry for version: %s, release name: %s. Error: %w", version, releaseName, err)
@@ -173,16 +173,15 @@ func runUpgrade(upgradeClient *helm.Upgrade, releaseName string, helmChart *char
 	return err
 }
 
-// extractHelmError is a helper function to extract a specific error
+// isHelm403Error is a helper function to determine if an error is a specific helm error
 // (403 unauthorized when downloading a helm chart from ghcr.io) from a chain of errors.
-// If the error is not found, it returns nil.
-func extractHelmError(err error) error {
+func isHelm403Error(err error) bool {
 	var errUnexpectedStatus containerderrors.ErrUnexpectedStatus
 	if errors.As(err, &errUnexpectedStatus) {
 		if errUnexpectedStatus.StatusCode == http.StatusForbidden && strings.Contains(errUnexpectedStatus.RequestURL, "ghcr.io") {
-			return fmt.Errorf("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout ghcr.io` and re-try the command")
+			return true
 		}
 	}
 
-	return nil
+	return false
 }
