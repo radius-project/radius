@@ -111,5 +111,8 @@ interface ResourceGroups {
 @armResourceOperations
 interface Resources {
   @doc("List resources in a resource group")
-  list is UcpResourceList<GenericResource, PlaneBaseParameters<RadiusPlaneResource>>;
+  list is UcpResourceList<
+    GenericResource,
+    PlaneBaseParameters<RadiusPlaneResource>
+  >;
 }

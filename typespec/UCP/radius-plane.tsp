@@ -42,56 +42,59 @@ namespace Ucp;
 
 @doc("The Radius plane resource.")
 model RadiusPlaneResource
-    is TrackedResourceRequired<RadiusPlaneResourceProperties, "System.Radius/planes"> {
-    @doc("The plane name.")
-    @segment("radius")
-    @path
-    @key("planeName")
-    name: ResourceNameString;
+  is TrackedResourceRequired<
+    RadiusPlaneResourceProperties,
+    "System.Radius/planes"
+  > {
+  @doc("The plane name.")
+  @segment("radius")
+  @path
+  @key("planeName")
+  name: ResourceNameString;
 }
 
 @doc("The Plane properties.")
 model RadiusPlaneResourceProperties {
-    @doc("The status of the asynchronous operation.")
-    @visibility("read")
-    provisioningState?: ProvisioningState;
+  @doc("The status of the asynchronous operation.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
 
-    @doc("Resource Providers for UCP Native Plane")
-    resourceProviders: Record<string>;
+  @doc("Resource Providers for UCP Native Plane")
+  resourceProviders: Record<string>;
 }
 
 @route("/planes")
 @armResourceOperations
 interface RadiusPlanes {
-    @doc("List Radius planes")
-    @get
-    @route("/radius")
-    @armResourceList(RadiusPlaneResource)
-    list(
-        ...ApiVersionParameter,
-    ): ArmResponse<ResourceListResult<RadiusPlaneResource>> | ErrorResponse;
+  @doc("List Radius planes")
+  @get
+  @route("/radius")
+  @armResourceList(RadiusPlaneResource)
+  list(
+    ...ApiVersionParameter,
+  ): ArmResponse<ResourceListResult<RadiusPlaneResource>> | ErrorResponse;
 
-    @doc("Get a plane by name")
-    get is UcpResourceRead<
-        RadiusPlaneResource,
-        PlaneBaseParameters<RadiusPlaneResource>
-    >;
+  @doc("Get a plane by name")
+  get is UcpResourceRead<
+    RadiusPlaneResource,
+    PlaneBaseParameters<RadiusPlaneResource>
+  >;
 
-    @doc("Create or update a plane")
-    createOrUpdate is UcpResourceCreateOrUpdateAsync<
-        RadiusPlaneResource,
-        PlaneBaseParameters<RadiusPlaneResource>
-    >;
+  @doc("Create or update a plane")
+  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+    RadiusPlaneResource,
+    PlaneBaseParameters<RadiusPlaneResource>
+  >;
 
-    @doc("Update a plane")
-    update is UcpCustomPatchAsync<
-        RadiusPlaneResource,
-        PlaneBaseParameters<RadiusPlaneResource>
-    >;
+  @doc("Update a plane")
+  update is UcpCustomPatchAsync<
+    RadiusPlaneResource,
+    PlaneBaseParameters<RadiusPlaneResource>
+  >;
 
-    @doc("Delete a plane")
-    delete is UcpResourceDeleteAsync<
-        RadiusPlaneResource,
-        PlaneBaseParameters<RadiusPlaneResource>
-    >;
+  @doc("Delete a plane")
+  delete is UcpResourceDeleteAsync<
+    RadiusPlaneResource,
+    PlaneBaseParameters<RadiusPlaneResource>
+  >;
 }

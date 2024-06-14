@@ -51,7 +51,8 @@ model AzurePlaneNameParameter {
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-path-segment-invalid-chars"
 @doc("Represents Azure Credential Resource")
-model AzureCredentialResource is TrackedResourceRequired<AzureCredentialProperties, "azureCredentials">{
+model AzureCredentialResource
+  is TrackedResourceRequired<AzureCredentialProperties, "azureCredentials"> {
   @doc("The Azure credential name.")
   @path
   @key("credentialName")

@@ -37,7 +37,8 @@ using OpenAPI;
 namespace Applications.Datastores;
 
 @doc("SqlDatabase portable resource")
-model SqlDatabaseResource is TrackedResourceRequired<SqlDatabaseProperties, "sqlDatabases">{
+model SqlDatabaseResource
+  is TrackedResourceRequired<SqlDatabaseProperties, "sqlDatabases"> {
   @doc("The name of the SqlDatabase portable resource resource")
   @key("sqlDatabaseName")
   @path

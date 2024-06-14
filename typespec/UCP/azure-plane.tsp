@@ -42,56 +42,60 @@ namespace Ucp;
 
 @doc("The Azure plane resource.")
 model AzurePlaneResource
-    is TrackedResourceRequired<AzurePlaneResourceProperties, "System.Azure/planes", "planes"> {
-    @doc("The plane name.")
-    @segment("azure")
-    @path
-    @key("planeName")
-    name: ResourceNameString;
+  is TrackedResourceRequired<
+    AzurePlaneResourceProperties,
+    "System.Azure/planes",
+    "planes"
+  > {
+  @doc("The plane name.")
+  @segment("azure")
+  @path
+  @key("planeName")
+  name: ResourceNameString;
 }
 
 @doc("The Plane properties.")
 model AzurePlaneResourceProperties {
-    @doc("The status of the asynchronous operation.")
-    @visibility("read")
-    provisioningState?: ProvisioningState;
+  @doc("The status of the asynchronous operation.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
 
-    @doc("The URL used to proxy requests.")
-    url: string;
+  @doc("The URL used to proxy requests.")
+  url: string;
 }
 
 @route("/planes")
 @armResourceOperations
 interface AzurePlanes {
-    @doc("List azure planes")
-    @get
-    @route("/azure")
-    @armResourceList(AzurePlaneResource)
-    list(
-        ...ApiVersionParameter,
-    ): ArmResponse<ResourceListResult<AzurePlaneResource>> | ErrorResponse;
+  @doc("List azure planes")
+  @get
+  @route("/azure")
+  @armResourceList(AzurePlaneResource)
+  list(
+    ...ApiVersionParameter,
+  ): ArmResponse<ResourceListResult<AzurePlaneResource>> | ErrorResponse;
 
-    @doc("Get a plane by name")
-    get is UcpResourceRead<
-        AzurePlaneResource,
-        PlaneBaseParameters<AzurePlaneResource>
-    >;
+  @doc("Get a plane by name")
+  get is UcpResourceRead<
+    AzurePlaneResource,
+    PlaneBaseParameters<AzurePlaneResource>
+  >;
 
-    @doc("Create or update a plane")
-    createOrUpdate is UcpResourceCreateOrUpdateAsync<
-        AzurePlaneResource,
-        PlaneBaseParameters<AzurePlaneResource>
-    >;
+  @doc("Create or update a plane")
+  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+    AzurePlaneResource,
+    PlaneBaseParameters<AzurePlaneResource>
+  >;
 
-    @doc("Update a plane")
-    update is UcpCustomPatchAsync<
-        AzurePlaneResource,
-        PlaneBaseParameters<AzurePlaneResource>
-    >;
+  @doc("Update a plane")
+  update is UcpCustomPatchAsync<
+    AzurePlaneResource,
+    PlaneBaseParameters<AzurePlaneResource>
+  >;
 
-    @doc("Delete a plane")
-    delete is UcpResourceDeleteAsync<
-        AzurePlaneResource,
-        PlaneBaseParameters<AzurePlaneResource>
-    >;
+  @doc("Delete a plane")
+  delete is UcpResourceDeleteAsync<
+    AzurePlaneResource,
+    PlaneBaseParameters<AzurePlaneResource>
+  >;
 }
