@@ -108,7 +108,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	case datamodel.AzureServicePrincipalCredentialKind:
 		azureServicePrincipalCredential := s.ServicePrincipal
 		if azureServicePrincipalCredential.ClientID == "" || azureServicePrincipalCredential.ClientSecret == "" || azureServicePrincipalCredential.TenantID == "" {
-			return errors.New("empty clientID, tenantID, or client secret provided for Azure service principal")
+			return errors.New("Client ID, Tenant ID, or Client Secret can't be empty")
 		}
 
 		// Do not instantiate new client unless the secret is rotated.
@@ -121,7 +121,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 			return nil
 		}
 
-		logger.Info("Retreived Azure Credential - ClientID: " + azureServicePrincipalCredential.ClientID)
+		logger.Info("Retrieved Azure Credential - ClientID: " + azureServicePrincipalCredential.ClientID)
 
 		// Rotate credentials by creating new ClientSecretCredential.
 		var opt *azidentity.ClientSecretCredentialOptions
@@ -156,7 +156,7 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 			return nil
 		}
 
-		logger.Info("Retreived Azure Credential - ClientID: " + azureWorkloadIdentityCredential.ClientID)
+		logger.Info("Retrieved Azure Credential - ClientID: " + azureWorkloadIdentityCredential.ClientID)
 
 		var opt *azidentity.DefaultAzureCredentialOptions
 		if c.options.ClientOptions != nil {

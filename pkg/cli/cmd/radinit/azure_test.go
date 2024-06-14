@@ -47,19 +47,15 @@ func Test_enterAzureCloudProvider_ServicePrincipal(t *testing.T) {
 		Name: to.Ptr("test-resource-group"),
 	}
 
-	// selectAzureSubscription
 	setAzureSubscriptions(client, &azure.SubscriptionResult{Default: &subscription, Subscriptions: []azure.Subscription{subscription}})
 	setAzureSubscriptionConfirmPrompt(prompter, subscription.Name, prompt.ConfirmYes)
 
-	// selectAzureResourceGroup
 	setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmNo)
 	setAzureResourceGroups(client, subscription.ID, []armresources.ResourceGroup{resourceGroup})
 	setAzureResourceGroupPrompt(prompter, []string{*resourceGroup.Name}, *resourceGroup.Name)
 
-	// selectCredentialKind
 	setAzureCredentialKindPrompt(prompter, "Service Principal")
 
-	// service principal
 	setAzureServicePrincipalAppIDPrompt(prompter, "service-principal-app-id")
 	setAzureServicePrincipalPasswordPrompt(prompter, "service-principal-password")
 	setAzureServicePrincipalTenantIDPrompt(prompter, "service-principal-tenant-id")
@@ -102,19 +98,15 @@ func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
 		Name: to.Ptr("test-resource-group"),
 	}
 
-	// selectAzureSubscription
 	setAzureSubscriptions(client, &azure.SubscriptionResult{Default: &subscription, Subscriptions: []azure.Subscription{subscription}})
 	setAzureSubscriptionConfirmPrompt(prompter, subscription.Name, prompt.ConfirmYes)
 
-	// selectAzureResourceGroup
 	setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmNo)
 	setAzureResourceGroups(client, subscription.ID, []armresources.ResourceGroup{resourceGroup})
 	setAzureResourceGroupPrompt(prompter, []string{*resourceGroup.Name}, *resourceGroup.Name)
 
-	// selectCredentialKind
 	setAzureCredentialKindPrompt(prompter, "Workload Identity")
 
-	// workload identity
 	setAzureWorkloadIdentityAppIDPrompt(prompter, "service-principal-app-id")
 	setAzureWorkloadIdentityTenantIDPrompt(prompter, "service-principal-tenant-id")
 

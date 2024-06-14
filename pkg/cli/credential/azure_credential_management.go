@@ -46,13 +46,13 @@ type AzureCredentialManagementClientInterface interface {
 }
 
 type AzureCredentialProperties struct {
-	// Kind of the Azure credential
+	// Kind is the credential kind (ServicePrincipal or WorkloadIdentity)
 	Kind *string
 
-	// Service Principal properties
+	// ServicePrincipal is the properties for an Azure service principal credential
 	ServicePrincipal *AzureServicePrincipalCredentialProperties
 
-	// Workload Identity properties
+	// WorkloadIdentity is the properties for an Azure workload identity credential
 	WorkloadIdentity *AzureWorkloadIdentityCredentialProperties
 }
 
@@ -60,7 +60,7 @@ type AzureServicePrincipalCredentialProperties struct {
 	// clientId for the Azure credential
 	ClientID *string
 
-	// The credential kind
+	// kind for the Azure credential (must be ServicePrincipal)
 	Kind *string
 
 	// tenantId for the Azure credential
@@ -71,7 +71,7 @@ type AzureWorkloadIdentityCredentialProperties struct {
 	// clientId for the Azure credential
 	ClientID *string
 
-	// The credential kind
+	// kind for the Azure credential (must be WorkloadIdentity)
 	Kind *string
 
 	// tenantId for the Azure credential

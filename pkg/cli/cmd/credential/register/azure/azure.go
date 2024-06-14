@@ -18,8 +18,8 @@ package azure
 
 import (
 	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
-	credential_register_azure_sp "github.com/radius-project/radius/pkg/cli/cmd/credential/register/azure/sp"
-	credential_register_azure_wi "github.com/radius-project/radius/pkg/cli/cmd/credential/register/azure/wi"
+	azuresp "github.com/radius-project/radius/pkg/cli/cmd/credential/register/azure/sp"
+	azurewi "github.com/radius-project/radius/pkg/cli/cmd/credential/register/azure/wi"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 )
@@ -40,10 +40,10 @@ rad credential register azure wi --client-id <client id> --tenant-id <tenant id>
 `,
 	}
 
-	azureSP, _ := credential_register_azure_sp.NewCommand(factory)
+	azureSP, _ := azuresp.NewCommand(factory)
 	cmd.AddCommand(azureSP)
 
-	azureWI, _ := credential_register_azure_wi.NewCommand(factory)
+	azureWI, _ := azurewi.NewCommand(factory)
 	cmd.AddCommand(azureWI)
 
 	return cmd

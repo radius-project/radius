@@ -69,17 +69,17 @@ func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name str
 		case *ucpapi.InternalCredentialStorageProperties:
 			storage = c
 		default:
-			return nil, errors.New("invalid InternalCredentialStorageProperties")
+			return nil, errors.New("Azure Credential is invalid - field 'properties.storage' is not InternalCredentialStorageProperties")
 		}
 	case *ucpapi.AzureWorkloadIdentityProperties:
 		switch c := p.Storage.(type) {
 		case *ucpapi.InternalCredentialStorageProperties:
 			storage = c
 		default:
-			return nil, errors.New("invalid InternalCredentialStorageProperties")
+			return nil, errors.New("Azure Credential is invalid - field 'properties.storage' is not InternalCredentialStorageProperties")
 		}
 	default:
-		return nil, errors.New("invalid AzureCredentialProperties")
+		return nil, errors.New("Azure Credential is invalid - field 'properties' is not AzureServicePrincipalProperties or AzureWorkloadIdentityProperties")
 	}
 
 	secretName := to.String(storage.SecretName)

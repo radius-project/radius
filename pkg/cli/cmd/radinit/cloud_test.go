@@ -32,7 +32,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 	azureProviderServicePrincipal := azure.Provider{
 		SubscriptionID: "test-subscription-id",
 		ResourceGroup:  "test-resource-group",
-		CredentialKind: "ServicePrincipal",
+		CredentialKind: azure.AzureCredentialKindServicePrincipal,
 		ServicePrincipal: &azure.ServicePrincipalCredential{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
@@ -43,7 +43,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 	azureProviderWorkloadIdentity := azure.Provider{
 		SubscriptionID: "test-subscription-id",
 		ResourceGroup:  "test-resource-group",
-		CredentialKind: "WorkloadIdentity",
+		CredentialKind: azure.AzureCredentialKindWorkloadIdentity,
 		WorkloadIdentity: &azure.WorkloadIdentityCredential{
 			ClientID: "test-client-id",
 			TenantID: "test-tenant-id",
