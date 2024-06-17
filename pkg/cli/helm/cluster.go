@@ -76,6 +76,7 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.ChartPath = cliOptions.Radius.ChartPath
 	}
 
+	fmt.Println("SET ARGS: ", cliOptions.Radius.SetArgs)
 	if len(cliOptions.Radius.SetArgs) > 0 {
 		options.Radius.SetArgs = cliOptions.Radius.SetArgs
 	}

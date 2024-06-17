@@ -32,6 +32,8 @@ type initOptions struct {
 	CloudProviders cloudProviderOptions
 	Recipes        recipePackOptions
 	Application    applicationOptions
+	// SetValues is a list of values that will be passed to Helm when installing the application.
+	SetValues []string
 }
 
 // clusterOptions holds all of the options that will be used to initialize the Kubernetes cluster.

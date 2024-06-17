@@ -60,7 +60,9 @@ func Test_enterAzureCloudProvider_ServicePrincipal(t *testing.T) {
 	setAzureServicePrincipalPasswordPrompt(prompter, "service-principal-password")
 	setAzureServicePrincipalTenantIDPrompt(prompter, "service-principal-tenant-id")
 
-	provider, err := runner.enterAzureCloudProvider(context.Background())
+	options := &initOptions{}
+
+	provider, err := runner.enterAzureCloudProvider(context.Background(), options)
 	require.NoError(t, err)
 
 	expected := &azure.Provider{
@@ -80,6 +82,9 @@ func Test_enterAzureCloudProvider_ServicePrincipal(t *testing.T) {
 		Params: []any{subscription.ID, *resourceGroup.Name},
 	}}
 	require.Equal(t, expectedOutput, outputSink.Writes)
+
+	expectedOptions := &initOptions{}
+	require.Equal(t, expectedOptions, options)
 }
 
 func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
@@ -110,7 +115,9 @@ func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
 	setAzureWorkloadIdentityAppIDPrompt(prompter, "service-principal-app-id")
 	setAzureWorkloadIdentityTenantIDPrompt(prompter, "service-principal-tenant-id")
 
-	provider, err := runner.enterAzureCloudProvider(context.Background())
+	options := &initOptions{}
+
+	provider, err := runner.enterAzureCloudProvider(context.Background(), options)
 	require.NoError(t, err)
 
 	expected := &azure.Provider{
@@ -128,6 +135,10 @@ func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
 		Format: azureWorkloadIdentityCreateInstructionsFmt,
 	}}
 	require.Equal(t, expectedOutput, outputSink.Writes)
+
+	expectedOptions := &initOptions{}
+	expectedOptions.SetValues = []string{"global.azureWorkloadIdentity.enabled=true"}
+	require.Equal(t, expectedOptions, options)
 }
 
 func Test_selectAzureSubscription(t *testing.T) {

@@ -54,7 +54,7 @@ const (
 	azureWorkloadIdenityCredentialKind            = "Workload Identity"
 )
 
-func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, error) {
+func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptions) (*azure.Provider, error) {
 	subscription, err := r.selectAzureSubscription(ctx)
 	if err != nil {
 		return nil, err
@@ -123,6 +123,9 @@ func (r *Runner) enterAzureCloudProvider(ctx context.Context) (*azure.Provider, 
 		if err != nil {
 			return nil, err
 		}
+
+		// Set the value for the Helm chart
+		options.SetValues = append(options.SetValues, "global.azureWorkloadIdentity.enabled=true")
 
 		return &azure.Provider{
 			SubscriptionID: subscription.ID,
