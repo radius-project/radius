@@ -89,8 +89,6 @@ func (c *UCPCredential) refreshExpiry() {
 }
 
 func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
 	c.tokenCredMu.Lock()
 	defer c.tokenCredMu.Unlock()
 
@@ -106,78 +104,90 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 
 	switch s.Kind {
 	case datamodel.AzureServicePrincipalCredentialKind:
-		azureServicePrincipalCredential := s.ServicePrincipal
-		if azureServicePrincipalCredential.ClientID == "" || azureServicePrincipalCredential.ClientSecret == "" || azureServicePrincipalCredential.TenantID == "" {
-			return errors.New("Client ID, Tenant ID, or Client Secret can't be empty")
-		}
-
-		// Do not instantiate new client unless the secret is rotated.
-		if c.credential != nil &&
-			c.credential.ServicePrincipal != nil &&
-			c.credential.ServicePrincipal.ClientSecret == azureServicePrincipalCredential.ClientSecret &&
-			c.credential.ServicePrincipal.ClientID == azureServicePrincipalCredential.ClientID &&
-			c.credential.ServicePrincipal.TenantID == azureServicePrincipalCredential.TenantID {
-			c.refreshExpiry()
-			return nil
-		}
-
-		logger.Info("Retrieved Azure Credential - ClientID: " + azureServicePrincipalCredential.ClientID)
-
-		// Rotate credentials by creating new ClientSecretCredential.
-		var opt *azidentity.ClientSecretCredentialOptions
-		if c.options.ClientOptions != nil {
-			opt = &azidentity.ClientSecretCredentialOptions{
-				ClientOptions: *c.options.ClientOptions,
-			}
-		}
-
-		azCred, err := azidentity.NewClientSecretCredential(azureServicePrincipalCredential.TenantID, azureServicePrincipalCredential.ClientID, azureServicePrincipalCredential.ClientSecret, opt)
-		if err != nil {
-			return err
-		}
-
-		c.tokenCred = azCred
-		c.credential = s
-
-		c.refreshExpiry()
-		return nil
+		return refreshAzureServicePrincipalCredentials(ctx, c, s)
 	case datamodel.AzureWorkloadIdentityCredentialKind:
-		azureWorkloadIdentityCredential := s.WorkloadIdentity
-		if azureWorkloadIdentityCredential.ClientID == "" || azureWorkloadIdentityCredential.TenantID == "" {
-			return errors.New("empty clientID or tenantID provided for Azure workload identity")
-		}
-
-		// Do not instantiate new client unless clientId and tenantId are changed.
-		if c.credential != nil &&
-			c.credential.WorkloadIdentity != nil &&
-			c.credential.WorkloadIdentity.ClientID == azureWorkloadIdentityCredential.ClientID &&
-			c.credential.WorkloadIdentity.TenantID == azureWorkloadIdentityCredential.TenantID {
-			c.refreshExpiry()
-			return nil
-		}
-
-		logger.Info("Retrieved Azure Credential - ClientID: " + azureWorkloadIdentityCredential.ClientID)
-
-		var opt *azidentity.DefaultAzureCredentialOptions
-		if c.options.ClientOptions != nil {
-			opt = &azidentity.DefaultAzureCredentialOptions{
-				ClientOptions: *c.options.ClientOptions,
-			}
-		}
-
-		azCred, err := azidentity.NewDefaultAzureCredential(opt)
-		if err != nil {
-			return err
-		}
-
-		c.tokenCred = azCred
-		c.credential = s
-
-		c.refreshExpiry()
-		return nil
+		return refreshAzureWorkloadIdentityCredentials(ctx, c, s)
 	default:
 		return fmt.Errorf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", s.Kind)
 	}
+}
+
+func refreshAzureServicePrincipalCredentials(ctx context.Context, c *UCPCredential, s *sdk_cred.AzureCredential) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	azureServicePrincipalCredential := s.ServicePrincipal
+	if azureServicePrincipalCredential.ClientID == "" || azureServicePrincipalCredential.ClientSecret == "" || azureServicePrincipalCredential.TenantID == "" {
+		return errors.New("Client ID, Tenant ID, or Client Secret can't be empty")
+	}
+
+	// Do not instantiate new client unless the secret is rotated.
+	if c.credential != nil &&
+		c.credential.ServicePrincipal != nil &&
+		c.credential.ServicePrincipal.ClientSecret == azureServicePrincipalCredential.ClientSecret &&
+		c.credential.ServicePrincipal.ClientID == azureServicePrincipalCredential.ClientID &&
+		c.credential.ServicePrincipal.TenantID == azureServicePrincipalCredential.TenantID {
+		c.refreshExpiry()
+		return nil
+	}
+
+	logger.Info("Retrieved Azure Credential - ClientID: " + azureServicePrincipalCredential.ClientID)
+
+	// Rotate credentials by creating new ClientSecretCredential.
+	var opt *azidentity.ClientSecretCredentialOptions
+	if c.options.ClientOptions != nil {
+		opt = &azidentity.ClientSecretCredentialOptions{
+			ClientOptions: *c.options.ClientOptions,
+		}
+	}
+
+	azCred, err := azidentity.NewClientSecretCredential(azureServicePrincipalCredential.TenantID, azureServicePrincipalCredential.ClientID, azureServicePrincipalCredential.ClientSecret, opt)
+	if err != nil {
+		return err
+	}
+
+	c.tokenCred = azCred
+	c.credential = s
+
+	c.refreshExpiry()
+	return nil
+}
+
+func refreshAzureWorkloadIdentityCredentials(ctx context.Context, c *UCPCredential, s *sdk_cred.AzureCredential) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	azureWorkloadIdentityCredential := s.WorkloadIdentity
+	if azureWorkloadIdentityCredential.ClientID == "" || azureWorkloadIdentityCredential.TenantID == "" {
+		return errors.New("empty clientID or tenantID provided for Azure workload identity")
+	}
+
+	// Do not instantiate new client unless clientId and tenantId are changed.
+	if c.credential != nil &&
+		c.credential.WorkloadIdentity != nil &&
+		c.credential.WorkloadIdentity.ClientID == azureWorkloadIdentityCredential.ClientID &&
+		c.credential.WorkloadIdentity.TenantID == azureWorkloadIdentityCredential.TenantID {
+		c.refreshExpiry()
+		return nil
+	}
+
+	logger.Info("Retrieved Azure Credential - ClientID: " + azureWorkloadIdentityCredential.ClientID)
+
+	var opt *azidentity.DefaultAzureCredentialOptions
+	if c.options.ClientOptions != nil {
+		opt = &azidentity.DefaultAzureCredentialOptions{
+			ClientOptions: *c.options.ClientOptions,
+		}
+	}
+
+	azCred, err := azidentity.NewDefaultAzureCredential(opt)
+	if err != nil {
+		return err
+	}
+
+	c.tokenCred = azCred
+	c.credential = s
+
+	c.refreshExpiry()
+	return nil
 }
 
 // GetToken attempts to refresh the Azure credential if it is expired and then returns an
