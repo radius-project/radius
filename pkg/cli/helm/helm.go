@@ -20,15 +20,19 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	containerderrors "github.com/containerd/containerd/remotes/errors"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/registry"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -79,7 +83,6 @@ func locateChartFile(dirPath string) (string, error) {
 
 func helmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pull := helm.NewPull()
-	pull.RepoURL = repoUrl
 	pull.Settings = &cli.EnvSettings{}
 	pullopt := helm.WithConfig(config)
 	pullopt(pull)
@@ -101,9 +104,42 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 
 	pull.DestDir = dir
 
-	_, err = pull.Run(releaseName)
+	var chartRef string
+
+	if !registry.IsOCI(repoUrl) {
+		// For non-OCI registries (like contour), we need to set the repo URL
+		// to the registry URL. The chartRef is the release name.
+		// ex.
+		// pull.RepoURL = https://charts.bitnami.com/bitnami
+		// pull.Run("contour")
+		pull.RepoURL = repoUrl
+		chartRef = releaseName
+	} else {
+		// For OCI registries (like radius), we will use the
+		// repo URL + the releaseName as the chartRef.
+		// pull.Run("oci://ghcr.io/radius-project/helm-chart/radius")
+		chartRef = fmt.Sprintf("%s/%s", repoUrl, releaseName)
+
+		// Since we are using an OCI registry, we need to set the registry client
+		registryClient, err := registry.NewClient()
+		if err != nil {
+			return nil, err
+		}
+
+		pull.SetRegistryClient(registryClient)
+	}
+
+	_, err = pull.Run(chartRef)
 	if err != nil {
-		return nil, fmt.Errorf("error downloading helm chart from the registry for version: %s, release name: %s. Error: %w", version, releaseName, err)
+		// Error handling for a specific case where credentials are stale.
+		// This happens for ghcr in particular because ghcr does not use
+		// subdomains - the scope of a login is all of ghcr.io.
+		// https://github.com/helm/helm/issues/12584
+		if isHelm403Error(err) {
+			return nil, clierrors.Message("recieved 403 unauthorized when downloading helm chart from the registry. you may want to perform a `docker logout ghcr.io` and re-try the command")
+		}
+
+		return nil, clierrors.MessageWithCause(err, fmt.Sprintf("error downloading helm chart from the registry for version: %s, release name: %s", version, releaseName))
 	}
 
 	chartPath, err := locateChartFile(dir)
@@ -135,4 +171,17 @@ func runUpgrade(upgradeClient *helm.Upgrade, releaseName string, helmChart *char
 		time.Sleep(retryTimeout)
 	}
 	return err
+}
+
+// isHelm403Error is a helper function to determine if an error is a specific helm error
+// (403 unauthorized when downloading a helm chart from ghcr.io) from a chain of errors.
+func isHelm403Error(err error) bool {
+	var errUnexpectedStatus containerderrors.ErrUnexpectedStatus
+	if errors.As(err, &errUnexpectedStatus) {
+		if errUnexpectedStatus.StatusCode == http.StatusForbidden && strings.Contains(errUnexpectedStatus.RequestURL, "ghcr.io") {
+			return true
+		}
+	}
+
+	return false
 }
