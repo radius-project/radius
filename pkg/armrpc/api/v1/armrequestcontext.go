@@ -174,7 +174,7 @@ type ARMRequestContext struct {
 	// HTTPMethod represents the original method.
 	HTTPMethod string
 	// OriginalURL represents the original URL of the request.
-	OrignalURL url.URL
+	OriginalURL url.URL
 }
 
 // FromARMRequest extracts proxy request headers from http.Request.
@@ -229,8 +229,8 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 		SkipToken: r.URL.Query().Get(SkipTokenParameterName),
 		Top:       queryItemCount,
 
-		HTTPMethod: r.Method,
-		OrignalURL: *r.URL,
+		HTTPMethod:  r.Method,
+		OriginalURL: *r.URL,
 	}
 
 	return rpcCtx, nil
