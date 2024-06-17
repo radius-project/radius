@@ -98,7 +98,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	// use the original URL instead.
 	requestCtx := v1.ARMRequestContextFromContext(ctx)
 	id := requestCtx.ResourceID
-	relativePath := middleware.GetRelativePath(p.Options().PathBase, requestCtx.OrignalURL.Path)
+	relativePath := middleware.GetRelativePath(p.Options().PathBase, requestCtx.OriginalURL.Path)
 
 	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, p.StorageClient(), id)
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
