@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/radius-project/radius/pkg/cli/tools"
+	"github.com/radius-project/radius/pkg/cli/bicep/tools"
 )
 
 const (
