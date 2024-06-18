@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_credentialFormat_Azure_ServicePrincipal(t *testing.T) {
+func Test_credentialFormatAzureServicePrincipal(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
 		CloudProviderStatus: credential.CloudProviderStatus{
 			Name:    "test",
@@ -42,10 +42,9 @@ func Test_credentialFormat_Azure_ServicePrincipal(t *testing.T) {
 	}
 
 	buffer := &bytes.Buffer{}
-	credentialFormatOutput, err := credentialFormat("azure", obj)
-	require.NoError(t, err)
+	credentialFormatOutput := credentialFormatAzureServicePrincipal()
 
-	err = output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
+	err := output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
 	require.NoError(t, err)
 
 	expected := "NAME      REGISTERED  KIND              CLIENTID        TENANTID\ntest      true        ServicePrincipal  test-client-id  test-tenant-id\n"
@@ -68,30 +67,13 @@ func Test_credentialFormat_Azure_WorkloadIdentity(t *testing.T) {
 	}
 
 	buffer := &bytes.Buffer{}
-	credentialFormatOutput, err := credentialFormat("azure", obj)
-	require.NoError(t, err)
+	credentialFormatOutput := credentialFormatAzureWorkloadIdentity()
 
-	err = output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
+	err := output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
 	require.NoError(t, err)
 
 	expected := "NAME      REGISTERED  KIND              CLIENTID        TENANTID\ntest      true        WorkloadIdentity  test-client-id  test-tenant-id\n"
 	require.Equal(t, expected, buffer.String())
-}
-
-func Test_credentialFormat_Azure_UnknownKind(t *testing.T) {
-	obj := credential.ProviderCredentialConfiguration{
-		CloudProviderStatus: credential.CloudProviderStatus{
-			Name:    "test",
-			Enabled: true,
-		},
-		AzureCredentials: &credential.AzureCredentialProperties{
-			Kind: to.Ptr("UnknownKind"),
-		},
-	}
-
-	credentialFormatOutput, err := credentialFormat("azure", obj)
-	require.Equal(t, "unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got UnknownKind)", err.Error())
-	require.Equal(t, output.FormatterOptions{}, credentialFormatOutput)
 }
 
 func Test_credentialFormat_AWS(t *testing.T) {
@@ -106,28 +88,11 @@ func Test_credentialFormat_AWS(t *testing.T) {
 	}
 
 	buffer := &bytes.Buffer{}
-	credentialFormatOutput, err := credentialFormat("aws", obj)
-	require.NoError(t, err)
+	credentialFormatOutput := credentialFormatAWS()
 
-	err = output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
+	err := output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
 	require.NoError(t, err)
 
 	expected := "NAME      REGISTERED  ACCESSKEYID\ntest      true        test-access-key-id\n"
 	require.Equal(t, expected, buffer.String())
-}
-
-func Test_credentialFormat_UnknownProvider(t *testing.T) {
-	obj := credential.ProviderCredentialConfiguration{
-		CloudProviderStatus: credential.CloudProviderStatus{
-			Name:    "test",
-			Enabled: true,
-		},
-		AzureCredentials: &credential.AzureCredentialProperties{
-			Kind: to.Ptr("UnknownKind"),
-		},
-	}
-
-	credentialFormatOutput, err := credentialFormat("unknown", obj)
-	require.Equal(t, "unknown credential type: unknown", err.Error())
-	require.Equal(t, output.FormatterOptions{}, credentialFormatOutput)
 }

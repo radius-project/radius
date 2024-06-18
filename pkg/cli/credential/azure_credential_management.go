@@ -45,6 +45,8 @@ type AzureCredentialManagementClientInterface interface {
 	Delete(ctx context.Context, name string) (bool, error)
 }
 
+// AzureCredentialProperties is the representation of an Azure credential.
+// It contains the kind of the credential (ServicePrincipal or WorkloadIdentity) and the properties for each kind.
 type AzureCredentialProperties struct {
 	// Kind is the credential kind (ServicePrincipal or WorkloadIdentity)
 	Kind *string
@@ -56,6 +58,7 @@ type AzureCredentialProperties struct {
 	WorkloadIdentity *AzureWorkloadIdentityCredentialProperties
 }
 
+// AzureServicePrincipalCredentialProperties is the representation of an Azure service principal credential.
 type AzureServicePrincipalCredentialProperties struct {
 	// clientId for the Azure credential
 	ClientID *string
@@ -67,6 +70,7 @@ type AzureServicePrincipalCredentialProperties struct {
 	TenantID *string
 }
 
+// AzureWorkloadIdentityCredentialProperties is the representation of an Azure workload identity credential.
 type AzureWorkloadIdentityCredentialProperties struct {
 	// clientId for the Azure credential
 	ClientID *string

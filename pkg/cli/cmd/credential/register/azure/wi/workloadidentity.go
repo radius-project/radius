@@ -22,7 +22,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
-	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -37,10 +36,6 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad credential create azure wi` command.
-//
-
-// NewCommand creates a new cobra command for registering an Azure cloud provider credential for a Radius installation,
-// which requires a service principal with the Contributor or Owner role assigned to the provided resource group.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -71,10 +66,10 @@ rad credential register azure wi --client-id <client id/app id> --tenant-id <ten
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 
-	cmd.Flags().String("client-id", "", "The client id or app id of an Azure service principal.")
+	cmd.Flags().StringVar(&runner.ClientID, "client-id", "", "The client id or app id of an Azure service principal.")
 	_ = cmd.MarkFlagRequired("client-id")
 
-	cmd.Flags().String("tenant-id", "", "The tenant id of an Azure service principal.")
+	cmd.Flags().StringVar(&runner.TenantID, "tenant-id", "", "The tenant id of an Azure service principal.")
 	_ = cmd.MarkFlagRequired("tenant-id")
 
 	return cmd, runner
@@ -119,25 +114,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.Format = format
-
-	clientID, err := cmd.Flags().GetString("client-id")
-	if err != nil {
-		return err
-	}
-
-	tenantID, err := cmd.Flags().GetString("tenant-id")
-	if err != nil {
-		return err
-	}
-
-	r.ClientID = clientID
-	r.TenantID = tenantID
-
-	kubeContext, ok := r.Workspace.KubernetesContext()
-	if !ok {
-		return clierrors.Message("A Kubernetes connection is required.")
-	}
-	r.KubeContext = kubeContext
 
 	return nil
 }

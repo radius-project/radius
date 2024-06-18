@@ -17,90 +17,78 @@ limitations under the License.
 package show
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
-// credentialFormat function returns a FormatterOptions struct based on the credentialType parameter, which can
-// be either "azure" or "aws".
-func credentialFormat(credentialType string, providers credential.ProviderCredentialConfiguration) (output.FormatterOptions, error) {
-	if strings.EqualFold(credentialType, "azure") {
-		switch *providers.AzureCredentials.Kind {
-		case datamodel.AzureServicePrincipalCredentialKind:
-			return output.FormatterOptions{
-				Columns: []output.Column{
-					{
-						Heading:  "NAME",
-						JSONPath: "{ .Name }",
-					},
-					{
-						Heading:  "REGISTERED",
-						JSONPath: "{ .Enabled }",
-					},
-					{
-						Heading:  "KIND",
-						JSONPath: "{ .AzureCredentials.Kind }",
-					},
-					{
-						Heading:  "CLIENTID",
-						JSONPath: "{ .AzureCredentials.ServicePrincipal.ClientID }",
-					},
-					{
-						Heading:  "TENANTID",
-						JSONPath: "{ .AzureCredentials.ServicePrincipal.TenantID }",
-					},
-				},
-			}, nil
-		case datamodel.AzureWorkloadIdentityCredentialKind:
-			return output.FormatterOptions{
-				Columns: []output.Column{
-					{
-						Heading:  "NAME",
-						JSONPath: "{ .Name }",
-					},
-					{
-						Heading:  "REGISTERED",
-						JSONPath: "{ .Enabled }",
-					},
-					{
-						Heading:  "KIND",
-						JSONPath: "{ .AzureCredentials.Kind }",
-					},
-					{
-						Heading:  "CLIENTID",
-						JSONPath: "{ .AzureCredentials.WorkloadIdentity.ClientID }",
-					},
-					{
-						Heading:  "TENANTID",
-						JSONPath: "{ .AzureCredentials.WorkloadIdentity.TenantID }",
-					},
-				},
-			}, nil
-		default:
-			return output.FormatterOptions{}, fmt.Errorf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", *providers.AzureCredentials.Kind)
-		}
-	} else if strings.EqualFold(credentialType, "aws") {
-		return output.FormatterOptions{
-			Columns: []output.Column{
-				{
-					Heading:  "NAME",
-					JSONPath: "{ .Name }",
-				},
-				{
-					Heading:  "REGISTERED",
-					JSONPath: "{ .Enabled }",
-				},
-				{
-					Heading:  "ACCESSKEYID",
-					JSONPath: "{ .AWSCredentials.AccessKeyID }",
-				},
+func credentialFormatAzureServicePrincipal() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
 			},
-		}, nil
+			{
+				Heading:  "REGISTERED",
+				JSONPath: "{ .Enabled }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .AzureCredentials.Kind }",
+			},
+			{
+				Heading:  "CLIENTID",
+				JSONPath: "{ .AzureCredentials.ServicePrincipal.ClientID }",
+			},
+			{
+				Heading:  "TENANTID",
+				JSONPath: "{ .AzureCredentials.ServicePrincipal.TenantID }",
+			},
+		},
 	}
+}
 
-	return output.FormatterOptions{}, fmt.Errorf("unknown credential type: %s", credentialType)
+func credentialFormatAzureWorkloadIdentity() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "REGISTERED",
+				JSONPath: "{ .Enabled }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .AzureCredentials.Kind }",
+			},
+			{
+				Heading:  "CLIENTID",
+				JSONPath: "{ .AzureCredentials.WorkloadIdentity.ClientID }",
+			},
+			{
+				Heading:  "TENANTID",
+				JSONPath: "{ .AzureCredentials.WorkloadIdentity.TenantID }",
+			},
+		},
+	}
+}
+
+func credentialFormatAWS() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "REGISTERED",
+				JSONPath: "{ .Enabled }",
+			},
+			{
+				Heading:  "ACCESSKEYID",
+				JSONPath: "{ .AWSCredentials.AccessKeyID }",
+			},
+		},
+	}
 }

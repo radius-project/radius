@@ -136,8 +136,7 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			credentialFormatOutput, err := credentialFormat(runner.Kind, provider)
-			require.NoError(t, err)
+			credentialFormatOutput := credentialFormatAzureServicePrincipal()
 
 			expected := []any{
 				output.LogOutput{
@@ -206,8 +205,7 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			credentialFormatOutput, err := credentialFormat(runner.Kind, provider)
-			require.NoError(t, err)
+			credentialFormatOutput := credentialFormatAWS()
 
 			expected := []any{
 				output.LogOutput{
