@@ -26,7 +26,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/radius-project/radius/pkg/cli/tools"
+	"github.com/radius-project/radius/pkg/cli/bicep/tools"
 )
 
 // Official regex for semver
