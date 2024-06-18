@@ -42,6 +42,8 @@ func unmarshalAzureCredentialPropertiesClassification(rawMsg json.RawMessage) (A
 	switch m["kind"] {
 	case string(AzureCredentialKindServicePrincipal):
 		b = &AzureServicePrincipalProperties{}
+	case string(AzureCredentialKindWorkloadIdentity):
+		b = &AzureWorkloadIdentityProperties{}
 	default:
 		b = &AzureCredentialProperties{}
 	}

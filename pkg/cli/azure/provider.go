@@ -16,20 +16,33 @@ limitations under the License.
 
 package azure
 
+// AzureCredentialKind - Azure credential kinds supported.
+type AzureCredentialKind string
+
 const (
 	// ProviderDisplayName is the text used in display for Azure.
-	ProviderDisplayName = "Azure"
+	ProviderDisplayName                                     = "Azure"
+	AzureCredentialKindWorkloadIdentity AzureCredentialKind = "WorkloadIdentity"
+	AzureCredentialKindServicePrincipal AzureCredentialKind = "ServicePrincipal"
 )
 
 // Provider specifies the properties required to configure Azure provider for cloud resources
 type Provider struct {
 	SubscriptionID   string
 	ResourceGroup    string
-	ServicePrincipal *ServicePrincipal
+	CredentialKind   AzureCredentialKind
+	WorkloadIdentity *WorkloadIdentityCredential
+	ServicePrincipal *ServicePrincipalCredential
+}
+
+// Wor specifies the properties of an Azure service principal
+type WorkloadIdentityCredential struct {
+	ClientID string
+	TenantID string
 }
 
 // ServicePrincipal specifies the properties of an Azure service principal
-type ServicePrincipal struct {
+type ServicePrincipalCredential struct {
 	ClientID     string
 	ClientSecret string
 	TenantID     string

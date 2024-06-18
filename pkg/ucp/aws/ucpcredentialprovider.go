@@ -77,7 +77,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		return aws.Credentials{}, errors.New("invalid access key info")
 	}
 
-	logger.Info(fmt.Sprintf("Retreived AWS Credential - AccessKeyID: %s", s.AccessKeyID))
+	logger.Info(fmt.Sprintf("Retrieved AWS Credential - AccessKeyID: %s", s.AccessKeyID))
 
 	value := aws.Credentials{
 		AccessKeyID:     s.AccessKeyID,

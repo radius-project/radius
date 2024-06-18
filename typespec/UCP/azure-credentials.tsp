@@ -64,6 +64,9 @@ model AzureCredentialResource
 enum AzureCredentialKind {
   @doc("The Service Principal Credential")
   ServicePrincipal,
+
+  @doc("The Workload Identity Credential")
+  WorkloadIdentity,
 }
 
 @discriminator("kind")
@@ -77,9 +80,9 @@ model AzureCredentialProperties {
   provisioningState?: ProvisioningState;
 }
 
-@doc("The properties of Service Principal credential storage")
+@doc("The properties of Azure Service Principal credential storage")
 model AzureServicePrincipalProperties extends AzureCredentialProperties {
-  @doc("Service principal kind")
+  @doc("Service Principal kind")
   kind: AzureCredentialKind.ServicePrincipal;
 
   @doc("clientId for ServicePrincipal")
@@ -90,6 +93,21 @@ model AzureServicePrincipalProperties extends AzureCredentialProperties {
   clientSecret: string;
 
   @doc("tenantId for ServicePrincipal")
+  tenantId: string;
+
+  @doc("The storage properties")
+  storage: CredentialStorageProperties;
+}
+
+@doc("The properties of Azure Workload Identity credential storage")
+model AzureWorkloadIdentityProperties extends AzureCredentialProperties {
+  @doc("Workload Identity kind")
+  kind: AzureCredentialKind.WorkloadIdentity;
+
+  @doc("clientId for WorkloadIdentity")
+  clientId: string;
+
+  @doc("tenantId for WorkloadIdentity")
   tenantId: string;
 
   @doc("The storage properties")

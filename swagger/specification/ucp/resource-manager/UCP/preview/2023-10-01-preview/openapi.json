@@ -856,8 +856,11 @@
           }
         },
         "x-ms-examples": {
-          "List Azure credentials": {
-            "$ref": "./examples/AzureCredential_List.json"
+          "List Azure Service Principal credentials": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_List.json"
+          },
+          "List Azure Workload Identity credentials": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_List.json"
           }
         },
         "x-ms-pageable": {
@@ -904,8 +907,11 @@
           }
         },
         "x-ms-examples": {
-          "Get an Azure credential": {
-            "$ref": "./examples/AzureCredential_Get.json"
+          "Get an Azure Service Principal credential": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_Get.json"
+          },
+          "Get an Azure Workload Identity credential": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_Get.json"
           }
         }
       },
@@ -962,8 +968,11 @@
           }
         },
         "x-ms-examples": {
-          "Create or update an Azure credential": {
-            "$ref": "./examples/AzureCredential_CreateOrUpdate.json"
+          "Create or update an Azure Service Principal credential": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_CreateOrUpdate.json"
+          },
+          "Create or update an Azure Workload Identity credential": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_CreateOrUpdate.json"
           }
         }
       },
@@ -1014,8 +1023,11 @@
           }
         },
         "x-ms-examples": {
-          "Update an Azure credential": {
-            "$ref": "./examples/AzureCredential_Update.json"
+          "Update an Azure Service Principal credential": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_Update.json"
+          },
+          "Update an Azure Workload Identity credential": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_Update.json"
           }
         }
       },
@@ -1057,8 +1069,11 @@
           }
         },
         "x-ms-examples": {
-          "Delete an Azure credential": {
-            "$ref": "./examples/AzureCredential_Delete.json"
+          "Delete an Azure Service Principal credential": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_Delete.json"
+          },
+          "Delete an Azure Workload Identity credential": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_Delete.json"
           }
         }
       }
@@ -1829,7 +1844,8 @@
       "type": "string",
       "description": "Azure credential kinds supported.",
       "enum": [
-        "ServicePrincipal"
+        "ServicePrincipal",
+        "WorkloadIdentity"
       ],
       "x-ms-enum": {
         "name": "AzureCredentialKind",
@@ -1839,6 +1855,11 @@
             "name": "ServicePrincipal",
             "value": "ServicePrincipal",
             "description": "The Service Principal Credential"
+          },
+          {
+            "name": "WorkloadIdentity",
+            "value": "WorkloadIdentity",
+            "description": "The Workload Identity Credential"
           }
         ]
       }
@@ -1996,7 +2017,7 @@
     },
     "AzureServicePrincipalProperties": {
       "type": "object",
-      "description": "The properties of Service Principal credential storage",
+      "description": "The properties of Azure Service Principal credential storage",
       "properties": {
         "clientId": {
           "type": "string",
@@ -2028,6 +2049,35 @@
         }
       ],
       "x-ms-discriminator-value": "ServicePrincipal"
+    },
+    "AzureWorkloadIdentityProperties": {
+      "type": "object",
+      "description": "The properties of Azure Workload Identity credential storage",
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "description": "clientId for WorkloadIdentity"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "tenantId for WorkloadIdentity"
+        },
+        "storage": {
+          "$ref": "#/definitions/CredentialStorageProperties",
+          "description": "The storage properties"
+        }
+      },
+      "required": [
+        "clientId",
+        "tenantId",
+        "storage"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AzureCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "WorkloadIdentity"
     },
     "CredentialStorageKind": {
       "type": "string",

@@ -25,8 +25,11 @@ import (
 )
 
 const (
-	AzurePlaneType = "azure"
-	AWSPlaneType   = "aws"
+	AzurePlaneType    = "azure"
+	AWSPlaneType      = "aws"
+	AzureCredential   = "azure"
+	AzurePlaneName    = "azurecloud"
+	defaultSecretName = "default"
 )
 
 //go:generate mockgen -typed -destination=./mock_credentialmanagementclient.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential CredentialManagementClient
@@ -45,9 +48,24 @@ type CredentialManagementClient interface {
 	Delete(ctx context.Context, providerName string) (bool, error)
 }
 
-const (
-	defaultSecretName = "default"
-)
+// CloudProviderStatus is the representation of a cloud provider configuration.
+type CloudProviderStatus struct {
+	// Name is the name/kind of the provider. For right now this only supports Azure and AWS.
+	Name string
+
+	// Enabled is the enabled/disabled status of the provider.
+	Enabled bool
+}
+
+type ProviderCredentialConfiguration struct {
+	CloudProviderStatus
+
+	// AzureCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
+	AzureCredentials *AzureCredentialProperties
+
+	// AWSCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
+	AWSCredentials *AWSCredentialProperties
+}
 
 // UCPCredentialManagementClient implements operations to manage credentials on ucp.
 type UCPCredentialManagementClient struct {

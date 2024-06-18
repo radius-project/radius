@@ -96,8 +96,12 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 	}
 
 	if r.Options.CloudProviders.Azure != nil {
-		credential := r.getAzureCredential()
-		err := credentialClient.PutAzure(ctx, credential)
+		credential, err := r.getAzureCredential()
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to configure Azure credentials.")
+		}
+
+		err = credentialClient.PutAzure(ctx, credential)
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to configure Azure credentials.")
 		}

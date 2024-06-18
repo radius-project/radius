@@ -19,7 +19,7 @@ type AwsCredentialPropertiesClassification interface {
 // AzureCredentialPropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetAzureCredentialProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *AzureCredentialProperties, *AzureServicePrincipalProperties
+// - *AzureCredentialProperties, *AzureServicePrincipalProperties, *AzureWorkloadIdentityProperties
 type AzureCredentialPropertiesClassification interface {
 	// GetAzureCredentialProperties returns the AzureCredentialProperties content of the underlying type.
 	GetAzureCredentialProperties() *AzureCredentialProperties

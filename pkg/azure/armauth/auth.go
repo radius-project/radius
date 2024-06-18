@@ -30,6 +30,7 @@ import (
 const (
 	UCPCredentialAuth    = "UCPCredential"
 	ServicePrincipalAuth = "ServicePrincipal"
+	WorkloadIdentityAuth = "WorkloadIdentity"
 	ManagedIdentityAuth  = "ManagedIdentity"
 	CliAuth              = "CLI"
 )
@@ -67,6 +68,8 @@ func NewArmConfig(opt *Options) (*ArmConfig, error) {
 func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	authMethod := GetAuthMethod()
 
+	// Use the Azure SDK for Go to create a credential based on the authentication method
+	// https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=go#azure-identity-client-libraries
 	switch authMethod {
 	case UCPCredentialAuth:
 		return azcred.NewUCPCredential(azcred.UCPCredentialOptions{
@@ -76,6 +79,8 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 		return azidentity.NewEnvironmentCredential(nil)
 	case ManagedIdentityAuth:
 		return azidentity.NewManagedIdentityCredential(nil)
+	case WorkloadIdentityAuth:
+		return azidentity.NewDefaultAzureCredential(nil)
 	default:
 		return azidentity.NewAzureCLICredential(nil)
 	}
@@ -100,9 +105,4 @@ func GetAuthMethod() string {
 	} else {
 		return CliAuth
 	}
-}
-
-// IsServicePrincipalConfigured checks if ServicePrincipalAuth is the authentication method configured.
-func IsServicePrincipalConfigured() (bool, error) {
-	return GetAuthMethod() == ServicePrincipalAuth, nil
 }

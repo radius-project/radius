@@ -61,7 +61,8 @@ func (c *CreateOrUpdateAzureCredential) Run(ctx context.Context, w http.Response
 		return nil, err
 	}
 
-	if newResource.Properties.Kind != datamodel.AzureCredentialKind {
+	if newResource.Properties.Kind != datamodel.AzureServicePrincipalCredentialKind &&
+		newResource.Properties.Kind != datamodel.AzureWorkloadIdentityCredentialKind {
 		return armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"), nil
 	}
 
@@ -79,14 +80,29 @@ func (c *CreateOrUpdateAzureCredential) Run(ctx context.Context, w http.Response
 		newResource.Properties.Storage.InternalCredential.SecretName = secretName
 	}
 
-	// Save the credential secret
-	err = secret.SaveSecret(ctx, c.secretClient, secretName, newResource.Properties.AzureCredential)
-	if err != nil {
-		return nil, err
+	switch newResource.Properties.Kind {
+	case datamodel.AzureServicePrincipalCredentialKind:
+		if newResource.Properties.AzureCredential.ServicePrincipal == nil {
+			return armrpc_rest.NewBadRequestResponse("Invalid Service Principal Credential"), nil
+		}
+		// Save the credential secret
+		err = secret.SaveSecret(ctx, c.secretClient, secretName, newResource.Properties.AzureCredential)
+		if err != nil {
+			return nil, err
+		}
+		newResource.Properties.AzureCredential.ServicePrincipal.ClientSecret = ""
+	case datamodel.AzureWorkloadIdentityCredentialKind:
+		if newResource.Properties.AzureCredential.WorkloadIdentity == nil {
+			return armrpc_rest.NewBadRequestResponse("Invalid Workload Identity Credential"), nil
+		}
+		// Save the credential secret
+		err = secret.SaveSecret(ctx, c.secretClient, secretName, newResource.Properties.AzureCredential)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"), nil
 	}
-
-	// Do not save the secret in metadata store.
-	newResource.Properties.AzureCredential.ClientSecret = ""
 
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := c.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)

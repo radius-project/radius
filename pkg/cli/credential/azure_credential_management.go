@@ -45,39 +45,40 @@ type AzureCredentialManagementClientInterface interface {
 	Delete(ctx context.Context, name string) (bool, error)
 }
 
-const (
-	AzureCredential     = "azure"
-	AzurePlaneName      = "azurecloud"
-	azureCredentialKind = "ServicePrincipal"
-)
-
-// CloudProviderStatus is the representation of a cloud provider configuration.
-type CloudProviderStatus struct {
-	// Name is the name/kind of the provider. For right now this only supports Azure and AWS.
-	Name string
-
-	// Enabled is the enabled/disabled status of the provider.
-	Enabled bool
-}
-
-type ProviderCredentialConfiguration struct {
-	CloudProviderStatus
-
-	// AzureCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AzureCredentials *AzureCredentialProperties
-
-	// AWSCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AWSCredentials *AWSCredentialProperties
-}
-
+// AzureCredentialProperties is the representation of an Azure credential.
+// It contains the kind of the credential (ServicePrincipal or WorkloadIdentity) and the properties for each kind.
 type AzureCredentialProperties struct {
-	// clientId for ServicePrincipal
-	ClientID *string
-
-	// The credential kind
+	// Kind is the credential kind (ServicePrincipal or WorkloadIdentity)
 	Kind *string
 
-	// tenantId for ServicePrincipal
+	// ServicePrincipal is the properties for an Azure service principal credential
+	ServicePrincipal *AzureServicePrincipalCredentialProperties
+
+	// WorkloadIdentity is the properties for an Azure workload identity credential
+	WorkloadIdentity *AzureWorkloadIdentityCredentialProperties
+}
+
+// AzureServicePrincipalCredentialProperties is the representation of an Azure service principal credential.
+type AzureServicePrincipalCredentialProperties struct {
+	// clientId for the Azure credential
+	ClientID *string
+
+	// kind for the Azure credential (must be ServicePrincipal)
+	Kind *string
+
+	// tenantId for the Azure credential
+	TenantID *string
+}
+
+// AzureWorkloadIdentityCredentialProperties is the representation of an Azure workload identity credential.
+type AzureWorkloadIdentityCredentialProperties struct {
+	// clientId for the Azure credential
+	ClientID *string
+
+	// kind for the Azure credential (must be WorkloadIdentity)
+	Kind *string
+
+	// tenantId for the Azure credential
 	TenantID *string
 }
 
@@ -124,24 +125,59 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 		return ProviderCredentialConfiguration{}, err
 	}
 
-	azureServicePrincipal, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureServicePrincipalProperties)
+	azureCredential, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureCredentialProperties)
 	if !ok {
 		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AzureCredential)
 	}
 
-	providerCredentialConfiguration := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    AzureCredential,
-			Enabled: true,
-		},
-		AzureCredentials: &AzureCredentialProperties{
-			ClientID: azureServicePrincipal.ClientID,
-			Kind:     (*string)(azureServicePrincipal.Kind),
-			TenantID: azureServicePrincipal.TenantID,
-		},
-	}
+	azureCredentialKind := azureCredential.GetAzureCredentialProperties().Kind
 
-	return providerCredentialConfiguration, nil
+	switch *azureCredentialKind {
+	case ucp.AzureCredentialKindServicePrincipal:
+		azureServicePrincipal, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureServicePrincipalProperties)
+		if !ok {
+			return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AzureCredential)
+		}
+
+		providerCredentialConfiguration := ProviderCredentialConfiguration{
+			CloudProviderStatus: CloudProviderStatus{
+				Name:    AzureCredential,
+				Enabled: true,
+			},
+			AzureCredentials: &AzureCredentialProperties{
+				ServicePrincipal: &AzureServicePrincipalCredentialProperties{
+					ClientID: azureServicePrincipal.ClientID,
+					Kind:     (*string)(azureServicePrincipal.Kind),
+					TenantID: azureServicePrincipal.TenantID,
+				},
+			},
+		}
+
+		return providerCredentialConfiguration, nil
+	case ucp.AzureCredentialKindWorkloadIdentity:
+		azureWorkloadIdentity, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureWorkloadIdentityProperties)
+		if !ok {
+			return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AzureCredential)
+		}
+
+		providerCredentialConfiguration := ProviderCredentialConfiguration{
+			CloudProviderStatus: CloudProviderStatus{
+				Name:    AzureCredential,
+				Enabled: true,
+			},
+			AzureCredentials: &AzureCredentialProperties{
+				WorkloadIdentity: &AzureWorkloadIdentityCredentialProperties{
+					ClientID: azureWorkloadIdentity.ClientID,
+					Kind:     (*string)(azureWorkloadIdentity.Kind),
+					TenantID: azureWorkloadIdentity.TenantID,
+				},
+			},
+		}
+
+		return providerCredentialConfiguration, nil
+	default:
+		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AzureCredential)
+	}
 }
 
 // List, lists the credentials registered with all ucp provider planes

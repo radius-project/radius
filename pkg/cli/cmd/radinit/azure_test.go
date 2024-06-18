@@ -31,7 +31,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func Test_enterAzureCloudProvider(t *testing.T) {
+func Test_enterAzureCloudProvider_ServicePrincipal(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	prompter := prompt.NewMockInterface(ctrl)
 	client := azure.NewMockClient(ctrl)
@@ -47,27 +47,29 @@ func Test_enterAzureCloudProvider(t *testing.T) {
 		Name: to.Ptr("test-resource-group"),
 	}
 
-	// selectAzureSubscription
 	setAzureSubscriptions(client, &azure.SubscriptionResult{Default: &subscription, Subscriptions: []azure.Subscription{subscription}})
 	setAzureSubscriptionConfirmPrompt(prompter, subscription.Name, prompt.ConfirmYes)
 
-	// selectAzureResourceGroup
 	setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmNo)
 	setAzureResourceGroups(client, subscription.ID, []armresources.ResourceGroup{resourceGroup})
 	setAzureResourceGroupPrompt(prompter, []string{*resourceGroup.Name}, *resourceGroup.Name)
 
-	// service principal
+	setAzureCredentialKindPrompt(prompter, "Service Principal")
+
 	setAzureServicePrincipalAppIDPrompt(prompter, "service-principal-app-id")
 	setAzureServicePrincipalPasswordPrompt(prompter, "service-principal-password")
 	setAzureServicePrincipalTenantIDPrompt(prompter, "service-principal-tenant-id")
 
-	provider, err := runner.enterAzureCloudProvider(context.Background())
+	options := &initOptions{}
+
+	provider, err := runner.enterAzureCloudProvider(context.Background(), options)
 	require.NoError(t, err)
 
 	expected := &azure.Provider{
 		SubscriptionID: subscription.ID,
 		ResourceGroup:  *resourceGroup.Name,
-		ServicePrincipal: &azure.ServicePrincipal{
+		CredentialKind: "ServicePrincipal",
+		ServicePrincipal: &azure.ServicePrincipalCredential{
 			ClientID:     "service-principal-app-id",
 			ClientSecret: "service-principal-password",
 			TenantID:     "service-principal-tenant-id",
@@ -80,6 +82,63 @@ func Test_enterAzureCloudProvider(t *testing.T) {
 		Params: []any{subscription.ID, *resourceGroup.Name},
 	}}
 	require.Equal(t, expectedOutput, outputSink.Writes)
+
+	expectedOptions := &initOptions{}
+	require.Equal(t, expectedOptions, options)
+}
+
+func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	prompter := prompt.NewMockInterface(ctrl)
+	client := azure.NewMockClient(ctrl)
+	outputSink := output.MockOutput{}
+	runner := Runner{Prompter: prompter, azureClient: client, Output: &outputSink}
+
+	subscription := azure.Subscription{
+		Name: "test-subscription",
+		ID:   "test-subscription-id",
+	}
+
+	resourceGroup := armresources.ResourceGroup{
+		Name: to.Ptr("test-resource-group"),
+	}
+
+	setAzureSubscriptions(client, &azure.SubscriptionResult{Default: &subscription, Subscriptions: []azure.Subscription{subscription}})
+	setAzureSubscriptionConfirmPrompt(prompter, subscription.Name, prompt.ConfirmYes)
+
+	setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmNo)
+	setAzureResourceGroups(client, subscription.ID, []armresources.ResourceGroup{resourceGroup})
+	setAzureResourceGroupPrompt(prompter, []string{*resourceGroup.Name}, *resourceGroup.Name)
+
+	setAzureCredentialKindPrompt(prompter, "Workload Identity")
+
+	setAzureWorkloadIdentityAppIDPrompt(prompter, "service-principal-app-id")
+	setAzureWorkloadIdentityTenantIDPrompt(prompter, "service-principal-tenant-id")
+
+	options := &initOptions{}
+
+	provider, err := runner.enterAzureCloudProvider(context.Background(), options)
+	require.NoError(t, err)
+
+	expected := &azure.Provider{
+		SubscriptionID: subscription.ID,
+		ResourceGroup:  *resourceGroup.Name,
+		CredentialKind: "WorkloadIdentity",
+		WorkloadIdentity: &azure.WorkloadIdentityCredential{
+			ClientID: "service-principal-app-id",
+			TenantID: "service-principal-tenant-id",
+		},
+	}
+	require.Equal(t, expected, provider)
+
+	expectedOutput := []any{output.LogOutput{
+		Format: azureWorkloadIdentityCreateInstructionsFmt,
+	}}
+	require.Equal(t, expectedOutput, outputSink.Writes)
+
+	expectedOptions := &initOptions{}
+	expectedOptions.SetValues = []string{"global.azureWorkloadIdentity.enabled=true"}
+	require.Equal(t, expectedOptions, options)
 }
 
 func Test_selectAzureSubscription(t *testing.T) {

@@ -33,12 +33,15 @@ type AzureCredentialKind string
 const (
 	// AzureCredentialKindServicePrincipal - The Service Principal Credential
 	AzureCredentialKindServicePrincipal AzureCredentialKind = "ServicePrincipal"
+	// AzureCredentialKindWorkloadIdentity - The Workload Identity Credential
+	AzureCredentialKindWorkloadIdentity AzureCredentialKind = "WorkloadIdentity"
 )
 
 // PossibleAzureCredentialKindValues returns the possible values for the AzureCredentialKind const type.
 func PossibleAzureCredentialKindValues() []AzureCredentialKind {
 	return []AzureCredentialKind{	
 		AzureCredentialKindServicePrincipal,
+		AzureCredentialKindWorkloadIdentity,
 	}
 }
 

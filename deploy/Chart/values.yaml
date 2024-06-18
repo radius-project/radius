@@ -21,6 +21,11 @@ global:
   #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
   #
 
+  # Configure global.azureWorkloadIdentity.enabled=true to enable Azure Workload Identity.
+  # Disabled by default.
+  azureWorkloadIdentity:
+    enabled: false
+
 controller:
   image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.

@@ -29,13 +29,24 @@ import (
 )
 
 func Test_enterCloudProviderOptions(t *testing.T) {
-	azureProvider := azure.Provider{
+	azureProviderServicePrincipal := azure.Provider{
 		SubscriptionID: "test-subscription-id",
 		ResourceGroup:  "test-resource-group",
-		ServicePrincipal: &azure.ServicePrincipal{
+		CredentialKind: azure.AzureCredentialKindServicePrincipal,
+		ServicePrincipal: &azure.ServicePrincipalCredential{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
 			TenantID:     "test-tenant-id",
+		},
+	}
+
+	azureProviderWorkloadIdentity := azure.Provider{
+		SubscriptionID: "test-subscription-id",
+		ResourceGroup:  "test-resource-group",
+		CredentialKind: azure.AzureCredentialKindWorkloadIdentity,
+		WorkloadIdentity: &azure.WorkloadIdentityCredential{
+			ClientID: "test-client-id",
+			TenantID: "test-tenant-id",
 		},
 	}
 
@@ -130,7 +141,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.Equal(t, expectedWrites, outputSink.Writes)
 	})
 
-	t.Run("--full - azure provider", func(t *testing.T) {
+	t.Run("--full - azure provider - service principal", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		awsClient := aws.NewMockClient(ctrl)
@@ -140,19 +151,46 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, azure.ProviderDisplayName)
-		setAzureCloudProvider(prompter, azureClient, azureProvider)
+		setAzureCloudProviderServicePrincipal(prompter, azureClient, azureProviderServicePrincipal)
 		initAddCloudProviderPromptNo(prompter)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
 		err := runner.enterCloudProviderOptions(context.Background(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.AWS)
-		require.Equal(t, azureProvider, *options.CloudProviders.Azure)
+		require.Equal(t, azureProviderServicePrincipal, *options.CloudProviders.Azure)
 
 		expectedWrites := []any{
 			output.LogOutput{
 				Format: azureServicePrincipalCreateInstructionsFmt,
-				Params: []any{azureProvider.SubscriptionID, azureProvider.ResourceGroup},
+				Params: []any{azureProviderServicePrincipal.SubscriptionID, azureProviderServicePrincipal.ResourceGroup},
+			},
+		}
+		require.Equal(t, expectedWrites, outputSink.Writes)
+	})
+
+	t.Run("--full - azure provider - workload identity", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		prompter := prompt.NewMockInterface(ctrl)
+		awsClient := aws.NewMockClient(ctrl)
+		azureClient := azure.NewMockClient(ctrl)
+		outputSink := output.MockOutput{}
+		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink, Full: true}
+
+		initAddCloudProviderPromptYes(prompter)
+		initSelectCloudProvider(prompter, azure.ProviderDisplayName)
+		setAzureCloudProviderWorkloadIdentity(prompter, azureClient, azureProviderWorkloadIdentity)
+		initAddCloudProviderPromptNo(prompter)
+
+		options := initOptions{Environment: environmentOptions{Create: true}}
+		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		require.NoError(t, err)
+		require.Nil(t, options.CloudProviders.AWS)
+		require.Equal(t, azureProviderWorkloadIdentity, *options.CloudProviders.Azure)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: azureWorkloadIdentityCreateInstructionsFmt,
 			},
 		}
 		require.Equal(t, expectedWrites, outputSink.Writes)
@@ -172,7 +210,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, azure.ProviderDisplayName)
-		setAzureCloudProvider(prompter, azureClient, azureProvider)
+		setAzureCloudProviderServicePrincipal(prompter, azureClient, azureProviderServicePrincipal)
 
 		initAddCloudProviderPromptNo(prompter)
 
@@ -180,7 +218,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		err := runner.enterCloudProviderOptions(context.Background(), &options)
 		require.NoError(t, err)
 		require.Equal(t, awsProvider, *options.CloudProviders.AWS)
-		require.Equal(t, azureProvider, *options.CloudProviders.Azure)
+		require.Equal(t, azureProviderServicePrincipal, *options.CloudProviders.Azure)
 
 		expectedWrites := []any{
 			output.LogOutput{
@@ -188,7 +226,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 			},
 			output.LogOutput{
 				Format: azureServicePrincipalCreateInstructionsFmt,
-				Params: []any{azureProvider.SubscriptionID, azureProvider.ResourceGroup},
+				Params: []any{azureProviderServicePrincipal.SubscriptionID, azureProviderServicePrincipal.ResourceGroup},
 			},
 		}
 		require.Equal(t, expectedWrites, outputSink.Writes)

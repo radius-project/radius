@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -111,6 +112,9 @@ func Test_Run(t *testing.T) {
 					Name:    "azure",
 					Enabled: true,
 				},
+				AzureCredentials: &cli_credential.AzureCredentialProperties{
+					Kind: to.Ptr("ServicePrincipal"),
+				},
 			}
 
 			client := cli_credential.NewMockCredentialManagementClient(ctrl)
@@ -132,6 +136,8 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
+			credentialFormatOutput := credentialFormatAzureServicePrincipal()
+
 			expected := []any{
 				output.LogOutput{
 					Format: "Showing credential for cloud provider %q for Radius installation %q...",
@@ -140,7 +146,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     provider,
-					Options: credentialFormat(runner.Kind),
+					Options: credentialFormatOutput,
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -199,6 +205,8 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
+			credentialFormatOutput := credentialFormatAWS()
+
 			expected := []any{
 				output.LogOutput{
 					Format: "Showing credential for cloud provider %q for Radius installation %q...",
@@ -207,7 +215,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     provider,
-					Options: credentialFormat(runner.Kind),
+					Options: credentialFormatOutput,
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

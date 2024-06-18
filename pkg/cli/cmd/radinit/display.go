@@ -26,6 +26,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 )
 
@@ -36,7 +37,7 @@ const (
 	summaryKubernetesHeadingIcon                  = "🔧 "
 	summaryKubernetesInstallHeadingFmt            = "Install Radius %s\n" + summaryIndent + "Kubernetes cluster: %s\n" + summaryIndent + "Kubernetes namespace: %s\n"
 	summaryKubernetesInstallAWSCloudProviderFmt   = summaryIndent + "AWS IAM access key id: %s\n"
-	summaryKubernetesInstallAzureCloudProviderFmt = summaryIndent + "Azure service principal: %s\n"
+	summaryKubernetesInstallAzureCloudProviderFmt = summaryIndent + "Azure credential: %s\n"
 	summaryKubernetesExistingHeadingFmt           = "Use existing Radius %s install on %s\n"
 	summaryEnvironmentHeadingIcon                 = "🌏 "
 	summaryEnvironmentCreateHeadingFmt            = "Create new environment %s\n" + summaryIndent + "Kubernetes namespace: %s\n"
@@ -207,7 +208,13 @@ func (m *summaryModel) View() string {
 			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(options.CloudProviders.AWS.AccessKeyID)))
 		}
 		if options.CloudProviders.Azure != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.ServicePrincipal.ClientID)))
+			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(string(options.CloudProviders.Azure.CredentialKind))))
+			switch options.CloudProviders.Azure.CredentialKind {
+			case azure.AzureCredentialKindServicePrincipal:
+				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.ServicePrincipal.ClientID)))
+			case azure.AzureCredentialKindWorkloadIdentity:
+				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.WorkloadIdentity.ClientID)))
+			}
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryKubernetesExistingHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context)))
@@ -333,7 +340,13 @@ func (m *progressModel) View() string {
 			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(options.CloudProviders.AWS.AccessKeyID)))
 		}
 		if options.CloudProviders.Azure != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.ServicePrincipal.ClientID)))
+			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(string(options.CloudProviders.Azure.CredentialKind))))
+			switch options.CloudProviders.Azure.CredentialKind {
+			case azure.AzureCredentialKindServicePrincipal:
+				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.ServicePrincipal.ClientID)))
+			case azure.AzureCredentialKindWorkloadIdentity:
+				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.WorkloadIdentity.ClientID)))
+			}
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryKubernetesExistingHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context)))

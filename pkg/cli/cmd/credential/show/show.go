@@ -18,6 +18,7 @@ package show
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -27,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/spf13/cobra"
 )
 
@@ -125,7 +127,25 @@ func (r *Runner) Run(ctx context.Context) error {
 	if !providers.Enabled {
 		return clierrors.Message("The credentials for cloud provider %q could not be found.", r.Kind)
 	}
-	err = r.Output.WriteFormatted(r.Format, providers, credentialFormat(r.Kind))
+
+	var output output.FormatterOptions
+	switch r.Kind {
+	case "azure":
+		switch *providers.AzureCredentials.Kind {
+		case datamodel.AzureServicePrincipalCredentialKind:
+			output = credentialFormatAzureServicePrincipal()
+		case datamodel.AzureWorkloadIdentityCredentialKind:
+			output = credentialFormatAzureWorkloadIdentity()
+		default:
+			return fmt.Errorf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", *providers.AzureCredentials.Kind)
+		}
+	case "aws":
+		output = credentialFormatAWS()
+	default:
+		return fmt.Errorf("unknown credential type: %s", r.Kind)
+	}
+
+	err = r.Output.WriteFormatted(r.Format, providers, output)
 	if err != nil {
 		return err
 	}

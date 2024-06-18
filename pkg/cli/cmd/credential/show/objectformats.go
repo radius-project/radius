@@ -17,52 +17,78 @@ limitations under the License.
 package show
 
 import (
-	"strings"
-
 	"github.com/radius-project/radius/pkg/cli/output"
 )
 
-// credentialFormat function returns a FormatterOptions struct based on the credentialType parameter, which can
-// be either "azure" or "aws".
-func credentialFormat(credentialType string) output.FormatterOptions {
-	if strings.EqualFold(credentialType, "azure") {
-		return output.FormatterOptions{
-			Columns: []output.Column{
-				{
-					Heading:  "NAME",
-					JSONPath: "{ .Name }",
-				},
-				{
-					Heading:  "REGISTERED",
-					JSONPath: "{ .Enabled }",
-				},
-				{
-					Heading:  "CLIENTID",
-					JSONPath: "{ .AzureCredentials.ClientID }",
-				},
-				{
-					Heading:  "TENANTID",
-					JSONPath: "{ .AzureCredentials.TenantID }",
-				},
+func credentialFormatAzureServicePrincipal() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
 			},
-		}
-	} else if strings.EqualFold(credentialType, "aws") {
-		return output.FormatterOptions{
-			Columns: []output.Column{
-				{
-					Heading:  "NAME",
-					JSONPath: "{ .Name }",
-				},
-				{
-					Heading:  "REGISTERED",
-					JSONPath: "{ .Enabled }",
-				},
-				{
-					Heading:  "ACCESSKEYID",
-					JSONPath: "{ .AWSCredentials.AccessKeyID }",
-				},
+			{
+				Heading:  "REGISTERED",
+				JSONPath: "{ .Enabled }",
 			},
-		}
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .AzureCredentials.Kind }",
+			},
+			{
+				Heading:  "CLIENTID",
+				JSONPath: "{ .AzureCredentials.ServicePrincipal.ClientID }",
+			},
+			{
+				Heading:  "TENANTID",
+				JSONPath: "{ .AzureCredentials.ServicePrincipal.TenantID }",
+			},
+		},
 	}
-	return output.FormatterOptions{}
+}
+
+func credentialFormatAzureWorkloadIdentity() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "REGISTERED",
+				JSONPath: "{ .Enabled }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .AzureCredentials.Kind }",
+			},
+			{
+				Heading:  "CLIENTID",
+				JSONPath: "{ .AzureCredentials.WorkloadIdentity.ClientID }",
+			},
+			{
+				Heading:  "TENANTID",
+				JSONPath: "{ .AzureCredentials.WorkloadIdentity.TenantID }",
+			},
+		},
+	}
+}
+
+func credentialFormatAWS() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "REGISTERED",
+				JSONPath: "{ .Enabled }",
+			},
+			{
+				Heading:  "ACCESSKEYID",
+				JSONPath: "{ .AWSCredentials.AccessKeyID }",
+			},
+		},
+	}
 }

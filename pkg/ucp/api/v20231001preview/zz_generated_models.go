@@ -231,7 +231,7 @@ type AzurePlaneResourceTagsUpdate struct {
 	Tags map[string]*string
 }
 
-// AzureServicePrincipalProperties - The properties of Service Principal credential storage
+// AzureServicePrincipalProperties - The properties of Azure Service Principal credential storage
 type AzureServicePrincipalProperties struct {
 	// REQUIRED; clientId for ServicePrincipal
 	ClientID *string
@@ -254,6 +254,32 @@ type AzureServicePrincipalProperties struct {
 
 // GetAzureCredentialProperties implements the AzureCredentialPropertiesClassification interface for type AzureServicePrincipalProperties.
 func (a *AzureServicePrincipalProperties) GetAzureCredentialProperties() *AzureCredentialProperties {
+	return &AzureCredentialProperties{
+		Kind: a.Kind,
+		ProvisioningState: a.ProvisioningState,
+	}
+}
+
+// AzureWorkloadIdentityProperties - The properties of Azure Workload Identity credential storage
+type AzureWorkloadIdentityProperties struct {
+	// REQUIRED; clientId for WorkloadIdentity
+	ClientID *string
+
+	// REQUIRED; The kind of Azure credential
+	Kind *AzureCredentialKind
+
+	// REQUIRED; The storage properties
+	Storage CredentialStoragePropertiesClassification
+
+	// REQUIRED; tenantId for WorkloadIdentity
+	TenantID *string
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// GetAzureCredentialProperties implements the AzureCredentialPropertiesClassification interface for type AzureWorkloadIdentityProperties.
+func (a *AzureWorkloadIdentityProperties) GetAzureCredentialProperties() *AzureCredentialProperties {
 	return &AzureCredentialProperties{
 		Kind: a.Kind,
 		ProvisioningState: a.ProvisioningState,

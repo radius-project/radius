@@ -31,11 +31,21 @@ import (
 )
 
 var (
-	testSubscription     = "test-sub"
-	testAzureCredentials = ucp_credentials.AzureCredential{
-		TenantID:     "testTenantID",
-		ClientSecret: "testClientSecret",
-		ClientID:     "testClientID",
+	testSubscription                    = "test-sub"
+	testAzureWorkloadIdentityCredential = ucp_credentials.AzureCredential{
+		Kind: "WorkloadIdentity",
+		WorkloadIdentity: &ucp_credentials.AzureWorkloadIdentityCredential{
+			TenantID: "testTenantID",
+			ClientID: "testClientID",
+		},
+	}
+	testAzureServicePrincipalCredential = ucp_credentials.AzureCredential{
+		Kind: "ServicePrincipal",
+		ServicePrincipal: &ucp_credentials.AzureServicePrincipalCredential{
+			TenantID:     "testTenantID",
+			ClientSecret: "testClientSecret",
+			ClientID:     "testClientID",
+		},
 	}
 )
 
@@ -43,12 +53,27 @@ type mockAzureCredentialsProvider struct {
 	testCredential *ucp_credentials.AzureCredential
 }
 
-func newMockAzureCredentialsProvider() *mockAzureCredentialsProvider {
+func newMockAzureServicePrincipalCredentialsProvider() *mockAzureCredentialsProvider {
 	return &mockAzureCredentialsProvider{
 		testCredential: &ucp_credentials.AzureCredential{
-			TenantID:     testAzureCredentials.TenantID,
-			ClientSecret: testAzureCredentials.ClientSecret,
-			ClientID:     testAzureCredentials.ClientID,
+			Kind: "ServicePrincipal",
+			ServicePrincipal: &ucp_credentials.AzureServicePrincipalCredential{
+				ClientID:     "testClientID",
+				TenantID:     "testTenantID",
+				ClientSecret: "testClientSecret",
+			},
+		},
+	}
+}
+
+func newMockAzureWorkloadIdentityCredentialsProvider() *mockAzureCredentialsProvider {
+	return &mockAzureCredentialsProvider{
+		testCredential: &ucp_credentials.AzureCredential{
+			Kind: "WorkloadIdentity",
+			WorkloadIdentity: &ucp_credentials.AzureWorkloadIdentityCredential{
+				ClientID: "testClientID",
+				TenantID: "testTenantID",
+			},
 		},
 	}
 }
@@ -60,12 +85,23 @@ func (p *mockAzureCredentialsProvider) Fetch(ctx context.Context, planeName, nam
 		return nil, &secret.ErrNotFound{}
 	}
 
-	if p.testCredential.TenantID == "" && p.testCredential.ClientID == "" && p.testCredential.ClientSecret == "" {
-		return p.testCredential, nil
-	}
+	switch (*p.testCredential).Kind {
+	case "ServicePrincipal":
+		if p.testCredential.ServicePrincipal.TenantID == "" && p.testCredential.ServicePrincipal.ClientID == "" && p.testCredential.ServicePrincipal.ClientSecret == "" {
+			return p.testCredential, nil
+		}
 
-	if p.testCredential.TenantID == "" {
-		return nil, errors.New("failed to fetch credential")
+		if p.testCredential.ServicePrincipal.TenantID == "" {
+			return nil, errors.New("failed to fetch credential")
+		}
+	case "WorkloadIdentity":
+		if p.testCredential.WorkloadIdentity.TenantID == "" && p.testCredential.WorkloadIdentity.ClientID == "" {
+			return p.testCredential, nil
+		}
+
+		if p.testCredential.WorkloadIdentity.TenantID == "" {
+			return nil, errors.New("failed to fetch credential")
+		}
 	}
 
 	return p.testCredential, nil
@@ -187,9 +223,15 @@ func TestAzureProvider_FetchCredentials(t *testing.T) {
 		expectedErr         bool
 	}{
 		{
-			desc:                "valid credentials",
-			credentialsProvider: newMockAzureCredentialsProvider(),
-			expectedCreds:       &testAzureCredentials,
+			desc:                "valid credentials serviceprincipal",
+			credentialsProvider: newMockAzureServicePrincipalCredentialsProvider(),
+			expectedCreds:       &testAzureServicePrincipalCredential,
+			expectedErr:         false,
+		},
+		{
+			desc:                "valid credentials workloadidentity",
+			credentialsProvider: newMockAzureWorkloadIdentityCredentialsProvider(),
+			expectedCreds:       &testAzureWorkloadIdentityCredential,
 			expectedErr:         false,
 		},
 		{
@@ -204,9 +246,12 @@ func TestAzureProvider_FetchCredentials(t *testing.T) {
 			desc: "empty values - no error",
 			credentialsProvider: &mockAzureCredentialsProvider{
 				&ucp_credentials.AzureCredential{
-					TenantID:     "",
-					ClientID:     "",
-					ClientSecret: "",
+					Kind: "ServicePrincipal",
+					ServicePrincipal: &ucp_credentials.AzureServicePrincipalCredential{
+						TenantID:     "",
+						ClientID:     "",
+						ClientSecret: "",
+					},
 				},
 			},
 			expectedCreds: nil,
@@ -216,9 +261,12 @@ func TestAzureProvider_FetchCredentials(t *testing.T) {
 			desc: "fetch credential error",
 			credentialsProvider: &mockAzureCredentialsProvider{
 				&ucp_credentials.AzureCredential{
-					TenantID:     "",
-					ClientID:     testAzureCredentials.ClientID,
-					ClientSecret: testAzureCredentials.ClientSecret,
+					Kind: "ServicePrincipal",
+					ServicePrincipal: &ucp_credentials.AzureServicePrincipalCredential{
+						TenantID:     "",
+						ClientID:     testAzureServicePrincipalCredential.ServicePrincipal.ClientID,
+						ClientSecret: testAzureServicePrincipalCredential.ServicePrincipal.ClientSecret,
+					},
 				},
 			},
 			expectedCreds: nil,
@@ -250,25 +298,38 @@ func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
 		expectedConfig map[string]any
 	}{
 		{
-			desc:         "valid config",
+			desc:         "valid config - serviceprincipal",
 			subscription: testSubscription,
-			credentials:  testAzureCredentials,
+			credentials:  testAzureServicePrincipalCredential,
 			expectedConfig: map[string]any{
 				azureFeaturesParam:     map[string]any{},
 				azureSubIDParam:        testSubscription,
-				azureTenantIDParam:     testAzureCredentials.TenantID,
-				azureClientIDParam:     testAzureCredentials.ClientID,
-				azureClientSecretParam: testAzureCredentials.ClientSecret,
+				azureTenantIDParam:     testAzureServicePrincipalCredential.ServicePrincipal.TenantID,
+				azureClientIDParam:     testAzureServicePrincipalCredential.ServicePrincipal.ClientID,
+				azureClientSecretParam: testAzureServicePrincipalCredential.ServicePrincipal.ClientSecret,
+			},
+		},
+		{
+			desc:         "valid config - workloadidentity",
+			subscription: testSubscription,
+			credentials:  testAzureWorkloadIdentityCredential,
+			expectedConfig: map[string]any{
+				azureFeaturesParam:               map[string]any{},
+				azureSubIDParam:                  testSubscription,
+				azureTenantIDParam:               testAzureWorkloadIdentityCredential.WorkloadIdentity.TenantID,
+				azureClientIDParam:               testAzureWorkloadIdentityCredential.WorkloadIdentity.ClientID,
+				azureUseAKSWorkloadIdentityParam: true,
+				azureUseCLIParam:                 false,
 			},
 		},
 		{
 			desc:        "missing subscription",
-			credentials: testAzureCredentials,
+			credentials: testAzureServicePrincipalCredential,
 			expectedConfig: map[string]any{
 				azureFeaturesParam:     map[string]any{},
-				azureTenantIDParam:     testAzureCredentials.TenantID,
-				azureClientIDParam:     testAzureCredentials.ClientID,
-				azureClientSecretParam: testAzureCredentials.ClientSecret,
+				azureTenantIDParam:     testAzureServicePrincipalCredential.ServicePrincipal.TenantID,
+				azureClientIDParam:     testAzureServicePrincipalCredential.ServicePrincipal.ClientID,
+				azureClientSecretParam: testAzureServicePrincipalCredential.ServicePrincipal.ClientSecret,
 			},
 		},
 		{
@@ -282,9 +343,12 @@ func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
 		{
 			desc: "invalid credentials",
 			credentials: ucp_credentials.AzureCredential{
-				TenantID:     "",
-				ClientID:     testAzureCredentials.ClientID,
-				ClientSecret: testAzureCredentials.ClientSecret,
+				Kind: "ServicePrincipal",
+				ServicePrincipal: &ucp_credentials.AzureServicePrincipalCredential{
+					TenantID:     "",
+					ClientID:     testAzureServicePrincipalCredential.ServicePrincipal.ClientID,
+					ClientSecret: testAzureServicePrincipalCredential.ServicePrincipal.ClientSecret,
+				},
 			},
 			expectedConfig: map[string]any{
 				azureFeaturesParam: map[string]any{},

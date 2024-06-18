@@ -660,6 +660,49 @@ func (a *AzureServicePrincipalProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type AzureWorkloadIdentityProperties.
+func (a AzureWorkloadIdentityProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "clientId", a.ClientID)
+	objectMap["kind"] = AzureCredentialKindWorkloadIdentity
+	populate(objectMap, "provisioningState", a.ProvisioningState)
+	populate(objectMap, "storage", a.Storage)
+	populate(objectMap, "tenantId", a.TenantID)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureWorkloadIdentityProperties.
+func (a *AzureWorkloadIdentityProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "clientId":
+				err = unpopulate(val, "ClientID", &a.ClientID)
+			delete(rawMsg, key)
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
+			delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
+			delete(rawMsg, key)
+		case "storage":
+			a.Storage, err = unmarshalCredentialStoragePropertiesClassification(val)
+			delete(rawMsg, key)
+		case "tenantId":
+				err = unpopulate(val, "TenantID", &a.TenantID)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type ComponentsKhmx01SchemasGenericresourceAllof0.
 func (c ComponentsKhmx01SchemasGenericresourceAllof0) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
