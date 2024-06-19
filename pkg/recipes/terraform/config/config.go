@@ -111,9 +111,9 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 // It also updates module provider block if aliases exist and required_provider configuration to the file.
 // Save() must be called to save the generated providers config. requiredProviders contains a list of provider names
 // that are required for the module.
-func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
+func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration, secrets map[string]map[string]string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, ucpConfiguredProviders, envConfig)
+	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, ucpConfiguredProviders, envConfig, secrets)
 	if err != nil {
 		return err
 	}
@@ -230,9 +230,12 @@ func newModuleConfig(moduleSource string, moduleVersion string, params ...Recipe
 // The function returns a map where the keys are provider names and the values are slices of maps.
 // Each map in the slice represents a specific configuration for the corresponding provider.
 // This structure allows for multiple configurations per provider.
-func getProviderConfigs(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string][]map[string]any, error) {
+func getProviderConfigs(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration, secrets map[string]map[string]string) (map[string][]map[string]any, error) {
 	// Get recipe provider configurations from the environment configuration
-	providerConfigs := providers.GetRecipeProviderConfigs(ctx, envConfig)
+	providerConfigs, err := providers.GetRecipeProviderConfigs(ctx, envConfig, secrets)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build provider configurations for required providers excluding the ones already present in providerConfigs (environment level configuration).
 	// Required providers that are not configured with UCP will be skipped.
@@ -296,4 +299,32 @@ func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 	}
 
 	return nil
+}
+
+// GetProviderSecretIds parses the envConfig to extract secret IDs associated with the provider
+// and returns a map of secret IDs  and corresponding slice of keys.
+func GetProviderSecretIds(envConfig recipes.Configuration, inputSecretIDs map[string][]string) {
+	for _, config := range envConfig.RecipeConfig.Terraform.Providers {
+		for _, providerConfig := range config {
+			if providerConfig.Secrets != nil {
+				for _, secret := range providerConfig.Secrets {
+					updateSecretIDs(inputSecretIDs, secret.Source, secret.Key)
+				}
+			}
+		}
+	}
+
+	// Parse envConfig to extract secret IDs in environment variables and add them to the inputSecretIDs map.
+	for _, config := range envConfig.RecipeConfig.EnvSecrets {
+		updateSecretIDs(inputSecretIDs, config.Source, config.Key)
+	}
+}
+
+// updateSecretIDs is helper function to update the inputSecretIDs map
+func updateSecretIDs(inputSecretIDs map[string][]string, secretSourceId, key string) {
+	if _, ok := inputSecretIDs[secretSourceId]; !ok {
+		inputSecretIDs[secretSourceId] = []string{key}
+	} else {
+		inputSecretIDs[secretSourceId] = append(inputSecretIDs[secretSourceId], key)
+	}
 }

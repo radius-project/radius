@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
@@ -294,7 +293,7 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 	driverWithSecrets.EXPECT().
 		FindSecretIDs(ctx, *envConfig, *recipeDefinition).
 		Times(1).
-		Return("", nil)
+		Return(nil, nil)
 	driverWithSecrets.EXPECT().
 		Execute(ctx, recipedriver.ExecuteOptions{
 			BaseOptions: recipedriver.BaseOptions{
@@ -405,23 +404,23 @@ func Test_Engine_Terraform_Failure(t *testing.T) {
 				driverWithSecrets.EXPECT().
 					FindSecretIDs(ctx, *envConfig, *recipeDefinition).
 					Times(1).
-					Return("", tc.errFindSecretRefs)
+					Return(nil, tc.errFindSecretRefs)
 			} else {
 				driverWithSecrets.EXPECT().
 					FindSecretIDs(ctx, *envConfig, *recipeDefinition).
 					Times(1).
-					Return("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit", nil)
+					Return(map[string][]string{"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit": {"username", "pat"}}, nil)
 
 				if tc.errLoadSecrets != nil {
 					secretsLoader.EXPECT().
 						LoadSecrets(ctx, gomock.Any()).
 						Times(1).
-						Return(v20231001preview.SecretStoresClientListSecretsResponse{}, tc.errLoadSecrets)
+						Return(nil, tc.errLoadSecrets)
 				} else {
 					secretsLoader.EXPECT().
 						LoadSecrets(ctx, gomock.Any()).
 						Times(1).
-						Return(v20231001preview.SecretStoresClientListSecretsResponse{}, nil)
+						Return(nil, nil)
 					if tc.errExecute != nil {
 						driverWithSecrets.EXPECT().
 							Execute(ctx, recipedriver.ExecuteOptions{
@@ -898,11 +897,11 @@ func Test_Engine_GetRecipeMetadata_Private_Module_Success(t *testing.T) {
 	driverWithSecrets.EXPECT().
 		FindSecretIDs(ctx, *envConfig, *recipeDefinition).
 		Times(1).
-		Return("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit", nil)
+		Return(map[string][]string{"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit": {"username", "pat"}}, nil)
 	secretsLoader.EXPECT().
-		LoadSecrets(ctx, "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit").
+		LoadSecrets(ctx, map[string][]string{"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit": {"username", "pat"}}).
 		Times(1).
-		Return(v20231001preview.SecretStoresClientListSecretsResponse{}, nil)
+		Return(nil, nil)
 	driverWithSecrets.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: *recipeDefinition,
@@ -1079,11 +1078,11 @@ func Test_Engine_Execute_With_Secrets_Success(t *testing.T) {
 	driverWithSecrets.EXPECT().
 		FindSecretIDs(ctx, *envConfig, *recipeDefinition).
 		Times(1).
-		Return("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit", nil)
+		Return(map[string][]string{"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit": {"username", "pat"}}, nil)
 	secretsLoader.EXPECT().
 		LoadSecrets(ctx, gomock.Any()).
 		Times(1).
-		Return(v20231001preview.SecretStoresClientListSecretsResponse{}, nil)
+		Return(nil, nil)
 	driverWithSecrets.EXPECT().
 		Execute(ctx, recipedriver.ExecuteOptions{
 			BaseOptions: recipedriver.BaseOptions{
@@ -1162,11 +1161,11 @@ func Test_Engine_Delete_With_Secrets_Success(t *testing.T) {
 	driverWithSecrets.EXPECT().
 		FindSecretIDs(ctx, *envConfig, *recipeDefinition).
 		Times(1).
-		Return("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit", nil)
+		Return(map[string][]string{"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit": {"username", "pat"}}, nil)
 	secretsLoader.EXPECT().
-		LoadSecrets(ctx, "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit").
+		LoadSecrets(ctx, map[string][]string{"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/azdevopsgit": {"username", "pat"}}).
 		Times(1).
-		Return(v20231001preview.SecretStoresClientListSecretsResponse{}, nil)
+		Return(nil, nil)
 	driverWithSecrets.EXPECT().
 		Delete(ctx, recipedriver.DeleteOptions{
 			BaseOptions: recipedriver.BaseOptions{

@@ -91,7 +91,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	if options.EnvConfig != nil {
 		// Set environment variables for the Terraform process.
-		err = e.setEnvironmentVariables(tf, &options.EnvConfig.RecipeConfig)
+		err = e.setEnvironmentVariables(tf, &options.EnvConfig.RecipeConfig, options.Secrets)
 		if err != nil {
 			return nil, err
 		}
@@ -205,15 +205,36 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 // setEnvironmentVariables sets environment variables for the Terraform process by reading values from the recipe configuration.
 // Terraform process will use environment variables as input for the recipe deployment.
-func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, recipeConfig *datamodel.RecipeConfigProperties) error {
-	if recipeConfig != nil && recipeConfig.Env.AdditionalProperties != nil && len(recipeConfig.Env.AdditionalProperties) > 0 {
-		// populate envVars with the environment variables from current process
-		envVars := splitEnvVar(os.Environ())
+func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, recipeConfig *datamodel.RecipeConfigProperties, secrets map[string]map[string]string) error {
+	// Initialize and populate envVars with the environment variables from current process
+	envVars := splitEnvVar(os.Environ())
+	var envVarUpdate bool
 
+	if recipeConfig != nil && recipeConfig.Env.AdditionalProperties != nil && len(recipeConfig.Env.AdditionalProperties) > 0 {
+		envVarUpdate = true
 		for key, value := range recipeConfig.Env.AdditionalProperties {
 			envVars[key] = value
 		}
+	}
 
+	if recipeConfig != nil && recipeConfig.EnvSecrets != nil && len(recipeConfig.EnvSecrets) > 0 {
+		for secretName, secretReference := range recipeConfig.EnvSecrets {
+			// Extract secret value from the secrets input
+			if secretSource, ok := secrets[secretReference.Source]; ok {
+				if secretValue, ok := secretSource[secretReference.Key]; ok {
+					envVarUpdate = true
+					envVars[secretName] = secretValue
+				} else {
+					return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
+				}
+			} else {
+				return fmt.Errorf("missing secret source: %s", secretReference.Source)
+			}
+		}
+	}
+
+	// Set the environment variables for the Terraform process
+	if envVarUpdate {
 		if err := tf.SetEnv(envVars); err != nil {
 			return fmt.Errorf("failed to set environment variables: %w", err)
 		}
@@ -253,7 +274,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
 	logger.Info(fmt.Sprintf("Adding provider config for required providers %+v", loadedModule.RequiredProviders))
 	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetUCPConfiguredTerraformProviders(e.ucpConn, e.secretProvider),
-		options.EnvConfig); err != nil {
+		options.EnvConfig, options.Secrets); err != nil {
 		return "", err
 	}
 
