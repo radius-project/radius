@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetRecipeProviderConfigs(t *testing.T) {
+func Test_GetRecipeProviderConfigs(t *testing.T) {
 	testCases := []struct {
 		desc      string
 		envConfig *recipes.Configuration
@@ -208,6 +208,89 @@ func TestGetRecipeProviderConfigs(t *testing.T) {
 			result, err := GetRecipeProviderConfigs(context.Background(), tc.envConfig, tc.secrets)
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func Test_ExtractSecretsFromConfig(t *testing.T) {
+	tests := []struct {
+		name                 string
+		currentConfig        map[string]any
+		recipeConfigSecrets  map[string]datamodel.SecretReference
+		secrets              map[string]map[string]string
+		expectedConfig       map[string]any
+		expectError          bool
+		expectedErrorMessage string
+	}{
+		{
+			name:          "success",
+			currentConfig: map[string]any{},
+			recipeConfigSecrets: map[string]datamodel.SecretReference{
+				"password": {Source: "dbSecrets", Key: "dbPass"},
+			},
+			secrets: map[string]map[string]string{
+				"dbSecrets": {"dbPass": "secretPassword"},
+			},
+			expectedConfig: map[string]any{
+				"password": "secretPassword",
+			},
+			expectError: false,
+		},
+		{
+			name:          "missing secret source",
+			currentConfig: map[string]any{},
+			recipeConfigSecrets: map[string]datamodel.SecretReference{
+				"password": {Source: "missingSource", Key: "dbPass"},
+			},
+			secrets: map[string]map[string]string{
+				"dbSecrets": {"dbPass": "secretPassword"},
+			},
+			expectError:          true,
+			expectedErrorMessage: "missing secret source: missingSource",
+		},
+		{
+			name:          "missing secret key",
+			currentConfig: map[string]any{},
+			recipeConfigSecrets: map[string]datamodel.SecretReference{
+				"password": {Source: "dbSecrets", Key: "missingKey"},
+			},
+			secrets: map[string]map[string]string{
+				"dbSecrets": {"dbPass": "secretPassword"},
+			},
+			expectError:          true,
+			expectedErrorMessage: "missing secret key in secret store id: dbSecrets",
+		},
+		{
+			name:          "missing secrets",
+			currentConfig: map[string]any{},
+			recipeConfigSecrets: map[string]datamodel.SecretReference{
+				"password": {Source: "dbSecrets", Key: "missingKey"},
+			},
+			secrets:              nil,
+			expectError:          true,
+			expectedErrorMessage: "missing secret source: dbSecrets",
+		},
+		{
+			name:                "missing recipeConfigSecrets",
+			currentConfig:       map[string]any{},
+			recipeConfigSecrets: nil,
+			secrets: map[string]map[string]string{
+				"dbSecrets": {"dbPass": "secretPassword"},
+			},
+			expectedConfig: map[string]any{},
+			expectError:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := extractSecretsFromConfig(tt.currentConfig, tt.recipeConfigSecrets, tt.secrets)
+			if tt.expectError {
+				require.EqualError(t, err, tt.expectedErrorMessage, err.Error())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedConfig, tt.currentConfig)
+			}
 		})
 	}
 }

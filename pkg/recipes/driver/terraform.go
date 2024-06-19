@@ -94,15 +94,9 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		return nil, err
 	}
 
-	if secretStoreID != "" && opts.Secrets != nil {
-		// Get the secrets associated with the secret store ID.
-		secrets = opts.Secrets[secretStoreID]
-
-		// Add credential information to .gitconfig for module source of type git.
-		err = addSecretsToGitConfig(requestDirPath, secrets, opts.Definition.TemplatePath)
-		if err != nil {
-			return nil, err
-		}
+	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
+	if err != nil {
+		return nil, err
 	}
 
 	tfState, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
@@ -151,15 +145,9 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		return err
 	}
 
-	if secretStoreID != "" && opts.Secrets != nil {
-		// Get the secrets associated with the secret store ID.
-		secrets = opts.Secrets[secretStoreID]
-
-		// Add credential information to .gitconfig for module source of type git.
-		err = addSecretsToGitConfig(requestDirPath, secrets, opts.Definition.TemplatePath)
-		if err != nil {
-			return err
-		}
+	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
+	if err != nil {
+		return err
 	}
 
 	err = d.terraformExecutor.Delete(ctx, terraform.Options{
@@ -283,15 +271,9 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 		return nil, err
 	}
 
-	if secretStoreID != "" && opts.Secrets != nil {
-		// Get the secrets associated with the secret store ID.
-		secrets = opts.Secrets[secretStoreID]
-
-		// Add credential information to .gitconfig for module source of type git.
-		err = addSecretsToGitConfig(requestDirPath, secrets, opts.Definition.TemplatePath)
-		if err != nil {
-			return nil, err
-		}
+	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
+	if err != nil {
+		return nil, err
 	}
 
 	recipeData, err := d.terraformExecutor.GetRecipeMetadata(ctx, terraform.Options{
