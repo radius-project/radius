@@ -268,8 +268,6 @@ jobs:
   build-and-push-bicep-types:
     name: Publish Radius bicep types to ACR
     runs-on: ubuntu-latest
-        # Don't push on PR 
-    if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
     steps: 
       - name: Check out code
         uses: actions/checkout@v4
@@ -283,14 +281,9 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: '18'
-      - name: Detecting node
-        run: |
-          echo "Detecting node..."
-          which node > /dev/null || { echo "node is a required dependency"; exit 1; }
-          echo "OK"
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
-          make generate-bicep-types VERSION=${{ env.REL_VERSION }}
+          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
@@ -300,7 +293,14 @@ jobs:
           curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
           chmod +x ./bicep
           bicep --version
+      - name: Upload Radius Bicep types artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius-bicep-types
+          path: ./hack/bicep-types-radius/generated
+          if-no-files-found: error
       - name: Publish bicep types 
+        if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         run: |
           bicep publish-provider ./hack/bicep-types-radius/generated/index.json --target br:${{ env.ACR }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
