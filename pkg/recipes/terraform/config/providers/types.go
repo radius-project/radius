@@ -18,7 +18,9 @@ package providers
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
@@ -47,20 +49,31 @@ func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *
 
 // GetRecipeProviderConfigs returns the Terraform provider configurations for Terraform providers
 // specified under the RecipeConfig/Terraform/Providers section under environment configuration.
-func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration) map[string][]map[string]any {
+func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration, secrets map[string]map[string]string) (map[string][]map[string]any, error) {
 	providerConfigs := make(map[string][]map[string]any)
 
 	// If the provider is not configured, or has empty configuration, skip this iteration
 	if envConfig != nil && envConfig.RecipeConfig.Terraform.Providers != nil {
 		for provider, config := range envConfig.RecipeConfig.Terraform.Providers {
-			if len(config) > 0 {
-				configList := make([]map[string]any, 0)
+			configList := make([]map[string]any, 0)
 
-				// Retrieve configuration details from 'AdditionalProperties' property and add to the list.
-				for _, configDetails := range config {
-					if configDetails.AdditionalProperties != nil && len(configDetails.AdditionalProperties) > 0 {
-						configList = append(configList, configDetails.AdditionalProperties)
-					}
+			for _, configDetails := range config {
+				// Create map for current config
+				currentConfig := make(map[string]any)
+
+				// Retrieve configuration details from 'AdditionalProperties' property and add to currentConfig.
+				if configDetails.AdditionalProperties != nil && len(configDetails.AdditionalProperties) > 0 {
+					currentConfig = configDetails.AdditionalProperties
+				}
+
+				// Extract secrets from configDetails if they are present and update the currentConfig map
+				err := extractSecretsFromConfig(currentConfig, configDetails.Secrets, secrets)
+				if err != nil {
+					return nil, err
+				}
+
+				if len(currentConfig) > 0 {
+					configList = append(configList, currentConfig)
 				}
 
 				providerConfigs[provider] = configList
@@ -68,5 +81,25 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 		}
 	}
 
-	return providerConfigs
+	return providerConfigs, nil
+}
+
+// extractSecretsFromConfig extracts secrets for env recipe configuration from the secrets data input and updates the currentConfig map.
+func extractSecretsFromConfig(currentConfig map[string]any, recipeConfigSecrets map[string]datamodel.SecretReference, secrets map[string]map[string]string) error {
+	// Extract secrets from configDetails if they are present
+	for secretName, secretReference := range recipeConfigSecrets {
+
+		// Extract secret value from the secrets data input
+		if secretSource, ok := secrets[secretReference.Source]; ok {
+			if secretValue, ok := secretSource[secretReference.Key]; ok {
+				currentConfig[secretName] = secretValue
+			} else {
+				return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
+			}
+		} else {
+			return fmt.Errorf("missing secret source: %s", secretReference.Source)
+		}
+	}
+
+	return nil
 }

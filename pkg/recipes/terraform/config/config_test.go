@@ -589,7 +589,7 @@ func Test_AddProviders(t *testing.T) {
 			if tc.Err != nil {
 				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(nil, tc.Err)
 			}
-			err = tfconfig.AddProviders(ctx, tc.requiredProviders, ucpConfiguredProviders, &tc.envConfig)
+			err = tfconfig.AddProviders(ctx, tc.requiredProviders, ucpConfiguredProviders, &tc.envConfig, nil)
 			if tc.Err != nil {
 				require.ErrorContains(t, err, tc.Err.Error())
 				return
@@ -981,4 +981,116 @@ func Test_Save_InvalidWorkingDir(t *testing.T) {
 	err = tfconfig.Save(testcontext.New(t), testDir)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf("error creating file: open %s/main.tf.json: no such file or directory", testDir), err.Error())
+}
+
+func Test_GetProviderSecretIds(t *testing.T) {
+	tests := []struct {
+		name           string
+		envConfig      recipes.Configuration
+		inputSecretIDs map[string][]string
+		want           map[string][]string
+	}{
+		{
+			name: "both env and envConfig secrets populated",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"aws": {
+								{
+									Secrets: map[string]datamodel.SecretReference{
+										"aws_secret1": {Source: "my-app-secret-source-id", Key: "AWS_ACCESS_KEY_ID"},
+									},
+								},
+							},
+						},
+					},
+					EnvSecrets: map[string]datamodel.SecretReference{
+						"env_secret1": {Source: "my-env-secret-source-id", Key: "AZURE_CLIENT_SECRET"},
+					},
+				},
+			},
+			inputSecretIDs: make(map[string][]string),
+			want: map[string][]string{
+				"my-app-secret-source-id": {"AWS_ACCESS_KEY_ID"},
+				"my-env-secret-source-id": {"AZURE_CLIENT_SECRET"},
+			},
+		},
+		{
+			name: "envConfig secret populated",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"aws": {
+								{
+									Secrets: map[string]datamodel.SecretReference{
+										"aws_secret1": {Source: "my-app-secret-source-id", Key: "AWS_ACCESS_KEY_ID"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputSecretIDs: make(map[string][]string),
+			want: map[string][]string{
+				"my-app-secret-source-id": {"AWS_ACCESS_KEY_ID"},
+			},
+		},
+		{
+			name: "env secret populated",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					EnvSecrets: map[string]datamodel.SecretReference{
+						"env_secret1": {Source: "my-env-secret-source-id", Key: "AZURE_CLIENT_SECRET"},
+					},
+				},
+			},
+			inputSecretIDs: make(map[string][]string),
+			want: map[string][]string{
+				"my-env-secret-source-id": {"AZURE_CLIENT_SECRET"},
+			},
+		},
+		{
+			name: "secrets are declared nil",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"aws": {
+								{
+									Secrets: nil,
+								},
+							},
+						},
+					},
+					EnvSecrets: nil,
+				},
+			},
+			inputSecretIDs: nil,
+			want:           nil,
+		},
+		{
+			name: "secrets are nil",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"aws": {},
+						},
+					},
+				},
+			},
+			inputSecretIDs: nil,
+			want:           nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			GetProviderSecretIds(tt.envConfig, tt.inputSecretIDs)
+			require.Equal(t, tt.want, tt.inputSecretIDs)
+		})
+	}
 }

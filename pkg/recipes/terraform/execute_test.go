@@ -119,8 +119,9 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 
 func TestSetEnvironmentVariables(t *testing.T) {
 	testCase := []struct {
-		name string
-		opts Options
+		name    string
+		opts    Options
+		wantErr bool
 	}{
 		{
 			name: "set environment variables",
@@ -136,6 +137,55 @@ func TestSetEnvironmentVariables(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name: "set environment variables with secrets",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						Env: dm.EnvironmentVariables{
+							AdditionalProperties: map[string]string{
+								"TEST_ENV_VAR1": "value1",
+								"TEST_ENV_VAR2": "value2",
+							},
+						},
+						EnvSecrets: map[string]dm.SecretReference{
+							"TEST_ENV_VAR3": {
+								Source: "secretstoreid1",
+								Key:    "secretkey1",
+							},
+						},
+					},
+				},
+				Secrets: map[string]map[string]string{
+					"secretstoreid1": {"secretkey1": "secretvalue1"},
+				},
+			},
+		},
+		{
+			name: "missing secret data",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						Env: dm.EnvironmentVariables{
+							AdditionalProperties: map[string]string{
+								"TEST_ENV_VAR1": "value1",
+								"TEST_ENV_VAR2": "value2",
+							},
+						},
+						EnvSecrets: map[string]dm.SecretReference{
+							"TEST_ENV_VAR3": {
+								Source: "secretstoreid1",
+								Key:    "secretkey1",
+							},
+						},
+					},
+				},
+				Secrets: map[string]map[string]string{
+					"secretstoreid2": {"secretkey2": "secretvalue2"},
+				},
+			},
+			wantErr: true,
 		},
 		{
 			name: "AdditionalProperties set to nil",
@@ -167,10 +217,13 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
+			err = e.setEnvironmentVariables(tf, &tc.opts.EnvConfig.RecipeConfig, tc.opts.Secrets)
 
-			err = e.setEnvironmentVariables(tf, &tc.opts.EnvConfig.RecipeConfig)
-
-			require.NoError(t, err)
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

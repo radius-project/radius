@@ -15,6 +15,7 @@ package configloader
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -34,21 +35,41 @@ type secretsLoader struct {
 	ArmClientOptions *arm.ClientOptions
 }
 
-func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStore string) (v20231001preview.SecretStoresClientListSecretsResponse, error) {
-	secretStoreID, err := resources.ParseResource(secretStore)
-	if err != nil {
-		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+// LoadSecrets loads secrets from secret stores based on input map of provided secret store IDs and secret keys.
+// It returns a map of secret data, where the keys are the secret store IDs and the values are maps of secret keys and their corresponding values.
+func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStoreIDs map[string][]string) (secretData map[string]map[string]string, err error) {
+	secretData = map[string]map[string]string{}
+
+	for secretStoreID, secretKeys := range secretStoreIDs {
+		secretStoreResourceID, err := resources.ParseResource(secretStoreID)
+		if err != nil {
+			return nil, err
+		}
+
+		client, err := v20231001preview.NewSecretStoresClient(secretStoreResourceID.RootScope(), &aztoken.AnonymousCredential{}, e.ArmClientOptions)
+		if err != nil {
+			return nil, err
+		}
+
+		// Retrieve the secrets from the secret store.
+		secrets, err := client.ListSecrets(ctx, secretStoreResourceID.Name(), map[string]any{}, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		// Populate the secretData map.
+		for _, secretKey := range secretKeys {
+			secretDataValue, ok := secrets.Data[secretKey]
+			if ok {
+				if secretData[secretStoreID] == nil {
+					secretData[secretStoreID] = make(map[string]string)
+				}
+				secretData[secretStoreID][secretKey] = *secretDataValue.Value
+			} else {
+				return nil, fmt.Errorf("a secret key was not found in secret store '%s'", secretStoreID)
+			}
+		}
 	}
 
-	client, err := v20231001preview.NewSecretStoresClient(secretStoreID.RootScope(), &aztoken.AnonymousCredential{}, e.ArmClientOptions)
-	if err != nil {
-		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
-	}
-
-	secrets, err := client.ListSecrets(ctx, secretStoreID.Name(), map[string]any{}, nil)
-	if err != nil {
-		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
-	}
-
-	return secrets, nil
+	return secretData, nil
 }

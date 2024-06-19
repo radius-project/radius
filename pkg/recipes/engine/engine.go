@@ -19,9 +19,9 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
@@ -226,24 +226,30 @@ func (e *engine) getDriver(ctx context.Context, recipeMetadata recipes.ResourceM
 	return definition, driver, nil
 }
 
-func (e *engine) getRecipeConfigSecrets(ctx context.Context, driver recipedriver.Driver, configuration *recipes.Configuration, definition *recipes.EnvironmentDefinition) (v20231001preview.SecretStoresClientListSecretsResponse, error) {
-	secrets := v20231001preview.SecretStoresClientListSecretsResponse{}
+func (e *engine) getRecipeConfigSecrets(ctx context.Context, driver recipedriver.Driver, configuration *recipes.Configuration, definition *recipes.EnvironmentDefinition) (secretData map[string]map[string]string, err error) {
 	driverWithSecrets, ok := driver.(recipedriver.DriverWithSecrets)
 	if !ok {
-		return secrets, nil
+		return nil, nil
 	}
 
-	secretStore, err := driverWithSecrets.FindSecretIDs(ctx, *configuration, *definition)
+	secretStoreIDResourceKeys, err := driverWithSecrets.FindSecretIDs(ctx, *configuration, *definition)
 	if err != nil {
-		return v20231001preview.SecretStoresClientListSecretsResponse{}, err
+		return nil, err
 	}
 
-	// Retrieves the secret values from the secret store ID provided.
-	if secretStore != "" {
-		secrets, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStore)
+	// Retrieves the secret values from the secret store IDs and keys provided.
+	if secretStoreIDResourceKeys != nil {
+		secretData, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStoreIDResourceKeys)
 		if err != nil {
-			return v20231001preview.SecretStoresClientListSecretsResponse{}, recipes.NewRecipeError(recipes.LoadSecretsFailed, fmt.Sprintf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %s", secretStore, definition.TemplatePath, err.Error()), util.RecipeSetupError, recipes.GetErrorDetails(err))
+			// Get list of secretStoreIDs to log in the error message.
+			secretStoreIDKeys := []string{}
+			for secretStoreIDKey := range secretStoreIDResourceKeys {
+				secretStoreIDKeys = append(secretStoreIDKeys, secretStoreIDKey)
+			}
+
+			return nil, recipes.NewRecipeError(recipes.LoadSecretsFailed, fmt.Sprintf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %s", strings.Join(secretStoreIDKeys, ", "), definition.TemplatePath, err.Error()), util.RecipeSetupError, recipes.GetErrorDetails(err))
 		}
 	}
-	return secrets, nil
+
+	return secretData, nil
 }

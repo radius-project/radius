@@ -781,3 +781,239 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 		})
 	}
 }
+
+func Test_FindSecretIDs(t *testing.T) {
+	ctx := context.TODO()
+	definition := recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azure.com/project/module"}
+	_, driver := setup(t)
+
+	testCases := []struct {
+		name              string
+		envConfig         recipes.Configuration
+		definition        recipes.EnvironmentDefinition
+		expectedError     bool
+		expectedSecretIDs map[string][]string
+	}{
+		{
+			name:          "Secrets in auth, provider and env config",
+			envConfig:     createTerraformConfigWithAuthProviderEnvSecrets(),
+			definition:    definition,
+			expectedError: false,
+			expectedSecretIDs: map[string][]string{
+				"secret-store-id1":    {"secret-key1", "secret-key-env"},
+				"secret-store-id2":    {"secret-key2"},
+				"secret-store-id-env": {"secret-key-env"},
+				"secret-store-auth":   {"pat", "username"},
+			},
+		},
+		{
+			name:          "Secrets in provider and env config",
+			envConfig:     createTerraformConfigWithProviderEnvSecrets(),
+			definition:    definition,
+			expectedError: false,
+			expectedSecretIDs: map[string][]string{
+				"secret-store-id1":    {"secret-key1", "secret-key-env"},
+				"secret-store-id2":    {"secret-key2"},
+				"secret-store-id-env": {"secret-key-env"},
+			},
+		},
+		{
+			name:          "Secrets in provider config",
+			envConfig:     createTerraformConfigWithProviderSecrets(),
+			definition:    definition,
+			expectedError: false,
+			expectedSecretIDs: map[string][]string{
+				"secret-store-id1": {"secret-key1"},
+				"secret-store-id2": {"secret-key2"},
+			},
+		},
+		{
+			name:          "Secrets in env config",
+			envConfig:     createTerraformConfigWithEnvSecrets(),
+			definition:    definition,
+			expectedError: false,
+			expectedSecretIDs: map[string][]string{
+				"secret-store-id1":    {"secret-key-env2"},
+				"secret-store-id-env": {"secret-key-env1"},
+			},
+		},
+		{
+			name:          "GetSecretStoreID returns error",
+			definition:    recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azu  re.com/project/module"},
+			envConfig:     createTerraformConfigWithAuthProviderEnvSecrets(),
+			expectedError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			secretIDs, err := driver.FindSecretIDs(ctx, tc.envConfig, tc.definition)
+
+			if tc.expectedError {
+				require.NoError(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedSecretIDs, secretIDs)
+			}
+		})
+	}
+}
+
+// createTerraformConfigWithAuthProviderEnvSecrets returns a test input configuration with secrets
+// at auth, provider and environment variable.
+func createTerraformConfigWithAuthProviderEnvSecrets() recipes.Configuration {
+	return recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Authentication: datamodel.AuthConfig{
+					Git: datamodel.GitAuthConfig{
+						PAT: map[string]datamodel.SecretConfig{
+							"dev.azure.com": {
+								Secret: "secret-store-auth",
+							},
+						},
+					},
+				},
+				Providers: map[string][]datamodel.ProviderConfigProperties{
+					"azurerm": {
+						{
+							AdditionalProperties: map[string]any{
+								"subscriptionid": 1234,
+								"tenant_id":      "745fg88bf-86f1-41af-43ut",
+							},
+							Secrets: map[string]datamodel.SecretReference{
+								"secret1": {
+									Source: "secret-store-id1",
+									Key:    "secret-key1",
+								},
+								"secret2": {
+									Source: "secret-store-id2",
+									Key:    "secret-key2",
+								},
+							},
+						},
+						{
+							AdditionalProperties: map[string]any{
+								"alias":          "az-paymentservice",
+								"subscriptionid": 45678,
+								"tenant_id":      "gfhf45345-5d73-gh34-wh84",
+							},
+						},
+					},
+				},
+			},
+			EnvSecrets: map[string]datamodel.SecretReference{
+				"secret-env": {
+					Source: "secret-store-id-env",
+					Key:    "secret-key-env",
+				},
+				"secret1": {
+					Source: "secret-store-id1",
+					Key:    "secret-key-env",
+				},
+			},
+		},
+	}
+}
+
+// createTerraformConfigWithProviderEnvSecrets creates a test input configuration with provider and environment secrets.
+func createTerraformConfigWithProviderEnvSecrets() recipes.Configuration {
+	return recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Providers: map[string][]datamodel.ProviderConfigProperties{
+					"azurerm": {
+						{
+							AdditionalProperties: map[string]any{
+								"subscriptionid": 1234,
+								"tenant_id":      "745fg88bf-86f1-41af-43ut",
+							},
+							Secrets: map[string]datamodel.SecretReference{
+								"secret1": {
+									Source: "secret-store-id1",
+									Key:    "secret-key1",
+								},
+								"secret2": {
+									Source: "secret-store-id2",
+									Key:    "secret-key2",
+								},
+							},
+						},
+						{
+							AdditionalProperties: map[string]any{
+								"alias":          "az-paymentservice",
+								"subscriptionid": 45678,
+								"tenant_id":      "gfhf45345-5d73-gh34-wh84",
+							},
+						},
+					},
+				},
+			},
+			EnvSecrets: map[string]datamodel.SecretReference{
+				"secret-env": {
+					Source: "secret-store-id-env",
+					Key:    "secret-key-env",
+				},
+				"secret1": {
+					Source: "secret-store-id1",
+					Key:    "secret-key-env",
+				},
+			},
+		},
+	}
+}
+
+// createTerraformConfigWithProviderEnvSecrets creates a input test configuration with provider secrets.
+func createTerraformConfigWithProviderSecrets() recipes.Configuration {
+	return recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Providers: map[string][]datamodel.ProviderConfigProperties{
+					"azurerm": {
+						{
+							AdditionalProperties: map[string]any{
+								"subscriptionid": 1234,
+								"tenant_id":      "745fg88bf-86f1-41af-43ut",
+							},
+							Secrets: map[string]datamodel.SecretReference{
+								"secret1": {
+									Source: "secret-store-id1",
+									Key:    "secret-key1",
+								},
+								"secret2": {
+									Source: "secret-store-id2",
+									Key:    "secret-key2",
+								},
+							},
+						},
+						{
+							AdditionalProperties: map[string]any{
+								"alias":          "az-paymentservice",
+								"subscriptionid": 45678,
+								"tenant_id":      "gfhf45345-5d73-gh34-wh84",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// createTerraformConfigWithEnvSecrets creates a test input configuration with secrets in environment variables.
+func createTerraformConfigWithEnvSecrets() recipes.Configuration {
+	return recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			EnvSecrets: map[string]datamodel.SecretReference{
+				"secret-env": {
+					Source: "secret-store-id-env",
+					Key:    "secret-key-env1",
+				},
+				"secret1": {
+					Source: "secret-store-id1",
+					Key:    "secret-key-env2",
+				},
+			},
+		},
+	}
+}

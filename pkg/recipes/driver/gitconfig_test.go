@@ -22,8 +22,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -128,19 +126,12 @@ func TestUnsetGitConfigForDir(t *testing.T) {
 	}
 }
 
-func getSecretList() v20231001preview.SecretStoresClientListSecretsResponse {
-	secrets := v20231001preview.SecretStoresClientListSecretsResponse{
-		SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
-			Data: map[string]*v20231001preview.SecretValueProperties{
-				"username": {
-					Value: to.Ptr("test-user"),
-				},
-				"pat": {
-					Value: to.Ptr("ghp_token"),
-				},
-			},
-		},
+func getSecretList() map[string]string {
+	secrets := map[string]string{
+		"username": "test-user",
+		"pat":      "ghp_token",
 	}
+
 	return secrets
 }
 
