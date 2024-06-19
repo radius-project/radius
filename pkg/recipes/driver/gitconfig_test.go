@@ -187,3 +187,48 @@ func Test_GetGitURL(t *testing.T) {
 		})
 	}
 }
+
+// Test_AddSecretsToGitConfigIfApplicable tests only wrapper funcion.
+// Additional tests exist for inner function call addSecretsToGitConfig in TestAddConfig().
+func Test_AddSecretsToGitConfigIfApplicable(t *testing.T) {
+	templatePath := "git::dev.azure.com/project/module"
+	tests := []struct {
+		name          string
+		secretStoreID string
+		secretData    map[string]map[string]string
+		expectError   bool
+		expectErrMsg  string
+	}{
+		{
+			name:          "Secrets not found for secret store ID",
+			secretStoreID: "missingID",
+			secretData:    map[string]map[string]string{"existingID": {"key": "value"}},
+			expectError:   true,
+			expectErrMsg:  "secrets not found for secret store ID \"missingID\"",
+		},
+		{
+			name:          "Successful secrets addition",
+			secretStoreID: "existingID",
+			secretData:    map[string]map[string]string{"existingID": {"key": "value"}},
+			expectError:   false,
+		},
+		{
+			name:          "secretData is nil",
+			secretStoreID: "missingID",
+			secretData:    nil,
+			expectError:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpdir := t.TempDir()
+			err := addSecretsToGitConfigIfApplicable(tt.secretStoreID, tt.secretData, tmpdir, templatePath)
+			if tt.expectError {
+				require.EqualError(t, err, tt.expectErrMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
