@@ -65,7 +65,7 @@ env:
   # URL to get source code for building the image
   IMAGE_SRC: https://github.com/radius-project/radius
 
-  # ACR url for bicep-types repository
+  # bicep-types ACR url for uploading Radius Bicep types
   BICEP_TYPES_ACR: 'biceptypes.azurecr.io'
 
 jobs:
@@ -265,8 +265,8 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.actor }} --password-stdin ${{ env.OCI_REGISTRY }}
           helm push ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPOSITORY }}
 
-  generate-bicep-types:
-    name: Generate Radius Bicep types 
+  build-and-push-bicep-types:
+    name: Publish Radius bicep types to ACR
     runs-on: ubuntu-latest
     steps: 
       - name: Check out code
@@ -283,34 +283,26 @@ jobs:
           node-version: '18'
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
-          make generate-bicep-types VERSION=testing
+          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
       - name: Upload Radius Bicep types artifacts
         uses: actions/upload-artifact@v4
         with:
           name: radius-bicep-types
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
-  
-  publish-bicep-types:
-    name: Publish Radius Bicep types to ACR 
-    needs: ['generate-bicep-types']
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps: 
-      - name: Check out code
-        uses: actions/checkout@v4
-      - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
       - name: 'Login via Azure CLI'
+        if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         uses: azure/login@v1
         with:
           creds: ${{ secrets.BICEP_TYPES_AZURE_CREDENTIALS }}
       - name: Setup and verify bicep CLI
+        if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         run: |
           curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
           chmod +x ./bicep
           bicep --version
       - name: Publish bicep types 
+        if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         run: |
           bicep publish-provider ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_ACR }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
