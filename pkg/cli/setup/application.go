@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	appBicepTemplate = `import radius as radius
+	appBicepTemplate = `provider radius
 
 @description('The Radius Application ID. Injected automatically by the rad CLI.')
 param application string
