@@ -125,7 +125,7 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 		return ProviderCredentialConfiguration{}, err
 	}
 
-	azureCredential, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureCredentialProperties)
+	azureCredential, ok := resp.AzureCredentialResource.Properties.(ucp.AzureCredentialPropertiesClassification)
 	if !ok {
 		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AzureCredential)
 	}
