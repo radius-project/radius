@@ -220,6 +220,19 @@ func Test_Resource(t *testing.T) {
 		require.Equal(t, expectedResource, resource)
 	})
 
+	t.Run("CreateOrUpdateResource", func(t *testing.T) {
+		mock := NewMockgenericResourceClient(gomock.NewController(t))
+		client := createClient(mock)
+
+		mock.EXPECT().
+			BeginCreateOrUpdate(gomock.Any(), testResourceName, expectedResource, gomock.Any()).
+			Return(poller(&generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: expectedResource}), nil)
+
+		response, err := client.CreateOrUpdateResource(context.Background(), testResourceType, testResourceID, &expectedResource)
+		require.NoError(t, err)
+		require.Equal(t, expectedResource, response)
+	})
+
 	t.Run("DeleteResource", func(t *testing.T) {
 		mock := NewMockgenericResourceClient(gomock.NewController(t))
 		client := createClient(mock)
@@ -828,6 +841,125 @@ func Test_ResourceGroup(t *testing.T) {
 	})
 }
 
+func Test_ResourceProvider(t *testing.T) {
+	createClient := func(wrapped resourceProviderClient) *UCPApplicationsManagementClient {
+		return &UCPApplicationsManagementClient{
+			RootScope: testScope,
+			resourceProviderClientFactory: func() (resourceProviderClient, error) {
+				return wrapped, nil
+			},
+			capture: testCapture,
+		}
+	}
+
+	testResourceProviderName := "Applications.Test"
+
+	expectedResource := ucp.ResourceProviderResource{
+		ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders" + testResourceProviderName),
+		Name:     &testResourceProviderName,
+		Type:     to.Ptr("System.Resources/resourceProviders"),
+		Location: to.Ptr(v1.LocationGlobal),
+	}
+
+	t.Run("ListResourceProviders", func(t *testing.T) {
+		mock := NewMockresourceProviderClient(gomock.NewController(t))
+		client := createClient(mock)
+
+		resourceProviderPages := []ucp.ResourceProvidersClientListResponse{
+			{
+				ResourceProviderResourceListResult: ucp.ResourceProviderResourceListResult{
+					Value: []*ucp.ResourceProviderResource{
+						{
+							ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test1"),
+							Name:     to.Ptr("Applications.Test1"),
+							Type:     to.Ptr("System.Resources/resourceProviders"),
+							Location: to.Ptr(v1.LocationGlobal),
+						},
+						{
+							ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test2"),
+							Name:     to.Ptr("Applications.Test2"),
+							Type:     to.Ptr("System.Resources/resourceProviders"),
+							Location: to.Ptr(v1.LocationGlobal),
+						},
+					},
+					NextLink: to.Ptr("0"),
+				},
+			},
+			{
+				ResourceProviderResourceListResult: ucp.ResourceProviderResourceListResult{
+					Value: []*ucp.ResourceProviderResource{
+						{
+							ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test3"),
+							Name:     to.Ptr("Applications.Test3"),
+							Type:     to.Ptr("System.Resources/resourceProviders"),
+							Location: to.Ptr(v1.LocationGlobal),
+						},
+						{
+							ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test4"),
+							Name:     to.Ptr("Applications.Test4"),
+							Type:     to.Ptr("System.Resources/resourceProviders"),
+							Location: to.Ptr(v1.LocationGlobal),
+						},
+					},
+					NextLink: to.Ptr("1"),
+				},
+			},
+		}
+
+		mock.EXPECT().
+			NewListPager(gomock.Any(), gomock.Any()).
+			Return(pager(resourceProviderPages))
+
+		expected := []ucp.ResourceProviderResource{*resourceProviderPages[0].Value[0], *resourceProviderPages[0].Value[1], *resourceProviderPages[1].Value[0], *resourceProviderPages[1].Value[1]}
+
+		groups, err := client.ListResourceProviders(context.Background(), "local")
+		require.NoError(t, err)
+		require.Equal(t, expected, groups)
+	})
+
+	t.Run("GetResourceProvider", func(t *testing.T) {
+		mock := NewMockresourceProviderClient(gomock.NewController(t))
+		client := createClient(mock)
+
+		mock.EXPECT().
+			Get(gomock.Any(), "local", testResourceProviderName, gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetResponse{ResourceProviderResource: expectedResource}, nil)
+
+		group, err := client.GetResourceProvider(context.Background(), "local", testResourceProviderName)
+		require.NoError(t, err)
+		require.Equal(t, expectedResource, group)
+	})
+
+	t.Run("CreateOrUpdateResourceProvider", func(t *testing.T) {
+		mock := NewMockresourceProviderClient(gomock.NewController(t))
+		client := createClient(mock)
+
+		mock.EXPECT().
+			BeginCreateOrUpdate(gomock.Any(), "local", testResourceProviderName, expectedResource, gomock.Any()).
+			Return(poller(&ucp.ResourceProvidersClientCreateOrUpdateResponse{ResourceProviderResource: expectedResource}), nil)
+
+		result, err := client.CreateOrUpdateResourceProvider(context.Background(), "local", testResourceProviderName, &expectedResource)
+		require.NoError(t, err)
+		require.Equal(t, result, expectedResource)
+	})
+
+	t.Run("DeleteResourceProvider", func(t *testing.T) {
+		mock := NewMockresourceProviderClient(gomock.NewController(t))
+		client := createClient(mock)
+
+		mock.EXPECT().
+			BeginDelete(gomock.Any(), "local", testResourceProviderName, gomock.Any()).
+			DoAndReturn(func(ctx context.Context, s1, s2 string, rgcdo *ucp.ResourceProvidersClientBeginDeleteOptions) (*runtime.Poller[ucp.ResourceProvidersClientDeleteResponse], error) {
+				setCapture(ctx, &http.Response{StatusCode: 200})
+				return poller(&ucp.ResourceProvidersClientDeleteResponse{}), nil
+			})
+
+		deleted, err := client.DeleteResourceProvider(context.Background(), "local", testResourceProviderName)
+		require.NoError(t, err)
+		require.True(t, deleted)
+	})
+}
+
 func Test_extractScopeAndName(t *testing.T) {
 	client := UCPApplicationsManagementClient{
 		RootScope: testScope,
@@ -959,8 +1091,9 @@ type holder struct {
 }
 
 func setCapture(ctx context.Context, response *http.Response) {
-	holder := ctx.Value(holder{}).(*holder)
-	if holder != nil {
+	obj := ctx.Value(holder{})
+	if obj != nil {
+		holder := obj.(*holder)
 		*holder.capture = response
 	}
 }

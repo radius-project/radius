@@ -155,6 +155,9 @@ type ApplicationsManagementClient interface {
 	// GetResource retrieves a resource by its type and name (or id).
 	GetResource(ctx context.Context, resourceType string, resourceNameOrID string) (generated.GenericResource, error)
 
+	// CreateOrUpdateResource creates or updates a resource using its type name (or id).
+	CreateOrUpdateResource(ctx context.Context, resourceType string, resourceNameOrID string, resource *generated.GenericResource) (generated.GenericResource, error)
+
 	// DeleteResource deletes a resource by its type and name (or id).
 	DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string) (bool, error)
 
@@ -205,6 +208,18 @@ type ApplicationsManagementClient interface {
 
 	// DeleteResourceGroup deletes a resource group by its name.
 	DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
+
+	// ListResourceProviders lists all resource providers in the configured scope.
+	ListResourceProviders(ctx context.Context, planeName string) ([]ucp_v20231001preview.ResourceProviderResource, error)
+
+	// GetResourceProvider gets the resource provider with the specified name in the configured scope.
+	GetResourceProvider(ctx context.Context, planeName string, providerNamespace string) (ucp_v20231001preview.ResourceProviderResource, error)
+
+	// CreateOrUpdateResourceProvider creates or updates a resource provider in the configured scope.
+	CreateOrUpdateResourceProvider(ctx context.Context, planeName string, providerNamespace string, resource *ucp_v20231001preview.ResourceProviderResource) (ucp_v20231001preview.ResourceProviderResource, error)
+
+	// DeleteResourceProvider deletes a resource provider in the configured scope.
+	DeleteResourceProvider(ctx context.Context, planeName string, providerNamespace string) (bool, error)
 }
 
 // ShallowCopy creates a shallow copy of the DeploymentParameters object by iterating through the original object and
