@@ -24,6 +24,9 @@ resource secret 'core/Secret@v1' = {
     labels: {
       format: 'k8s-extension'
     }
+    annotations: {
+      testAnnotation: 'testAnnotation'
+    }
   }
 
   stringData: {
