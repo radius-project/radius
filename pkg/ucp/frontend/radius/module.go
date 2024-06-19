@@ -17,9 +17,12 @@ limitations under the License.
 package radius
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/validator"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // NewModule creates a new Radius module.
@@ -28,7 +31,15 @@ func NewModule(options modules.Options) *Module {
 	router.NotFound(validator.APINotFoundHandler())
 	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
-	return &Module{options: options, router: router}
+	transport := otelhttp.NewTransport(http.DefaultTransport)
+	embeddedTransport := otelhttp.NewTransport(CreateEmbeddedTransport(options))
+
+	return &Module{
+		options:           options,
+		router:            router,
+		Transport:         transport,
+		EmbeddedTransport: embeddedTransport,
+	}
 }
 
 var _ modules.Initializer = &Module{}
@@ -37,6 +48,12 @@ var _ modules.Initializer = &Module{}
 type Module struct {
 	options modules.Options
 	router  chi.Router
+
+	// Transport is the Transport used for requests that are proxied to other resource providers.
+	Transport http.RoundTripper
+
+	// EmbeddedTransport is the transport used for resources that embedded into UCP (user-defined-types).
+	EmbeddedTransport http.RoundTripper
 }
 
 // PlaneType returns the type of plane this module is for.

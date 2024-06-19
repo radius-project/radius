@@ -113,6 +113,24 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// ResourceTypeRoutingBehavior - The routing behavior for a resource type.
+type ResourceTypeRoutingBehavior string
+
+const (
+	// ResourceTypeRoutingBehaviorInternal - The resource type is implemented inside UCP.
+	ResourceTypeRoutingBehaviorInternal ResourceTypeRoutingBehavior = "Internal"
+	// ResourceTypeRoutingBehaviorProvider - The resource type is routed to a separate resource provider implementation.
+	ResourceTypeRoutingBehaviorProvider ResourceTypeRoutingBehavior = "Provider"
+)
+
+// PossibleResourceTypeRoutingBehaviorValues returns the possible values for the ResourceTypeRoutingBehavior const type.
+func PossibleResourceTypeRoutingBehaviorValues() []ResourceTypeRoutingBehavior {
+	return []ResourceTypeRoutingBehavior{	
+		ResourceTypeRoutingBehaviorInternal,
+		ResourceTypeRoutingBehaviorProvider,
+	}
+}
+
 // Versions - Supported API versions for Universal Control Plane resource provider.
 type Versions string
 

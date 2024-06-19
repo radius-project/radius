@@ -27,6 +27,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/frontend/api"
+	"github.com/radius-project/radius/pkg/ucp/hosting"
 )
 
 const (
@@ -36,15 +38,20 @@ const (
 // Service is a service to run AsyncReqeustProcessWorker.
 type Service struct {
 	worker.Service
+
+	// transports provides access to the transports that can be made to outgoing calls.
+	transports *hosting.AsyncValue[api.Transports]
 }
 
 // NewService creates new service instance to run AsyncReqeustProcessWorker.
-func NewService(options hostoptions.HostOptions) *Service {
+func NewService(options hostoptions.HostOptions, transports *hosting.AsyncValue[api.Transports]) *Service {
 	return &Service{
-		worker.Service{
+		Service: worker.Service{
 			ProviderName: UCPProviderName,
 			Options:      options,
 		},
+
+		transports: transports,
 	}
 }
 
@@ -74,7 +81,7 @@ func (w *Service) Run(ctx context.Context) error {
 		DataProvider: w.StorageProvider,
 	}
 
-	err := RegisterControllers(ctx, w.Controllers, opts)
+	err := w.RegisterControllers(ctx, w.Controllers, opts)
 	if err != nil {
 		return err
 	}
@@ -83,8 +90,15 @@ func (w *Service) Run(ctx context.Context) error {
 }
 
 // RegisterControllers registers the controllers for the UCP backend.
-func RegisterControllers(ctx context.Context, registry *worker.ControllerRegistry, opts ctrl.Options) error {
-	err := registry.Register(ctx, v20231001preview.ResourceType, v1.OperationMethod(datamodel.OperationProcess), resourcegroups.NewTrackedResourceProcessController, opts)
+func (w *Service) RegisterControllers(ctx context.Context, registry *worker.ControllerRegistry, opts ctrl.Options) error {
+	transports, err := w.transports.Get(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = registry.Register(ctx, v20231001preview.GenericResourceType, v1.OperationMethod(datamodel.OperationProcess), func(opts ctrl.Options) (ctrl.Controller, error) {
+		return resourcegroups.NewTrackedResourceProcessController(opts, transports.Transport, transports.EmbeddedTransport)
+	}, opts)
 	if err != nil {
 		return err
 	}

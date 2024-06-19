@@ -61,6 +61,9 @@
       "name": "Resources"
     },
     {
+      "name": "ResourceProviders"
+    },
+    {
       "name": "RadiusPlanes"
     }
   ],
@@ -1322,6 +1325,224 @@
         "x-ms-long-running-operation": true
       }
     },
+    "/planes/radius/{planeName}/providers": {
+      "get": {
+        "operationId": "ResourceProviders_List",
+        "tags": [
+          "ResourceProviders"
+        ],
+        "description": "List resource providers.",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ResourceProviderResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/radius/{planeName}/providers/{resourceProviderName}": {
+      "get": {
+        "operationId": "ResourceProviders_Get",
+        "tags": [
+          "ResourceProviders"
+        ],
+        "description": "Get the specified resource provider.",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceProviderName",
+            "in": "path",
+            "description": "The resource provider name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))\\.([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ResourceProviderResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "ResourceProviders_CreateOrUpdate",
+        "tags": [
+          "ResourceProviders"
+        ],
+        "description": "Create or update a resource provider",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceProviderName",
+            "in": "path",
+            "description": "The resource provider name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))\\.([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ResourceProviderResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'ResourceProviderResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ResourceProviderResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'ResourceProviderResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ResourceProviderResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "ResourceProviders_Delete",
+        "tags": [
+          "ResourceProviders"
+        ],
+        "description": "Delete a resource provider",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceProviderName",
+            "in": "path",
+            "description": "The resource provider name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))\\.([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
     "/planes/radius/{planeName}/resourcegroups": {
       "get": {
         "operationId": "ResourceGroups_List",
@@ -2466,6 +2687,184 @@
       "type": "object",
       "description": "The resource properties",
       "properties": {}
+    },
+    "ResourceProviderLocation": {
+      "type": "object",
+      "description": "The configuration of a resource provider in a specific location.",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "The address of the resource provider implementation."
+        }
+      },
+      "required": [
+        "address"
+      ]
+    },
+    "ResourceProviderNamespaceString": {
+      "type": "string",
+      "description": "The resource provider namespace",
+      "maxLength": 63,
+      "pattern": "^([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))\\.([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))?$"
+    },
+    "ResourceProviderProperties": {
+      "type": "object",
+      "description": "Resource provider properties",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "locations": {
+          "type": "object",
+          "description": "The configuration of the resource provider in each supported location.",
+          "additionalProperties": {
+            "$ref": "#/definitions/ResourceProviderLocation"
+          }
+        },
+        "resourceTypes": {
+          "type": "array",
+          "description": "The resource types supported by the provider.",
+          "items": {
+            "$ref": "#/definitions/ResourceType"
+          },
+          "readOnly": true,
+          "x-ms-identifiers": [
+            "resourceType"
+          ]
+        }
+      },
+      "required": [
+        "locations",
+        "resourceTypes"
+      ]
+    },
+    "ResourceProviderResource": {
+      "type": "object",
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ResourceProviderProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "ResourceProviderResourceListResult": {
+      "type": "object",
+      "description": "The response of a ResourceProviderResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The ResourceProviderResource items on this page",
+          "items": {
+            "$ref": "#/definitions/ResourceProviderResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "ResourceType": {
+      "type": "object",
+      "description": "A resource type supported by the resource provider.",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "The resource type name."
+        },
+        "routingType": {
+          "$ref": "#/definitions/ResourceTypeRoutingBehavior",
+          "description": "The routing behavior for the resource type."
+        },
+        "apiVersions": {
+          "type": "object",
+          "description": "The supported resource type api versions.",
+          "additionalProperties": {
+            "$ref": "#/definitions/ResourceTypeApiVersion"
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "description": "The additional capabilities offered by this resource type.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "defaultApiVersion": {
+          "type": "string",
+          "description": "The default api version for the resource type."
+        },
+        "locations": {
+          "type": "array",
+          "description": "The locations that are supported by this resource type.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "resourceType",
+        "routingType",
+        "apiVersions",
+        "capabilities",
+        "defaultApiVersion",
+        "locations"
+      ]
+    },
+    "ResourceTypeApiVersion": {
+      "type": "object",
+      "description": "The supported api versions for a resource type.",
+      "properties": {
+        "schema": {
+          "type": "object",
+          "description": "The OpenAPI v3 schema for the resource types.",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schema"
+      ]
+    },
+    "ResourceTypeRoutingBehavior": {
+      "type": "string",
+      "description": "The routing behavior for a resource type.",
+      "enum": [
+        "Provider",
+        "Internal"
+      ],
+      "x-ms-enum": {
+        "name": "ResourceTypeRoutingBehavior",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Provider",
+            "value": "Provider",
+            "description": "The resource type is routed to a separate resource provider implementation."
+          },
+          {
+            "name": "Internal",
+            "value": "Internal",
+            "description": "The resource type is implemented inside UCP."
+          }
+        ]
+      }
     },
     "Versions": {
       "type": "string",

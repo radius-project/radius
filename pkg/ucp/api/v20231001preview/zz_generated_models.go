@@ -560,6 +560,85 @@ type ResourceGroupResourceTagsUpdate struct {
 	Tags map[string]*string
 }
 
+// ResourceProviderLocation - The configuration of a resource provider in a specific location.
+type ResourceProviderLocation struct {
+	// REQUIRED; The address of the resource provider implementation.
+	Address *string
+}
+
+// ResourceProviderProperties - Resource provider properties
+type ResourceProviderProperties struct {
+	// REQUIRED; The configuration of the resource provider in each supported location.
+	Locations map[string]*ResourceProviderLocation
+
+	// READ-ONLY; The resource types supported by the provider.
+	ResourceTypes []*ResourceType
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// ResourceProviderResource - Concrete tracked resource types can be created by aliasing this type using a specific property
+// type.
+type ResourceProviderResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// The resource-specific properties for this resource.
+	Properties *ResourceProviderProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// ResourceProviderResourceListResult - The response of a ResourceProviderResource list operation.
+type ResourceProviderResourceListResult struct {
+	// REQUIRED; The ResourceProviderResource items on this page
+	Value []*ResourceProviderResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// ResourceType - A resource type supported by the resource provider.
+type ResourceType struct {
+	// REQUIRED; The supported resource type api versions.
+	APIVersions map[string]*ResourceTypeAPIVersion
+
+	// REQUIRED; The additional capabilities offered by this resource type.
+	Capabilities []*string
+
+	// REQUIRED; The default api version for the resource type.
+	DefaultAPIVersion *string
+
+	// REQUIRED; The locations that are supported by this resource type.
+	Locations []*string
+
+	// REQUIRED; The resource type name.
+	ResourceType *string
+
+	// REQUIRED; The routing behavior for the resource type.
+	RoutingType *ResourceTypeRoutingBehavior
+}
+
+// ResourceTypeAPIVersion - The supported api versions for a resource type.
+type ResourceTypeAPIVersion struct {
+	// REQUIRED; The OpenAPI v3 schema for the resource types.
+	Schema map[string]any
+}
+
 // SystemData - Metadata pertaining to creation and last modification of the resource.
 type SystemData struct {
 	// The timestamp of resource creation (UTC).

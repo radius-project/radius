@@ -78,7 +78,7 @@ func IDFor(id resources.ID) resources.ID {
 		id.ScopeSegments(),
 		[]resources.TypeSegment{
 			{
-				Type: v20231001preview.ResourceType,
+				Type: v20231001preview.GenericResourceType,
 				Name: NameFor(id),
 			},
 		}, nil))

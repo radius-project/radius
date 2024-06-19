@@ -71,7 +71,7 @@ func (r *ListResources) Run(ctx context.Context, w http.ResponseWriter, req *htt
 
 	query := store.Query{
 		RootScope:    resourceGroupID.String(),
-		ResourceType: v20231001preview.ResourceType,
+		ResourceType: v20231001preview.GenericResourceType,
 	}
 
 	result, err := r.StorageClient().Query(ctx, query)

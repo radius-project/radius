@@ -150,22 +150,21 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 // NewServer creates a new hosting.Host instance with services for API, EmbeddedETCD, Metrics, Profiler and Backend (if
 // enabled) based on the given Options.
 func NewServer(options *Options) (*hosting.Host, error) {
-	hostingServices := []hosting.Service{
-		api.NewService(api.ServiceOptions{
-			ProviderName:           UCPProviderName,
-			Address:                ":" + options.Port,
-			PathBase:               options.PathBase,
-			Config:                 options.Config,
-			Location:               options.Location,
-			TLSCertDir:             options.TLSCertDir,
-			StorageProviderOptions: options.StorageProviderOptions,
-			SecretProviderOptions:  options.SecretProviderOptions,
-			QueueProviderOptions:   options.QueueProviderOptions,
-			InitialPlanes:          options.InitialPlanes,
-			Identity:               options.Identity,
-			UCPConnection:          options.UCPConnection,
-		}),
-	}
+	frontendService := api.NewService(api.ServiceOptions{
+		ProviderName:           UCPProviderName,
+		Address:                ":" + options.Port,
+		PathBase:               options.PathBase,
+		Config:                 options.Config,
+		Location:               options.Location,
+		TLSCertDir:             options.TLSCertDir,
+		StorageProviderOptions: options.StorageProviderOptions,
+		SecretProviderOptions:  options.SecretProviderOptions,
+		QueueProviderOptions:   options.QueueProviderOptions,
+		InitialPlanes:          options.InitialPlanes,
+		Identity:               options.Identity,
+		UCPConnection:          options.UCPConnection,
+	})
+	hostingServices := []hosting.Service{frontendService}
 
 	if options.StorageProviderOptions.Provider == dataprovider.TypeETCD &&
 		options.StorageProviderOptions.ETCD.InMemory {
@@ -201,7 +200,7 @@ func NewServer(options *Options) (*hosting.Host, error) {
 			ProfilerProvider: options.ProfilerProviderOptions,
 		},
 	}
-	hostingServices = append(hostingServices, backend.NewService(backendServiceOptions))
+	hostingServices = append(hostingServices, backend.NewService(backendServiceOptions, frontendService.Transports))
 
 	options.TracerProviderOptions.ServiceName = "ucp"
 	hostingServices = append(hostingServices, &trace.Service{Options: options.TracerProviderOptions})

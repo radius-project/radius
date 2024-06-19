@@ -63,8 +63,11 @@ func TestRegister_Get(t *testing.T) {
 	}, ctrlOpts)
 	require.NoError(t, err)
 
-	ctrl := registry.Get(opGet)
+	ctrl, err := registry.Get(context.Background(), opGet)
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
-	ctrl = registry.Get(opPut)
+
+	ctrl, err = registry.Get(context.Background(), opPut)
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 }

@@ -83,6 +83,9 @@ type ServiceOptions struct {
 
 // Service implements the hosting.Service interface for the UCP frontend API.
 type Service struct {
+	// Transports provides asynchronous access to the transports used for for making requests.
+	Transports *hosting.AsyncValue[Transports]
+
 	options         ServiceOptions
 	storageProvider dataprovider.DataStorageProvider
 	queueProvider   *queueprovider.QueueProvider
@@ -98,12 +101,22 @@ func DefaultModules(options modules.Options) []modules.Initializer {
 	}
 }
 
+// Transports is a struct that holds the transports used for requests that are proxied to other resource providers.
+type Transports struct {
+	// Transport is the Transport used for requests that are proxied to other resource providers.
+	Transport http.RoundTripper
+
+	// EmbeddedTransport is the transport used for resources that embedded into UCP (user-defined-types).
+	EmbeddedTransport http.RoundTripper
+}
+
 var _ hosting.Service = (*Service)(nil)
 
 // NewService creates a server to serve UCP API requests.
 func NewService(options ServiceOptions) *Service {
 	return &Service{
-		options: options,
+		options:    options,
+		Transports: hosting.NewAsyncValue[Transports](),
 	}
 }
 
@@ -151,6 +164,19 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	err = Register(ctx, r, modules, moduleOptions)
 	if err != nil {
 		return nil, err
+	}
+
+	initializedTransports := false
+	for _, module := range s.options.Modules {
+		if module.PlaneType() == "radius" {
+			m := module.(*radius_frontend.Module)
+			s.Transports.Put(&Transports{Transport: m.Transport, EmbeddedTransport: m.EmbeddedTransport})
+			initializedTransports = true
+		}
+	}
+
+	if !initializedTransports {
+		s.Transports.PutErr(fmt.Errorf("no radius module found"))
 	}
 
 	if s.options.Configure != nil {

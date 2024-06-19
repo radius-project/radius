@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	ResourceType = "System.Resources/resources"
+	GenericResourceType = "System.Resources/resources"
 )
 
 // ConvertTo converts from the versioned GenericResource resource to version-agnostic datamodel.

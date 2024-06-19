@@ -1,0 +1,38 @@
+{
+  "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test",
+  "location": "global",
+  "name": "Applications.Test",
+  "properties": {
+    "locations": {
+      "global": {
+        "address": "internal"
+      }
+    },
+    "provisioningState": "Succeeded",
+    "resourceTypes": [
+      {
+        "apiVersions": {
+          "2024-01-01": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "capabilities": [
+          "awesomeness"
+        ],
+        "defaultApiVersion": "2024-01-01",
+        "locations": [
+          "global"
+        ],
+        "resourceType": "exampleResources"
+      }
+    ]
+  },
+  "type": "System.Resources/resourceProviders"
+}

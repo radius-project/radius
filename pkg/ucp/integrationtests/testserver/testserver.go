@@ -40,6 +40,7 @@ import (
 	backend_ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
+	backendoptions "github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/middleware"
@@ -48,6 +49,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/pkg/ucp/frontend/radius"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
 	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
@@ -140,6 +142,8 @@ func (ts *TestServer) Close() {
 
 // StartWithMocks creates and starts a new TestServer that used an mocks for storage.
 func StartWithMocks(t *testing.T, configureModules func(options modules.Options) []modules.Initializer) *TestServer {
+	t.Helper()
+
 	ctx, cancel := testcontext.NewWithCancel(t)
 
 	// Generate a random base path to ensure we're handling it correctly.
@@ -281,16 +285,6 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 
 	statusManager := statusmanager.New(dataProvider, queueClient, v1.LocationGlobal)
 
-	registry := worker.NewControllerRegistry(dataProvider)
-	err = backend.RegisterControllers(ctx, registry, backend_ctrl.Options{DataProvider: dataProvider})
-	require.NoError(t, err)
-
-	w := worker.New(worker.Options{}, statusManager, queueClient, registry)
-	go func() {
-		err = w.Start(ctx)
-		require.NoError(t, err)
-	}()
-
 	router := chi.NewRouter()
 	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
 
@@ -322,6 +316,35 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 
 	err = api.Register(ctx, router, modules, options)
 	require.NoError(t, err)
+
+	transports := hosting.NewAsyncValue[api.Transports]()
+
+	initializedTransports := false
+	for _, module := range modules {
+		if module.PlaneType() != "radius" {
+			continue
+		}
+
+		m := module.(*radius.Module)
+		transports.Put(&api.Transports{Transport: m.Transport, EmbeddedTransport: m.EmbeddedTransport})
+		initializedTransports = true
+	}
+
+	if !initializedTransports {
+		transports.PutErr(fmt.Errorf("radius module not initialized"))
+	}
+
+	backendService := backend.NewService(backendoptions.HostOptions{}, transports)
+
+	registry := worker.NewControllerRegistry(dataProvider)
+	err = backendService.RegisterControllers(ctx, registry, backend_ctrl.Options{DataProvider: dataProvider})
+	require.NoError(t, err)
+
+	w := worker.New(worker.Options{}, statusManager, queueClient, registry)
+	go func() {
+		err = w.Start(ctx)
+		require.NoError(t, err)
+	}()
 
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info("Starting HTTP server...")
@@ -367,6 +390,8 @@ type TestResponse struct {
 // MakeFixtureRequest sends a request to the server using a file on disk as the payload (body). Use the fixture
 // parameter to specify the path to a file.
 func (ts *TestServer) MakeFixtureRequest(method string, pathAndQuery string, fixture string) *TestResponse {
+	ts.t.Helper()
+
 	body, err := os.ReadFile(fixture)
 	require.NoError(ts.t, err, "reading fixture failed")
 	return ts.MakeRequest(method, pathAndQuery, body)
@@ -374,6 +399,8 @@ func (ts *TestServer) MakeFixtureRequest(method string, pathAndQuery string, fix
 
 // MakeTypedRequest sends a request to the server by marshalling the provided object to JSON.
 func (ts *TestServer) MakeTypedRequest(method string, pathAndQuery string, body any) *TestResponse {
+	ts.t.Helper()
+
 	if body == nil {
 		return ts.MakeRequest(method, pathAndQuery, nil)
 	}
@@ -385,6 +412,8 @@ func (ts *TestServer) MakeTypedRequest(method string, pathAndQuery string, body 
 
 // MakeRequest sends a request to the server.
 func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byte) *TestResponse {
+	ts.t.Helper()
+
 	client := ts.Server.Client()
 	request, err := rpctest.NewHTTPRequestWithContent(context.Background(), method, ts.BaseURL+pathAndQuery, body)
 	require.NoError(ts.t, err, "creating request failed")
@@ -428,6 +457,8 @@ func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byt
 // EqualsErrorCode compares a TestResponse against an expected status code and error code. EqualsErrorCode assumes the response
 // uses the ARM error format (required for our APIs).
 func (tr *TestResponse) EqualsErrorCode(statusCode int, code string) {
+	tr.t.Helper()
+
 	require.Equal(tr.t, statusCode, tr.Raw.StatusCode, "status code did not match expected")
 	require.NotNil(tr.t, tr.Error, "expected an error but actual response did not contain one")
 	require.Equal(tr.t, code, tr.Error.Error.Code, "actual error code was different from expected")
@@ -436,6 +467,8 @@ func (tr *TestResponse) EqualsErrorCode(statusCode int, code string) {
 // EqualsFixture compares a TestResponse against an expected status code and body payload. Use the fixture parameter to specify
 // the path to a file.
 func (tr *TestResponse) EqualsFixture(statusCode int, fixture string) {
+	tr.t.Helper()
+
 	body, err := os.ReadFile(fixture)
 	require.NoError(tr.t, err, "reading fixture failed")
 	tr.EqualsResponse(statusCode, body)
@@ -443,11 +476,15 @@ func (tr *TestResponse) EqualsFixture(statusCode int, fixture string) {
 
 // EqualsStatusCode compares a TestResponse against an expected status code (ingnores the body payload).
 func (tr *TestResponse) EqualsStatusCode(statusCode int) {
+	tr.t.Helper()
+
 	require.Equal(tr.t, statusCode, tr.Raw.StatusCode, "status code did not match expected")
 }
 
 // EqualsFixture compares a TestResponse against an expected status code and body payload.
 func (tr *TestResponse) EqualsResponse(statusCode int, body []byte) {
+	tr.t.Helper()
+
 	if len(body) == 0 {
 		require.Equal(tr.t, statusCode, tr.Raw.StatusCode, "status code did not match expected")
 		require.Empty(tr.t, tr.Body.Bytes(), "expected an empty response but actual response had a body")

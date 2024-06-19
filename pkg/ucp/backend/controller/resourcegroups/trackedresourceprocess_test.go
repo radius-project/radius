@@ -37,7 +37,7 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		storageClient := store.NewMockStorageClient(ctrl)
 
-		pc, err := NewTrackedResourceProcessController(controller.Options{StorageClient: storageClient})
+		pc, err := NewTrackedResourceProcessController(controller.Options{StorageClient: storageClient}, nil, nil)
 		require.NoError(t, err)
 
 		updater := mockUpdater{}
@@ -47,6 +47,7 @@ func Test_Run(t *testing.T) {
 
 	id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
 	trackingID := trackedresource.IDFor(id)
+	providerID := resources.MustParse("/planes/test/local/providers/System.Resources/resourceProviders/Applications.Test")
 
 	plane := datamodel.RadiusPlane{
 		Properties: datamodel.RadiusPlaneProperties{
@@ -71,6 +72,10 @@ func Test_Run(t *testing.T) {
 			Return(&store.Object{Data: plane}, nil).Times(1)
 
 		storageClient.EXPECT().
+			Get(gomock.Any(), providerID.String(), gomock.Any()).
+			Return(nil, &store.ErrNotFound{}).Times(1)
+
+		storageClient.EXPECT().
 			Get(gomock.Any(), trackingID.RootScope(), gomock.Any()).
 			Return(&store.Object{Data: resourceGroup}, nil).Times(1)
 
@@ -89,6 +94,10 @@ func Test_Run(t *testing.T) {
 		storageClient.EXPECT().
 			Get(gomock.Any(), "/planes/"+trackingID.PlaneNamespace(), gomock.Any()).
 			Return(&store.Object{Data: plane}, nil).Times(1)
+
+		storageClient.EXPECT().
+			Get(gomock.Any(), providerID.String(), gomock.Any()).
+			Return(nil, &store.ErrNotFound{}).Times(1)
 
 		storageClient.EXPECT().
 			Get(gomock.Any(), trackingID.RootScope(), gomock.Any()).
@@ -150,6 +159,6 @@ type mockUpdater struct {
 	Result error
 }
 
-func (u *mockUpdater) Update(ctx context.Context, downstreamURL string, originalID resources.ID, version string) error {
+func (u *mockUpdater) Update(ctx context.Context, opts trackedresource.UpdateOptions) error {
 	return u.Result
 }

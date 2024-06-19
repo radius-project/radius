@@ -42,10 +42,9 @@ const (
 )
 
 // NewUpdater creates a new Updater.
-func NewUpdater(storeClient store.StorageClient, httpClient *http.Client) *Updater {
+func NewUpdater(storeClient store.StorageClient) *Updater {
 	return &Updater{
 		Store:          storeClient,
-		Client:         httpClient,
 		AttemptCount:   retryCount,
 		RetryDelay:     retryDelay,
 		RequestTimeout: requestTimeout,
@@ -57,9 +56,6 @@ type Updater struct {
 	// Store is the storage client used to access the database.
 	Store store.StorageClient
 
-	// Client is the HTTP client used to make requests to the downstream API.
-	Client *http.Client
-
 	// AttemptCount is the number of times to attempt a request and database update.
 	AttemptCount int
 
@@ -68,6 +64,21 @@ type Updater struct {
 
 	// RequestTimeout is the timeout used for requests to the downstream API.
 	RequestTimeout time.Duration
+}
+
+// UpdateOptions are the options for updating a tracked resource.
+type UpdateOptions struct {
+	// Downstring is the downstream URL of the destination resource provider.
+	Downstream string
+
+	// Transport is an http.RoundTripper that can be used to invoke the destination resource provider.
+	Transport http.RoundTripper
+
+	// ID is the ID of the resource to update.
+	ID resources.ID
+
+	// APIVersion is the API version to use when querying the downstream API.
+	APIVersion string
 }
 
 // InProgressErr signifies that the resource is currently in a non-terminal state.
@@ -107,17 +118,17 @@ type trackedResourceStateProperties struct {
 // - Database failure
 // - Optimistic concurrency failure
 // - Resource is still being provisioned (provisioning state is non-terminal)
-func (u *Updater) Update(ctx context.Context, downstream string, id resources.ID, apiVersion string) error {
+func (u *Updater) Update(ctx context.Context, opts UpdateOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	destination, err := url.Parse(downstream)
+	destination, err := url.Parse(opts.Downstream)
 	if err != nil {
 		return err
 	}
 
-	destination = destination.JoinPath(id.String())
+	destination = destination.JoinPath(opts.ID.String())
 
 	query := destination.Query()
-	query.Set("api-version", apiVersion)
+	query.Set("api-version", opts.APIVersion)
 	destination.RawQuery = query.Encode()
 
 	// Tracking ID is the ID of the TrackedResourceEntry that will store the data.
@@ -125,16 +136,16 @@ func (u *Updater) Update(ctx context.Context, downstream string, id resources.ID
 	// Example:
 	//	id: /planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app
 	//	trackingID: /planes/radius/local/resourceGroups/test-group/providers/System.Resources/trackingResourceEntries/test-app-ec291e26078b7ea8a74abfac82530005a0ecbf15
-	trackingID := IDFor(id)
+	trackingID := IDFor(opts.ID)
 
-	logger = logger.WithValues("id", id, "trackingID", trackingID, "destination", destination.String())
+	logger = logger.WithValues("id", opts.ID, "trackingID", trackingID, "destination", destination.String())
 	logger.V(ucplog.LevelDebug).Info("updating tracked resource")
 	for attempt := 1; attempt <= u.AttemptCount; attempt++ {
 		logger.WithValues("attempt", attempt)
 		ctx := logr.NewContext(ctx, logger)
 		logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
-		err := u.run(ctx, id, trackingID, destination, apiVersion)
+		err := u.run(ctx, opts.ID, trackingID, destination, opts.Transport, opts.APIVersion)
 		if errors.Is(err, &InProgressErr{}) && attempt == u.AttemptCount {
 			// Preserve the InprogressErr for the last attempt.
 			return err
@@ -151,7 +162,7 @@ func (u *Updater) Update(ctx context.Context, downstream string, id resources.ID
 	return fmt.Errorf("failed to update tracked resource after %d attempts", u.AttemptCount)
 }
 
-func (u *Updater) run(ctx context.Context, id resources.ID, trackingID resources.ID, destination *url.URL, apiVersion string) error {
+func (u *Updater) run(ctx context.Context, id resources.ID, trackingID resources.ID, destination *url.URL, transport http.RoundTripper, apiVersion string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	obj, err := u.Store.Get(ctx, trackingID.String())
 	if errors.Is(err, &store.ErrNotFound{}) {
@@ -171,7 +182,7 @@ func (u *Updater) run(ctx context.Context, id resources.ID, trackingID resources
 		}
 	}
 
-	data, err := u.fetch(ctx, destination)
+	data, err := u.fetch(ctx, destination, transport)
 	if err != nil {
 		return err
 	}
@@ -219,7 +230,7 @@ func (u *Updater) run(ctx context.Context, id resources.ID, trackingID resources
 	return nil
 }
 
-func (u *Updater) fetch(ctx context.Context, destination *url.URL) (*trackedResourceState, error) {
+func (u *Updater) fetch(ctx context.Context, destination *url.URL, transport http.RoundTripper) (*trackedResourceState, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
@@ -230,7 +241,12 @@ func (u *Updater) fetch(ctx context.Context, destination *url.URL) (*trackedReso
 	if err != nil {
 		return nil, err
 	}
-	response, err := u.Client.Do(request)
+
+	client := &http.Client{
+		Transport: transport,
+	}
+
+	response, err := client.Do(request)
 	if err != nil {
 		return nil, err
 	}
