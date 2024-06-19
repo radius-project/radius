@@ -1,0 +1,6 @@
+{
+  "location": "global",
+  "properties": {
+    "message": "this is a very cool user-defined-type"
+  }
+}

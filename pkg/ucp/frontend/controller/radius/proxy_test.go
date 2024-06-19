@@ -44,22 +44,25 @@ func createController(t *testing.T) (*ProxyController, *store.MockStorageClient,
 	storageClient := store.NewMockStorageClient(ctrl)
 	statusManager := statusmanager.NewMockStatusManager(ctrl)
 
-	p, err := NewProxyController(controller.Options{StorageClient: storageClient, StatusManager: statusManager})
+	roundTripper := mockRoundTripper{}
+
+	p, err := NewProxyController(
+		controller.Options{StorageClient: storageClient, StatusManager: statusManager},
+		&roundTripper,
+		&roundTripper)
 	require.NoError(t, err)
 
 	updater := mockUpdater{}
-	roundTripper := mockRoundTripper{}
 
 	pc := p.(*ProxyController)
 	pc.updater = &updater
-	pc.transport = &roundTripper
 
 	return pc, storageClient, &updater, &roundTripper, statusManager
 }
 
 func Test_Run(t *testing.T) {
 	id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
-
+	providerID := resources.MustParse("/planes/test/local/providers/System.Resources/resourceProviders/Applications.Test")
 	plane := datamodel.RadiusPlane{
 		Properties: datamodel.RadiusPlaneProperties{
 			ResourceProviders: map[string]string{
@@ -82,6 +85,10 @@ func Test_Run(t *testing.T) {
 
 		// Not a mutating request
 		req := httptest.NewRequest(http.MethodGet, id.String(), nil)
+
+		storageClient.EXPECT().
+			Get(gomock.Any(), providerID.String(), gomock.Any()).
+			Return(nil, &store.ErrNotFound{}).Times(1)
 
 		storageClient.EXPECT().
 			Get(gomock.Any(), "/planes/"+id.PlaneNamespace(), gomock.Any()).
@@ -113,6 +120,10 @@ func Test_Run(t *testing.T) {
 
 		// Mutating request that will complete synchronously
 		req := httptest.NewRequest(http.MethodDelete, id.String(), nil)
+
+		storageClient.EXPECT().
+			Get(gomock.Any(), providerID.String(), gomock.Any()).
+			Return(nil, &store.ErrNotFound{}).Times(1)
 
 		storageClient.EXPECT().
 			Get(gomock.Any(), "/planes/"+id.PlaneNamespace(), gomock.Any()).
@@ -147,6 +158,10 @@ func Test_Run(t *testing.T) {
 
 		// Mutating request that will complete synchronously
 		req := httptest.NewRequest(http.MethodDelete, id.String(), nil)
+
+		storageClient.EXPECT().
+			Get(gomock.Any(), providerID.String(), gomock.Any()).
+			Return(nil, &store.ErrNotFound{}).Times(1)
 
 		storageClient.EXPECT().
 			Get(gomock.Any(), "/planes/"+id.PlaneNamespace(), gomock.Any()).
@@ -193,6 +208,10 @@ func Test_Run(t *testing.T) {
 
 		// Mutating request that will complete asynchronously
 		req := httptest.NewRequest(http.MethodDelete, id.String(), nil)
+
+		storageClient.EXPECT().
+			Get(gomock.Any(), providerID.String(), gomock.Any()).
+			Return(nil, &store.ErrNotFound{}).Times(1)
 
 		storageClient.EXPECT().
 			Get(gomock.Any(), "/planes/"+id.PlaneNamespace(), gomock.Any()).
@@ -315,7 +334,7 @@ type mockUpdater struct {
 	Result error
 }
 
-func (u *mockUpdater) Update(ctx context.Context, downstreamURL string, originalID resources.ID, version string) error {
+func (u *mockUpdater) Update(ctx context.Context, opts trackedresource.UpdateOptions) error {
 	return u.Result
 }
 

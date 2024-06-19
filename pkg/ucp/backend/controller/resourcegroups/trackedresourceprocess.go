@@ -36,7 +36,7 @@ import (
 var _ ctrl.Controller = (*TrackedResourceProcessController)(nil)
 
 type updater interface {
-	Update(ctx context.Context, downstreamURL string, originalID resources.ID, version string) error
+	Update(ctx context.Context, opts trackedresource.UpdateOptions) error
 }
 
 // TrackedResourceProcessController is the async operation controller to perform background processing on tracked resources.
@@ -45,12 +45,21 @@ type TrackedResourceProcessController struct {
 
 	// Updater is the utility struct that can perform updates on tracked resources. This can be modified for testing.
 	updater updater
+
+	// transport is the transport used for requests that are proxied to other resource providers.
+	transport http.RoundTripper
+
+	// internalTransport is the transport used for requests that are internal to the UCP (user-defined-types).
+	internalTransport http.RoundTripper
 }
 
 // NewTrackedResourceProcessController creates a new TrackedResourceProcessController controller which is used to process resources asynchronously.
 func NewTrackedResourceProcessController(opts ctrl.Options) (ctrl.Controller, error) {
-	transport := otelhttp.NewTransport(http.DefaultTransport)
-	return &TrackedResourceProcessController{ctrl.NewBaseAsyncController(opts), trackedresource.NewUpdater(opts.StorageClient, &http.Client{Transport: transport})}, nil
+	return &TrackedResourceProcessController{
+		BaseController: ctrl.NewBaseAsyncController(opts),
+		updater:        trackedresource.NewUpdater(opts.StorageClient),
+		transport:      otelhttp.NewTransport(http.DefaultTransport),
+	}, nil
 }
 
 // Run retrieves a resource from storage, parses the resource ID, and updates our tracked resource entry in the background.
@@ -67,7 +76,7 @@ func (c *TrackedResourceProcessController) Run(ctx context.Context, request *ctr
 		return ctrl.Result{}, err
 	}
 
-	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, c.StorageClient(), originalID)
+	downstreamURL, routingType, err := resourcegroups.ValidateDownstream(ctx, c.StorageClient(), originalID, "location")
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Code: v1.CodeNotFound, Message: err.Error(), Target: request.ResourceID}), nil
 	} else if errors.Is(err, &resourcegroups.InvalidError{}) {
@@ -76,9 +85,20 @@ func (c *TrackedResourceProcessController) Run(ctx context.Context, request *ctr
 		return ctrl.Result{}, fmt.Errorf("failed to validate downstream: %w", err)
 	}
 
+	transport := c.transport
+	if routingType == resourcegroups.RoutingTypeInternal {
+		transport = c.internalTransport
+	}
+
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Processing tracked resource", "resourceID", originalID)
-	err = c.updater.Update(ctx, downstreamURL.String(), originalID, resource.Properties.APIVersion)
+	opts := trackedresource.UpdateOptions{
+		Downstream: downstreamURL.String(),
+		Transport:  transport,
+		ID:         originalID,
+		APIVersion: resource.Properties.APIVersion,
+	}
+	err = c.updater.Update(ctx, opts)
 	if errors.Is(err, &trackedresource.InProgressErr{}) {
 		// The resource is still being processed, so we can sleep for a while.
 		result := ctrl.Result{}

@@ -84,7 +84,7 @@ func (w *Service) Run(ctx context.Context) error {
 
 // RegisterControllers registers the controllers for the UCP backend.
 func RegisterControllers(ctx context.Context, registry *worker.ControllerRegistry, opts ctrl.Options) error {
-	err := registry.Register(ctx, v20231001preview.ResourceType, v1.OperationMethod(datamodel.OperationProcess), resourcegroups.NewTrackedResourceProcessController, opts)
+	err := registry.Register(ctx, v20231001preview.GenericResourceType, v1.OperationMethod(datamodel.OperationProcess), resourcegroups.NewTrackedResourceProcessController, opts)
 	if err != nil {
 		return err
 	}

@@ -25,7 +25,7 @@ const (
 	// OperationProcess is the operation type for processing a tracked resource.
 	OperationProcess = "PROCESS"
 	// ResourceType is the resource type for a generic resource.
-	ResourceType = "System.Resources/resources"
+	GenericResourceType = "System.Resources/resources"
 )
 
 // GenericResource represents a stored "tracked resource" within a UCP resource group.
@@ -47,7 +47,7 @@ type GenericResource struct {
 
 // ResourceTypeName gives the type of ucp resource.
 func (r *GenericResource) ResourceTypeName() string {
-	return ResourceType
+	return GenericResourceType
 }
 
 // GenericResourceProperties stores the properties of the resource being tracked.

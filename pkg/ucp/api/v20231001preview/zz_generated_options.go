@@ -177,6 +177,30 @@ type ResourceGroupsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// ResourceProvidersClientBeginCreateOrUpdateOptions contains the optional parameters for the ResourceProvidersClient.BeginCreateOrUpdate
+// method.
+type ResourceProvidersClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ResourceProvidersClientBeginDeleteOptions contains the optional parameters for the ResourceProvidersClient.BeginDelete
+// method.
+type ResourceProvidersClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ResourceProvidersClientGetOptions contains the optional parameters for the ResourceProvidersClient.Get method.
+type ResourceProvidersClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ResourceProvidersClientListOptions contains the optional parameters for the ResourceProvidersClient.NewListPager method.
+type ResourceProvidersClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ResourcesClientListOptions contains the optional parameters for the ResourcesClient.NewListPager method.
 type ResourcesClientListOptions struct {
 	// placeholder for future optional parameters

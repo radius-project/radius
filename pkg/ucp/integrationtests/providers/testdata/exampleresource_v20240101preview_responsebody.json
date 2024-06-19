@@ -1,0 +1,10 @@
+{
+  "id": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/exampleResources/my-example",
+  "name": "my-example",
+  "type": "Applications.Test/exampleResources",
+  "location": "global",
+  "properties": {
+    "message": "this is a very cool user-defined-type",
+    "provisioningState": "Succeeded"
+  }
+}
