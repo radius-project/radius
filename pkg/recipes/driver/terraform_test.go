@@ -850,7 +850,7 @@ func Test_FindSecretIDs(t *testing.T) {
 			secretIDs, err := driver.FindSecretIDs(ctx, tc.envConfig, tc.definition)
 
 			if tc.expectedError {
-				require.NoError(t, err)
+				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedSecretIDs, secretIDs)

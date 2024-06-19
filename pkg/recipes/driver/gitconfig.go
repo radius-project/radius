@@ -144,3 +144,20 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 
 	return url, nil
 }
+
+// wrapper function to add secrets to .gitconfig if applicable.
+func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[string]map[string]string, requestDirPath string, templatePath string) error {
+	if secretStoreID != "" && secretData != nil {
+		secrets, ok := secretData[secretStoreID]
+		if ok {
+			err := addSecretsToGitConfig(requestDirPath, secrets, templatePath)
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
+		}
+	}
+
+	return nil
+}

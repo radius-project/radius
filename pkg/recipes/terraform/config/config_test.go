@@ -991,7 +991,7 @@ func Test_GetProviderSecretIds(t *testing.T) {
 		want           map[string][]string
 	}{
 		{
-			name: "both env and envConfig secrets populated",
+			name: "both env and provider secrets populated",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
@@ -999,25 +999,25 @@ func Test_GetProviderSecretIds(t *testing.T) {
 							"aws": {
 								{
 									Secrets: map[string]datamodel.SecretReference{
-										"aws_secret1": {Source: "my-app-secret-source-id", Key: "AWS_ACCESS_KEY_ID"},
+										"aws_secret1": {Source: "my-app-secret-source-id", Key: "secret-key1"},
 									},
 								},
 							},
 						},
 					},
 					EnvSecrets: map[string]datamodel.SecretReference{
-						"env_secret1": {Source: "my-env-secret-source-id", Key: "AZURE_CLIENT_SECRET"},
+						"env_secret1": {Source: "my-env-secret-source-id", Key: "secret-key2"},
 					},
 				},
 			},
 			inputSecretIDs: make(map[string][]string),
 			want: map[string][]string{
-				"my-app-secret-source-id": {"AWS_ACCESS_KEY_ID"},
-				"my-env-secret-source-id": {"AZURE_CLIENT_SECRET"},
+				"my-app-secret-source-id": {"secret-key1"},
+				"my-env-secret-source-id": {"secret-key2"},
 			},
 		},
 		{
-			name: "envConfig secret populated",
+			name: "provider secret populated",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
@@ -1025,7 +1025,7 @@ func Test_GetProviderSecretIds(t *testing.T) {
 							"aws": {
 								{
 									Secrets: map[string]datamodel.SecretReference{
-										"aws_secret1": {Source: "my-app-secret-source-id", Key: "AWS_ACCESS_KEY_ID"},
+										"aws_secret1": {Source: "my-app-secret-source-id", Key: "secret-key1"},
 									},
 								},
 							},
@@ -1035,7 +1035,7 @@ func Test_GetProviderSecretIds(t *testing.T) {
 			},
 			inputSecretIDs: make(map[string][]string),
 			want: map[string][]string{
-				"my-app-secret-source-id": {"AWS_ACCESS_KEY_ID"},
+				"my-app-secret-source-id": {"secret-key1"},
 			},
 		},
 		{
@@ -1043,13 +1043,13 @@ func Test_GetProviderSecretIds(t *testing.T) {
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					EnvSecrets: map[string]datamodel.SecretReference{
-						"env_secret1": {Source: "my-env-secret-source-id", Key: "AZURE_CLIENT_SECRET"},
+						"env_secret1": {Source: "my-env-secret-source-id", Key: "secret-key-env"},
 					},
 				},
 			},
 			inputSecretIDs: make(map[string][]string),
 			want: map[string][]string{
-				"my-env-secret-source-id": {"AZURE_CLIENT_SECRET"},
+				"my-env-secret-source-id": {"secret-key-env"},
 			},
 		},
 		{
