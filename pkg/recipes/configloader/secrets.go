@@ -37,10 +37,10 @@ type secretsLoader struct {
 
 // LoadSecrets loads secrets from secret stores based on input map of provided secret store IDs and secret keys.
 // It returns a map of secret data, where the keys are the secret store IDs and the values are maps of secret keys and their corresponding values.
-func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStoreIDs map[string][]string) (secretData map[string]map[string]string, err error) {
+func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStoreIDResourceKeys map[string][]string) (secretData map[string]map[string]string, err error) {
 	secretData = map[string]map[string]string{}
 
-	for secretStoreID, secretKeys := range secretStoreIDs {
+	for secretStoreID, secretKeys := range secretStoreIDResourceKeys {
 		secretStoreResourceID, err := resources.ParseResource(secretStoreID)
 		if err != nil {
 			return nil, err
