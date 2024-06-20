@@ -27,7 +27,6 @@ import (
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
-	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
@@ -91,7 +90,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	if options.EnvConfig != nil {
 		// Set environment variables for the Terraform process.
-		err = e.setEnvironmentVariables(tf, &options.EnvConfig.RecipeConfig, options.Secrets)
+		err = e.setEnvironmentVariables(tf, options)
 		if err != nil {
 			return nil, err
 		}
@@ -205,9 +204,14 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 // setEnvironmentVariables sets environment variables for the Terraform process by reading values from the recipe configuration.
 // Terraform process will use environment variables as input for the recipe deployment.
-func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, recipeConfig *datamodel.RecipeConfigProperties, secrets map[string]map[string]string) error {
-	// Initialize and populate envVars with the environment variables from current process
+func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options) error {
+	if options.EnvConfig == nil {
+		return nil
+	}
+
+	// Populate envVars with the environment variables from current process
 	envVars := splitEnvVar(os.Environ())
+	recipeConfig := &options.EnvConfig.RecipeConfig
 	var envVarUpdate bool
 
 	if recipeConfig != nil && recipeConfig.Env.AdditionalProperties != nil && len(recipeConfig.Env.AdditionalProperties) > 0 {
@@ -220,7 +224,7 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, recipeConfig *da
 	if recipeConfig != nil && recipeConfig.EnvSecrets != nil && len(recipeConfig.EnvSecrets) > 0 {
 		for secretName, secretReference := range recipeConfig.EnvSecrets {
 			// Extract secret value from the secrets input
-			if secretSource, ok := secrets[secretReference.Source]; ok {
+			if secretSource, ok := options.Secrets[secretReference.Source]; ok {
 				if secretValue, ok := secretSource[secretReference.Key]; ok {
 					envVarUpdate = true
 					envVars[secretName] = secretValue

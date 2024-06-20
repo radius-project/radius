@@ -1089,7 +1089,7 @@ func Test_GetProviderSecretIds(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			GetProviderSecretIds(tt.envConfig, tt.inputSecretIDs)
+			GetProviderSecretIDs(tt.envConfig, tt.inputSecretIDs)
 			require.Equal(t, tt.want, tt.inputSecretIDs)
 		})
 	}

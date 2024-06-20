@@ -75,7 +75,7 @@ type ProviderConfigProperties struct {
 
 // SecretReference represents a reference to a secret.
 type SecretReference struct {
-	// Source represents the Secret Store Id of the secret.
+	// Source represents the Secret Store ID of the secret.
 	Source string `json:"source"`
 
 	// Key represents the key of the secret.

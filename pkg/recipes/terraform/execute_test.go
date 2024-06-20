@@ -217,7 +217,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.setEnvironmentVariables(tf, &tc.opts.EnvConfig.RecipeConfig, tc.opts.Secrets)
+			err = e.setEnvironmentVariables(tf, tc.opts)
 
 			if tc.wantErr {
 				require.Error(t, err)

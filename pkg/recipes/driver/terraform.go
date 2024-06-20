@@ -294,7 +294,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	return recipeData, nil
 }
 
-// FindSecretIDs is used to retrieve a map of secretStoreIds and corresponding secret keys.
+// FindSecretIDs is used to retrieve a map of secretStoreIDs and corresponding secret keys.
 // associated with the given environment configuration and environment definition.
 func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (secretStoreIDResourceKeys map[string][]string, err error) {
 	secretStoreIDResourceKeys = make(map[string][]string)
@@ -309,9 +309,9 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 		secretStoreIDResourceKeys[secretStoreID] = []string{PrivateRegistrySecretKey_Pat, PrivateRegistrySecretKey_Username}
 	}
 
-	// Get the secret IDs associated with the provider configuration and environment variablea and
+	// Get the secret IDs associated with the provider configuration and environment variables and
 	// add them to the input secretStoreIDResourceKeys map.
-	config.GetProviderSecretIds(envConfig, secretStoreIDResourceKeys)
+	config.GetProviderSecretIDs(envConfig, secretStoreIDResourceKeys)
 
 	return secretStoreIDResourceKeys, nil
 }

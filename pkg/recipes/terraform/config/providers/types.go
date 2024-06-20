@@ -67,7 +67,7 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 				}
 
 				// Extract secrets from configDetails if they are present and update the currentConfig map
-				err := extractSecretsFromConfig(currentConfig, configDetails.Secrets, secrets)
+				err := extractSecretsFromRecipeConfig(currentConfig, configDetails.Secrets, secrets)
 				if err != nil {
 					return nil, err
 				}
@@ -84,11 +84,10 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 	return providerConfigs, nil
 }
 
-// extractSecretsFromConfig extracts secrets for env recipe configuration from the secrets data input and updates the currentConfig map.
-func extractSecretsFromConfig(currentConfig map[string]any, recipeConfigSecrets map[string]datamodel.SecretReference, secrets map[string]map[string]string) error {
+// extractSecretsFromRecipeConfig extracts secrets for env recipe configuration from the secrets data input and updates the currentConfig map.
+func extractSecretsFromRecipeConfig(currentConfig map[string]any, recipeConfigSecrets map[string]datamodel.SecretReference, secrets map[string]map[string]string) error {
 	// Extract secrets from configDetails if they are present
 	for secretName, secretReference := range recipeConfigSecrets {
-
 		// Extract secret value from the secrets data input
 		if secretSource, ok := secrets[secretReference.Source]; ok {
 			if secretValue, ok := secretSource[secretReference.Key]; ok {
@@ -97,7 +96,7 @@ func extractSecretsFromConfig(currentConfig map[string]any, recipeConfigSecrets 
 				return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
 			}
 		} else {
-			return fmt.Errorf("missing secret source: %s", secretReference.Source)
+			return fmt.Errorf("missing secret store id: %s", secretReference.Source)
 		}
 	}
 
