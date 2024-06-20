@@ -111,7 +111,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 
 	for _, envvars := range properties.Container.Env {
 		if envvars.ValueFrom != nil && envvars.ValueFrom.SecretRef != nil {
-			if strings.HasPrefix("/", envvars.ValueFrom.SecretRef.Source) {
+			if strings.HasPrefix(envvars.ValueFrom.SecretRef.Source, "/") {
 				resourceID, err := resources.ParseResource(envvars.ValueFrom.SecretRef.Source)
 				if err != nil {
 					return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a kubernetes secret name or a valid resourceID", envvars.ValueFrom.SecretRef.Source))
@@ -376,7 +376,10 @@ func (r Renderer) makeDeployment(
 	}
 
 	for k, v := range properties.Container.Env {
-		env[k] = convertEnvVar(k, v, options)
+		env[k], err = convertEnvVar(k, v, options)
+		if err != nil {
+			return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to convert environment variable: %w", err)
+		}
 	}
 
 	// Append in sorted order
@@ -631,9 +634,9 @@ func (r Renderer) makeDeployment(
 }
 
 // Function to convert from map[string]EnvironmentVariable to map[string]corev1.EnvVar
-func convertEnvVar(key string, env datamodel.EnvironmentVariable, options renderers.RenderOptions) corev1.EnvVar {
+func convertEnvVar(key string, env datamodel.EnvironmentVariable, options renderers.RenderOptions) (corev1.EnvVar, error) {
 	if env.Value != nil {
-		return corev1.EnvVar{Name: key, Value: *env.Value}
+		return corev1.EnvVar{Name: key, Value: *env.Value}, nil
 	} else {
 		// There are two cases to handle here:
 		// 1. The value comes from a kubernetes secret
@@ -641,7 +644,10 @@ func convertEnvVar(key string, env datamodel.EnvironmentVariable, options render
 
 		// If the value comes from a kubernetes secret, we'll reference it.
 		if strings.HasPrefix(env.ValueFrom.SecretRef.Source, "/") {
-			secretStore := options.Dependencies[env.ValueFrom.SecretRef.Source].Resource.(*datamodel.SecretStore)
+			secretStore, ok := options.Dependencies[env.ValueFrom.SecretRef.Source].Resource.(*datamodel.SecretStore)
+			if !ok {
+				return corev1.EnvVar{}, fmt.Errorf("failed to find source in dependencies: %s", env.ValueFrom.SecretRef.Source)
+			}
 			// The format may be <namespace>/<name> or <name>
 			var name string
 			if strings.Contains(secretStore.Properties.Resource, "/") {
@@ -660,7 +666,7 @@ func convertEnvVar(key string, env datamodel.EnvironmentVariable, options render
 						Key: env.ValueFrom.SecretRef.Key,
 					},
 				},
-			}
+			}, nil
 
 		} else {
 			return corev1.EnvVar{
@@ -673,7 +679,7 @@ func convertEnvVar(key string, env datamodel.EnvironmentVariable, options render
 						Key: env.ValueFrom.SecretRef.Key,
 					},
 				},
-			}
+			}, nil
 		}
 
 	}

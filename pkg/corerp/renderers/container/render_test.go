@@ -53,6 +53,10 @@ const (
 	envVarValue1          = "TEST_VALUE_1"
 	envVarName2           = "TEST_VAR_2"
 	envVarValue2          = "81"
+	envVarSource2         = "TEST_SOURCE_2"
+	envVarName3           = "TEST_VAR_3"
+	envVarSource3         = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/secretStores/test-secret"
+	envVarValue3          = "/planes/are/cool"
 	secretName            = "test-container"
 
 	tempVolName      = "TempVolume"
@@ -173,6 +177,27 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 					ContainerPort: 5000,
 				},
 			},
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					ValueFrom: &datamodel.EnvironmentVariableReference{
+						SecretRef: &datamodel.EnvironmentVariableSecretReference{
+							Source: envVarSource2,
+							Key:    envVarValue2,
+						},
+					},
+				},
+				envVarName3: {
+					ValueFrom: &datamodel.EnvironmentVariableReference{
+						SecretRef: &datamodel.EnvironmentVariableSecretReference{
+							Source: envVarSource3,
+							Key:    envVarValue3,
+						},
+					},
+				},
+			},
 			Volumes: map[string]datamodel.VolumeProperties{
 				"vol1": {
 					Kind: datamodel.Persistent,
@@ -193,12 +218,13 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	renderer := Renderer{}
 	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.NoError(t, err)
-	require.Len(t, radiusResourceIDs, 2)
+	require.Len(t, radiusResourceIDs, 3)
 	require.Len(t, azureResourceIDs, 1)
 
 	expectedRadiusResourceIDs := []resources.ID{
 		makeRadiusResourceID(t, "Applications.Datastores/redisCaches", "A"),
 		makeRadiusResourceID(t, "Applications.Datastores/redisCaches", "B"),
+		resources.MustParse(envVarSource3),
 	}
 	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
 
@@ -272,14 +298,49 @@ func Test_Render_Basic(t *testing.T) {
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					ValueFrom: &datamodel.EnvironmentVariableReference{
+						SecretRef: &datamodel.EnvironmentVariableSecretReference{
+							Source: envVarSource2,
+							Key:    envVarValue2,
+						},
+					},
+				},
+				envVarName3: {
+					ValueFrom: &datamodel.EnvironmentVariableReference{
+						SecretRef: &datamodel.EnvironmentVariableSecretReference{
+							Source: envVarSource3,
+							Key:    envVarValue3,
+						},
+					},
+				},
 			},
 		},
 	}
+
 	resource := makeResource(properties)
-	dependencies := map[string]renderers.RendererDependency{}
+	dependencies := map[string]renderers.RendererDependency{
+
+		envVarSource3: {
+			ResourceID: resources.MustParse(envVarSource3),
+			Resource: &datamodel.SecretStore{
+				BaseResource: apiv1.BaseResource{
+					TrackedResource: apiv1.TrackedResource{
+						ID: envVarSource3,
+					},
+				},
+				Properties: &datamodel.SecretStoreProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: applicationResourceID,
+					},
+				},
+			},
+		},
+	}
 
 	ctx := testcontext.New(t)
 	renderer := Renderer{}
@@ -325,7 +386,22 @@ func Test_Render_Basic(t *testing.T) {
 
 		expectedEnv := []corev1.EnvVar{
 			{Name: envVarName1, Value: envVarValue1},
-			{Name: envVarName2, Value: envVarValue2},
+			{Name: envVarName2, ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: envVarSource2,
+					},
+					Key: envVarValue2,
+				},
+			}},
+			{Name: envVarName3, ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: envVarSource3,
+					},
+					Key: envVarValue3,
+				},
+			}},
 		}
 		require.Equal(t, expectedEnv, container.Env)
 
@@ -340,9 +416,13 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					Value: to.Ptr(envVarValue2),
+				},
 			},
 			Command:    []string{"command1", "command2"},
 			Args:       []string{"arg1", "arg2"},
@@ -497,9 +577,13 @@ func Test_Render_Connections(t *testing.T) {
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					Value: to.Ptr(envVarValue2),
+				},
 			},
 		},
 	}
@@ -659,9 +743,13 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					Value: to.Ptr(envVarValue2),
+				},
 			},
 		},
 	}
@@ -954,9 +1042,13 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					Value: to.Ptr(envVarValue2),
+				},
 			},
 			Volumes: map[string]datamodel.VolumeProperties{
 				tempVolName: {
@@ -1244,9 +1336,13 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					Value: to.Ptr(envVarValue2),
+				},
 			},
 			ReadinessProbe: datamodel.HealthProbeProperties{
 				Kind: datamodel.HTTPGetHealthProbe,
@@ -1323,9 +1419,13 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					Value: to.Ptr(envVarValue2),
+				},
 			},
 			ReadinessProbe: datamodel.HealthProbeProperties{
 				Kind: datamodel.TCPHealthProbe,
@@ -1393,9 +1493,13 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					Value: to.Ptr(envVarValue2),
+				},
 			},
 			LivenessProbe: datamodel.HealthProbeProperties{
 				Kind: datamodel.ExecHealthProbe,
@@ -1608,9 +1712,13 @@ func Test_Render_ImagePullPolicySpecified(t *testing.T) {
 		Container: datamodel.Container{
 			Image:           "someimage:latest",
 			ImagePullPolicy: "Never",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					Value: to.Ptr(envVarValue2),
+				},
 			},
 		},
 	}
@@ -1665,9 +1773,13 @@ func Test_Render_StrategicPatchMerge(t *testing.T) {
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Env: map[string]string{
-				envVarName1: envVarValue1,
-				envVarName2: envVarValue2,
+			Env: map[string]datamodel.EnvironmentVariable{
+				envVarName1: {
+					Value: to.Ptr(envVarValue1),
+				},
+				envVarName2: {
+					Value: to.Ptr(envVarValue2),
+				},
 			},
 		},
 		Runtimes: &datamodel.RuntimeProperties{
@@ -1727,9 +1839,13 @@ func Test_Render_BaseManifest(t *testing.T) {
 				},
 				Container: datamodel.Container{
 					Image: "someimage:latest",
-					Env: map[string]string{
-						envVarName1: envVarValue1,
-						envVarName2: envVarValue2,
+					Env: map[string]datamodel.EnvironmentVariable{
+						envVarName1: {
+							Value: to.Ptr(envVarValue1),
+						},
+						envVarName2: {
+							Value: to.Ptr(envVarValue2),
+						},
 					},
 					Volumes: map[string]datamodel.VolumeProperties{
 						"ephemeralVolume": {
@@ -1755,9 +1871,13 @@ func Test_Render_BaseManifest(t *testing.T) {
 				},
 				Container: datamodel.Container{
 					Image: "someimage:latest",
-					Env: map[string]string{
-						envVarName1: envVarValue1,
-						envVarName2: envVarValue2,
+					Env: map[string]datamodel.EnvironmentVariable{
+						envVarName1: {
+							Value: to.Ptr(envVarValue1),
+						},
+						envVarName2: {
+							Value: to.Ptr(envVarValue2),
+						},
 					},
 				},
 			},
