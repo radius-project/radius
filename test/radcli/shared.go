@@ -26,7 +26,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"go.uber.org/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
@@ -44,6 +43,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 type ValidateInput struct {
@@ -123,10 +123,15 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			}
 
 			if testcase.CreateTempDirectory != "" {
+				// Allow the test to specify a relative or absolute path.
+				directoryPath := testcase.CreateTempDirectory
+				if !filepath.IsAbs(testcase.CreateTempDirectory) {
+					tempRoot := t.TempDir()
+					directoryPath = filepath.Join(tempRoot, testcase.CreateTempDirectory)
+				}
+
 				// Will be automatically deleted after the test
-				tempRoot := t.TempDir()
-				combined := filepath.Join(tempRoot, testcase.CreateTempDirectory)
-				err := os.MkdirAll(combined, 0775)
+				err := os.MkdirAll(directoryPath, 0775)
 				require.NoError(t, err)
 
 				wd, err := os.Getwd()
@@ -136,7 +141,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				}()
 
 				// Change to the new directory before running the test code.
-				err = os.Chdir(combined)
+				err = os.Chdir(directoryPath)
 				require.NoError(t, err)
 			}
 

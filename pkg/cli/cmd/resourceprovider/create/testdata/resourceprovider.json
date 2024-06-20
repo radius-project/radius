@@ -1,0 +1,35 @@
+{
+  "location": "global",
+  "properties": {
+    "locations": {
+      "global": {
+        "address": "internal"
+      }
+    },
+    "resourceTypes": [
+      {
+        "resourceType": "exampleResources",
+        "routingType": "Internal",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2024-10-01-preview": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "capabilities": [
+          "Recipe"
+        ],
+        "defaultApiVersion": "2024-10-01-preview"
+      }
+    ]
+  }
+}

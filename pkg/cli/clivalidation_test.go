@@ -56,6 +56,12 @@ func Test_RequireResourceType(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name:    "Fully-qualified resource type",
+			args:    []string{"Applications.Test/exampleResources"},
+			want:    "Applications.Test/exampleResources",
+			wantErr: nil,
+		},
+		{
 			name:    "Multiple resource types",
 			args:    []string{"secretStores"},
 			want:    "",
