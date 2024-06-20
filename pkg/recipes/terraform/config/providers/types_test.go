@@ -212,7 +212,7 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 	}
 }
 
-func Test_ExtractSecretsFromConfig(t *testing.T) {
+func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 	tests := []struct {
 		name                 string
 		currentConfig        map[string]any
