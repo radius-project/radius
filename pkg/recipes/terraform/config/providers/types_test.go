@@ -246,7 +246,7 @@ func Test_ExtractSecretsFromConfig(t *testing.T) {
 				"dbSecrets": {"dbPass": "secretPassword"},
 			},
 			expectError:          true,
-			expectedErrorMessage: "missing secret source: missingSource",
+			expectedErrorMessage: "missing secret store id: missingSource",
 		},
 		{
 			name:          "missing secret key",
@@ -268,7 +268,7 @@ func Test_ExtractSecretsFromConfig(t *testing.T) {
 			},
 			secrets:              nil,
 			expectError:          true,
-			expectedErrorMessage: "missing secret source: dbSecrets",
+			expectedErrorMessage: "missing secret store id: dbSecrets",
 		},
 		{
 			name:                "missing recipeConfigSecrets",
@@ -284,7 +284,7 @@ func Test_ExtractSecretsFromConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := extractSecretsFromConfig(tt.currentConfig, tt.recipeConfigSecrets, tt.secrets)
+			err := extractSecretsFromRecipeConfig(tt.currentConfig, tt.recipeConfigSecrets, tt.secrets)
 			if tt.expectError {
 				require.EqualError(t, err, tt.expectedErrorMessage, err.Error())
 			} else {

@@ -188,9 +188,9 @@ func Test_GetGitURL(t *testing.T) {
 	}
 }
 
-// Test_AddSecretsToGitConfigIfApplicable tests only wrapper funcion.
+// Test_addSecretsToGitConfigIfApplicable tests only wrapper funcion.
 // Additional tests exist for inner function call addSecretsToGitConfig in TestAddConfig().
-func Test_AddSecretsToGitConfigIfApplicable(t *testing.T) {
+func Test_addSecretsToGitConfigIfApplicable(t *testing.T) {
 	templatePath := "git::dev.azure.com/project/module"
 	tests := []struct {
 		name          string

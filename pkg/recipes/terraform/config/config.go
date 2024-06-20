@@ -301,14 +301,14 @@ func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 	return nil
 }
 
-// GetProviderSecretIds parses the envConfig to extract secret IDs associated with the provider
+// GetProviderSecretIDs parses the envConfig to extract secret IDs associated with the provider
 // and returns a map of secret IDs  and corresponding slice of keys.
-func GetProviderSecretIds(envConfig recipes.Configuration, inputSecretIDs map[string][]string) {
+func GetProviderSecretIDs(envConfig recipes.Configuration, inputSecretIDs map[string][]string) {
 	for _, config := range envConfig.RecipeConfig.Terraform.Providers {
 		for _, providerConfig := range config {
 			if providerConfig.Secrets != nil {
 				for _, secret := range providerConfig.Secrets {
-					updateSecretIDs(inputSecretIDs, secret.Source, secret.Key)
+					addKeyToSecretSourceID(inputSecretIDs, secret.Source, secret.Key)
 				}
 			}
 		}
@@ -316,15 +316,15 @@ func GetProviderSecretIds(envConfig recipes.Configuration, inputSecretIDs map[st
 
 	// Parse envConfig to extract secret IDs in environment variables and add them to the inputSecretIDs map.
 	for _, config := range envConfig.RecipeConfig.EnvSecrets {
-		updateSecretIDs(inputSecretIDs, config.Source, config.Key)
+		addKeyToSecretSourceID(inputSecretIDs, config.Source, config.Key)
 	}
 }
 
-// updateSecretIDs is helper function to update the inputSecretIDs map
-func updateSecretIDs(inputSecretIDs map[string][]string, secretSourceId, key string) {
-	if _, ok := inputSecretIDs[secretSourceId]; !ok {
-		inputSecretIDs[secretSourceId] = []string{key}
+// addKeyToSecretSourceID is helper function to update the inputSecretIDs map
+func addKeyToSecretSourceID(inputSecretIDs map[string][]string, secretSourceID, key string) {
+	if _, ok := inputSecretIDs[secretSourceID]; !ok {
+		inputSecretIDs[secretSourceID] = []string{key}
 	} else {
-		inputSecretIDs[secretSourceId] = append(inputSecretIDs[secretSourceId], key)
+		inputSecretIDs[secretSourceID] = append(inputSecretIDs[secretSourceID], key)
 	}
 }
