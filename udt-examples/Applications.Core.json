@@ -1,0 +1,110 @@
+{
+  "location": "global",
+  "properties": {
+    "locations": {
+      "global": {
+        "address": "http://localhost:8080"
+      }
+    },
+    "resourceTypes": [
+      {
+        "resourceType": "applications",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      },
+      {
+        "resourceType": "containers",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      },
+      {
+        "resourceType": "environments",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      },
+      {
+        "resourceType": "extenders",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      },
+      {
+        "resourceType": "gateways",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      },
+      {
+        "resourceType": "secretStores",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      },
+      {
+        "resourceType": "volumes",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "location": "global",
+  "properties": {
+    "locations": {
+      "global": {
+        "address": "http://localhost:8080"
+      }
+    },
+    "resourceTypes": [
+      {
+        "resourceType": "pubSubBrokers",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      },
+      {
+        "resourceType": "secretStores",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      },
+      {
+        "resourceType": "stateStores",
+        "routingType": "Provider",
+        "locations": [
+          "global"
+        ],
+        "apiVersions": {
+          "2023-10-01-preview": {
+            "schema": {}
+          }
+        },
+        "capabilities": [],
+        "defaultApiVersion": "2023-10-01-preview"
+      }
+    ]
+  }
+}
