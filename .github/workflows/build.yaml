@@ -66,7 +66,7 @@ env:
   IMAGE_SRC: https://github.com/radius-project/radius
 
   # bicep-types ACR url for uploading Radius Bicep types
-  BICEP_TYPES_ACR: 'biceptypes.azurecr.io'
+  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
 
 jobs:
   build-and-push-cli:
@@ -304,7 +304,7 @@ jobs:
       - name: Publish bicep types 
         if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         run: |
-          bicep publish-provider ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_ACR }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          bicep publish-provider ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
   publish-release:
     name: Publish GitHub Release
