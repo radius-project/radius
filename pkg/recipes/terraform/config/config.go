@@ -308,7 +308,7 @@ func GetProviderSecretIDs(envConfig recipes.Configuration, inputSecretIDs map[st
 		for _, providerConfig := range config {
 			if providerConfig.Secrets != nil {
 				for _, secret := range providerConfig.Secrets {
-					addKeyToSecretSourceID(inputSecretIDs, secret.Source, secret.Key)
+					addSecretKeys(inputSecretIDs, secret.Source, secret.Key)
 				}
 			}
 		}
@@ -316,12 +316,12 @@ func GetProviderSecretIDs(envConfig recipes.Configuration, inputSecretIDs map[st
 
 	// Parse envConfig to extract secret IDs in environment variables and add them to the inputSecretIDs map.
 	for _, config := range envConfig.RecipeConfig.EnvSecrets {
-		addKeyToSecretSourceID(inputSecretIDs, config.Source, config.Key)
+		addSecretKeys(inputSecretIDs, config.Source, config.Key)
 	}
 }
 
-// addKeyToSecretSourceID is helper function to update the inputSecretIDs map
-func addKeyToSecretSourceID(inputSecretIDs map[string][]string, secretSourceID, key string) {
+// addSecretKeys is helper function to update the inputSecretIDs map
+func addSecretKeys(inputSecretIDs map[string][]string, secretSourceID, key string) {
 	if _, ok := inputSecretIDs[secretSourceID]; !ok {
 		inputSecretIDs[secretSourceID] = []string{key}
 	} else {

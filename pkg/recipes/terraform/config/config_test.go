@@ -983,7 +983,7 @@ func Test_Save_InvalidWorkingDir(t *testing.T) {
 	require.Equal(t, fmt.Sprintf("error creating file: open %s/main.tf.json: no such file or directory", testDir), err.Error())
 }
 
-func Test_GetProviderSecretIds(t *testing.T) {
+func Test_GetProviderSecretIDs(t *testing.T) {
 	tests := []struct {
 		name           string
 		envConfig      recipes.Configuration

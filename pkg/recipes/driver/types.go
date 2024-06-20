@@ -72,6 +72,17 @@ type BaseOptions struct {
 	// Secrets represents a map of secrets required for recipe execution.
 	// The outer map's key represents the secretStoreIDs while
 	// while the inner map's key-value pairs represent the [secretKey]secretValue.
+	// Example:
+	// Secrets{
+	//     "secretStoreID1": {
+	//         "apiKey": "value1",
+	//         "apiSecret": "value2",
+	//     },
+	//     "secretStoreID2": {
+	//         "accessKey": "accessKey123",
+	//         "secretKey": "secretKeyXYZ",
+	//     },
+	// }
 	Secrets map[string]map[string]string
 }
 
