@@ -34,7 +34,7 @@ resource "kubernetes_deployment" "postgres" {
 
       spec {
         container {
-          image = "postgres:latest"
+          image = "ghcr.io/radius-project/mirror/postgres:latest"
           name  = "postgres"
 
           env {
@@ -69,13 +69,13 @@ resource "kubernetes_service" "postgres" {
   }
 }
 
-resource "time_sleep" "wait_20_seconds" {
+resource "time_sleep" "wait_50_seconds" {
   depends_on = [kubernetes_service.postgres]
-  create_duration = "20s"
+  create_duration = "50s"
 }
 
 resource postgresql_database "pg_db_test" {
   provider = postgresql.pgdb-test
-  depends_on = [time_sleep.wait_20_seconds]
+  depends_on = [time_sleep.wait_50_seconds]
   name = "pg_db_test"
 }
