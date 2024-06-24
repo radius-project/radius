@@ -101,7 +101,6 @@ model AwsIRSACredentialProperties extends AwsCredentialProperties {
   kind: AWSCredentialKind.IRSA;
 
   @doc("RoleARN for AWS IRSA identity")
-  @secret
   roleARN: string;
 
   @doc("The storage properties")
