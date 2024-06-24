@@ -185,7 +185,7 @@ jobs:
         continue-on-error: true
         run: |
           cat <<EOF > summary.md
-          ## Radius functional test overview
+          ## Radius long-running test overview
 
           | Name | Value |
           |------|-------|
