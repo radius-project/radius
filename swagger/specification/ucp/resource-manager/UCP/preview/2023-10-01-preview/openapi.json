@@ -1784,9 +1784,7 @@
       "properties": {
         "roleARN": {
           "type": "string",
-          "format": "password",
-          "description": "RoleARN for AWS IRSA identity",
-          "x-ms-secret": true
+          "description": "RoleARN for AWS IRSA identity"
         },
         "storage": {
           "$ref": "#/definitions/CredentialStorageProperties",
