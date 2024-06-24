@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/backend/controller/embedded"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
@@ -32,7 +33,8 @@ import (
 )
 
 const (
-	UCPProviderName = "System.Resources"
+	// ProviderName is the name of the UCP provider.
+	ProviderName = "System.Resources"
 )
 
 // Service is a service to run AsyncReqeustProcessWorker.
@@ -47,7 +49,7 @@ type Service struct {
 func NewService(options hostoptions.HostOptions, transports *hosting.AsyncValue[api.Transports]) *Service {
 	return &Service{
 		Service: worker.Service{
-			ProviderName: UCPProviderName,
+			ProviderName: ProviderName,
 			Options:      options,
 		},
 
@@ -57,7 +59,7 @@ func NewService(options hostoptions.HostOptions, transports *hosting.AsyncValue[
 
 // Name returns a string containing the UCPProviderName and the text "async worker".
 func (w *Service) Name() string {
-	return fmt.Sprintf("%s async worker", UCPProviderName)
+	return fmt.Sprintf("%s async worker", ProviderName)
 }
 
 // Run starts the service and worker. It initializes the service and sets the worker options based on the configuration,
@@ -68,12 +70,14 @@ func (w *Service) Run(ctx context.Context) error {
 	}
 
 	workerOpts := worker.Options{}
-	if w.Options.Config.WorkerServer != nil {
-		if w.Options.Config.WorkerServer.MaxOperationConcurrency != nil {
-			workerOpts.MaxOperationConcurrency = *w.Options.Config.WorkerServer.MaxOperationConcurrency
-		}
-		if w.Options.Config.WorkerServer.MaxOperationRetryCount != nil {
-			workerOpts.MaxOperationRetryCount = *w.Options.Config.WorkerServer.MaxOperationRetryCount
+	if w.Options.Config != nil {
+		if w.Options.Config.WorkerServer != nil {
+			if w.Options.Config.WorkerServer.MaxOperationConcurrency != nil {
+				workerOpts.MaxOperationConcurrency = *w.Options.Config.WorkerServer.MaxOperationConcurrency
+			}
+			if w.Options.Config.WorkerServer.MaxOperationRetryCount != nil {
+				workerOpts.MaxOperationRetryCount = *w.Options.Config.WorkerServer.MaxOperationRetryCount
+			}
 		}
 	}
 
@@ -99,6 +103,12 @@ func (w *Service) RegisterControllers(ctx context.Context, registry *worker.Cont
 	err = registry.Register(ctx, v20231001preview.GenericResourceType, v1.OperationMethod(datamodel.OperationProcess), func(opts ctrl.Options) (ctrl.Controller, error) {
 		return resourcegroups.NewTrackedResourceProcessController(opts, transports.Transport, transports.EmbeddedTransport)
 	}, opts)
+	if err != nil {
+		return err
+	}
+
+	// Register a single controller to handle all "internal" resource types.
+	err = registry.Register(ctx, worker.ResourceTypeAny, v1.OperationMethod(worker.OperationMethodAny), embedded.NewController, opts)
 	if err != nil {
 		return err
 	}

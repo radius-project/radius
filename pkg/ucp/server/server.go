@@ -187,7 +187,6 @@ func NewServer(options *Options) (*hosting.Host, error) {
 	}
 
 	backendServiceOptions := hostopts.HostOptions{
-
 		Config: &hostopts.ProviderConfig{
 			Env: hostopts.EnvironmentOptions{
 				RoleLocation: options.Config.Location,

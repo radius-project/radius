@@ -57,7 +57,13 @@ func CreateEmbeddedTransport(opts modules.Options) http.RoundTripper {
 	r.NotFound(validator.APINotFoundHandler())
 	r.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
-	// TODO: add default operations from: pkg/armrpc/builder/builder.go
+	register(r, "GET "+operationBaseRoute+"/operationResults/{operationID}", v1.OperationGet, ctrlOpts, func(opts controller.Options, ctrlOpts controller.ResourceOptions[datamodel.DynamicResource]) (controller.Controller, error) {
+		return defaultoperation.NewGetOperationResult(opts)
+	})
+
+	register(r, "GET "+operationBaseRoute+"/operationStatuses/{operationID}", v1.OperationGet, ctrlOpts, func(opts controller.Options, ctrlOpts controller.ResourceOptions[datamodel.DynamicResource]) (controller.Controller, error) {
+		return defaultoperation.NewGetOperationStatus(opts)
+	})
 
 	register(r, "GET "+planeScopedResourceCollectionRoute, v1.OperationPlaneScopeList, ctrlOpts, func(ctrlOpts controller.Options, resourceOpts controller.ResourceOptions[datamodel.DynamicResource]) (controller.Controller, error) {
 		resourceOpts.ListRecursiveQuery = true
@@ -73,19 +79,11 @@ func CreateEmbeddedTransport(opts modules.Options) http.RoundTripper {
 	})
 
 	register(r, "PUT "+resourceRoute, v1.OperationPut, ctrlOpts, func(ctrlOpts controller.Options, resourceOpts controller.ResourceOptions[datamodel.DynamicResource]) (controller.Controller, error) {
-		return defaultoperation.NewDefaultSyncPut[*datamodel.DynamicResource, datamodel.DynamicResource](ctrlOpts, resourceOpts)
+		return defaultoperation.NewDefaultAsyncPut[*datamodel.DynamicResource, datamodel.DynamicResource](ctrlOpts, resourceOpts)
 	})
 
 	register(r, "DELETE "+resourceRoute, v1.OperationDelete, ctrlOpts, func(ctrlOpts controller.Options, resourceOpts controller.ResourceOptions[datamodel.DynamicResource]) (controller.Controller, error) {
-		return defaultoperation.NewDefaultSyncDelete[*datamodel.DynamicResource, datamodel.DynamicResource](ctrlOpts, resourceOpts)
-	})
-
-	register(r, "GET "+operationBaseRoute+"/operationResults/{operationID}", v1.OperationGet, ctrlOpts, func(opts controller.Options, ctrlOpts controller.ResourceOptions[datamodel.DynamicResource]) (controller.Controller, error) {
-		return defaultoperation.NewGetOperationResult(opts)
-	})
-
-	register(r, "GET "+operationBaseRoute+"/operationStatuses/{operationID}", v1.OperationGet, ctrlOpts, func(opts controller.Options, ctrlOpts controller.ResourceOptions[datamodel.DynamicResource]) (controller.Controller, error) {
-		return defaultoperation.NewGetOperationStatus(opts)
+		return defaultoperation.NewDefaultAsyncDelete[*datamodel.DynamicResource, datamodel.DynamicResource](ctrlOpts, resourceOpts)
 	})
 
 	return &handlerRoundTripper{handler: r}

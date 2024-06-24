@@ -25,9 +25,11 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-logr/logr"
@@ -41,6 +43,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	backendoptions "github.com/radius-project/radius/pkg/armrpc/hostoptions"
+
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/middleware"
@@ -61,6 +64,11 @@ import (
 	"github.com/radius-project/radius/pkg/validator"
 	"github.com/radius-project/radius/swagger"
 	"github.com/radius-project/radius/test/testcontext"
+)
+
+const (
+	// OperationTimeoutDefault is the default timeout for waiting for an operation to complete.
+	OperationTimeoutDefault = 30 * time.Second
 )
 
 // NoModules can be used to start a test server without any modules. This is useful for testing the server itself and core functionality
@@ -358,8 +366,6 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	require.NoError(t, err, "failed to query etcd")
 	logger.Info("Connected to data store")
 
-	// TODO: start worker
-
 	ucp := &TestServer{
 		BaseURL: server.URL + pathBase,
 		Clients: &TestServerClients{
@@ -381,10 +387,11 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 // TestResponse is return from requests made against a TestServer. Tests should use the functions defined
 // on TestResponse for valiation.
 type TestResponse struct {
-	Raw   *http.Response
-	Body  *bytes.Buffer
-	Error *v1.ErrorResponse
-	t     *testing.T
+	Raw    *http.Response
+	Body   *bytes.Buffer
+	Error  *v1.ErrorResponse
+	t      *testing.T
+	server *TestServer
 }
 
 // MakeFixtureRequest sends a request to the server using a file on disk as the payload (body). Use the fixture
@@ -414,8 +421,16 @@ func (ts *TestServer) MakeTypedRequest(method string, pathAndQuery string, body 
 func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byte) *TestResponse {
 	ts.t.Helper()
 
+	// Prepend the base path if this is a relative URL.
+	requestUrl := pathAndQuery
+	parsed, err := url.Parse(pathAndQuery)
+	require.NoError(ts.t, err, "parsing URL failed")
+	if !parsed.IsAbs() {
+		requestUrl = ts.BaseURL + pathAndQuery
+	}
+
 	client := ts.Server.Client()
-	request, err := rpctest.NewHTTPRequestWithContent(context.Background(), method, ts.BaseURL+pathAndQuery, body)
+	request, err := rpctest.NewHTTPRequestWithContent(context.Background(), method, requestUrl, body)
 	require.NoError(ts.t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(request)
@@ -451,7 +466,7 @@ func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byt
 		require.NoError(ts.t, err, "unmarshalling error response failed - THIS IS A SERIOUS BUG. ALL ERROR RESPONSES MUST USE THE STANDARD FORMAT")
 	}
 
-	return &TestResponse{Raw: response, Body: responseBuffer, Error: errorResponse, t: ts.t}
+	return &TestResponse{Raw: response, Body: responseBuffer, Error: errorResponse, server: ts, t: ts.t}
 }
 
 // EqualsErrorCode compares a TestResponse against an expected status code and error code. EqualsErrorCode assumes the response
@@ -500,9 +515,51 @@ func (tr *TestResponse) EqualsResponse(statusCode int, body []byte) {
 
 	tr.removeSystemData(actual)
 
-	require.NoError(tr.t, err, "unmarshalling actual response failed")
+	require.NoError(tr.t, err, "unmarshalling actual response failed. Got '%v'", tr.Body.String())
 	require.EqualValues(tr.t, expected, actual, "response body did not match expected")
 	require.Equal(tr.t, statusCode, tr.Raw.StatusCode, "status code did not match expected")
+}
+
+func (tr *TestResponse) ReadAs(obj any) {
+	tr.t.Helper()
+
+	decoder := json.NewDecoder(tr.Body)
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(obj)
+	require.NoError(tr.t, err, "unmarshalling expected response failed")
+}
+
+func (tr *TestResponse) WaitForOperationComplete(timeout *time.Duration) *TestResponse {
+	if tr.Raw.StatusCode != http.StatusCreated && tr.Raw.StatusCode != http.StatusAccepted {
+		// Response is already terminal.
+		return tr
+	}
+
+	if timeout == nil {
+		x := 30 * time.Second
+		timeout = &x
+	}
+
+	timer := time.After(*timeout)
+	poller := time.NewTicker(1 * time.Second)
+	defer poller.Stop()
+	for {
+		select {
+		case <-timer:
+			tr.t.Fatalf("timed out waiting for operation to complete")
+			return nil // unreachable
+		case <-poller.C:
+			// The Location header should give us the operation status URL.
+			response := tr.server.MakeRequest(http.MethodGet, tr.Raw.Header.Get("Azure-AsyncOperation"), nil)
+			if response.Raw.StatusCode != http.StatusCreated && response.Raw.StatusCode != http.StatusAccepted {
+				// Response is terminal.
+				return response
+			}
+
+			continue
+		}
+	}
 }
 
 func (tr *TestResponse) removeSystemData(responseBody map[string]any) {

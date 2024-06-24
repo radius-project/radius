@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,8 +58,9 @@ const (
 	exampleResourceEmptyListResponseFixture = "testdata/exampleresource_v20240101preview_emptylist_responsebody.json"
 	exampleResourceListResponseFixture      = "testdata/exampleresource_v20240101preview_list_responsebody.json"
 
-	exampleResourceRequestFixture  = "testdata/exampleresource_v20240101preview_requestbody.json"
-	exampleResourceResponseFixture = "testdata/exampleresource_v20240101preview_responsebody.json"
+	exampleResourceRequestFixture          = "testdata/exampleresource_v20240101preview_requestbody.json"
+	exampleResourceResponseFixture         = "testdata/exampleresource_v20240101preview_responsebody.json"
+	exampleResourceAcceptedResponseFixture = "testdata/exampleresource_v20240101preview_accepted_responsebody.json"
 )
 
 func createRadiusPlane(server *testserver.TestServer) {
@@ -134,7 +136,28 @@ func Test_ResourceProvider_Resource_Lifecycle(t *testing.T) {
 
 	// Create a resource
 	response = server.MakeFixtureRequest(http.MethodPut, exampleResourceURL, exampleResourceRequestFixture)
-	response.EqualsFixture(200, exampleResourceResponseFixture)
+	response.EqualsFixture(201, exampleResourceAcceptedResponseFixture)
+
+	// Verify async operations
+	operationStatusResponse := server.MakeRequest(http.MethodGet, response.Raw.Header.Get("Azure-AsyncOperation"), nil)
+	operationStatusResponse.EqualsStatusCode(200)
+
+	operationStatus := v1.AsyncOperationStatus{}
+	operationStatusResponse.ReadAs(&operationStatus)
+
+	require.Equal(t, v1.ProvisioningStateAccepted, operationStatus.Status)
+	require.NotNil(t, operationStatus.StartTime)
+
+	statusID, err := resources.ParseResource(operationStatus.ID)
+	require.NoError(t, err)
+	require.Equal(t, "applications.test/locations/operationstatuses", statusID.Type())
+	require.Equal(t, statusID.Name(), operationStatus.Name)
+
+	operationResultResponse := server.MakeRequest(http.MethodGet, response.Raw.Header.Get("Location"), nil)
+	require.Truef(t, operationResultResponse.Raw.StatusCode == http.StatusAccepted || operationResultResponse.Raw.StatusCode == http.StatusNoContent, "Expected 202 or 204 response")
+
+	response = response.WaitForOperationComplete(nil)
+	response.EqualsStatusCode(200)
 
 	// List should now contain the resource
 	response = server.MakeRequest(http.MethodGet, exampleResourceCollectionURL, nil)
@@ -146,6 +169,8 @@ func Test_ResourceProvider_Resource_Lifecycle(t *testing.T) {
 
 	// Deleting a resource should return 200
 	response = server.MakeRequest(http.MethodDelete, exampleResourceURL, nil)
+	response.EqualsFixture(202, exampleResourceAcceptedResponseFixture)
+	response = response.WaitForOperationComplete(nil)
 	response.EqualsStatusCode(200)
 
 	// Now the resource is gone
