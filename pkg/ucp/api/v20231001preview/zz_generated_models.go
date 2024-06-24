@@ -87,6 +87,29 @@ type AwsCredentialResourceTagsUpdate struct {
 	Tags map[string]*string
 }
 
+// AwsIRSACredentialProperties - AWS credential storage properties
+type AwsIRSACredentialProperties struct {
+	// REQUIRED; The AWS credential kind
+	Kind *AWSCredentialKind
+
+	// REQUIRED; RoleARN for AWS IRSA identity
+	RoleARN *string
+
+	// REQUIRED; The storage properties
+	Storage CredentialStoragePropertiesClassification
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// GetAwsCredentialProperties implements the AwsCredentialPropertiesClassification interface for type AwsIRSACredentialProperties.
+func (a *AwsIRSACredentialProperties) GetAwsCredentialProperties() *AwsCredentialProperties {
+	return &AwsCredentialProperties{
+		Kind: a.Kind,
+		ProvisioningState: a.ProvisioningState,
+	}
+}
+
 // AwsPlaneResource - The AWS plane resource
 type AwsPlaneResource struct {
 	// REQUIRED; The geo-location where the resource lives
