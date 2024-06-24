@@ -63,6 +63,8 @@ model AwsPlaneNameParameter {
 enum AWSCredentialKind {
   @doc("The AWS Access Key credential")
   AccessKey,
+  @doc("The AWS IRSA credential")
+  IRSA,
 }
 
 @discriminator("kind")
@@ -88,6 +90,19 @@ model AwsAccessKeyCredentialProperties extends AwsCredentialProperties {
   @doc("Secret Access Key for AWS identity")
   @secret
   secretAccessKey: string;
+
+  @doc("The storage properties")
+  storage: CredentialStorageProperties;
+}
+
+@doc("AWS credential storage properties")
+model AwsIRSACredentialProperties extends AwsCredentialProperties {
+  @doc("Access Key kind")
+  kind: AWSCredentialKind.IRSA;
+
+  @doc("RoleARN for AWS IRSA identity")
+  @secret
+  roleARN: string;
 
   @doc("The storage properties")
   storage: CredentialStorageProperties;

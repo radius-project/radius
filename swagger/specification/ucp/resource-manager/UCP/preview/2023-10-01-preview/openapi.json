@@ -1649,7 +1649,8 @@
       "type": "string",
       "description": "AWS credential kind",
       "enum": [
-        "AccessKey"
+        "AccessKey",
+        "IRSA"
       ],
       "x-ms-enum": {
         "name": "AWSCredentialKind",
@@ -1659,6 +1660,11 @@
             "name": "AccessKey",
             "value": "AccessKey",
             "description": "The AWS Access Key credential"
+          },
+          {
+            "name": "IRSA",
+            "value": "IRSA",
+            "description": "The AWS IRSA credential"
           }
         ]
       }
@@ -1771,6 +1777,32 @@
           }
         }
       }
+    },
+    "AwsIRSACredentialProperties": {
+      "type": "object",
+      "description": "AWS credential storage properties",
+      "properties": {
+        "roleARN": {
+          "type": "string",
+          "format": "password",
+          "description": "RoleARN for AWS IRSA identity",
+          "x-ms-secret": true
+        },
+        "storage": {
+          "$ref": "#/definitions/CredentialStorageProperties",
+          "description": "The storage properties"
+        }
+      },
+      "required": [
+        "roleARN",
+        "storage"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AwsCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "IRSA"
     },
     "AwsPlaneResource": {
       "type": "object",
