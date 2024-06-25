@@ -63,7 +63,7 @@ model AwsPlaneNameParameter {
 enum AWSCredentialKind {
   @doc("The AWS Access Key credential")
   AccessKey,
-  
+
   @doc("The AWS IRSA credential")
   IRSA,
 }
