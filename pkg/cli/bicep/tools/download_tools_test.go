@@ -33,38 +33,38 @@ func TestGetValidPlatform(t *testing.T) {
 		{
 			currentOS:   "darwin",
 			currentArch: "amd64",
-			out:         "macos-x64",
+			out:         "bicep-osx-x64",
 		},
 		{
 			currentOS:   "darwin",
 			currentArch: "arm64",
-			out:         "macos-arm64",
+			out:         "bicep-osx-arm64",
 		},
 		{
 			currentOS:   "windows",
 			currentArch: "amd64",
-			out:         "windows-x64",
+			out:         "bicep-win-x64",
 		},
 		{
 			currentOS:   "windows",
 			currentArch: "arm64",
-			out:         "",
-			err:         errors.New("unsupported platform windows/arm64"),
+			out:         "bicep-win-arm64",
 		},
 		{
 			currentOS:   "linux",
 			currentArch: "amd64",
-			out:         "linux-x64",
+			out:         "bicep-linux-x64",
 		},
 		{
 			currentOS:   "linux",
 			currentArch: "arm",
-			out:         "linux-arm",
+			out:         "",
+			err:         errors.New("unsupported platform linux/arm"),
 		},
 		{
 			currentOS:   "linux",
 			currentArch: "arm64",
-			out:         "linux-arm64",
+			out:         "bicep-linux-arm64",
 		},
 	}
 
