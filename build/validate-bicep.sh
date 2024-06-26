@@ -30,7 +30,7 @@ do
         exec 3>&-
     fi
     
-    if [[ ! $EXITCODE -eq 0 || (! -z $STDERR && ! [[ $STDERR == $WARNING_MSG* ]]) ]]
+    if [[ ! $EXITCODE -eq 0 || (! -z $STDERR && ! $STDERR == $WARNING_MSG* ) ]]
     then
         echo $STDERR
         FAILURES+=$F
