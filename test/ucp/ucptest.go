@@ -17,7 +17,9 @@ limitations under the License.
 package ucp
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,8 +27,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/kubernetes"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/validation"
@@ -41,7 +46,7 @@ const (
 
 var radiusControllerLogSync sync.Once
 
-type TestRunMethod func(t *testing.T, url string, roundtripper http.RoundTripper)
+type TestRunMethod func(t *testing.T, test *UCPTest)
 
 // RequiredFeature is used to specify an optional feature that is required
 // for the test to run.
@@ -63,14 +68,20 @@ type UCPTest struct {
 
 	// RequiredFeatures is a list of features that are required for the test to run.
 	RequiredFeatures []RequiredFeature
-}
 
-type TestStep struct {
+	// Connection is the connection to UCP.
+	Connection sdk.Connection
+
+	// URL is the base URL of UCP for the test.
+	URL string
+
+	// Transport is the HTTP transport to use for the test.
+	Transport http.RoundTripper
 }
 
 // NewUCPTest creates a new UCPTest instance with the given name and run method.
-func NewUCPTest(t *testing.T, name string, runMethod TestRunMethod) UCPTest {
-	return UCPTest{
+func NewUCPTest(t *testing.T, name string, runMethod TestRunMethod) *UCPTest {
+	return &UCPTest{
 		Options:     test.NewTestOptions(t),
 		Name:        name,
 		Description: name,
@@ -78,7 +89,7 @@ func NewUCPTest(t *testing.T, name string, runMethod TestRunMethod) UCPTest {
 	}
 }
 
-func (ucptest UCPTest) Test(t *testing.T) {
+func (ucptest *UCPTest) Test(t *testing.T) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 
 	ucptest.CheckRequiredFeatures(ctx, t)
@@ -100,20 +111,30 @@ func (ucptest UCPTest) Test(t *testing.T) {
 		}
 	})
 
-	config, err := kubernetes.NewCLIClientConfig("")
-	require.NoError(t, err, "failed to read kubeconfig")
+	config, err := cli.LoadConfig("")
+	require.NoError(t, err, "failed to read radius config")
 
-	connection, err := sdk.NewKubernetesConnectionFromConfig(config)
-	require.NoError(t, err, "failed to create kubernetes connection")
+	workspace, err := cli.GetWorkspace(config, "")
+	require.NoError(t, err, "failed to read default workspace")
+	require.NotNil(t, workspace, "default workspace is not set")
+
+	t.Logf("Loaded workspace: %s (%s)", workspace.Name, workspace.FmtConnection())
+
+	connection, err := workspace.Connect()
+	require.NoError(t, err, "failed to connect to workspace")
+
+	// Store the connection for later
+	ucptest.Connection = connection
+	ucptest.URL = connection.Endpoint()
 
 	// Transport will be nil for some default cases as http.Client does not require it to be set.
 	// Since the tests call the transport directly then just pass in the default.
-	transport := connection.Client().Transport
-	if transport == nil {
-		transport = http.DefaultTransport
+	ucptest.Transport = connection.Client().Transport
+	if ucptest.Transport == nil {
+		ucptest.Transport = http.DefaultTransport
 	}
 
-	ucptest.RunMethod(t, connection.Endpoint(), transport)
+	ucptest.RunMethod(t, ucptest)
 
 }
 
@@ -150,4 +171,77 @@ func (ct UCPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 			t.Skip(message)
 		}
 	}
+}
+
+func (u *UCPTest) CreateGenericClient(t *testing.T, scope string, resourceType string) *generated.GenericResourcesClient {
+	if u.Connection == nil {
+		t.Fatal("CreateGenericClient should be called after the test has started.")
+	}
+
+	client, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(u.Connection))
+	require.NoError(t, err)
+	return client
+}
+
+func (u *UCPTest) CreateResource(t *testing.T, id string, resource any) {
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+
+	client := u.CreateGenericClient(t, parsed.RootScope(), parsed.Type())
+
+	b, err := json.Marshal(resource)
+	require.NoError(t, err)
+
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+
+	payload := generated.GenericResource{}
+	err = decoder.Decode(&payload)
+	require.NoError(t, err)
+
+	ctx := testcontext.New(t)
+	poller, err := client.BeginCreateOrUpdate(ctx, parsed.Name(), payload, nil)
+	require.NoError(t, err)
+	t.Logf("Creating resource %s", id)
+
+	_, err = poller.PollUntilDone(ctx, nil)
+	require.NoError(t, err)
+	t.Logf("Resource %s created", id)
+
+}
+
+func (u *UCPTest) DeleteResource(t *testing.T, id string) {
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+
+	client := u.CreateGenericClient(t, parsed.RootScope(), parsed.Type())
+
+	ctx := testcontext.New(t)
+	poller, err := client.BeginDelete(ctx, parsed.Name(), nil)
+	require.NoError(t, err)
+	t.Logf("Deleting resource %s", id)
+
+	_, err = poller.PollUntilDone(ctx, nil)
+	require.NoError(t, err)
+	t.Logf("Resource %s deleted", id)
+}
+
+func (u *UCPTest) GetResource(t *testing.T, id string, resource any) {
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+
+	client := u.CreateGenericClient(t, parsed.RootScope(), parsed.Type())
+
+	ctx := testcontext.New(t)
+	response, err := client.Get(ctx, parsed.Name(), nil)
+	require.NoError(t, err)
+
+	b, err := json.Marshal(response.GenericResource)
+	require.NoError(t, err)
+
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+
+	err = decoder.Decode(&resource)
+	require.NoError(t, err)
 }

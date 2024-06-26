@@ -50,6 +50,9 @@ type Resource struct {
 	ResourceInfo
 	// Type represents the resource type, this will be a namespace/type combo. Ex. Applications.Core/Environment
 	Type string `json:"type"`
+
+	// Properties are the properties of the resource.
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 // ResourceInfo represents name and id of the resource

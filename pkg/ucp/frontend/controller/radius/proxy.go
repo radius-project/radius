@@ -103,7 +103,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 
 	downstreamURL, routingType, err := resourcegroups.ValidateDownstream(ctx, p.StorageClient(), id, requestCtx.Location)
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
-		return armrpc_rest.NewNotFoundResponse(id), nil
+		return armrpc_rest.NewNotFoundResponseWithCause(id, err.Error()), nil
 	} else if errors.Is(err, &resourcegroups.InvalidError{}) {
 		response := v1.ErrorResponse{Error: v1.ErrorDetails{Code: v1.CodeInvalid, Message: err.Error(), Target: id.String()}}
 		return armrpc_rest.NewBadRequestARMResponse(response), nil
@@ -115,11 +115,10 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	if routingType == resourcegroups.RoutingTypeInternal {
 		transport = p.embeddedTransport
 
-		// For internal requests, the downstream URL doesn't need to change.
-		// We only need the scheme and hostname.
+		// URL can be anything here, it's going to be ignored.
 		downstreamURL = &url.URL{
-			Scheme: requestCtx.OriginalURL.Scheme,
-			Host:   requestCtx.OriginalURL.Host,
+			Scheme: "http",
+			Host:   "localhost",
 		}
 	}
 

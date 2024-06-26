@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
@@ -76,7 +77,7 @@ func (c *TrackedResourceProcessController) Run(ctx context.Context, request *ctr
 		return ctrl.Result{}, err
 	}
 
-	downstreamURL, routingType, err := resourcegroups.ValidateDownstream(ctx, c.StorageClient(), originalID, "location")
+	downstreamURL, routingType, err := resourcegroups.ValidateDownstream(ctx, c.StorageClient(), originalID, v1.LocationGlobal)
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Code: v1.CodeNotFound, Message: err.Error(), Target: request.ResourceID}), nil
 	} else if errors.Is(err, &resourcegroups.InvalidError{}) {
@@ -88,6 +89,12 @@ func (c *TrackedResourceProcessController) Run(ctx context.Context, request *ctr
 	transport := c.transport
 	if routingType == resourcegroups.RoutingTypeInternal {
 		transport = c.embeddedTransport
+
+		// URL can be anything here, it's going to be ignored.
+		downstreamURL = &url.URL{
+			Scheme: "http",
+			Host:   "localhost",
+		}
 	}
 
 	logger := ucplog.FromContextOrDiscard(ctx)

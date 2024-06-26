@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -162,12 +163,19 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	if input == nil {
 		return nil, nil
 	}
+
+	properties, err := c.extractProperties(data)
+	if err != nil {
+		return nil, err
+	}
+
 	request := recipes.ResourceMetadata{
 		Name:          input.Name,
 		Parameters:    input.Parameters,
 		EnvironmentID: data.ResourceMetadata().Environment,
 		ApplicationID: data.ResourceMetadata().Application,
 		ResourceID:    data.GetBaseResource().ID,
+		Properties:    properties,
 	}
 
 	return c.engine.Execute(ctx, engine.ExecuteOptions{
@@ -177,4 +185,27 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		PreviousState: prevState,
 		Simulated:     simulated,
 	})
+}
+
+func (c *CreateOrUpdateResource[P, T]) extractProperties(data P) (map[string]any, error) {
+	bs, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	type resource struct {
+		Properties map[string]any `json:"properties"`
+	}
+
+	r := resource{}
+	err = json.Unmarshal(bs, &r)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.Properties == nil {
+		return map[string]any{}, nil
+	}
+
+	return r.Properties, nil
 }

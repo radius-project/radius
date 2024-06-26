@@ -34,7 +34,7 @@ func Test_ValidateDownstream(t *testing.T) {
 	id, err := resources.ParseResource("/planes/radius/local/resourceGroups/test-group/providers/System.TestRP/testResources/name")
 	require.NoError(t, err)
 
-	providerID := makeResourceProviderID(id)
+	providerID := MakeResourceProviderID(id)
 
 	idWithoutResourceGroup, err := resources.Parse("/planes/radius/local/providers/System.TestRP/testResources")
 	require.NoError(t, err)
@@ -321,14 +321,16 @@ func Test_ValidateResourceType(t *testing.T) {
 		parsed, err := url.Parse("http://localhost:7443")
 		require.NoError(t, err)
 
-		downstream, routingType, err := ValidateResourceType(id, "proxy", provider)
+		resourceType, downstream, routingType, err := ValidateResourceType(id, "proxy", provider)
+		require.Equal(t, provider.Properties.ResourceTypes[0], *resourceType)
 		require.Equal(t, downstream, parsed)
 		require.Equal(t, RoutingTypeProxy, routingType)
 		require.NoError(t, err)
 	})
 
 	t.Run("Success: internal", func(t *testing.T) {
-		downstream, routingType, err := ValidateResourceType(id, "internal", provider)
+		resourceType, downstream, routingType, err := ValidateResourceType(id, "internal", provider)
+		require.Equal(t, provider.Properties.ResourceTypes[0], *resourceType)
 		require.Nil(t, downstream)
 		require.Equal(t, RoutingTypeInternal, routingType)
 		require.NoError(t, err)
@@ -336,7 +338,8 @@ func Test_ValidateResourceType(t *testing.T) {
 
 	t.Run("Success: operationStatuses", func(t *testing.T) {
 		id := resources.MustParse("/planes/radius/local/providers/Applications.Test/locations/internal/operationStatuses/abcd")
-		downstream, routingType, err := ValidateResourceType(id, "internal", provider)
+		resourceType, downstream, routingType, err := ValidateResourceType(id, "internal", provider)
+		require.Nil(t, resourceType)
 		require.Nil(t, downstream)
 		require.Equal(t, RoutingTypeInternal, routingType)
 		require.NoError(t, err)
@@ -344,7 +347,8 @@ func Test_ValidateResourceType(t *testing.T) {
 
 	t.Run("Success: operationResults", func(t *testing.T) {
 		id := resources.MustParse("/planes/radius/local/providers/Applications.Test/locations/internal/operationResults/abcd")
-		downstream, routingType, err := ValidateResourceType(id, "internal", provider)
+		resourceType, downstream, routingType, err := ValidateResourceType(id, "internal", provider)
+		require.Nil(t, resourceType)
 		require.Nil(t, downstream)
 		require.Equal(t, RoutingTypeInternal, routingType)
 		require.NoError(t, err)
@@ -352,7 +356,8 @@ func Test_ValidateResourceType(t *testing.T) {
 
 	t.Run("ResourceType not found", func(t *testing.T) {
 		id := resources.MustParse("/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/anotherType/testResource")
-		downstream, routingType, err := ValidateResourceType(id, "internal", provider)
+		resourceType, downstream, routingType, err := ValidateResourceType(id, "internal", provider)
+		require.Nil(t, resourceType)
 		require.Nil(t, downstream)
 		require.Equal(t, RoutingTypeInvalid, routingType)
 		require.Error(t, err)
@@ -361,7 +366,8 @@ func Test_ValidateResourceType(t *testing.T) {
 	})
 
 	t.Run("Location not supported", func(t *testing.T) {
-		downstream, routingType, err := ValidateResourceType(id, "another-one", provider)
+		resourceType, downstream, routingType, err := ValidateResourceType(id, "another-one", provider)
+		require.Nil(t, resourceType)
 		require.Nil(t, downstream)
 		require.Equal(t, RoutingTypeInvalid, routingType)
 		require.Error(t, err)

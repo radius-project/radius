@@ -47,7 +47,7 @@ var (
 func Test_AWS_DeleteResource(t *testing.T) {
 	ctx := context.Background()
 
-	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, test *test.UCPTest) {
 		bucketName := generateS3BucketName()
 		setupTestAWSResource(t, ctx, bucketName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
@@ -57,7 +57,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
-		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20231001preview.Version)
+		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", test.URL, resourceID, v20231001preview.Version)
 		deleteRequestBody := map[string]any{
 			"properties": map[string]any{
 				"BucketName": bucketName,
@@ -69,7 +69,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		// Issue the Delete Request
 		deleteRequest, err := http.NewRequest(http.MethodPost, deleteURL, bytes.NewBuffer(deleteBody))
 		require.NoError(t, err)
-		deleteResponse, err := roundTripper.RoundTrip(deleteRequest)
+		deleteResponse, err := test.Transport.RoundTrip(deleteRequest)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusAccepted, deleteResponse.StatusCode)
 
@@ -80,7 +80,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		maxRetries := 100
 		deleteSucceeded := false
 		for i := 0; i < maxRetries; i++ {
-			getResponse, err := roundTripper.RoundTrip(getRequest)
+			getResponse, err := test.Transport.RoundTrip(getRequest)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, getResponse.StatusCode)
 
@@ -108,7 +108,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 func Test_AWS_ListResources(t *testing.T) {
 	ctx := context.Background()
 
-	myTest := test.NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, test *test.UCPTest) {
 		var bucketName = generateS3BucketName()
 		setupTestAWSResource(t, ctx, bucketName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
@@ -118,12 +118,12 @@ func Test_AWS_ListResources(t *testing.T) {
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
-		listURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceID, v20231001preview.Version)
+		listURL := fmt.Sprintf("%s%s?api-version=%s", test.URL, resourceID, v20231001preview.Version)
 
 		// Issue the List Request
 		listRequest, err := http.NewRequest(http.MethodGet, listURL, nil)
 		require.NoError(t, err)
-		listResponse, err := roundTripper.RoundTrip(listRequest)
+		listResponse, err := test.Transport.RoundTrip(listRequest)
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusOK, listResponse.StatusCode)

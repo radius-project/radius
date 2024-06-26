@@ -307,8 +307,9 @@ func createDeploymentID(resourceID string, deploymentName string) (resources.ID,
 		return resources.ID{}, err
 	}
 
-	resourceGroup := parsed.FindScope(resources_radius.ScopeResourceGroups)
-	return resources.ParseResource(fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
+	// Create the deployment at the same scope as the resource being updated.
+	// For now we assume that only resource-group-scoped resources support recipes.
+	return resources.ParseResource(fmt.Sprintf("%s/providers/Microsoft.Resources/deployments/%s", parsed.RootScope(), deploymentName))
 }
 
 func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clients.ProviderConfig {

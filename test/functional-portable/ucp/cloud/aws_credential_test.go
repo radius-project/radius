@@ -31,11 +31,11 @@ import (
 )
 
 func Test_AWS_Credential_Operations(t *testing.T) {
-	myTest := test.NewUCPTest(t, "Test_AWS_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_AWS_Credential_Operations", func(t *testing.T, test *test.UCPTest) {
 		resourceTypePath := "/planes/aws/awstest/providers/System.AWS/credentials"
-		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
-		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
-		runAWSCredentialTests(t, resourceURL, collectionURL, roundTripper, getAWSTestCredentialObject(), getExpectedAWSTestCredentialObject())
+		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", test.URL, resourceTypePath, ucp.Version)
+		collectionURL := fmt.Sprintf("%s%s?api-version=%s", test.URL, resourceTypePath, ucp.Version)
+		runAWSCredentialTests(t, resourceURL, collectionURL, test.Transport, getAWSTestCredentialObject(), getExpectedAWSTestCredentialObject())
 	})
 
 	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}

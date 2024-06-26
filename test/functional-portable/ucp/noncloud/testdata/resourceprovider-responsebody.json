@@ -1,6 +1,10 @@
 {
+  "id": "PLACEHOLDER",
+  "name": "Contoso.Example",
+  "type": "System.Resources/resourceProviders",
   "location": "global",
   "properties": {
+    "provisioningState": "Succeeded",
     "locations": {
       "global": {
         "address": "internal"
@@ -9,7 +13,6 @@
     "resourceTypes": [
       {
         "resourceType": "postgreSQLDatabases",
-        "routingType": "Internal",
         "locations": [
           "global"
         ],

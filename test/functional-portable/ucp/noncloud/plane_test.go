@@ -35,23 +35,23 @@ func Test_Plane_Operations(t *testing.T) {
 	apiVersion := v20231001preview.Version
 
 	t.Run("Default planes", func(t *testing.T) {
-		test := test.NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		test := test.NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, test *test.UCPTest) {
 			// By default, we configure default planes in UCP. Verify that by calling List Planes
-			planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes?api-version=%s", url, apiVersion))
+			planes := listPlanes(t, test.Transport, fmt.Sprintf("%s/planes?api-version=%s", test.URL, apiVersion))
 			require.Equal(t, 2, len(planes.Value))
 		})
 		test.Test(t)
 	})
 
 	t.Run("AWS", func(t *testing.T) {
-		test := test.NewUCPTest(t, "AWS_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		test := test.NewUCPTest(t, "AWS_Plane_Operations", func(t *testing.T, test *test.UCPTest) {
 			apiVersion := v20231001preview.Version
 
 			planeID := "/planes/aws/testplane"
-			planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
+			planeURL := fmt.Sprintf("%s%s?api-version=%s", test.URL, planeID, apiVersion)
 
 			t.Cleanup(func() {
-				_ = deletePlane(t, roundTripper, planeURL)
+				_ = deletePlane(t, test.Transport, planeURL)
 			})
 
 			body := v20231001preview.AwsPlaneResource{
@@ -59,7 +59,7 @@ func Test_Plane_Operations(t *testing.T) {
 				Properties: &v20231001preview.AwsPlaneResourceProperties{},
 			}
 
-			createPlane(t, roundTripper, planeURL, body)
+			createPlane(t, test.Transport, planeURL, body)
 
 			expected := v20231001preview.AwsPlaneResource{
 				ID:       to.Ptr(planeID),
@@ -73,7 +73,7 @@ func Test_Plane_Operations(t *testing.T) {
 			}
 
 			// Get Plane
-			actual, statusCode := getPlane[v20231001preview.AwsPlaneResource](t, roundTripper, planeURL)
+			actual, statusCode := getPlane[v20231001preview.AwsPlaneResource](t, test.Transport, planeURL)
 			require.Equal(t, http.StatusOK, statusCode)
 
 			// SystemData includes timestamps, so we can't compare it directly
@@ -81,25 +81,25 @@ func Test_Plane_Operations(t *testing.T) {
 			require.Equal(t, expected, actual)
 
 			// Delete Plane
-			statusCode = deletePlane(t, roundTripper, planeURL)
+			statusCode = deletePlane(t, test.Transport, planeURL)
 			require.Equal(t, http.StatusOK, statusCode)
 
 			// Get Plane - Expected Not Found
-			_, statusCode = getPlane[any](t, roundTripper, planeURL)
+			_, statusCode = getPlane[any](t, test.Transport, planeURL)
 			require.Equal(t, http.StatusNotFound, statusCode)
 		})
 		test.Test(t)
 	})
 
 	t.Run("Azure", func(t *testing.T) {
-		test := test.NewUCPTest(t, "Azure_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		test := test.NewUCPTest(t, "Azure_Plane_Operations", func(t *testing.T, test *test.UCPTest) {
 			apiVersion := v20231001preview.Version
 
 			planeID := "/planes/azure/testplane"
-			planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
+			planeURL := fmt.Sprintf("%s%s?api-version=%s", test.URL, planeID, apiVersion)
 
 			t.Cleanup(func() {
-				_ = deletePlane(t, roundTripper, planeURL)
+				_ = deletePlane(t, test.Transport, planeURL)
 			})
 
 			body := v20231001preview.AzurePlaneResource{
@@ -109,7 +109,7 @@ func Test_Plane_Operations(t *testing.T) {
 				},
 			}
 
-			createPlane(t, roundTripper, planeURL, body)
+			createPlane(t, test.Transport, planeURL, body)
 
 			expected := v20231001preview.AzurePlaneResource{
 				ID:       to.Ptr(planeID),
@@ -124,7 +124,7 @@ func Test_Plane_Operations(t *testing.T) {
 			}
 
 			// Get Plane
-			actual, statusCode := getPlane[v20231001preview.AzurePlaneResource](t, roundTripper, planeURL)
+			actual, statusCode := getPlane[v20231001preview.AzurePlaneResource](t, test.Transport, planeURL)
 			require.Equal(t, http.StatusOK, statusCode)
 
 			// SystemData includes timestamps, so we can't compare it directly
@@ -132,25 +132,25 @@ func Test_Plane_Operations(t *testing.T) {
 			require.Equal(t, expected, actual)
 
 			// Delete Plane
-			statusCode = deletePlane(t, roundTripper, planeURL)
+			statusCode = deletePlane(t, test.Transport, planeURL)
 			require.Equal(t, http.StatusOK, statusCode)
 
 			// Get Plane - Expected Not Found
-			_, statusCode = getPlane[any](t, roundTripper, planeURL)
+			_, statusCode = getPlane[any](t, test.Transport, planeURL)
 			require.Equal(t, http.StatusNotFound, statusCode)
 		})
 		test.Test(t)
 	})
 
 	t.Run("Radius", func(t *testing.T) {
-		test := test.NewUCPTest(t, "Radius_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		test := test.NewUCPTest(t, "Radius_Plane_Operations", func(t *testing.T, test *test.UCPTest) {
 			apiVersion := v20231001preview.Version
 
 			planeID := "/planes/radius/testplane"
-			planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
+			planeURL := fmt.Sprintf("%s%s?api-version=%s", test.URL, planeID, apiVersion)
 
 			t.Cleanup(func() {
-				_ = deletePlane(t, roundTripper, planeURL)
+				_ = deletePlane(t, test.Transport, planeURL)
 			})
 
 			body := v20231001preview.RadiusPlaneResource{
@@ -162,7 +162,7 @@ func Test_Plane_Operations(t *testing.T) {
 				},
 			}
 
-			createPlane(t, roundTripper, planeURL, body)
+			createPlane(t, test.Transport, planeURL, body)
 
 			expected := v20231001preview.RadiusPlaneResource{
 				ID:       to.Ptr(planeID),
@@ -179,7 +179,7 @@ func Test_Plane_Operations(t *testing.T) {
 			}
 
 			// Get Plane
-			actual, statusCode := getPlane[v20231001preview.RadiusPlaneResource](t, roundTripper, planeURL)
+			actual, statusCode := getPlane[v20231001preview.RadiusPlaneResource](t, test.Transport, planeURL)
 			require.Equal(t, http.StatusOK, statusCode)
 
 			// SystemData includes timestamps, so we can't compare it directly
@@ -187,42 +187,51 @@ func Test_Plane_Operations(t *testing.T) {
 			require.Equal(t, expected, actual)
 
 			// Delete Plane
-			statusCode = deletePlane(t, roundTripper, planeURL)
+			statusCode = deletePlane(t, test.Transport, planeURL)
 			require.Equal(t, http.StatusOK, statusCode)
 
 			// Get Plane - Expected Not Found
-			_, statusCode = getPlane[any](t, roundTripper, planeURL)
+			_, statusCode = getPlane[any](t, test.Transport, planeURL)
 			require.Equal(t, http.StatusNotFound, statusCode)
 		})
 		test.Test(t)
 	})
 }
 
-func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane any) {
+func createPlane(t *testing.T, transport http.RoundTripper, url string, plane any) {
+	t.Helper()
+
 	body, err := json.Marshal(plane)
 	require.NoError(t, err)
 	createRequest, err := test.NewUCPRequest(
 		http.MethodPut,
 		url,
 		bytes.NewBuffer(body))
-	require.NoError(t, err, "")
+	require.NoError(t, err)
 
-	res, err := roundTripper.RoundTrip(createRequest)
-	require.NoError(t, err, "")
+	res, err := transport.RoundTrip(createRequest)
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	b, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	t.Logf("Response: %s", b)
 
 	require.Equal(t, http.StatusOK, res.StatusCode)
 	t.Logf("Plane: %s created/updated successfully", url)
 }
 
-func getPlane[T any](t *testing.T, roundTripper http.RoundTripper, url string) (T, int) {
+func getPlane[T any](t *testing.T, transport http.RoundTripper, url string) (T, int) {
+	t.Helper()
+
 	getRequest, err := test.NewUCPRequest(
 		http.MethodGet,
 		url,
 		nil)
-	require.NoError(t, err, "")
+	require.NoError(t, err)
 
-	result, err := roundTripper.RoundTrip(getRequest)
-	require.NoError(t, err, "")
+	result, err := transport.RoundTrip(getRequest)
+	require.NoError(t, err)
 
 	body := result.Body
 	defer body.Close()
@@ -235,16 +244,16 @@ func getPlane[T any](t *testing.T, roundTripper http.RoundTripper, url string) (
 	return plane, result.StatusCode
 }
 
-func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v1.PaginatedList {
+func listPlanes(t *testing.T, transport http.RoundTripper, url string) v1.PaginatedList {
 	listRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
 		nil,
 	)
-	require.NoError(t, err, "")
+	require.NoError(t, err)
 
-	result, err := roundTripper.RoundTrip(listRequest)
-	require.NoError(t, err, "")
+	result, err := transport.RoundTrip(listRequest)
+	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, result.StatusCode)
 
 	body := result.Body
@@ -256,15 +265,15 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v1.Pag
 	return listOfPlanes
 }
 
-func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) int {
+func deletePlane(t *testing.T, transport http.RoundTripper, url string) int {
 	deleteRgRequest, err := test.NewUCPRequest(
 		http.MethodDelete,
 		url,
 		nil,
 	)
-	require.NoError(t, err, "")
+	require.NoError(t, err)
 
-	res, err := roundTripper.RoundTrip(deleteRgRequest)
+	res, err := transport.RoundTrip(deleteRgRequest)
 	require.NoError(t, err)
 	t.Logf("Plane: %s deleted successfully", url)
 	return res.StatusCode

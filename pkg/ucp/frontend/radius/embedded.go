@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -79,10 +80,16 @@ func CreateEmbeddedTransport(opts modules.Options) http.RoundTripper {
 	})
 
 	register(r, "PUT "+resourceRoute, v1.OperationPut, ctrlOpts, func(ctrlOpts controller.Options, resourceOpts controller.ResourceOptions[datamodel.DynamicResource]) (controller.Controller, error) {
+		resourceOpts.AsyncOperationTimeout = 24 * time.Hour
+		resourceOpts.AsyncOperationRetryAfter = 5 * time.Second
+
 		return defaultoperation.NewDefaultAsyncPut[*datamodel.DynamicResource, datamodel.DynamicResource](ctrlOpts, resourceOpts)
 	})
 
 	register(r, "DELETE "+resourceRoute, v1.OperationDelete, ctrlOpts, func(ctrlOpts controller.Options, resourceOpts controller.ResourceOptions[datamodel.DynamicResource]) (controller.Controller, error) {
+		resourceOpts.AsyncOperationTimeout = 24 * time.Hour
+		resourceOpts.AsyncOperationRetryAfter = 5 * time.Second
+
 		return defaultoperation.NewDefaultAsyncDelete[*datamodel.DynamicResource, datamodel.DynamicResource](ctrlOpts, resourceOpts)
 	})
 

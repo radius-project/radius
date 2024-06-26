@@ -34,26 +34,26 @@ import (
 )
 
 func Test_ResourceGroup_Operations(t *testing.T) {
-	myTest := test.NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, test *test.UCPTest) {
 		// Create resource groups
 		rgID := "/planes/radius/local/resourcegroups/test-RG"
 		apiVersion := v20231001preview.Version
-		rgURL := fmt.Sprintf("%s%s?api-version=%s", url, rgID, apiVersion)
+		rgURL := fmt.Sprintf("%s%s?api-version=%s", test.URL, rgID, apiVersion)
 
 		t.Cleanup(func() {
-			_ = deleteResourceGroup(t, roundTripper, rgURL)
+			_ = deleteResourceGroup(t, test.Transport, rgURL)
 		})
 
-		createResourceGroup(t, roundTripper, rgURL)
-		createResourceGroup(t, roundTripper, rgURL)
+		createResourceGroup(t, test.Transport, rgURL)
+		createResourceGroup(t, test.Transport, rgURL)
 
 		// List Resource Groups
-		listRGsURL := fmt.Sprintf("%s%s?api-version=%s", url, "/planes/radius/local/resourceGroups", apiVersion)
-		rgs := listResourceGroups(t, roundTripper, listRGsURL)
+		listRGsURL := fmt.Sprintf("%s%s?api-version=%s", test.URL, "/planes/radius/local/resourceGroups", apiVersion)
+		rgs := listResourceGroups(t, test.Transport, listRGsURL)
 		require.GreaterOrEqual(t, len(rgs.Value), 1)
 
 		// Get Resource Group by calling lower case URL.
-		rg, statusCode := getResourceGroup(t, roundTripper, strings.ToLower(rgURL))
+		rg, statusCode := getResourceGroup(t, test.Transport, strings.ToLower(rgURL))
 		expectedResourceGroup := v20231001preview.ResourceGroupResource{
 			ID:       to.Ptr(rgID),
 			Name:     to.Ptr("test-RG"),
@@ -65,11 +65,11 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 		require.Equal(t, expectedResourceGroup, rg)
 
 		// Delete Resource Group
-		statusCode = deleteResourceGroup(t, roundTripper, rgURL)
+		statusCode = deleteResourceGroup(t, test.Transport, rgURL)
 		require.Equal(t, http.StatusOK, statusCode)
 
 		// Get Resource Group - Expected Not Found
-		_, statusCode = getResourceGroup(t, roundTripper, rgURL)
+		_, statusCode = getResourceGroup(t, test.Transport, rgURL)
 		require.Equal(t, http.StatusNotFound, statusCode)
 	})
 	myTest.Test(t)

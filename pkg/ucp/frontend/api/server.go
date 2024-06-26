@@ -167,7 +167,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	initializedTransports := false
-	for _, module := range s.options.Modules {
+	for _, module := range modules {
 		if module.PlaneType() == "radius" {
 			m := module.(*radius_frontend.Module)
 			s.Transports.Put(&Transports{Transport: m.Transport, EmbeddedTransport: m.EmbeddedTransport})

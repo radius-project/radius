@@ -79,6 +79,8 @@ type ResourceMetadata struct {
 	ResourceID string
 	// Parameters represents key/value pairs to pass into the recipe template. Overrides any parameters set by the environment.
 	Parameters map[string]any
+	// Properties contains the properties of the resource (if any). This may be used by the recipe to customize the deployment.
+	Properties map[string]any
 }
 
 const (

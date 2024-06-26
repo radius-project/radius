@@ -24,6 +24,8 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/embedded"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourcegroups"
@@ -81,11 +83,17 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 	}
 
-	opts := ctrl.Options{
-		DataProvider: w.StorageProvider,
+	k8s, err := kubeutil.NewClients(w.Options.K8sConfig)
+	if err != nil {
+		return fmt.Errorf("failed to initialize kubernetes clients: %w", err)
 	}
 
-	err := w.RegisterControllers(ctx, w.Controllers, opts)
+	opts := ctrl.Options{
+		DataProvider: w.StorageProvider,
+		KubeClient:   k8s.RuntimeClient,
+	}
+
+	err = w.RegisterControllers(ctx, w.Controllers, opts)
 	if err != nil {
 		return err
 	}
@@ -107,8 +115,15 @@ func (w *Service) RegisterControllers(ctx context.Context, registry *worker.Cont
 		return err
 	}
 
+	cfg, err := controllerconfig.New(w.Service.Options)
+	if err != nil {
+		return err
+	}
+
 	// Register a single controller to handle all "internal" resource types.
-	err = registry.Register(ctx, worker.ResourceTypeAny, v1.OperationMethod(worker.OperationMethodAny), embedded.NewController, opts)
+	err = registry.Register(ctx, worker.ResourceTypeAny, v1.OperationMethod(worker.OperationMethodAny), func(opts ctrl.Options) (ctrl.Controller, error) {
+		return embedded.NewController(opts, cfg.Engine, cfg.ResourceClient, cfg.ConfigLoader)
+	}, opts)
 	if err != nil {
 		return err
 	}

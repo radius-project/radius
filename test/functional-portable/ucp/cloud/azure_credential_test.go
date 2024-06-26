@@ -31,11 +31,11 @@ import (
 )
 
 func Test_Azure_Credential_Operations(t *testing.T) {
-	myTest := test.NewUCPTest(t, "Test_Azure_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_Azure_Credential_Operations", func(t *testing.T, test *test.UCPTest) {
 		resourceTypePath := "/planes/azure/azuretest/providers/System.Azure/credentials"
-		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
-		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
-		runAzureCredentialTests(t, resourceURL, collectionURL, roundTripper, getAzureTestCredentialObject(), getExpectedAzureTestCredentialObject())
+		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", test.URL, resourceTypePath, ucp.Version)
+		collectionURL := fmt.Sprintf("%s%s?api-version=%s", test.URL, resourceTypePath, ucp.Version)
+		runAzureCredentialTests(t, resourceURL, collectionURL, test.Transport, getAzureTestCredentialObject(), getExpectedAzureTestCredentialObject())
 	})
 
 	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAzure}
