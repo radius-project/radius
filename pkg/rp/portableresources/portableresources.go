@@ -47,7 +47,8 @@ func IsValidPortableResourceType(resourceType string) bool {
 		}
 	}
 
-	return false
+	// TODO: Add validation for custom resource types.
+	return true
 }
 
 // GetValidPortableResourceTypes returns list of valid portable resource types.

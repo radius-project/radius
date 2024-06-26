@@ -122,7 +122,7 @@ func ValidateResourceGroup(ctx context.Context, client store.StorageClient, id r
 // ValidateResourceProvider validates that the resource provider specified in the id exists (if applicable).
 // Returns NotFoundError if the resource provider does not exist.
 func ValidateResourceProvider(ctx context.Context, client store.StorageClient, id resources.ID) (*datamodel.ResourceProvider, error) {
-	providerId := makeResourceProviderID(id)
+	providerId := MakeResourceProviderID(id)
 	obj, err := client.Get(ctx, providerId.String())
 	if errors.Is(err, &store.ErrNotFound{}) {
 		return nil, &NotFoundError{Message: fmt.Sprintf("resource provider %q not found", providerId.String())}
@@ -139,7 +139,13 @@ func ValidateResourceProvider(ctx context.Context, client store.StorageClient, i
 	return provider, nil
 }
 
-func makeResourceProviderID(id resources.ID) resources.ID {
+// MakeResourceProviderID returns the resource ID for a the resource provider associated with the given ID.
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/my-app ->
+//	/planes/radius/local/providers/Applications.Core
+func MakeResourceProviderID(id resources.ID) resources.ID {
 	return resources.MustParse(resources.MakeUCPID(
 		// /planes/radius/{planeName}
 		id.ScopeSegments()[0:1],
@@ -159,12 +165,15 @@ func makeResourceProviderID(id resources.ID) resources.ID {
 // Returns InvalidError if the data is invalid or the resource type is not supported at the provided location.
 //
 // This function does not validate the API version. API version validation is handled by the dynamic RP.
-func ValidateResourceType(id resources.ID, location string, provider *datamodel.ResourceProvider) (*url.URL, RoutingType, error) {
+func ValidateResourceType(id resources.ID, location string, provider *datamodel.ResourceProvider) (*datamodel.ResourceType, *url.URL, RoutingType, error) {
 	// First let's validate that the resource type exists.
+	var match *datamodel.ResourceType
 	found := false
 	for _, resourceType := range provider.Properties.ResourceTypes {
 		// Look for matching resource type
 		if strings.EqualFold(id.Type(), provider.Name+"/"+resourceType.ResourceType) {
+			copy := resourceType
+			match = &copy
 			found = true
 			break
 		}
@@ -182,7 +191,7 @@ func ValidateResourceType(id resources.ID, location string, provider *datamodel.
 	}
 
 	if !found {
-		return nil, RoutingTypeInvalid, &NotFoundError{Message: fmt.Sprintf("resource type %q not found", id.Type())}
+		return nil, nil, RoutingTypeInvalid, &NotFoundError{Message: fmt.Sprintf("resource type %q not found", id.Type())}
 	}
 
 	// Look for matching location
@@ -192,19 +201,19 @@ func ValidateResourceType(id resources.ID, location string, provider *datamodel.
 		}
 
 		if strings.EqualFold(loc.Address, "internal") {
-			return nil, RoutingTypeInternal, nil
+			return match, nil, RoutingTypeInternal, nil
 		}
 
 		downstreamURL, err := url.Parse(loc.Address)
 		if err != nil {
-			return nil, RoutingTypeInvalid, &InvalidError{Message: fmt.Sprintf("failed to parse downstream URL: %v", err.Error())}
+			return nil, nil, RoutingTypeInvalid, &InvalidError{Message: fmt.Sprintf("failed to parse downstream URL: %v", err.Error())}
 		}
 
-		return downstreamURL, RoutingTypeProxy, nil
+		return match, downstreamURL, RoutingTypeProxy, nil
 	}
 
 	// If we get here, the specific location is not supported.
-	return nil, RoutingTypeInvalid, &InvalidError{Message: fmt.Sprintf("resource type %q not supported at location %q", id.Type(), location)}
+	return nil, nil, RoutingTypeInvalid, &InvalidError{Message: fmt.Sprintf("resource type %q not supported at location %q", id.Type(), location)}
 }
 
 // ValidateLegacyResourceProvider validates that the resource provider specified in the id exists. Returns InvalidError if the plane
@@ -261,5 +270,10 @@ func ValidateDownstream(ctx context.Context, client store.StorageClient, id reso
 		return nil, RoutingTypeInvalid, err
 	}
 
-	return ValidateResourceType(id, location, provider)
+	_, downstream, routingType, err := ValidateResourceType(id, location, provider)
+	if err != nil {
+		return nil, RoutingTypeInvalid, err
+	}
+
+	return downstream, routingType, nil
 }

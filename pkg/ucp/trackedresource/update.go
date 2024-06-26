@@ -149,6 +149,11 @@ func (u *Updater) Update(ctx context.Context, opts UpdateOptions) error {
 		if errors.Is(err, &InProgressErr{}) && attempt == u.AttemptCount {
 			// Preserve the InprogressErr for the last attempt.
 			return err
+		} else if errors.Is(err, &InProgressErr{}) {
+			// Avoid logging as an error, this is expected.
+			logger.V(ucplog.LevelDebug).Info("resource is still being provisioned")
+			time.Sleep(u.RetryDelay)
+			continue
 		} else if err != nil {
 			logger.Error(err, "attempt failed", "delay", u.RetryDelay)
 			time.Sleep(u.RetryDelay)

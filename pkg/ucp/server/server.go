@@ -186,6 +186,17 @@ func NewServer(options *Options) (*hosting.Host, error) {
 		hostingServices = append(hostingServices, profilerservice.NewService(profilerOptions))
 	}
 
+	// TODO: do this right...
+	cfg, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
+		// TODO: Allow to use custom context via configuration. - https://github.com/radius-project/radius/issues/5433
+		ContextName: "",
+		QPS:         kubeutil.DefaultServerQPS,
+		Burst:       kubeutil.DefaultServerBurst,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	backendServiceOptions := hostopts.HostOptions{
 		Config: &hostopts.ProviderConfig{
 			Env: hostopts.EnvironmentOptions{
@@ -198,6 +209,8 @@ func NewServer(options *Options) (*hosting.Host, error) {
 			TracerProvider:   options.TracerProviderOptions,
 			ProfilerProvider: options.ProfilerProviderOptions,
 		},
+		K8sConfig:     cfg,
+		UCPConnection: options.UCPConnection,
 	}
 	hostingServices = append(hostingServices, backend.NewService(backendServiceOptions, frontendService.Transports))
 

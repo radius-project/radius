@@ -115,11 +115,10 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	if routingType == resourcegroups.RoutingTypeInternal {
 		transport = p.embeddedTransport
 
-		// For internal requests, the downstream URL doesn't need to change.
-		// We only need the scheme and hostname.
+		// URL can be anything here, it's going to be ignored.
 		downstreamURL = &url.URL{
-			Scheme: requestCtx.OriginalURL.Scheme,
-			Host:   requestCtx.OriginalURL.Host,
+			Scheme: "http",
+			Host:   "localhost",
 		}
 	}
 

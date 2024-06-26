@@ -8,7 +8,7 @@
     },
     "resourceTypes": [
       {
-        "resourceType": "exampleResources",
+        "resourceType": "postgreSQLDatabases",
         "routingType": "Internal",
         "locations": [
           "global"
@@ -18,8 +18,37 @@
             "schema": {
               "type": "object",
               "properties": {
-                "message": {
+                "size": {
                   "type": "string"
+                },
+                "application": {
+                  "type": "string"
+                },
+                "environment": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "object",
+                  "properties": {
+                    "uri": {
+                      "type": "string"
+                    },
+                    "username": {
+                      "type": "string"
+                    },
+                    "password": {
+                      "type": "string"
+                    },
+                    "host": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "number"
+                    },
+                    "database": {
+                      "type": "string"
+                    }
+                  }
                 }
               }
             }

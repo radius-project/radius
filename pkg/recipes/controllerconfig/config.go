@@ -17,6 +17,7 @@ limitations under the License.
 package controllerconfig
 
 import (
+	"os"
 	"strconv"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
@@ -76,6 +77,14 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 		return nil, err
 	}
 
+	if options.Config.Bicep.DeleteRetryCount == "" {
+		options.Config.Bicep.DeleteRetryCount = "5"
+	}
+
+	if options.Config.Bicep.DeleteRetryDelaySeconds == "" {
+		options.Config.Bicep.DeleteRetryDelaySeconds = "10"
+	}
+
 	bicepDeleteRetryCount, err := strconv.Atoi(options.Config.Bicep.DeleteRetryCount)
 	if err != nil {
 		return nil, err
@@ -84,6 +93,10 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	bicepDeleteRetryDeleteSeconds, err := strconv.Atoi(options.Config.Bicep.DeleteRetryDelaySeconds)
 	if err != nil {
 		return nil, err
+	}
+
+	if options.Config.Terraform.Path == "" {
+		options.Config.Terraform.Path = os.TempDir()
 	}
 
 	cfg.ConfigLoader = configloader.NewEnvironmentLoader(clientOptions)
