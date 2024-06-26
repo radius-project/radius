@@ -164,3 +164,23 @@ func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[stri
 
 	return nil
 }
+
+// unsetGitConfigForDir removes a conditional include directive from the global Git configuration if applicable.
+// It is a wrapper function to unsetGitConfigForDir()
+func unsetGitConfigForDirIfApplicable(secretStoreID string, secretData map[string]map[string]string, requestDirPath string, templatePath string) error {
+	if secretStoreID == "" || secretData == nil {
+		return nil
+	}
+
+	secrets, ok := secretData[secretStoreID]
+	if !ok {
+		return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
+	}
+
+	err := unsetGitConfigForDir(requestDirPath, secrets, templatePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

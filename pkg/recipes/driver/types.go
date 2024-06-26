@@ -53,8 +53,7 @@ type DriverWithSecrets interface {
 	// Driver is an interface to implement recipe deployment and recipe resources deletion.
 	Driver
 
-	// FindSecretIDs gets the secret store resource ID references associated with git private terraform repository source.
-	// In the future it will be extended to get secret references for provider secrets.
+	// FindSecretIDs retrieves a map of secret store resource IDs and their corresponding secret keys for secrets required for recipe deployment.
 	FindSecretIDs(ctx context.Context, config recipes.Configuration, definition recipes.EnvironmentDefinition) (secretIDs map[string][]string, err error)
 }
 
@@ -101,8 +100,8 @@ type DeleteOptions struct {
 	OutputResources []rpv1.OutputResource
 }
 
-// GetSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
-func GetSecretStoreID(envConfig recipes.Configuration, templatePath string) (string, error) {
+// GetPrivateGitRepoSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
+func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePath string) (string, error) {
 	if strings.HasPrefix(templatePath, "git::") {
 		url, err := GetGitURL(templatePath)
 		if err != nil {

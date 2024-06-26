@@ -153,6 +153,38 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 			},
 		},
 		{
+			desc: "provider with Secrets and no Additional Properties",
+			envConfig: &recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"azurerm": {
+								{
+									Secrets: map[string]datamodel.SecretReference{
+										"secret1": {
+											Source: "secretstoreid1",
+											Key:    "secretkey1",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]map[string]string{
+				"secretstoreid1": {"secretkey1": "secretvalue1"},
+				"secretstoreid2": {"secretkey2": "secretvalue2"},
+			},
+			expected: map[string][]map[string]any{
+				"azurerm": {
+					{
+						"secret1": "secretvalue1",
+					},
+				},
+			},
+		},
+		{
 			desc: "provider and env with secrets",
 			envConfig: &recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
