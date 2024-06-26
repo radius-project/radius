@@ -1,4 +1,4 @@
-import radius as radius
+provider radius
 
 @description('Specifies the environment for resources.')
 param environment string

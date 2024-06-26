@@ -1,4 +1,4 @@
-import radius as radius
+provider radius
 
 param scope string = resourceGroup().id
 

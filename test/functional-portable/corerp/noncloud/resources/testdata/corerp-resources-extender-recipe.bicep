@@ -1,13 +1,15 @@
-import radius as radius
+provider radius
 
 @description('The OCI registry for test Bicep recipes.')
 param registry string
 @description('The OCI tag for test Bicep recipes.')
 param version string
+@description('Specifies the location for resources.')
+param location string = 'global'
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-resources-extender-recipe-env'
-  location: 'global'
+  location: location
   properties: {
     compute: {
       kind: 'kubernetes'
@@ -30,7 +32,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-extender-recipe'
-  location: 'global'
+  location: location
   properties: {
     environment: env.id
     extensions: [
