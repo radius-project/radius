@@ -19,7 +19,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/metrics"
@@ -241,13 +240,7 @@ func (e *engine) getRecipeConfigSecrets(ctx context.Context, driver recipedriver
 	if secretStoreIDResourceKeys != nil {
 		secretData, err = e.options.SecretsLoader.LoadSecrets(ctx, secretStoreIDResourceKeys)
 		if err != nil {
-			// Get list of secretStoreIDs to log in the error message.
-			secretStoreIDKeys := []string{}
-			for secretStoreIDKey := range secretStoreIDResourceKeys {
-				secretStoreIDKeys = append(secretStoreIDKeys, secretStoreIDKey)
-			}
-
-			return nil, recipes.NewRecipeError(recipes.LoadSecretsFailed, fmt.Sprintf("failed to fetch secrets from the secret store resource id %s for Terraform recipe %s deployment: %s", strings.Join(secretStoreIDKeys, ", "), definition.TemplatePath, err.Error()), util.RecipeSetupError, recipes.GetErrorDetails(err))
+			return nil, recipes.NewRecipeError(recipes.LoadSecretsFailed, fmt.Sprintf("failed to fetch secrets for Terraform recipe %s deployment: %s", definition.TemplatePath, err.Error()), util.RecipeSetupError, recipes.GetErrorDetails(err))
 		}
 	}
 

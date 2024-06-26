@@ -75,7 +75,6 @@ type terraformDriver struct {
 // Execute creates a unique directory for each execution of terraform and deploys the recipe using the
 // the Terraform CLI through terraform-exec. It returns a RecipeOutput or an error if the deployment fails.
 func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
-	var secrets map[string]string
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
@@ -89,7 +88,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 	}()
 
 	// Get the secret store ID associated with the git private terraform repository source.
-	secretStoreID, err := GetSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
+	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +106,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		Secrets:        opts.Secrets,
 	})
 
-	unsetError := unsetGitConfigForDir(requestDirPath, secrets, opts.Definition.TemplatePath)
+	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if unsetError != nil {
 		return nil, unsetError
 	}
@@ -126,7 +125,6 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 
 // Delete returns an error if called as it is not yet implemented.
 func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error {
-	var secrets map[string]string
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
@@ -140,7 +138,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 	}()
 
 	// Get the secret store ID associated with the git private terraform repository source.
-	secretStoreID, err := GetSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
+	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
 	if err != nil {
 		return err
 	}
@@ -157,7 +155,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		EnvRecipe:      &opts.Definition,
 	})
 
-	unsetError := unsetGitConfigForDir(requestDirPath, secrets, opts.Definition.TemplatePath)
+	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if unsetError != nil {
 		return unsetError
 	}
@@ -252,7 +250,6 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 
 // GetRecipeMetadata returns the Terraform Recipe parameters by downloading the module and retrieving variable information
 func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
-	var secrets map[string]string
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
@@ -266,7 +263,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	}()
 
 	// Get the secret store ID associated with the git private terraform repository source.
-	secretStoreID, err := GetSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
+	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +279,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 		EnvRecipe:      &opts.Definition,
 	})
 
-	unsetError := unsetGitConfigForDir(requestDirPath, secrets, opts.Definition.TemplatePath)
+	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if unsetError != nil {
 		return nil, unsetError
 	}
@@ -300,7 +297,7 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 	secretStoreIDResourceKeys = make(map[string][]string)
 
 	// Get the secret store ID associated with the git private terraform repository source.
-	secretStoreID, err := GetSecretStoreID(envConfig, definition.TemplatePath)
+	secretStoreID, err := GetPrivateGitRepoSecretStoreID(envConfig, definition.TemplatePath)
 	if err != nil {
 		return nil, err
 	}

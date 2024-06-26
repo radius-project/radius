@@ -317,22 +317,32 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 }
 func Test_Engine_Terraform_Failure(t *testing.T) {
 	tests := []struct {
-		name              string
-		errFindSecretRefs error
-		errLoadSecrets    error
-		errExecute        error
+		name                   string
+		errFindSecretRefs      error
+		errLoadSecrets         error
+		errLoadSecretsNotFound error
+		errExecute             error
+		expectedErrMsg         string
 	}{
 		{
 			name:              "find secret references failed",
 			errFindSecretRefs: fmt.Errorf("failed to parse git url %s", "git://https://dev.azure.com/mongo-recipe/recipe"),
+			expectedErrMsg:    "failed to parse git url git://https://dev.azure.com/mongo-recipe/recipe",
 		},
 		{
 			name:           "failed loading secrets",
-			errLoadSecrets: fmt.Errorf("%q is a valid resource id but does not refer to a resource", ""),
+			errLoadSecrets: fmt.Errorf("%q is a valid resource id but does not refer to a resource", "secretstoreid1"),
+			expectedErrMsg: "code LoadSecretsFailed: err failed to fetch secrets for Terraform recipe git://https://dev.azure.com/mongo-recipe/recipe deployment: \"secretstoreid1\" is a valid resource id but does not refer to a resource",
 		},
 		{
-			name:       "find secret references failed",
-			errExecute: errors.New("failed to add git config"),
+			name:                   "failed loading secrets - secret store id not found",
+			errLoadSecretsNotFound: fmt.Errorf("a secret key was not found in secret store 'secretstoreid1'"),
+			expectedErrMsg:         "code LoadSecretsFailed: err failed to fetch secrets for Terraform recipe git://https://dev.azure.com/mongo-recipe/recipe deployment: a secret key was not found in secret store 'secretstoreid1'",
+		},
+		{
+			name:           "find secret references failed",
+			errExecute:     errors.New("failed to add git config"),
+			expectedErrMsg: "failed to add git config",
 		},
 	}
 	for _, tc := range tests {
@@ -416,6 +426,11 @@ func Test_Engine_Terraform_Failure(t *testing.T) {
 						LoadSecrets(ctx, gomock.Any()).
 						Times(1).
 						Return(nil, tc.errLoadSecrets)
+				} else if tc.errLoadSecretsNotFound != nil {
+					secretsLoader.EXPECT().
+						LoadSecrets(ctx, gomock.Any()).
+						Times(1).
+						Return(nil, tc.errLoadSecretsNotFound)
 				} else {
 					secretsLoader.EXPECT().
 						LoadSecrets(ctx, gomock.Any()).
@@ -455,8 +470,8 @@ func Test_Engine_Terraform_Failure(t *testing.T) {
 				},
 				PreviousState: prevState,
 			})
-			if tc.errFindSecretRefs != nil || tc.errLoadSecrets != nil || tc.errExecute != nil {
-				require.Error(t, err)
+			if tc.errFindSecretRefs != nil || tc.errLoadSecrets != nil || tc.errExecute != nil || tc.errLoadSecretsNotFound != nil {
+				require.EqualError(t, err, tc.expectedErrMsg)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, result, recipeResult)

@@ -189,7 +189,7 @@ func Test_GetGitURL(t *testing.T) {
 }
 
 // Test_addSecretsToGitConfigIfApplicable tests only wrapper funcion.
-// Additional tests exist for inner function call addSecretsToGitConfig in TestAddConfig().
+// Additional tests exist for inner function call addSecretsToGitConfig() in TestAddConfig().
 func Test_addSecretsToGitConfigIfApplicable(t *testing.T) {
 	templatePath := "git::dev.azure.com/project/module"
 	tests := []struct {
@@ -228,6 +228,68 @@ func Test_addSecretsToGitConfigIfApplicable(t *testing.T) {
 				require.EqualError(t, err, tt.expectErrMsg)
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Test_unsetGitConfigForDirIfApplicable tests only wrapper funcion.
+// Additional tests exist for inner function call unsetGitConfigForDir() in TestUnsetGitConfigForDir().
+func Test_unsetGitConfigForDirIfApplicable(t *testing.T) {
+	tmpdir := t.TempDir()
+	workingDirectory := "test-working-dir"
+	templatePath := "git::https://github.com/project/module"
+	fileContent := `
+			[includeIf "gitdir:test-working-dir/"]
+        path = test-working-dir/.git/config
+			`
+
+	tests := []struct {
+		name             string
+		secretStoreID    string
+		secretData       map[string]map[string]string
+		expectError      bool
+		expectErrMsg     string
+		expectCallToFunc bool
+	}{
+		{
+			name:          "Secrets not found for secret store ID",
+			secretStoreID: "missingID",
+			secretData:    map[string]map[string]string{"existingID": {"key": "value"}},
+			expectError:   true,
+			expectErrMsg:  "secrets not found for secret store ID \"missingID\"",
+		},
+		{
+			name:             "Successful call to unsetGitConfigForDir",
+			secretStoreID:    "existingID",
+			secretData:       map[string]map[string]string{"existingID": {"username": "test-user"}, "pat": {"pat": "ghp_token"}},
+			expectError:      false,
+			expectCallToFunc: true,
+		},
+		{
+			name:          "secretData is nil",
+			secretStoreID: "missingID",
+			secretData:    nil,
+			expectError:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config, err := withGlobalGitConfigFile(tmpdir, fileContent)
+			require.NoError(t, err)
+			defer config()
+
+			err = unsetGitConfigForDirIfApplicable(tt.secretStoreID, tt.secretData, workingDirectory, templatePath)
+			if tt.expectError {
+				require.EqualError(t, err, tt.expectErrMsg)
+			} else {
+				require.NoError(t, err)
+				if tt.expectCallToFunc {
+					contents, err := os.ReadFile(filepath.Join(tmpdir, ".gitconfig"))
+					require.NoError(t, err)
+					require.NotContains(t, string(contents), fileContent)
+				}
 			}
 		})
 	}
