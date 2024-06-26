@@ -98,7 +98,7 @@ model AwsAccessKeyCredentialProperties extends AwsCredentialProperties {
 
 @doc("AWS credential storage properties")
 model AwsIRSACredentialProperties extends AwsCredentialProperties {
-  @doc("Access Key kind")
+  @doc("IRSA credential kind")
   kind: AWSCredentialKind.IRSA;
 
   @doc("RoleARN for AWS IRSA identity")
