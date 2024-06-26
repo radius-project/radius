@@ -5,6 +5,7 @@ then
     exit 1
 fi
 
+WARNING_MSG="WARNING: The following experimental Bicep features"
 FILES=$(find . -type f -name "*.bicep")
 FAILURES=()
 for F in $FILES
@@ -20,7 +21,7 @@ do
     # - Compiled output (ARM templates) go to rad-bicep's stdout
     # - rad-bicep's stdout goes to /dev/null
     # - rad-bicep's stderr goes to the variable
-    if grep -q "import radius as radius" $F
+    if grep -q "provider radius" $F
     then
         exec 3>&1
         echo "running: $BICEP_PATH build $F"
@@ -29,7 +30,7 @@ do
         exec 3>&-
     fi
     
-    if [[ ! $EXITCODE -eq 0 || ! -z $STDERR ]]
+    if [[ ! $EXITCODE -eq 0 || (! -z $STDERR && ! [[ $STDERR == $WARNING_MSG* ]]) ]]
     then
         echo $STDERR
         FAILURES+=$F

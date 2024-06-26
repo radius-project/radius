@@ -1,8 +1,8 @@
-import kubernetes as kubernetes {
+provider kubernetes with {
   kubeConfig: ''
   namespace: 'default'
-}
-import radius as radius
+} as kubernetes
+provider radius
 
 @description('Specifies the location for resources.')
 param location string = 'local'

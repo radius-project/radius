@@ -1,4 +1,4 @@
-import radius as radius
+provider radius
 
 param location string = resourceGroup().location
 param environment string

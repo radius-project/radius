@@ -1,7 +1,7 @@
-import kubernetes as kubernetes {
+provider kubernetes with {
   kubeConfig: ''
   namespace: namespace
-}
+} as kubernetes
 
 param namespace string
 param name string

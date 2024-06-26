@@ -1,4 +1,4 @@
-import radius as radius
+provider radius
 
 param location string
 param environment string

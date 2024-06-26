@@ -1,4 +1,4 @@
-import radius as rad
+provider radius
 
 param bucketName string
 param creationTimestamp string

@@ -1,4 +1,4 @@
-import radius as radius
+provider radius
 
 @description('Admin username for the Mongo database. Default is "admin"')
 param username string = 'admin'
@@ -45,7 +45,7 @@ resource mongoContainer 'Applications.Core/containers@2023-10-01-preview' = {
     container: {
       image: 'ghcr.io/radius-project/mirror/mongo:4.2'
       env: {
-        DBCONNECTION: mongo.connectionString()
+        DBCONNECTION: mongo.listSecrets().connectionString
         MONGO_INITDB_ROOT_USERNAME: username
         MONGO_INITDB_ROOT_PASSWORD: password
       }

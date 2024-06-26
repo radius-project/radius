@@ -1,4 +1,4 @@
-import radius as radius
+provider radius
 
 @description('Name of the Redis Cache resource.')
 param redisCacheName string

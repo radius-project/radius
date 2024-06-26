@@ -1,4 +1,4 @@
-import radius as radius
+provider radius
 
 @description('The OCI registry for test Bicep recipes.')
 param registry string
