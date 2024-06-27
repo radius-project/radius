@@ -9,7 +9,7 @@ package v20231001preview
 
 import "time"
 
-// AwsAccessKeyCredentialProperties - AWS credential storage properties
+// AwsAccessKeyCredentialProperties - AWS credential properties for Access Key
 type AwsAccessKeyCredentialProperties struct {
 	// REQUIRED; Access key ID for AWS identity
 	AccessKeyID *string
@@ -87,7 +87,7 @@ type AwsCredentialResourceTagsUpdate struct {
 	Tags map[string]*string
 }
 
-// AwsIRSACredentialProperties - AWS credential storage properties
+// AwsIRSACredentialProperties - AWS credential properties for IAM Roles for Service Accounts (IRSA)
 type AwsIRSACredentialProperties struct {
 	// REQUIRED; The AWS credential kind
 	Kind *AWSCredentialKind

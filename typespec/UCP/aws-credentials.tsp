@@ -64,7 +64,7 @@ enum AWSCredentialKind {
   @doc("The AWS Access Key credential")
   AccessKey,
 
-  @doc("The AWS IRSA credential")
+  @doc("AWS IAM roles for service accounts. For more information, please see: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html")
   IRSA,
 }
 
@@ -79,7 +79,7 @@ model AwsCredentialProperties {
   provisioningState?: ProvisioningState;
 }
 
-@doc("AWS credential storage properties")
+@doc("AWS credential properties for Access Key")
 model AwsAccessKeyCredentialProperties extends AwsCredentialProperties {
   @doc("Access Key kind")
   kind: AWSCredentialKind.AccessKey;
@@ -96,7 +96,7 @@ model AwsAccessKeyCredentialProperties extends AwsCredentialProperties {
   storage: CredentialStorageProperties;
 }
 
-@doc("AWS credential storage properties")
+@doc("AWS credential properties for IAM Roles for Service Accounts (IRSA)")
 model AwsIRSACredentialProperties extends AwsCredentialProperties {
   @doc("IRSA credential kind")
   kind: AWSCredentialKind.IRSA;

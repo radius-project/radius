@@ -18,7 +18,7 @@ type AWSCredentialKind string
 const (
 	// AWSCredentialKindAccessKey - The AWS Access Key credential
 	AWSCredentialKindAccessKey AWSCredentialKind = "AccessKey"
-	// AWSCredentialKindIRSA - The AWS IRSA credential
+	// AWSCredentialKindIRSA - AWS IAM roles for service accounts. For more information, please see: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
 	AWSCredentialKindIRSA AWSCredentialKind = "IRSA"
 )
 
