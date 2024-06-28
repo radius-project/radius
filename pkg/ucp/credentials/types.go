@@ -34,6 +34,12 @@ const (
 
 	// AzureWorkloadIdentityCredentialKind represents the kind of Azure workload identity credential.
 	AzureWorkloadIdentityCredentialKind = ucp_dm.AzureWorkloadIdentityCredentialKind
+
+	// AWSAccessKeyCredentialKind represents the kind of AWS access key credential.
+	AWSAccessKeyCredentialKind = ucp_dm.AWSAccessKeyCredentialKind
+
+	// AWSIRSACredentialKind represents the kind of AWS IRSA credential.
+	AWSIRSACredentialKind = ucp_dm.AWSIRSACredentialKind
 )
 
 type (
@@ -45,6 +51,10 @@ type (
 	AzureWorkloadIdentityCredential = ucp_dm.AzureWorkloadIdentityCredentialProperties
 	// AWSCredential represents a credential for AWS IAM.
 	AWSCredential = ucp_dm.AWSCredentialProperties
+	// AWSAccessKeyCredential represents a credential for AWS access key.
+	AWSAccessKeyCredential = ucp_dm.AWSAccessKeyCredentialProperties
+	// AWSIRSACredential represents a credential for AWS IRSA.
+	AWSIRSACredential = ucp_dm.AWSIRSACredentialProperties
 )
 
 // CredentialProvider is an UCP credential provider interface.
