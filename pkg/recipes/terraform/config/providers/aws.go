@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 
+	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
+
 	"github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -118,9 +120,17 @@ func fetchAWSCredentials(ctx context.Context, awsCredentialsProvider credentials
 		return nil, err
 	}
 
-	if credentials == nil || credentials.AccessKeyID == "" || credentials.SecretAccessKey == "" {
-		logger.Info("AWS credentials are not registered, skipping credentials configuration.")
-		return nil, nil
+	switch credentials.Kind {
+	case ucp_datamodel.AWSAccessKeyCredentialKind:
+		if credentials.AccessKeyCredential == nil || credentials.AccessKeyCredential.AccessKeyID == "" || credentials.AccessKeyCredential.SecretAccessKey == "" {
+			logger.Info("AWS AccessKey credentials are not registered, skipping credentials configuration.")
+			return nil, nil
+		}
+	case ucp_datamodel.AWSIRSACredentialKind:
+		if credentials.IRSACredential == nil || credentials.IRSACredential.RoleARN == "" {
+			logger.Info("AWS IRSACredential is not registered, skipping credentials configuration.")
+			return nil, nil
+		}
 	}
 
 	return credentials, nil
@@ -132,10 +142,11 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 		config[awsRegionParam] = region
 	}
 
-	if credentials != nil && credentials.AccessKeyID != "" && credentials.SecretAccessKey != "" {
-		config[awsAccessKeyParam] = credentials.AccessKeyID
-		config[awsSecretKeyParam] = credentials.SecretAccessKey
+	if credentials != nil && credentials.Kind == ucp_datamodel.AWSAccessKeyCredentialKind && credentials.AccessKeyCredential != nil &&
+		credentials.AccessKeyCredential.AccessKeyID != "" && credentials.AccessKeyCredential.SecretAccessKey != "" {
+		config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
+		config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
 	}
-
+	// TODO add support for IRSACredential
 	return config
 }
