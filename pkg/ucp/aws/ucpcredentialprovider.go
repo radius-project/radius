@@ -73,15 +73,15 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		return aws.Credentials{}, err
 	}
 
-	if s.AccessKeyID == "" || s.SecretAccessKey == "" {
+	if s.AccessKeyCredential == nil || s.AccessKeyCredential.AccessKeyID == "" || s.AccessKeyCredential.SecretAccessKey == "" {
 		return aws.Credentials{}, errors.New("invalid access key info")
 	}
 
-	logger.Info(fmt.Sprintf("Retrieved AWS Credential - AccessKeyID: %s", s.AccessKeyID))
+	logger.Info(fmt.Sprintf("Retrieved AWS Credential - AccessKeyID: %s", s.AccessKeyCredential.AccessKeyID))
 
 	value := aws.Credentials{
-		AccessKeyID:     s.AccessKeyID,
-		SecretAccessKey: s.SecretAccessKey,
+		AccessKeyID:     s.AccessKeyCredential.AccessKeyID,
+		SecretAccessKey: s.AccessKeyCredential.SecretAccessKey,
 		Source:          "radiusucp",
 		CanExpire:       true,
 		// Enables AWS SDK to fetch (rotate) access keys by calling Retrieve() after Expires.

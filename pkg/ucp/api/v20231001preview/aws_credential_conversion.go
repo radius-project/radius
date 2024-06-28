@@ -82,13 +82,47 @@ func (cr *AwsCredentialResource) getDataModelCredentialProperties() (*datamodel.
 		}
 
 		return &datamodel.AWSCredentialResourceProperties{
-			Kind: datamodel.AWSCredentialKind,
+			Kind: datamodel.AWSAccessKeyCredentialKind,
 			AWSCredential: &datamodel.AWSCredentialProperties{
-				AccessKeyID:     to.String(p.AccessKeyID),
-				SecretAccessKey: to.String(p.SecretAccessKey),
+				Kind: datamodel.AWSAccessKeyCredentialKind,
+				AccessKeyCredential: &datamodel.AWSAccessKeyCredentialProperties{
+					AccessKeyID:     to.String(p.AccessKeyID),
+					SecretAccessKey: to.String(p.SecretAccessKey),
+				},
 			},
 			Storage: storage,
 		}, nil
+	case *AwsIRSACredentialProperties:
+		var storage *datamodel.CredentialStorageProperties
+
+		switch c := p.Storage.(type) {
+		case *InternalCredentialStorageProperties:
+			if c.Kind == nil {
+				return nil, &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
+			}
+			storage = &datamodel.CredentialStorageProperties{
+				Kind: datamodel.InternalStorageKind,
+				InternalCredential: &datamodel.InternalCredentialStorageProperties{
+					SecretName: to.String(c.SecretName),
+				},
+			}
+		case nil:
+			return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"}
+		default:
+			return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())}
+		}
+
+		return &datamodel.AWSCredentialResourceProperties{
+			Kind: datamodel.AWSIRSACredentialKind,
+			AWSCredential: &datamodel.AWSCredentialProperties{
+				Kind: datamodel.AWSIRSACredentialKind,
+				IRSACredential: &datamodel.AWSIRSACredentialProperties{
+					RoleARN: to.String(p.RoleARN),
+				},
+			},
+			Storage: storage,
+		}, nil
+
 	default:
 		return nil, v1.ErrInvalidModelConversion
 	}
@@ -120,11 +154,17 @@ func (dst *AwsCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 
 	// DO NOT convert any secret values to versioned model.
 	switch dm.Properties.Kind {
-	case datamodel.AWSCredentialKind:
+	case datamodel.AWSAccessKeyCredentialKind:
 		dst.Properties = &AwsAccessKeyCredentialProperties{
 			Kind:        to.Ptr(AWSCredentialKind(dm.Properties.Kind)),
-			AccessKeyID: to.Ptr(dm.Properties.AWSCredential.AccessKeyID),
+			AccessKeyID: to.Ptr(dm.Properties.AWSCredential.AccessKeyCredential.AccessKeyID),
 			Storage:     storage,
+		}
+	case datamodel.AWSIRSACredentialKind:
+		dst.Properties = &AwsIRSACredentialProperties{
+			Kind:    to.Ptr(AWSCredentialKind(dm.Properties.Kind)),
+			RoleARN: to.Ptr(dm.Properties.AWSCredential.IRSACredential.RoleARN),
+			Storage: storage,
 		}
 	default:
 		return v1.ErrInvalidModelConversion

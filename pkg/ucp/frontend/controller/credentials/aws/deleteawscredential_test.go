@@ -129,7 +129,7 @@ func setupCredentialMocks(mockStorageClient store.MockStorageClient) {
 	datamodelCredential := datamodel.AWSCredential{
 		BaseResource: v1.BaseResource{},
 		Properties: &datamodel.AWSCredentialResourceProperties{
-			Kind: datamodel.AWSCredentialKind,
+			Kind: datamodel.AWSAccessKeyCredentialKind,
 		},
 	}
 

@@ -29,14 +29,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
+func TestAWSAccessKeyCredentialConvertVersionedToDataModel(t *testing.T) {
 	conversionTests := []struct {
 		filename string
 		expected *datamodel.AWSCredential
 		err      error
 	}{
 		{
-			filename: "credentialresource-aws.json",
+			filename: "credentialresource-aws-accesskey.json",
 			expected: &datamodel.AWSCredential{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
@@ -55,8 +55,11 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 				Properties: &datamodel.AWSCredentialResourceProperties{
 					Kind: "AccessKey",
 					AWSCredential: &datamodel.AWSCredentialProperties{
-						AccessKeyID:     "00000000-0000-0000-0000-000000000000",
-						SecretAccessKey: "00000000-0000-0000-0000-000000000000",
+						Kind: datamodel.AWSAccessKeyCredentialKind,
+						AccessKeyCredential: &datamodel.AWSAccessKeyCredentialProperties{
+							AccessKeyID:     "00000000-0000-0000-0000-000000000000",
+							SecretAccessKey: "00000000-0000-0000-0000-000000000000",
+						},
 					},
 					Storage: &datamodel.CredentialStorageProperties{
 						Kind:               datamodel.InternalStorageKind,
@@ -106,14 +109,14 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 	}
 }
 
-func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
+func TestAWSAccessKeyCredentialConvertDataModelToVersioned(t *testing.T) {
 	conversionTests := []struct {
 		filename string
 		expected *AwsCredentialResource
 		err      error
 	}{
 		{
-			filename: "credentialresourcedatamodel-aws.json",
+			filename: "credentialresourcedatamodel-aws-accesskey.json",
 			expected: &AwsCredentialResource{
 				ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
 				Name:     to.Ptr("default"),
