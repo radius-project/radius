@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
+func TestAWSAccessKeyCredentialConvertVersionedToDataModel(t *testing.T) {
 	conversionTests := []struct {
 		filename string
 		expected *datamodel.AWSCredential
@@ -141,7 +141,7 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 	}
 }
 
-func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
+func TestAWSAccessKeyCredentialConvertDataModelToVersioned(t *testing.T) {
 	conversionTests := []struct {
 		filename string
 		expected *AwsCredentialResource

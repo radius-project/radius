@@ -139,11 +139,11 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 		config[awsRegionParam] = region
 	}
 
-	if credentials != nil && credentials.AccessKeyCredential != nil &&
+	if credentials != nil && credentials.Kind == ucp_datamodel.AWSAccessKeyCredentialKind && credentials.AccessKeyCredential != nil &&
 		credentials.AccessKeyCredential.AccessKeyID != "" && credentials.AccessKeyCredential.SecretAccessKey != "" {
 		config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
 		config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
 	}
-
+	// TODO add support for IRSACredential
 	return config
 }
