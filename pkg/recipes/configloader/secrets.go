@@ -38,8 +38,6 @@ type secretsLoader struct {
 // LoadSecrets loads secrets from secret stores based on input map of provided secret store IDs and secret keys.
 // It returns a map of secret data, where the keys are the secret store IDs and the values are maps of secret keys and their corresponding values.
 func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStoreIDResourceKeys map[string][]string) (secretData map[string]map[string]string, err error) {
-	secretData = map[string]map[string]string{}
-
 	for secretStoreID, secretKeys := range secretStoreIDResourceKeys {
 		secretStoreResourceID, err := resources.ParseResource(secretStoreID)
 		if err != nil {
@@ -58,16 +56,32 @@ func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStoreIDResourceKe
 		}
 
 		// Populate the secretData map.
-		for _, secretKey := range secretKeys {
-			secretDataValue, ok := secrets.Data[secretKey]
-			if ok {
-				if secretData[secretStoreID] == nil {
-					secretData[secretStoreID] = make(map[string]string)
-				}
-				secretData[secretStoreID][secretKey] = *secretDataValue.Value
-			} else {
-				return nil, fmt.Errorf("a secret key was not found in secret store '%s'", secretStoreID)
+		secretData, err = populateSecretData(secretStoreID, secretKeys, &secrets)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return secretData, nil
+}
+
+// populateSecretData is a helper function to populate secret data from a secret store.
+func populateSecretData(secretStoreID string, secretKeys []string, secrets *v20231001preview.SecretStoresClientListSecretsResponse) (map[string]map[string]string, error) {
+	secretData := make(map[string]map[string]string)
+
+	if secrets == nil {
+		return nil, fmt.Errorf("secrets not found for secret store ID '%s'", secretStoreID)
+	}
+
+	for _, secretKey := range secretKeys {
+		secretDataValue, ok := secrets.Data[secretKey]
+		if ok {
+			if secretData[secretStoreID] == nil {
+				secretData[secretStoreID] = make(map[string]string)
 			}
+			secretData[secretStoreID][secretKey] = *secretDataValue.Value
+		} else {
+			return nil, fmt.Errorf("a secret key was not found in secret store '%s'", secretStoreID)
 		}
 	}
 

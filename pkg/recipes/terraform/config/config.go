@@ -300,31 +300,3 @@ func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 
 	return nil
 }
-
-// GetProviderSecretIDs parses the envConfig to extract secret IDs associated with the provider
-// and returns a map of secret IDs  and corresponding slice of keys.
-func GetProviderSecretIDs(envConfig recipes.Configuration, inputSecretIDs map[string][]string) {
-	for _, config := range envConfig.RecipeConfig.Terraform.Providers {
-		for _, providerConfig := range config {
-			if providerConfig.Secrets != nil {
-				for _, secret := range providerConfig.Secrets {
-					addSecretKeys(inputSecretIDs, secret.Source, secret.Key)
-				}
-			}
-		}
-	}
-
-	// Parse envConfig to extract secret IDs in environment variables and add them to the inputSecretIDs map.
-	for _, config := range envConfig.RecipeConfig.EnvSecrets {
-		addSecretKeys(inputSecretIDs, config.Source, config.Key)
-	}
-}
-
-// addSecretKeys is helper function to update the inputSecretIDs map
-func addSecretKeys(inputSecretIDs map[string][]string, secretSourceID, key string) {
-	if _, ok := inputSecretIDs[secretSourceID]; !ok {
-		inputSecretIDs[secretSourceID] = []string{key}
-	} else {
-		inputSecretIDs[secretSourceID] = append(inputSecretIDs[secretSourceID], key)
-	}
-}

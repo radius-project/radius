@@ -32,9 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/recipes"
-
 	"github.com/radius-project/radius/pkg/recipes/terraform"
-	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
@@ -93,6 +91,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		return nil, err
 	}
 
+	// Add credential information to .gitconfig for module source of type git if applicable.
 	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if err != nil {
 		return nil, err
@@ -143,6 +142,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		return err
 	}
 
+	// Add credential information to .gitconfig for module source of type git if applicable.
 	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if err != nil {
 		return err
@@ -268,6 +268,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 		return nil, err
 	}
 
+	// Add credential information to .gitconfig for module source of type git if applicable.
 	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if err != nil {
 		return nil, err
@@ -306,9 +307,17 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 		secretStoreIDResourceKeys[secretStoreID] = []string{PrivateRegistrySecretKey_Pat, PrivateRegistrySecretKey_Username}
 	}
 
-	// Get the secret IDs associated with the provider configuration and environment variables and
-	// add them to the input secretStoreIDResourceKeys map.
-	config.GetProviderSecretIDs(envConfig, secretStoreIDResourceKeys)
+	// Get the secret IDs and associated keys in provider configuration and environment variables
+	providerSecretIDs := terraform.GetProviderEnvSecretIDs(envConfig)
+
+	// Merge secretStoreIDResourceKeys with providerSecretIDs
+	for secretStoreID, keys := range providerSecretIDs {
+		if _, ok := secretStoreIDResourceKeys[secretStoreID]; !ok {
+			secretStoreIDResourceKeys[secretStoreID] = keys
+		} else {
+			secretStoreIDResourceKeys[secretStoreID] = append(secretStoreIDResourceKeys[secretStoreID], keys...)
+		}
+	}
 
 	return secretStoreIDResourceKeys, nil
 }
