@@ -838,7 +838,7 @@ func Test_FindSecretIDs(t *testing.T) {
 			},
 		},
 		{
-			name:          "GetSecretStoreID returns error",
+			name:          "GetPrivateGitRepoSecretStoreID returns error",
 			definition:    recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azu  re.com/project/module"},
 			envConfig:     createTerraformConfigWithAuthProviderEnvSecrets(),
 			expectedError: true,

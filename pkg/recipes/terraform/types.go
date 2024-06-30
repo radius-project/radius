@@ -22,9 +22,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
+	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -93,4 +95,55 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 	}
 
 	return workingDir, nil
+}
+
+// GetProviderEnvSecretIDs parses the envConfig to extract secret IDs configured in providers configuration and environment variables
+// and returns a map of secret store IDs and corresponding slice of keys.
+func GetProviderEnvSecretIDs(envConfig recipes.Configuration) map[string][]string {
+	providerSecretIDs := make(map[string][]string)
+	var mu sync.Mutex
+
+	// Extract secrets from Terraform providers configuration
+	extractProviderSecretIDs(envConfig.RecipeConfig.Terraform.Providers, providerSecretIDs, &mu)
+
+	// Extract secrets from environment variables
+	extractEnvSecretIDs(envConfig.RecipeConfig.EnvSecrets, providerSecretIDs, &mu)
+
+	return providerSecretIDs
+}
+
+// extractProviderSecrets extracts secrets from Terraform provider configurations
+func extractProviderSecretIDs(providers map[string][]dm.ProviderConfigProperties, secrets map[string][]string, mu *sync.Mutex) {
+	for _, config := range providers {
+		for _, providerConfig := range config {
+			if providerConfig.Secrets != nil {
+				for _, secret := range providerConfig.Secrets {
+					addSecretKeys(secrets, secret.Source, secret.Key, mu)
+				}
+			}
+		}
+	}
+}
+
+// extractEnvSecrets extracts secrets from environment variable configurations
+func extractEnvSecretIDs(envSecrets map[string]dm.SecretReference, secrets map[string][]string, mu *sync.Mutex) {
+	for _, config := range envSecrets {
+		addSecretKeys(secrets, config.Source, config.Key, mu)
+	}
+}
+
+// addSecretKeys updates the secrets map with secretStoreID and key, ensuring thread safety with a mutex.
+func addSecretKeys(secrets map[string][]string, secretStoreID, key string, mu *sync.Mutex) {
+	if secretStoreID == "" || key == "" {
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if _, ok := secrets[secretStoreID]; !ok {
+		secrets[secretStoreID] = []string{key}
+	} else {
+		secrets[secretStoreID] = append(secrets[secretStoreID], key)
+	}
 }

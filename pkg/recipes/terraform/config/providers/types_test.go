@@ -220,7 +220,7 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 			},
 			secrets: map[string]map[string]string{
 				"secretstoreid1": {"secretkey1": "secretvalue1",
-					"secret-usedid-envkey": "secretvalue-usedid-env"},
+					"secret-usedid-env": "secretvalue-usedid-env"},
 				"secretstore-env": {"secretkey-env": "secretvalue-env"},
 			},
 			expected: map[string][]map[string]any{
@@ -229,6 +229,44 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 						"subscriptionid": 1234,
 						"tenant_id":      "745fg88bf-86f1-41af-43ut",
 						"secret1":        "secretvalue1",
+					},
+				},
+			},
+		},
+		{
+			desc: "provider additional prop and secrets with same secret id",
+			envConfig: &recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"azurerm": {
+								{
+									AdditionalProperties: map[string]any{
+										"subscriptionid": 1234,
+										"tenant_id":      "745fg88bf-86f1-41af-43ut",
+										"client_id":      "abc123",
+									},
+									Secrets: map[string]datamodel.SecretReference{
+										"client_id": {
+											Source: "secretstoreid1",
+											Key:    "secretkey1",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]map[string]string{
+				"secretstoreid1": {"secretkey1": "secretvalue-clientid"},
+			},
+			expected: map[string][]map[string]any{
+				"azurerm": {
+					{
+						"subscriptionid": 1234,
+						"tenant_id":      "745fg88bf-86f1-41af-43ut",
+						"client_id":      "secretvalue-clientid",
 					},
 				},
 			},
@@ -255,8 +293,7 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 		expectedErrorMessage string
 	}{
 		{
-			name:          "success",
-			currentConfig: map[string]any{},
+			name: "success",
 			recipeConfigSecrets: map[string]datamodel.SecretReference{
 				"password": {Source: "dbSecrets", Key: "dbPass"},
 			},
@@ -269,8 +306,7 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:          "missing secret source",
-			currentConfig: map[string]any{},
+			name: "missing secret source",
 			recipeConfigSecrets: map[string]datamodel.SecretReference{
 				"password": {Source: "missingSource", Key: "dbPass"},
 			},
@@ -281,8 +317,7 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 			expectedErrorMessage: "missing secret store id: missingSource",
 		},
 		{
-			name:          "missing secret key",
-			currentConfig: map[string]any{},
+			name: "missing secret key",
 			recipeConfigSecrets: map[string]datamodel.SecretReference{
 				"password": {Source: "dbSecrets", Key: "missingKey"},
 			},
@@ -293,8 +328,7 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 			expectedErrorMessage: "missing secret key in secret store id: dbSecrets",
 		},
 		{
-			name:          "missing secrets",
-			currentConfig: map[string]any{},
+			name: "missing secrets",
 			recipeConfigSecrets: map[string]datamodel.SecretReference{
 				"password": {Source: "dbSecrets", Key: "missingKey"},
 			},
@@ -304,7 +338,6 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 		},
 		{
 			name:                "missing recipeConfigSecrets",
-			currentConfig:       map[string]any{},
 			recipeConfigSecrets: nil,
 			secrets: map[string]map[string]string{
 				"dbSecrets": {"dbPass": "secretPassword"},
@@ -316,12 +349,12 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := extractSecretsFromRecipeConfig(tt.currentConfig, tt.recipeConfigSecrets, tt.secrets)
+			secretsConfig, err := extractSecretsFromRecipeConfig(tt.recipeConfigSecrets, tt.secrets)
 			if tt.expectError {
 				require.EqualError(t, err, tt.expectedErrorMessage, err.Error())
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, tt.expectedConfig, tt.currentConfig)
+				require.Equal(t, tt.expectedConfig, secretsConfig)
 			}
 		})
 	}

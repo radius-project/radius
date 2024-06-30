@@ -49,31 +49,43 @@ func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *
 
 // GetRecipeProviderConfigs returns the Terraform provider configurations for Terraform providers
 // specified under the RecipeConfig/Terraform/Providers section under environment configuration.
+// The function also extracts secrets from the secrets data input and updates the provider configurations with secrets as applicable.
 func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration, secrets map[string]map[string]string) (map[string][]map[string]any, error) {
 	providerConfigs := make(map[string][]map[string]any)
 
 	// If the provider is not configured, or has empty configuration, skip this iteration
 	if envConfig != nil && envConfig.RecipeConfig.Terraform.Providers != nil {
 		for provider, config := range envConfig.RecipeConfig.Terraform.Providers {
-			configList := make([]map[string]any, 0)
+			if len(config) > 0 {
+				configList := make([]map[string]any, 0)
 
-			for _, configDetails := range config {
-				// Create map for current config
-				currentConfig := make(map[string]any)
+				for _, configDetails := range config {
+					// Create map for current config for current provider.
+					currentProviderConfig := make(map[string]any)
 
-				// Retrieve configuration details from 'AdditionalProperties' property and add to currentConfig.
-				if configDetails.AdditionalProperties != nil && len(configDetails.AdditionalProperties) > 0 {
-					currentConfig = configDetails.AdditionalProperties
-				}
+					// Retrieve configuration details from 'AdditionalProperties' property and add to currentConfig.
+					if configDetails.AdditionalProperties != nil && len(configDetails.AdditionalProperties) > 0 {
+						currentProviderConfig = configDetails.AdditionalProperties
+					}
 
-				// Extract secrets from configDetails if they are present and update the currentConfig map
-				err := extractSecretsFromRecipeConfig(currentConfig, configDetails.Secrets, secrets)
-				if err != nil {
-					return nil, err
-				}
+					// Extract secrets from provider configuration if they are present.
+					secretsConfig, err := extractSecretsFromRecipeConfig(configDetails.Secrets, secrets)
+					if err != nil {
+						return nil, err
+					}
 
-				if len(currentConfig) > 0 {
-					configList = append(configList, currentConfig)
+					// Merge secrets with current provider configuration.
+					for key, value := range secretsConfig {
+						// If the key already exists in the provider configuration,
+						// config value in secrets for the key currently will override config in
+						// additionalProperties.
+						// TBD: Check if this is the desired behavior.
+						currentProviderConfig[key] = value
+					}
+
+					if len(currentProviderConfig) > 0 {
+						configList = append(configList, currentProviderConfig)
+					}
 				}
 
 				providerConfigs[provider] = configList
@@ -85,20 +97,22 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 }
 
 // extractSecretsFromRecipeConfig extracts secrets for env recipe configuration from the secrets data input and updates the currentConfig map.
-func extractSecretsFromRecipeConfig(currentConfig map[string]any, recipeConfigSecrets map[string]datamodel.SecretReference, secrets map[string]map[string]string) error {
+func extractSecretsFromRecipeConfig(recipeConfigSecrets map[string]datamodel.SecretReference, secrets map[string]map[string]string) (map[string]any, error) {
+	secretsConfig := make(map[string]any)
+
 	// Extract secrets from configDetails if they are present
 	for secretName, secretReference := range recipeConfigSecrets {
 		// Extract secret value from the secrets data input
-		if secretSource, ok := secrets[secretReference.Source]; ok {
-			if secretValue, ok := secretSource[secretReference.Key]; ok {
-				currentConfig[secretName] = secretValue
+		if secretIDs, ok := secrets[secretReference.Source]; ok {
+			if secretValue, ok := secretIDs[secretReference.Key]; ok {
+				secretsConfig[secretName] = secretValue
 			} else {
-				return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
+				return nil, fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
 			}
 		} else {
-			return fmt.Errorf("missing secret store id: %s", secretReference.Source)
+			return nil, fmt.Errorf("missing secret store id: %s", secretReference.Source)
 		}
 	}
 
-	return nil
+	return secretsConfig, nil
 }
