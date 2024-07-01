@@ -1,4 +1,4 @@
-import aws as aws
+provider aws
 
 param bucketName string
 
