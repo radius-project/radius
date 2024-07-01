@@ -1,4 +1,4 @@
-import aws as aws
+provider aws
 
 param creationTimestamp string
 param bucketName string
