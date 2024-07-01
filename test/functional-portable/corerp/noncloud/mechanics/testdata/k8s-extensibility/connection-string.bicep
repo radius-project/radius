@@ -1,7 +1,7 @@
-import kubernetes as kubernetes {
+provider kubernetes with {
   namespace: 'corerp-mechanics-k8s-extensibility'
   kubeConfig: ''
-}
+} as kubernetes
 
 resource redisService 'core/Service@v1' existing = {
   metadata: {

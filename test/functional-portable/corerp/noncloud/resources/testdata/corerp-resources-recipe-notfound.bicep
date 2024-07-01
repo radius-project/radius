@@ -1,4 +1,4 @@
-import radius as radius
+provider radius
 
 @description('The base name of the test, used to qualify resources and namespaces. eg: corerp-resources-terraform-helloworld')
 param basename string

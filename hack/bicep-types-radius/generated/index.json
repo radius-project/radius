@@ -45,7 +45,7 @@
   },
   "resourceFunctions": {},
   "settings": {
-    "name": "radius",
+    "name": "Radius",
     "version": "latest",
     "isSingleton": false
   }

@@ -1,4 +1,4 @@
-import radius as radius
+provider radius
 
 param magpieimage string
 param environment string
