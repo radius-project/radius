@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/radius-project/radius/pkg/version"
 )
 
 const (
@@ -56,8 +58,8 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 		"dynamicTypeLoading": true
 	},
 	"providers": {
-		"radius": "br:biceptypes.azurecr.io/radius:latest",
-		"aws": "br:biceptypes.azurecr.io/aws:latest"
+		"radius": "br:biceptypes.azurecr.io/radius:%s",
+		"aws": "br:biceptypes.azurecr.io/aws:%s"
 	}
 }`
 )
@@ -92,7 +94,7 @@ func ScaffoldApplication(directory string, name string) error {
 	bicepConfigFilepath := filepath.Join(directory, "bicepconfig.json")
 	_, err = os.Stat(bicepConfigFilepath)
 	if os.IsNotExist(err) {
-		err = os.WriteFile(bicepConfigFilepath, []byte(bicepConfigTemplate), 0644)
+		err = os.WriteFile(bicepConfigFilepath, []byte(getVersionedBicepConfig()), 0644)
 		if err != nil {
 			return err
 		}
@@ -107,4 +109,13 @@ func ScaffoldApplication(directory string, name string) error {
 	}
 
 	return nil
+}
+
+func getVersionedBicepConfig() string {
+	tag := version.Channel()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
+
+	return fmt.Sprintf(bicepConfigTemplate, tag, tag)
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package setup
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,6 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
+
+const latest = "latest"
 
 func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 	directory := t.TempDir()
@@ -55,7 +58,7 @@ func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 
 	b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
 	require.NoError(t, err)
-	require.Equal(t, bicepConfigTemplate, string(b))
+	require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest), string(b))
 }
 
 func Test_ScaffoldApplication_KeepsAppBicepButWritesRadYaml(t *testing.T) {
