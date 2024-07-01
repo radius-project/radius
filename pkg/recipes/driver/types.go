@@ -20,15 +20,16 @@ import (
 	"context"
 	"strings"
 
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 const (
-	TerraformAzureProvider      = "registry.terraform.io/hashicorp/azurerm"
-	TerraformAWSProvider        = "registry.terraform.io/hashicorp/aws"
-	TerraformKubernetesProvider = "registry.terraform.io/hashicorp/kubernetes"
+	TerraformAzureProvider            = "registry.terraform.io/hashicorp/azurerm"
+	TerraformAWSProvider              = "registry.terraform.io/hashicorp/aws"
+	TerraformKubernetesProvider       = "registry.terraform.io/hashicorp/kubernetes"
+	PrivateRegistrySecretKey_Pat      = "pat"
+	PrivateRegistrySecretKey_Username = "username"
 )
 
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
@@ -52,9 +53,8 @@ type DriverWithSecrets interface {
 	// Driver is an interface to implement recipe deployment and recipe resources deletion.
 	Driver
 
-	// FindSecretIDs gets the secret store resource ID references associated with git private terraform repository source.
-	// In the future it will be extended to get secret references for provider secrets.
-	FindSecretIDs(ctx context.Context, config recipes.Configuration, definition recipes.EnvironmentDefinition) (string, error)
+	// FindSecretIDs retrieves a map of secret store resource IDs and their corresponding secret keys for secrets required for recipe deployment.
+	FindSecretIDs(ctx context.Context, config recipes.Configuration, definition recipes.EnvironmentDefinition) (secretIDs map[string][]string, err error)
 }
 
 // BaseOptions is the base options for the driver operations.
@@ -68,8 +68,21 @@ type BaseOptions struct {
 	// Definition is the environment definition for the recipe.
 	Definition recipes.EnvironmentDefinition
 
-	// Secrets specifies the module authentication information stored in the secret store.
-	Secrets v20231001preview.SecretStoresClientListSecretsResponse
+	// Secrets represents a map of secrets required for recipe execution.
+	// The outer map's key represents the secretStoreIDs while
+	// while the inner map's key-value pairs represent the [secretKey]secretValue.
+	// Example:
+	// Secrets{
+	//     "secretStoreID1": {
+	//         "apiKey": "value1",
+	//         "apiSecret": "value2",
+	//     },
+	//     "secretStoreID2": {
+	//         "accessKey": "accessKey123",
+	//         "secretKey": "secretKeyXYZ",
+	//     },
+	// }
+	Secrets map[string]map[string]string
 }
 
 // ExecuteOptions is the options for the Execute method.
@@ -87,8 +100,8 @@ type DeleteOptions struct {
 	OutputResources []rpv1.OutputResource
 }
 
-// GetSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
-func GetSecretStoreID(envConfig recipes.Configuration, templatePath string) (string, error) {
+// GetPrivateGitRepoSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
+func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePath string) (string, error) {
 	if strings.HasPrefix(templatePath, "git::") {
 		url, err := GetGitURL(templatePath)
 		if err != nil {

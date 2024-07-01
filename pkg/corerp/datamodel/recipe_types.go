@@ -23,6 +23,10 @@ type RecipeConfigProperties struct {
 
 	// Env specifies the environment variables to be set during the Terraform Recipe execution.
 	Env EnvironmentVariables `json:"env,omitempty"`
+
+	// EnvSecrets represents the environment secrets for the recipe.
+	// The keys of the map are the names of the secrets, and the values are the references to the secrets.
+	EnvSecrets map[string]SecretReference `json:"envSecrets,omitempty"`
 }
 
 // TerraformConfigProperties - Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as
@@ -64,4 +68,16 @@ type EnvironmentVariables struct {
 type ProviderConfigProperties struct {
 	// AdditionalProperties represents the non-sensitive environment variables to be set for the recipe execution.
 	AdditionalProperties map[string]any `json:"additionalProperties,omitempty"`
+
+	// Secrets represents the secrets to be set for recipe execution in the current Provider configuration.
+	Secrets map[string]SecretReference `json:"secrets,omitempty"`
+}
+
+// SecretReference represents a reference to a secret.
+type SecretReference struct {
+	// Source represents the Secret Store ID of the secret.
+	Source string `json:"source"`
+
+	// Key represents the key of the secret.
+	Key string `json:"key"`
 }

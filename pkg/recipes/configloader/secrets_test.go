@@ -1,0 +1,81 @@
+package configloader
+
+import (
+	"testing"
+
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/stretchr/testify/require"
+)
+
+func Test_populateSecretData(t *testing.T) {
+	tests := []struct {
+		name            string
+		secretKeys      []string
+		secrets         *v20231001preview.SecretStoresClientListSecretsResponse
+		secretStoreID   string
+		expectedSecrets map[string]map[string]string
+		expectError     bool
+		expectedErrMsg  string
+	}{
+		{
+			name:       "success",
+			secretKeys: []string{"secretKey1", "secretKey2"},
+			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
+				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
+					Data: map[string]*v20231001preview.SecretValueProperties{
+						"secretKey1": {
+							Value: ptrToString("secretValue1"),
+						},
+						"secretKey2": {
+							Value: ptrToString("secretValue2"),
+						},
+					}},
+			},
+			secretStoreID: "testSecretStore",
+			expectedSecrets: map[string]map[string]string{
+				"testSecretStore": {
+					"secretKey1": "secretValue1",
+					"secretKey2": "secretValue2",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name:            "fail with nil secrets input",
+			secretKeys:      []string{"secretKey1"},
+			secrets:         nil,
+			secretStoreID:   "testSecretStore",
+			expectedSecrets: nil,
+			expectError:     true,
+			expectedErrMsg:  "secrets not found for secret store ID 'testSecretStore'",
+		},
+		{
+			name:       "missing secret key",
+			secretKeys: []string{"missingKey"},
+			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
+				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{},
+			},
+			secretStoreID:   "testSecretStore",
+			expectedSecrets: nil,
+			expectError:     true,
+			expectedErrMsg:  "a secret key was not found in secret store 'testSecretStore'",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			secretData, err := populateSecretData(tt.secretStoreID, tt.secretKeys, tt.secrets)
+			if tt.expectError {
+				require.EqualError(t, err, tt.expectedErrMsg)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedSecrets, secretData)
+			}
+		})
+	}
+}
+
+// Helper function to return a pointer to a string
+func ptrToString(s string) *string {
+	return &s
+}

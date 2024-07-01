@@ -13,7 +13,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,10 +40,10 @@ func (m *MockSecretsLoader) EXPECT() *MockSecretsLoaderMockRecorder {
 }
 
 // LoadSecrets mocks base method.
-func (m *MockSecretsLoader) LoadSecrets(arg0 context.Context, arg1 string) (v20231001preview.SecretStoresClientListSecretsResponse, error) {
+func (m *MockSecretsLoader) LoadSecrets(arg0 context.Context, arg1 map[string][]string) (map[string]map[string]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LoadSecrets", arg0, arg1)
-	ret0, _ := ret[0].(v20231001preview.SecretStoresClientListSecretsResponse)
+	ret0, _ := ret[0].(map[string]map[string]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -62,19 +61,19 @@ type MockSecretsLoaderLoadSecretsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSecretsLoaderLoadSecretsCall) Return(arg0 v20231001preview.SecretStoresClientListSecretsResponse, arg1 error) *MockSecretsLoaderLoadSecretsCall {
+func (c *MockSecretsLoaderLoadSecretsCall) Return(arg0 map[string]map[string]string, arg1 error) *MockSecretsLoaderLoadSecretsCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSecretsLoaderLoadSecretsCall) Do(f func(context.Context, string) (v20231001preview.SecretStoresClientListSecretsResponse, error)) *MockSecretsLoaderLoadSecretsCall {
+func (c *MockSecretsLoaderLoadSecretsCall) Do(f func(context.Context, map[string][]string) (map[string]map[string]string, error)) *MockSecretsLoaderLoadSecretsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSecretsLoaderLoadSecretsCall) DoAndReturn(f func(context.Context, string) (v20231001preview.SecretStoresClientListSecretsResponse, error)) *MockSecretsLoaderLoadSecretsCall {
+func (c *MockSecretsLoaderLoadSecretsCall) DoAndReturn(f func(context.Context, map[string][]string) (map[string]map[string]string, error)) *MockSecretsLoaderLoadSecretsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
