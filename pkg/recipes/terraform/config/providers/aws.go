@@ -43,6 +43,8 @@ const (
 	awsRegionParam    = "region"
 	awsAccessKeyParam = "access_key"
 	awsSecretKeyParam = "secret_key"
+
+	awsRoleARN = "role_ARN"
 )
 
 var _ Provider = (*awsProvider)(nil)
@@ -147,6 +149,10 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 		config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
 		config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
 	}
-	// TODO add support for IRSACredential
+
+	if credentials != nil && credentials.Kind == ucp_datamodel.AWSIRSACredentialKind && credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
+		config[awsRoleARN] = credentials.IRSACredential.RoleARN
+	}
+
 	return config
 }
