@@ -53,7 +53,7 @@ type (
 	AWSCredential = ucp_dm.AWSCredentialProperties
 	// AWSAccessKeyCredential represents a credential for AWS access key.
 	AWSAccessKeyCredential = ucp_dm.AWSAccessKeyCredentialProperties
-	// AWSIRSACredential represents a credential for AWS IRSA.
+	// AWSIRSACredential represents a RoleARN for AWS IRSA.
 	AWSIRSACredential = ucp_dm.AWSIRSACredentialProperties
 )
 
