@@ -61,6 +61,7 @@ func newMockAWSCredentialsProvider() *mockAWSCredentialsProvider {
 
 // Fetch returns mock AWS credentials for testing. It takes in a context, planeName and name and returns
 // an AWSCredential or an error if the credentials are empty.
+// TODO: update as part of IRSA support in Terraform provider
 func (p *mockAWSCredentialsProvider) Fetch(ctx context.Context, planeName, name string) (*ucp_credentials.AWSCredential, error) {
 	if p.testCredential == nil {
 		return nil, &secret.ErrNotFound{}
