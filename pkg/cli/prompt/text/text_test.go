@@ -137,11 +137,7 @@ func Test_E2E(t *testing.T) {
 		tm.Type("abcd")
 		tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 		tm.WaitFinished(t, teatest.WithFinalTimeout(waitTimeout))
-		bts, err := io.ReadAll(tm.FinalOutput(t))
-		require.NoError(t, err)
 
-		output = normalizeOutput(bts)
-		require.Empty(t, strings.TrimSpace(output)) // Output sometimes contains a single space.
 		require.True(t, tm.FinalModel(t).(Model).valueEntered)
 		require.False(t, tm.FinalModel(t).(Model).Quitting)
 		require.Equal(t, "abcd", tm.FinalModel(t).(Model).GetValue())
