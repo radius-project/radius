@@ -363,6 +363,14 @@ func toEnvExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 
 func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.EnvironmentRecipeProperties, error) {
 	switch c := e.(type) {
+	case *DaprWorkflowRecipeProperties:
+		return datamodel.EnvironmentRecipeProperties{
+			TemplateKind:   types.TemplateKindDaprWorkflow,
+			TemplatePath:   to.String(c.TemplatePath),
+			AppId:          to.String(c.AppID),
+			PutWorkflow:    to.String(c.PutWorkflow),
+			DeleteWorkflow: to.String(c.DeleteWorkflow),
+		}, nil
 	case *TerraformRecipeProperties:
 		if c.TemplatePath != nil {
 			// Check for local paths
@@ -389,6 +397,14 @@ func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.
 
 func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipeProperties) RecipePropertiesClassification {
 	switch e.TemplateKind {
+	case types.TemplateKindDaprWorkflow:
+		return &DaprWorkflowRecipeProperties{
+			TemplateKind:   to.Ptr(e.TemplateKind),
+			TemplatePath:   to.Ptr(e.TemplatePath),
+			AppID:          to.Ptr(e.AppId),
+			PutWorkflow:    to.Ptr(e.PutWorkflow),
+			DeleteWorkflow: to.Ptr(e.DeleteWorkflow),
+		}
 	case types.TemplateKindTerraform:
 		return &TerraformRecipeProperties{
 			TemplateKind:    to.Ptr(e.TemplateKind),

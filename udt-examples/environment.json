@@ -1,0 +1,21 @@
+{
+  "location": "global",
+  "properties": {
+    "compute": {
+      "kind": "kubernetes",
+      "namespace": "default"
+    },
+    "recipes": {
+      "Contoso.Example/postgreSQLDatabases": {
+        "default": {
+          "templateKind": "daprWorkflow",
+          "appId": "sample",
+          "templatePath": "zzzz",
+          "putWorkflow": "PostgresSQLDatabasesPut",
+          "deleteWorkflow": "PostgresSQLDatabasesDelete"
+        }
+      }
+    }
+  },
+  "tags": {}
+}

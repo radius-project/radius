@@ -3103,6 +3103,59 @@
         ]
       }
     },
+    "DaprWorkflowRecipeProperties": {
+      "type": "object",
+      "description": "Represents Dapr workflow recipe properties.",
+      "properties": {
+        "appId": {
+          "type": "string",
+          "description": "The Dapr application id of the application hosting the workflows."
+        },
+        "putWorkflow": {
+          "type": "string",
+          "description": "The workflow name to use for create/update operations."
+        },
+        "deleteWorkflow": {
+          "type": "string",
+          "description": "The workflow name to use for delete operations."
+        }
+      },
+      "required": [
+        "appId",
+        "putWorkflow",
+        "deleteWorkflow"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/RecipeProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "daprWorkflow"
+    },
+    "DaprWorkflowRecipePropertiesUpdate": {
+      "type": "object",
+      "description": "Represents Dapr workflow recipe properties.",
+      "properties": {
+        "appId": {
+          "type": "string",
+          "description": "The Dapr application id of the application hosting the workflows."
+        },
+        "putWorkflow": {
+          "type": "string",
+          "description": "The workflow name to use for create/update operations."
+        },
+        "deleteWorkflow": {
+          "type": "string",
+          "description": "The workflow name to use for delete operations."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/RecipePropertiesUpdate"
+        }
+      ],
+      "x-ms-discriminator-value": "daprWorkflow"
+    },
     "Direction": {
       "type": "string",
       "description": "The direction of a connection.",

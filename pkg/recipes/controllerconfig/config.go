@@ -31,6 +31,8 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/secret/provider"
+
+	daprclient "github.com/dapr/go-sdk/client"
 )
 
 // RecipeControllerConfig is the configuration for the controllers which uses recipe.
@@ -77,6 +79,11 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 		return nil, err
 	}
 
+	daprClient, err := daprclient.NewClient()
+	if err != nil {
+		return nil, err
+	}
+
 	if options.Config.Bicep.DeleteRetryCount == "" {
 		options.Config.Bicep.DeleteRetryCount = "5"
 	}
@@ -111,8 +118,8 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 				driver.BicepOptions{
 					DeleteRetryCount:        bicepDeleteRetryCount,
 					DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,
-				},
-			),
+				}),
+			recipes.TemplateKindDaprWorkflow: driver.NewDaprWorkflowDriver(daprClient, driver.DaprWorkflowOptions{}),
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(options.UCPConnection, provider.NewSecretProvider(options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: options.Config.Terraform.Path,

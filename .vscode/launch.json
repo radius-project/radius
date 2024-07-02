@@ -36,7 +36,9 @@
                 "${workspaceFolder}/cmd/applications-rp/radius-self-hosted.yaml",
             ],
             "env": {
-                "RADIUS_ENV": "self-hosted"
+                "RADIUS_ENV": "self-hosted",
+                "DAPR_HTTP_PORT": "3502",
+                "DAPR_GRPC_PORT": "50002",
             }
         },
         {
@@ -50,7 +52,9 @@
             "env": {
                 "BASE_PATH": "/apis/api.ucp.dev/v1alpha3",
                 "PORT": "9000",
-                "UCP_CONFIG": "${workspaceFolder}/cmd/ucpd/ucp-self-hosted-dev.yaml"
+                "UCP_CONFIG": "${workspaceFolder}/cmd/ucpd/ucp-self-hosted-dev.yaml",
+                "DAPR_HTTP_PORT": "3502",
+                "DAPR_GRPC_PORT": "50002",
             }
         },
         {

@@ -1,0 +1,6 @@
+{
+  "location": "global",
+  "properties": {
+    "environment": "/planes/radius/local/resourceGroups/default/providers/applications.core/environments/default"
+  }
+}

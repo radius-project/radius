@@ -134,6 +134,8 @@ func unmarshalRecipePropertiesClassification(rawMsg json.RawMessage) (RecipeProp
 	switch m["templateKind"] {
 	case "bicep":
 		b = &BicepRecipeProperties{}
+	case "daprWorkflow":
+		b = &DaprWorkflowRecipeProperties{}
 	case "terraform":
 		b = &TerraformRecipeProperties{}
 	default:
@@ -176,6 +178,8 @@ func unmarshalRecipePropertiesUpdateClassification(rawMsg json.RawMessage) (Reci
 	switch m["templateKind"] {
 	case "bicep":
 		b = &BicepRecipePropertiesUpdate{}
+	case "daprWorkflow":
+		b = &DaprWorkflowRecipePropertiesUpdate{}
 	case "terraform":
 		b = &TerraformRecipePropertiesUpdate{}
 	default:

@@ -65,6 +65,10 @@ type EnvironmentDefinition struct {
 	TemplateVersion string
 	// Allows insecure connections to registry without SSL check.
 	PlainHTTP bool
+
+	AppID          string
+	PutWorkflow    string
+	DeleteWorkflow string
 }
 
 // ResourceMetadata represents recipe details provided while creating a portable resource.
@@ -84,15 +88,16 @@ type ResourceMetadata struct {
 }
 
 const (
-	TemplateKindBicep     = "bicep"
-	TemplateKindTerraform = "terraform"
+	TemplateKindBicep        = "bicep"
+	TemplateKindDaprWorkflow = "daprWorkflow"
+	TemplateKindTerraform    = "terraform"
 
 	// Recipe outputs are expected to be wrapped under an object named "result"
 	ResultPropertyName = "result"
 )
 
 var (
-	SupportedTemplateKind = []string{TemplateKindBicep, TemplateKindTerraform}
+	SupportedTemplateKind = []string{TemplateKindBicep, TemplateKindDaprWorkflow, TemplateKindTerraform}
 )
 
 // RecipeOutput represents recipe deployment output.

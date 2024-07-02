@@ -159,6 +159,21 @@ model BicepRecipeProperties extends RecipeProperties {
   plainHttp?: boolean;
 }
 
+@doc("Represents Dapr workflow recipe properties.")
+model DaprWorkflowRecipeProperties extends RecipeProperties {
+  @doc("The Dapr workflow template kind.")
+  templateKind: "daprWorkflow";
+
+  @doc("The Dapr application id of the application hosting the workflows.")
+  appId: string;
+
+  @doc("The workflow name to use for create/update operations.")
+  putWorkflow: string;
+
+  @doc("The workflow name to use for delete operations.")
+  deleteWorkflow: string;
+}
+
 @doc("Represents Terraform recipe properties.")
 model TerraformRecipeProperties extends RecipeProperties {
   @doc("The Terraform template kind.")

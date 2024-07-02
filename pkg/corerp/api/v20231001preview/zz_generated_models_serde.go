@@ -1112,6 +1112,100 @@ func (d *DaprSidecarExtension) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type DaprWorkflowRecipeProperties.
+func (d DaprWorkflowRecipeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "appId", d.AppID)
+	populate(objectMap, "deleteWorkflow", d.DeleteWorkflow)
+	populate(objectMap, "parameters", d.Parameters)
+	populate(objectMap, "putWorkflow", d.PutWorkflow)
+	objectMap["templateKind"] = "daprWorkflow"
+	populate(objectMap, "templatePath", d.TemplatePath)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprWorkflowRecipeProperties.
+func (d *DaprWorkflowRecipeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", d, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "appId":
+				err = unpopulate(val, "AppID", &d.AppID)
+			delete(rawMsg, key)
+		case "deleteWorkflow":
+				err = unpopulate(val, "DeleteWorkflow", &d.DeleteWorkflow)
+			delete(rawMsg, key)
+		case "parameters":
+				err = unpopulate(val, "Parameters", &d.Parameters)
+			delete(rawMsg, key)
+		case "putWorkflow":
+				err = unpopulate(val, "PutWorkflow", &d.PutWorkflow)
+			delete(rawMsg, key)
+		case "templateKind":
+				err = unpopulate(val, "TemplateKind", &d.TemplateKind)
+			delete(rawMsg, key)
+		case "templatePath":
+				err = unpopulate(val, "TemplatePath", &d.TemplatePath)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", d, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprWorkflowRecipePropertiesUpdate.
+func (d DaprWorkflowRecipePropertiesUpdate) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "appId", d.AppID)
+	populate(objectMap, "deleteWorkflow", d.DeleteWorkflow)
+	populate(objectMap, "parameters", d.Parameters)
+	populate(objectMap, "putWorkflow", d.PutWorkflow)
+	objectMap["templateKind"] = "daprWorkflow"
+	populate(objectMap, "templatePath", d.TemplatePath)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprWorkflowRecipePropertiesUpdate.
+func (d *DaprWorkflowRecipePropertiesUpdate) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", d, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "appId":
+				err = unpopulate(val, "AppID", &d.AppID)
+			delete(rawMsg, key)
+		case "deleteWorkflow":
+				err = unpopulate(val, "DeleteWorkflow", &d.DeleteWorkflow)
+			delete(rawMsg, key)
+		case "parameters":
+				err = unpopulate(val, "Parameters", &d.Parameters)
+			delete(rawMsg, key)
+		case "putWorkflow":
+				err = unpopulate(val, "PutWorkflow", &d.PutWorkflow)
+			delete(rawMsg, key)
+		case "templateKind":
+				err = unpopulate(val, "TemplateKind", &d.TemplateKind)
+			delete(rawMsg, key)
+		case "templatePath":
+				err = unpopulate(val, "TemplatePath", &d.TemplatePath)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", d, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type EnvironmentCompute.
 func (e EnvironmentCompute) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)

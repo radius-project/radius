@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
@@ -76,6 +77,11 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 
 	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
 
+	properties, err := c.extractProperties(data)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// If we have a setup error (error before recipe and output resources are executed, we skip engine/driver deletion.
 	// If we have an execution error, we call engine/driver deletion.
 	if supportsRecipes && recipeDataModel.Recipe() != nil && recipeDataModel.Recipe().DeploymentStatus != util.RecipeSetupError {
@@ -85,6 +91,7 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 			ApplicationID: data.ResourceMetadata().Application,
 			Parameters:    recipeDataModel.Recipe().Parameters,
 			ResourceID:    id.String(),
+			Properties:    properties,
 		}
 
 		err = c.engine.Delete(ctx, engine.DeleteOptions{
@@ -130,4 +137,27 @@ func (c *DeleteResource[P, T]) loadRuntimeConfiguration(ctx context.Context, env
 	}
 
 	return &config.Runtime, nil
+}
+
+func (c *DeleteResource[P, T]) extractProperties(data P) (map[string]any, error) {
+	bs, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	type resource struct {
+		Properties map[string]any `json:"properties"`
+	}
+
+	r := resource{}
+	err = json.Unmarshal(bs, &r)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.Properties == nil {
+		return map[string]any{}, nil
+	}
+
+	return r.Properties, nil
 }

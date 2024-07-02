@@ -503,6 +503,66 @@ func (d *DaprSidecarExtension) GetExtension() *Extension {
 	}
 }
 
+// DaprWorkflowRecipeProperties - Represents Dapr workflow recipe properties.
+type DaprWorkflowRecipeProperties struct {
+	// REQUIRED; The Dapr application id of the application hosting the workflows.
+	AppID *string
+
+	// REQUIRED; The workflow name to use for delete operations.
+	DeleteWorkflow *string
+
+	// REQUIRED; The workflow name to use for create/update operations.
+	PutWorkflow *string
+
+	// REQUIRED; Discriminator property for RecipeProperties.
+	TemplateKind *string
+
+	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string
+
+	// Key/value parameters to pass to the recipe template at deployment.
+	Parameters map[string]any
+}
+
+// GetRecipeProperties implements the RecipePropertiesClassification interface for type DaprWorkflowRecipeProperties.
+func (d *DaprWorkflowRecipeProperties) GetRecipeProperties() *RecipeProperties {
+	return &RecipeProperties{
+		Parameters: d.Parameters,
+		TemplateKind: d.TemplateKind,
+		TemplatePath: d.TemplatePath,
+	}
+}
+
+// DaprWorkflowRecipePropertiesUpdate - Represents Dapr workflow recipe properties.
+type DaprWorkflowRecipePropertiesUpdate struct {
+	// REQUIRED; Discriminator property for RecipeProperties.
+	TemplateKind *string
+
+	// The Dapr application id of the application hosting the workflows.
+	AppID *string
+
+	// The workflow name to use for delete operations.
+	DeleteWorkflow *string
+
+	// Key/value parameters to pass to the recipe template at deployment.
+	Parameters map[string]any
+
+	// The workflow name to use for create/update operations.
+	PutWorkflow *string
+
+	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string
+}
+
+// GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type DaprWorkflowRecipePropertiesUpdate.
+func (d *DaprWorkflowRecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate {
+	return &RecipePropertiesUpdate{
+		Parameters: d.Parameters,
+		TemplateKind: d.TemplateKind,
+		TemplatePath: d.TemplatePath,
+	}
+}
+
 // EnvironmentCompute - Represents backing compute resource
 type EnvironmentCompute struct {
 	// REQUIRED; Discriminator property for EnvironmentCompute.

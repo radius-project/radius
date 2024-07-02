@@ -164,6 +164,10 @@ func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, reci
 		TemplatePath: *found.GetRecipeProperties().TemplatePath,
 	}
 	switch c := found.(type) {
+	case *v20231001preview.DaprWorkflowRecipeProperties:
+		definition.AppID = *c.AppID
+		definition.PutWorkflow = *c.PutWorkflow
+		definition.DeleteWorkflow = *c.DeleteWorkflow
 	case *v20231001preview.TerraformRecipeProperties:
 		definition.TemplateVersion = *c.TemplateVersion
 	case *v20231001preview.BicepRecipeProperties:
