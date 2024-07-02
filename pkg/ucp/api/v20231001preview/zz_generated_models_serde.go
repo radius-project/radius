@@ -197,6 +197,45 @@ func (a *AwsCredentialResourceTagsUpdate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type AwsIRSACredentialProperties.
+func (a AwsIRSACredentialProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	objectMap["kind"] = AWSCredentialKindIRSA
+	populate(objectMap, "provisioningState", a.ProvisioningState)
+	populate(objectMap, "roleARN", a.RoleARN)
+	populate(objectMap, "storage", a.Storage)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AwsIRSACredentialProperties.
+func (a *AwsIRSACredentialProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
+			delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
+			delete(rawMsg, key)
+		case "roleARN":
+				err = unpopulate(val, "RoleARN", &a.RoleARN)
+			delete(rawMsg, key)
+		case "storage":
+			a.Storage, err = unmarshalCredentialStoragePropertiesClassification(val)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type AwsPlaneResource.
 func (a AwsPlaneResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)

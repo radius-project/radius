@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
+	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 type mockProvider struct {
@@ -43,8 +44,11 @@ func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk_
 func newMockProvider() *mockProvider {
 	return &mockProvider{
 		fakeCredential: &sdk_cred.AWSCredential{
-			AccessKeyID:     "fakeid",
-			SecretAccessKey: "fakesecretkey",
+			Kind: ucp_datamodel.AWSAccessKeyCredentialKind,
+			AccessKeyCredential: &ucp_datamodel.AWSAccessKeyCredentialProperties{
+				AccessKeyID:     "fakeid",
+				SecretAccessKey: "fakesecretkey",
+			},
 		},
 	}
 }
@@ -58,7 +62,7 @@ func TestRetrieve(t *testing.T) {
 	t.Run("invalid credential", func(t *testing.T) {
 		p := newMockProvider()
 		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
-		p.fakeCredential.AccessKeyID = ""
+		p.fakeCredential.AccessKeyCredential.AccessKeyID = ""
 
 		_, err := cp.Retrieve(context.TODO())
 		require.Error(t, err)

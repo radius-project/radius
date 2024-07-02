@@ -63,6 +63,7 @@ func Test_AWS_Credential(t *testing.T) {
 			fn:         setupCredentialSuccessMocks,
 			err:        nil,
 		},
+
 		{
 			name:       "test_invalid_version_credential_resource",
 			filename:   "aws-credential.json",

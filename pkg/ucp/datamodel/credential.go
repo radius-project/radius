@@ -25,8 +25,10 @@ const (
 	AzureServicePrincipalCredentialKind = "ServicePrincipal"
 	// AzureWorkloadIdentityCredentialKind represents ucp credential kind for Azure workload identity credentials.
 	AzureWorkloadIdentityCredentialKind = "WorkloadIdentity"
-	// AWSCredentialKind represents ucp credential kind for aws credentials.
-	AWSCredentialKind = "AccessKey"
+	// AWSAccessKeyCredentialKind represents ucp credential kind for aws access key credentials.
+	AWSAccessKeyCredentialKind = "AccessKey"
+	// AWSIRSACredentialKind represents ucp credential kind for aws irsa credentials.
+	AWSIRSACredentialKind = "IRSA"
 )
 
 // Credential represents UCP Credential.
@@ -100,12 +102,28 @@ type AzureCredentialProperties struct {
 	WorkloadIdentity *AzureWorkloadIdentityCredentialProperties `json:"workloadIdentity,omitempty"`
 }
 
-// AWSCredentialProperties contains ucp AWS credential properties.
-type AWSCredentialProperties struct {
+// AWSAccessKeyCredentialProperties contains ucp AWS credential properties.
+type AWSAccessKeyCredentialProperties struct {
 	// AccessKeyID contains aws access key for iam.
 	AccessKeyID string `json:"accessKeyId"`
 	// SecretAccessKey contains secret access key for iam.
 	SecretAccessKey string `json:"secretAccessKey,omitempty"`
+}
+
+// AWSIRSACredentialProperties contains ucp AWS IRSA credential properties.
+type AWSIRSACredentialProperties struct {
+	// RoleARN contains aws role arn for irsa.
+	RoleARN string `json:"roleARN"`
+}
+
+// AWSCredentialProperties contains ucp AWS credential properties.
+type AWSCredentialProperties struct {
+	// Kind is the kind of AWS credential.
+	Kind string `json:"kind,omitempty"`
+	// AccessKeyCredential represents the access key credential properties.
+	AccessKeyCredential *AWSAccessKeyCredentialProperties `json:"accesskey,omitempty"`
+	// IRSA represents the irsa credential properties.
+	IRSACredential *AWSIRSACredentialProperties `json:"irsa,omitempty"`
 }
 
 // CredentialStorageProperties contains ucp credential storage properties.

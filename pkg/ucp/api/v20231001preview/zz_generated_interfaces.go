@@ -10,7 +10,7 @@ package v20231001preview
 // AwsCredentialPropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetAwsCredentialProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *AwsAccessKeyCredentialProperties, *AwsCredentialProperties
+// - *AwsAccessKeyCredentialProperties, *AwsCredentialProperties, *AwsIRSACredentialProperties
 type AwsCredentialPropertiesClassification interface {
 	// GetAwsCredentialProperties returns the AwsCredentialProperties content of the underlying type.
 	GetAwsCredentialProperties() *AwsCredentialProperties

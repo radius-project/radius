@@ -18,12 +18,15 @@ type AWSCredentialKind string
 const (
 	// AWSCredentialKindAccessKey - The AWS Access Key credential
 	AWSCredentialKindAccessKey AWSCredentialKind = "AccessKey"
+	// AWSCredentialKindIRSA - AWS IAM roles for service accounts. For more information, please see: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
+	AWSCredentialKindIRSA AWSCredentialKind = "IRSA"
 )
 
 // PossibleAWSCredentialKindValues returns the possible values for the AWSCredentialKind const type.
 func PossibleAWSCredentialKindValues() []AWSCredentialKind {
 	return []AWSCredentialKind{	
 		AWSCredentialKindAccessKey,
+		AWSCredentialKindIRSA,
 	}
 }
 
