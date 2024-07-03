@@ -375,8 +375,11 @@
           }
         },
         "x-ms-examples": {
-          "List AWS credentials": {
-            "$ref": "./examples/AWSCredential_List.json"
+          "List AWS AccessKey credential": {
+            "$ref": "./examples/AWSCredential_AccessKey_List.json"
+          },
+          "List AWS IRSA credentials": {
+            "$ref": "./examples/AWSCredential_IRSA_List.json"
           }
         },
         "x-ms-pageable": {
@@ -423,8 +426,11 @@
           }
         },
         "x-ms-examples": {
-          "Get an AWS credential": {
-            "$ref": "./examples/AWSCredential_Get.json"
+          "Get an AWS AccessKey credential": {
+            "$ref": "./examples/AWSCredential_AccessKey_Get.json"
+          },
+          "Get an AWS IRSA credential": {
+            "$ref": "./examples/AWSCredential_IRSA_Get.json"
           }
         }
       },
@@ -481,8 +487,11 @@
           }
         },
         "x-ms-examples": {
-          "Create or update an AWS credential": {
-            "$ref": "./examples/AWSCredential_CreateOrUpdate.json"
+          "Create or update an AWS AccessKey credential": {
+            "$ref": "./examples/AWSCredential_AccessKey_CreateOrUpdate.json"
+          },
+          "Create or update an AWS IRSA credential": {
+            "$ref": "./examples/AWSCredential_IRSA_CreateOrUpdate.json"
           }
         }
       },
@@ -533,8 +542,11 @@
           }
         },
         "x-ms-examples": {
-          "Update an AWS credential": {
-            "$ref": "./examples/AWSCredential_Update.json"
+          "Update an AWS AccessKey credential": {
+            "$ref": "./examples/AWSCredential_AccessKey_Update.json"
+          },
+          "Update an AWS IRSA credential": {
+            "$ref": "./examples/AWSCredential_IRSA_Update.json"
           }
         }
       },
@@ -576,8 +588,11 @@
           }
         },
         "x-ms-examples": {
-          "Delete an AWS credential": {
-            "$ref": "./examples/AWSCredential_Delete.json"
+          "Delete an AWS AccessKey credential": {
+            "$ref": "./examples/AWSCredential_AccessKey_Delete.json"
+          },
+          "Delete an AWS IRSA credential": {
+            "$ref": "./examples/AWSCredential_IRSA_Delete.json"
           }
         }
       }
@@ -1649,7 +1664,8 @@
       "type": "string",
       "description": "AWS credential kind",
       "enum": [
-        "AccessKey"
+        "AccessKey",
+        "IRSA"
       ],
       "x-ms-enum": {
         "name": "AWSCredentialKind",
@@ -1659,13 +1675,18 @@
             "name": "AccessKey",
             "value": "AccessKey",
             "description": "The AWS Access Key credential"
+          },
+          {
+            "name": "IRSA",
+            "value": "IRSA",
+            "description": "AWS IAM roles for service accounts. For more information, please see: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html"
           }
         ]
       }
     },
     "AwsAccessKeyCredentialProperties": {
       "type": "object",
-      "description": "AWS credential storage properties",
+      "description": "AWS credential properties for Access Key",
       "properties": {
         "accessKeyId": {
           "type": "string",
@@ -1771,6 +1792,30 @@
           }
         }
       }
+    },
+    "AwsIRSACredentialProperties": {
+      "type": "object",
+      "description": "AWS credential properties for IAM Roles for Service Accounts (IRSA)",
+      "properties": {
+        "roleARN": {
+          "type": "string",
+          "description": "RoleARN for AWS IRSA identity"
+        },
+        "storage": {
+          "$ref": "#/definitions/CredentialStorageProperties",
+          "description": "The storage properties"
+        }
+      },
+      "required": [
+        "roleARN",
+        "storage"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AwsCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "IRSA"
     },
     "AwsPlaneResource": {
       "type": "object",

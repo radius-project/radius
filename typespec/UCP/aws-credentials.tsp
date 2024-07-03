@@ -63,6 +63,9 @@ model AwsPlaneNameParameter {
 enum AWSCredentialKind {
   @doc("The AWS Access Key credential")
   AccessKey,
+
+  @doc("AWS IAM roles for service accounts. For more information, please see: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html")
+  IRSA,
 }
 
 @discriminator("kind")
@@ -76,7 +79,7 @@ model AwsCredentialProperties {
   provisioningState?: ProvisioningState;
 }
 
-@doc("AWS credential storage properties")
+@doc("AWS credential properties for Access Key")
 model AwsAccessKeyCredentialProperties extends AwsCredentialProperties {
   @doc("Access Key kind")
   kind: AWSCredentialKind.AccessKey;
@@ -88,6 +91,18 @@ model AwsAccessKeyCredentialProperties extends AwsCredentialProperties {
   @doc("Secret Access Key for AWS identity")
   @secret
   secretAccessKey: string;
+
+  @doc("The storage properties")
+  storage: CredentialStorageProperties;
+}
+
+@doc("AWS credential properties for IAM Roles for Service Accounts (IRSA)")
+model AwsIRSACredentialProperties extends AwsCredentialProperties {
+  @doc("IRSA credential kind")
+  kind: AWSCredentialKind.IRSA;
+
+  @doc("RoleARN for AWS IRSA identity")
+  roleARN: string;
 
   @doc("The storage properties")
   storage: CredentialStorageProperties;
