@@ -73,7 +73,3 @@ You can play around with the various debugger features, like stepping into code.
 ## Next step
 
 - [Run tests](../first-commit-05-running-tests/index.md)
-
-## Related Links
-
-- [Debugging Go with VS Code](../../debugging-go-with-vscode.md)
