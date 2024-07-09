@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	appBicepTemplate = `provider radius
+	appBicepTemplate = `extension radius
 
 @description('The Radius Application ID. Injected automatically by the rad CLI.')
 param application string
@@ -54,10 +54,10 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 	bicepConfigTemplate = `{
 	"experimentalFeaturesEnabled": {
 		"extensibility": true,
-		"providerRegistry": true,
+		"extensionRegistry": true,
 		"dynamicTypeLoading": true
 	},
-	"providers": {
+	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",
 		"aws": "br:biceptypes.azurecr.io/aws:%s"
 	}
