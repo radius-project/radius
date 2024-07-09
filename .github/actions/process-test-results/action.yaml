@@ -10,30 +10,30 @@ description: |
   test results format which is what we require.
     
     GOTESTSUM_OPTS: '--junitfile ./dist/unit_test_results_raw.xml'
-  
+
   Then running 'make <test target>' will do the right thing :)
 
 inputs:
   test_group_name:
-    description: 'Name to use for reporting (eg: Unit Tests)'
+    description: "Name to use for reporting (eg: Unit Tests)"
     required: true
   artifact_name:
-    description: 'Name to use for uploading artifacts (eg: unit_test_results)'
+    description: "Name to use for uploading artifacts (eg: unit_test_results)"
     required: true
   result_directory:
-    description: 'Directory containing result XML files. These should be in jUnit format. See the description of the action.'
+    description: "Directory containing result XML files. These should be in jUnit format. See the description of the action."
     required: true
 runs:
   using: "composite"
   steps:
     # The test results file output by gotestsum is missing file and line number on the XML elements
     # which is needed for the annotations to work. This script adds the missing information.
-    - name: 'Transform ${{ inputs.test_group_name }} Results'
+    - name: "Transform ${{ inputs.test_group_name }} Results"
       # Always is REQUIRED here. Otherwise, the action will be skipped when the unit tests fail, which
       # defeats the purpose. YES it is counterintuitive. This applies to all of the actions in this file.
       if: always()
-      id: 'process_files'
-      shell: 'bash'
+      id: "process_files"
+      shell: "bash"
       working-directory: ${{ github.workspace }}
       env:
         INPUT_DIRECTORY: ${{ inputs.result_directory }}
@@ -52,14 +52,14 @@ runs:
           python3 ./.github/scripts/transform_test_results.py $GITHUB_WORKSPACE "$INPUT_FILE" "$OUTPUT_FILE"
           echo "wrote ${OUTPUT_FILE}"
         done
-    - name: 'Create ${{ inputs.test_group_name }} Result Report'
+    - name: "Create ${{ inputs.test_group_name }} Result Report"
       uses: EnricoMi/publish-unit-test-result-action@v2
       if: always()
       with:
         check_name: ${{ inputs.test_group_name }}
         files: |
           ${{ inputs.result_directory }}/processed/*.xml
-    - name: 'Upload ${{ inputs.test_group_name }} Results'
+    - name: "Upload ${{ inputs.test_group_name }} Results"
       uses: actions/upload-artifact@v4
       if: always()
       with:

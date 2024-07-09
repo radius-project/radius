@@ -1,10 +1,10 @@
 import radius as radius
 
-param registry string 
+param registry string
 
 param version string
 
-param magpieimage string 
+param magpieimage string
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'dsrp-resources-simenv-recipe-env'
@@ -16,10 +16,10 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       namespace: 'dsrp-resources-simenv-recipe-env'
     }
     recipes: {
-      'Applications.Datastores/mongoDatabases':{
+      'Applications.Datastores/mongoDatabases': {
         'mongodb-recipe-kubernetes': {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/mongodb-recipe-kubernetes:${version}' 
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/mongodb-recipe-kubernetes:${version}'
         }
       }
     }
@@ -34,8 +34,8 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
     environment: env.id
     extensions: [
       {
-          kind: 'kubernetesNamespace'
-          namespace: 'dsrp-resources-simenv-recipe-app'
+        kind: 'kubernetesNamespace'
+        namespace: 'dsrp-resources-simenv-recipe-app'
       }
     ]
   }
@@ -56,9 +56,9 @@ resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
       env: {
         DBCONNECTION: recipedb.connectionString()
       }
-      readinessProbe:{
-        kind:'httpGet'
-        containerPort:3000
+      readinessProbe: {
+        kind: 'httpGet'
+        containerPort: 3000
         path: '/healthz'
       }
     }

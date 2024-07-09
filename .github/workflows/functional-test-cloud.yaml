@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -14,12 +14,13 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-name: Functional tests
+name: Functional Tests (with Cloud Resources)
 
 permissions:
   id-token: write # Required for requesting the JWT
-  contents: read  # Required for listing the commits
+  contents: read # Required for listing the commits
   packages: write # Required for uploading the package
+  checks: write # Required for creating a check run
 
 on:
   # Enable manual trigger
@@ -33,31 +34,31 @@ on:
   repository_dispatch:
     types: [de-functional-test]
   workflow_run:
-    workflows: ['Approve Functional Tests']
+    workflows: ["Approve Functional Tests"]
     types:
       - completed
 
 env:
   # Go version
-  GOVER: '1.22.2'
+  GOVER: "1.22.2"
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.10.0
+  GOTESTSUM_VER: 1.12.0
 
   # Helm version
-  HELM_VER: 'v3.12.0'
+  HELM_VER: "v3.12.0"
   # KinD cluster version
-  KIND_VER: 'v0.20.0'
+  KIND_VER: "v0.20.0"
   # Dapr version
-  DAPR_VER: '1.12.0'
-  DAPR_DASHBOARD_VER: '0.14.0'
+  DAPR_VER: "1.12.0"
+  DAPR_DASHBOARD_VER: "0.14.0"
   # Kubectl version
-  KUBECTL_VER: 'v1.25.0'
+  KUBECTL_VER: "v1.25.0"
   # Azure Keyvault CSI driver chart version
-  AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
+  AZURE_KEYVAULT_CSI_DRIVER_VER: "1.4.2"
   # Azure workload identity webhook chart version
-  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.1.0'
+  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: "1.1.0"
   # Container registry for storing container images
   CONTAINER_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing Bicep recipe artifacts
@@ -71,11 +72,11 @@ env:
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources
-  AWS_REGION: 'us-west-2'
+  AWS_REGION: "us-west-2"
   # The AWS account ID
-  AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
+  AWS_ACCOUNT_ID: "${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
   # The current GitHub action link
-  ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
   # The functional test GitHub app id
@@ -91,8 +92,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     env:
-      DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
-      DE_TAG: 'latest'
+      DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
+      DE_TAG: "latest"
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -106,7 +107,7 @@ jobs:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@v2
         id: get_installation_token
-        with: 
+        with:
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Set up checkout target (scheduled)
@@ -117,16 +118,16 @@ jobs:
       - name: Set up checkout target (pull_request)
         if: github.event_name == 'pull_request'
         run: |
-            echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-            echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Use custom actions
         uses: actions/checkout@v4
-      - name: 'Download PR data artifacts'
+      - name: "Download PR data artifacts"
         if: github.event_name == 'workflow_run'
         uses: ./.github/actions/download-pr-data-artifact
         id: get-pr-number
-      - name: 'Set PR context (workflow_run)'
+      - name: "Set PR context (workflow_run)"
         if: github.event_name == 'workflow_run'
         uses: actions/github-script@v7
         with:
@@ -175,7 +176,7 @@ jobs:
           fi
           UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
-          
+
           # Set output variables to be used in the other jobs
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
@@ -194,7 +195,7 @@ jobs:
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           hide: true
-          hide_classify: 'OUTDATED'
+          hide_classify: "OUTDATED"
           message: |
             ## Radius functional test overview
 
@@ -223,7 +224,7 @@ jobs:
             * deployment-engine test image location: `${{ env.DE_IMAGE }}:${{ env.DE_TAG }}`
 
             </details>
-            
+
             ## Test Status
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -345,14 +346,14 @@ jobs:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@v2
         id: get_installation_token
-        with: 
+        with:
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - uses: LouisBrunner/checks-action@v2.0.0
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
-          name: 'Functional Test Run'
+          name: "Functional Test Run"
           status: in_progress
           repo: ${{ github.repository }}
           sha: ${{ env.CHECKOUT_REF }}
@@ -577,15 +578,15 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          GOTESTSUM_OPTS: '--junitfile ./dist/functional_test/results.xml'
+          GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
         # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
         if: failure() && github.repository == 'radius-project/radius'
         with:
-          test_group_name: 'Functional Tests - ${{ matrix.name }}'
-          artifact_name: 'functional_test_results_${{ matrix.name }}'
-          result_directory: 'dist/functional_test/' 
+          test_group_name: "Functional Tests - ${{ matrix.name }}"
+          artifact_name: "functional_test_results_${{ matrix.name }}"
+          result_directory: "dist/functional_test/"
       - uses: azure/setup-kubectl@v4
         if: always()
         with:
@@ -620,7 +621,7 @@ jobs:
           echo "Pod logs saved to recipes/pod-logs/"
           # Get kubernetes events and save to file
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
-      - name: Upload Terraform recipe publishing logs 
+      - name: Upload Terraform recipe publishing logs
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -676,7 +677,7 @@ jobs:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@v2
         id: get_installation_token
-        with: 
+        with:
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Get tests job status
@@ -703,7 +704,7 @@ jobs:
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
-          name: 'Functional Test Run'
+          name: "Functional Test Run"
           repo: ${{ github.repository }}
           sha: ${{ env.CHECKOUT_REF }}
           status: completed
@@ -725,11 +726,11 @@ jobs:
             response = await github.rest.actions.listWorkflowRuns({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'functional-test.yaml',
+              workflow_id: 'functional-test-cloud.yaml',
               event: 'schedule',
               per_page: 10
             });
-            
+
             failureCount = 1;
             for (const run of response.data.workflow_runs) {
               if (run.conclusion === 'failure') {
