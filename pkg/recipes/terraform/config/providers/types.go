@@ -79,7 +79,6 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 						// If the key already exists in the provider configuration,
 						// config value in secrets for the key currently will override config in
 						// additionalProperties.
-						// TBD: Check if this is the desired behavior.
 						currentProviderConfig[key] = value
 					}
 
