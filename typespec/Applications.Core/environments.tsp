@@ -83,7 +83,7 @@ model RecipeConfigProperties {
   env?: EnvironmentVariables;
 
   @doc("Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
-  envSecrets?: Record<SecretReference>
+  envSecrets?: Record<SecretReference>;
 }
 
 @doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
@@ -118,8 +118,8 @@ model SecretConfig {
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
 @doc("This configuration holds the necessary information to authenticate and interact with a provider for the recipe execution.")
 model ProviderConfigProperties extends Record<unknown> {
-    @doc("Sensitive data for the referenced resource stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
-    secrets?: Record<SecretReference>;
+  @doc("Sensitive data for the referenced resource stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
+  secrets?: Record<SecretReference>;
 }
 
 @doc("The environment variables injected during Terraform Recipe execution for the recipes in the environment.")

@@ -1254,7 +1254,8 @@ type ProviderConfigProperties struct {
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]any
 
-	// Sensitive data for the referenced resource stored as secrets.
+	// Sensitive data for the referenced resource stored as secrets. The secrets are stored in Applications.Core/SecretStores
+// resource.
 	Secrets map[string]*SecretReference
 }
 
@@ -1314,7 +1315,8 @@ type RecipeConfigProperties struct {
 	// Environment variables injected during Terraform Recipe execution for the recipes in the environment.
 	Env map[string]*string
 
-	// Environment variables containing sensitive information can be stored as secrets.
+	// Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores
+// resource.
 	EnvSecrets map[string]*SecretReference
 
 	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.

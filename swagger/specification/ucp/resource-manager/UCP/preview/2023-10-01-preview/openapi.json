@@ -79,7 +79,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/GenericPlaneResourceListResult"
             }
@@ -115,7 +115,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AwsPlaneResourceListResult"
             }
@@ -155,7 +155,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AwsPlaneResource"
             }
@@ -260,7 +260,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AwsPlaneResource"
             }
@@ -268,14 +268,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -318,19 +318,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -362,7 +362,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AwsCredentialResourceListResult"
             }
@@ -413,7 +413,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AwsCredentialResource"
             }
@@ -529,7 +529,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AwsCredentialResource"
             }
@@ -578,7 +578,7 @@
             "description": "Resource deleted successfully."
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -611,7 +611,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AzurePlaneResourceListResult"
             }
@@ -651,7 +651,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AzurePlaneResource"
             }
@@ -756,7 +756,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AzurePlaneResource"
             }
@@ -764,14 +764,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -814,19 +814,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -858,7 +858,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AzureCredentialResourceListResult"
             }
@@ -909,7 +909,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AzureCredentialResource"
             }
@@ -1025,7 +1025,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/AzureCredentialResource"
             }
@@ -1074,7 +1074,7 @@
             "description": "Resource deleted successfully."
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1107,7 +1107,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RadiusPlaneResourceListResult"
             }
@@ -1147,7 +1147,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RadiusPlaneResource"
             }
@@ -1252,7 +1252,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RadiusPlaneResource"
             }
@@ -1260,14 +1260,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1310,19 +1310,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1360,7 +1360,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ResourceGroupResourceListResult"
             }
@@ -1414,7 +1414,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ResourceGroupResource"
             }
@@ -1536,7 +1536,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ResourceGroupResource"
             }
@@ -1588,7 +1588,7 @@
             "description": "Resource deleted successfully."
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1636,7 +1636,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/GenericResourceListResult"
             }
@@ -2509,7 +2509,8 @@
     },
     "ResourceProperties": {
       "type": "object",
-      "description": "The resource properties"
+      "description": "The resource properties",
+      "properties": {}
     },
     "Versions": {
       "type": "string",

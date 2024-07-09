@@ -361,7 +361,7 @@ func PossibleSecretValueEncodingValues() []SecretValueEncoding {
 	}
 }
 
-// TLSMinVersion - TLS minimum protocol version (defaults to 1.2).
+// TLSMinVersion - Tls Minimum versions for Gateway resource.
 type TLSMinVersion string
 
 const (
@@ -412,7 +412,7 @@ func PossibleVolumePermissionValues() []VolumePermission {
 	}
 }
 
-// VolumeSecretEncodings - Encoding format. Default utf-8
+// VolumeSecretEncodings - Represents secret encodings
 type VolumeSecretEncodings string
 
 const (

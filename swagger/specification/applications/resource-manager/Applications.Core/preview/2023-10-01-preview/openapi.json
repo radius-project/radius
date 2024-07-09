@@ -82,7 +82,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ApplicationResourceListResult"
             }
@@ -133,7 +133,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ApplicationResource"
             }
@@ -243,7 +243,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ApplicationResource"
             }
@@ -289,7 +289,7 @@
             "description": "Resource deleted successfully."
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -334,13 +334,14 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object"
+              "type": "object",
+              "properties": {}
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ApplicationGraphResponse"
             }
@@ -371,7 +372,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ContainerResourceListResult"
             }
@@ -422,7 +423,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ContainerResource"
             }
@@ -546,7 +547,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ContainerResource"
             }
@@ -554,14 +555,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -607,19 +608,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -656,7 +657,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/EnvironmentResourceListResult"
             }
@@ -707,7 +708,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/EnvironmentResource"
             }
@@ -817,7 +818,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/EnvironmentResource"
             }
@@ -863,7 +864,7 @@
             "description": "Resource deleted successfully."
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -914,7 +915,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RecipeGetMetadataResponse"
             }
@@ -950,7 +951,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ExtenderResourceListResult"
             }
@@ -1001,7 +1002,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ExtenderResource"
             }
@@ -1125,7 +1126,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ExtenderResource"
             }
@@ -1133,14 +1134,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1191,19 +1192,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1252,13 +1253,14 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object"
+              "type": "object",
+              "properties": {}
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ExtenderListSecretResponse"
             }
@@ -1294,7 +1296,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/GatewayResourceListResult"
             }
@@ -1345,7 +1347,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/GatewayResource"
             }
@@ -1461,7 +1463,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/GatewayResource"
             }
@@ -1469,14 +1471,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1527,19 +1529,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1576,7 +1578,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SecretStoreResourceListResult"
             }
@@ -1624,7 +1626,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SecretStoreResource"
             }
@@ -1708,11 +1710,11 @@
           "Create or Update a secret store resource with azure keyvault": {
             "$ref": "./examples/SecretStores_CreateOrUpdate.json"
           },
-          "Create or Update a secret store resource with global scope": {
-            "$ref": "./examples/SecretStores_CreateOrUpdate_GlobalScope.json"
-          },
           "Create or Update a secret store resource with valueFrom": {
             "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
+          },
+          "Create or Update a secret store resource with global scope": {
+            "$ref": "./examples/SecretStores_CreateOrUpdate_GlobalScope.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1754,7 +1756,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SecretStoreResource"
             }
@@ -1762,14 +1764,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1781,11 +1783,11 @@
           }
         },
         "x-ms-examples": {
-          "Update a secret store": {
-            "$ref": "./examples/SecretStores_Update.json"
-          },
           "Update a secret store resource": {
             "$ref": "./examples/SecretStores_Delete.json"
+          },
+          "Update a secret store": {
+            "$ref": "./examples/SecretStores_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1823,19 +1825,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1879,13 +1881,14 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object"
+              "type": "object",
+              "properties": {}
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SecretStoreListSecretsResult"
             }
@@ -1921,7 +1924,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/VolumeResourceListResult"
             }
@@ -1972,7 +1975,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/VolumeResource"
             }
@@ -2093,7 +2096,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/VolumeResource"
             }
@@ -2101,14 +2104,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -2159,19 +2162,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource does not exist."
+            "description": "Resource deleted successfully."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -2205,7 +2208,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Azure operation completed successfully.",
+            "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
             }
@@ -2562,60 +2565,14 @@
           "description": "File name when written to disk"
         },
         "encoding": {
-          "type": "string",
+          "$ref": "#/definitions/VolumeSecretEncodings",
           "description": "Encoding format. Default utf-8",
-          "default": "utf-8",
-          "enum": [
-            "utf-8",
-            "hex",
-            "base64"
-          ],
-          "x-ms-enum": {
-            "name": "VolumeSecretEncodings",
-            "modelAsString": true,
-            "values": [
-              {
-                "name": "utf8",
-                "value": "utf-8",
-                "description": "UTF-8 encoding"
-              },
-              {
-                "name": "hex",
-                "value": "hex",
-                "description": "Hex encoding"
-              },
-              {
-                "name": "base64",
-                "value": "base64",
-                "description": "Base64 encoding"
-              }
-            ]
-          }
+          "default": "utf-8"
         },
         "format": {
-          "type": "string",
+          "$ref": "#/definitions/CertificateFormats",
           "description": "Certificate format. Default pem",
-          "default": "pem",
-          "enum": [
-            "pem",
-            "pfx"
-          ],
-          "x-ms-enum": {
-            "name": "CertificateFormats",
-            "modelAsString": true,
-            "values": [
-              {
-                "name": "pem",
-                "value": "pem",
-                "description": "PEM Certificate format"
-              },
-              {
-                "name": "pfx",
-                "value": "pfx",
-                "description": "PFX Certificate format"
-              }
-            ]
-          }
+          "default": "pem"
         },
         "name": {
           "type": "string",
@@ -3410,7 +3367,8 @@
     },
     "ExtenderListSecretResponse": {
       "type": "object",
-      "description": "Response for list secrets API call"
+      "description": "Response for list secrets API call",
+      "properties": {}
     },
     "ExtenderProperties": {
       "type": "object",
@@ -3436,7 +3394,8 @@
         },
         "secrets": {
           "type": "object",
-          "description": "The secrets for referenced resource"
+          "description": "The secrets for referenced resource",
+          "properties": {}
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -3450,10 +3409,11 @@
       "required": [
         "environment"
       ],
+      "additionalProperties": true,
       "allOf": [
         {
           "type": "object",
-          "additionalProperties": {}
+          "additionalProperties": true
         }
       ]
     },
@@ -3532,7 +3492,8 @@
         },
         "secrets": {
           "type": "object",
-          "description": "The secrets for referenced resource"
+          "description": "The secrets for referenced resource",
+          "properties": {}
         },
         "recipe": {
           "$ref": "#/definitions/RecipeUpdate",
@@ -3751,29 +3712,9 @@
           "description": "If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption."
         },
         "minimumProtocolVersion": {
-          "type": "string",
+          "$ref": "#/definitions/TlsMinVersion",
           "description": "TLS minimum protocol version (defaults to 1.2).",
-          "default": "1.2",
-          "enum": [
-            "1.2",
-            "1.3"
-          ],
-          "x-ms-enum": {
-            "name": "TlsMinVersion",
-            "modelAsString": true,
-            "values": [
-              {
-                "name": "tls12",
-                "value": "1.2",
-                "description": "TLS Version 1.2"
-              },
-              {
-                "name": "tls13",
-                "value": "1.3",
-                "description": "TLS Version 1.3"
-              }
-            ]
-          }
+          "default": "1.2"
         },
         "certificateFrom": {
           "type": "string",
@@ -4113,7 +4054,7 @@
     "KubernetesPodSpec": {
       "type": "object",
       "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.",
-      "additionalProperties": {}
+      "additionalProperties": true
     },
     "KubernetesRuntimeProperties": {
       "type": "object",
@@ -4244,16 +4185,17 @@
       "properties": {
         "secrets": {
           "type": "object",
-          "description": "Sensitive data for the referenced resource stored as secrets.",
+          "description": "Sensitive data for the referenced resource stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.",
           "additionalProperties": {
             "$ref": "#/definitions/SecretReference"
           }
         }
       },
+      "additionalProperties": true,
       "allOf": [
         {
           "type": "object",
-          "additionalProperties": {}
+          "additionalProperties": true
         }
       ]
     },
@@ -4396,7 +4338,8 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment"
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
         }
       },
       "required": [
@@ -4417,7 +4360,7 @@
         },
         "envSecrets": {
           "type": "object",
-          "description": "Environment variables containing sensitive information can be stored as secrets.",
+          "description": "Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.",
           "additionalProperties": {
             "$ref": "#/definitions/SecretReference"
           }
@@ -4460,7 +4403,8 @@
         },
         "parameters": {
           "type": "object",
-          "description": "The key/value parameters to pass to the recipe template at deployment."
+          "description": "The key/value parameters to pass to the recipe template at deployment.",
+          "properties": {}
         },
         "plainHttp": {
           "type": "boolean",
@@ -4487,7 +4431,8 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment."
+          "description": "Key/value parameters to pass to the recipe template at deployment.",
+          "properties": {}
         }
       },
       "discriminator": "templateKind",
@@ -4510,7 +4455,8 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment."
+          "description": "Key/value parameters to pass to the recipe template at deployment.",
+          "properties": {}
         }
       },
       "discriminator": "templateKind",
@@ -4550,7 +4496,8 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment"
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
         }
       }
     },
@@ -4673,35 +4620,9 @@
           "description": "File name when written to disk"
         },
         "encoding": {
-          "type": "string",
+          "$ref": "#/definitions/VolumeSecretEncodings",
           "description": "Encoding format. Default utf-8",
-          "default": "utf-8",
-          "enum": [
-            "utf-8",
-            "hex",
-            "base64"
-          ],
-          "x-ms-enum": {
-            "name": "VolumeSecretEncodings",
-            "modelAsString": true,
-            "values": [
-              {
-                "name": "utf8",
-                "value": "utf-8",
-                "description": "UTF-8 encoding"
-              },
-              {
-                "name": "hex",
-                "value": "hex",
-                "description": "Hex encoding"
-              },
-              {
-                "name": "base64",
-                "value": "base64",
-                "description": "Base64 encoding"
-              }
-            ]
-          }
+          "default": "utf-8"
         },
         "name": {
           "type": "string",
@@ -4802,29 +4723,9 @@
           "readOnly": true
         },
         "type": {
-          "type": "string",
+          "$ref": "#/definitions/SecretStoreDataType",
           "description": "The type of secret store data",
-          "default": "generic",
-          "enum": [
-            "generic",
-            "certificate"
-          ],
-          "x-ms-enum": {
-            "name": "SecretStoreDataType",
-            "modelAsString": true,
-            "values": [
-              {
-                "name": "generic",
-                "value": "generic",
-                "description": "Generic secret data type"
-              },
-              {
-                "name": "certificate",
-                "value": "certificate",
-                "description": "Certificate secret data type"
-              }
-            ]
-          }
+          "default": "generic"
         },
         "data": {
           "type": "object",
@@ -4916,29 +4817,9 @@
           "description": "Fully qualified resource ID for the application"
         },
         "type": {
-          "type": "string",
+          "$ref": "#/definitions/SecretStoreDataType",
           "description": "The type of secret store data",
-          "default": "generic",
-          "enum": [
-            "generic",
-            "certificate"
-          ],
-          "x-ms-enum": {
-            "name": "SecretStoreDataType",
-            "modelAsString": true,
-            "values": [
-              {
-                "name": "generic",
-                "value": "generic",
-                "description": "Generic secret data type"
-              },
-              {
-                "name": "certificate",
-                "value": "certificate",
-                "description": "Certificate secret data type"
-              }
-            ]
-          }
+          "default": "generic"
         },
         "data": {
           "type": "object",
@@ -4982,29 +4863,9 @@
       "description": "The properties of SecretValue",
       "properties": {
         "encoding": {
-          "type": "string",
+          "$ref": "#/definitions/SecretValueEncoding",
           "description": "The encoding of value",
-          "default": "raw",
-          "enum": [
-            "raw",
-            "base64"
-          ],
-          "x-ms-enum": {
-            "name": "SecretValueEncoding",
-            "modelAsString": true,
-            "values": [
-              {
-                "name": "raw",
-                "value": "raw",
-                "description": "The raw secret value"
-              },
-              {
-                "name": "base64",
-                "value": "base64",
-                "description": "The base64-encoded secret value"
-              }
-            ]
-          }
+          "default": "raw"
         },
         "value": {
           "type": "string",
