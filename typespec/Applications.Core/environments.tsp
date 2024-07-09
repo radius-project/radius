@@ -81,6 +81,9 @@ model RecipeConfigProperties {
 
   @doc("Environment variables injected during Terraform Recipe execution for the recipes in the environment.")
   env?: EnvironmentVariables;
+
+  @doc("Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
+  envSecrets?: Record<SecretReference>
 }
 
 @doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
@@ -110,11 +113,14 @@ model SecretConfig {
   secret?: string;
 }
 
-// ProviderConfigProperties allows to get the additional properties. To ensure that `additionalProperties` is true, we need to extend `Record<unknown>`.
+// ProviderConfigProperties allows to get the additional properties and secrets. To ensure that `additionalProperties` is true, we need to extend `Record<unknown>`.
 // Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
 @doc("This configuration holds the necessary information to authenticate and interact with a provider for the recipe execution.")
-model ProviderConfigProperties extends Record<unknown> {}
+model ProviderConfigProperties extends Record<unknown> {
+    @doc("Sensitive data for the referenced resource stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
+    secrets?: Record<SecretReference>;
+}
 
 @doc("The environment variables injected during Terraform Recipe execution for the recipes in the environment.")
 model EnvironmentVariables extends Record<string> {}
@@ -166,6 +172,15 @@ model TerraformRecipeProperties extends RecipeProperties {
 
   @doc("Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.")
   templateVersion?: string;
+}
+
+@doc("This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data.")
+model SecretReference {
+  @doc("The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.")
+  source: string;
+
+  @doc("The key for the secret in the secret store.")
+  key: string;
 }
 
 @doc("Represents the request body of the getmetadata action.")

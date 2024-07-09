@@ -70,7 +70,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResourceListResult"
             }
@@ -121,7 +121,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResource"
             }
@@ -245,7 +245,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResource"
             }
@@ -253,14 +253,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -311,19 +311,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -360,7 +360,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResourceListResult"
             }
@@ -411,7 +411,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResource"
             }
@@ -532,7 +532,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResource"
             }
@@ -540,14 +540,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -598,19 +598,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -647,7 +647,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResourceListResult"
             }
@@ -698,7 +698,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResource"
             }
@@ -822,7 +822,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResource"
             }
@@ -830,14 +830,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -888,19 +888,19 @@
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -934,7 +934,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
             }
@@ -982,8 +982,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1088,8 +1087,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1145,8 +1143,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1244,8 +1241,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1294,8 +1290,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1400,8 +1395,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1597,8 +1591,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
       "required": [
@@ -1637,8 +1630,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       }
     },
