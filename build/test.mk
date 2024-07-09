@@ -101,7 +101,7 @@ test-functional-cli-noncloud: ## Runs cli functional tests that do not require c
 test-functional-daprrp: test-functional-daprrp-noncloud ## Runs all Dapr RP functional tests (both cloud and non-cloud)
 
 test-functional-daprrp-noncloud: ## Runs Dapr RP functional tests that do not require cloud resources
-CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
 test-functional-datastoresrp: test-functional-datastoresrp-noncloud test-functional-datastoresrp-cloud ## Runs all Datastores RP functional tests (non-cloud and cloud)
 
