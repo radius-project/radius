@@ -159,6 +159,15 @@ jobs:
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: dashboard
+      - name: Checkout radius-project/bicep-types-aws@main
+        uses: actions/checkout@v4
+        with:
+          repository: radius-project/bicep-types-aws
+          ref: main
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          path: bicep-types-aws
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
       - name: Set up GitHub credentials
         run: |
           git config --global user.name "Radius CI Bot"
@@ -226,3 +235,11 @@ jobs:
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh dashboard ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
+      - name: Release radius-project/bicep-types-aws version ${{ steps.get-version.outputs.release-version }}
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          repository: radius-project/bicep-types-aws
+          event-type: release-bicep-types-aws
+          client-payload: '{"release_version": "${{ env.REL_CHANNEL }}", "event_type": "release-bicep-types-aws"}'
