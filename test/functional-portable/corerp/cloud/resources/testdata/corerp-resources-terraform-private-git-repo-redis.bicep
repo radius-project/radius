@@ -1,4 +1,4 @@
-provider radius
+extension radius
 
 @description('Name of the Redis Cache resource.')
 param redisCacheName string

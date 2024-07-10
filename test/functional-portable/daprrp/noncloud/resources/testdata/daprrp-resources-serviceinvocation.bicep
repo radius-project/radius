@@ -1,4 +1,4 @@
-provider radius
+extension radius
 
 param location string = resourceGroup().location
 param environment string

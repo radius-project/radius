@@ -1,4 +1,4 @@
-provider kubernetes with {
+extension kubernetes with {
   namespace: 'corerp-mechanics-k8s-extensibility'
   kubeConfig: ''
 } as kubernetes

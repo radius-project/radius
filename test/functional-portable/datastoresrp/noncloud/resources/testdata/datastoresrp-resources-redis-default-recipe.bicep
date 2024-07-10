@@ -1,4 +1,4 @@
-provider radius
+extension radius
 
 param scope string = resourceGroup().id
 

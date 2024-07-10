@@ -1,4 +1,4 @@
-provider aws
+extension aws
 
 param creationTimestamp string
 param filterName string

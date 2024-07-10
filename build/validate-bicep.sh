@@ -21,7 +21,7 @@ do
     # - Compiled output (ARM templates) go to rad-bicep's stdout
     # - rad-bicep's stdout goes to /dev/null
     # - rad-bicep's stderr goes to the variable
-    if grep -q "provider radius" $F
+    if grep -q "extension radius" $F
     then
         exec 3>&1
         echo "running: $BICEP_PATH build $F"

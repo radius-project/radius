@@ -1,4 +1,4 @@
-provider radius
+extension radius
 
 param name string
 param namespace string

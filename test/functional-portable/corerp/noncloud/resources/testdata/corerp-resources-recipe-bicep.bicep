@@ -1,4 +1,4 @@
-provider radius
+extension radius
 
 @description('The OCI registry for test Bicep recipes.')
 param registry string

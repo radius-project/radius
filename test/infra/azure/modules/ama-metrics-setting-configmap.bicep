@@ -22,7 +22,7 @@ param prefix string = 'radius'
 
 var podAnnotationNamespaceRegex = 'podannotationnamespaceregex = "${prefix}.*"'
 
-provider kubernetes with {
+extension kubernetes with {
   namespace: 'default'
   kubeConfig: kubeConfig
 }

@@ -1,4 +1,4 @@
-provider radius
+extension radius
 
 param magpieimage string
 

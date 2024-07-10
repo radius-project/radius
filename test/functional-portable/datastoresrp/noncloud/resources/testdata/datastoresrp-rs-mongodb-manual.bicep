@@ -1,4 +1,4 @@
-provider radius
+extension radius
 
 @description('Admin username for the Mongo database. Default is "admin"')
 param username string = 'admin'

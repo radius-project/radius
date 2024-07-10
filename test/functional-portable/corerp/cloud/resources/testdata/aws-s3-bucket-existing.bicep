@@ -1,4 +1,4 @@
-provider aws
+extension aws
 
 param bucketName string
 

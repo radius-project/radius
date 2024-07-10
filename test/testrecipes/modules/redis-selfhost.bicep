@@ -1,4 +1,4 @@
-provider kubernetes with {
+extension kubernetes with {
   kubeConfig: ''
   namespace: namespace
 } as kubernetes

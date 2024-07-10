@@ -1,4 +1,4 @@
-provider kubernetes with {
+extension kubernetes with {
   namespace: context.runtime.kubernetes.namespace
   kubeConfig: ''
 } as kubernetes

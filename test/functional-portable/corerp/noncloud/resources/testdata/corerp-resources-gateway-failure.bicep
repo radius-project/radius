@@ -1,4 +1,4 @@
-provider radius
+extension radius
 
 @description('ID of the Radius Environment. Passed in automatically via the rad CLI')
 param environment string

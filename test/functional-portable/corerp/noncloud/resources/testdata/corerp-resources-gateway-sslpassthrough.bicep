@@ -1,8 +1,8 @@
-provider kubernetes with {
+extension kubernetes with {
   kubeConfig: ''
   namespace: 'default'
 } as kubernetes
-provider radius
+extension radius
 
 @description('Specifies the location for resources.')
 param location string = 'local'

@@ -1,4 +1,4 @@
-provider radius
+extension radius
 
 @description('Specifies the environment for resources.')
 param environment string

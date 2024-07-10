@@ -1,5 +1,5 @@
 
-provider radius
+extension radius
 
 @description('Specifies the location for resources.')
 param location string = 'global'
