@@ -141,7 +141,7 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 	}
 }
 
-func TestAWSAccessKeyCredentialConvertDataModelToVersioned(t *testing.T) {
+func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 	conversionTests := []struct {
 		filename string
 		expected *AwsCredentialResource
