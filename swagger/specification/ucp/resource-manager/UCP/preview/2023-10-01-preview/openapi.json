@@ -1,0 +1,2558 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Universal Control Plane Resource Management APIs",
+    "version": "2023-10-01-preview",
+    "description": "REST APIs for Universal Control Plane",
+    "x-typespec-generated": [
+      {
+        "emitter": "@azure-tools/typespec-autorest"
+      }
+    ]
+  },
+  "schemes": [
+    "https"
+  ],
+  "host": "management.azure.com",
+  "produces": [
+    "application/json"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "flow": "implicit",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Planes"
+    },
+    {
+      "name": "AwsCredentials"
+    },
+    {
+      "name": "AwsPlanes"
+    },
+    {
+      "name": "AzureCredentials"
+    },
+    {
+      "name": "AzurePlanes"
+    },
+    {
+      "name": "ResourceGroups"
+    },
+    {
+      "name": "Resources"
+    },
+    {
+      "name": "RadiusPlanes"
+    }
+  ],
+  "paths": {
+    "/planes": {
+      "get": {
+        "operationId": "Planes_ListPlanes",
+        "tags": [
+          "Planes"
+        ],
+        "description": "List all planes",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/GenericPlaneResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List planes": {
+            "$ref": "./examples/Planes_List.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/aws": {
+      "get": {
+        "operationId": "AwsPlanes_List",
+        "tags": [
+          "AwsPlanes"
+        ],
+        "description": "List AWS planes",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AwsPlaneResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/aws/{planeName}": {
+      "get": {
+        "operationId": "AwsPlanes_Get",
+        "tags": [
+          "AwsPlanes"
+        ],
+        "description": "Get a plane by name",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AwsPlaneResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "AwsPlanes_CreateOrUpdate",
+        "tags": [
+          "AwsPlanes"
+        ],
+        "description": "Create or update a plane",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AwsPlaneResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'AwsPlaneResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/AwsPlaneResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'AwsPlaneResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/AwsPlaneResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "AwsPlanes_Update",
+        "tags": [
+          "AwsPlanes"
+        ],
+        "description": "Update a plane",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AwsPlaneResourceTagsUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AwsPlaneResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "AwsPlanes_Delete",
+        "tags": [
+          "AwsPlanes"
+        ],
+        "description": "Delete a plane",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/planes/aws/{planeName}/providers/System.AWS/credentials": {
+      "get": {
+        "operationId": "AwsCredentials_List",
+        "tags": [
+          "AwsCredentials"
+        ],
+        "description": "List AWS credentials",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AwsPlaneNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List AWS AccessKey credentials": {
+            "$ref": "./examples/AWSCredential_AccessKey_List.json"
+          },
+          "List AWS IRSA credentials": {
+            "$ref": "./examples/AWSCredential_IRSA_List.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}": {
+      "get": {
+        "operationId": "AwsCredentials_Get",
+        "tags": [
+          "AwsCredentials"
+        ],
+        "description": "Get an AWS credential",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AwsPlaneNameParameter"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "description": "The AWS credential name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get an AWS AccessKey credential": {
+            "$ref": "./examples/AWSCredential_AccessKey_Get.json"
+          },
+          "Get a AWS IRSA credential": {
+            "$ref": "./examples/AWSCredential_IRSA_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "AwsCredentials_CreateOrUpdate",
+        "tags": [
+          "AwsCredentials"
+        ],
+        "description": "Create or update an AWS credential",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AwsPlaneNameParameter"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "description": "The AWS credential name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'AwsCredentialResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'AwsCredentialResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update an AWS AccessKey credential": {
+            "$ref": "./examples/AWSCredential_AccessKey_CreateOrUpdate.json"
+          },
+          "Create or update an AWS IRSA credential": {
+            "$ref": "./examples/AWSCredential_IRSA_CreateOrUpdate.json"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "AwsCredentials_Update",
+        "tags": [
+          "AwsCredentials"
+        ],
+        "description": "Update an AWS credential",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AwsPlaneNameParameter"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "description": "The AWS credential name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResourceTagsUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update an AWS AccessKey credential": {
+            "$ref": "./examples/AWSCredential_AccessKey_Update.json"
+          },
+          "Update an AWS IRSA credential": {
+            "$ref": "./examples/AWSCredential_IRSA_Update.json"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "AwsCredentials_Delete",
+        "tags": [
+          "AwsCredentials"
+        ],
+        "description": "Delete an AWS credential",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AwsPlaneNameParameter"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "description": "The AWS credential name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete an AWS AccessKey credential": {
+            "$ref": "./examples/AWSCredential_AccessKey_Delete.json"
+          },
+          "Delete a AWS IRSA credential": {
+            "$ref": "./examples/AWSCredential_IRSA_Delete.json"
+          }
+        }
+      }
+    },
+    "/planes/azure": {
+      "get": {
+        "operationId": "AzurePlanes_List",
+        "tags": [
+          "AzurePlanes"
+        ],
+        "description": "List azure planes",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzurePlaneResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/azure/{planeName}": {
+      "get": {
+        "operationId": "AzurePlanes_Get",
+        "tags": [
+          "AzurePlanes"
+        ],
+        "description": "Get a plane by name",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzurePlaneResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "AzurePlanes_CreateOrUpdate",
+        "tags": [
+          "AzurePlanes"
+        ],
+        "description": "Create or update a plane",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AzurePlaneResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'AzurePlaneResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/AzurePlaneResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'AzurePlaneResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/AzurePlaneResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "AzurePlanes_Update",
+        "tags": [
+          "AzurePlanes"
+        ],
+        "description": "Update a plane",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AzurePlaneResourceTagsUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzurePlaneResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "AzurePlanes_Delete",
+        "tags": [
+          "AzurePlanes"
+        ],
+        "description": "Delete a plane",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/planes/azure/{planeName}/providers/System.Azure/credentials": {
+      "get": {
+        "operationId": "AzureCredentials_List",
+        "tags": [
+          "AzureCredentials"
+        ],
+        "description": "List Azure credentials",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AzurePlaneNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List Azure Service Principal credentials": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_List.json"
+          },
+          "List Azure Workload Identity credentials": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_List.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}": {
+      "get": {
+        "operationId": "AzureCredentials_Get",
+        "tags": [
+          "AzureCredentials"
+        ],
+        "description": "Get an Azure credential",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AzurePlaneNameParameter"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "description": "The Azure credential name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get an Azure Service Principal credential": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_Get.json"
+          },
+          "Get an Azure Workload Identity credential": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "AzureCredentials_CreateOrUpdate",
+        "tags": [
+          "AzureCredentials"
+        ],
+        "description": "Create or update an Azure credential",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AzurePlaneNameParameter"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "description": "The Azure credential name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'AzureCredentialResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'AzureCredentialResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update an Azure Service Principal credential": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_CreateOrUpdate.json"
+          },
+          "Create or update an Azure Workload Identity credential": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_CreateOrUpdate.json"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "AzureCredentials_Update",
+        "tags": [
+          "AzureCredentials"
+        ],
+        "description": "Update an Azure credential",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AzurePlaneNameParameter"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "description": "The Azure credential name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResourceTagsUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update an Azure Service Principal credential": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_Update.json"
+          },
+          "Update an Azure Workload Identity credential": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_Update.json"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "AzureCredentials_Delete",
+        "tags": [
+          "AzureCredentials"
+        ],
+        "description": "Delete an Azure credential",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AzurePlaneNameParameter"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "description": "The Azure credential name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete an Azure Service Principal credential": {
+            "$ref": "./examples/AzureCredential_ServicePrincipal_Delete.json"
+          },
+          "Delete an Azure Workload Identity credential": {
+            "$ref": "./examples/AzureCredential_WorkloadIdentity_Delete.json"
+          }
+        }
+      }
+    },
+    "/planes/radius": {
+      "get": {
+        "operationId": "RadiusPlanes_List",
+        "tags": [
+          "RadiusPlanes"
+        ],
+        "description": "List Radius planes",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusPlaneResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/radius/{planeName}": {
+      "get": {
+        "operationId": "RadiusPlanes_Get",
+        "tags": [
+          "RadiusPlanes"
+        ],
+        "description": "Get a plane by name",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusPlaneResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "RadiusPlanes_CreateOrUpdate",
+        "tags": [
+          "RadiusPlanes"
+        ],
+        "description": "Create or update a plane",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RadiusPlaneResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RadiusPlaneResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RadiusPlaneResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RadiusPlaneResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RadiusPlaneResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "RadiusPlanes_Update",
+        "tags": [
+          "RadiusPlanes"
+        ],
+        "description": "Update a plane",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RadiusPlaneResourceTagsUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusPlaneResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "RadiusPlanes_Delete",
+        "tags": [
+          "RadiusPlanes"
+        ],
+        "description": "Delete a plane",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/planes/radius/{planeName}/resourcegroups": {
+      "get": {
+        "operationId": "ResourceGroups_List",
+        "tags": [
+          "ResourceGroups"
+        ],
+        "description": "List resource groups",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List resource groups": {
+            "$ref": "./examples/ResourceGroups_List.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}": {
+      "get": {
+        "operationId": "ResourceGroups_Get",
+        "tags": [
+          "ResourceGroups"
+        ],
+        "description": "Get a resource group",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of resource group",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a resource group": {
+            "$ref": "./examples/ResourceGroups_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "ResourceGroups_CreateOrUpdate",
+        "tags": [
+          "ResourceGroups"
+        ],
+        "description": "Create or update a resource group",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of resource group",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'ResourceGroupResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'ResourceGroupResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a resource group": {
+            "$ref": "./examples/ResourceGroups_CreateOrUpdate.json"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "ResourceGroups_Update",
+        "tags": [
+          "ResourceGroups"
+        ],
+        "description": "Update a resource group",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of resource group",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResourceTagsUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update a resource group": {
+            "$ref": "./examples/ResourceGroups_Update.json"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "ResourceGroups_Delete",
+        "tags": [
+          "ResourceGroups"
+        ],
+        "description": "Delete a resource group",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of resource group",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a resource group": {
+            "$ref": "./examples/ResourceGroups_Delete.json"
+          }
+        }
+      }
+    },
+    "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}/resources": {
+      "get": {
+        "operationId": "Resources_List",
+        "tags": [
+          "Resources"
+        ],
+        "description": "List resources in a resource group",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of resource group",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/GenericResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List resources in a resource group.": {
+            "$ref": "./examples/Resources_List.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "AWSCredentialKind": {
+      "type": "string",
+      "description": "AWS credential kind",
+      "enum": [
+        "AccessKey",
+        "IRSA"
+      ],
+      "x-ms-enum": {
+        "name": "AWSCredentialKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "AccessKey",
+            "value": "AccessKey",
+            "description": "The AWS Access Key credential"
+          },
+          {
+            "name": "IRSA",
+            "value": "IRSA",
+            "description": "AWS IAM roles for service accounts. For more information, please see: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html"
+          }
+        ]
+      }
+    },
+    "AwsAccessKeyCredentialProperties": {
+      "type": "object",
+      "description": "AWS credential properties for Access Key",
+      "properties": {
+        "accessKeyId": {
+          "type": "string",
+          "format": "password",
+          "description": "Access key ID for AWS identity",
+          "x-ms-secret": true
+        },
+        "secretAccessKey": {
+          "type": "string",
+          "format": "password",
+          "description": "Secret Access Key for AWS identity",
+          "x-ms-secret": true
+        },
+        "storage": {
+          "$ref": "#/definitions/CredentialStorageProperties",
+          "description": "The storage properties"
+        }
+      },
+      "required": [
+        "accessKeyId",
+        "secretAccessKey",
+        "storage"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AwsCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "AccessKey"
+    },
+    "AwsCredentialProperties": {
+      "type": "object",
+      "description": "AWS Credential properties",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/AWSCredentialKind",
+          "description": "The AWS credential kind"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "AwsCredentialResource": {
+      "type": "object",
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AwsCredentialProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "AwsCredentialResourceListResult": {
+      "type": "object",
+      "description": "The response of a AwsCredentialResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The AwsCredentialResource items on this page",
+          "items": {
+            "$ref": "#/definitions/AwsCredentialResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "AwsCredentialResourceTagsUpdate": {
+      "type": "object",
+      "description": "The type used for updating tags in AwsCredentialResource resources.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "AwsIRSACredentialProperties": {
+      "type": "object",
+      "description": "AWS credential properties for IAM Roles for Service Accounts (IRSA)",
+      "properties": {
+        "roleARN": {
+          "type": "string",
+          "description": "RoleARN for AWS IRSA identity"
+        },
+        "storage": {
+          "$ref": "#/definitions/CredentialStorageProperties",
+          "description": "The storage properties"
+        }
+      },
+      "required": [
+        "roleARN",
+        "storage"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AwsCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "IRSA"
+    },
+    "AwsPlaneResource": {
+      "type": "object",
+      "description": "The AWS plane resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AwsPlaneResourceProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "AwsPlaneResourceListResult": {
+      "type": "object",
+      "description": "The response of a AwsPlaneResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The AwsPlaneResource items on this page",
+          "items": {
+            "$ref": "#/definitions/AwsPlaneResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "AwsPlaneResourceProperties": {
+      "type": "object",
+      "description": "The Plane properties.",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        }
+      }
+    },
+    "AwsPlaneResourceTagsUpdate": {
+      "type": "object",
+      "description": "The type used for updating tags in AwsPlaneResource resources.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "AzureCredentialKind": {
+      "type": "string",
+      "description": "Azure credential kinds supported.",
+      "enum": [
+        "ServicePrincipal",
+        "WorkloadIdentity"
+      ],
+      "x-ms-enum": {
+        "name": "AzureCredentialKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "ServicePrincipal",
+            "value": "ServicePrincipal",
+            "description": "The Service Principal Credential"
+          },
+          {
+            "name": "WorkloadIdentity",
+            "value": "WorkloadIdentity",
+            "description": "The Workload Identity Credential"
+          }
+        ]
+      }
+    },
+    "AzureCredentialProperties": {
+      "type": "object",
+      "description": "The base properties of Azure Credential",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/AzureCredentialKind",
+          "description": "The kind of Azure credential"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "AzureCredentialResource": {
+      "type": "object",
+      "description": "Represents Azure Credential Resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AzureCredentialProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "AzureCredentialResourceListResult": {
+      "type": "object",
+      "description": "The response of a AzureCredentialResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The AzureCredentialResource items on this page",
+          "items": {
+            "$ref": "#/definitions/AzureCredentialResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "AzureCredentialResourceTagsUpdate": {
+      "type": "object",
+      "description": "The type used for updating tags in AzureCredentialResource resources.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "AzurePlaneResource": {
+      "type": "object",
+      "description": "The Azure plane resource.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AzurePlaneResourceProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "AzurePlaneResourceListResult": {
+      "type": "object",
+      "description": "The response of a AzurePlaneResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The AzurePlaneResource items on this page",
+          "items": {
+            "$ref": "#/definitions/AzurePlaneResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "AzurePlaneResourceProperties": {
+      "type": "object",
+      "description": "The Plane properties.",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL used to proxy requests."
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "AzurePlaneResourceTagsUpdate": {
+      "type": "object",
+      "description": "The type used for updating tags in AzurePlaneResource resources.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "AzureServicePrincipalProperties": {
+      "type": "object",
+      "description": "The properties of Azure Service Principal credential storage",
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "description": "clientId for ServicePrincipal"
+        },
+        "clientSecret": {
+          "type": "string",
+          "description": "secret for ServicePrincipal",
+          "x-ms-secret": true
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "tenantId for ServicePrincipal"
+        },
+        "storage": {
+          "$ref": "#/definitions/CredentialStorageProperties",
+          "description": "The storage properties"
+        }
+      },
+      "required": [
+        "clientId",
+        "clientSecret",
+        "tenantId",
+        "storage"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AzureCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "ServicePrincipal"
+    },
+    "AzureWorkloadIdentityProperties": {
+      "type": "object",
+      "description": "The properties of Azure Workload Identity credential storage",
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "description": "clientId for WorkloadIdentity"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "tenantId for WorkloadIdentity"
+        },
+        "storage": {
+          "$ref": "#/definitions/CredentialStorageProperties",
+          "description": "The storage properties"
+        }
+      },
+      "required": [
+        "clientId",
+        "tenantId",
+        "storage"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AzureCredentialProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "WorkloadIdentity"
+    },
+    "CredentialStorageKind": {
+      "type": "string",
+      "description": "Credential store kinds supported.",
+      "enum": [
+        "Internal"
+      ],
+      "x-ms-enum": {
+        "name": "CredentialStorageKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Internal",
+            "value": "Internal",
+            "description": "Internal credential storage"
+          }
+        ]
+      }
+    },
+    "CredentialStorageProperties": {
+      "type": "object",
+      "description": "The base credential storage properties",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/CredentialStorageKind",
+          "description": "The kind of credential storage"
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "GenericPlaneResource": {
+      "type": "object",
+      "description": "The generic representation of a plane resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/GenericPlaneResourceProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "GenericPlaneResourceListResult": {
+      "type": "object",
+      "description": "The response of a GenericPlaneResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The GenericPlaneResource items on this page",
+          "items": {
+            "$ref": "#/definitions/GenericPlaneResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "GenericPlaneResourceProperties": {
+      "type": "object",
+      "description": "The properties of the generic representation of a plane resource.",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        }
+      }
+    },
+    "GenericResource": {
+      "type": "object",
+      "description": "Represents resource data.",
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/ResourceNameString",
+          "description": "The name of resource",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "allOf": [
+        {
+          "type": "object",
+          "description": "Concrete proxy resource types can be created by aliasing this type using a specific property type.",
+          "properties": {
+            "properties": {
+              "$ref": "#/definitions/ResourceProperties",
+              "description": "The resource-specific properties for this resource.",
+              "x-ms-client-flatten": true,
+              "x-ms-mutability": [
+                "read",
+                "create"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ProxyResource"
+            }
+          ]
+        }
+      ]
+    },
+    "GenericResourceListResult": {
+      "type": "object",
+      "description": "The response of a GenericResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The GenericResource items on this page",
+          "items": {
+            "$ref": "#/definitions/GenericResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "InternalCredentialStorageProperties": {
+      "type": "object",
+      "description": "Internal credential storage properties",
+      "properties": {
+        "secretName": {
+          "type": "string",
+          "description": "The name of secret stored.",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "secretName"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/CredentialStorageProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "Internal"
+    },
+    "PlaneNameParameter": {
+      "type": "object",
+      "description": "The Plane Name parameter.",
+      "properties": {
+        "planeName": {
+          "$ref": "#/definitions/ResourceNameString",
+          "description": "The name of the plane",
+          "x-ms-parameter-location": "method",
+          "x-ms-skip-url-encoding": true
+        }
+      },
+      "required": [
+        "planeName"
+      ]
+    },
+    "ProvisioningState": {
+      "type": "string",
+      "description": "Provisioning state of the resource at the time the operation was called",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled",
+        "Provisioning",
+        "Updating",
+        "Deleting",
+        "Accepted"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "Resource has been created."
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "Resource creation failed."
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "Resource creation was canceled."
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "The resource is being provisioned"
+          },
+          {
+            "name": "Updating",
+            "value": "Updating",
+            "description": "The resource is updating"
+          },
+          {
+            "name": "Deleting",
+            "value": "Deleting",
+            "description": "The resource is being deleted"
+          },
+          {
+            "name": "Accepted",
+            "value": "Accepted",
+            "description": "The resource create request has been accepted"
+          }
+        ]
+      },
+      "readOnly": true
+    },
+    "RadiusPlaneResource": {
+      "type": "object",
+      "description": "The Radius plane resource.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RadiusPlaneResourceProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "RadiusPlaneResourceListResult": {
+      "type": "object",
+      "description": "The response of a RadiusPlaneResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The RadiusPlaneResource items on this page",
+          "items": {
+            "$ref": "#/definitions/RadiusPlaneResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "RadiusPlaneResourceProperties": {
+      "type": "object",
+      "description": "The Plane properties.",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "resourceProviders": {
+          "type": "object",
+          "description": "Resource Providers for UCP Native Plane",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "resourceProviders"
+      ]
+    },
+    "RadiusPlaneResourceTagsUpdate": {
+      "type": "object",
+      "description": "The type used for updating tags in RadiusPlaneResource resources.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ResourceGroupProperties": {
+      "type": "object",
+      "description": "The resource group resource properties",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        }
+      }
+    },
+    "ResourceGroupResource": {
+      "type": "object",
+      "description": "The resource group resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ResourceGroupProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "ResourceGroupResourceListResult": {
+      "type": "object",
+      "description": "The response of a ResourceGroupResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The ResourceGroupResource items on this page",
+          "items": {
+            "$ref": "#/definitions/ResourceGroupResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "ResourceGroupResourceTagsUpdate": {
+      "type": "object",
+      "description": "The type used for updating tags in ResourceGroupResource resources.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ResourceNameString": {
+      "type": "string",
+      "description": "The resource name",
+      "maxLength": 63,
+      "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+    },
+    "ResourceProperties": {
+      "type": "object",
+      "description": "The resource properties",
+      "properties": {}
+    },
+    "Versions": {
+      "type": "string",
+      "description": "Supported API versions for Universal Control Plane resource provider.",
+      "enum": [
+        "2023-10-01-preview"
+      ],
+      "x-ms-enum": {
+        "name": "Versions",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "v2023_10_01_preview",
+            "value": "2023-10-01-preview",
+            "description": "2023-10-01-preview"
+          }
+        ]
+      }
+    }
+  },
+  "parameters": {
+    "AwsPlaneNameParameter": {
+      "name": "planeName",
+      "in": "path",
+      "description": "The name of AWS plane",
+      "required": true,
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+      "x-ms-parameter-location": "method",
+      "x-ms-skip-url-encoding": true
+    },
+    "AzurePlaneNameParameter": {
+      "name": "planeName",
+      "in": "path",
+      "description": "The name of the plane",
+      "required": true,
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+      "x-ms-parameter-location": "method",
+      "x-ms-skip-url-encoding": true
+    }
+  }
+}
