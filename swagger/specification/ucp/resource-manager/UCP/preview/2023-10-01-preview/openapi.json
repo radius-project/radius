@@ -375,7 +375,7 @@
           }
         },
         "x-ms-examples": {
-          "List AWS AccessKey credentials": {
+          "List AWS AccessKey credential": {
             "$ref": "./examples/AWSCredential_AccessKey_List.json"
           },
           "List AWS IRSA credentials": {
@@ -429,7 +429,7 @@
           "Get an AWS AccessKey credential": {
             "$ref": "./examples/AWSCredential_AccessKey_Get.json"
           },
-          "Get a AWS IRSA credential": {
+          "Get an AWS IRSA credential": {
             "$ref": "./examples/AWSCredential_IRSA_Get.json"
           }
         }
@@ -591,7 +591,7 @@
           "Delete an AWS AccessKey credential": {
             "$ref": "./examples/AWSCredential_AccessKey_Delete.json"
           },
-          "Delete a AWS IRSA credential": {
+          "Delete an AWS IRSA credential": {
             "$ref": "./examples/AWSCredential_IRSA_Delete.json"
           }
         }
