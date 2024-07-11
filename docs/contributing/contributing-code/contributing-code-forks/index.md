@@ -1,4 +1,4 @@
-## Creating a forked repo
+# Creating a forked repo
 
 In order to limit the branches on the main repo, Radius enforces code contributions via forked repos.
 
