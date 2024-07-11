@@ -74,8 +74,7 @@ func populateSecretData(secretStoreID string, secretKeys []string, secrets *v202
 	}
 
 	for _, secretKey := range secretKeys {
-		secretDataValue, ok := secrets.Data[secretKey]
-		if ok {
+		if secretDataValue, ok := secrets.Data[secretKey]; ok {
 			if secretData[secretStoreID] == nil {
 				secretData[secretStoreID] = make(map[string]string)
 			}

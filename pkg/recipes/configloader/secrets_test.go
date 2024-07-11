@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,10 +25,10 @@ func Test_populateSecretData(t *testing.T) {
 				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
 					Data: map[string]*v20231001preview.SecretValueProperties{
 						"secretKey1": {
-							Value: ptrToString("secretValue1"),
+							Value: to.Ptr("secretValue1"),
 						},
 						"secretKey2": {
-							Value: ptrToString("secretValue2"),
+							Value: to.Ptr("secretValue2"),
 						},
 					}},
 			},
@@ -73,9 +74,4 @@ func Test_populateSecretData(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper function to return a pointer to a string
-func ptrToString(s string) *string {
-	return &s
 }
