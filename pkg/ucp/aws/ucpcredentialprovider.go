@@ -23,6 +23,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -33,6 +36,11 @@ var _ aws.CredentialsProvider = (*UCPCredentialProvider)(nil)
 const (
 	// DefaultExpireDuration is the default access key expiry duration.
 	DefaultExpireDuration = time.Minute * time.Duration(15)
+
+	// CredentialKind is IRSA
+	CredentialKindIRSA = "IRSA"
+	// CredentialKindAccessKey is AccessKey
+	CredentialKindAccessKey = "AccessKey"
 )
 
 // UCPCredentialProvider is the implementation of aws.CredentialsProvider
@@ -73,19 +81,69 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		return aws.Credentials{}, err
 	}
 
-	if s.AccessKeyCredential == nil || s.AccessKeyCredential.AccessKeyID == "" || s.AccessKeyCredential.SecretAccessKey == "" {
-		return aws.Credentials{}, errors.New("invalid access key info")
-	}
+	var value aws.Credentials
+	switch s.Kind {
+	case CredentialKindAccessKey:
+		if s.AccessKeyCredential == nil || s.AccessKeyCredential.AccessKeyID == "" || s.AccessKeyCredential.SecretAccessKey == "" {
+			return aws.Credentials{}, errors.New("invalid access key info")
+		}
+		logger.Info(fmt.Sprintf("Retrieved AWS Credential - AccessKeyID: %s", s.AccessKeyCredential.AccessKeyID))
 
-	logger.Info(fmt.Sprintf("Retrieved AWS Credential - AccessKeyID: %s", s.AccessKeyCredential.AccessKeyID))
+		value = aws.Credentials{
+			AccessKeyID:     s.AccessKeyCredential.AccessKeyID,
+			SecretAccessKey: s.AccessKeyCredential.SecretAccessKey,
+			Source:          "radiusucp",
+			CanExpire:       true,
+			Expires:         time.Now().UTC().Add(c.options.Duration),
+		}
 
-	value := aws.Credentials{
-		AccessKeyID:     s.AccessKeyCredential.AccessKeyID,
-		SecretAccessKey: s.AccessKeyCredential.SecretAccessKey,
-		Source:          "radiusucp",
-		CanExpire:       true,
-		// Enables AWS SDK to fetch (rotate) access keys by calling Retrieve() after Expires.
-		Expires: time.Now().UTC().Add(c.options.Duration),
+	case CredentialKindIRSA:
+		if s.IRSACredential == nil || s.IRSACredential.RoleARN == "" {
+			return aws.Credentials{}, errors.New("invalid IRSA info")
+		}
+		logger.Info(fmt.Sprintf("...Retrieved AWS Credential - RoleARN: %s", s.IRSACredential.RoleARN))
+		logger.Info("Retrieved AWS Credential - TokenFile: NOT REALLY")
+
+		// we have the rolearn in c's options but how can I inject that into the aws.Credentials?
+		// we need to create a new aws.Credentials with the rolearn and token file infos
+
+		//tokenFilePath := "/var/run/secrets/eks.amazonaws.com/serviceaccount/token" // Update this path as necessary
+
+		awscfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-west-2"))
+		if err != nil {
+			logger.Info(fmt.Sprintf("Failed to load AWS config - %s", err.Error()))
+			return aws.Credentials{}, err // Ensure to return the error to the caller
+		}
+		//var awscfg aws.Config
+
+		client := sts.NewFromConfig(awscfg)
+		//logger.Info(fmt.Sprintf("Created AWS STS client with region: %s", awscfg.Region))
+		/*
+			credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
+				client,
+				s.IRSACredential.RoleARN, // inject role-arn here
+				stscreds.IdentityTokenFile(tokenFilePath), // Correctly use IdentityTokenFile here
+				func(o *stscreds.WebIdentityRoleOptions) {
+					o.RoleSessionName = "my-session" // Set RoleSessionName here if needed
+				},
+			))
+			value, err = credsCache.Retrieve(ctx)
+			if err != nil {
+				return aws.Credentials{}, err
+			}
+		*/
+
+		assumeRoleProvider := stscreds.NewAssumeRoleProvider(client, s.IRSACredential.RoleARN)
+		// logger.Info("Created AWS AssumeRoleProvider ")
+		value, err = assumeRoleProvider.Retrieve(ctx)
+		if err != nil {
+			logger.Info(fmt.Sprintf("Failed to retrieve AWS Credential IRSA - %s", err.Error()))
+			return aws.Credentials{}, err
+		}
+		logger.Info(fmt.Sprintf("Retrieved AWS Credential IRSA - value is : %s, token is %s", value.AccessKeyID, value.SessionToken))
+
+	default:
+		return aws.Credentials{}, errors.New("invalid credential kind")
 	}
 
 	return value, nil

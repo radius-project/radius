@@ -64,6 +64,8 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return errResponse, nil
 	}
 
+	//logger.Info("ENTERED POST")
+
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
 		e := v1.ErrorResponse{
@@ -75,6 +77,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
+	//logger.Info(fmt.Sprintf("region is %s", region))
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
 
@@ -83,6 +86,8 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
+		//logger.Info(fmt.Sprintf("HERE IS THE ERROR WHILE CALLING p.awsClients.CloudFormation.DescribeType"))
+
 		return ucp_aws.HandleAWSError(err)
 	}
 

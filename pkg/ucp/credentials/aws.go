@@ -71,6 +71,13 @@ func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name strin
 		default:
 			return nil, errors.New("invalid AWSAccessKeyCredentialProperties")
 		}
+	case *ucpapi.AwsIRSACredentialProperties:
+		switch c := p.Storage.(type) {
+		case *ucpapi.InternalCredentialStorageProperties:
+			storage = c
+		default:
+			return nil, errors.New("invalid AWSAccessKeyCredentialProperties")
+		}
 	default:
 		return nil, errors.New("invalid InternalCredentialStorageProperties")
 	}
@@ -91,5 +98,6 @@ func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name strin
 		return nil, errors.New("failed to get credential info: " + err.Error())
 	}
 
+	// going to have the irsa role retunred using AWSCredentialProvider fetch
 	return &s, nil
 }
