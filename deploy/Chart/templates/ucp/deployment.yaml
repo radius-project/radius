@@ -40,6 +40,10 @@ spec:
           value: '/apis/api.ucp.dev/v1alpha3' # listen for APIService URLs
         - name: TLS_CERT_DIR
           value: '/var/tls/cert'
+        - name: AWS_WEB_IDENTITY_TOKEN_FILE
+          value: '/var/run/secrets/eks.amazonaws.com/serviceaccount/token'
+        - name: AWS_ROLE_ARN
+          value: 'arn:aws:iam::817312594854:role/radius-role'
         - name: PORT
           value: '9443'
         {{- if .Values.global.rootCA.cert }}
@@ -63,6 +67,8 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
+        - name: aws-iam-token
+          mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
         - name: cert
           mountPath: '/var/tls/cert'
           readOnly: true
@@ -77,6 +83,13 @@ spec:
             # Provide the name of the ConfigMap containing the files you want
             # to add to the container
             name: ucp-config
+        - name: aws-iam-token
+          projected:
+            sources:
+            - serviceAccountToken:
+                path: token
+                expirationSeconds: 86400
+                audience: "sts.amazonaws.com"
         - name: cert
           secret:
             secretName: ucp-cert
