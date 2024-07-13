@@ -48,7 +48,7 @@ Visual Studio Code has a setting, `git.alwaysSignOff` to automatically add a Sig
 
 ## Creating the pull request
 
-At this point, you have reviewed the forked repo workflow.
+Please ensure you are contributing from a fork of the repository. If you have not set this up, please refer to the [forking guide](../../contributing-code-forks/index.md).
 
 Push your changes to your forked repo and then [open a pull request](https://github.com/radius-project/radius/compare).
 
