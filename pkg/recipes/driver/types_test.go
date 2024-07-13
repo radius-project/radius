@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_GetSecretStoreID(t *testing.T) {
+func Test_GetPrivateGitRepoSecretStoreID(t *testing.T) {
 	tests := []struct {
 		desc                string
 		envConfig           recipes.Configuration
@@ -68,7 +68,7 @@ func Test_GetSecretStoreID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			ss, err := GetSecretStoreID(tt.envConfig, tt.templatePath)
+			ss, err := GetPrivateGitRepoSecretStoreID(tt.envConfig, tt.templatePath)
 			if !tt.expectedErr {
 				require.NoError(t, err)
 				require.Equal(t, ss, tt.expectedSecretStore)

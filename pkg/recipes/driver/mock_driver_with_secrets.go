@@ -118,10 +118,10 @@ func (c *MockDriverWithSecretsExecuteCall) DoAndReturn(f func(context.Context, E
 }
 
 // FindSecretIDs mocks base method.
-func (m *MockDriverWithSecrets) FindSecretIDs(arg0 context.Context, arg1 recipes.Configuration, arg2 recipes.EnvironmentDefinition) (string, error) {
+func (m *MockDriverWithSecrets) FindSecretIDs(arg0 context.Context, arg1 recipes.Configuration, arg2 recipes.EnvironmentDefinition) (map[string][]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindSecretIDs", arg0, arg1, arg2)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(map[string][]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -139,19 +139,19 @@ type MockDriverWithSecretsFindSecretIDsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockDriverWithSecretsFindSecretIDsCall) Return(arg0 string, arg1 error) *MockDriverWithSecretsFindSecretIDsCall {
+func (c *MockDriverWithSecretsFindSecretIDsCall) Return(arg0 map[string][]string, arg1 error) *MockDriverWithSecretsFindSecretIDsCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockDriverWithSecretsFindSecretIDsCall) Do(f func(context.Context, recipes.Configuration, recipes.EnvironmentDefinition) (string, error)) *MockDriverWithSecretsFindSecretIDsCall {
+func (c *MockDriverWithSecretsFindSecretIDsCall) Do(f func(context.Context, recipes.Configuration, recipes.EnvironmentDefinition) (map[string][]string, error)) *MockDriverWithSecretsFindSecretIDsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDriverWithSecretsFindSecretIDsCall) DoAndReturn(f func(context.Context, recipes.Configuration, recipes.EnvironmentDefinition) (string, error)) *MockDriverWithSecretsFindSecretIDsCall {
+func (c *MockDriverWithSecretsFindSecretIDsCall) DoAndReturn(f func(context.Context, recipes.Configuration, recipes.EnvironmentDefinition) (map[string][]string, error)) *MockDriverWithSecretsFindSecretIDsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
