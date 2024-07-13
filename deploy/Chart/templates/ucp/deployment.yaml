@@ -40,10 +40,10 @@ spec:
           value: '/apis/api.ucp.dev/v1alpha3' # listen for APIService URLs
         - name: TLS_CERT_DIR
           value: '/var/tls/cert'
-        - name: AWS_WEB_IDENTITY_TOKEN_FILE
-          value: '/var/run/secrets/eks.amazonaws.com/serviceaccount/token'
-        - name: AWS_ROLE_ARN
-          value: 'arn:aws:iam::817312594854:role/radius-role'
+        #- name: AWS_WEB_IDENTITY_TOKEN_FILE
+        #  value: '/var/run/secrets/eks.amazonaws.com/serviceaccount/token'
+        #- name: AWS_ROLE_ARN
+        # value: 'arn:aws:iam::817312594854:role/radius-role-dummy'
         - name: PORT
           value: '9443'
         {{- if .Values.global.rootCA.cert }}

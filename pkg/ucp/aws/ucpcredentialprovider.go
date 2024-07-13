@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -114,7 +113,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		regionLoadOption := config.WithRegion("us-west-2")
 		loadOptions = append(loadOptions, regionLoadOption)
 
-		/*assumeRoleLoadOption := config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
+		assumeRoleLoadOption := config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
 			logger.Info(fmt.Sprintf(".....<3.......Retrieved AWS Credential - RoleARN: %s", s.IRSACredential.RoleARN))
 			o.RoleARN = s.IRSACredential.RoleARN // Specify the role ARN to assume
 			o.RoleSessionName = "my-session"     // Optionally specify a session name
@@ -128,11 +127,30 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		}*/
 
 		roleARN := "arn:aws:iam::817312594854:role/radius-role"
-		tokenFilePath := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
+		tokenFilePath := "/var/run/secrets/eks.amazonaws.com/serviceaccount/token" // os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
 
 		if roleARN == "" || tokenFilePath == "" {
 			panic("failed to load ENV")
 		}
+
+		/////////////PLEASE WORK
+		// loadOptions := []func(*config.LoadOptions) error{}
+		// regionLoadOption := config.WithRegion("us-west-2")
+		// loadOptions = append(loadOptions, regionLoadOption)
+
+		// assumeRoleLoadOption := config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
+		// 	logger.Info(fmt.Sprintf(".....<3.......Retrieved AWS Credential - RoleARN: %s", roleARN))
+		// 	o.RoleARN = roleARN // Specify the role ARN to assume
+		// 	//o.RoleSessionName = "my-session" // Optionally specify a session name
+		// 	// If you have an external ID, you can set it like this: o.ExternalID = aws.String("your-external-id")
+		// })
+		// loadOptions = append(loadOptions, assumeRoleLoadOption)
+		// awscfg, err := config.LoadDefaultConfig(ctx, loadOptions...)
+		// if err != nil {
+		// 	logger.Info(fmt.Sprintf("Failed to load AWS config ------------ %s", err.Error()))
+		// 	return aws.Credentials{}, err // Ensure to return the error to the caller
+		// }
+		///////////////////////////
 
 		awscfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-west-2"))
 		if err != nil {
