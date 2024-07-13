@@ -589,7 +589,7 @@ func Test_AddProviders(t *testing.T) {
 			if tc.Err != nil {
 				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(nil, tc.Err)
 			}
-			err = tfconfig.AddProviders(ctx, tc.requiredProviders, ucpConfiguredProviders, &tc.envConfig)
+			err = tfconfig.AddProviders(ctx, tc.requiredProviders, ucpConfiguredProviders, &tc.envConfig, nil)
 			if tc.Err != nil {
 				require.ErrorContains(t, err, tc.Err.Error())
 				return
