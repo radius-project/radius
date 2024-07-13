@@ -1,10 +1,8 @@
-# Your first commit: Creating a forked repo
+# Creating a forked repo
 
 In order to limit the branches on the main repo, Radius enforces code contributions via forked repos.
 
-## Creating a forked repo
-
-In order to fork a repo, go to the main Radius repo page in GitHub and select the "fork" option:
+To create a forked repo, go to the main Radius repo page in GitHub and select the "fork" option:
 
 <img width="800px" src="fork.png" alt="Creating a fork of the main repo">
 

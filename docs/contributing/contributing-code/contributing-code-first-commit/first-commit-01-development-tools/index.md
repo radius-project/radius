@@ -33,7 +33,7 @@ You can easily do this from the command shell with `code .`, which opens the cur
 
 ## Next step
 
-- [Build Radius](first-commit-02-building.md)
+- [Build Radius](../first-commit-02-building/index.md)
 
 ## Related links
 

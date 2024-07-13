@@ -60,4 +60,4 @@ brew install make
 
 ## Next step
 
-- [Install development tools](first-commit-01-development-tools.md)
+- [Install development tools](../first-commit-01-development-tools/index.md)

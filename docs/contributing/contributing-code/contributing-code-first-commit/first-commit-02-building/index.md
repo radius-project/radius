@@ -1,8 +1,10 @@
 # Your first commit: Building
 
-## Building the code
+## Fork the repository
 
-If you have not already done so, clone the repository and navigate there in your command shell.
+If you have not already done so, make a fork of the repository and clone it to your local machine. You can find the instructions [here](../../contributing-code-forks/index.md).
+
+## Building the code
 
 You can build the main outputs using `make`:
 
@@ -62,4 +64,4 @@ Use "rad [command] --help" for more information about a command.
 If you got this far then you're able to build, and you should move to the next step.
 
 ## Next step:
-- [Work on the CLI](first-commit-03-working-on-cli/index.md)
+- [Work on the CLI](../first-commit-03-working-on-cli/index.md)
