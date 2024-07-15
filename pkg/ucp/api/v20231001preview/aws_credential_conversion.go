@@ -67,7 +67,7 @@ func (cr *AwsCredentialResource) getDataModelCredentialProperties() (*datamodel.
 		switch c := p.Storage.(type) {
 		case *InternalCredentialStorageProperties:
 			if c.Kind == nil {
-				return nil, &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
+				return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())}
 			}
 			storage = &datamodel.CredentialStorageProperties{
 				Kind: datamodel.InternalStorageKind,
@@ -98,7 +98,7 @@ func (cr *AwsCredentialResource) getDataModelCredentialProperties() (*datamodel.
 		switch c := p.Storage.(type) {
 		case *InternalCredentialStorageProperties:
 			if c.Kind == nil {
-				return nil, &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
+				return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %q", PossibleCredentialStorageKindValues())}
 			}
 			storage = &datamodel.CredentialStorageProperties{
 				Kind: datamodel.InternalStorageKind,
