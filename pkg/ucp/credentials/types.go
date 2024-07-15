@@ -32,7 +32,7 @@ const (
 	// AzureServicePrincipalCredentialKind represents the kind of Azure service principal credential.
 	AzureServicePrincipalCredentialKind = ucp_dm.AzureServicePrincipalCredentialKind
 
-	// AzureWorkloadIdentityCredentialKind represents the kind of Azure workload identity credential..
+	// AzureWorkloadIdentityCredentialKind represents the kind of Azure workload identity credential.
 	AzureWorkloadIdentityCredentialKind = ucp_dm.AzureWorkloadIdentityCredentialKind
 )
 
