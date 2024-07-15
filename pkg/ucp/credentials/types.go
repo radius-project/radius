@@ -30,16 +30,10 @@ const (
 	AWSPublic = "aws"
 
 	// AzureServicePrincipalCredentialKind represents the kind of Azure service principal credential.
-	//AzureServicePrincipalCredentialKind = ucp_dm.AzureServicePrincipalCredentialKind
+	AzureServicePrincipalCredentialKind = ucp_dm.AzureServicePrincipalCredentialKind
 
 	// AzureWorkloadIdentityCredentialKind represents the kind of Azure workload identity credential.
-	//AzureWorkloadIdentityCredentialKind = ucp_dm.AzureWorkloadIdentityCredentialKind
-
-	// AWSAccessKeyCredentialKind represents the kind of AWS access key credential.
-	//AWSAccessKeyCredentialKind = ucp_dm.AWSAccessKeyCredentialKind
-
-	// AWSIRSACredentialKind represents the kind of AWS IRSA credential.
-	//AWSIRSACredentialKind = ucp_dm.AWSIRSACredentialKind
+	AzureWorkloadIdentityCredentialKind = ucp_dm.AzureWorkloadIdentityCredentialKind
 )
 
 type (
