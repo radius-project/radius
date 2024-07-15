@@ -102,7 +102,7 @@ type AzureCredentialProperties struct {
 	WorkloadIdentity *AzureWorkloadIdentityCredentialProperties `json:"workloadIdentity,omitempty"`
 }
 
-// AWSAccessKeyCredentialProperties contains ucp AWS credential properties.
+// AWSAccessKeyCredentialProperties contains ucp AWS access key credential properties.
 type AWSAccessKeyCredentialProperties struct {
 	// AccessKeyID contains aws access key for iam.
 	AccessKeyID string `json:"accessKeyId"`

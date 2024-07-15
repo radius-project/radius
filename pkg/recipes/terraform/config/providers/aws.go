@@ -43,7 +43,7 @@ const (
 	awsRegionParam    = "region"
 	awsAccessKeyParam = "access_key"
 	awsSecretKeyParam = "secret_key"
-	awsRoleARN        = "role_ARN"
+	awsRoleARN        = "role_arn"
 )
 
 var _ Provider = (*awsProvider)(nil)
@@ -143,14 +143,18 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 		config[awsRegionParam] = region
 	}
 
-	if credentials != nil && credentials.Kind == ucp_datamodel.AWSAccessKeyCredentialKind && credentials.AccessKeyCredential != nil &&
-		credentials.AccessKeyCredential.AccessKeyID != "" && credentials.AccessKeyCredential.SecretAccessKey != "" {
-		config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
-		config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
-	}
-
-	if credentials != nil && credentials.Kind == ucp_datamodel.AWSIRSACredentialKind && credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
-		config[awsRoleARN] = credentials.IRSACredential.RoleARN
+	if credentials != nil {
+		if credentials.Kind == ucp_datamodel.AWSAccessKeyCredentialKind {
+			if credentials.AccessKeyCredential != nil &&
+				credentials.AccessKeyCredential.AccessKeyID != "" && credentials.AccessKeyCredential.SecretAccessKey != "" {
+				config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
+				config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
+			}
+		} else if credentials.Kind == ucp_datamodel.AWSIRSACredentialKind {
+			if credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
+				config[awsRoleARN] = credentials.IRSACredential.RoleARN
+			}
+		}
 	}
 
 	return config
