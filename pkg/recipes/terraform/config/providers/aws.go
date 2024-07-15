@@ -43,8 +43,7 @@ const (
 	awsRegionParam    = "region"
 	awsAccessKeyParam = "access_key"
 	awsSecretKeyParam = "secret_key"
-
-	awsRoleARN = "role_ARN"
+	awsRoleARN        = "role_ARN"
 )
 
 var _ Provider = (*awsProvider)(nil)
