@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/google/uuid"
 
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -41,6 +42,10 @@ const (
 	CredentialKindIRSA = "IRSA"
 	// CredentialKindAccessKey is AccessKey
 	CredentialKindAccessKey = "AccessKey"
+	// Token file path for IRSA
+	tokenFilePath = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
+	// TODO: AWS STS endpoint region (should I set AWS_REGION env variable instead?)
+	awsSTSEndPointRegion = "us-west-2"
 )
 
 // UCPCredentialProvider is the implementation of aws.CredentialsProvider
@@ -101,58 +106,10 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		if s.IRSACredential == nil || s.IRSACredential.RoleARN == "" {
 			return aws.Credentials{}, errors.New("invalid IRSA info")
 		}
-		logger.Info(fmt.Sprintf("#<3##..#...Retrieved AWS Credential - RoleARN: %s", s.IRSACredential.RoleARN))
-		logger.Info("Retrieved AWS Credential - TokenFile: NOT REALLY")
+		logger.Info(fmt.Sprintf("Retrieved AWS Credential - RoleARN: %s", s.IRSACredential.RoleARN))
 
-		// we have the rolearn in c's options but how can I inject that into the aws.Credentials?
-		// we need to create a new aws.Credentials with the rolearn and token file infos
-
-		//tokenFilePath := "/var/run/secrets/eks.amazonaws.com/serviceaccount/token" // Update this path as necessary
-
-		/*loadOptions := []func(*config.LoadOptions) error{}
-		regionLoadOption := config.WithRegion("us-west-2")
-		loadOptions = append(loadOptions, regionLoadOption)
-
-		assumeRoleLoadOption := config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
-			logger.Info(fmt.Sprintf(".....<3.......Retrieved AWS Credential - RoleARN: %s", s.IRSACredential.RoleARN))
-			o.RoleARN = s.IRSACredential.RoleARN // Specify the role ARN to assume
-			o.RoleSessionName = "my-session"     // Optionally specify a session name
-			// If you have an external ID, you can set it like this: o.ExternalID = aws.String("your-external-id")
-		})
-
-		awscfg, err := config.LoadDefaultConfig(ctx, loadOptions...)
-		if err != nil {
-			logger.Info(fmt.Sprintf("Failed to load AWS config ------------ %s", err.Error()))
-			return aws.Credentials{}, err // Ensure to return the error to the caller
-		}*/
-
-		roleARN := "arn:aws:iam::817312594854:role/radius-role"
-		tokenFilePath := "/var/run/secrets/eks.amazonaws.com/serviceaccount/token" // os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
-
-		if roleARN == "" || tokenFilePath == "" {
-			panic("failed to load ENV")
-		}
-
-		/////////////PLEASE WORK
-		// loadOptions := []func(*config.LoadOptions) error{}
-		// regionLoadOption := config.WithRegion("us-west-2")
-		// loadOptions = append(loadOptions, regionLoadOption)
-
-		// assumeRoleLoadOption := config.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
-		// 	logger.Info(fmt.Sprintf(".....<3.......Retrieved AWS Credential - RoleARN: %s", roleARN))
-		// 	o.RoleARN = roleARN // Specify the role ARN to assume
-		// 	//o.RoleSessionName = "my-session" // Optionally specify a session name
-		// 	// If you have an external ID, you can set it like this: o.ExternalID = aws.String("your-external-id")
-		// })
-		// loadOptions = append(loadOptions, assumeRoleLoadOption)
-		// awscfg, err := config.LoadDefaultConfig(ctx, loadOptions...)
-		// if err != nil {
-		// 	logger.Info(fmt.Sprintf("Failed to load AWS config ------------ %s", err.Error()))
-		// 	return aws.Credentials{}, err // Ensure to return the error to the caller
-		// }
-		///////////////////////////
-
-		awscfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-west-2"))
+		//TODO: is it a good idea to make this a env variable for AWS_REGION?
+		awscfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsSTSEndPointRegion))
 		if err != nil {
 			panic("failed to load config, " + err.Error())
 		}
@@ -161,42 +118,26 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 
 		credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
 			client,
-			roleARN,
+			s.IRSACredential.RoleARN,
 			stscreds.IdentityTokenFile(tokenFilePath),
+
 			func(o *stscreds.WebIdentityRoleOptions) {
-				o.RoleSessionName = "my-session"
-			}))
+				// TODO: How can we use this?
+				o.RoleSessionName = "radius-ucp-" + uuid.New().String()
+			},
+		))
 
 		// use the credentials to list a s3 object
 
 		value, err = credsCache.Retrieve(ctx)
-		logger.Info(fmt.Sprintf("Retrieved AWS Credential IRSA - value is : %s, token is %s", value.AccessKeyID, value.SessionToken))
-		/*client := sts.NewFromConfig(awscfg)
-
-		//logger.Info(fmt.Sprintf("Created AWS STS client with region: %s", awscfg.Region))
-
-			credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
-				client,
-				s.IRSACredential.RoleARN, // inject role-arn here
-				stscreds.IdentityTokenFile(tokenFilePath), // Correctly use IdentityTokenFile here
-				func(o *stscreds.WebIdentityRoleOptions) {
-					o.RoleSessionName = "my-session" // Set RoleSessionName here if needed
-				},
-			))
-			value, err = credsCache.Retrieve(ctx)
-			if err != nil {
-				return aws.Credentials{}, err
-			}
-
-
-		assumeRoleProvider := stscreds.NewAssumeRoleProvider(client, s.IRSACredential.RoleARN)
-		logger.Info("Created AWS AssumeRoleProvider ")
-		value, err = assumeRoleProvider.Retrieve(ctx)
 		if err != nil {
 			logger.Info(fmt.Sprintf("Failed to retrieve AWS Credential IRSA - %s", err.Error()))
 			return aws.Credentials{}, err
 		}
-		*/
+		value.Source = "radiusucp"
+		value.CanExpire = true
+		value.Expires = time.Now().UTC().Add(c.options.Duration)
+		logger.Info(fmt.Sprintf("Retrieved AWS Credential IRSA - value is : %s, token is %s", value.AccessKeyID, value.SessionToken))
 
 	default:
 		return aws.Credentials{}, errors.New("invalid credential kind")

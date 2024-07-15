@@ -37,6 +37,7 @@ import (
 	awsproxy_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
 	aws_credential_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/credentials/aws"
 	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
+	"github.com/radius-project/radius/pkg/ucp/hostoptions"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/validator"
 )
@@ -298,25 +299,24 @@ func (m *Module) newAWSConfig(ctx context.Context) (aws.Config, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	credProviders := []func(*config.LoadOptions) error{}
 
-	//switch m.options.Config.Identity.AuthMethod {
-	//case hostoptions.AuthUCPCredential:
-	provider, err := sdk_cred.NewAWSCredentialProvider(m.options.SecretProvider, m.options.UCPConnection, &aztoken.AnonymousCredential{})
-	if err != nil {
-		return aws.Config{}, err
-	}
-	p := ucp_aws.NewUCPCredentialProvider(provider, ucp_aws.DefaultExpireDuration)
-	credProviders = append(credProviders, config.WithCredentialsProvider(p))
-	logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API")
+	switch m.options.Config.Identity.AuthMethod {
+	case hostoptions.AuthUCPCredential:
+		provider, err := sdk_cred.NewAWSCredentialProvider(m.options.SecretProvider, m.options.UCPConnection, &aztoken.AnonymousCredential{})
+		if err != nil {
+			return aws.Config{}, err
+		}
+		p := ucp_aws.NewUCPCredentialProvider(provider, ucp_aws.DefaultExpireDuration)
+		credProviders = append(credProviders, config.WithCredentialsProvider(p))
+		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API")
 
-	//default:
-	//	logger.Info("Configuring default authentication mode with environment variable.")
-	//}
+	default:
+		logger.Info("Configuring default authentication mode with environment variable.")
+	}
 
 	awscfg, err := config.LoadDefaultConfig(ctx, credProviders...)
 	if err != nil {
 		return aws.Config{}, err
 	}
-	//awscfg.Region = "us-west-2"
 
 	return awscfg, nil
 
