@@ -58,12 +58,18 @@ env:
   DAPR_DASHBOARD_VER: "0.14.0"
   # Kubectl version
   KUBECTL_VER: "v1.25.0"
+
   # Container registry for storing container images
-  CONTAINER_REGISTRY: ghcr.io/${{ github.repository_owner }}/dev
+  CONTAINER_REGISTRY: "radius-registry:5000"
   # Container registry for storing Bicep recipe artifacts
-  BICEP_RECIPE_REGISTRY: ghcr.io/${{ github.repository_owner }}/dev
+  BICEP_RECIPE_REGISTRY: "radius-registry:5000"
+  # Local Docker registry name
+  LOCAL_REGISTRY_NAME: "radius-registry"
+  # Local Docker registry port
+  LOCAL_REGISTRY_PORT: "5000"
+
   # The radius functional test timeout
-  FUNCTIONALTEST_TIMEOUT: 30m
+  FUNCTIONALTEST_TIMEOUT: 15m
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The Radius helm chart location.
@@ -74,6 +80,7 @@ env:
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
   # Private Git repository where terraform module for testing is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
+
   # The number of failed tests to report.
   ISSUE_CREATE_THRESHOLD: 2
 
@@ -133,7 +140,7 @@ jobs:
     name: Run ${{ matrix.name }} functional tests
     needs: build
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
         name:
@@ -201,12 +208,31 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create local Docker registry
+        run: |
+          # This is going to start an insecure registry on localhost:5000 on the host machine.
+          if [ "$(docker inspect -f '{{.State.Running}}' "${{ env.LOCAL_REGISTRY_NAME }}" 2>/dev/null || true)" != 'true' ]; then
+            docker run \
+              -d --restart=always -p "127.0.0.1:${{ env.LOCAL_REGISTRY_PORT }}:5000" --network bridge --name "${{ env.LOCAL_REGISTRY_NAME }}" \
+              registry:2
+          fi
+
+      - name: Add insecure registry to Docker daemon
+        run: |
+          # Check if /etc/docker/daemon.json exists
+          if [ ! -f /etc/docker/daemon.json ]; then
+            echo "daemon.json doesn't exist. Creating one..."
+            echo '{}' | sudo tee /etc/docker/daemon.json
+          fi
+
+          # Add insecure registries to /etc/docker/daemon.json
+          echo '{"insecure-registries": ["radius-registry:5000"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl daemon-reload
+          sudo systemctl restart docker
+
+      - name: Add radius-registry to /etc/hosts
+        run: |
+          sudo sh -c 'echo "127.0.0.1 radius-registry" >> /etc/hosts'
 
       - name: Build and Push container images
         run: |
@@ -234,10 +260,71 @@ jobs:
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
           chmod +x ./kind
 
+          # Create kind cluster with containerd registry config dir enabled
           cat <<EOF | ./kind create cluster --config=-
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
+          containerdConfigPatches:
+          - |-
+            [plugins."io.containerd.grpc.v1.cri".registry]
+              [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+                [plugins."io.containerd.grpc.v1.cri".registry.mirrors."radius-registry:5000"]
+                  endpoint = ["http://radius-registry:5000"]
+                [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
+                  endpoint = ["http://radius-registry:5000"]
+              config_path = "/etc/containerd/certs.d"
           EOF
+
+          # Add the registry config to the nodes.
+          #
+          # This is necessary because localhost resolves to loopback addresses that are
+          # network-namespace local.
+          # In other words: localhost in the container is not localhost on the host.
+          #
+          # We want a consistent name that works from both ends, so we tell containerd to
+          # alias localhost:${reg_port} to the registry container when pulling images
+          LOCALHOST_REGISTRY_DIR="/etc/containerd/certs.d/localhost:${{ env.LOCAL_REGISTRY_PORT }}"
+          RADIUS_REGISTRY_DIR="/etc/containerd/certs.d/radius-registry:5000"
+          for node in $(kind get nodes); do
+            # LOCALHOST_REGISTRY_DIR
+            docker exec "${node}" mkdir -p "${LOCALHOST_REGISTRY_DIR}"
+            cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${LOCALHOST_REGISTRY_DIR}/hosts.toml"
+          [host."http://${{ env.LOCAL_REGISTRY_NAME }}:5000"]
+            capabilities = ["pull", "resolve", "push"]
+            skip_verify = true
+          EOF
+
+              # RADIUS_REGISTRY_DIR
+              docker exec "${node}" mkdir -p "${RADIUS_REGISTRY_DIR}"
+              cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${RADIUS_REGISTRY_DIR}/hosts.toml"
+          [host."http://radius-registry:5000"]
+            capabilities = ["pull", "resolve", "push"]
+            skip_verify = true
+          EOF
+
+            docker exec "${node}" systemctl restart containerd
+          done
+
+          # This allows kind to bootstrap the network but ensures they're on the same network
+          if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${{ env.LOCAL_REGISTRY_NAME }}")" = 'null' ]; then
+            docker network connect "kind" "${{ env.LOCAL_REGISTRY_NAME }}"
+          fi
+
+          # Document the local registry
+          # https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: local-registry-hosting
+            namespace: kube-public
+          data:
+            localRegistryHosting.v1: |
+              host: "localhost:${{ env.LOCAL_REGISTRY_PORT }}"
+              help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
+          EOF
+
+          # Reference: https://kind.sigs.k8s.io/docs/user/local-registry/
 
       - name: Install dapr into cluster
         run: |
@@ -266,7 +353,10 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
+            --set controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }} \
+            --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
+            --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -288,6 +378,7 @@ jobs:
           make publish-test-bicep-recipes
         env:
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
+          INSECURE_REGISTRY: true
 
       - name: Run functional tests
         run: |
