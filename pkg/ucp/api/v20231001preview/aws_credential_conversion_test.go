@@ -36,7 +36,7 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 		err      error
 	}{
 		{
-			filename: "credentialresource-aws.json",
+			filename: "credentialresource-aws-accesskey.json",
 			expected: &datamodel.AWSCredential{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
@@ -55,8 +55,43 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 				Properties: &datamodel.AWSCredentialResourceProperties{
 					Kind: "AccessKey",
 					AWSCredential: &datamodel.AWSCredentialProperties{
-						AccessKeyID:     "00000000-0000-0000-0000-000000000000",
-						SecretAccessKey: "00000000-0000-0000-0000-000000000000",
+						Kind: datamodel.AWSAccessKeyCredentialKind,
+						AccessKeyCredential: &datamodel.AWSAccessKeyCredentialProperties{
+							AccessKeyID:     "00000000-0000-0000-0000-000000000000",
+							SecretAccessKey: "00000000-0000-0000-0000-000000000000",
+						},
+					},
+					Storage: &datamodel.CredentialStorageProperties{
+						Kind:               datamodel.InternalStorageKind,
+						InternalCredential: &datamodel.InternalCredentialStorageProperties{},
+					},
+				},
+			},
+		},
+		{
+			filename: "credentialresource-aws-irsa.json",
+			expected: &datamodel.AWSCredential{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/planes/aws/aws/providers/System.AWS/credentials/default",
+						Name:     "default",
+						Type:     "System.AWS/credentials",
+						Location: "west-us-2",
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						UpdatedAPIVersion: Version,
+					},
+				},
+				Properties: &datamodel.AWSCredentialResourceProperties{
+					Kind: "IRSA",
+					AWSCredential: &datamodel.AWSCredentialProperties{
+						Kind: datamodel.AWSIRSACredentialKind,
+						IRSACredential: &datamodel.AWSIRSACredentialProperties{
+							RoleARN: "arn:aws:iam::000000000000:role/role-name",
+						},
 					},
 					Storage: &datamodel.CredentialStorageProperties{
 						Kind:               datamodel.InternalStorageKind,
@@ -113,7 +148,7 @@ func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 		err      error
 	}{
 		{
-			filename: "credentialresourcedatamodel-aws.json",
+			filename: "credentialresourcedatamodel-aws-accesskey.json",
 			expected: &AwsCredentialResource{
 				ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
 				Name:     to.Ptr("default"),
@@ -125,6 +160,26 @@ func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 				Properties: &AwsAccessKeyCredentialProperties{
 					Kind:        to.Ptr(AWSCredentialKindAccessKey),
 					AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+					Storage: &InternalCredentialStorageProperties{
+						Kind:       to.Ptr(CredentialStorageKindInternal),
+						SecretName: to.Ptr("aws-awscloud-default"),
+					},
+				},
+			},
+		},
+		{
+			filename: "credentialresourcedatamodel-aws-irsa.json",
+			expected: &AwsCredentialResource{
+				ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
+				Name:     to.Ptr("default"),
+				Type:     to.Ptr("System.AWS/credentials"),
+				Location: to.Ptr("west-us-2"),
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				Properties: &AwsIRSACredentialProperties{
+					Kind:    to.Ptr(AWSCredentialKindIRSA),
+					RoleARN: to.Ptr("arn:aws:iam::000000000000:role/role-name"),
 					Storage: &InternalCredentialStorageProperties{
 						Kind:       to.Ptr(CredentialStorageKindInternal),
 						SecretName: to.Ptr("aws-awscloud-default"),
