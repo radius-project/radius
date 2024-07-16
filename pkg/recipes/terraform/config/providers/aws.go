@@ -43,7 +43,6 @@ const (
 	awsRegionParam    = "region"
 	awsAccessKeyParam = "access_key"
 	awsSecretKeyParam = "secret_key"
-	awsRoleARN        = "role_arn"
 )
 
 var _ Provider = (*awsProvider)(nil)
@@ -128,10 +127,7 @@ func fetchAWSCredentials(ctx context.Context, awsCredentialsProvider credentials
 			return nil, nil
 		}
 	case ucp_datamodel.AWSIRSACredentialKind:
-		if credentials.IRSACredential == nil || credentials.IRSACredential.RoleARN == "" {
-			logger.Info("AWS IRSACredential is not registered, skipping credentials configuration.")
-			return nil, nil
-		}
+		return nil, errors.New("AWS IRSA Credential is not supported yet.")
 	}
 
 	return credentials, nil
@@ -143,18 +139,10 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 		config[awsRegionParam] = region
 	}
 
-	if credentials != nil {
-		if credentials.Kind == ucp_datamodel.AWSAccessKeyCredentialKind {
-			if credentials.AccessKeyCredential != nil &&
-				credentials.AccessKeyCredential.AccessKeyID != "" && credentials.AccessKeyCredential.SecretAccessKey != "" {
-				config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
-				config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
-			}
-		} else if credentials.Kind == ucp_datamodel.AWSIRSACredentialKind {
-			if credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
-				config[awsRoleARN] = credentials.IRSACredential.RoleARN
-			}
-		}
+	if credentials != nil && credentials.AccessKeyCredential != nil &&
+		credentials.AccessKeyCredential.AccessKeyID != "" && credentials.AccessKeyCredential.SecretAccessKey != "" {
+		config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
+		config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
 	}
 
 	return config
