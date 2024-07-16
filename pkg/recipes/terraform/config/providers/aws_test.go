@@ -24,7 +24,9 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
+
 	ucp_credentials "github.com/radius-project/radius/pkg/ucp/credentials"
+	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/secret"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -33,8 +35,11 @@ import (
 var (
 	testRegion         = "test-region"
 	testAWSCredentials = ucp_credentials.AWSCredential{
-		AccessKeyID:     "testAccessKey",
-		SecretAccessKey: "testSecretKey",
+		Kind: ucp_datamodel.AWSAccessKeyCredentialKind,
+		AccessKeyCredential: &ucp_datamodel.AWSAccessKeyCredentialProperties{
+			AccessKeyID:     "testAccessKey",
+			SecretAccessKey: "testSecretKey",
+		},
 	}
 )
 
@@ -45,8 +50,11 @@ type mockAWSCredentialsProvider struct {
 func newMockAWSCredentialsProvider() *mockAWSCredentialsProvider {
 	return &mockAWSCredentialsProvider{
 		testCredential: &ucp_credentials.AWSCredential{
-			AccessKeyID:     testAWSCredentials.AccessKeyID,
-			SecretAccessKey: testAWSCredentials.SecretAccessKey,
+			Kind: ucp_datamodel.AWSAccessKeyCredentialKind,
+			AccessKeyCredential: &ucp_datamodel.AWSAccessKeyCredentialProperties{
+				AccessKeyID:     testAWSCredentials.AccessKeyCredential.AccessKeyID,
+				SecretAccessKey: testAWSCredentials.AccessKeyCredential.SecretAccessKey,
+			},
 		},
 	}
 }
@@ -58,11 +66,11 @@ func (p *mockAWSCredentialsProvider) Fetch(ctx context.Context, planeName, name 
 		return nil, &secret.ErrNotFound{}
 	}
 
-	if p.testCredential.AccessKeyID == "" && p.testCredential.SecretAccessKey == "" {
+	if p.testCredential.AccessKeyCredential.AccessKeyID == "" && p.testCredential.AccessKeyCredential.SecretAccessKey == "" {
 		return p.testCredential, nil
 	}
 
-	if p.testCredential.AccessKeyID == "" {
+	if p.testCredential.AccessKeyCredential.AccessKeyID == "" {
 		return nil, errors.New("failed to fetch credential")
 	}
 
@@ -202,8 +210,11 @@ func TestAWSProvider_FetchCredentials(t *testing.T) {
 			desc: "empty values - no error",
 			credentialsProvider: &mockAWSCredentialsProvider{
 				&ucp_credentials.AWSCredential{
-					AccessKeyID:     "",
-					SecretAccessKey: "",
+					Kind: ucp_datamodel.AWSAccessKeyCredentialKind,
+					AccessKeyCredential: &ucp_datamodel.AWSAccessKeyCredentialProperties{
+						AccessKeyID:     testAWSCredentials.AccessKeyCredential.AccessKeyID,
+						SecretAccessKey: testAWSCredentials.AccessKeyCredential.SecretAccessKey,
+					},
 				},
 			},
 			expectedCreds: nil,
@@ -213,8 +224,11 @@ func TestAWSProvider_FetchCredentials(t *testing.T) {
 			desc: "fetch credential error",
 			credentialsProvider: &mockAWSCredentialsProvider{
 				&ucp_credentials.AWSCredential{
-					AccessKeyID:     "",
-					SecretAccessKey: testAWSCredentials.SecretAccessKey,
+					Kind: ucp_datamodel.AWSAccessKeyCredentialKind,
+					AccessKeyCredential: &ucp_datamodel.AWSAccessKeyCredentialProperties{
+						AccessKeyID:     "",
+						SecretAccessKey: testAWSCredentials.AccessKeyCredential.SecretAccessKey,
+					},
 				},
 			},
 			expectedCreds: nil,
@@ -251,16 +265,16 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 			credentials: testAWSCredentials,
 			expectedConfig: map[string]any{
 				awsRegionParam:    testRegion,
-				awsAccessKeyParam: testAWSCredentials.AccessKeyID,
-				awsSecretKeyParam: testAWSCredentials.SecretAccessKey,
+				awsAccessKeyParam: testAWSCredentials.AccessKeyCredential.AccessKeyID,
+				awsSecretKeyParam: testAWSCredentials.AccessKeyCredential.SecretAccessKey,
 			},
 		},
 		{
 			desc:        "missing region",
 			credentials: testAWSCredentials,
 			expectedConfig: map[string]any{
-				awsAccessKeyParam: testAWSCredentials.AccessKeyID,
-				awsSecretKeyParam: testAWSCredentials.SecretAccessKey,
+				awsAccessKeyParam: testAWSCredentials.AccessKeyCredential.AccessKeyID,
+				awsSecretKeyParam: testAWSCredentials.AccessKeyCredential.SecretAccessKey,
 			},
 		},
 		{
@@ -273,8 +287,11 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 		{
 			desc: "invalid credentials",
 			credentials: ucp_credentials.AWSCredential{
-				AccessKeyID:     "",
-				SecretAccessKey: testAWSCredentials.SecretAccessKey,
+				Kind: ucp_datamodel.AWSAccessKeyCredentialKind,
+				AccessKeyCredential: &ucp_datamodel.AWSAccessKeyCredentialProperties{
+					AccessKeyID:     "",
+					SecretAccessKey: testAWSCredentials.AccessKeyCredential.SecretAccessKey,
+				},
 			},
 			expectedConfig: map[string]any{},
 		},

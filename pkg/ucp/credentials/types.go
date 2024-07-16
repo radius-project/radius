@@ -45,6 +45,10 @@ type (
 	AzureWorkloadIdentityCredential = ucp_dm.AzureWorkloadIdentityCredentialProperties
 	// AWSCredential represents a credential for AWS IAM.
 	AWSCredential = ucp_dm.AWSCredentialProperties
+	// AWSAccessKeyCredential represents a credential for AWS access key.
+	AWSAccessKeyCredential = ucp_dm.AWSAccessKeyCredentialProperties
+	// AWSIRSACredential represents a RoleARN for AWS IRSA.
+	AWSIRSACredential = ucp_dm.AWSIRSACredentialProperties
 )
 
 // CredentialProvider is an UCP credential provider interface.
