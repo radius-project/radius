@@ -122,7 +122,7 @@ type AWSCredentialProperties struct {
 	Kind string `json:"kind,omitempty"`
 	// AccessKeyCredential represents the access key credential properties.
 	AccessKeyCredential *AWSAccessKeyCredentialProperties `json:"accesskey,omitempty"`
-	// IRSA represents the irsa credential properties.
+	// IRSACredential represents the irsa credential properties.
 	IRSACredential *AWSIRSACredentialProperties `json:"irsa,omitempty"`
 }
 
