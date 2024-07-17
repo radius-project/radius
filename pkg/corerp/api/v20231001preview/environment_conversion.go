@@ -62,12 +62,7 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		return nil, err
 	}
 	converted.Properties.Compute = *envCompute
-
-	recipeConfig, err := toRecipeConfigDatamodel(src.Properties.RecipeConfig)
-	if err != nil {
-		return nil, err
-	}
-	converted.Properties.RecipeConfig = recipeConfig
+	converted.Properties.RecipeConfig = toRecipeConfigDatamodel(src.Properties.RecipeConfig)
 
 	if src.Properties.Recipes != nil {
 		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
@@ -187,7 +182,7 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-func toRecipeConfigDatamodel(config *RecipeConfigProperties) (datamodel.RecipeConfigProperties, error) {
+func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeConfigProperties {
 	if config != nil {
 		recipeConfig := datamodel.RecipeConfigProperties{}
 		if config.Terraform != nil {
@@ -209,21 +204,16 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) (datamodel.RecipeCo
 				}
 			}
 
-			recipeTFProviders, err := toRecipeConfigTerraformProvidersDatamodel(config)
-			if err != nil {
-				return datamodel.RecipeConfigProperties{}, err
-			}
-
-			recipeConfig.Terraform.Providers = recipeTFProviders
+			recipeConfig.Terraform.Providers = toRecipeConfigTerraformProvidersDatamodel(config)
 		}
 
 		recipeConfig.Env = toRecipeConfigEnvDatamodel(config)
 		recipeConfig.EnvSecrets = toRecipeConfigEnvSecretsDatamodel(config)
 
-		return recipeConfig, nil
+		return recipeConfig
 	}
 
-	return datamodel.RecipeConfigProperties{}, nil
+	return datamodel.RecipeConfigProperties{}
 }
 
 func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeConfigProperties {
@@ -420,84 +410,44 @@ func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipePr
 	return nil
 }
 
-func toRecipeConfigTerraformProvidersDatamodel(config *RecipeConfigProperties) (map[string][]datamodel.ProviderConfigProperties, error) {
+func toRecipeConfigTerraformProvidersDatamodel(config *RecipeConfigProperties) map[string][]datamodel.ProviderConfigProperties {
 	if config.Terraform == nil || config.Terraform.Providers == nil {
-		return nil, nil
+		return nil
 	}
 
 	dm := map[string][]datamodel.ProviderConfigProperties{}
 	for k, v := range config.Terraform.Providers {
 		dm[k] = []datamodel.ProviderConfigProperties{}
 
-		for _, providerAdditionalProperties := range v {
-			var addnlProperties map[string]any
-			var convertedSecrets map[string]datamodel.SecretReference
-
-			convertedSecrets = getSecretsFromProviderProperties(providerAdditionalProperties.Secrets)
-			addnlProperties = providerAdditionalProperties.AdditionalProperties
-
-			// Account for possibility of nested additional properties during unmarshalling
-			// https://json-schema.org/understanding-json-schema/reference/object#additionalproperties
-			if tmpAddnlProperties, ok := addnlProperties["additionalProperties"]; ok && addnlProperties["additionalProperties"] != nil {
-				if tmpMap, ok := tmpAddnlProperties.(map[string]any); ok {
-					addnlProperties = tmpMap
-				} else {
-					return nil, v1.ErrInvalidModelConversion
-				}
-			}
-
-			// check if additional properties contain Secrets
-			// get AdditionalProperties from providerAdditionalProperties excluding the 'secrets' key.
-			for key, value := range addnlProperties {
-				if key == "secrets" {
-					if tmpSecret, ok := value.(map[string]*SecretReference); !ok {
-						return nil, v1.ErrInvalidModelConversion
-					} else {
-						propSecrets := getSecretsFromProviderProperties(tmpSecret)
-
-						// Add the secrets to the convertedSecrets map
-						for secretKey, secretValue := range propSecrets {
-							if convertedSecrets == nil {
-								convertedSecrets = map[string]datamodel.SecretReference{}
-							}
-							convertedSecrets[secretKey] = secretValue
-						}
-					}
-
-					// remove the 'secrets' key from the additional properties as we've added all
-					// secrets to convertedSecrets map
-					delete(addnlProperties, "secrets")
-				}
-			}
-
+		for _, providerConfigProperties := range v {
 			dm[k] = append(dm[k], datamodel.ProviderConfigProperties{
-				AdditionalProperties: addnlProperties,
-				Secrets:              convertedSecrets,
+				AdditionalProperties: providerConfigProperties.AdditionalProperties,
+				Secrets:              toSecretReferenceDatamodel(providerConfigProperties.Secrets),
 			})
 		}
 	}
 
-	return dm, nil
+	return dm
 }
 
-func getSecretsFromProviderProperties(providerProperties map[string]*SecretReference) map[string]datamodel.SecretReference {
-	var convertedSecrets map[string]datamodel.SecretReference
+func toSecretReferenceDatamodel(providerConfigSecrets map[string]*SecretReference) map[string]datamodel.SecretReference {
+	var providerSecrets map[string]datamodel.SecretReference
 
-	for secretKey, secretValue := range providerProperties {
+	for secretKey, secretValue := range providerConfigSecrets {
 		if secretValue != nil {
-			convertedSecret := datamodel.SecretReference{
+			providerSecret := datamodel.SecretReference{
 				Source: to.String(secretValue.Source),
 				Key:    to.String(secretValue.Key),
 			}
 
-			if convertedSecrets == nil {
-				convertedSecrets = map[string]datamodel.SecretReference{}
+			if providerSecrets == nil {
+				providerSecrets = map[string]datamodel.SecretReference{}
 			}
-			convertedSecrets[secretKey] = convertedSecret
+			providerSecrets[secretKey] = providerSecret
 		}
 	}
 
-	return convertedSecrets
+	return providerSecrets
 }
 
 func fromRecipeConfigTerraformProvidersDatamodel(config datamodel.RecipeConfigProperties) map[string][]*ProviderConfigProperties {
@@ -510,28 +460,23 @@ func fromRecipeConfigTerraformProvidersDatamodel(config datamodel.RecipeConfigPr
 		providers[k] = []*ProviderConfigProperties{}
 
 		for _, provider := range v {
-			var convertedSecrets map[string]*SecretReference
+			var providerSecrets map[string]*SecretReference
 
-			// Iterate over the input secrets map and convert each value to the output type
 			for secretKey, secretValue := range provider.Secrets {
-				tmpSecret := &SecretReference{
+				if providerSecrets == nil {
+					providerSecrets = map[string]*SecretReference{}
+				}
+
+				providerSecrets[secretKey] = &SecretReference{
 					Source: to.Ptr(secretValue.Source),
 					Key:    to.Ptr(secretValue.Key),
 				}
-
-				if convertedSecrets == nil {
-					convertedSecrets = map[string]*SecretReference{}
-				}
-
-				convertedSecrets[secretKey] = tmpSecret
 			}
 
-			tmpProviderConfig := ProviderConfigProperties{
+			providers[k] = append(providers[k], &ProviderConfigProperties{
 				AdditionalProperties: provider.AdditionalProperties,
-				Secrets:              convertedSecrets,
-			}
-
-			providers[k] = append(providers[k], &tmpProviderConfig)
+				Secrets:              providerSecrets,
+			})
 		}
 	}
 
@@ -582,16 +527,14 @@ func fromRecipeConfigEnvSecretsDatamodel(config datamodel.RecipeConfigProperties
 	var envSecrets map[string]*SecretReference
 
 	for k, v := range config.EnvSecrets {
-		convertedEnvSecret := &SecretReference{
-			Source: to.Ptr(v.Source),
-			Key:    to.Ptr(v.Key),
-		}
-
 		if envSecrets == nil {
 			envSecrets = map[string]*SecretReference{}
 		}
 
-		envSecrets[k] = convertedEnvSecret
+		envSecrets[k] = &SecretReference{
+			Source: to.Ptr(v.Source),
+			Key:    to.Ptr(v.Key),
+		}
 	}
 
 	return envSecrets

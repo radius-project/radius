@@ -4185,7 +4185,7 @@
       "properties": {
         "secrets": {
           "type": "object",
-          "description": "Sensitive data for the referenced resource stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.",
+          "description": "Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.",
           "additionalProperties": {
             "$ref": "#/definitions/SecretReference"
           }

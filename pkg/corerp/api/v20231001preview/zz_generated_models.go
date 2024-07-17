@@ -1254,7 +1254,7 @@ type ProviderConfigProperties struct {
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]any
 
-	// Sensitive data for the referenced resource stored as secrets. The secrets are stored in Applications.Core/SecretStores
+	// Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores
 // resource.
 	Secrets map[string]*SecretReference
 }

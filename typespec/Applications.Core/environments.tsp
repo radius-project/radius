@@ -118,7 +118,7 @@ model SecretConfig {
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
 @doc("This configuration holds the necessary information to authenticate and interact with a provider for the recipe execution.")
 model ProviderConfigProperties extends Record<unknown> {
-  @doc("Sensitive data for the referenced resource stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
+  @doc("Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
   secrets?: Record<SecretReference>;
 }
 

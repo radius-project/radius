@@ -776,71 +776,11 @@ func Test_toRecipeConfigTerraformProvidersDatamodel(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "Error Provider Configuration",
-			config: &RecipeConfigProperties{
-				Terraform: &TerraformConfigProperties{
-					Providers: map[string][]*ProviderConfigProperties{
-						"azurerm": {
-							&ProviderConfigProperties{
-								AdditionalProperties: map[string]any{
-									"subscription_id": "00000000-0000-0000-0000-000000000000",
-									"secrets":         "invalid",
-								},
-							},
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		{
-			name: "Provider Configuration Variation With Secret",
-			config: &RecipeConfigProperties{
-				Terraform: &TerraformConfigProperties{
-					Providers: map[string][]*ProviderConfigProperties{
-						"azurerm": {
-							&ProviderConfigProperties{
-								AdditionalProperties: map[string]any{
-									"subscription_id": "00000000-0000-0000-0000-000000000000",
-									"secrets": map[string]*SecretReference{
-										"secret1": {
-											Source: to.Ptr("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/secretstore1"),
-											Key:    to.Ptr("key1"),
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			want: map[string][]datamodel.ProviderConfigProperties{
-				"azurerm": {
-					{
-						AdditionalProperties: map[string]any{
-							"subscription_id": "00000000-0000-0000-0000-000000000000",
-						},
-						Secrets: map[string]datamodel.SecretReference{
-							"secret1": {
-								Source: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/secretstore1",
-								Key:    "key1",
-							},
-						},
-					},
-				},
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := toRecipeConfigTerraformProvidersDatamodel(tt.config)
-			if tt.expectError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.want, result)
-			}
+			result := toRecipeConfigTerraformProvidersDatamodel(tt.config)
+			require.Equal(t, tt.want, result)
 		})
 	}
 }
@@ -1048,15 +988,15 @@ func Test_fromRecipeConfigEnvDatamodel(t *testing.T) {
 	}
 }
 
-func Test_getSecretsFromProviderProperties(t *testing.T) {
+func Test_toSecretReferenceDatamodel(t *testing.T) {
 	tests := []struct {
-		name               string
-		providerProperties map[string]*SecretReference
-		expectedResult     map[string]datamodel.SecretReference
+		name                  string
+		providerConfigSecrets map[string]*SecretReference
+		expectedResult        map[string]datamodel.SecretReference
 	}{
 		{
 			name: "multiple provider secrets",
-			providerProperties: map[string]*SecretReference{
+			providerConfigSecrets: map[string]*SecretReference{
 				"secret1": {
 					Source: to.Ptr("source1"),
 					Key:    to.Ptr("key1"),
@@ -1078,20 +1018,20 @@ func Test_getSecretsFromProviderProperties(t *testing.T) {
 			},
 		},
 		{
-			name:               "nil provider secrets",
-			providerProperties: nil,
-			expectedResult:     nil,
+			name:                  "nil provider secrets",
+			providerConfigSecrets: nil,
+			expectedResult:        nil,
 		},
 		{
 			name: "nil secret in provider properties",
-			providerProperties: map[string]*SecretReference{
+			providerConfigSecrets: map[string]*SecretReference{
 				"secret1": nil,
 			},
 			expectedResult: nil,
 		},
 		{
 			name: "nil + valid secret in provider properties",
-			providerProperties: map[string]*SecretReference{
+			providerConfigSecrets: map[string]*SecretReference{
 				"secret1": nil,
 				"secret2": {
 					Source: to.Ptr("source2"),
@@ -1109,7 +1049,7 @@ func Test_getSecretsFromProviderProperties(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getSecretsFromProviderProperties(tt.providerProperties)
+			result := toSecretReferenceDatamodel(tt.providerConfigSecrets)
 			require.Equal(t, tt.expectedResult, result)
 		})
 	}
