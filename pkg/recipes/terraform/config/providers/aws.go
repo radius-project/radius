@@ -107,8 +107,12 @@ func (p *awsProvider) parseScope(ctx context.Context, envConfig *recipes.Configu
 	}
 
 	region := parsedScope.FindScope(resources_aws.ScopeRegions)
+	logger.Info("HELLLLOOOOOO")
 	if region == "" {
+		logger.Info("I AM HERE")
 		return "", fmt.Errorf("invalid AWS provider scope %q is configured on the Environment, region is required in the scope", scope)
+	} else {
+		logger.Info("AWS provider/scope has this region" + region + "from the scope" + scope)
 	}
 
 	return region, nil
