@@ -22,9 +22,6 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-        {{- if eq .Values.global.awsIRSA.enabled true }}
-        aws.irsa/use: "true"
-        {{- end }}
       {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "/metrics"

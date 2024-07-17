@@ -22,9 +22,6 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-        {{- if eq .Values.global.awsIRSA.enabled true }}
-        aws.irsa/use: "true"
-        {{- end }}
       {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
@@ -66,6 +63,10 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
+        {{- if eq .Values.global.awsIRSA.enabled true }}
+        - name: aws-iam-token
+          mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
+        {{- end }}
         - name: cert
           mountPath: '/var/tls/cert'
           readOnly: true
@@ -80,6 +81,15 @@ spec:
             # Provide the name of the ConfigMap containing the files you want
             # to add to the container
             name: ucp-config
+        {{- if eq .Values.global.awsIRSA.enabled true }}
+        - name: aws-iam-token
+          projected:
+            sources:
+            - serviceAccountToken:
+                path: token
+                expirationSeconds: 86400
+                audience: "sts.amazonaws.com"
+        {{- end }}
         - name: cert
           secret:
             secretName: ucp-cert
