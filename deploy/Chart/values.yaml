@@ -26,6 +26,11 @@ global:
   azureWorkloadIdentity:
     enabled: false
 
+  # Configure global.awsIRSA.enabled=true to enable AWS IRSA.
+  # Disabled by default.
+  awsIRSA:
+    enabled: false
+
 controller:
   image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.
