@@ -27,6 +27,12 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
             username: userName
             password: password
             sslmode: 'disable'
+           /*secrets: {
+              host: {
+                source: pgshostsecret.id
+                key: 'host'
+              }
+            }*/
           }]
         }
       }
@@ -73,4 +79,17 @@ resource pgsapp 'Applications.Core/extenders@2023-10-01-preview' = {
     }
   }
 }
-	
+
+/*
+resource pgshostsecret 'Applications.Core/secretStores@2023-10-01-preview' = {
+  name: 'pgs-hostsecret'
+  properties: {
+    resource: 'corerp-resources-terraform-pg-app/pgs-hostsecret'
+    type: 'generic'
+    data: {
+      host: {
+        value: 'postgres.corerp-resources-terraform-pg-app.svc.cluster.local'
+      }
+    }
+  }
+}*/
