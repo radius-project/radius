@@ -69,6 +69,10 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
+        {{- if eq .Values.global.awsIRSA.enabled true }}
+        - name: aws-iam-token
+          mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
+        {{- end }}
         - name: terraform
           mountPath: {{ .Values.rp.terraform.path }}
         {{- if .Values.global.rootCA.cert }}
@@ -83,6 +87,15 @@ spec:
         - name: config-volume
           configMap:
             name: applications-rp-config
+        {{- if eq .Values.global.awsIRSA.enabled true }}
+        - name: aws-iam-token
+          projected:
+            sources:
+            - serviceAccountToken:
+                path: token
+                expirationSeconds: 86400
+                audience: "sts.amazonaws.com"
+        {{- end }}
         - name: terraform
           emptyDir: {}
         {{- if .Values.global.rootCA.cert }}
