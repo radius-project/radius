@@ -213,6 +213,7 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) (datamodel.RecipeCo
 			if err != nil {
 				return datamodel.RecipeConfigProperties{}, err
 			}
+
 			recipeConfig.Terraform.Providers = recipeTFProviders
 		}
 
@@ -449,8 +450,7 @@ func toRecipeConfigTerraformProvidersDatamodel(config *RecipeConfigProperties) (
 			// get AdditionalProperties from providerAdditionalProperties excluding the 'secrets' key.
 			for key, value := range addnlProperties {
 				if key == "secrets" {
-					tmpSecret, ok := value.(map[string]*SecretReference)
-					if !ok {
+					if tmpSecret, ok := value.(map[string]*SecretReference); !ok {
 						return nil, v1.ErrInvalidModelConversion
 					} else {
 						propSecrets := getSecretsFromProviderProperties(tmpSecret)
@@ -463,6 +463,7 @@ func toRecipeConfigTerraformProvidersDatamodel(config *RecipeConfigProperties) (
 							convertedSecrets[secretKey] = secretValue
 						}
 					}
+
 					// remove the 'secrets' key from the additional properties as we've added all
 					// secrets to convertedSecrets map
 					delete(addnlProperties, "secrets")
@@ -488,6 +489,7 @@ func getSecretsFromProviderProperties(providerProperties map[string]*SecretRefer
 				Source: to.String(secretValue.Source),
 				Key:    to.String(secretValue.Key),
 			}
+
 			if convertedSecrets == nil {
 				convertedSecrets = map[string]datamodel.SecretReference{}
 			}
