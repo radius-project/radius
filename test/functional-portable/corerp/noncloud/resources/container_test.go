@@ -354,3 +354,29 @@ func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_Container_Secrets(t *testing.T) {
+	template := "testdata/corerp-resources-container-secrets.bicep"
+	name := "corerp-resources-container-secrets"
+	appNamespace := "corerp-resources-container-secrets"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor:                               step.NewDeployExecutor(template, testutil.GetMagpieImage()),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "cntr-cntr-secrets"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
