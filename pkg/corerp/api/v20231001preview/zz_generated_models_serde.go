@@ -2856,6 +2856,48 @@ func (p *PersistentVolume) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type ProviderConfigProperties.
+func (p ProviderConfigProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "secrets", p.Secrets)
+	if p.AdditionalProperties != nil {
+		for key, val := range p.AdditionalProperties {
+			objectMap[key] = val
+		}
+	}
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ProviderConfigProperties.
+func (p *ProviderConfigProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", p, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "secrets":
+				err = unpopulate(val, "Secrets", &p.Secrets)
+			delete(rawMsg, key)
+		default:
+			if p.AdditionalProperties == nil {
+				p.AdditionalProperties = map[string]any{}
+			}
+			if val != nil {
+				var aux any
+				err = json.Unmarshal(val, &aux)
+				p.AdditionalProperties[key] = aux
+			}
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", p, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type Providers.
 func (p Providers) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -3061,6 +3103,7 @@ func (r *Recipe) UnmarshalJSON(data []byte) error {
 func (r RecipeConfigProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "env", r.Env)
+	populate(objectMap, "envSecrets", r.EnvSecrets)
 	populate(objectMap, "terraform", r.Terraform)
 	return json.Marshal(objectMap)
 }
@@ -3076,6 +3119,9 @@ func (r *RecipeConfigProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "env":
 				err = unpopulate(val, "Env", &r.Env)
+			delete(rawMsg, key)
+		case "envSecrets":
+				err = unpopulate(val, "EnvSecrets", &r.EnvSecrets)
 			delete(rawMsg, key)
 		case "terraform":
 				err = unpopulate(val, "Terraform", &r.Terraform)
@@ -3483,6 +3529,37 @@ func (s *SecretObjectProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "version":
 				err = unpopulate(val, "Version", &s.Version)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", s, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type SecretReference.
+func (s SecretReference) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "key", s.Key)
+	populate(objectMap, "source", s.Source)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type SecretReference.
+func (s *SecretReference) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", s, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "key":
+				err = unpopulate(val, "Key", &s.Key)
+			delete(rawMsg, key)
+		case "source":
+				err = unpopulate(val, "Source", &s.Source)
 			delete(rawMsg, key)
 		}
 		if err != nil {

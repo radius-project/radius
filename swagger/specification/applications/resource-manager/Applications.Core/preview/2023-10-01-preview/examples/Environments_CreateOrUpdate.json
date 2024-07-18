@@ -31,7 +31,17 @@
             "providers": {
               "azurerm": [
                 {
-                  "subscriptionId": "00000000-0000-0000-0000-000000000000"
+                  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+                  "secrets": {
+                    "secret1": {
+                      "source": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/secretstore1",
+                      "key": "key1"
+                    },
+                    "secret2": {
+                      "source": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/secretstore2",
+                      "key": "key2"
+                    }
+                  }
                 },
                 {
                   "tenantId": "00000000-0000-0000-0000-000000000000",
@@ -42,6 +52,12 @@
           },
           "env": {
             "myEnvVar": "myEnvValue"
+          },
+          "envSecrets": {
+            "myEnvSecretVar": {
+              "source": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/envSecretStore1",
+              "key": "envKey1"
+            }
           }
         },
         "recipes": {
