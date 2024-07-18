@@ -64,13 +64,5 @@ for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep"); do
 
     echo "Publishing $RECIPE to $PUBLISH_REF"
     echo "- $PUBLISH_REF" >>$GITHUB_STEP_SUMMARY
-
-    # Check if INSECURE_REGISTRY is set. If it is, we'll use the --plain-http flag when
-    # publishing the recipe.
-    if [[ -n "$INSECURE_REGISTRY" ]]; then
-        echo "INSECURE_REGISTRY is set. Using --plain-http flag."
-        rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF" --plain-http
-    else
-        rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF"
-    fi
+    rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF"
 done

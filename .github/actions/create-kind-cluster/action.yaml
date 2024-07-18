@@ -1,0 +1,110 @@
+name: "Create a KinD cluster"
+description: |
+  Create a KinD cluster.
+inputs:
+  kind-version:
+    description: "The version of KinD to install"
+    required: false
+    default: "v0.23.0"
+  with-local-registry:
+    description: "Whether the KinD cluster should be created with a local registry configuration"
+    required: false
+    default: "false"
+  registry-name:
+    description: "The name of the local registry"
+    required: false
+    default: "radius-registry"
+  registry-server:
+    description: "The server name for the local registry"
+    required: false
+    default: "localhost"
+  registry-port:
+    description: "The port for the local registry"
+    required: false
+    default: "5000"
+runs:
+  using: "composite"
+  steps:
+    - name: Install KinD
+      shell: bash
+      run: |
+        curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ inputs.kind-version }}/kind-linux-amd64"
+        chmod +x ./kind
+
+    - name: Create a KinD cluster without a local registry
+      if: ${{ inputs.with-local-registry == 'false' }}
+      shell: bash
+      run: |
+        cat <<EOF | kind create cluster --config=-
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        EOF
+
+    - name: Create a KinD cluster with a local registry
+      if: ${{ inputs.with-local-registry == 'true' }}
+      shell: bash
+      run: |
+        cat <<EOF | kind create cluster --config=-
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          extraMounts:
+            - containerPath: "/etc/containerd/certs.d/${{ inputs.registry-name }}"
+              hostPath: "$TEMP_CERT_DIR/certs/${{ inputs.registry-server }}"
+        containerdConfigPatches:
+        - |-
+          [plugins."io.containerd.grpc.v1.cri".registry]
+            config_path = "/etc/containerd/certs.d"
+        EOF
+
+    - name: Add the registry config to the nodes
+      if: ${{ inputs.with-local-registry == 'true' }}
+      shell: bash
+      run: |
+        LOCALHOST_DIR="/etc/containerd/certs.d/${{ inputs.registry-server }}:${{ inputs.registry-port }}"
+        RADIUS_DIR="/etc/containerd/certs.d/${{ inputs.registry-name }}:${{ inputs.registry-port }}"
+
+        for node in $(kind get nodes); do
+          # LOCALHOST_DIR
+          docker exec "${node}" mkdir -p "${LOCALHOST_DIR}"
+          cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${LOCALHOST_DIR}/hosts.toml"
+        [host."http://${{ inputs.registry-name }}:${{ inputs.registry-port }}"]
+          capabilities = ["pull", "resolve", "push"]
+          skip_verify = true
+        EOF
+
+          # RADIUS_DIR
+          docker exec "${node}" mkdir -p "${RADIUS_DIR}"
+          cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${RADIUS_DIR}/hosts.toml"
+        [host."http://${{ inputs.registry-name }}:${{ inputs.registry-port }}"]
+          capabilities = ["pull", "resolve", "push"]
+          skip_verify = true
+        EOF
+
+          docker exec "${node}" systemctl restart containerd
+        done
+
+    - name: Connect the registry to the KinD network
+      if: ${{ inputs.with-local-registry == 'true' }}
+      shell: bash
+      run: |
+        if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${{ inputs.registry-name }}")" = 'null' ]; then
+          docker network connect "kind" "${{ inputs.registry-name }}"
+        fi
+
+    - name: Document the local registry
+      if: ${{ inputs.with-local-registry == 'true' }}
+      shell: bash
+      run: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: local-registry-hosting
+          namespace: kube-public
+        data:
+          localRegistryHosting.v1: |
+            host: "${{ inputs.registry-name }}:${{ inputs.registry-port }}"
+            help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
+        EOF
