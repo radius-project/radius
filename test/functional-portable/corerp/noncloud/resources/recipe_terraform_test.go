@@ -144,6 +144,8 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 	appName := "corerp-resources-terraform-pg-app"
 	envName := "corerp-resources-terraform-pg-env"
 	extenderName := "pgs-resources-terraform-pgsapp"
+	secretName := "pgs-hostsecret"
+	secretResourceName := appName + "/" + secretName
 	userName := "postgres"
 	password := "abc-123-hgd-@#$'"
 
@@ -172,6 +174,10 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-pg-app/providers/core/Service/postgres"},
 						},
 					},
+					{
+						Name: secretName,
+						Type: validation.SecretStoresResource,
+					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
@@ -181,6 +187,7 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 							ValidateLabels(false),
 						validation.NewK8sPodForResource(appName, "postgres").
 							ValidateLabels(false),
+						validation.NewK8sSecretForResourceWithResourceName(secretResourceName),
 					},
 					secretNamespace: {
 						validation.NewK8sSecretForResourceWithResourceName(secretPrefix + secretSuffix).

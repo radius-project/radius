@@ -4182,7 +4182,22 @@
     "ProviderConfigProperties": {
       "type": "object",
       "description": "This configuration holds the necessary information to authenticate and interact with a provider for the recipe execution.",
-      "additionalProperties": true
+      "properties": {
+        "secrets": {
+          "type": "object",
+          "description": "Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.",
+          "additionalProperties": {
+            "$ref": "#/definitions/SecretReference"
+          }
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
     },
     "Providers": {
       "type": "object",
@@ -4342,6 +4357,13 @@
         "env": {
           "$ref": "#/definitions/EnvironmentVariables",
           "description": "Environment variables injected during Terraform Recipe execution for the recipes in the environment."
+        },
+        "envSecrets": {
+          "type": "object",
+          "description": "Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.",
+          "additionalProperties": {
+            "$ref": "#/definitions/SecretReference"
+          }
         }
       }
     },
@@ -4613,6 +4635,24 @@
       },
       "required": [
         "name"
+      ]
+    },
+    "SecretReference": {
+      "type": "object",
+      "description": "This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data.",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution."
+        },
+        "key": {
+          "type": "string",
+          "description": "The key for the secret in the secret store."
+        }
+      },
+      "required": [
+        "source",
+        "key"
       ]
     },
     "SecretStoreDataType": {
