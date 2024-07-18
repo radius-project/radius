@@ -20,24 +20,24 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       namespace: 'corerp-resources-terraform-pg-env'
     }
     recipeConfig: {
-      terraform:{
-        providers:{
-          postgresql:[{
-            alias: 'pgdb-test'
-            username: userName
-            password: password
-            sslmode: 'disable'
-            secrets: {
-              host: {
-                source: pgshostsecret.id
-                key: 'host'
+      terraform: {
+        providers: {
+          postgresql: [ {
+              alias: 'pgdb-test'
+              username: userName
+              password: password
+              sslmode: 'disable'
+              secrets: {
+                host: {
+                  source: pgshostsecret.id
+                  key: 'host'
+                }
               }
-            }
-          }]
+            } ]
         }
       }
       env: {
-          PGPORT: '5432'
+        PGPORT: '5432'
       }
     }
     recipes: {
@@ -73,7 +73,7 @@ resource pgsapp 'Applications.Core/extenders@2023-10-01-preview' = {
     recipe: {
       name: 'defaultpostgres'
       parameters: {
-         password: password
+        password: password
       }
     }
   }
