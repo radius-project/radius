@@ -990,13 +990,13 @@ func Test_fromRecipeConfigEnvDatamodel(t *testing.T) {
 
 func Test_toSecretReferenceDatamodel(t *testing.T) {
 	tests := []struct {
-		name                  string
-		providerConfigSecrets map[string]*SecretReference
-		expectedResult        map[string]datamodel.SecretReference
+		name           string
+		configSecrets  map[string]*SecretReference
+		expectedResult map[string]datamodel.SecretReference
 	}{
 		{
-			name: "multiple provider secrets",
-			providerConfigSecrets: map[string]*SecretReference{
+			name: "Multiple Provider Secrets",
+			configSecrets: map[string]*SecretReference{
 				"secret1": {
 					Source: to.Ptr("source1"),
 					Key:    to.Ptr("key1"),
@@ -1018,20 +1018,20 @@ func Test_toSecretReferenceDatamodel(t *testing.T) {
 			},
 		},
 		{
-			name:                  "nil provider secrets",
-			providerConfigSecrets: nil,
-			expectedResult:        nil,
+			name:           "Nil Provider Secrets",
+			configSecrets:  nil,
+			expectedResult: nil,
 		},
 		{
-			name: "nil secret in provider properties",
-			providerConfigSecrets: map[string]*SecretReference{
+			name: "Nil Secret in Provider Properties",
+			configSecrets: map[string]*SecretReference{
 				"secret1": nil,
 			},
 			expectedResult: nil,
 		},
 		{
-			name: "nil + valid secret in provider properties",
-			providerConfigSecrets: map[string]*SecretReference{
+			name: "Nil + Valid Secret in Provider Properties",
+			configSecrets: map[string]*SecretReference{
 				"secret1": nil,
 				"secret2": {
 					Source: to.Ptr("source2"),
@@ -1049,98 +1049,54 @@ func Test_toSecretReferenceDatamodel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := toSecretReferenceDatamodel(tt.providerConfigSecrets)
+			result := toSecretReferenceDatamodel(tt.configSecrets)
 			require.Equal(t, tt.expectedResult, result)
 		})
 	}
 }
 
-func Test_toRecipeConfigEnvSecretsDatamodel(t *testing.T) {
+func Test_fromSecretReferenceDatamodel(t *testing.T) {
 	tests := []struct {
-		name   string
-		config *RecipeConfigProperties
-		want   map[string]datamodel.SecretReference
+		name     string
+		secrets  map[string]datamodel.SecretReference
+		expected map[string]*SecretReference
 	}{
 		{
-			name:   "Empty Recipe Configuration",
-			config: &RecipeConfigProperties{},
-			want:   nil,
+			name:     "Empty Secret",
+			secrets:  map[string]datamodel.SecretReference{},
+			expected: nil,
 		},
 		{
-			name: "With Multiple Environment Secret Variables",
-			config: &RecipeConfigProperties{
-				EnvSecrets: map[string]*SecretReference{
-					"secret1": {
-						Source: to.Ptr("source1"),
-						Key:    to.Ptr("key1"),
-					},
-					"secret2": {
-						Source: to.Ptr("source2"),
-						Key:    to.Ptr("key2"),
-					},
-				},
+			name:     "Nil Secret",
+			secrets:  nil,
+			expected: nil,
+		},
+		{
+			name: "Single Secret",
+			secrets: map[string]datamodel.SecretReference{
+				"secret1": {Source: "source1", Key: "key1"},
 			},
-			want: map[string]datamodel.SecretReference{
-				"secret1": {
-					Source: "source1",
-					Key:    "key1",
-				},
-				"secret2": {
-					Source: "source2",
-					Key:    "key2",
-				},
+			expected: map[string]*SecretReference{
+				"secret1": {Source: to.Ptr("source1"), Key: to.Ptr("key1")},
+			},
+		},
+		{
+			name: "Multiple Secrets",
+			secrets: map[string]datamodel.SecretReference{
+				"secret1": {Source: "source1", Key: "key1"},
+				"secret2": {Source: "source2", Key: "key2"},
+			},
+			expected: map[string]*SecretReference{
+				"secret1": {Source: to.Ptr("source1"), Key: to.Ptr("key1")},
+				"secret2": {Source: to.Ptr("source2"), Key: to.Ptr("key2")},
 			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := toRecipeConfigEnvSecretsDatamodel(tt.config)
-			require.Equal(t, tt.want, result)
-		})
-	}
-}
 
-func Test_fromRecipeConfigEnvSecretsDatamodel(t *testing.T) {
-	tests := []struct {
-		name   string
-		config datamodel.RecipeConfigProperties
-		want   map[string]*SecretReference
-	}{
-		{
-			name:   "Empty Recipe Configuration",
-			config: datamodel.RecipeConfigProperties{},
-			want:   nil,
-		},
-		{
-			name: "With Multiple Environment Secret Variables",
-			config: datamodel.RecipeConfigProperties{
-				EnvSecrets: map[string]datamodel.SecretReference{
-					"secret1": {
-						Source: "source1",
-						Key:    "key1",
-					},
-					"secret2": {
-						Source: "source2",
-						Key:    "key2",
-					},
-				},
-			},
-			want: map[string]*SecretReference{
-				"secret1": {
-					Source: to.Ptr("source1"),
-					Key:    to.Ptr("key1"),
-				},
-				"secret2": {
-					Source: to.Ptr("source2"),
-					Key:    to.Ptr("key2"),
-				},
-			},
-		},
-	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := fromRecipeConfigEnvSecretsDatamodel(tt.config)
-			require.Equal(t, tt.want, result)
+			result := fromSecretReferenceDatamodel(tt.secrets)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
