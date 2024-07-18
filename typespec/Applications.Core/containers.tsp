@@ -266,7 +266,6 @@ model Container {
 
 @doc("Envinronment variables type")
 model EnvironmentVariable {
-
   @doc("The value of the environment variable")
   value?: string;
 
