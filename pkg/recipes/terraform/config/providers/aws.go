@@ -75,8 +75,6 @@ func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Config
 	if err != nil {
 		return nil, err
 	}
-	logger := ucplog.FromContextOrDiscard(ctx)
-	logger.Info("AWS provider/scope has this region" + region)
 
 	credentialsProvider, err := p.getCredentialsProvider()
 	if err != nil {
@@ -107,12 +105,8 @@ func (p *awsProvider) parseScope(ctx context.Context, envConfig *recipes.Configu
 	}
 
 	region := parsedScope.FindScope(resources_aws.ScopeRegions)
-	logger.Info("HELLLLOOOOOO")
 	if region == "" {
-		logger.Info("I AM HERE")
 		return "", fmt.Errorf("invalid AWS provider scope %q is configured on the Environment, region is required in the scope", scope)
-	} else {
-		logger.Info("AWS provider/scope has this region" + region + "from the scope" + scope)
 	}
 
 	return region, nil
@@ -142,7 +136,6 @@ func fetchAWSCredentials(ctx context.Context, awsCredentialsProvider credentials
 			return nil, nil
 		}
 	case ucp_datamodel.AWSIRSACredentialKind:
-		logger.Info("AWS IRSA credentials all good")
 		if credentials.IRSACredential == nil || credentials.IRSACredential.RoleARN == "" {
 			logger.Info("AWS IRSA credentials are not registered, skipping credentials configuration.")
 			return nil, nil
@@ -155,22 +148,27 @@ func fetchAWSCredentials(ctx context.Context, awsCredentialsProvider credentials
 func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCredential, region string) map[string]any {
 	config := make(map[string]any)
 	//if region != "" {
-	config[awsRegionParam] = "us-west-2"
+	config[awsRegionParam] = "us-west-2" //region
 	//}
 
-	if credentials != nil && credentials.Kind == ucp_datamodel.AWSAccessKeyCredentialKind && credentials.AccessKeyCredential != nil &&
-		credentials.AccessKeyCredential.AccessKeyID != "" && credentials.AccessKeyCredential.SecretAccessKey != "" {
-		config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
-		config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
-	}
-	if credentials != nil && credentials.Kind == ucp_datamodel.AWSIRSACredentialKind && credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
-		config[awsIRSAProvider] = map[string]any{
-			awsRoleARN:  credentials.IRSACredential.RoleARN,
-			sessionName: "radius-terraform-" + uuid.New().String(),
-			tokenFile:   tokenFilePath,
-		}
-		config[stsRegion] = "us-west-2"
+	if credentials != nil {
+		switch credentials.Kind {
+		case ucp_datamodel.AWSAccessKeyCredentialKind:
+			if credentials.AccessKeyCredential != nil &&
+				credentials.AccessKeyCredential.AccessKeyID != "" && credentials.AccessKeyCredential.SecretAccessKey != "" {
+				config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
+				config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
+			}
 
+		case ucp_datamodel.AWSIRSACredentialKind:
+			if credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
+				config[awsIRSAProvider] = map[string]any{
+					awsRoleARN:  credentials.IRSACredential.RoleARN,
+					sessionName: "radius-terraform-" + uuid.New().String(),
+					tokenFile:   tokenFilePath,
+				}
+			}
+		}
 	}
 
 	return config

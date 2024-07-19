@@ -44,8 +44,10 @@ const (
 	CredentialKindAccessKey = "AccessKey"
 	// Token file path for IRSA
 	tokenFilePath = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
-	// TODO: AWS STS endpoint region (should I set AWS_REGION env variable instead?)
-	awsSTSEndPointRegion = "us-west-2"
+	// AWS STS global endpoint
+	awsSTSGlobalEndPoint = "https://sts.amazonaws.com"
+	// AWS STS Signing region
+	awsSTSGlobalEndPointSigningRegion = "us-east-1"
 )
 
 // UCPCredentialProvider is the implementation of aws.CredentialsProvider
@@ -104,14 +106,30 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 
 	case CredentialKindIRSA:
 		if s.IRSACredential == nil || s.IRSACredential.RoleARN == "" {
-			return aws.Credentials{}, errors.New("invalid IRSA info")
+			return aws.Credentials{}, errors.New("invalid IRSA info. RoleARN is required")
 		}
 		logger.Info(fmt.Sprintf("Retrieved AWS Credential - RoleARN: %s", s.IRSACredential.RoleARN))
 
-		//TODO: is it a good idea to make this a env variable for AWS_REGION?
-		awscfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsSTSEndPointRegion))
+		// Radius requests will first be routed to STS endpoint,
+		// where it will be validated and then the request to the specific service (such as S3) will be made using
+		// the bearer token from the STS response.
+		// Based on the https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html,
+		// STS endpoint should be region based, and in the same region as
+		// Radius instance to minimize latency and improve performance.
+		// We should provide the user with ability to configure the STS endpoint region.
+		// For now, we are using the global STS endpoint.
+		awscfg, err := config.LoadDefaultConfig(ctx,
+			config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+				// Return the global STS endpoint
+				return aws.Endpoint{
+					URL:           awsSTSGlobalEndPoint,
+					SigningRegion: awsSTSGlobalEndPointSigningRegion,
+				}, nil
+
+			})),
+		)
 		if err != nil {
-			panic("failed to load config, " + err.Error())
+			return aws.Credentials{}, err
 		}
 
 		client := sts.NewFromConfig(awscfg)
@@ -120,14 +138,10 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 			client,
 			s.IRSACredential.RoleARN,
 			stscreds.IdentityTokenFile(tokenFilePath),
-
 			func(o *stscreds.WebIdentityRoleOptions) {
-				// TODO: How can we use this?
 				o.RoleSessionName = "radius-ucp-" + uuid.New().String()
 			},
 		))
-
-		// use the credentials to list a s3 object
 
 		value, err = credsCache.Retrieve(ctx)
 		if err != nil {
@@ -137,8 +151,6 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		value.Source = "radiusucp"
 		value.CanExpire = true
 		value.Expires = time.Now().UTC().Add(c.options.Duration)
-		logger.Info(fmt.Sprintf("Retrieved AWS Credential IRSA - value is : %s, token is %s", value.AccessKeyID, value.SessionToken))
-
 	default:
 		return aws.Credentials{}, errors.New("invalid credential kind")
 	}

@@ -89,7 +89,7 @@ func TestRetrieve(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("valid credential", func(t *testing.T) {
+	t.Run("valid redential", func(t *testing.T) {
 		p := newMockProviderAccessKey()
 		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
 
