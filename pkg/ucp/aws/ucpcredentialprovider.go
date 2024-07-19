@@ -44,8 +44,6 @@ const (
 	CredentialKindAccessKey = "AccessKey"
 	// Token file path for IRSA
 	tokenFilePath = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
-	// AWS STS global endpoint
-	awsSTSGlobalEndPoint = "https://sts.amazonaws.com"
 	// AWS STS Signing region
 	awsSTSGlobalEndPointSigningRegion = "us-east-1"
 )
@@ -118,16 +116,9 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		// Radius instance to minimize latency associated eith STS call and thereby improve performance.
 		// We should provide the user with ability to configure the STS endpoint region.
 		// For now, we are using the global STS endpoint.
-		awscfg, err := config.LoadDefaultConfig(ctx,
-			config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-				// Return the global STS endpoint
-				return aws.Endpoint{
-					URL:           awsSTSGlobalEndPoint,
-					SigningRegion: awsSTSGlobalEndPointSigningRegion,
-				}, nil
+		awscfg, err := config.LoadDefaultConfig(context.TODO(),
+			config.WithRegion(awsSTSGlobalEndPointSigningRegion))
 
-			})),
-		)
 		if err != nil {
 			return aws.Credentials{}, err
 		}
