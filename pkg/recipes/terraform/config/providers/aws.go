@@ -166,9 +166,10 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 			// the bearer token from the STS response.
 			// Based on the https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html,
 			// STS endpoint should be region based, and in the same region as
-			// Radius instance to minimize latency associated eith STS call and thereby improve performance.
+			// Radius instance to minimize latency associated with STS call and thereby improve performance.
 			// We should provide the user with ability to configure the STS endpoint region.
 			// For now, we are using the global STS endpoint, which is the default.
+			// Ref. https://github.com/radius-project/radius/issues/7747
 			if credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
 				config[awsIRSAProvider] = map[string]any{
 					awsRoleARN:  credentials.IRSACredential.RoleARN,

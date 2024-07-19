@@ -116,6 +116,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		// Radius instance to minimize latency associated eith STS call and thereby improve performance.
 		// We should provide the user with ability to configure the STS endpoint region.
 		// For now, we are using the global STS endpoint, which is the default.
+		// Ref. https://github.com/radius-project/radius/issues/7747
 		awscfg, err := config.LoadDefaultConfig(context.TODO(),
 			config.WithRegion(awsSTSGlobalEndPointSigningRegion))
 
