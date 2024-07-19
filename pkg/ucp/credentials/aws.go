@@ -95,7 +95,7 @@ func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name strin
 
 	s, err := secret.GetSecret[AWSCredential](ctx, secretClient, secretName)
 	if err != nil {
-		return nil, errors.New("failed to get credential  info: " + err.Error())
+		return nil, errors.New("failed to get credential info: " + err.Error())
 	}
 
 	return &s, nil
