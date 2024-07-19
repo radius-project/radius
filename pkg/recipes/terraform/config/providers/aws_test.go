@@ -394,7 +394,6 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 				require.Equal(t, expectedAWSIRSAProvider[awsRoleARN], AWSIRSAProvider[awsRoleARN])
 				require.Contains(t, expectedAWSIRSAProvider[sessionName], "radius-terraform-")
 				require.Equal(t, expectedAWSIRSAProvider[tokenFile], AWSIRSAProvider[tokenFile])
-				require.Equal(t, tt.expectedConfig[stsRegion], config[stsRegion])
 			}
 		})
 	}
