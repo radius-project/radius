@@ -115,7 +115,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		// the bearer token from the STS response.
 		// Based on the https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html,
 		// STS endpoint should be region based, and in the same region as
-		// Radius instance to minimize latency and improve performance.
+		// Radius instance to minimize latency associated eith STS call and thereby improve performance.
 		// We should provide the user with ability to configure the STS endpoint region.
 		// For now, we are using the global STS endpoint.
 		awscfg, err := config.LoadDefaultConfig(ctx,
