@@ -11,16 +11,16 @@ FAILURES=()
 for F in $FILES
 do
     echo "validating $F"
-    # We need to run the rad-bicep and fail in one of two cases:
+    # We need to run bicep and fail in one of two cases:
     # - non-zero exit code
     # - non-empty stderr 
     #
     # We also don't want to dirty any files on disk.
     #
     # This complicated little block does that:
-    # - Compiled output (ARM templates) go to rad-bicep's stdout
-    # - rad-bicep's stdout goes to /dev/null
-    # - rad-bicep's stderr goes to the variable
+    # - Compiled output (ARM templates) go to bicep's stdout
+    # - bicep's stdout goes to /dev/null
+    # - bicep's stderr goes to the variable
     if grep -q "extension radius" $F
     then
         exec 3>&1
