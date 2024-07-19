@@ -26,9 +26,9 @@ global:
   azureWorkloadIdentity:
     enabled: false
 
-  # Configure global.awsIRSA.enabled=true to enable AWS IRSA.
+  # Configure global.aws.irsa.enabled=true to enable AWS IRSA.
   # Disabled by default.
-  awsIRSA:
+  aws.irsa:
     enabled: false
 
 controller:

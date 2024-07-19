@@ -69,7 +69,7 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
-        {{- if eq .Values.global.awsIRSA.enabled true }}
+        {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
         {{- end }}
@@ -87,7 +87,7 @@ spec:
         - name: config-volume
           configMap:
             name: applications-rp-config
-        {{- if eq .Values.global.awsIRSA.enabled true }}
+        {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           projected:
             sources:

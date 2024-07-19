@@ -63,7 +63,7 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
-        {{- if eq .Values.global.awsIRSA.enabled true }}
+        {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
         {{- end }}
@@ -81,7 +81,7 @@ spec:
             # Provide the name of the ConfigMap containing the files you want
             # to add to the container
             name: ucp-config
-        {{- if eq .Values.global.awsIRSA.enabled true }}
+        {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           projected:
             sources:
