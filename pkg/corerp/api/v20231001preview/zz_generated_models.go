@@ -620,7 +620,7 @@ type EnvironmentResourceUpdateProperties struct {
 	Simulated *bool
 }
 
-// EnvironmentVariable - Envinronment variables type
+// EnvironmentVariable - Environment variables type
 type EnvironmentVariable struct {
 	// The value of the environment variable
 	Value *string
@@ -659,7 +659,7 @@ type EnvironmentVariableSecretReferenceUpdate struct {
 	Source *string
 }
 
-// EnvironmentVariableUpdate - Envinronment variables type
+// EnvironmentVariableUpdate - Environment variables type
 type EnvironmentVariableUpdate struct {
 	// The value of the environment variable
 	Value *string

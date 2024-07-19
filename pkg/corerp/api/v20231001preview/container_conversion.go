@@ -102,10 +102,11 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 		}
 	}
 
-	convertedEnvironmentVariables, err := toEnvDataModel(src.Properties.Container.Env)
+	convertedEnvironmentVariables, err := toEnvironmentVariableDataModel(src.Properties.Container.Env)
 	if err != nil {
 		return nil, err
 	}
+
 	converted := &datamodel.ContainerResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -157,7 +158,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 }
 
 // toEnvDataModel: Converts from versioned datamodel to base datamodel
-func toEnvDataModel(e map[string]*EnvironmentVariable) (map[string]datamodel.EnvironmentVariable, error) {
+func toEnvironmentVariableDataModel(e map[string]*EnvironmentVariable) (map[string]datamodel.EnvironmentVariable, error) {
 
 	m := map[string]datamodel.EnvironmentVariable{}
 
@@ -165,6 +166,7 @@ func toEnvDataModel(e map[string]*EnvironmentVariable) (map[string]datamodel.Env
 		if val == nil {
 			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Environment variable %s is nil", key))
 		}
+		// An environment variable can have either value(Value) or secret value(ValueFrom), but not both
 		if val.Value != nil && val.ValueFrom != nil {
 			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Environment variable %s has both value and secret value", key))
 		}

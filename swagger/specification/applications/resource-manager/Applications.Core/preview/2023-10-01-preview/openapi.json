@@ -3322,7 +3322,7 @@
     },
     "EnvironmentVariable": {
       "type": "object",
-      "description": "Envinronment variables type",
+      "description": "Environment variables type",
       "properties": {
         "value": {
           "type": "string",
@@ -3391,7 +3391,7 @@
     },
     "EnvironmentVariableUpdate": {
       "type": "object",
-      "description": "Envinronment variables type",
+      "description": "Environment variables type",
       "properties": {
         "value": {
           "type": "string",

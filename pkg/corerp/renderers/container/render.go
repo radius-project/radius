@@ -109,12 +109,13 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		}
 	}
 
-	for _, envvars := range properties.Container.Env {
-		if envvars.ValueFrom != nil && envvars.ValueFrom.SecretRef != nil {
-			if strings.HasPrefix(envvars.ValueFrom.SecretRef.Source, "/") {
-				resourceID, err := resources.ParseResource(envvars.ValueFrom.SecretRef.Source)
+	// Environment variables can be sourced from secrets, which are resources. We need to iterate over the environment to handle any possible instances.
+	for _, envVars := range properties.Container.Env {
+		if envVars.ValueFrom != nil && envVars.ValueFrom.SecretRef != nil {
+			if strings.HasPrefix(envVars.ValueFrom.SecretRef.Source, "/") {
+				resourceID, err := resources.ParseResource(envVars.ValueFrom.SecretRef.Source)
 				if err != nil {
-					return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a kubernetes secret name or a valid resourceID", envvars.ValueFrom.SecretRef.Source))
+					return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a kubernetes secret name or a valid resourceID", envVars.ValueFrom.SecretRef.Source))
 				}
 				if resources_radius.IsRadiusResource(resourceID) {
 					radiusResourceIDs = append(radiusResourceIDs, resourceID)
