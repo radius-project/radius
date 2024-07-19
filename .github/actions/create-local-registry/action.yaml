@@ -20,9 +20,22 @@ inputs:
     description: "The port for the local registry"
     required: false
     default: "5000"
+outputs:
+  temp-cert-dir:
+    description: "The temporary directory where the certificates are stored"
+    value: ${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
 runs:
   using: "composite"
   steps:
+    - name: Create temporary directory for certificates
+      if: ${{ inputs.secure == 'true' }}
+      shell: bash
+      id: create-temp-cert-dir
+      run: |
+        # Create a temporary directory to store the certificates
+        temp_cert_dir=$(mktemp -d 2>/dev/null || mktemp -d -t 'temp_cert_dir')
+        echo "TEMP_CERT_DIR=$temp_cert_dir" >> $GITHUB_OUTPUT
+
     - name: Create certificates for local registry
       if: ${{ inputs.secure == 'true' }}
       shell: bash
@@ -54,11 +67,9 @@ runs:
           echo "$CFG"
         }
 
-        # Create a temporary directory to store the certificates
-        temp_cert_dir=$(mktemp -d 2>/dev/null || mktemp -d -t 'temp_cert_dir')
-        echo "TEMP_CERT_DIR=$temp_cert_dir" >> $GITHUB_ENV
+        TEMP_CERT_DIR=${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
 
-        pushd $temp_cert_dir
+        pushd $TEMP_CERT_DIR
         # Create the directory for the certificates
         mkdir -p certs/${{ inputs.registry-server }}
 
@@ -79,6 +90,7 @@ runs:
       if: ${{ inputs.secure == 'true' }}
       shell: bash
       run: |
+        TEMP_CERT_DIR=${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
         sudo apt install ca-certificates
         sudo cp $TEMP_CERT_DIR/certs/${{ inputs.registry-server }}/client.crt /usr/local/share/ca-certificates/${{ inputs.registry-server }}.crt
         sudo cp $TEMP_CERT_DIR/certs/${{ inputs.registry-server }}/client.crt /usr/local/share/ca-certificates/${{ inputs.registry-name }}.crt
@@ -88,6 +100,7 @@ runs:
       if: ${{ inputs.secure == 'true' }}
       shell: bash
       run: |
+        TEMP_CERT_DIR=${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
         echo "==== Create secure Docker registry"
         docker run -d \
           -p ${{ inputs.registry-port }}:5000 \

@@ -1,9 +1,5 @@
 import radius as radius
 
-param rg string = resourceGroup().name
-
-param sub string = subscription().subscriptionId
-
 param registry string
 
 param version string
@@ -18,11 +14,6 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       kind: 'kubernetes'
       resourceId: 'self'
       namespace: 'dsrp-resources-mongodb-recipe-env'
-    }
-    providers: {
-      azure: {
-        scope: '/subscriptions/${sub}/resourceGroups/${rg}'
-      }
     }
     recipes: {
       'Applications.Datastores/mongoDatabases': {

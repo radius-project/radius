@@ -25,6 +25,11 @@ permissions:
 on:
   # Enable manual trigger
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run the workflow on"
+        required: true
+        default: "main"
   schedule:
     # Run every 4 hours on weekdays.
     - cron: "30 0,4,8,12,16,20 * * 1-5"
@@ -33,12 +38,6 @@ on:
   # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
-  push:
-    branches:
-      - main
-      - release/*
-    tags:
-      - v*
   pull_request:
     branches:
       - main
@@ -112,12 +111,6 @@ jobs:
               );
             }
 
-      - name: Check out code
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.CHECKOUT_REPO }}
-          ref: ${{ env.CHECKOUT_REF }}
-
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -160,7 +153,7 @@ jobs:
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
       - name: Set up checkout target (scheduled)
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
@@ -172,7 +165,13 @@ jobs:
           echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
           echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
 
-      - name: Use custom actions
+      - name: Set up checkout target (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
+
+      - name: Check out code
         uses: actions/checkout@v4
 
       - name: Checkout samples repo
@@ -207,6 +206,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Create a secure local registry
+        id: create-local-registry
         uses: ./.github/actions/create-local-registry
         with:
           secure: "true"
@@ -238,6 +238,8 @@ jobs:
       - name: Create a KinD cluster with a local registry
         uses: ./.github/actions/create-kind-cluster
         with:
+          secure: "true"
+          temp-cert-dir: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
           kind-version: ${{ env.KIND_VER }}
           with-local-registry: "true"
           registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
@@ -268,14 +270,19 @@ jobs:
             echo "Radius release not found. Proceeding with installation."
           fi
 
+          RAD_COMMAND="rad install kubernetes \
+                 --chart ${{ env.RADIUS_CHART_LOCATION }} \
+                 --set rp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
+                 --set controller.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller,controller.tag=${{ env.REL_VERSION }} \
+                 --set ucp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
+                 --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
+
+          if [ "${{ env.USE_CERT_FILE }}" = "true" ]; then
+            RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt"
+          fi
+
           echo "*** Installing Radius to Kubernetes ***"
-          rad install kubernetes \
-            --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
-            --set controller.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller,controller.tag=${{ env.REL_VERSION }} \
-            --set ucp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
-            --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
-            --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
+          eval $RAD_COMMAND
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -285,6 +292,9 @@ jobs:
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
+        env:
+          USE_CERT_FILE: "true"
+          TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
 
       - name: Publish Terraform test recipes
         run: |
@@ -298,7 +308,8 @@ jobs:
         env:
           BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
-          SSL_CERT_FILE: $TEMP_CERT_DIR/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
+          TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
+          SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
       - name: Run functional tests
         run: |
@@ -329,11 +340,6 @@ jobs:
           test_group_name: "Functional Tests - ${{ matrix.name }}"
           artifact_name: "functional_test_results_${{ matrix.name }}"
           result_directory: "dist/functional_test/"
-
-      - uses: azure/setup-kubectl@v4
-        if: always()
-        with:
-          version: ${{ env.KUBECTL_VER }}
 
       - name: Collect detailed Radius logs and events
         id: radius-logs-events

@@ -17,12 +17,15 @@ limitations under the License.
 package resource_test
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Redis_Manual(t *testing.T) {
@@ -64,6 +67,79 @@ func Test_Redis_Manual(t *testing.T) {
 					},
 				},
 			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_Redis_Recipe(t *testing.T) {
+	template := "testdata/datastoresrp-resources-redis-recipe.bicep"
+	name := "dsrp-resources-redis-recipe"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "dsrp-resources-env-recipe-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "rds-recipe",
+						Type: validation.RedisCachesResource,
+						App:  name,
+					},
+				},
+			},
+			SkipObjectValidation: true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				redis, err := test.Options.ManagementClient.GetResource(ctx, "Applications.Datastores/redisCaches", "rds-recipe")
+				require.NoError(t, err)
+				require.NotNil(t, redis)
+				status := redis.Properties["status"].(map[string]any)
+				recipe := status["recipe"].(map[string]interface{})
+				require.Equal(t, "bicep", recipe["templateKind"].(string))
+				templatePath := strings.Split(recipe["templatePath"].(string), ":")[0]
+				// TODO: Update this to the correct path
+				require.Equal(t, "radius-registry", templatePath)
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_Redis_DefaultRecipe(t *testing.T) {
+	template := "testdata/datastoresrp-resources-redis-default-recipe.bicep"
+	name := "dsrp-resources-redis-default-recipe"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "dsrp-resources-env-default-recipe-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "rds-default-recipe",
+						Type: validation.RedisCachesResource,
+						App:  name,
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 

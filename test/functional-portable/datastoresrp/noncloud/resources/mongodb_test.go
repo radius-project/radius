@@ -70,3 +70,47 @@ func Test_MongoDB_Manual(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_MongoDB_Recipe(t *testing.T) {
+	template := "testdata/datastoresrp-resources-mongodb-recipe.bicep"
+	name := "dsrp-resources-mongodb-recipe"
+	appNamespace := "dsrp-resources-mongodb-recipe-app"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "dsrp-resources-mongodb-recipe-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: "dsrp-resources-mongodb-recipe",
+						Type: validation.ApplicationsResource,
+						App:  name,
+					},
+					{
+						Name: "mongodb-app-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "mongodb-db",
+						Type: validation.MongoDatabasesResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "mongodb-app-ctnr").ValidateLabels(false),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
