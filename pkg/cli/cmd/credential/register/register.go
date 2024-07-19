@@ -39,15 +39,17 @@ func NewCommand(factory framework.Factory) *cobra.Command {
 rad credential register azure sp --client-id <client id> --client-secret <client secret> --tenant-id <tenant id>
 # Register (Add or update) cloud provider credential for Azure with workload identity authentication
 rad credential register azure wi --client-id <client id> --tenant-id <tenant id>
-# Register (Add or Update) cloud provider credential for AWS with IAM authentication
-rad credential register aws --access-key-id <access-key-id> --secret-access-key <secret-access-key>	
+# Register (Add or update) cloud provider credential for AWS with access key authentication.
+rad credential register aws access-key --access-key-id <access-key-id> --secret-access-key <secret-access-key>
+# Register (Add or update) cloud provider credential for AWS with IRSA.
+rad credential register aws irsa --iam-role <roleARN>	
 `,
 	}
 
 	azure := credential_register_azure.NewCommand(factory)
 	cmd.AddCommand(azure)
 
-	aws, _ := credential_register_aws.NewCommand(factory)
+	aws := credential_register_aws.NewCommand(factory)
 	cmd.AddCommand(aws)
 
 	return cmd
