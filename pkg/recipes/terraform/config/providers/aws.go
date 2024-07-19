@@ -51,7 +51,6 @@ const (
 	sessionName     = "session_name"
 	tokenFile       = "web_identity_token_file"
 	tokenFilePath   = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
-	stsRegion       = "sts_region"
 )
 
 var _ Provider = (*awsProvider)(nil)
@@ -161,6 +160,14 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 			}
 
 		case ucp_datamodel.AWSIRSACredentialKind:
+			// Radius requests will first be routed to STS endpoint,
+			// where it will be validated and then the request to the specific service (such as S3) will be made using
+			// the bearer token from the STS response.
+			// Based on the https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html,
+			// STS endpoint should be region based, and in the same region as
+			// Radius instance to minimize latency associated eith STS call and thereby improve performance.
+			// We should provide the user with ability to configure the STS endpoint region.
+			// For now, we are using the global STS endpoint, which is the default.
 			if credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
 				config[awsIRSAProvider] = map[string]any{
 					awsRoleARN:  credentials.IRSACredential.RoleARN,

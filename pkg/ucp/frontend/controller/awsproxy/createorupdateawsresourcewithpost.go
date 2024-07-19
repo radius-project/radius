@@ -64,8 +64,6 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return errResponse, nil
 	}
 
-	//logger.Info("ENTERED POST")
-
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
 		e := v1.ErrorResponse{

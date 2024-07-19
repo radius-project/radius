@@ -319,5 +319,4 @@ func (m *Module) newAWSConfig(ctx context.Context) (aws.Config, error) {
 	}
 
 	return awscfg, nil
-
 }

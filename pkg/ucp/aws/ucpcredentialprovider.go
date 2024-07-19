@@ -115,7 +115,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		// STS endpoint should be region based, and in the same region as
 		// Radius instance to minimize latency associated eith STS call and thereby improve performance.
 		// We should provide the user with ability to configure the STS endpoint region.
-		// For now, we are using the global STS endpoint.
+		// For now, we are using the global STS endpoint, which is the default.
 		awscfg, err := config.LoadDefaultConfig(context.TODO(),
 			config.WithRegion(awsSTSGlobalEndPointSigningRegion))
 

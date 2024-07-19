@@ -98,6 +98,5 @@ func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name strin
 		return nil, errors.New("failed to get credential info: " + err.Error())
 	}
 
-	// going to have the irsa role retunred using AWSCredentialProvider fetch
 	return &s, nil
 }
