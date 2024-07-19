@@ -328,6 +328,7 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 				awsSecretKeyParam: testAWSAccessKeyCredentials.AccessKeyCredential.SecretAccessKey,
 			},
 		},
+
 		{
 			desc:        "valid IRSA credential config",
 			region:      testRegion,
@@ -339,7 +340,6 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 					sessionName: "radius-terraform-" + "test-uuid",
 					tokenFile:   tokenFilePath,
 				},
-				stsRegion: "us-west-2",
 			},
 		},
 		{
@@ -389,12 +389,14 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 			require.Equal(t, tt.expectedConfig[awsAccessKeyParam], config[awsAccessKeyParam])
 			require.Equal(t, tt.expectedConfig[awsSecretKeyParam], config[awsSecretKeyParam])
 
-			expectedAWSIRSAProvider := tt.expectedConfig[awsIRSAProvider].(map[string]any)
-			AWSIRSAProvider := config[awsIRSAProvider].(map[string]any)
-			require.Equal(t, expectedAWSIRSAProvider[awsRoleARN], AWSIRSAProvider[awsRoleARN])
-			require.Contains(t, expectedAWSIRSAProvider[sessionName], "radius-terraform-")
-			require.Equal(t, expectedAWSIRSAProvider[tokenFile], AWSIRSAProvider[tokenFile])
-			require.Equal(t, tt.expectedConfig[stsRegion], config[stsRegion])
+			if tt.expectedConfig[awsIRSAProvider] != nil {
+				expectedAWSIRSAProvider := tt.expectedConfig[awsIRSAProvider].(map[string]any)
+				AWSIRSAProvider := config[awsIRSAProvider].(map[string]any)
+				require.Equal(t, expectedAWSIRSAProvider[awsRoleARN], AWSIRSAProvider[awsRoleARN])
+				require.Contains(t, expectedAWSIRSAProvider[sessionName], "radius-terraform-")
+				require.Equal(t, expectedAWSIRSAProvider[tokenFile], AWSIRSAProvider[tokenFile])
+				require.Equal(t, tt.expectedConfig[stsRegion], config[stsRegion])
+			}
 		})
 	}
 }

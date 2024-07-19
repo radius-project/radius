@@ -147,9 +147,9 @@ func fetchAWSCredentials(ctx context.Context, awsCredentialsProvider credentials
 
 func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCredential, region string) map[string]any {
 	config := make(map[string]any)
-	//if region != "" {
-	config[awsRegionParam] = "us-west-2" //region
-	//}
+	if region != "" {
+		config[awsRegionParam] = region
+	}
 
 	if credentials != nil {
 		switch credentials.Kind {
