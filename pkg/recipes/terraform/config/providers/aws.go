@@ -44,7 +44,8 @@ const (
 	awsRegionParam    = "region"
 	awsAccessKeyParam = "access_key"
 	awsSecretKeyParam = "secret_key"
-	// Terraform configs for IRSA
+
+	// configs for AWS IRSA
 	// Ref: https://registry.terraform.io/providers/hashicorp/aws/latest/docs#assuming-an-iam-role-using-a-web-identity
 	awsIRSAProvider = "assume_role_with_web_identity"
 	awsRoleARN      = "role_arn"
