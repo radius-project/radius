@@ -634,7 +634,7 @@ func (r Renderer) makeDeployment(
 	return outputResources, secretData, nil
 }
 
-// Function to convert from map[string]EnvironmentVariable to map[string]corev1.EnvVar
+// convertEnvVar function to convert from map[string]EnvironmentVariable to map[string]corev1.EnvVar
 func convertEnvVar(key string, env datamodel.EnvironmentVariable, options renderers.RenderOptions) (corev1.EnvVar, error) {
 	if env.Value != nil {
 		return corev1.EnvVar{Name: key, Value: *env.Value}, nil

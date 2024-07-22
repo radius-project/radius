@@ -157,7 +157,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// toEnvDataModel: Converts from versioned datamodel to base datamodel
+// toEnvironmentVariableDataModel: Converts from versioned datamodel to base datamodel
 func toEnvironmentVariableDataModel(e map[string]*EnvironmentVariable) (map[string]datamodel.EnvironmentVariable, error) {
 
 	m := map[string]datamodel.EnvironmentVariable{}
@@ -191,8 +191,8 @@ func toEnvironmentVariableDataModel(e map[string]*EnvironmentVariable) (map[stri
 	return m, nil
 }
 
-// fromEnvDataModel: Converts from base datamodel to versioned datamodel
-func fromEnvDataModel(e map[string]datamodel.EnvironmentVariable) map[string]*EnvironmentVariable {
+// fromEnvironmentVariableDataModel: Converts from base datamodel to versioned datamodel
+func fromEnvironmentVariableDataModel(e map[string]datamodel.EnvironmentVariable) map[string]*EnvironmentVariable {
 	m := map[string]*EnvironmentVariable{}
 
 	for key, val := range e {
@@ -315,7 +315,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		Container: &Container{
 			Image:           to.Ptr(c.Properties.Container.Image),
 			ImagePullPolicy: fromImagePullPolicyDataModel(c.Properties.Container.ImagePullPolicy),
-			Env:             fromEnvDataModel(c.Properties.Container.Env),
+			Env:             fromEnvironmentVariableDataModel(c.Properties.Container.Env),
 			LivenessProbe:   livenessProbe,
 			Ports:           ports,
 			ReadinessProbe:  readinessProbe,

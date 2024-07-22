@@ -57,6 +57,9 @@ const (
 	envVarName3           = "TEST_VAR_3"
 	envVarSource3         = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/secretStores/test-secret"
 	envVarValue3          = "/planes/are/cool"
+	envVarName4           = "TEST_VAR_4"
+	envVarSource4         = "test_Namespace/TEST_SOURCE_4"
+	envVarValue4          = "TEST_VALUE_4"
 	secretName            = "test-container"
 
 	tempVolName      = "TempVolume"
@@ -194,6 +197,14 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 						SecretRef: &datamodel.EnvironmentVariableSecretReference{
 							Source: envVarSource3,
 							Key:    envVarValue3,
+						},
+					},
+				},
+				envVarName4: {
+					ValueFrom: &datamodel.EnvironmentVariableReference{
+						SecretRef: &datamodel.EnvironmentVariableSecretReference{
+							Source: envVarSource4,
+							Key:    envVarValue4,
 						},
 					},
 				},
