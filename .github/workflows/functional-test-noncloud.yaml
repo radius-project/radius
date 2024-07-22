@@ -355,7 +355,7 @@ jobs:
           else
             RADIUS_VERSION="${{ env.REL_VERSION }}"
           fi
-          cat <<EOF > ./test_folder/bicepconfig.json
+          cat <<EOF > ./test/bicepconfig.json
           {
             "experimentalFeaturesEnabled": {
               "extensibility": true,
