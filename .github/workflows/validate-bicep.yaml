@@ -33,16 +33,14 @@ jobs:
     name: Validate Bicep Code
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
-      - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
       - name: Setup and verify bicep CLI
         run: |
           curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
           chmod +x ./bicep
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
+      - name: Check out repo
+        uses: actions/checkout@v4
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
         env:
