@@ -127,6 +127,44 @@ jobs:
           echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
           echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
 
+  publish-test-bicep-types:
+  name: Publish Radius bicep types to ACR
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOVER }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+      - name: Generate Bicep extensibility types from OpenAPI specs
+        run: |
+          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+      - name: Upload Radius Bicep types artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius-bicep-types
+          path: ./hack/bicep-types-radius/generated
+          if-no-files-found: error
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.BICEP_TYPES_AZURE_CREDENTIALS }}
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          bicep --version
+      - name: Publish bicep types 
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius/noncloud:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
@@ -310,7 +348,26 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
           SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
-
+      - name: Generate test bicepconfig.json
+        run: |
+          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+            RADIUS_VERSION="latest"
+          else
+            RADIUS_VERSION="${{ env.REL_VERSION }}"
+          fi
+          cat <<EOF > ./test_folder/bicepconfig.json
+          {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true,
+              "extensionRegistry": true,
+              "dynamicTypeLoading": true
+            },
+            "extensions": {
+              "radius": "br:biceptypes.azurecr.io/test/radius/noncloud:$RADIUS_VERSION",
+              "aws": "br:biceptypes.azurecr.io/aws:latest"
+            }
+          }
+          EOF
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
