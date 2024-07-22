@@ -5,7 +5,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -35,13 +35,14 @@ config_map_name = sys.argv[3]
 # Write output to stdout all of the time, and the step summary if we're in Github Actions.
 step_summary = os.getenv("GITHUB_STEP_SUMMARY")
 with open(step_summary, "a") if step_summary else contextlib.suppress() as output:
-    
+
     def log(message):
         print(message, flush=True)
         if step_summary:
             output.write(message + "\n")
 
-    log("Publishing recipes from " + recipe_root + " to " + namespace + "/" + config_map_name)
+    log("Publishing recipes from " + recipe_root +
+        " to " + namespace + "/" + config_map_name)
 
     # Get the list of subfolders in the recipe root. Each one is a recipe.
     recipe_dirs = [f.path for f in os.scandir(recipe_root) if f.is_dir()]
@@ -60,19 +61,22 @@ with open(step_summary, "a") if step_summary else contextlib.suppress() as outpu
             log("Processing recipe: " + recipe_dir)
 
             # Make the zip.
-            output_filename = shutil.make_archive(os.path.join(tmp_dir, os.path.basename(recipe_dir)), 'zip', recipe_dir)
+            output_filename = shutil.make_archive(os.path.join(
+                tmp_dir, os.path.basename(recipe_dir)), 'zip', recipe_dir)
             log("Created zip file: " + output_filename)
 
             # Add to config entries
             config_entries[os.path.basename(recipe_dir)] = output_filename
 
         # Delete the configmap if it already exists
-        args = ["kubectl", "delete", "configmap", config_map_name, "--namespace", namespace, "--ignore-not-found=true"]
+        args = ["kubectl", "delete", "configmap", config_map_name,
+                "--namespace", namespace, "--ignore-not-found=true"]
         process = subprocess.run(args)
         process.check_returncode()
 
         # Create the configmap
-        args = ["kubectl", "create", "configmap", config_map_name, "--namespace", namespace]
+        args = ["kubectl", "create", "configmap",
+                config_map_name, "--namespace", namespace]
         for recipe_name, zip_file in config_entries.items():
             args.append("--from-file=" + recipe_name + ".zip=" + zip_file)
 

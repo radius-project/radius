@@ -1,12 +1,12 @@
-name: 'Delete all GitHub artifacts'
+name: "Delete all GitHub artifacts"
 
 on:
   workflow_dispatch:
     inputs:
       retention:
-        description: 'Retention period (0 = delete immediately)'     
+        description: "Retention period (0 = delete immediately)"
         required: true
-        default: '0'
+        default: "0"
 
 jobs:
   delete-artifacts:
