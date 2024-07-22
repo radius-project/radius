@@ -1,4 +1,4 @@
-import radius as radius
+extension radius
 
 param registry string
 
@@ -54,7 +54,7 @@ resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
     container: {
       image: magpieimage
       env: {
-        DBCONNECTION: recipedb.connectionString()
+        DBCONNECTION: recipedb.listSecrets().connectionString
       }
       readinessProbe: {
         kind: 'httpGet'
