@@ -1,4 +1,4 @@
-import radius as radius
+extension radius
 
 @description('The URL of the server hosting test Terraform modules.')
 param moduleServer string

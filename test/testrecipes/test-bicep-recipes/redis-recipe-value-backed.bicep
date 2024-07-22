@@ -1,7 +1,7 @@
-import kubernetes as kubernetes {
+extension kubernetes with {
+  namespace: 'default'
   kubeConfig: ''
-  namespace: context.runtime.kubernetes.namespace
-}
+} as kubernetes
 
 param context object
 
