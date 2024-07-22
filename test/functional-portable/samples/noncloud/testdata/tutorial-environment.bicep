@@ -1,4 +1,4 @@
-import radius as radius
+extension radius
 
 param registry string
 param version string
