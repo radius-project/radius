@@ -1,5 +1,5 @@
 
-import radius as radius
+extension radius
 
 @description('Specifies the location for resources.')
 param location string = 'global'
