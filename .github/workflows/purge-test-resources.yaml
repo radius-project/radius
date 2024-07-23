@@ -41,14 +41,13 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Delete 'dev' containers older than a week
-        uses: snok/container-retention-policy@v2
+        uses: snok/container-retention-policy@v3.0.0
         with:
           image-names: dev/*
-          cut-off: 3 days ago UTC
-          account-type: org
-          org-name: radius-project
+          cut-off: 3days
+          account: radius-project
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          keep-at-least: 1
+          keep-n-most-recent: 1
   purge_azure_resources:
     name: Azure resources clean-ups
     runs-on: ubuntu-latest
