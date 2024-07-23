@@ -74,7 +74,7 @@ func credentialFormatAzureWorkloadIdentity() output.FormatterOptions {
 	}
 }
 
-func credentialFormatAWS() output.FormatterOptions {
+func credentialFormatAWSAccessKey() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
@@ -87,7 +87,26 @@ func credentialFormatAWS() output.FormatterOptions {
 			},
 			{
 				Heading:  "ACCESSKEYID",
-				JSONPath: "{ .AWSCredentials.AccessKeyID }",
+				JSONPath: "{ .AWSCredentials.AccessKey.AccessKeyID }",
+			},
+		},
+	}
+}
+
+func credentialFormatAWSIRSA() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "REGISTERED",
+				JSONPath: "{ .Enabled }",
+			},
+			{
+				Heading:  "ROLEARN",
+				JSONPath: "{ .AWSCredentials.IRSA.RoleARN }",
 			},
 		},
 	}

@@ -42,8 +42,30 @@ const (
 )
 
 type AWSCredentialProperties struct {
-	// AccessKeyID is the access key ID for the AWS credential.
+	// Kind is the credential kind (AccessKey or IRSA)
+	Kind *string
+
+	// AccessKey is the properties for an AWS access key credential
+	AccessKey *AWSAccessKeyCredentialProperties
+
+	// IRSA is the properties for an AWS IRSA credential
+	IRSA *AWSIRSACredentialProperties
+}
+
+type AWSAccessKeyCredentialProperties struct {
+	// Kind is the credential kind (Must be AccessKey)
+	Kind *string
+
+	// AccessKeyID is the AWS access key ID
 	AccessKeyID *string
+}
+
+type AWSIRSACredentialProperties struct {
+	// Kind is the credential kind (Must be IRSA)
+	Kind *string
+
+	// RoleARN is the AWS IRSA role ARN
+	RoleARN *string
 }
 
 // AWSCredentialManagementClient is used to interface with cloud provider configuration and credentials.
@@ -77,28 +99,57 @@ func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential uc
 // "Get" retrieves the credentials for the specified cloud provider from the backend and returns a ProviderCredentialConfiguration
 // object containing the credentials or an error if the credentials could not be retrieved.
 func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialName string) (ProviderCredentialConfiguration, error) {
-	var err error
-
 	// We send only the name when getting credentials from backend which we already have access to
 	resp, err := cpm.AWSCredentialClient.Get(ctx, AWSPlaneName, credentialName, nil)
 	if err != nil {
 		return ProviderCredentialConfiguration{}, err
 	}
-	awsAccessKeyCredentials, ok := resp.AwsCredentialResource.Properties.(*ucp.AwsAccessKeyCredentialProperties)
-	if !ok {
+
+	switch *resp.AwsCredentialResource.Properties.GetAwsCredentialProperties().Kind {
+	case ucp.AWSCredentialKindAccessKey:
+		awsAccessKeyCredentials, ok := resp.AwsCredentialResource.Properties.(*ucp.AwsAccessKeyCredentialProperties)
+		if !ok {
+			return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AWSCredential)
+		}
+
+		providerCredentialConfiguration := ProviderCredentialConfiguration{
+			CloudProviderStatus: CloudProviderStatus{
+				Name:    AWSCredential,
+				Enabled: true,
+			},
+			AWSCredentials: &AWSCredentialProperties{
+				Kind: (*string)(awsAccessKeyCredentials.Kind),
+				AccessKey: &AWSAccessKeyCredentialProperties{
+					AccessKeyID: awsAccessKeyCredentials.AccessKeyID,
+				},
+			},
+		}
+		return providerCredentialConfiguration, nil
+	case ucp.AWSCredentialKindIRSA:
+		awsIRSACredentials, ok := resp.AwsCredentialResource.Properties.(*ucp.AwsIRSACredentialProperties)
+		if !ok {
+			return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AWSCredential)
+		}
+
+		providerCredentialConfiguration := ProviderCredentialConfiguration{
+			CloudProviderStatus: CloudProviderStatus{
+				Name:    AWSCredential,
+				Enabled: true,
+			},
+			AWSCredentials: &AWSCredentialProperties{
+				Kind: (*string)(awsIRSACredentials.Kind),
+				IRSA: &AWSIRSACredentialProperties{
+					RoleARN: awsIRSACredentials.RoleARN,
+				},
+			},
+		}
+		return providerCredentialConfiguration, nil
+
+	default:
 		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AWSCredential)
+
 	}
 
-	providerCredentialConfiguration := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    AWSCredential,
-			Enabled: true,
-		},
-		AWSCredentials: &AWSCredentialProperties{
-			AccessKeyID: awsAccessKeyCredentials.AccessKeyID,
-		},
-	}
-	return providerCredentialConfiguration, nil
 }
 
 // List, lists the AWS credentials registered
