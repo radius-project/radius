@@ -90,6 +90,8 @@ env:
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
   # The number of failed tests to report.
   ISSUE_CREATE_THRESHOLD: 2
+  # bicep-types ACR url for uploading Radius Bicep types
+  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
 
 jobs:
   build:
@@ -350,7 +352,7 @@ jobs:
             :x: Test recipe publishing failed
   
   publish-test-bicep-types:
-  name: Publish Radius bicep types to ACR
+    name: Publish Radius bicep types to ACR
     runs-on: ubuntu-latest
     steps: 
       - name: Check out code
@@ -386,7 +388,7 @@ jobs:
           bicep --version
       - name: Publish bicep types 
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius/cloud:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
   tests:
     name: Run ${{ matrix.name }} functional tests
@@ -647,8 +649,8 @@ jobs:
               "dynamicTypeLoading": true
             },
             "extensions": {
-              "radius": "br:biceptypes.azurecr.io/test/radius/cloud:$RADIUS_VERSION",
-              "aws": "br:biceptypes.azurecr.io/aws:latest"
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
             }
           }
           EOF
