@@ -53,12 +53,12 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, erro
 		return nil, err
 	}
 
-	accountId, err := r.getAccountId(ctx, accessKeyID, secretAccessKey)
+	accountId, err := r.getAccountId(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	region, err := r.selectAWSRegion(ctx, QueryRegion, accessKeyID, secretAccessKey)
+	region, err := r.selectAWSRegion(ctx, QueryRegion)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +71,8 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, erro
 	}, nil
 }
 
-func (r *Runner) getAccountId(ctx context.Context, accessKeyID, secretAccessKey string) (string, error) {
-	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, QueryRegion, accessKeyID, secretAccessKey)
+func (r *Runner) getAccountId(ctx context.Context) (string, error) {
+	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, QueryRegion)
 	if err != nil {
 		return "", clierrors.MessageWithCause(err, "AWS credential verification failed.")
 	}
@@ -84,8 +84,8 @@ func (r *Runner) getAccountId(ctx context.Context, accessKeyID, secretAccessKey 
 	return *callerIdentityOutput.Account, nil
 }
 
-func (r *Runner) selectAWSRegion(ctx context.Context, region, accessKeyID, secretAccessKey string) (string, error) {
-	listRegionsOutput, err := r.awsClient.ListRegions(ctx, region, accessKeyID, secretAccessKey)
+func (r *Runner) selectAWSRegion(ctx context.Context, region string) (string, error) {
+	listRegionsOutput, err := r.awsClient.ListRegions(ctx, region)
 	if err != nil {
 		return "", clierrors.MessageWithCause(err, "Listing AWS regions failed.")
 	}

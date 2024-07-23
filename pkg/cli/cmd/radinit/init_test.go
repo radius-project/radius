@@ -1039,14 +1039,14 @@ func setAWSSecretAccessKeyPrompt(prompter *prompt.MockInterface, secretAccessKey
 
 func setAWSCallerIdentity(client *aws.MockClient, region string, accessKeyID string, secretAccessKey string, callerIdentityOutput *sts.GetCallerIdentityOutput) {
 	client.EXPECT().
-		GetCallerIdentity(gomock.Any(), region, accessKeyID, secretAccessKey).
+		GetCallerIdentity(gomock.Any(), region).
 		Return(callerIdentityOutput, nil).
 		Times(1)
 }
 
 func setAWSListRegions(client *aws.MockClient, region string, accessKeyID string, secretAccessKey string, ec2DescribeRegionsOutput *ec2.DescribeRegionsOutput) {
 	client.EXPECT().
-		ListRegions(gomock.Any(), region, accessKeyID, secretAccessKey).
+		ListRegions(gomock.Any(), region).
 		Return(ec2DescribeRegionsOutput, nil).
 		Times(1)
 }
