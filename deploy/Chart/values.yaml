@@ -28,8 +28,9 @@ global:
 
   # Configure global.aws.irsa.enabled=true to enable AWS IRSA.
   # Disabled by default.
-  aws.irsa:
-    enabled: false
+  aws:
+    irsa:
+      enabled: false
 
 controller:
   image: ghcr.io/radius-project/controller
