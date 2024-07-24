@@ -58,7 +58,13 @@ test-get-envtools:
 test-validate-cli: ## Run cli integration tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-shared test-functional-cli test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples ## Runs all functional tests
+test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-corerp test-functional-cli test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples ## Runs all functional tests
+
+# Run all functional tests that do not require cloud resources
+test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud ## Runs all functional tests that do not require cloud resources
+
+# Run all functional tests that require cloud resources
+test-functional-all-cloud: test-functional-ucp-cloud test-functional-corerp-cloud test-functional-datastoresrp-cloud
 
 test-functional-ucp: test-functional-ucp-noncloud test-functional-ucp-cloud ## Runs all UCP functional tests (both cloud and non-cloud)
 
@@ -74,7 +80,7 @@ test-functional-kubernetes: test-functional-kubernetes-noncloud ## Runs all Kube
 test-functional-kubernetes-noncloud: ## Runs Kubernetes functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/kubernetes/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-shared: test-functional-corerp-noncloud test-functional-corerp-cloud ## Runs all Core RP functional tests (both cloud and non-cloud)
+test-functional-corerp: test-functional-corerp-noncloud test-functional-corerp-cloud ## Runs all Core RP functional tests (both cloud and non-cloud)
 
 test-functional-corerp-noncloud: ## Runs corerp functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)

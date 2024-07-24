@@ -69,16 +69,16 @@ func GetOIDCIssuer() string {
 
 // SetDefault sets the default Docker registry and image tag if they are not already set in the environment.
 func SetDefault() (string, string) {
-	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
+	dockerRegistry := os.Getenv("DOCKER_REGISTRY")
 	imageTag := os.Getenv("REL_VERSION")
-	if defaultDockerReg == "" {
-		defaultDockerReg = "ghcr.io/radius-project"
+	if dockerRegistry == "" {
+		dockerRegistry = "ghcr.io/radius-project"
 	}
 	if imageTag == "" {
 		imageTag = "latest"
 	}
 
-	return defaultDockerReg, imageTag
+	return dockerRegistry, imageTag
 }
 
 type ProxyMetadata struct {
@@ -334,4 +334,14 @@ func GetCreationTimestamp() string {
 // GenerateS3BucketName generates a unique S3 bucket name.
 func GenerateS3BucketName() string {
 	return "radiusfunctionaltestbucket-" + uuid.New().String()
+}
+
+// GetDockerRegistry returns the Docker registry from the environment variable DOCKER_REGISTRY or the default value
+// "ghcr.io/radius-project".
+func GetDockerRegistry() string {
+	regName := os.Getenv("DOCKER_REGISTRY")
+	if regName == "" {
+		return "ghcr.io/radius-project"
+	}
+	return regName
 }

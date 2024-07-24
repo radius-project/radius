@@ -1248,6 +1248,17 @@ func (p *PersistentVolume) GetVolume() *Volume {
 	}
 }
 
+// ProviderConfigProperties - This configuration holds the necessary information to authenticate and interact with a provider
+// for the recipe execution.
+type ProviderConfigProperties struct {
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]any
+
+	// Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores
+// resource.
+	Secrets map[string]*SecretReference
+}
+
 // Providers - The Cloud providers configuration.
 type Providers struct {
 	// The AWS cloud provider configuration.
@@ -1303,6 +1314,10 @@ type Recipe struct {
 type RecipeConfigProperties struct {
 	// Environment variables injected during Terraform Recipe execution for the recipes in the environment.
 	Env map[string]*string
+
+	// Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores
+// resource.
+	EnvSecrets map[string]*SecretReference
 
 	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
 	Terraform *TerraformConfigProperties
@@ -1448,6 +1463,16 @@ type SecretObjectProperties struct {
 
 	// secret version
 	Version *string
+}
+
+// SecretReference - This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing
+// and are recommended to be used to hold sensitive data.
+type SecretReference struct {
+	// REQUIRED; The key for the secret in the secret store.
+	Key *string
+
+	// REQUIRED; The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
+	Source *string
 }
 
 // SecretStoreListSecretsResult - The list of secrets
@@ -1617,7 +1642,7 @@ type TerraformConfigProperties struct {
 	// Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and
 // other APIs. For more information, please see:
 // https://developer.hashicorp.com/terraform/language/providers/configuration.
-	Providers map[string][]map[string]any
+	Providers map[string][]*ProviderConfigProperties
 }
 
 // TerraformRecipeProperties - Represents Terraform recipe properties.
