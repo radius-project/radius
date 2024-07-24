@@ -45,7 +45,7 @@ var _ Client = &client{}
 // GetCallerIdentity gets information about the provided credentials.
 func (c *client) GetCallerIdentity(ctx context.Context, region string) (*sts.GetCallerIdentityOutput, error) {
 	// Load the AWS SDK config and credentials
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile("default"))
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (c *client) GetCallerIdentity(ctx context.Context, region string) (*sts.Get
 // ListRegions lists the AWS regions available (fetched from EC2.DescribeRegions API).
 func (c *client) ListRegions(ctx context.Context, region string) (*ec2.DescribeRegionsOutput, error) {
 	// Load the AWS SDK config and credentials
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile("default"))
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
