@@ -51,7 +51,9 @@ const (
 	awsRoleARN      = "role_arn"
 	sessionName     = "session_name"
 	tokenFile       = "web_identity_token_file"
-	tokenFilePath   = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
+	// The path used in Amazon Elastic Kubernetes Service (EKS) to store the service account token for a Kubernetes pod.
+	// Ref: https://docs.aws.amazon.com/eks/latest/userguide/pod-configuration.html
+	tokenFilePath = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
 )
 
 var _ Provider = (*awsProvider)(nil)
@@ -170,6 +172,7 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 			// We should provide the user with ability to configure the STS endpoint region.
 			// For now, we are using the global STS endpoint, which is the default.
 			// Ref. https://github.com/radius-project/radius/issues/7747
+			// once we switch to region based STS endpoint, we should add the region to the config.
 			if credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
 				config[awsIRSAProvider] = map[string]any{
 					awsRoleARN:  credentials.IRSACredential.RoleARN,

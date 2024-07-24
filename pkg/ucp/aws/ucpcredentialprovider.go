@@ -40,7 +40,7 @@ const (
 
 	// CredentialKind is IRSA
 	CredentialKindIRSA = "IRSA"
-	// CredentialKindAccessKey is AccessKey
+	// CredentialKind is AccessKey
 	CredentialKindAccessKey = "AccessKey"
 	// Token file path for IRSA
 	tokenFilePath = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
