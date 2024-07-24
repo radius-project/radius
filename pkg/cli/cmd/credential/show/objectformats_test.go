@@ -76,7 +76,7 @@ func Test_credentialFormat_Azure_WorkloadIdentity(t *testing.T) {
 	require.Equal(t, expected, buffer.String())
 }
 
-func Test_credentialFormat_AWS_AcessKey(t *testing.T) {
+func Test_credentialFormatAWSAccessKey(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
 		CloudProviderStatus: credential.CloudProviderStatus{
 			Name:    "test",
@@ -97,11 +97,11 @@ func Test_credentialFormat_AWS_AcessKey(t *testing.T) {
 	err := output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
 	require.NoError(t, err)
 
-	expected := "NAME      REGISTERED  ACCESSKEYID\ntest      true        test-access-key-id\n"
+	expected := "NAME      REGISTERED  KIND       ACCESSKEYID\ntest      true        AccessKey  test-access-key-id\n"
 	require.Equal(t, expected, buffer.String())
 }
 
-func Test_credentialFormat_AWS_IRSA(t *testing.T) {
+func Test_credentialFormatAWSIRSA(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
 		CloudProviderStatus: credential.CloudProviderStatus{
 			Name:    "test",
@@ -122,6 +122,6 @@ func Test_credentialFormat_AWS_IRSA(t *testing.T) {
 	err := output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
 	require.NoError(t, err)
 
-	expected := "NAME      REGISTERED  ROLEARN\ntest      true        test-role-arn\n"
+	expected := "NAME      REGISTERED  KIND      ROLEARN\ntest      true        IRSA      test-role-arn\n"
 	require.Equal(t, expected, buffer.String())
 }

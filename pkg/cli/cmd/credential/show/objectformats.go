@@ -86,6 +86,10 @@ func credentialFormatAWSAccessKey() output.FormatterOptions {
 				JSONPath: "{ .Enabled }",
 			},
 			{
+				Heading:  "KIND",
+				JSONPath: "{ .AWSCredentials.Kind }",
+			},
+			{
 				Heading:  "ACCESSKEYID",
 				JSONPath: "{ .AWSCredentials.AccessKey.AccessKeyID }",
 			},
@@ -103,6 +107,10 @@ func credentialFormatAWSIRSA() output.FormatterOptions {
 			{
 				Heading:  "REGISTERED",
 				JSONPath: "{ .Enabled }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .AWSCredentials.Kind }",
 			},
 			{
 				Heading:  "ROLEARN",
