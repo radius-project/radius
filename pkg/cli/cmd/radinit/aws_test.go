@@ -31,7 +31,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func Test_enterAWSCloudProvider(t *testing.T) {
+func Test_enterAWSCloudProvider_AccessKey(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	prompter := prompt.NewMockInterface(ctrl)
 	client := aws.NewMockClient(ctrl)
@@ -43,20 +43,59 @@ func Test_enterAWSCloudProvider(t *testing.T) {
 	}
 	regions := []string{"region", "region2"}
 
+	setAWSCredentialKindPrompt(prompter, "Access Key")
 	setAWSAccessKeyIDPrompt(prompter, "access-key-id")
 	setAWSSecretAccessKeyPrompt(prompter, "secret-access-key")
-	setAWSCallerIdentity(client, QueryRegion, "access-key-id", "secret-access-key", &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
-	setAWSListRegions(client, QueryRegion, "access-key-id", "secret-access-key", &ec2.DescribeRegionsOutput{Regions: ec2Regions})
+	setAWSCallerIdentity(client, QueryRegion, &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
+	setAWSListRegions(client, QueryRegion, &ec2.DescribeRegionsOutput{Regions: ec2Regions})
 	setAWSRegionPrompt(prompter, regions, "region")
 
-	provider, err := runner.enterAWSCloudProvider(context.Background())
+	options := &initOptions{}
+	provider, err := runner.enterAWSCloudProvider(context.Background(), options)
 	require.NoError(t, err)
 
 	expected := &aws.Provider{
-		AccessKeyID:     "access-key-id",
-		SecretAccessKey: "secret-access-key",
-		Region:          "region",
-		AccountID:       "account-id",
+		AccessKey: &aws.AccessKeyCredential{
+			AccessKeyID:     "access-key-id",
+			SecretAccessKey: "secret-access-key",
+		},
+		CredentialKind: "AccessKey",
+		Region:         "region",
+		AccountID:      "account-id",
+	}
+	require.Equal(t, expected, provider)
+	require.Equal(t, []any{output.LogOutput{Format: awsAccessKeysCreateInstructionFmt}}, outputSink.Writes)
+}
+
+func Test_enterAWSCloudProvider_IRSA(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	prompter := prompt.NewMockInterface(ctrl)
+	client := aws.NewMockClient(ctrl)
+	outputSink := output.MockOutput{}
+	runner := Runner{Prompter: prompter, awsClient: client, Output: &outputSink}
+	ec2Regions := []ec2_types.Region{
+		{RegionName: to.Ptr("region")},
+		{RegionName: to.Ptr("region2")},
+	}
+	regions := []string{"region", "region2"}
+
+	setAWSCredentialKindPrompt(prompter, "IRSA")
+	setAwsIRSARoleARNPrompt(prompter, "role-arn")
+	setAWSCallerIdentity(client, QueryRegion, &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
+	setAWSListRegions(client, QueryRegion, &ec2.DescribeRegionsOutput{Regions: ec2Regions})
+	setAWSRegionPrompt(prompter, regions, "region")
+
+	options := &initOptions{}
+	provider, err := runner.enterAWSCloudProvider(context.Background(), options)
+	require.NoError(t, err)
+
+	expected := &aws.Provider{
+		IRSA: &aws.IRSACredential{
+			RoleARN: "role-arn",
+		},
+		CredentialKind: "IRSA",
+		Region:         "region",
+		AccountID:      "account-id",
 	}
 	require.Equal(t, expected, provider)
 	require.Equal(t, []any{output.LogOutput{Format: awsAccessKeysCreateInstructionFmt}}, outputSink.Writes)

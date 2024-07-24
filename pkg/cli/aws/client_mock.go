@@ -42,18 +42,18 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // GetCallerIdentity mocks base method.
-func (m *MockClient) GetCallerIdentity(arg0 context.Context, arg1, arg2, arg3 string) (*sts.GetCallerIdentityOutput, error) {
+func (m *MockClient) GetCallerIdentity(arg0 context.Context, arg1 string) (*sts.GetCallerIdentityOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCallerIdentity", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "GetCallerIdentity", arg0, arg1)
 	ret0, _ := ret[0].(*sts.GetCallerIdentityOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCallerIdentity indicates an expected call of GetCallerIdentity.
-func (mr *MockClientMockRecorder) GetCallerIdentity(arg0, arg1, arg2, arg3 any) *MockClientGetCallerIdentityCall {
+func (mr *MockClientMockRecorder) GetCallerIdentity(arg0, arg1 any) *MockClientGetCallerIdentityCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCallerIdentity", reflect.TypeOf((*MockClient)(nil).GetCallerIdentity), arg0, arg1, arg2, arg3)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCallerIdentity", reflect.TypeOf((*MockClient)(nil).GetCallerIdentity), arg0, arg1)
 	return &MockClientGetCallerIdentityCall{Call: call}
 }
 
@@ -69,30 +69,30 @@ func (c *MockClientGetCallerIdentityCall) Return(arg0 *sts.GetCallerIdentityOutp
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockClientGetCallerIdentityCall) Do(f func(context.Context, string, string, string) (*sts.GetCallerIdentityOutput, error)) *MockClientGetCallerIdentityCall {
+func (c *MockClientGetCallerIdentityCall) Do(f func(context.Context, string) (*sts.GetCallerIdentityOutput, error)) *MockClientGetCallerIdentityCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockClientGetCallerIdentityCall) DoAndReturn(f func(context.Context, string, string, string) (*sts.GetCallerIdentityOutput, error)) *MockClientGetCallerIdentityCall {
+func (c *MockClientGetCallerIdentityCall) DoAndReturn(f func(context.Context, string) (*sts.GetCallerIdentityOutput, error)) *MockClientGetCallerIdentityCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListRegions mocks base method.
-func (m *MockClient) ListRegions(arg0 context.Context, arg1, arg2, arg3 string) (*ec2.DescribeRegionsOutput, error) {
+func (m *MockClient) ListRegions(arg0 context.Context, arg1 string) (*ec2.DescribeRegionsOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRegions", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "ListRegions", arg0, arg1)
 	ret0, _ := ret[0].(*ec2.DescribeRegionsOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRegions indicates an expected call of ListRegions.
-func (mr *MockClientMockRecorder) ListRegions(arg0, arg1, arg2, arg3 any) *MockClientListRegionsCall {
+func (mr *MockClientMockRecorder) ListRegions(arg0, arg1 any) *MockClientListRegionsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRegions", reflect.TypeOf((*MockClient)(nil).ListRegions), arg0, arg1, arg2, arg3)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRegions", reflect.TypeOf((*MockClient)(nil).ListRegions), arg0, arg1)
 	return &MockClientListRegionsCall{Call: call}
 }
 
@@ -108,13 +108,13 @@ func (c *MockClientListRegionsCall) Return(arg0 *ec2.DescribeRegionsOutput, arg1
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockClientListRegionsCall) Do(f func(context.Context, string, string, string) (*ec2.DescribeRegionsOutput, error)) *MockClientListRegionsCall {
+func (c *MockClientListRegionsCall) Do(f func(context.Context, string) (*ec2.DescribeRegionsOutput, error)) *MockClientListRegionsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockClientListRegionsCall) DoAndReturn(f func(context.Context, string, string, string) (*ec2.DescribeRegionsOutput, error)) *MockClientListRegionsCall {
+func (c *MockClientListRegionsCall) DoAndReturn(f func(context.Context, string) (*ec2.DescribeRegionsOutput, error)) *MockClientListRegionsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

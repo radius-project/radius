@@ -26,6 +26,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 )
@@ -36,7 +37,7 @@ const (
 	summaryFooter                                 = "\n(press enter to confirm or esc to restart)\n"
 	summaryKubernetesHeadingIcon                  = "🔧 "
 	summaryKubernetesInstallHeadingFmt            = "Install Radius %s\n" + summaryIndent + "Kubernetes cluster: %s\n" + summaryIndent + "Kubernetes namespace: %s\n"
-	summaryKubernetesInstallAWSCloudProviderFmt   = summaryIndent + "AWS IAM access key id: %s\n"
+	summaryKubernetesInstallAWSCloudProviderFmt   = summaryIndent + "AWS credential: %s\n"
 	summaryKubernetesInstallAzureCloudProviderFmt = summaryIndent + "Azure credential: %s\n"
 	summaryKubernetesExistingHeadingFmt           = "Use existing Radius %s install on %s\n"
 	summaryEnvironmentHeadingIcon                 = "🌏 "
@@ -205,7 +206,14 @@ func (m *summaryModel) View() string {
 		message.WriteString(fmt.Sprintf(summaryKubernetesInstallHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context), highlight(options.Cluster.Namespace)))
 
 		if options.CloudProviders.AWS != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(options.CloudProviders.AWS.AccessKeyID)))
+			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(string(options.CloudProviders.AWS.CredentialKind))))
+			switch options.CloudProviders.AWS.CredentialKind {
+			case aws.AwsCredentialKindAccessKey:
+				message.WriteString(fmt.Sprintf(summaryIndent+"AccessKey ID: %s\n", highlight(options.CloudProviders.AWS.AccessKey.AccessKeyID)))
+			case aws.AwsCredentialKindIRSA:
+				message.WriteString(fmt.Sprintf(summaryIndent+"IAM Role ARN: %s\n", highlight(options.CloudProviders.AWS.IRSA.RoleARN)))
+			}
+
 		}
 		if options.CloudProviders.Azure != nil {
 			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(string(options.CloudProviders.Azure.CredentialKind))))
@@ -337,8 +345,15 @@ func (m *progressModel) View() string {
 		message.WriteString(fmt.Sprintf(summaryKubernetesInstallHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context), highlight(options.Cluster.Namespace)))
 
 		if options.CloudProviders.AWS != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(options.CloudProviders.AWS.AccessKeyID)))
+			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(string(options.CloudProviders.AWS.CredentialKind))))
+			switch options.CloudProviders.AWS.CredentialKind {
+			case aws.AwsCredentialKindAccessKey:
+				message.WriteString(fmt.Sprintf(summaryIndent+"AccessKey ID: %s\n", highlight(options.CloudProviders.AWS.AccessKey.AccessKeyID)))
+			case aws.AwsCredentialKindIRSA:
+				message.WriteString(fmt.Sprintf(summaryIndent+"IAM Role ARN: %s\n", highlight(options.CloudProviders.AWS.IRSA.RoleARN)))
+			}
 		}
+
 		if options.CloudProviders.Azure != nil {
 			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(string(options.CloudProviders.Azure.CredentialKind))))
 			switch options.CloudProviders.Azure.CredentialKind {

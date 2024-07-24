@@ -31,48 +31,94 @@ const (
 	QueryRegion = "us-east-1"
 
 	selectAWSRegionPrompt                 = "Select the region you would like to deploy AWS resources to:"
+	selectAwsCredentialKindPrompt         = "Select a credential kind for the AWS credential:"
 	enterAWSIAMAcessKeyIDPrompt           = "Enter the IAM access key id:"
+	enterAWSRoleARNPrompt                 = "Enter the role ARN:"
+	enterAWSRoleARNPlaceholder            = "Enter IAM role ARN..."
 	enterAWSIAMAcessKeyIDPlaceholder      = "Enter IAM access key id..."
 	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Key:"
 	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM secret access key..."
 	errNotEmptyTemplate                   = "%s cannot be empty"
 
 	awsAccessKeysCreateInstructionFmt = "\nAWS IAM Access keys (Access key ID and Secret access key) are required to access and create AWS resources.\n\nFor example, you can create one using the following command:\n\033[36maws iam create-access-key\033[0m\n\nFor more information refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html.\n\n"
+	awsIRSACredentialKind             = "IRSA"
+	awsAccessKeyCredentialKind        = "Access Key"
 )
 
-func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, error) {
-	r.Output.LogInfo(awsAccessKeysCreateInstructionFmt)
-
-	accessKeyID, err := r.Prompter.GetTextInput(enterAWSIAMAcessKeyIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMAcessKeyIDPlaceholder})
+func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions) (*aws.Provider, error) {
+	credentialKind, err := r.selectAwsCredentialKind()
 	if err != nil {
 		return nil, err
 	}
 
-	secretAccessKey, err := r.Prompter.GetTextInput(enterAWSIAMSecretAccessKeyPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMSecretAccessKeyPlaceholder, EchoMode: textinput.EchoPassword})
-	if err != nil {
-		return nil, err
-	}
+	switch credentialKind {
+	case awsAccessKeyCredentialKind:
+		r.Output.LogInfo(awsAccessKeysCreateInstructionFmt)
 
-	accountId, err := r.getAccountId(ctx, accessKeyID, secretAccessKey)
-	if err != nil {
-		return nil, err
-	}
+		accessKeyID, err := r.Prompter.GetTextInput(enterAWSIAMAcessKeyIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMAcessKeyIDPlaceholder})
+		if err != nil {
+			return nil, err
+		}
 
-	region, err := r.selectAWSRegion(ctx, QueryRegion, accessKeyID, secretAccessKey)
-	if err != nil {
-		return nil, err
-	}
+		secretAccessKey, err := r.Prompter.GetTextInput(enterAWSIAMSecretAccessKeyPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMSecretAccessKeyPlaceholder, EchoMode: textinput.EchoPassword})
+		if err != nil {
+			return nil, err
+		}
 
-	return &aws.Provider{
-		AccessKeyID:     accessKeyID,
-		SecretAccessKey: secretAccessKey,
-		AccountID:       accountId,
-		Region:          region,
-	}, nil
+		accountId, err := r.getAccountId(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		region, err := r.selectAWSRegion(ctx, QueryRegion)
+		if err != nil {
+			return nil, err
+		}
+
+		return &aws.Provider{
+			AccessKey: &aws.AccessKeyCredential{
+				AccessKeyID:     accessKeyID,
+				SecretAccessKey: secretAccessKey,
+			},
+			CredentialKind: aws.AwsCredentialKindAccessKey,
+			AccountID:      accountId,
+			Region:         region,
+		}, nil
+	case awsIRSACredentialKind:
+		r.Output.LogInfo(awsAccessKeysCreateInstructionFmt)
+
+		roleARN, err := r.Prompter.GetTextInput(enterAWSRoleARNPrompt, prompt.TextInputOptions{Placeholder: enterAWSRoleARNPlaceholder})
+		if err != nil {
+			return nil, err
+		}
+
+		accountId, err := r.getAccountId(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		region, err := r.selectAWSRegion(ctx, QueryRegion)
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the value for the Helm chart
+		options.SetValues = append(options.SetValues, "global.aws.irsa.enabled=true")
+		return &aws.Provider{
+			AccountID:      accountId,
+			Region:         region,
+			CredentialKind: aws.AwsCredentialKindIRSA,
+			IRSA: &aws.IRSACredential{
+				RoleARN: roleARN,
+			},
+		}, nil
+	default:
+		return nil, clierrors.Message("Invalid Azure credential kind: %s", credentialKind)
+	}
 }
 
-func (r *Runner) getAccountId(ctx context.Context, accessKeyID, secretAccessKey string) (string, error) {
-	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, QueryRegion, accessKeyID, secretAccessKey)
+func (r *Runner) getAccountId(ctx context.Context) (string, error) {
+	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, QueryRegion)
 	if err != nil {
 		return "", clierrors.MessageWithCause(err, "AWS credential verification failed.")
 	}
@@ -84,8 +130,8 @@ func (r *Runner) getAccountId(ctx context.Context, accessKeyID, secretAccessKey 
 	return *callerIdentityOutput.Account, nil
 }
 
-func (r *Runner) selectAWSRegion(ctx context.Context, region, accessKeyID, secretAccessKey string) (string, error) {
-	listRegionsOutput, err := r.awsClient.ListRegions(ctx, region, accessKeyID, secretAccessKey)
+func (r *Runner) selectAWSRegion(ctx context.Context, region string) (string, error) {
+	listRegionsOutput, err := r.awsClient.ListRegions(ctx, region)
 	if err != nil {
 		return "", clierrors.MessageWithCause(err, "Listing AWS regions failed.")
 	}
@@ -106,4 +152,20 @@ func (r *Runner) buildAWSRegionsList(listRegionsOutput *ec2.DescribeRegionsOutpu
 	}
 
 	return regions
+}
+
+func (r *Runner) selectAwsCredentialKind() (string, error) {
+	credentialKinds, err := r.buildAwsCredentialKind()
+	if err != nil {
+		return "", err
+	}
+
+	return r.Prompter.GetListInput(credentialKinds, selectAwsCredentialKindPrompt)
+}
+
+func (r *Runner) buildAwsCredentialKind() ([]string, error) {
+	return []string{
+		awsAccessKeyCredentialKind,
+		awsIRSACredentialKind,
+	}, nil
 }

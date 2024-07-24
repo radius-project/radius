@@ -316,17 +316,33 @@ func (r *Runner) getAzureCredential() (ucp.AzureCredentialResource, error) {
 	}
 }
 
-func (r *Runner) getAWSCredential() ucp.AwsCredentialResource {
-	return ucp.AwsCredentialResource{
-		Location: to.Ptr(v1.LocationGlobal),
-		Type:     to.Ptr(cli_credential.AWSCredential),
-		Properties: &ucp.AwsAccessKeyCredentialProperties{
-			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+func (r *Runner) getAWSCredential() (ucp.AwsCredentialResource, error) {
+	switch r.Options.CloudProviders.AWS.CredentialKind {
+	case aws.AwsCredentialKindAccessKey:
+		return ucp.AwsCredentialResource{
+			Location: to.Ptr(v1.LocationGlobal),
+			Type:     to.Ptr(cli_credential.AWSCredential),
+			Properties: &ucp.AwsAccessKeyCredentialProperties{
+				Storage: &ucp.CredentialStorageProperties{
+					Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				},
+				AccessKeyID:     &r.Options.CloudProviders.AWS.AccessKey.AccessKeyID,
+				SecretAccessKey: &r.Options.CloudProviders.AWS.AccessKey.SecretAccessKey,
 			},
-			AccessKeyID:     &r.Options.CloudProviders.AWS.AccessKeyID,
-			SecretAccessKey: &r.Options.CloudProviders.AWS.SecretAccessKey,
-		},
+		}, nil
+	case aws.AwsCredentialKindIRSA:
+		return ucp.AwsCredentialResource{
+			Location: to.Ptr(v1.LocationGlobal),
+			Type:     to.Ptr(cli_credential.AWSCredential),
+			Properties: &ucp.AwsIRSACredentialProperties{
+				Storage: &ucp.CredentialStorageProperties{
+					Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				},
+				RoleARN: &r.Options.CloudProviders.AWS.IRSA.RoleARN,
+			},
+		}, nil
+	default:
+		return ucp.AwsCredentialResource{}, fmt.Errorf("unsupported AWS credential kind: %s", r.Options.CloudProviders.AWS.CredentialKind)
 	}
 }
 
