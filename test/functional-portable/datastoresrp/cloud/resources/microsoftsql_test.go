@@ -44,6 +44,7 @@ func Test_MicrosoftSQL_Manual(t *testing.T) {
 	} else {
 		t.Error("AZURE_MSSQL_USERNAME and AZURE_MSSQL_PASSWORD environment variable must be set to run this test.")
 	}
+
 	mssqlresourceid := "mssqlresourceid=" + os.Getenv("AZURE_MSSQL_RESOURCE_ID")
 	sqlDatabse := "database=" + os.Getenv("AZURE_MSSQL_DATABASE")
 	sqlServer := "server=" + os.Getenv("AZURE_MSSQL_SERVER")

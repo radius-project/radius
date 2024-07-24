@@ -1,8 +1,6 @@
 import radius as radius
 
-param scope string = resourceGroup().id
-
-param registry string 
+param registry string
 
 param version string
 
@@ -13,18 +11,13 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'dsrp-resources-env-recipe-env' 
-    }
-    providers: {
-      azure: {
-        scope: scope
-      }
+      namespace: 'dsrp-resources-env-recipe-env'
     }
     recipes: {
-      'Applications.Datastores/redisCaches':{
+      'Applications.Datastores/redisCaches': {
         rediscache: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/redis-recipe-value-backed:${version}' 
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/redis-recipe-value-backed:${version}'
         }
       }
     }
@@ -38,8 +31,8 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
     environment: env.id
     extensions: [
       {
-          kind: 'kubernetesNamespace'
-          namespace: 'dsrp-resources-redis-recipe-app'
+        kind: 'kubernetesNamespace'
+        namespace: 'dsrp-resources-redis-recipe-app'
       }
     ]
   }

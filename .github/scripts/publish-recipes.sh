@@ -6,7 +6,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -50,12 +50,11 @@ if [[ -z "$GITHUB_STEP_SUMMARY" ]]; then
     GITHUB_STEP_SUMMARY=/dev/null
 fi
 
-echo "## Recipes published to $REGISTRY_PATH" >> $GITHUB_STEP_SUMMARY
-for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep")
-do
+echo "## Recipes published to $REGISTRY_PATH" >>$GITHUB_STEP_SUMMARY
+for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep"); do
     FILENAME=$(basename $RECIPE)
     PUBLISH_REF="$REGISTRY_PATH/${FILENAME%.*}:$RECIPE_VERSION"
-    
+
     # Skip files that start with _. These are not recipes, they are modules that are
     # used by the recipes.
     if [[ $(basename $RECIPE) =~ ^_.* ]]; then
@@ -64,6 +63,6 @@ do
     fi
 
     echo "Publishing $RECIPE to $PUBLISH_REF"
-    echo "- $PUBLISH_REF" >> $GITHUB_STEP_SUMMARY
+    echo "- $PUBLISH_REF" >>$GITHUB_STEP_SUMMARY
     rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF"
 done
