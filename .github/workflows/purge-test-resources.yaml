@@ -19,6 +19,7 @@ name: Purge test resources
 permissions:
   id-token: write # Required for requesting the JWT
   contents: read # Required for actions/checkout
+  packages: write # Required for reading package versions and deleting packages
 
 on:
   # Enable manual trigger
@@ -49,6 +50,7 @@ jobs:
           org-name: radius-project
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           keep-at-least: 1
+
   purge_azure_resources:
     name: Azure resources clean-ups
     runs-on: ubuntu-latest
@@ -62,6 +64,7 @@ jobs:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+
       - name: Find old test resource groups
         run: |
           echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
@@ -93,6 +96,7 @@ jobs:
               echo " * :white_check_mark: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
             fi
           done <<< "$resource_groups"
+
       - name: Delete Azure resource groups
         run: |
           echo "## Deleting resource group list" >> $GITHUB_STEP_SUMMARY
@@ -101,6 +105,7 @@ jobs:
               echo " * $line" >> $GITHUB_STEP_SUMMARY
               az group delete --resource-group $line --yes --verbose --no-wait
           done
+
   create_issue_on_failure:
     name: Create issue for failing purge test resources run
     needs: [purge_ghcr_dev, purge_azure_resources]
