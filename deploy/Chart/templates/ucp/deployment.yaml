@@ -64,7 +64,7 @@ spec:
         - name: config-volume
           mountPath: /etc/config
         {{- if eq .Values.global.aws.irsa.enabled true }}
-        - name: aws-irsa-token
+        - name: aws-iam-token
           mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
         {{- end }}
         - name: cert
@@ -82,7 +82,7 @@ spec:
             # to add to the container
             name: ucp-config
         {{- if eq .Values.global.aws.irsa.enabled true }}
-        - name: aws-irsa-token
+        - name: aws-iam-token
           projected:
             sources:
             - serviceAccountToken:
