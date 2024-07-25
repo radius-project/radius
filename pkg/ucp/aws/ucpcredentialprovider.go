@@ -48,6 +48,8 @@ const (
 	awsSTSGlobalEndPointSigningRegion = "us-east-1"
 	// AWS IRSA session name prefix
 	sessionPrefix = "radius-ucp-"
+	// Credential source
+	credentialSource = "radiusucp"
 )
 
 // UCPCredentialProvider is the implementation of aws.CredentialsProvider
@@ -99,7 +101,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		value = aws.Credentials{
 			AccessKeyID:     s.AccessKeyCredential.AccessKeyID,
 			SecretAccessKey: s.AccessKeyCredential.SecretAccessKey,
-			Source:          "radiusucp",
+			Source:          credentialSource,
 			CanExpire:       true,
 			Expires:         time.Now().UTC().Add(c.options.Duration),
 		}
@@ -142,7 +144,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 			logger.Info(fmt.Sprintf("Failed to retrieve AWS Credential IRSA - %s", err.Error()))
 			return aws.Credentials{}, err
 		}
-		value.Source = "radiusucp"
+		value.Source = credentialSource
 		value.CanExpire = true
 		value.Expires = time.Now().UTC().Add(c.options.Duration)
 	default:
