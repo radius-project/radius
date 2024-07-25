@@ -54,6 +54,7 @@ const (
 	// The path used in Amazon Elastic Kubernetes Service (EKS) to store the service account token for a Kubernetes pod.
 	// Ref: https://docs.aws.amazon.com/eks/latest/userguide/pod-configuration.html
 	tokenFilePath = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
+	sessionPrefix = "radius-terraform-"
 )
 
 var _ Provider = (*awsProvider)(nil)
@@ -176,7 +177,7 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 			if credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
 				config[awsIRSAProvider] = map[string]any{
 					awsRoleARN:  credentials.IRSACredential.RoleARN,
-					sessionName: "radius-terraform-" + uuid.New().String(),
+					sessionName: sessionPrefix + uuid.New().String(),
 					tokenFile:   tokenFilePath,
 				}
 			}

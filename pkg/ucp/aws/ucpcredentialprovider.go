@@ -46,6 +46,8 @@ const (
 	tokenFilePath = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
 	// AWS STS Signing region
 	awsSTSGlobalEndPointSigningRegion = "us-east-1"
+	// AWS IRSA session name prefix
+	sessionPrefix = "radius-ucp-"
 )
 
 // UCPCredentialProvider is the implementation of aws.CredentialsProvider
@@ -131,7 +133,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 			s.IRSACredential.RoleARN,
 			stscreds.IdentityTokenFile(tokenFilePath),
 			func(o *stscreds.WebIdentityRoleOptions) {
-				o.RoleSessionName = "radius-ucp-" + uuid.New().String()
+				o.RoleSessionName = sessionPrefix + uuid.New().String()
 			},
 		))
 
