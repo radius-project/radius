@@ -135,9 +135,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad credential register aws access-key` command.
 //
 
-// Run() registers an AWS credential with the given context and workspace, and returns an error if unsuccessful.
+// Run registers an AWS credential with the given context and workspace, and returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
-
 	r.Output.LogInfo("Registering credential for %q cloud provider in Radius installation %q...", "aws", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {

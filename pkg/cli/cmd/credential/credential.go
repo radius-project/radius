@@ -47,7 +47,7 @@ rad credential register azure sp --client-id <client id> --client-secret <client
 rad credential register azure wi --client-id <client id> --tenant-id <tenant id>
 # Register (Add or update) cloud provider credential for AWS with access key authentication.
 rad credential register aws access-key --access-key-id <access-key-id> --secret-access-key <secret-access-key>
-# Register (Add or update) cloud provider credential for AWS with IRSA.
+# Register (Add or update) cloud provider credential for AWS with IRSA (IAM Roles for Service Accounts).
 rad credential register aws irsa --iam-role <roleARN>
 
 # Show cloud provider credential details for Azure
