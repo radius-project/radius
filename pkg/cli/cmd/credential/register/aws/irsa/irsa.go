@@ -48,7 +48,7 @@ to configure these settings.
 Radius will use the provided IAM credential for all interactions with AWS. 
 ` + common.LongDescriptionBlurb,
 		Example: `
-# Register (Add or update) cloud provider credential for AWS with IAM authentication
+# Register (Add or update) cloud provider credential for AWS with IRSA (IAM roles for service accounts) authentication
 rad credential register aws irsa --iam-role <roleARN>
 `,
 		Args: cobra.ExactArgs(0),
