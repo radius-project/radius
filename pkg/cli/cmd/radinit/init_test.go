@@ -1046,7 +1046,7 @@ func setAWSCallerIdentity(client *aws.MockClient, callerIdentityOutput *sts.GetC
 
 func setAWSAccountIDConfirmPrompt(prompter *prompt.MockInterface, accountName string, choice string) {
 	prompter.EXPECT().
-		GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountName)).
+		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountName)).
 		Return(choice, nil).
 		Times(1)
 }

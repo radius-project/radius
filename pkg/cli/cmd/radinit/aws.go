@@ -59,7 +59,7 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, erro
 		return nil, err
 	}
 
-	addingCloudProvider, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountId), prompt.ConfirmNo, r.Prompter)
+	addingCloudProvider, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountId), prompt.ConfirmYes, r.Prompter)
 	if err != nil {
 		return nil, err
 	}
