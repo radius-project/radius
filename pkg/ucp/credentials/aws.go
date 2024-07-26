@@ -51,15 +51,6 @@ func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Con
 	}, nil
 }
 
-func getStorageProperties(p any) (*ucpapi.InternalCredentialStorageProperties, error) {
-	switch c := p.(type) {
-	case *ucpapi.InternalCredentialStorageProperties:
-		return c, nil
-	default:
-		return nil, errors.New("invalid AWS credential storage properties")
-	}
-}
-
 // Fetch fetches the AWS IAM access keys from UCP and then from an internal storage (e.g.
 // Kubernetes secret store). It returns an AWSCredential struct or an error if the fetch fails.
 func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AWSCredential, error) {

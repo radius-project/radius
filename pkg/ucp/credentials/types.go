@@ -18,7 +18,9 @@ package credentials
 
 import (
 	"context"
+	"errors"
 
+	ucpapi "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucp_dm "github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
@@ -61,4 +63,13 @@ type (
 type CredentialProvider[T any] interface {
 	// Fetch gets the credentials from secret storage.
 	Fetch(ctx context.Context, planeName, name string) (*T, error)
+}
+
+func getStorageProperties(p any) (*ucpapi.InternalCredentialStorageProperties, error) {
+	switch c := p.(type) {
+	case *ucpapi.InternalCredentialStorageProperties:
+		return c, nil
+	default:
+		return nil, errors.New("invalid AWS credential storage properties - field 'properties.storage' is not InternalCredentialStorageProperties")
+	}
 }
