@@ -68,7 +68,7 @@ resource db 'Applications.Datastores/sqlDatabases@2023-10-01-preview' = {
     resourceProvisioning: 'manual'
     port: sqlPort
     username: username
-    secrets:{
+    secrets: {
       password: password
     }
   }

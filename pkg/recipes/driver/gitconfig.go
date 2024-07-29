@@ -21,28 +21,23 @@ import (
 	"fmt"
 	"net/url"
 	"os/exec"
-	"reflect"
 	"strings"
 
 	git "github.com/go-git/go-git/v5"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 )
 
 // getGitURLWithSecrets returns the git URL with secrets information added.
-func getGitURLWithSecrets(secrets v20231001preview.SecretStoresClientListSecretsResponse, url *url.URL) string {
+func getGitURLWithSecrets(secrets map[string]string, url *url.URL) string {
 	// accessing the secret values and creating the git url with secret information.
-	var username, pat *string
 	path := fmt.Sprintf("%s://", url.Scheme)
-	user, ok := secrets.Data["username"]
+	user, ok := secrets["username"]
 	if ok {
-		username = user.Value
-		path += fmt.Sprintf("%s:", *username)
+		path += fmt.Sprintf("%s:", user)
 	}
 
-	token, ok := secrets.Data["pat"]
+	token, ok := secrets["pat"]
 	if ok {
-		pat = token.Value
-		path += *pat
+		path += token
 	}
 	path += fmt.Sprintf("@%s", url.Hostname())
 
@@ -52,7 +47,7 @@ func getGitURLWithSecrets(secrets v20231001preview.SecretStoresClientListSecrets
 // getURLConfigKeyValue is used to get the key and value details of the url config.
 // get the secret values pat and username from secrets and create a git url in
 // the format : https://<username>:<pat>@<git>.com
-func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) (string, string, error) {
+func getURLConfigKeyValue(secrets map[string]string, templatePath string) (string, string, error) {
 	url, err := GetGitURL(templatePath)
 	if err != nil {
 		return "", "", err
@@ -71,8 +66,8 @@ func getURLConfigKeyValue(secrets v20231001preview.SecretStoresClientListSecrets
 // Retrieves the git credentials from the provided secrets object
 // and adds them to the Git config by running
 // git config --file .git/config url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
-func addSecretsToGitConfig(workingDirectory string, secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
-	if !strings.HasPrefix(templatePath, "git::") || reflect.DeepEqual(secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, templatePath string) error {
+	if !strings.HasPrefix(templatePath, "git::") || secrets == nil || len(secrets) == 0 {
 		return nil
 	}
 
@@ -118,8 +113,8 @@ func setGitConfigForDir(workingDirectory string) error {
 // unsetGitConfigForDir removes a conditional include directive from the global Git configuration.
 // This function modifies the global Git configuration to remove a previously set `includeIf` directive
 // for a given working directory.
-func unsetGitConfigForDir(workingDirectory string, secrets v20231001preview.SecretStoresClientListSecretsResponse, templatePath string) error {
-	if !strings.HasPrefix(templatePath, "git::") || reflect.DeepEqual(secrets, v20231001preview.SecretStoresClientListSecretsResponse{}) {
+func unsetGitConfigForDir(workingDirectory string, secrets map[string]string, templatePath string) error {
+	if !strings.HasPrefix(templatePath, "git::") || secrets == nil || len(secrets) == 0 {
 		return nil
 	}
 
@@ -148,4 +143,44 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 	}
 
 	return url, nil
+}
+
+// addSecretsToGitConfigIfApplicable adds secrets to the Git configuration file if applicable.
+// It is a wrapper function to addSecretsToGitConfig()
+func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[string]map[string]string, requestDirPath string, templatePath string) error {
+	if secretStoreID == "" || secretData == nil {
+		return nil
+	}
+
+	secrets, ok := secretData[secretStoreID]
+	if !ok {
+		return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
+	}
+
+	err := addSecretsToGitConfig(requestDirPath, secrets, templatePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// unsetGitConfigForDir removes a conditional include directive from the global Git configuration if applicable.
+// It is a wrapper function to unsetGitConfigForDir()
+func unsetGitConfigForDirIfApplicable(secretStoreID string, secretData map[string]map[string]string, requestDirPath string, templatePath string) error {
+	if secretStoreID == "" || secretData == nil {
+		return nil
+	}
+
+	secrets, ok := secretData[secretStoreID]
+	if !ok {
+		return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
+	}
+
+	err := unsetGitConfigForDir(requestDirPath, secrets, templatePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

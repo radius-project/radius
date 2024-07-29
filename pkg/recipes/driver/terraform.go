@@ -32,7 +32,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/recipes"
-
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
@@ -86,8 +85,14 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		}
 	}()
 
-	// Add credential information to .gitconfig for module source of type git.
-	err = addSecretsToGitConfig(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
+	// Get the secret store ID associated with the git private terraform repository source.
+	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add credential information to .gitconfig for module source of type git if applicable.
+	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if err != nil {
 		return nil, err
 	}
@@ -97,9 +102,10 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		EnvConfig:      &opts.Configuration,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		Secrets:        opts.Secrets,
 	})
 
-	unsetError := unsetGitConfigForDir(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
+	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if unsetError != nil {
 		return nil, unsetError
 	}
@@ -130,8 +136,14 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		}
 	}()
 
-	// Add credential information to .gitconfig for module source of type git.
-	err = addSecretsToGitConfig(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
+	// Get the secret store ID associated with the git private terraform repository source.
+	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
+	if err != nil {
+		return err
+	}
+
+	// Add credential information to .gitconfig for module source of type git if applicable.
+	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if err != nil {
 		return err
 	}
@@ -143,7 +155,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		EnvRecipe:      &opts.Definition,
 	})
 
-	unsetError := unsetGitConfigForDir(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
+	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if unsetError != nil {
 		return unsetError
 	}
@@ -250,8 +262,14 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 		}
 	}()
 
-	// Add credential information to .gitconfig for module source of type git.
-	err = addSecretsToGitConfig(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
+	// Get the secret store ID associated with the git private terraform repository source.
+	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add credential information to .gitconfig for module source of type git if applicable.
+	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +280,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 		EnvRecipe:      &opts.Definition,
 	})
 
-	unsetError := unsetGitConfigForDir(requestDirPath, opts.Secrets, opts.Definition.TemplatePath)
+	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
 	if unsetError != nil {
 		return nil, unsetError
 	}
@@ -274,15 +292,34 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	return recipeData, nil
 }
 
-// FindSecretIDs is used to retrieve the secret reference associated with private terraform module source.
-// As of today, it only supports retrieving secret references associated with private git repositories.
-func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (string, error) {
+// FindSecretIDs is used to retrieve a map of secretStoreIDs and corresponding secret keys.
+// associated with the given environment configuration and environment definition.
+func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (secretStoreIDResourceKeys map[string][]string, err error) {
+	secretStoreIDResourceKeys = make(map[string][]string)
 
-	// We can move the GetSecretStoreID() implementation here when we have containerization.
-	// Today we use this function in config.go to check for secretstore to add prefix to the template path.
-	// GetSecretStoreID is added outside of driver package because it created cyclic dependency between driver and config packages.
+	// Get the secret store ID associated with the git private terraform repository source.
+	secretStoreID, err := GetPrivateGitRepoSecretStoreID(envConfig, definition.TemplatePath)
+	if err != nil {
+		return nil, err
+	}
 
-	return GetSecretStoreID(envConfig, definition.TemplatePath)
+	if secretStoreID != "" {
+		secretStoreIDResourceKeys[secretStoreID] = []string{PrivateRegistrySecretKey_Pat, PrivateRegistrySecretKey_Username}
+	}
+
+	// Get the secret IDs and associated keys in provider configuration and environment variables
+	providerSecretIDs := terraform.GetProviderEnvSecretIDs(envConfig)
+
+	// Merge secretStoreIDResourceKeys with providerSecretIDs
+	for secretStoreID, keys := range providerSecretIDs {
+		if _, ok := secretStoreIDResourceKeys[secretStoreID]; !ok {
+			secretStoreIDResourceKeys[secretStoreID] = keys
+		} else {
+			secretStoreIDResourceKeys[secretStoreID] = append(secretStoreIDResourceKeys[secretStoreID], keys...)
+		}
+	}
+
+	return secretStoreIDResourceKeys, nil
 }
 
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.

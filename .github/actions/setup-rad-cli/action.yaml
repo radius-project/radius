@@ -35,4 +35,3 @@ runs:
       shell: bash
       run: chmod +x rad
       working-directory: dist
-
