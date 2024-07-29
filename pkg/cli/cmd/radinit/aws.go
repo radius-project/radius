@@ -120,7 +120,7 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions
 func (r *Runner) getAccountId(ctx context.Context) (string, error) {
 	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, QueryRegion)
 	if err != nil {
-		return "", clierrors.MessageWithCause(err, "AWS credential verification failed.")
+		return "", clierrors.MessageWithCause(err, "AWS Cloud Provider setup failed, please use aws configure to set up the configuration. More information :https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html")
 	}
 
 	if callerIdentityOutput.Account == nil {
