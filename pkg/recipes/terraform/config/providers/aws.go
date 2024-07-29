@@ -164,16 +164,6 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 			}
 
 		case ucp_datamodel.AWSIRSACredentialKind:
-			// Radius requests will first be routed to STS endpoint,
-			// where it will be validated and then the request to the specific service (such as S3) will be made using
-			// the bearer token from the STS response.
-			// Based on the https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html,
-			// STS endpoint should be region based, and in the same region as
-			// Radius instance to minimize latency associated with STS call and thereby improve performance.
-			// We should provide the user with ability to configure the STS endpoint region.
-			// For now, we are using the global STS endpoint, which is the default.
-			// Ref. https://github.com/radius-project/radius/issues/7747
-			// once we switch to region based STS endpoint, we should add the region to the config.
 			if credentials.IRSACredential != nil && credentials.IRSACredential.RoleARN != "" {
 				config[awsIRSAProvider] = map[string]any{
 					awsRoleARN:  credentials.IRSACredential.RoleARN,

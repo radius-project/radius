@@ -39,6 +39,6 @@ func TestGetStorageProperties(t *testing.T) {
 		result, err := getStorageProperties(input)
 		require.Error(t, err)
 		require.Nil(t, result)
-		require.Equal(t, errors.New("invalid AWS credential storage properties - field 'properties.storage' is not InternalCredentialStorageProperties"), err)
+		require.Equal(t, errors.New("invalid credential storage properties - field 'properties.storage' is not InternalCredentialStorageProperties"), err)
 	})
 }

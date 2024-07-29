@@ -70,6 +70,6 @@ func getStorageProperties(p any) (*ucpapi.InternalCredentialStorageProperties, e
 	case *ucpapi.InternalCredentialStorageProperties:
 		return c, nil
 	default:
-		return nil, errors.New("invalid AWS credential storage properties - field 'properties.storage' is not InternalCredentialStorageProperties")
+		return nil, errors.New("invalid credential storage properties - field 'properties.storage' is not InternalCredentialStorageProperties")
 	}
 }
