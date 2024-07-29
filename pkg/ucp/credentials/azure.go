@@ -72,6 +72,10 @@ func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name str
 		return nil, errors.New("Azure Credential is invalid - field 'properties' is not AzureServicePrincipalProperties or AzureWorkloadIdentityProperties")
 	}
 
+	if err != nil {
+		return nil, err
+	}
+
 	secretName := to.String(storage.SecretName)
 	if secretName == "" {
 		return nil, errors.New("unspecified SecretName for internal storage")
