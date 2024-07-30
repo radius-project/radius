@@ -184,6 +184,9 @@ func Test_Run(t *testing.T) {
 					Name:    "aws",
 					Enabled: true,
 				},
+				AWSCredentials: &cli_credential.AWSCredentialProperties{
+					Kind: to.Ptr("AccessKey"),
+				},
 			}
 
 			client := cli_credential.NewMockCredentialManagementClient(ctrl)
@@ -205,7 +208,7 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			credentialFormatOutput := credentialFormatAWS()
+			credentialFormatOutput := credentialFormatAWSAccessKey()
 
 			expected := []any{
 				output.LogOutput{
