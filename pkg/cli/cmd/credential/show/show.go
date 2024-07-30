@@ -140,7 +140,14 @@ func (r *Runner) Run(ctx context.Context) error {
 			return fmt.Errorf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", *providers.AzureCredentials.Kind)
 		}
 	case "aws":
-		output = credentialFormatAWS()
+		switch *providers.AWSCredentials.Kind {
+		case datamodel.AWSAccessKeyCredentialKind:
+			output = credentialFormatAWSAccessKey()
+		case datamodel.AWSIRSACredentialKind:
+			output = credentialFormatAWSIRSA()
+		default:
+			return fmt.Errorf("unknown AWS credential kind, expected AccessKey or IRSA (got %s)", *providers.AWSCredentials.Kind)
+		}
 	default:
 		return fmt.Errorf("unknown credential type: %s", r.Kind)
 	}
