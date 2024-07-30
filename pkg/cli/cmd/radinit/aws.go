@@ -35,8 +35,8 @@ const (
 	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM secret access key..."
 	errNotEmptyTemplate                   = "%s cannot be empty"
 	confirmAWSAccountIDPromptFmt          = "Use account id '%v'?"
-	enterAWSAccountIDPrompt               = "Enter the account ID you want to use:"
-	enterAWSAccountIDPlaceholder          = "Enter the account ID you want to use.."
+	enterAWSAccountIDPrompt               = "Enter the account ID:"
+	enterAWSAccountIDPlaceholder          = "Enter the account ID you want to use..."
 
 	awsAccessKeysCreateInstructionFmt = "\nAWS IAM Access keys (Access key ID and Secret access key) are required to access and create AWS resources.\n\nFor example, you can create one using the following command:\n\033[36maws iam create-access-key\033[0m\n\nFor more information refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html.\n\n"
 )
@@ -59,17 +59,17 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, erro
 		return nil, err
 	}
 
-	addingCloudProvider, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountId), prompt.ConfirmYes, r.Prompter)
-	if err != nil {
-		return nil, err
-	}
+	// addAccountID, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountId), prompt.ConfirmYes, r.Prompter)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if !addingCloudProvider {
-		accountId, err = r.Prompter.GetTextInput("Enter the account ID you want to use: ", prompt.TextInputOptions{Placeholder: enterAWSAccountIDPlaceholder})
-		if err != nil {
-			return nil, err
-		}
-	}
+	// if !addAccountID {
+	// 	accountId, err = r.Prompter.GetTextInput(enterAWSAccountIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSAccountIDPlaceholder})
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
 	region, err := r.selectAWSRegion(ctx)
 	if err != nil {
@@ -94,9 +94,24 @@ func (r *Runner) getAccountId(ctx context.Context) (string, error) {
 		return "", clierrors.MessageWithCause(err, "AWS credential verification failed: Account ID is nil.")
 	}
 
-	return *callerIdentityOutput.Account, nil
+	accountID := *callerIdentityOutput.Account
+	addAccountID, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountID), prompt.ConfirmYes, r.Prompter)
+	if err != nil {
+		return "", err
+	}
+
+	if !addAccountID {
+		accountID, err = r.Prompter.GetTextInput(enterAWSAccountIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSAccountIDPlaceholder})
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return accountID, nil
 }
 
+// selectAWSRegion prompts the user to select an AWS region from a list of available regions.
+// regions list is retrieved using the locally configured AWS account.
 func (r *Runner) selectAWSRegion(ctx context.Context) (string, error) {
 	listRegionsOutput, err := r.awsClient.ListRegions(ctx)
 	if err != nil {
