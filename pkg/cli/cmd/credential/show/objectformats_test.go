@@ -76,23 +76,52 @@ func Test_credentialFormat_Azure_WorkloadIdentity(t *testing.T) {
 	require.Equal(t, expected, buffer.String())
 }
 
-func Test_credentialFormat_AWS(t *testing.T) {
+func Test_credentialFormatAWSAccessKey(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
 		CloudProviderStatus: credential.CloudProviderStatus{
 			Name:    "test",
 			Enabled: true,
 		},
 		AWSCredentials: &credential.AWSCredentialProperties{
-			AccessKeyID: to.Ptr("test-access-key-id"),
+			Kind: to.Ptr("AccessKey"),
+			AccessKey: &credential.AWSAccessKeyCredentialProperties{
+				Kind:        to.Ptr("AccessKey"),
+				AccessKeyID: to.Ptr("test-access-key-id"),
+			},
 		},
 	}
 
 	buffer := &bytes.Buffer{}
-	credentialFormatOutput := credentialFormatAWS()
+	credentialFormatOutput := credentialFormatAWSAccessKey()
 
 	err := output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
 	require.NoError(t, err)
 
-	expected := "NAME      REGISTERED  ACCESSKEYID\ntest      true        test-access-key-id\n"
+	expected := "NAME      REGISTERED  KIND       ACCESSKEYID\ntest      true        AccessKey  test-access-key-id\n"
+	require.Equal(t, expected, buffer.String())
+}
+
+func Test_credentialFormatAWSIRSA(t *testing.T) {
+	obj := credential.ProviderCredentialConfiguration{
+		CloudProviderStatus: credential.CloudProviderStatus{
+			Name:    "test",
+			Enabled: true,
+		},
+		AWSCredentials: &credential.AWSCredentialProperties{
+			Kind: to.Ptr("IRSA"),
+			IRSA: &credential.AWSIRSACredentialProperties{
+				Kind:    to.Ptr("IRSA"),
+				RoleARN: to.Ptr("test-role-arn"),
+			},
+		},
+	}
+
+	buffer := &bytes.Buffer{}
+	credentialFormatOutput := credentialFormatAWSIRSA()
+
+	err := output.Write(output.FormatTable, obj, buffer, credentialFormatOutput)
+	require.NoError(t, err)
+
+	expected := "NAME      REGISTERED  KIND      ROLEARN\ntest      true        IRSA      test-role-arn\n"
 	require.Equal(t, expected, buffer.String())
 }
