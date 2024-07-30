@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.27
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.20.3
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.53.3
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.171.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.173.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.3
 	github.com/aws/smithy-go v1.20.3
 	github.com/charmbracelet/bubbles v0.18.0
@@ -41,7 +41,7 @@ require (
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.22.0
-	github.com/gofrs/flock v0.12.0
+	github.com/gofrs/flock v0.12.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gosuri/uilive v0.0.4

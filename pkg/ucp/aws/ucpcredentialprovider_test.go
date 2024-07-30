@@ -41,7 +41,7 @@ func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk_
 	return p.fakeCredential, nil
 }
 
-func newMockProvider() *mockProvider {
+func newMockProviderAccessKey() *mockProvider {
 	return &mockProvider{
 		fakeCredential: &sdk_cred.AWSCredential{
 			Kind: ucp_datamodel.AWSAccessKeyCredentialKind,
@@ -53,23 +53,44 @@ func newMockProvider() *mockProvider {
 	}
 }
 
+func newMockProviderIRSA() *mockProvider {
+	return &mockProvider{
+		fakeCredential: &sdk_cred.AWSCredential{
+			Kind: ucp_datamodel.AWSIRSACredentialKind,
+			IRSACredential: &ucp_datamodel.AWSIRSACredentialProperties{
+				RoleARN: "fakearn",
+			},
+		},
+	}
+}
+
 func TestNewUCPCredentialProvider(t *testing.T) {
-	p := NewUCPCredentialProvider(newMockProvider(), 0)
+	p := NewUCPCredentialProvider(newMockProviderAccessKey(), 0)
+	require.Equal(t, DefaultExpireDuration, p.options.Duration)
+
+	p = NewUCPCredentialProvider(newMockProviderIRSA(), 0)
 	require.Equal(t, DefaultExpireDuration, p.options.Duration)
 }
 
 func TestRetrieve(t *testing.T) {
 	t.Run("invalid credential", func(t *testing.T) {
-		p := newMockProvider()
+		p := newMockProviderAccessKey()
 		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
 		p.fakeCredential.AccessKeyCredential.AccessKeyID = ""
 
 		_, err := cp.Retrieve(context.TODO())
 		require.Error(t, err)
+
+		p = newMockProviderIRSA()
+		cp = NewUCPCredentialProvider(p, DefaultExpireDuration)
+		p.fakeCredential.IRSACredential.RoleARN = ""
+
+		_, err = cp.Retrieve(context.TODO())
+		require.Error(t, err)
 	})
 
 	t.Run("valid credential", func(t *testing.T) {
-		p := newMockProvider()
+		p := newMockProviderAccessKey()
 		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
 
 		expectedExpiry := time.Now().UTC().Add(DefaultExpireDuration)
