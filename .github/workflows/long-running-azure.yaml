@@ -429,7 +429,7 @@ jobs:
 
           echo "*** Configuring AWS provider ***"
           rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-          rad credential register aws \
+          rad credential register aws access-key \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
       - name: Log radius installation status (failure)
         if: failure()
