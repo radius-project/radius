@@ -21,12 +21,16 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 GOPATH := $(shell go env GOPATH)
 
+# Set GOBIN environment variable.
+# If it is not set, use GOPATH/bin.
 ifeq (,$(shell go env GOBIN))
 	GOBIN=$(shell go env GOPATH)/bin
 else
 	GOBIN=$(shell go env GOBIN)
 endif
 
+# Check Operating System and set binary extension,
+# and golangci-lint binary name.
 ifeq ($(GOOS),windows)
    BINARY_EXT = .exe
    GOLANGCI_LINT:=golangci-lint.exe
@@ -34,6 +38,9 @@ else
    GOLANGCI_LINT:=golangci-lint
 endif
 
+# Check if DEBUG is set to 1 or not.
+# If DEBUG is set to 1, then build debug binaries.
+# If DEBUG is not set, then build release binaries.
 ifeq ($(origin DEBUG), undefined)
   BUILDTYPE_DIR:=release
   GCFLAGS:=""
@@ -45,7 +52,10 @@ else
   GCFLAGS:="all=-N -l"
 endif
 
+# Linker flags: https://cmake.org/cmake/help/latest/envvar/LDFLAGS.html.
 LDFLAGS := "-s -w -X $(BASE_PACKAGE_NAME)/pkg/version.channel=$(REL_CHANNEL) -X $(BASE_PACKAGE_NAME)/pkg/version.release=$(REL_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.commit=$(GIT_COMMIT) -X $(BASE_PACKAGE_NAME)/pkg/version.version=$(GIT_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.chartVersion=$(CHART_VERSION)"
+
+# Combination of flags into GOARGS.
 GOARGS := -v -gcflags $(GCFLAGS) -ldflags $(LDFLAGS)
 
 export GO111MODULE ?= on
@@ -82,28 +92,53 @@ endef
 # $(2): the ARCH
 # $(3): the binary name for the target
 # $(4): the binary main directory
+# 
+# Note: testrp and magpiego have their own modules.
+# That is why we need to change the directory to the binary main directory as we do on line 101.
+# Otherwise we get the following error:
+# `main module (github.com/radius-project/radius) does not contain package github.com/radius-project/radius/test/testrp`
 define generatePlatformBuildTarget
 .PHONY: build-$(3)-$(1)-$(2)
 build-$(3)-$(1)-$(2):
   $(eval BINS_OUT_DIR_$(1)_$(2) := $(OUT_DIR)/$(1)_$(2)/$(BUILDTYPE_DIR))
 	@echo "$(ARROW) Building $(3) on $(1)/$(2) to $(BINS_OUT_DIR_$(1)_$(2))/$(3)$(BINARY_EXT)"
-	GOOS=$(1) GOARCH=$(2) go build \
+	cd $(4) && GOOS=$(1) GOARCH=$(2) go build \
 		-v \
 		-gcflags $(GCFLAGS) \
 		-ldflags=$(LDFLAGS) \
-		-o $(BINS_OUT_DIR_$(1)_$(2))/$(3)$(BINARY_EXT) \
-		$(4)/
+		-o $(CURDIR)/$(BINS_OUT_DIR_$(1)_$(2))/$(3)$(BINARY_EXT)
 endef
 
 # defines a target for each binary
 GOOSES := darwin linux windows
 GOARCHES := amd64 arm arm64
-BINARIES := docgen rad applications-rp ucpd controller
-$(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITEM))))
-$(foreach ARCH,$(GOARCHES),$(foreach OS,$(GOOSES),$(foreach ITEM,$(BINARIES),$(eval $(call generatePlatformBuildTarget,$(OS),$(ARCH),$(ITEM),./cmd/$(ITEM))))))
 
-# list of 'outputs' to build for all binaries
-BINARY_TARGETS:=$(foreach ITEM,$(BINARIES),build-$(ITEM))
+# List of binaries to build.
+# Format: binaryName:binaryMainDirectory
+# Example: docgen:./cmd/docgen
+BINARIES := docgen:./cmd/docgen \
+	rad:./cmd/rad \
+	applications-rp:./cmd/applications-rp \
+	ucpd:./cmd/ucpd \
+	controller:./cmd/controller \
+	testrp:./test/testrp \
+	magpiego:./test/magpiego
+
+# This function parses binary name and entrypoint from an item in the BINARIES list.
+define parseBinary
+$(eval NAME := $(shell echo $(1) | cut -d: -f1))
+$(eval ENTRYPOINT := $(shell echo $(1) | cut -d: -f2))
+endef
+
+# Generate build targets for each binary.
+$(foreach ITEM,$(BINARIES),$(eval $(call parseBinary,$(ITEM)) $(call generateBuildTarget,$(NAME),$(ENTRYPOINT))))
+
+# Generate platform build targets for each binary and each platform.
+# This will generate a target for each combination of OS and ARCH for each item in the BINARIES list.
+$(foreach ARCH,$(GOARCHES),$(foreach OS,$(GOOSES),$(foreach ITEM,$(BINARIES),$(eval $(call parseBinary,$(ITEM)) $(call generatePlatformBuildTarget,$(OS),$(ARCH),$(NAME),$(ENTRYPOINT))))))
+
+# Generate a `build` target for each item in the BINARIES list.
+BINARY_TARGETS := $(foreach ITEM,$(BINARIES),$(eval $(call parseBinary,$(ITEM))) build-$(NAME))
 
 .PHONY: build-binaries
 build-binaries: $(BINARY_TARGETS) ## Builds all go binaries.
