@@ -15,7 +15,6 @@
 # ------------------------------------------------------------
 
 BICEP_RECIPE_TAG_VERSION?=latest
-RAD_BICEP_PATH?=$${HOME}/.rad/bin
 
 TERRAFORM_MODULE_SERVER_NAMESPACE=radius-test-tf-module-server
 TERRAFORM_MODULE_SERVER_DEPLOYMENT_NAME=tf-module-server

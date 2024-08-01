@@ -71,8 +71,6 @@ func Test_MongoDB_Manual(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_MongoDB_Recipe validates:
-// the creation of a mongoDB from a recipe that uses an Azure resource
 func Test_MongoDB_Recipe(t *testing.T) {
 	template := "testdata/datastoresrp-resources-mongodb-recipe.bicep"
 	name := "dsrp-resources-mongodb-recipe"

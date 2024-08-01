@@ -65,14 +65,15 @@ func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name strin
 
 	switch p := cred.Properties.(type) {
 	case *ucpapi.AwsAccessKeyCredentialProperties:
-		switch c := p.Storage.(type) {
-		case *ucpapi.InternalCredentialStorageProperties:
-			storage = c
-		default:
-			return nil, errors.New("invalid AWSAccessKeyCredentialProperties")
-		}
+		storage, err = getStorageProperties(p.Storage)
+	case *ucpapi.AwsIRSACredentialProperties:
+		storage, err = getStorageProperties(p.Storage)
 	default:
 		return nil, errors.New("invalid InternalCredentialStorageProperties")
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	secretName := to.String(storage.SecretName)

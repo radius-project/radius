@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -62,7 +62,8 @@ pullRefRegex = r"^refs/pull/(.*)/(.*)$"
 
 with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
     if gitRef is None:
-        print("This is not running in github, GITHUB_REF is null. Assuming a local build...")
+        print(
+            "This is not running in github, GITHUB_REF is null. Assuming a local build...")
 
         version = "REL_VERSION=edge"
         print("Setting: {}".format(version))
@@ -111,7 +112,8 @@ with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
             print("Setting: {}".format(chart))
             githubEnv.write(chart + "\n")
 
-            channel = "REL_CHANNEL={}.{}".format(match.group("major"), match.group("minor"))
+            channel = "REL_CHANNEL={}.{}".format(
+                match.group("major"), match.group("minor"))
             print("Setting: {}".format(channel))
             githubEnv.write(channel + "\n")
 
@@ -121,7 +123,7 @@ with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
 
         else:
             print("This is a prerelease...")
-        
+
             version = "REL_VERSION={}".format(match.group("version"))
             print("Setting: {}".format(version))
             githubEnv.write(version + "\n")

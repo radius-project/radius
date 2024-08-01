@@ -3,10 +3,10 @@ import radius as radius
 param magpieimage string
 param environment string
 
-resource app 'Applications.Core/applications@2023-10-01-preview'  = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dsrp-resources-redis-manual'
   location: 'global'
-  properties:{
+  properties: {
     environment: environment
   }
 }
@@ -21,7 +21,7 @@ resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
       env: {
         DBCONNECTION: redis.connectionString()
       }
-      readinessProbe:{
+      readinessProbe: {
         kind: 'httpGet'
         containerPort: 3000
         path: '/healthz'

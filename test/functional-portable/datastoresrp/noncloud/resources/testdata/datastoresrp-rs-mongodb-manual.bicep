@@ -35,8 +35,6 @@ resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
   }
 }
 
-
-// https://hub.docker.com/_/mongo/
 resource mongoContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'mdb-us-ctnr'
   location: 'global'

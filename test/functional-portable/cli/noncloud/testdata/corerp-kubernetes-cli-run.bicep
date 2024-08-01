@@ -12,10 +12,10 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
     application: application
     container: {
       image: magpieimage
-      command: ['/bin/sh']
+      command: [ '/bin/sh' ]
 
       // The test looks for this specific output, keep in sync with the CLI run test!
-      args: ['-c', 'while true; do echo "hello from the streaming logs!"; sleep 10;done']
+      args: [ '-c', 'while true; do echo "hello from the streaming logs!"; sleep 10;done' ]
     }
   }
 }

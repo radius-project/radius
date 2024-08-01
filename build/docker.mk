@@ -23,7 +23,8 @@ IMAGE_SRC?=https://github.com/radius-project/radius
 # Generate a target for each image we define
 # Params:
 # $(1): the image name for the target
-# $(2): the Dockerfile path
+# $(2): the context directory
+# $(3): the Dockerfile path
 define generateDockerTargets
 ifeq ($(strip $(4)),go)
 .PHONY: docker-build-$(1)
@@ -97,50 +98,48 @@ configure-buildx:
 		docker buildx inspect --builder radius-builder --bootstrap; \
 	fi
 
-# defines a target for each image
-DOCKER_IMAGES := ucpd applications-rp controller
+# Define a target for each image with name and Dockerfile location
+APPS_MAP := ucpd:./deploy/images/ucpd \
+	applications-rp:./deploy/images/applications-rp \
+	controller:./deploy/images/controller \
+	testrp:./test/testrp \
+	magpiego:./test/magpiego
 
-$(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile, go)))
+# Function to extract the name and the directory of the Dockerfile from the app string
+define parseApp
+$(eval NAME := $(shell echo $(1) | cut -d: -f1))
+$(eval DIR := $(shell echo $(1) | cut -d: -f2))
+endef
 
-# multi arch container image targets for each binaries
-$(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerMultiArches,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile)))
+# This command will dynamically generate the targets for each image in the APPS_MAP list.
+$(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerTargets,$(NAME),.,$(DIR)/Dockerfile,go)))
 
-# magpie comes from our test directory.
-$(eval $(call generateDockerTargets,magpiego,./test/magpiego/,./test/magpiego/Dockerfile))
-
-# testrp comes from our test directory.
-$(eval $(call generateDockerTargets,testrp,./test/testrp/,./test/testrp/Dockerfile))
+# This command will dynamically generate the multi-arch targets for each image in the APPS_MAP list.
+$(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerMultiArches,$(NAME),.,$(DIR)/Dockerfile)))
 
 # list of 'outputs' to build all images
-DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE))
+DOCKER_BUILD_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-build-$(NAME))
 
 # list of 'outputs' to push all images
-DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE))
+DOCKER_PUSH_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-push-$(NAME))
 
 # list of 'outputs' to build all multi arch images
-DOCKER_BUILD_MULTI_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-multi-arch-build-$(IMAGE))
+DOCKER_BUILD_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-build-$(NAME))
 
 # list of 'outputs' to push all multi arch images
-DOCKER_PUSH_MULTI_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-multi-arch-push-$(IMAGE))
-
-# targets to build test images
-.PHONY: docker-test-image-build
-docker-test-image-build: docker-build-magpiego docker-build-testrp ## Builds all test Docker images.
-
-.PHONY: docker-test-image-push
-docker-test-image-push: docker-push-magpiego docker-push-testrp ## Pushes all test Docker images.
+DOCKER_PUSH_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-push-$(NAME))
 
 # targets to build development images
 .PHONY: docker-build
-docker-build: $(DOCKER_BUILD_TARGETS) docker-test-image-build ## Builds all Docker images.
+docker-build: $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.
 
 .PHONY: docker-push
-docker-push: $(DOCKER_PUSH_TARGETS) docker-test-image-push ## Pushes all Docker images (without building).
+docker-push: $(DOCKER_PUSH_TARGETS) ## Pushes all Docker images (without building).
 
 # targets to build and push multi arch images. If you run this target in your machine,
 # ensure you have qemu and buildx installed by running make configure-buildx.
 .PHONY: docker-multi-arch-build
-docker-multi-arch-build: $(DOCKER_BUILD_MULTI_TARGETS) ## Builds all non-test docker images for multiple architectures.
+docker-multi-arch-build: $(DOCKER_BUILD_MULTI_TARGETS) ## Builds all docker images for multiple architectures.
 
 .PHONY: docker-multi-arch-push
-docker-multi-arch-push: $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all non-test docker images for multiple architectures after building.
+docker-multi-arch-push: $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images for multiple architectures after building.

@@ -1,0 +1,123 @@
+name: "Create a local registry"
+description: |
+  This action creates a local registry for the images to be pushed to.
+  It uses the `docker` CLI to create a registry container and then starts it.
+  The registry is then available at `localhost:5000` by default.
+inputs:
+  secure:
+    description: "Whether the registry should be secure or not"
+    required: false
+    default: "false"
+  registry-name:
+    description: "The name of the local registry"
+    required: false
+    default: "radius-registry"
+  registry-server:
+    description: "The server name for the local registry"
+    required: false
+    default: "localhost"
+  registry-port:
+    description: "The port for the local registry"
+    required: false
+    default: "5000"
+outputs:
+  temp-cert-dir:
+    description: "The temporary directory where the certificates are stored"
+    value: ${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
+runs:
+  using: "composite"
+  steps:
+    - name: Create temporary directory for certificates
+      if: ${{ inputs.secure == 'true' }}
+      shell: bash
+      id: create-temp-cert-dir
+      run: |
+        # Create a temporary directory to store the certificates
+        temp_cert_dir=$(mktemp -d 2>/dev/null || mktemp -d -t 'temp_cert_dir')
+        echo "TEMP_CERT_DIR=$temp_cert_dir" >> $GITHUB_OUTPUT
+
+    - name: Create certificates for local registry
+      if: ${{ inputs.secure == 'true' }}
+      shell: bash
+      run: |
+        create_openssl_cfg() {
+          CFG=$(
+            cat <<'EOF'
+        [req]
+        distinguished_name = subject
+        x509_extensions    = x509_ext
+        prompt             = no
+
+        [subject]
+        CN = localhost
+
+        [x509_ext]
+        basicConstraints        = critical, CA:TRUE
+        subjectKeyIdentifier    = hash
+        authorityKeyIdentifier  = keyid:always, issuer:always
+        keyUsage                = critical, cRLSign, digitalSignature, keyCertSign
+        nsComment               = "OpenSSL Generated Certificate"
+        subjectAltName          = @alt_names
+
+        [alt_names]
+        DNS.1 = ${{ inputs.registry-name }}
+        DNS.2 = ${{ inputs.registry-server }}
+        EOF
+          )
+          echo "$CFG"
+        }
+
+        TEMP_CERT_DIR=${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
+
+        pushd $TEMP_CERT_DIR
+        # Create the directory for the certificates
+        mkdir -p certs/${{ inputs.registry-server }}
+
+        echo "==== Generate the openssl config"
+        create_openssl_cfg >req.cnf
+
+        echo "==== Create the self signed certificate certificate and client key files"
+        openssl req -x509 \
+          -nodes \
+          -days 365 \
+          -newkey rsa:4096 \
+          -keyout certs/${{ inputs.registry-server }}/client.key \
+          -out certs/${{ inputs.registry-server }}/client.crt \
+          -config req.cnf \
+          -sha256
+
+    - name: Add the certificate to the system trust store
+      if: ${{ inputs.secure == 'true' }}
+      shell: bash
+      run: |
+        TEMP_CERT_DIR=${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
+        sudo apt install ca-certificates
+        sudo cp $TEMP_CERT_DIR/certs/${{ inputs.registry-server }}/client.crt /usr/local/share/ca-certificates/${{ inputs.registry-server }}.crt
+        sudo cp $TEMP_CERT_DIR/certs/${{ inputs.registry-server }}/client.crt /usr/local/share/ca-certificates/${{ inputs.registry-name }}.crt
+        sudo update-ca-certificates
+
+    - name: Create secure Docker registry
+      if: ${{ inputs.secure == 'true' }}
+      shell: bash
+      run: |
+        TEMP_CERT_DIR=${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
+        echo "==== Create secure Docker registry"
+        docker run -d \
+          -p ${{ inputs.registry-port }}:5000 \
+          --restart=always \
+          --name ${{ inputs.registry-name }} \
+          -v $TEMP_CERT_DIR/certs/${{ inputs.registry-server }}:/certs \
+          -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/client.crt \
+          -e REGISTRY_HTTP_TLS_KEY=/certs/client.key \
+          registry:2
+
+    - name: Create insecure Docker registry
+      if: ${{ inputs.secure == 'false' }}
+      shell: bash
+      run: |
+        echo "==== Create insecure Docker registry"
+        docker run -d \
+          -p ${{ inputs.registry-port }}:5000 \
+          --restart=always \
+          --name ${{ inputs.registry-name }} \
+          registry:2

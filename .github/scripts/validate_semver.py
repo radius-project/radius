@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -19,6 +19,7 @@
 import os
 import re
 import sys
+
 
 def main():
     if len(sys.argv) != 2:
@@ -40,6 +41,7 @@ def main():
     else:
         print("Provided version is valid semver")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

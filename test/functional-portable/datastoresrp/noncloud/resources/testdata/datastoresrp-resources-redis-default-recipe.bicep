@@ -1,7 +1,5 @@
 import radius as radius
 
-param scope string = resourceGroup().id
-
 param registry string
 
 param version string
@@ -14,11 +12,6 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       kind: 'kubernetes'
       resourceId: 'self'
       namespace: 'dsrp-resources-env-default-recipe-env'
-    }
-    providers: {
-      azure: {
-        scope: scope
-      }
     }
     recipes: {
       'Applications.Datastores/redisCaches': {

@@ -1,19 +1,16 @@
-# Issues on M1 mac: https://github.com/docker/for-mac/issues/5831
-# it is a multistage docker creation for small magpie image
-FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.22-alpine
-WORKDIR /usr/src/tmpapp
+FROM gcr.io/distroless/static:nonroot
 
-# Download necessary Go modules
-COPY go.mod ./
-RUN go mod download
-COPY *.go ./
-# create the go binary
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o testrp .
+# Argument for target architecture
+ARG TARGETARCH
 
-FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:3
-WORKDIR /usr/src/app
-COPY --from=0 /usr/src/tmpapp/testrp ./
-EXPOSE 3000
+# Set the working directory
+WORKDIR /
 
-#command to start the Test RP as a server to listen at port 5000
-CMD [ "./testrp" ]
+# Copy the application binary for the specified architecture
+COPY ./linux_${TARGETARCH:-amd64}/release/testrp /
+
+# Set the user to non-root (65532:65532 is the default non-root user in distroless)
+USER 65532:65532
+
+# Set the entrypoint to the application binary
+ENTRYPOINT ["/testrp"]

@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -38,7 +38,7 @@ EXPECTED_CLI_VERSION=$RELEASE_VERSION_NUMBER
 
 EXPECTED_TAG_VERSION=$RELEASE_VERSION_NUMBER
 # if RELEASE_VERSION_NUMBER contains -rc, then it is a prerelease.
-# In that case, we need to set expected tag version to the major.minor of the 
+# In that case, we need to set expected tag version to the major.minor of the
 # release version number
 if [[ $RELEASE_VERSION_NUMBER != *"rc"* ]]; then
     EXPECTED_TAG_VERSION=$(echo $RELEASE_VERSION_NUMBER | cut -d '.' -f 1,2)

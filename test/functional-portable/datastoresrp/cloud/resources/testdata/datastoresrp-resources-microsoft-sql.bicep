@@ -64,14 +64,14 @@ resource db 'Applications.Datastores/sqlDatabases@2023-10-01-preview' = {
     application: app.id
     environment: environment
     resourceProvisioning: 'manual'
-    resources:[
+    resources: [
       {
-        id:mssqlresourceid
+        id: mssqlresourceid
       }
     ]
     database: database
     server: server
-    port:1433
+    port: 1433
     username: adminUsername
     secrets: {
       password: adminPassword

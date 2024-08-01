@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -22,9 +22,11 @@ import re
 import sys
 import xml.etree.ElementTree
 
+
 def main():
     if len(sys.argv) != 4:
-        print("Usage: transform-test-results.py <repository root> <input file> <output file>")
+        print(
+            "Usage: transform-test-results.py <repository root> <input file> <output file>")
         sys.exit(1)
 
     repository_root = sys.argv[1]
@@ -38,7 +40,7 @@ def main():
         failure = testcase.find('./failure')
         if failure is None:
             continue
-        
+
         # Extract file name by matching regex pattern in the text
         # it will look like \tError Trace:\tfilename:line
         match = pattern.search(failure.text)
@@ -55,16 +57,16 @@ def main():
             continue
 
         file = file[len(repository_root) + 1:]
-        
+
         testcase.attrib["file"] = file
         testcase.attrib["line"] = line
         failure.attrib["file"] = file
         failure.attrib["line"] = line
 
-    
     # Write back to file
     print(f"Writing {output_file}")
     et.write(output_file)
+
 
 if __name__ == "__main__":
     main()
