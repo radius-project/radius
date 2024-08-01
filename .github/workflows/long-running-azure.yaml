@@ -515,6 +515,7 @@ jobs:
             --yes --verbose
       - name: Clean up cluster
         if: always()
+        timeout-minutes: 60
         run: ./.github/scripts/cleanup-cluster.sh
   report-failure:
     name: Report test failure
