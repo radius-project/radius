@@ -649,10 +649,16 @@ func convertEnvVar(key string, env datamodel.EnvironmentVariable, options render
 			if !ok {
 				return corev1.EnvVar{}, fmt.Errorf("failed to find source in dependencies: %s", env.ValueFrom.SecretRef.Source)
 			}
-			// The format may be <namespace>/<name> or <name>
+
+			// The format may be <namespace>/<name> or <name>, as an example "default/my-secret" or "my-secret"
 			var name string
 			if strings.Contains(secretStore.Properties.Resource, "/") {
-				name = strings.Split(secretStore.Properties.Resource, "/")[1]
+				parts := strings.Split(secretStore.Properties.Resource, "/")
+				if len(parts) == 2 {
+					name = parts[1]
+				} else {
+					name = secretStore.Properties.Resource
+				}
 			} else {
 				name = env.ValueFrom.SecretRef.Source
 			}

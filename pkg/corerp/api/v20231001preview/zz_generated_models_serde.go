@@ -1500,68 +1500,6 @@ func (e *EnvironmentVariableReferenceUpdate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type EnvironmentVariableSecretReference.
-func (e EnvironmentVariableSecretReference) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "key", e.Key)
-	populate(objectMap, "source", e.Source)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type EnvironmentVariableSecretReference.
-func (e *EnvironmentVariableSecretReference) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", e, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "key":
-				err = unpopulate(val, "Key", &e.Key)
-			delete(rawMsg, key)
-		case "source":
-				err = unpopulate(val, "Source", &e.Source)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", e, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type EnvironmentVariableSecretReferenceUpdate.
-func (e EnvironmentVariableSecretReferenceUpdate) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "key", e.Key)
-	populate(objectMap, "source", e.Source)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type EnvironmentVariableSecretReferenceUpdate.
-func (e *EnvironmentVariableSecretReferenceUpdate) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", e, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "key":
-				err = unpopulate(val, "Key", &e.Key)
-			delete(rawMsg, key)
-		case "source":
-				err = unpopulate(val, "Source", &e.Source)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", e, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type EnvironmentVariableUpdate.
 func (e EnvironmentVariableUpdate) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -3726,6 +3664,37 @@ func (s SecretReference) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type SecretReference.
 func (s *SecretReference) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", s, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "key":
+				err = unpopulate(val, "Key", &s.Key)
+			delete(rawMsg, key)
+		case "source":
+				err = unpopulate(val, "Source", &s.Source)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", s, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type SecretReferenceUpdate.
+func (s SecretReferenceUpdate) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "key", s.Key)
+	populate(objectMap, "source", s.Source)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type SecretReferenceUpdate.
+func (s *SecretReferenceUpdate) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", s, err)

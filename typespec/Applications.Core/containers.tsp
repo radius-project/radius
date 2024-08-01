@@ -276,17 +276,9 @@ model EnvironmentVariable {
 @doc("The reference to the variable")
 model EnvironmentVariableReference {
   @doc("The secret reference")
-  secretRef: EnvironmentVariableSecretReference;
+  secretRef: SecretReference;
 }
 
-@doc("The secret reference")
-model EnvironmentVariableSecretReference {
-  @doc("The secret source identifier")
-  source: string;
-
-  @doc("The secret key")
-  key: string;
-}
 
 @doc("The image pull policy for the container")
 enum ImagePullPolicy {

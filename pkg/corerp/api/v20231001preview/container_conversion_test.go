@@ -94,7 +94,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				if tt.filename == "containerresource.json" {
 					require.Equal(t, map[string]datamodel.EnvironmentVariable{
 						"DB_USER": {
-							Value: to.StringPtr("DB_USER"),
+							Value: to.Ptr("DB_USER"),
 						},
 						"DB_PASSWORD": {
 							ValueFrom: &datamodel.EnvironmentVariableReference{
@@ -195,7 +195,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 				if tt.filename == "containerresourcedatamodel.json" {
 					require.Equal(t, map[string]datamodel.EnvironmentVariable{
 						"DB_USER": {
-							Value: to.StringPtr("DB_USER"),
+							Value: to.Ptr("DB_USER"),
 						},
 						"DB_PASSWORD": {
 							ValueFrom: &datamodel.EnvironmentVariableReference{

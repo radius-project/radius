@@ -329,6 +329,14 @@ func Test_Render_Basic(t *testing.T) {
 						},
 					},
 				},
+				envVarName4: {
+					ValueFrom: &datamodel.EnvironmentVariableReference{
+						SecretRef: &datamodel.EnvironmentVariableSecretReference{
+							Source: envVarSource4,
+							Key:    envVarValue4,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -411,6 +419,14 @@ func Test_Render_Basic(t *testing.T) {
 						Name: envVarSource3,
 					},
 					Key: envVarValue3,
+				},
+			}},
+			{Name: envVarName4, ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: envVarSource4,
+					},
+					Key: envVarValue4,
 				},
 			}},
 		}

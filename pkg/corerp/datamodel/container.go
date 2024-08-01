@@ -130,7 +130,9 @@ type Container struct {
 
 // EnvironmentVariable - Environment variable for the container
 type EnvironmentVariable struct {
-	Value     *string                       `json:"value,omitempty"`
+	// Value is the property for the environment variable specified by the user. Such as "key": "value"
+	Value *string `json:"value,omitempty"`
+	// ValueFrom is the property for the environment variable specified by a reference to a secret.
 	ValueFrom *EnvironmentVariableReference `json:"valueFrom,omitempty"`
 }
 
@@ -141,6 +143,7 @@ type EnvironmentVariableReference struct {
 
 // EnvironmentVariableSecretReference - Environment variable secret reference for the container
 type EnvironmentVariableSecretReference struct {
+	// Source is either the resource id of a radius resource or a kubernetes secret reference.
 	Source string `json:"source"`
 	Key    string `json:"key"`
 }

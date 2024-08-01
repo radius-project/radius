@@ -632,31 +632,13 @@ type EnvironmentVariable struct {
 // EnvironmentVariableReference - The reference to the variable
 type EnvironmentVariableReference struct {
 	// REQUIRED; The secret reference
-	SecretRef *EnvironmentVariableSecretReference
+	SecretRef *SecretReference
 }
 
 // EnvironmentVariableReferenceUpdate - The reference to the variable
 type EnvironmentVariableReferenceUpdate struct {
 	// The secret reference
-	SecretRef *EnvironmentVariableSecretReferenceUpdate
-}
-
-// EnvironmentVariableSecretReference - The secret reference
-type EnvironmentVariableSecretReference struct {
-	// REQUIRED; The secret key
-	Key *string
-
-	// REQUIRED; The secret source identifier
-	Source *string
-}
-
-// EnvironmentVariableSecretReferenceUpdate - The secret reference
-type EnvironmentVariableSecretReferenceUpdate struct {
-	// The secret key
-	Key *string
-
-	// The secret source identifier
-	Source *string
+	SecretRef *SecretReferenceUpdate
 }
 
 // EnvironmentVariableUpdate - Environment variables type
@@ -1513,13 +1495,23 @@ type SecretObjectProperties struct {
 	Version *string
 }
 
-// SecretReference - This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing
-// and are recommended to be used to hold sensitive data.
+// SecretReference - This specifies a reference to a secret. Secrets are encrypted, often have fine-grained access control,
+// auditing and are recommended to be used to hold sensitive data.
 type SecretReference struct {
 	// REQUIRED; The key for the secret in the secret store.
 	Key *string
 
 	// REQUIRED; The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
+	Source *string
+}
+
+// SecretReferenceUpdate - This specifies a reference to a secret. Secrets are encrypted, often have fine-grained access control,
+// auditing and are recommended to be used to hold sensitive data.
+type SecretReferenceUpdate struct {
+	// The key for the secret in the secret store.
+	Key *string
+
+	// The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
 	Source *string
 }
 

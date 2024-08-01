@@ -29,11 +29,6 @@ func TestString(t *testing.T) {
 	require.Exactly(t, v, *Ptr(v))
 }
 
-func TestStringPtr(t *testing.T) {
-	v := "foo"
-	require.Exactly(t, v, *StringPtr(v))
-}
-
 func TestStringSlice(t *testing.T) {
 	v := []string{}
 	require.Exactly(t, v, StringSlice(&v))

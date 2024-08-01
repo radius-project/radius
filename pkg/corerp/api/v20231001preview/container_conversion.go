@@ -203,7 +203,7 @@ func fromEnvironmentVariableDataModel(e map[string]datamodel.EnvironmentVariable
 		} else {
 			m[key] = &EnvironmentVariable{
 				ValueFrom: &EnvironmentVariableReference{
-					SecretRef: &EnvironmentVariableSecretReference{
+					SecretRef: &SecretReference{
 						Source: to.Ptr(val.ValueFrom.SecretRef.Source),
 						Key:    to.Ptr(val.ValueFrom.SecretRef.Key),
 					},
