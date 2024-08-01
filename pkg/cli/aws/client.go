@@ -72,8 +72,7 @@ func (c *client) ListRegions(ctx context.Context) (*ec2.DescribeRegionsOutput, e
 	// Create an EC2 client
 	ec2Client := ec2.NewFromConfig(cfg)
 
-	input := &ec2.DescribeRegionsInput{}
-	result, err := ec2Client.DescribeRegions(ctx, input)
+	result, err := ec2Client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
 	if err != nil {
 		return nil, err
 	}
