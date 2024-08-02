@@ -5,7 +5,7 @@ You can find the functional tests under `./test/functional`. A functional test (
 These tests verify whether:
 
 - That Radius Environment can be created successfully.
-- That Bicep templates of sample applications ca be deployed to the Radius Environment.
+- That Bicep templates of sample applications can be deployed to the Radius Environment.
 
 ## Running via GitHub workflow
 

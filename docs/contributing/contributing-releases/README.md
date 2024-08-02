@@ -15,7 +15,6 @@
 
 Each release belongs to a *channel* named `<major>.<minor>`. Releases will only interact with assets from their channel. For example, the `0.1` `rad` CLI will:
 
-- Download `rad-bicep` from the `0.1` channel
 - Create an environment using the `0.1` version of the RP and environment setup script
 
 > ⚠️ Compatibility ⚠️
