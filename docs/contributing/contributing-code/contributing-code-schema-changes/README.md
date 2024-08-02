@@ -35,9 +35,7 @@ In order to update or create a new schema follow these steps:
     </details>
 1. Add any necessary changes to the Radius resource provider to support the newly added types.
 1. Add any necessary tests, as needed.
-1. Open a pull request in the Radius repo.
-
-Creating a pull request in the Radius repo that contains application model changes triggers an automated pull request in bicep repo with the bicep type changes. You will merge this in step 3.
+1. Open a pull request in the Radius repo. 
 
 ## Step 2: Update docs and samples
 
@@ -45,9 +43,52 @@ Visit the [docs](https://github.com/radius-project/docs/) and [samples](https://
 
 ## Step 3: Merge pull requests in order
 
-⚠️ Make sure you have PRs open and ready to merge within the radius, bicep, docs, and samples repositories. Do not proceed until all the PRs are ready and approved.
+⚠️ Make sure you have PRs open and ready to merge within the radius, docs, and samples repositories. Do not proceed until all the PRs are ready and approved.
 
-1. **Bicep Repository**: Begin by merging the bicep repo PR. This will update the Bicep types which will allow the other PRs to properly build and be merged.
-2. **Docs Repository**: Rerun any failed checks and merge the PR from docs repo with updated Bicep files changes.
-3. **Samples Repository**: Merging the PR in samples repo may not be straightforward, as we currently have a cyclic dependency between samples and radius repositories (_i.e "Test Quickstarts" task in samples pipeline run would fail as it runs on the main branch of Radius which doesn't have the latest changes as Radius PR is blocked on the samples PR for bicep files update._) You need to have a repo admin force merge the samples PR.
-4. **Radius Repository**: After the PRs from the bicep, docs and samples repositories are merged, re-run the checks to make sure there are no failures to merge the Radius PR.
+1. **Samples Repository**: Merging the PR in samples repo may not be straightforward, as we currently have a cyclic dependency between samples and radius repositories (_i.e "Test Quickstarts" task in samples pipeline run would fail as it runs on the main branch of Radius which doesn't have the latest changes as Radius PR is blocked on the samples PR for bicep files update._) You need to have a repo admin force merge the samples PR.
+2. **Radius Repository**: After the PR from the samples repositories are merged, re-run the checks to make sure there are no failures to merge the Radius PR.
+3. **Docs Repository**: Rerun any failed checks and merge the PR from docs repo with updated Bicep files changes.
+
+# Testing schema changes locally
+
+If you would like to test that your schema changes are compilable in a Bicep template, you can do so by publishing them to an OCI registry using the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/). 
+
+## Step 1: Download the Bicep CLI
+
+1. Follow the steps in the Bicep [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) to download Bicep
+
+## Step 2: Create an OCI compliant registry 
+
+1. Create an OCI compliant registry of your choice. Keep the registry endpoint handy for the next steps. 
+
+## Step 3: Upload the new schema types to an OCI registry
+1. Run `make generate` to generate the OpenAPI spec and API clients:
+
+    ```bash
+    make generate
+    ```
+
+1. `cd` into the `hack/bicep-types-radius/generated` folder
+1. Run `bicep publish-provider <file> --target <ref>` to upload the schema changes to your OCI registry. The file uploaded will be the `index.json` file as it contains all references to the types schema. 
+
+    ```bash
+    bicep publish-extension index.json --target <OCI-registry-endpoint>
+    ```
+
+## Step 4: Update the `bicepconfig.json` to use your newly published types
+
+1. Update the `bicepconfig.json` file in the root folder to reference your new published types. 
+    ```json
+    {
+        "experimentalFeaturesEnabled": {
+            "extensibility": true,
+            "extensionRegistry": true,
+            "dynamicTypeLoading": true
+        },
+        "extensions": {
+            "radius": "br:<OCI-registry-endpoint>",
+            "aws": "br:<OCI-registry-endpoint>"
+        }
+    }
+    ```
+1. Once Bicep restores the new extensions, you should be able to use the new schema changes in your Bicep templates. 
