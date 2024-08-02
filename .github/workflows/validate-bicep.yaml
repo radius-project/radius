@@ -41,6 +41,11 @@ jobs:
           bicep --version
       - name: Check out repo
         uses: actions/checkout@v4
+      - name: 'Login via Azure CLI'
+        if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.BICEP_TYPES_AZURE_CREDENTIALS }}
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
         env:
