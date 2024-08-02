@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -105,9 +106,10 @@ func Test_Redis_Recipe(t *testing.T) {
 				status := redis.Properties["status"].(map[string]any)
 				recipe := status["recipe"].(map[string]interface{})
 				require.Equal(t, "bicep", recipe["templateKind"].(string))
-				templatePath := strings.Split(recipe["templatePath"].(string), ":")[0]
-				// TODO: Update this to the correct path
-				require.Equal(t, "radius-registry", templatePath)
+				// Updated templatePath is calculated by removing the tag from the templatePath
+				templatePath := recipe["templatePath"].(string)[:strings.LastIndex(recipe["templatePath"].(string), ":")]
+				registry := strings.TrimPrefix(testutil.GetBicepRecipeRegistry(), "registry=")
+				require.Equal(t, fmt.Sprintf("%s/test/testrecipes/test-bicep-recipes/redis-recipe-value-backed", registry), templatePath)
 			},
 		},
 	})

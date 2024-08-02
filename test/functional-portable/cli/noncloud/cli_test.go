@@ -69,8 +69,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
 	resourceType := "Applications.Datastores/redisCaches"
 	file := "../../../testrecipes/test-bicep-recipes/corerp-redis-recipe.bicep"
 
-	target := fmt.Sprintf("br:%s/dev/test-bicep-recipes/redis-recipe:%s",
-		strings.TrimPrefix(registry, "registry="), generateUniqueTag())
+	target := fmt.Sprintf("br:%s/dev/test-bicep-recipes/redis-recipe:%s", registry, generateUniqueTag())
 
 	recipeName := "recipeName"
 	recipeTemplate := fmt.Sprintf("%s/recipes/local-dev/rediscaches:%s", registry, version)
