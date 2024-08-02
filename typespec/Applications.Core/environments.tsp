@@ -174,8 +174,6 @@ model TerraformRecipeProperties extends RecipeProperties {
   templateVersion?: string;
 }
 
-
-
 @doc("Represents the request body of the getmetadata action.")
 model RecipeGetMetadata {
   @doc("Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'.")

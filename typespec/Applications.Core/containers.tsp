@@ -279,7 +279,6 @@ model EnvironmentVariableReference {
   secretRef: SecretReference;
 }
 
-
 @doc("The image pull policy for the container")
 enum ImagePullPolicy {
   @doc("Always")
