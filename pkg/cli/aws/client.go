@@ -28,9 +28,9 @@ import (
 // Client is an interface that abstracts `rad init`'s interactions with AWS. This is for testing purposes. This is only exported because mockgen requires it.
 type Client interface {
 	// GetCallerIdentity gets information about the provided credentials.
-	GetCallerIdentity(ctx context.Context, region string) (*sts.GetCallerIdentityOutput, error)
+	GetCallerIdentity(ctx context.Context) (*sts.GetCallerIdentityOutput, error)
 	// ListRegions lists the AWS regions available (fetched from EC2.DescribeRegions API).
-	ListRegions(ctx context.Context, region string) (*ec2.DescribeRegionsOutput, error)
+	ListRegions(ctx context.Context) (*ec2.DescribeRegionsOutput, error)
 }
 
 // NewClient returns a new Client.
@@ -43,18 +43,16 @@ type client struct{}
 var _ Client = &client{}
 
 // GetCallerIdentity gets information about the provided credentials.
-func (c *client) GetCallerIdentity(ctx context.Context, region string) (*sts.GetCallerIdentityOutput, error) {
+func (c *client) GetCallerIdentity(ctx context.Context) (*sts.GetCallerIdentityOutput, error) {
 	// Load the AWS SDK config and credentials
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile("default"))
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create an STS client
-	svc := sts.NewFromConfig(cfg)
+	stsClient := sts.NewFromConfig(cfg)
 
-	// Call GetCallerIdentity
-	result, err := svc.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, err
 	}
@@ -63,19 +61,16 @@ func (c *client) GetCallerIdentity(ctx context.Context, region string) (*sts.Get
 }
 
 // ListRegions lists the AWS regions available (fetched from EC2.DescribeRegions API).
-func (c *client) ListRegions(ctx context.Context, region string) (*ec2.DescribeRegionsOutput, error) {
+func (c *client) ListRegions(ctx context.Context) (*ec2.DescribeRegionsOutput, error) {
 	// Load the AWS SDK config and credentials
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile("default"))
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create an EC2 client
-	svc := ec2.NewFromConfig(cfg)
+	ec2Client := ec2.NewFromConfig(cfg)
 
-	// Call DescribeRegions
-	input := &ec2.DescribeRegionsInput{}
-	result, err := svc.DescribeRegions(ctx, input)
+	result, err := ec2Client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
 	if err != nil {
 		return nil, err
 	}

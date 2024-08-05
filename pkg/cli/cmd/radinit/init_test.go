@@ -1122,16 +1122,23 @@ func setAWSSecretAccessKeyPrompt(prompter *prompt.MockInterface, secretAccessKey
 		Return(secretAccessKey, nil).Times(1)
 }
 
-func setAWSCallerIdentity(client *aws.MockClient, region string, callerIdentityOutput *sts.GetCallerIdentityOutput) {
+func setAWSCallerIdentity(client *aws.MockClient, callerIdentityOutput *sts.GetCallerIdentityOutput) {
 	client.EXPECT().
-		GetCallerIdentity(gomock.Any(), region).
+		GetCallerIdentity(gomock.Any()).
 		Return(callerIdentityOutput, nil).
 		Times(1)
 }
 
-func setAWSListRegions(client *aws.MockClient, region string, ec2DescribeRegionsOutput *ec2.DescribeRegionsOutput) {
+func setAWSAccountIDConfirmPrompt(prompter *prompt.MockInterface, accountName string, choice string) {
+	prompter.EXPECT().
+		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountName)).
+		Return(choice, nil).
+		Times(1)
+}
+
+func setAWSListRegions(client *aws.MockClient, ec2DescribeRegionsOutput *ec2.DescribeRegionsOutput) {
 	client.EXPECT().
-		ListRegions(gomock.Any(), region).
+		ListRegions(gomock.Any()).
 		Return(ec2DescribeRegionsOutput, nil).
 		Times(1)
 }
@@ -1141,8 +1148,8 @@ func setAWSCloudProviderAccessKey(prompter *prompt.MockInterface, client *aws.Mo
 	setAWSCredentialKindPrompt(prompter, "Access Key")
 	setAWSAccessKeyIDPrompt(prompter, provider.AccessKey.AccessKeyID)
 	setAWSSecretAccessKeyPrompt(prompter, provider.AccessKey.SecretAccessKey)
-	setAWSCallerIdentity(client, QueryRegion, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
-	setAWSListRegions(client, QueryRegion, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
+	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
+	setAWSListRegions(client, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
 	setAWSRegionPrompt(prompter, getMockAWSRegionsString(), provider.Region)
 }
 
@@ -1150,8 +1157,8 @@ func setAWSCloudProviderAccessKey(prompter *prompt.MockInterface, client *aws.Mo
 func setAWSCloudProviderIRSA(prompter *prompt.MockInterface, client *aws.MockClient, provider aws.Provider) {
 	setAWSCredentialKindPrompt(prompter, "IRSA")
 	setAwsIRSARoleARNPrompt(prompter, provider.IRSA.RoleARN)
-	setAWSCallerIdentity(client, QueryRegion, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
-	setAWSListRegions(client, QueryRegion, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
+	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
+	setAWSListRegions(client, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
 	setAWSRegionPrompt(prompter, getMockAWSRegionsString(), provider.Region)
 }
 
