@@ -5,7 +5,7 @@
 ### Properties
 * **apiVersion**: '2021-10-31' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
+* **location**: string: The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant, Identifier): The resource name
 * **properties**: [TestType1Properties](#testtype1properties)
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
