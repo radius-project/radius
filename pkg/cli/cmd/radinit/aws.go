@@ -59,18 +59,6 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, erro
 		return nil, err
 	}
 
-	// addAccountID, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountId), prompt.ConfirmYes, r.Prompter)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// if !addAccountID {
-	// 	accountId, err = r.Prompter.GetTextInput(enterAWSAccountIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSAccountIDPlaceholder})
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	region, err := r.selectAWSRegion(ctx)
 	if err != nil {
 		return nil, err
@@ -111,7 +99,7 @@ func (r *Runner) getAccountId(ctx context.Context) (string, error) {
 }
 
 // selectAWSRegion prompts the user to select an AWS region from a list of available regions.
-// regions list is retrieved using the locally configured AWS account.
+// Region list is retrieved using the locally configured AWS account.
 func (r *Runner) selectAWSRegion(ctx context.Context) (string, error) {
 	listRegionsOutput, err := r.awsClient.ListRegions(ctx)
 	if err != nil {

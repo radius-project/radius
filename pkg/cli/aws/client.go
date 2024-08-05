@@ -50,7 +50,6 @@ func (c *client) GetCallerIdentity(ctx context.Context) (*sts.GetCallerIdentityO
 		return nil, err
 	}
 
-	// Create an STS client
 	stsClient := sts.NewFromConfig(cfg)
 
 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
@@ -69,7 +68,6 @@ func (c *client) ListRegions(ctx context.Context) (*ec2.DescribeRegionsOutput, e
 		return nil, err
 	}
 
-	// Create an EC2 client
 	ec2Client := ec2.NewFromConfig(cfg)
 
 	result, err := ec2Client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
