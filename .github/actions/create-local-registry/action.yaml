@@ -96,6 +96,11 @@ runs:
         sudo cp $TEMP_CERT_DIR/certs/${{ inputs.registry-server }}/client.crt /usr/local/share/ca-certificates/${{ inputs.registry-name }}.crt
         sudo update-ca-certificates
 
+    - name: Add registry name to /etc/hosts
+      shell: bash
+      run: |
+        echo "127.0.0.1 ${{ inputs.registry-name }}" | sudo tee -a /etc/hosts
+
     - name: Create secure Docker registry
       if: ${{ inputs.secure == 'true' }}
       shell: bash
