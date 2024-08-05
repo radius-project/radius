@@ -83,12 +83,12 @@ func (r *Runner) getAccountId(ctx context.Context) (string, error) {
 	}
 
 	accountID := *callerIdentityOutput.Account
-	addAccountID, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountID), prompt.ConfirmYes, r.Prompter)
+	addAlternateAccountID, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountID), prompt.ConfirmYes, r.Prompter)
 	if err != nil {
 		return "", err
 	}
 
-	if !addAccountID {
+	if !addAlternateAccountID {
 		accountID, err = r.Prompter.GetTextInput(enterAWSAccountIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSAccountIDPlaceholder})
 		if err != nil {
 			return "", err
