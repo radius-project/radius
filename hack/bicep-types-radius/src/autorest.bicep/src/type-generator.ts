@@ -362,6 +362,10 @@ export function generateTypes(host: AutorestExtensionHost, definition: ProviderD
     let flags = ObjectTypePropertyFlags.None;
 
     if (putProperty && putProperty.required) {
+      // 'location' is not a required property on resources but can be a required property on other nested types
+      // We need to update the property flag to not be required if we're processing a top-level 'location' property
+      // If propertyName is provided, then we are processing a top-level property and need to check if the property name is 'location'
+      // If propertyName is not provided, then we are not processing a top-level property and can proceed with no changes 
       if (!propertyName || propertyName !== 'location') {
         flags |= ObjectTypePropertyFlags.Required;
       }
