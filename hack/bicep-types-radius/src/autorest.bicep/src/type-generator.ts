@@ -68,7 +68,7 @@ export function generateTypes(host: AutorestExtensionHost, definition: ProviderD
       const propertyDefinition = parseType(putProperty?.schema, getProperty?.schema);
       if (propertyDefinition) {
         const description = (putProperty?.schema ?? getProperty?.schema)?.language.default?.description;
-        const flags = parsePropertyFlags(putProperty, getProperty);
+        const flags = parsePropertyFlags(putProperty, getProperty, propertyName);
         resourceProperties[propertyName] = createObjectProperty(propertyDefinition, flags, description);
       }
     }
@@ -358,10 +358,10 @@ export function generateTypes(host: AutorestExtensionHost, definition: ProviderD
     return ObjectTypePropertyFlags.None;
   }
 
-  function parsePropertyFlags(putProperty: Property | undefined, getProperty: Property | undefined) {
+  function parsePropertyFlags(putProperty: Property | undefined, getProperty: Property | undefined, propertyName: string) {
     let flags = ObjectTypePropertyFlags.None;
 
-    if (putProperty && putProperty.required) {
+    if (putProperty && putProperty.required && propertyName !== 'location') {
       flags |= ObjectTypePropertyFlags.Required;
     }
 
@@ -465,7 +465,7 @@ export function generateTypes(host: AutorestExtensionHost, definition: ProviderD
       const propertyDefinition = parseType(putProperty?.schema, getProperty?.schema);
       if (propertyDefinition) {
         const description = (putProperty?.schema ?? getProperty?.schema)?.language.default?.description;
-        const flags = parsePropertyFlags(putProperty, getProperty);
+        const flags = parsePropertyFlags(putProperty, getProperty, propertyName);
         definitionProperties[propertyName] = createObjectProperty(propertyDefinition, flags, description);
       }
     }
