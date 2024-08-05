@@ -45,8 +45,9 @@ func Test_enterAWSCloudProvider(t *testing.T) {
 
 	setAWSAccessKeyIDPrompt(prompter, "access-key-id")
 	setAWSSecretAccessKeyPrompt(prompter, "secret-access-key")
-	setAWSCallerIdentity(client, QueryRegion, "access-key-id", "secret-access-key", &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
-	setAWSListRegions(client, QueryRegion, "access-key-id", "secret-access-key", &ec2.DescribeRegionsOutput{Regions: ec2Regions})
+	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
+	setAWSAccountIDConfirmPrompt(prompter, "account-id", prompt.ConfirmYes)
+	setAWSListRegions(client, &ec2.DescribeRegionsOutput{Regions: ec2Regions})
 	setAWSRegionPrompt(prompter, regions, "region")
 
 	provider, err := runner.enterAWSCloudProvider(context.Background())

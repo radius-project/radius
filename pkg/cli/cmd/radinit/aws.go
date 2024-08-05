@@ -18,6 +18,7 @@ package radinit
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -27,15 +28,15 @@ import (
 )
 
 const (
-	// QueryRegion is the region used for querying AWS before the user selects a region.
-	QueryRegion = "us-east-1"
-
 	selectAWSRegionPrompt                 = "Select the region you would like to deploy AWS resources to:"
 	enterAWSIAMAcessKeyIDPrompt           = "Enter the IAM access key id:"
 	enterAWSIAMAcessKeyIDPlaceholder      = "Enter IAM access key id..."
 	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Key:"
 	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM secret access key..."
 	errNotEmptyTemplate                   = "%s cannot be empty"
+	confirmAWSAccountIDPromptFmt          = "Use account id '%v'?"
+	enterAWSAccountIDPrompt               = "Enter the account ID:"
+	enterAWSAccountIDPlaceholder          = "Enter the account ID you want to use..."
 
 	awsAccessKeysCreateInstructionFmt = "\nAWS IAM Access keys (Access key ID and Secret access key) are required to access and create AWS resources.\n\nFor example, you can create one using the following command:\n\033[36maws iam create-access-key\033[0m\n\nFor more information refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html.\n\n"
 )
@@ -53,12 +54,12 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, erro
 		return nil, err
 	}
 
-	accountId, err := r.getAccountId(ctx, accessKeyID, secretAccessKey)
+	accountId, err := r.getAccountId(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	region, err := r.selectAWSRegion(ctx, QueryRegion, accessKeyID, secretAccessKey)
+	region, err := r.selectAWSRegion(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -71,21 +72,36 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context) (*aws.Provider, erro
 	}, nil
 }
 
-func (r *Runner) getAccountId(ctx context.Context, accessKeyID, secretAccessKey string) (string, error) {
-	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, QueryRegion, accessKeyID, secretAccessKey)
+func (r *Runner) getAccountId(ctx context.Context) (string, error) {
+	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx)
 	if err != nil {
-		return "", clierrors.MessageWithCause(err, "AWS credential verification failed.")
+		return "", clierrors.MessageWithCause(err, "AWS Cloud Provider setup failed, please use aws configure to set up the configuration. More information :https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html")
 	}
 
 	if callerIdentityOutput.Account == nil {
 		return "", clierrors.MessageWithCause(err, "AWS credential verification failed: Account ID is nil.")
 	}
 
-	return *callerIdentityOutput.Account, nil
+	accountID := *callerIdentityOutput.Account
+	addAlternateAccountID, err := prompt.YesOrNoPrompt(fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountID), prompt.ConfirmYes, r.Prompter)
+	if err != nil {
+		return "", err
+	}
+
+	if !addAlternateAccountID {
+		accountID, err = r.Prompter.GetTextInput(enterAWSAccountIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSAccountIDPlaceholder})
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return accountID, nil
 }
 
-func (r *Runner) selectAWSRegion(ctx context.Context, region, accessKeyID, secretAccessKey string) (string, error) {
-	listRegionsOutput, err := r.awsClient.ListRegions(ctx, region, accessKeyID, secretAccessKey)
+// selectAWSRegion prompts the user to select an AWS region from a list of available regions.
+// Region list is retrieved using the locally configured AWS account.
+func (r *Runner) selectAWSRegion(ctx context.Context) (string, error) {
+	listRegionsOutput, err := r.awsClient.ListRegions(ctx)
 	if err != nil {
 		return "", clierrors.MessageWithCause(err, "Listing AWS regions failed.")
 	}
