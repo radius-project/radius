@@ -68,7 +68,7 @@ export function generateTypes(host: AutorestExtensionHost, definition: ProviderD
       const propertyDefinition = parseType(putProperty?.schema, getProperty?.schema);
       if (propertyDefinition) {
         const description = (putProperty?.schema ?? getProperty?.schema)?.language.default?.description;
-        const flags = parsePropertyFlags(putProperty, getProperty);
+        const flags = parsePropertyFlags(putProperty, getProperty, propertyName);
         resourceProperties[propertyName] = createObjectProperty(propertyDefinition, flags, description);
       }
     }
@@ -358,11 +358,17 @@ export function generateTypes(host: AutorestExtensionHost, definition: ProviderD
     return ObjectTypePropertyFlags.None;
   }
 
-  function parsePropertyFlags(putProperty: Property | undefined, getProperty: Property | undefined) {
+  function parsePropertyFlags(putProperty: Property | undefined, getProperty: Property | undefined, propertyName?: string) {
     let flags = ObjectTypePropertyFlags.None;
 
     if (putProperty && putProperty.required) {
-      flags |= ObjectTypePropertyFlags.Required;
+      // 'location' is not a required property on resources but can be a required property on other nested types
+      // We need to update the property flag to not be required if we're processing a top-level 'location' property
+      // If propertyName is provided, then we are processing a top-level property and need to check if the property name is 'location'
+      // If propertyName is not provided, then we are not processing a top-level property and can proceed with no changes 
+      if (!propertyName || propertyName !== 'location') {
+        flags |= ObjectTypePropertyFlags.Required;
+      }
     }
 
     if (putProperty && getProperty) {
