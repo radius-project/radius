@@ -60,7 +60,7 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 1,
+        "flags": 0,
         "description": "The geo-location where the resource lives"
       },
       "systemData": {
