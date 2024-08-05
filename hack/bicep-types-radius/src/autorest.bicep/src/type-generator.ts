@@ -358,11 +358,13 @@ export function generateTypes(host: AutorestExtensionHost, definition: ProviderD
     return ObjectTypePropertyFlags.None;
   }
 
-  function parsePropertyFlags(putProperty: Property | undefined, getProperty: Property | undefined, propertyName: string) {
+  function parsePropertyFlags(putProperty: Property | undefined, getProperty: Property | undefined, propertyName?: string) {
     let flags = ObjectTypePropertyFlags.None;
 
-    if (putProperty && putProperty.required && propertyName !== 'location') {
-      flags |= ObjectTypePropertyFlags.Required;
+    if (putProperty && putProperty.required) {
+      if (!propertyName || propertyName !== 'location') {
+        flags |= ObjectTypePropertyFlags.Required;
+      }
     }
 
     if (putProperty && getProperty) {
@@ -465,7 +467,7 @@ export function generateTypes(host: AutorestExtensionHost, definition: ProviderD
       const propertyDefinition = parseType(putProperty?.schema, getProperty?.schema);
       if (propertyDefinition) {
         const description = (putProperty?.schema ?? getProperty?.schema)?.language.default?.description;
-        const flags = parsePropertyFlags(putProperty, getProperty, propertyName);
+        const flags = parsePropertyFlags(putProperty, getProperty);
         definitionProperties[propertyName] = createObjectProperty(propertyDefinition, flags, description);
       }
     }
