@@ -1037,16 +1037,23 @@ func setAWSSecretAccessKeyPrompt(prompter *prompt.MockInterface, secretAccessKey
 		Return(secretAccessKey, nil).Times(1)
 }
 
-func setAWSCallerIdentity(client *aws.MockClient, region string, accessKeyID string, secretAccessKey string, callerIdentityOutput *sts.GetCallerIdentityOutput) {
+func setAWSCallerIdentity(client *aws.MockClient, callerIdentityOutput *sts.GetCallerIdentityOutput) {
 	client.EXPECT().
-		GetCallerIdentity(gomock.Any(), region, accessKeyID, secretAccessKey).
+		GetCallerIdentity(gomock.Any()).
 		Return(callerIdentityOutput, nil).
 		Times(1)
 }
 
-func setAWSListRegions(client *aws.MockClient, region string, accessKeyID string, secretAccessKey string, ec2DescribeRegionsOutput *ec2.DescribeRegionsOutput) {
+func setAWSAccountIDConfirmPrompt(prompter *prompt.MockInterface, accountName string, choice string) {
+	prompter.EXPECT().
+		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountName)).
+		Return(choice, nil).
+		Times(1)
+}
+
+func setAWSListRegions(client *aws.MockClient, ec2DescribeRegionsOutput *ec2.DescribeRegionsOutput) {
 	client.EXPECT().
-		ListRegions(gomock.Any(), region, accessKeyID, secretAccessKey).
+		ListRegions(gomock.Any()).
 		Return(ec2DescribeRegionsOutput, nil).
 		Times(1)
 }
@@ -1055,8 +1062,9 @@ func setAWSListRegions(client *aws.MockClient, region string, accessKeyID string
 func setAWSCloudProvider(prompter *prompt.MockInterface, client *aws.MockClient, provider aws.Provider) {
 	setAWSAccessKeyIDPrompt(prompter, provider.AccessKeyID)
 	setAWSSecretAccessKeyPrompt(prompter, provider.SecretAccessKey)
-	setAWSCallerIdentity(client, QueryRegion, provider.AccessKeyID, provider.SecretAccessKey, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
-	setAWSListRegions(client, QueryRegion, provider.AccessKeyID, provider.SecretAccessKey, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
+	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
+	setAWSAccountIDConfirmPrompt(prompter, provider.AccountID, prompt.ConfirmYes)
+	setAWSListRegions(client, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
 	setAWSRegionPrompt(prompter, getMockAWSRegionsString(), provider.Region)
 }
 
