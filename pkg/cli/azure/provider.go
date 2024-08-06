@@ -35,7 +35,7 @@ type Provider struct {
 	ServicePrincipal *ServicePrincipalCredential
 }
 
-// Wor specifies the properties of an Azure service principal
+// WorkloadIdentityCredential specifies the properties of an Azure service principal
 type WorkloadIdentityCredential struct {
 	ClientID string
 	TenantID string

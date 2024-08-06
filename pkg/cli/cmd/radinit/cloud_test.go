@@ -50,11 +50,23 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		},
 	}
 
-	awsProvider := aws.Provider{
-		Region:          "test-region",
-		AccessKeyID:     "test-access-key-id",
-		SecretAccessKey: "test-secret-access-key",
-		AccountID:       "test-account-id",
+	awsProviderAccessKey := aws.Provider{
+		Region:         "test-region",
+		CredentialKind: "AccessKey",
+		AccessKey: &aws.AccessKeyCredential{
+			AccessKeyID:     "test-access-key-id",
+			SecretAccessKey: "test-secret-access-key",
+		},
+		AccountID: "test-account-id",
+	}
+
+	awsProviderIRSA := aws.Provider{
+		Region:         "test-region",
+		CredentialKind: "IRSA",
+		IRSA: &aws.IRSACredential{
+			RoleARN: "test-role-arn",
+		},
+		AccountID: "test-account-id",
 	}
 
 	t.Run("cloud providers skipped when no flags specified", func(t *testing.T) {
@@ -114,7 +126,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 
-	t.Run("--full - aws provider", func(t *testing.T) {
+	t.Run("--full - aws provider - accesskey", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		awsClient := aws.NewMockClient(ctrl)
@@ -124,14 +136,41 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, aws.ProviderDisplayName)
-		setAWSCloudProvider(prompter, awsClient, awsProvider)
+		setAWSCloudProviderAccessKey(prompter, awsClient, awsProviderAccessKey)
 		initAddCloudProviderPromptNo(prompter)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
 		err := runner.enterCloudProviderOptions(context.Background(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.Azure)
-		require.Equal(t, awsProvider, *options.CloudProviders.AWS)
+		require.Equal(t, awsProviderAccessKey, *options.CloudProviders.AWS)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: awsAccessKeysCreateInstructionFmt,
+			},
+		}
+		require.Equal(t, expectedWrites, outputSink.Writes)
+	})
+
+	t.Run("--full - aws provider - irsa", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		prompter := prompt.NewMockInterface(ctrl)
+		awsClient := aws.NewMockClient(ctrl)
+		azureClient := azure.NewMockClient(ctrl)
+		outputSink := output.MockOutput{}
+		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink, Full: true}
+
+		initAddCloudProviderPromptYes(prompter)
+		initSelectCloudProvider(prompter, aws.ProviderDisplayName)
+		setAWSCloudProviderIRSA(prompter, awsClient, awsProviderIRSA)
+		initAddCloudProviderPromptNo(prompter)
+
+		options := initOptions{Environment: environmentOptions{Create: true}}
+		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		require.NoError(t, err)
+		require.Nil(t, options.CloudProviders.Azure)
+		require.Equal(t, awsProviderIRSA, *options.CloudProviders.AWS)
 
 		expectedWrites := []any{
 			output.LogOutput{
@@ -206,7 +245,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, aws.ProviderDisplayName)
-		setAWSCloudProvider(prompter, awsClient, awsProvider)
+		setAWSCloudProviderAccessKey(prompter, awsClient, awsProviderAccessKey)
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, azure.ProviderDisplayName)
@@ -217,7 +256,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		options := initOptions{Environment: environmentOptions{Create: true}}
 		err := runner.enterCloudProviderOptions(context.Background(), &options)
 		require.NoError(t, err)
-		require.Equal(t, awsProvider, *options.CloudProviders.AWS)
+		require.Equal(t, awsProviderAccessKey, *options.CloudProviders.AWS)
 		require.Equal(t, azureProviderServicePrincipal, *options.CloudProviders.Azure)
 
 		expectedWrites := []any{
@@ -243,13 +282,13 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, aws.ProviderDisplayName)
-		setAWSCloudProvider(prompter, awsClient, awsProvider)
+		setAWSCloudProviderAccessKey(prompter, awsClient, awsProviderAccessKey)
 
-		awsProvider := awsProvider
+		awsProvider := awsProviderAccessKey
 		awsProvider.Region = "another-region"
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, aws.ProviderDisplayName)
-		setAWSCloudProvider(prompter, awsClient, awsProvider)
+		setAWSCloudProviderAccessKey(prompter, awsClient, awsProvider)
 
 		initAddCloudProviderPromptNo(prompter)
 
