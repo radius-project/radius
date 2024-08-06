@@ -114,7 +114,7 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions
 			},
 		}, nil
 	default:
-		return nil, clierrors.Message("Invalid Azure credential kind: %s", credentialKind)
+		return nil, clierrors.Message("Invalid AWS credential kind: %s", credentialKind)
 	}
 }
 

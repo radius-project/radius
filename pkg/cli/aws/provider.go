@@ -35,10 +35,13 @@ type Provider struct {
 	// AccountID is the AWS account id.
 	AccountID string
 
+	// CredentialKind represents ucp credential kind for aws provider.
 	CredentialKind AwsCredentialKind
 
+	// AccessKey represents ucp credential kind for aws access key credentials.
 	AccessKey *AccessKeyCredential
 
+	// IRSA represents ucp credential kind for aws irsa credentials.
 	IRSA *IRSACredential
 }
 
