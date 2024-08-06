@@ -82,8 +82,9 @@ func Test_enterAWSCloudProvider_IRSA(t *testing.T) {
 
 	setAWSCredentialKindPrompt(prompter, "IRSA")
 	setAwsIRSARoleARNPrompt(prompter, "role-arn")
-	setAWSCallerIdentity(client, QueryRegion, &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
-	setAWSListRegions(client, QueryRegion, &ec2.DescribeRegionsOutput{Regions: ec2Regions})
+	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
+	setAWSAccountIDConfirmPrompt(prompter, "account-id", prompt.ConfirmYes)
+	setAWSListRegions(client, &ec2.DescribeRegionsOutput{Regions: ec2Regions})
 	setAWSRegionPrompt(prompter, regions, "region")
 
 	options := &initOptions{}
