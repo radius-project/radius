@@ -1285,7 +1285,7 @@ func setAzureCredentialKindPrompt(prompter *prompt.MockInterface, choice string)
 
 func setAWSCredentialKindPrompt(prompter *prompt.MockInterface, choice string) {
 	prompter.EXPECT().
-		GetListInput([]string{"Access Key", "IRSA"}, selectAwsCredentialKindPrompt).
+		GetListInput([]string{"Access Key", "IRSA"}, selectAWSCredentialKindPrompt).
 		Return(choice, nil).
 		Times(1)
 }

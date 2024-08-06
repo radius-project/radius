@@ -208,9 +208,9 @@ func (m *summaryModel) View() string {
 		if options.CloudProviders.AWS != nil {
 			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(string(options.CloudProviders.AWS.CredentialKind))))
 			switch options.CloudProviders.AWS.CredentialKind {
-			case aws.AwsCredentialKindAccessKey:
+			case aws.AWSCredentialKindAccessKey:
 				message.WriteString(fmt.Sprintf(summaryIndent+"AccessKey ID: %s\n", highlight(options.CloudProviders.AWS.AccessKey.AccessKeyID)))
-			case aws.AwsCredentialKindIRSA:
+			case aws.AWSCredentialKindIRSA:
 				message.WriteString(fmt.Sprintf(summaryIndent+"IAM Role ARN: %s\n", highlight(options.CloudProviders.AWS.IRSA.RoleARN)))
 			}
 
@@ -347,9 +347,9 @@ func (m *progressModel) View() string {
 		if options.CloudProviders.AWS != nil {
 			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(string(options.CloudProviders.AWS.CredentialKind))))
 			switch options.CloudProviders.AWS.CredentialKind {
-			case aws.AwsCredentialKindAccessKey:
+			case aws.AWSCredentialKindAccessKey:
 				message.WriteString(fmt.Sprintf(summaryIndent+"AccessKey ID: %s\n", highlight(options.CloudProviders.AWS.AccessKey.AccessKeyID)))
-			case aws.AwsCredentialKindIRSA:
+			case aws.AWSCredentialKindIRSA:
 				message.WriteString(fmt.Sprintf(summaryIndent+"IAM Role ARN: %s\n", highlight(options.CloudProviders.AWS.IRSA.RoleARN)))
 			}
 		}

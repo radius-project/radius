@@ -318,7 +318,7 @@ func (r *Runner) getAzureCredential() (ucp.AzureCredentialResource, error) {
 
 func (r *Runner) getAWSCredential() (ucp.AwsCredentialResource, error) {
 	switch r.Options.CloudProviders.AWS.CredentialKind {
-	case aws.AwsCredentialKindAccessKey:
+	case aws.AWSCredentialKindAccessKey:
 		return ucp.AwsCredentialResource{
 			Location: to.Ptr(v1.LocationGlobal),
 			Type:     to.Ptr(cli_credential.AWSCredential),
@@ -330,7 +330,7 @@ func (r *Runner) getAWSCredential() (ucp.AwsCredentialResource, error) {
 				SecretAccessKey: &r.Options.CloudProviders.AWS.AccessKey.SecretAccessKey,
 			},
 		}, nil
-	case aws.AwsCredentialKindIRSA:
+	case aws.AWSCredentialKindIRSA:
 		return ucp.AwsCredentialResource{
 			Location: to.Ptr(v1.LocationGlobal),
 			Type:     to.Ptr(cli_credential.AWSCredential),

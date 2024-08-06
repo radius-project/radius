@@ -112,6 +112,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to configure AWS credentials.")
 		}
+
 		err = credentialClient.PutAWS(ctx, credential)
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to configure AWS credentials.")

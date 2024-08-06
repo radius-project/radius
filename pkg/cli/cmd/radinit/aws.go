@@ -29,7 +29,7 @@ import (
 
 const (
 	selectAWSRegionPrompt                 = "Select the region you would like to deploy AWS resources to:"
-	selectAwsCredentialKindPrompt         = "Select a credential kind for the AWS credential:"
+	selectAWSCredentialKindPrompt         = "Select a credential kind for the AWS credential:"
 	enterAWSIAMAcessKeyIDPrompt           = "Enter the IAM access key id:"
 	enterAWSRoleARNPrompt                 = "Enter the role ARN:"
 	enterAWSRoleARNPlaceholder            = "Enter IAM role ARN..."
@@ -47,7 +47,7 @@ const (
 )
 
 func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions) (*aws.Provider, error) {
-	credentialKind, err := r.selectAwsCredentialKind()
+	credentialKind, err := r.selectAWSCredentialKind()
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions
 				AccessKeyID:     accessKeyID,
 				SecretAccessKey: secretAccessKey,
 			},
-			CredentialKind: aws.AwsCredentialKindAccessKey,
+			CredentialKind: aws.AWSCredentialKindAccessKey,
 			AccountID:      accountId,
 			Region:         region,
 		}, nil
@@ -108,7 +108,7 @@ func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions
 		return &aws.Provider{
 			AccountID:      accountId,
 			Region:         region,
-			CredentialKind: aws.AwsCredentialKindIRSA,
+			CredentialKind: aws.AWSCredentialKindIRSA,
 			IRSA: &aws.IRSACredential{
 				RoleARN: roleARN,
 			},
@@ -170,18 +170,14 @@ func (r *Runner) buildAWSRegionsList(listRegionsOutput *ec2.DescribeRegionsOutpu
 	return regions
 }
 
-func (r *Runner) selectAwsCredentialKind() (string, error) {
-	credentialKinds, err := r.buildAwsCredentialKind()
-	if err != nil {
-		return "", err
-	}
-
-	return r.Prompter.GetListInput(credentialKinds, selectAwsCredentialKindPrompt)
+func (r *Runner) selectAWSCredentialKind() (string, error) {
+	credentialKinds := r.buildAWSCredentialKind()
+	return r.Prompter.GetListInput(credentialKinds, selectAWSCredentialKindPrompt)
 }
 
-func (r *Runner) buildAwsCredentialKind() ([]string, error) {
+func (r *Runner) buildAWSCredentialKind() []string {
 	return []string{
 		awsAccessKeyCredentialKind,
 		awsIRSACredentialKind,
-	}, nil
+	}
 }

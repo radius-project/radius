@@ -16,14 +16,14 @@ limitations under the License.
 
 package aws
 
-// AwsCredentialKind - Aws credential kinds supported.
-type AwsCredentialKind string
+// AWSCredentialKind - AWS credential kinds supported.
+type AWSCredentialKind string
 
 const (
 	// ProviderDisplayName is the text used in display for AWS.
 	ProviderDisplayName        = "AWS"
-	AwsCredentialKindAccessKey = "AccessKey"
-	AwsCredentialKindIRSA      = "IRSA"
+	AWSCredentialKindAccessKey = "AccessKey"
+	AWSCredentialKindIRSA      = "IRSA"
 )
 
 // Provider specifies the properties required to configure AWS provider for cloud resources.
@@ -36,7 +36,7 @@ type Provider struct {
 	AccountID string
 
 	// CredentialKind represents ucp credential kind for aws provider.
-	CredentialKind AwsCredentialKind
+	CredentialKind AWSCredentialKind
 
 	// AccessKey represents ucp credential kind for aws access key credentials.
 	AccessKey *AccessKeyCredential
