@@ -19,6 +19,8 @@ package delete
 import (
 	"context"
 	"fmt"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -150,6 +152,12 @@ func Test_Show(t *testing.T) {
 			Times(1)
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+		appManagementClient.EXPECT().
+			ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/applications").
+			Return([]generated.GenericResource{}, nil).
+			Times(1)
+
 		appManagementClient.EXPECT().
 			DeleteEnvironment(gomock.Any(), "test-env").
 			Return(true, nil).
@@ -184,15 +192,32 @@ func Test_Show(t *testing.T) {
 
 		require.Equal(t, expected, outputSink.Writes)
 	})
-
-	t.Run("Success: Prompt Cancelled", func(t *testing.T) {
+	t.Run("Success: Prompt Confirmed, existing applications", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
+		expectedPrompt := strings.Join([]string{
+			warnDependencies,
+			fmt.Sprintf(deleteConfirmation, "test-env"),
+		}, " ")
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-env")).
-			Return(prompt.ConfirmNo, nil).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, expectedPrompt).
+			Return(prompt.ConfirmYes, nil).
+			Times(1)
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+		appManagementClient.EXPECT().
+			ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/applications").
+			Return([]generated.GenericResource{
+				{},
+			}, nil).
+			Times(1)
+
+		appManagementClient.EXPECT().
+			DeleteEnvironment(gomock.Any(), "test-env").
+			Return(true, nil).
 			Times(1)
 
 		workspace := &workspaces.Workspace{
@@ -205,11 +230,57 @@ func Test_Show(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			InputPrompter:   promptMock,
-			Workspace:       workspace,
-			Format:          "table",
-			Output:          outputSink,
-			EnvironmentName: "test-env",
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			InputPrompter:     promptMock,
+			Workspace:         workspace,
+			Format:            "table",
+			Output:            outputSink,
+			EnvironmentName:   "test-env",
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.LogOutput{
+				Format: "Environment deleted",
+			},
+		}
+
+		require.Equal(t, expected, outputSink.Writes)
+	})
+	t.Run("Success: Prompt Cancelled", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		promptMock := prompt.NewMockInterface(ctrl)
+		promptMock.EXPECT().
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			Return(prompt.ConfirmNo, nil).
+			Times(1)
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/applications").
+			Return([]generated.GenericResource{}, nil).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "kind-kind",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			InputPrompter:     promptMock,
+			Workspace:         workspace,
+			Format:            "table",
+			Output:            outputSink,
+			EnvironmentName:   "test-env",
 		}
 
 		err := runner.Run(context.Background())
@@ -273,11 +344,27 @@ func Test_Show(t *testing.T) {
 			Return("", &prompt.ErrExitConsole{}).
 			Times(1)
 
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/applications").
+			Return([]generated.GenericResource{}, nil).
+			Times(1)
+
 		outputSink := &output.MockOutput{}
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "kind-kind",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
 		runner := &Runner{
-			InputPrompter:   promptMock,
-			Output:          outputSink,
-			EnvironmentName: "test-env",
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			InputPrompter:     promptMock,
+			Output:            outputSink,
+			EnvironmentName:   "test-env",
 		}
 
 		err := runner.Run(context.Background())
