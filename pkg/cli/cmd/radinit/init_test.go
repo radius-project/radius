@@ -80,11 +80,23 @@ func Test_Validate(t *testing.T) {
 		},
 	}
 
-	awsProvider := aws.Provider{
-		Region:          "test-region",
-		AccessKeyID:     "test-access-key-id",
-		SecretAccessKey: "test-secret-access-key",
-		AccountID:       "test-account-id",
+	awsProviderAccessKey := aws.Provider{
+		Region:         "test-region",
+		CredentialKind: "AccessKey",
+		AccessKey: &aws.AccessKeyCredential{
+			AccessKeyID:     "test-access-key-id",
+			SecretAccessKey: "test-secret-access-key",
+		},
+		AccountID: "test-account-id",
+	}
+
+	awsProviderIRSA := aws.Provider{
+		Region:         "test-region",
+		CredentialKind: "IRSA",
+		IRSA: &aws.IRSACredential{
+			RoleARN: "test-role-arn",
+		},
+		AccountID: "test-account-id",
 	}
 
 	testcases := []radcli.ValidateInput{
@@ -325,7 +337,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init --full Command With AWS Cloud Provider",
+			Name:          "Init --full Command With AWS Cloud Provider - Access Key",
 			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -348,7 +360,42 @@ func Test_Validate(t *testing.T) {
 				// Add aws provider
 				initAddCloudProviderPromptYes(mocks.Prompter)
 				initSelectCloudProvider(mocks.Prompter, aws.ProviderDisplayName)
-				setAWSCloudProvider(mocks.Prompter, mocks.AWSClient, awsProvider)
+				setAWSCloudProviderAccessKey(mocks.Prompter, mocks.AWSClient, awsProviderAccessKey)
+
+				// Don't add any other cloud providers
+				initAddCloudProviderPromptNo(mocks.Prompter)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+
+				setConfirmOption(mocks.Prompter, resultConfimed)
+			},
+		},
+		{
+			Name:          "Init --full Command With AWS Cloud Provider - IRSA",
+			Input:         []string{"--full"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// Choose default name and namespace
+				initEnvNamePrompt(mocks.Prompter, "default")
+				initNamespacePrompt(mocks.Prompter, "default")
+
+				// Add aws provider
+				initAddCloudProviderPromptYes(mocks.Prompter)
+				initSelectCloudProvider(mocks.Prompter, aws.ProviderDisplayName)
+				setAWSCloudProviderIRSA(mocks.Prompter, mocks.AWSClient, awsProviderIRSA)
 
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
@@ -692,23 +739,44 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			full:          false,
 			azureProvider: nil,
 			awsProvider: &aws.Provider{
-				AccessKeyID:     "test-access-key",
-				SecretAccessKey: "test-secret-access",
-				Region:          "us-west-2",
-				AccountID:       "test-account-id",
+				AccessKey: &aws.AccessKeyCredential{
+					AccessKeyID:     "test-access-key",
+					SecretAccessKey: "test-secret-access",
+				},
+				CredentialKind: "AccessKey",
+				Region:         "us-west-2",
+				AccountID:      "test-account-id",
 			},
 			recipes:        map[string]map[string]corerp.RecipePropertiesClassification{},
 			expectedOutput: []any{},
 		},
 		{
-			name:          "`rad init --full` with AWS Provider",
+			name:          "`rad init --full` with AWS Provider - Access Key",
 			full:          true,
 			azureProvider: nil,
 			awsProvider: &aws.Provider{
-				AccessKeyID:     "test-access-key",
-				SecretAccessKey: "test-secret-access",
-				Region:          "us-west-2",
-				AccountID:       "test-account-id",
+				AccessKey: &aws.AccessKeyCredential{
+					AccessKeyID:     "test-access-key",
+					SecretAccessKey: "test-secret-access",
+				},
+				CredentialKind: "AccessKey",
+				Region:         "us-west-2",
+				AccountID:      "test-account-id",
+			},
+			recipes:        nil,
+			expectedOutput: []any{},
+		},
+		{
+			name:          "`rad init --full` with AWS Provider - IRSA",
+			full:          true,
+			azureProvider: nil,
+			awsProvider: &aws.Provider{
+				IRSA: &aws.IRSACredential{
+					RoleARN: "role-arn",
+				},
+				CredentialKind: "IRSA",
+				Region:         "us-west-2",
+				AccountID:      "test-account-id",
 			},
 			recipes:        nil,
 			expectedOutput: []any{},
@@ -777,20 +845,37 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					Times(1)
 			}
 			if tc.awsProvider != nil {
-				credentialManagementClient.EXPECT().
-					PutAWS(context.Background(), ucp.AwsCredentialResource{
-						Location: to.Ptr(v1.LocationGlobal),
-						Type:     to.Ptr(cli_credential.AWSCredential),
-						Properties: &ucp.AwsAccessKeyCredentialProperties{
-							Storage: &ucp.CredentialStorageProperties{
-								Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+				if tc.awsProvider.AccessKey != nil {
+					credentialManagementClient.EXPECT().
+						PutAWS(context.Background(), ucp.AwsCredentialResource{
+							Location: to.Ptr(v1.LocationGlobal),
+							Type:     to.Ptr(cli_credential.AWSCredential),
+							Properties: &ucp.AwsAccessKeyCredentialProperties{
+								Storage: &ucp.CredentialStorageProperties{
+									Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+								},
+								AccessKeyID:     to.Ptr(tc.awsProvider.AccessKey.AccessKeyID),
+								SecretAccessKey: to.Ptr(tc.awsProvider.AccessKey.SecretAccessKey),
 							},
-							AccessKeyID:     to.Ptr(tc.awsProvider.AccessKeyID),
-							SecretAccessKey: to.Ptr(tc.awsProvider.SecretAccessKey),
-						},
-					}).
-					Return(nil).
-					Times(1)
+						}).
+						Return(nil).
+						Times(1)
+				} else {
+					credentialManagementClient.EXPECT().
+						PutAWS(context.Background(), ucp.AwsCredentialResource{
+							Location: to.Ptr(v1.LocationGlobal),
+							Type:     to.Ptr(cli_credential.AWSCredential),
+							Properties: &ucp.AwsIRSACredentialProperties{
+								Storage: &ucp.CredentialStorageProperties{
+									Kind: to.Ptr(ucp.CredentialStorageKindInternal),
+								},
+								RoleARN: to.Ptr(tc.awsProvider.IRSA.RoleARN),
+							},
+						}).
+						Return(nil).
+						Times(1)
+				}
+
 			}
 
 			configFileInterface.EXPECT().
@@ -1058,10 +1143,21 @@ func setAWSListRegions(client *aws.MockClient, ec2DescribeRegionsOutput *ec2.Des
 		Times(1)
 }
 
-// setAWSCloudProvider sets up mocks that will configure an AWS cloud provider.
-func setAWSCloudProvider(prompter *prompt.MockInterface, client *aws.MockClient, provider aws.Provider) {
-	setAWSAccessKeyIDPrompt(prompter, provider.AccessKeyID)
-	setAWSSecretAccessKeyPrompt(prompter, provider.SecretAccessKey)
+// setAWSCloudProviderAccessKey sets up mocks that will configure an AWS cloud provider with access key.
+func setAWSCloudProviderAccessKey(prompter *prompt.MockInterface, client *aws.MockClient, provider aws.Provider) {
+	setAWSCredentialKindPrompt(prompter, "Access Key")
+	setAWSAccessKeyIDPrompt(prompter, provider.AccessKey.AccessKeyID)
+	setAWSSecretAccessKeyPrompt(prompter, provider.AccessKey.SecretAccessKey)
+	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
+	setAWSAccountIDConfirmPrompt(prompter, provider.AccountID, prompt.ConfirmYes)
+	setAWSListRegions(client, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
+	setAWSRegionPrompt(prompter, getMockAWSRegionsString(), provider.Region)
+}
+
+// setAWSCloudProviderIRSA sets up mocks that will configure an AWS cloud provider with IRSA.
+func setAWSCloudProviderIRSA(prompter *prompt.MockInterface, client *aws.MockClient, provider aws.Provider) {
+	setAWSCredentialKindPrompt(prompter, "IRSA")
+	setAwsIRSARoleARNPrompt(prompter, provider.IRSA.RoleARN)
 	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
 	setAWSAccountIDConfirmPrompt(prompter, provider.AccountID, prompt.ConfirmYes)
 	setAWSListRegions(client, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
@@ -1184,6 +1280,20 @@ func setAzureCredentialKindPrompt(prompter *prompt.MockInterface, choice string)
 	prompter.EXPECT().
 		GetListInput([]string{"Service Principal", "Workload Identity"}, selectAzureCredentialKindPrompt).
 		Return(choice, nil).
+		Times(1)
+}
+
+func setAWSCredentialKindPrompt(prompter *prompt.MockInterface, choice string) {
+	prompter.EXPECT().
+		GetListInput([]string{"Access Key", "IRSA"}, selectAWSCredentialKindPrompt).
+		Return(choice, nil).
+		Times(1)
+}
+
+func setAwsIRSARoleARNPrompt(prompter *prompt.MockInterface, roleARN string) {
+	prompter.EXPECT().
+		GetTextInput(enterAWSRoleARNPrompt, gomock.Any()).
+		Return(roleARN, nil).
 		Times(1)
 }
 

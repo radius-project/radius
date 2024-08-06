@@ -64,7 +64,7 @@ func (r *Runner) enterCloudProviderOptions(ctx context.Context, options *initOpt
 
 			options.CloudProviders.Azure = provider
 		case aws.ProviderDisplayName:
-			provider, err := r.enterAWSCloudProvider(ctx)
+			provider, err := r.enterAWSCloudProvider(ctx, options)
 			if err != nil {
 				return err
 			}

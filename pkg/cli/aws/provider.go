@@ -16,22 +16,44 @@ limitations under the License.
 
 package aws
 
+// AWSCredentialKind - AWS credential kinds supported.
+type AWSCredentialKind string
+
 const (
 	// ProviderDisplayName is the text used in display for AWS.
-	ProviderDisplayName = "AWS"
+	ProviderDisplayName        = "AWS"
+	AWSCredentialKindAccessKey = "AccessKey"
+	AWSCredentialKindIRSA      = "IRSA"
 )
 
 // Provider specifies the properties required to configure AWS provider for cloud resources.
 type Provider struct {
-	// AccessKeyID is the access key id for the AWS account.
-	AccessKeyID string
-
-	// SecretAccessKey is the secret access key for the AWS account.
-	SecretAccessKey string
 
 	// Region is the AWS region to use.
 	Region string
 
 	// AccountID is the AWS account id.
 	AccountID string
+
+	// CredentialKind represents ucp credential kind for aws provider.
+	CredentialKind AWSCredentialKind
+
+	// AccessKey represents ucp credential kind for aws access key credentials.
+	AccessKey *AccessKeyCredential
+
+	// IRSA represents ucp credential kind for aws irsa credentials.
+	IRSA *IRSACredential
+}
+
+type AccessKeyCredential struct {
+	// AccessKeyID is the access key id for the AWS account.
+	AccessKeyID string
+
+	// SecretAccessKey is the secret access key for the AWS account.
+	SecretAccessKey string
+}
+
+type IRSACredential struct {
+	// RoleARN for AWS IRSA identity
+	RoleARN string
 }
