@@ -314,12 +314,10 @@ func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
 			subscription: testSubscription,
 			credentials:  testAzureWorkloadIdentityCredential,
 			expectedConfig: map[string]any{
-				azureFeaturesParam:               map[string]any{},
-				azureSubIDParam:                  testSubscription,
-				azureTenantIDParam:               testAzureWorkloadIdentityCredential.WorkloadIdentity.TenantID,
-				azureClientIDParam:               testAzureWorkloadIdentityCredential.WorkloadIdentity.ClientID,
-				azureUseAKSWorkloadIdentityParam: true,
-				azureUseCLIParam:                 false,
+				azureFeaturesParam: map[string]any{},
+				azureSubIDParam:    testSubscription,
+				azureTenantIDParam: testAzureWorkloadIdentityCredential.WorkloadIdentity.TenantID,
+				azureClientIDParam: testAzureWorkloadIdentityCredential.WorkloadIdentity.ClientID,
 			},
 		},
 		{

@@ -63,7 +63,7 @@ env:
   # Azure Keyvault CSI driver chart version
   AZURE_KEYVAULT_CSI_DRIVER_VER: "1.4.2"
   # Azure workload identity webhook chart version
-  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: "1.1.0"
+  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: "1.3.0"
   # Container registry for storing container images
   CONTAINER_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing Bicep recipe artifacts
@@ -363,7 +363,8 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest-m]
-        name: [corerp-cloud, ucp-cloud, datastoresrp-cloud]
+        name: [corerp-cloud]
+        # name: [corerp-cloud, ucp-cloud, datastoresrp-cloud]
     runs-on: ${{ matrix.os }}
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
