@@ -174,15 +174,6 @@ model TerraformRecipeProperties extends RecipeProperties {
   templateVersion?: string;
 }
 
-@doc("This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data.")
-model SecretReference {
-  @doc("The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.")
-  source: string;
-
-  @doc("The key for the secret in the secret store.")
-  key: string;
-}
-
 @doc("Represents the request body of the getmetadata action.")
 model RecipeGetMetadata {
   @doc("Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'.")

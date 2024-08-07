@@ -17,3 +17,12 @@ limitations under the License.
 import "@typespec/openapi";
 
 using OpenAPI;
+
+@doc("This specifies a reference to a secret. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data.")
+model SecretReference {
+  @doc("The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.")
+  source: string;
+
+  @doc("The key for the secret in the secret store.")
+  key: string;
+}
