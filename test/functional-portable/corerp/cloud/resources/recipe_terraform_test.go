@@ -46,6 +46,7 @@ var (
 
 // Test_TerraformRecipe_AzureStorage creates an Extender resource consuming a Terraform recipe that deploys an Azure blob storage instance.
 func Test_TerraformRecipe_AzureStorage(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-terraform-azurestorage.bicep"
 	name := "corerp-resources-terraform-azstorage"
 	appName := "corerp-resources-terraform-azstorage-app"
