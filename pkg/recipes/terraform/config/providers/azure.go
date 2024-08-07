@@ -177,11 +177,6 @@ func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, cred
 			credentials.WorkloadIdentity.TenantID != "" {
 			configMap[azureClientIDParam] = credentials.WorkloadIdentity.ClientID
 			configMap[azureTenantIDParam] = credentials.WorkloadIdentity.TenantID
-
-			// Use AKS Workload Identity for Azure provider
-			// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/aks_workload_identity#configuring-with-environment-variables
-			configMap[azureUseAKSWorkloadIdentityParam] = true
-			configMap[azureUseCLIParam] = false
 		}
 	}
 
