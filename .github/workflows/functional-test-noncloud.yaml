@@ -320,17 +320,6 @@ jobs:
         run: |
           make publish-test-terraform-recipes
 
-      - name: Publish Bicep Test Recipes
-        run: |
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH
-          which rad || { echo "cannot find rad"; exit 1; }
-          make publish-test-bicep-recipes
-        env:
-          BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
-          BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
-          TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
-          SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
-      
       - name: Publish bicep types 
         run: | 
           ./.rad/bin/rad-bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
@@ -355,6 +344,18 @@ jobs:
             }
           }
           EOF
+
+      - name: Publish Bicep Test Recipes
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          make publish-test-bicep-recipes
+        env:
+          BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
+          BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
+          TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
+          SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
+      
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
