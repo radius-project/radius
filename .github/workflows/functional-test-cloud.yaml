@@ -433,7 +433,7 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_TEST_APPID }}
           tenant-id: ${{ secrets.AZURE_TEST_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_TEST_SUBSCRIPTIONID_TESTS }}
+          subscription-id: ${{ secrets.AZURE_TEST_SUBSCRIPTIONID }}
 
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
