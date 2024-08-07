@@ -95,7 +95,7 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     env:
       DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
       DE_TAG: "latest"
@@ -117,7 +117,13 @@ jobs:
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
 
       - name: Set up checkout target (scheduled)
-        if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
+        if: github.event_name == 'schedule'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+
+      - name: Set up checkout target (repository_dispatch)
+        if: github.event_name == 'repository_dispatch'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
@@ -352,7 +358,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: true
       matrix:
