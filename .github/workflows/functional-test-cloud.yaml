@@ -373,13 +373,15 @@ jobs:
       - name: Upload Radius Bicep types artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: radius-bicep-types
+          name: ${{ matrix.name }}_radius_bicep_types
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
       - name: 'Login via Azure CLI'
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          creds: ${{ secrets.BICEP_TYPES_AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
       - name: Setup and verify bicep CLI
         run: |
           curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64

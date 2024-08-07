@@ -127,8 +127,7 @@ jobs:
           # Set output variables to be used in the other jobs
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
-          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
-          
+          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT    
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
@@ -222,7 +221,7 @@ jobs:
       - name: Upload Radius Bicep types artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: radius-bicep-types
+          name: ${{ matrix.name }}_radius_bicep_types
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error       
 
