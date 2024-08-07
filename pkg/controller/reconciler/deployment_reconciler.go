@@ -630,13 +630,17 @@ func (r *DeploymentReconciler) saveState(ctx context.Context, deployment *appsv1
 }
 
 func (r *DeploymentReconciler) findDeploymentsForRecipe(ctx context.Context, obj client.Object) []reconcile.Request {
-	recipe := obj.(*radappiov1alpha3.Recipe)
+	recipe, ok := obj.(*radappiov1alpha3.Recipe)
+	if !ok {
+		return []reconcile.Request{}
+	}
 
 	deployments := &appsv1.DeploymentList{}
 	options := &client.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector(indexField, recipe.Name),
 		Namespace:     recipe.Namespace,
 	}
+
 	err := r.Client.List(ctx, deployments, options)
 	if err != nil {
 		return []reconcile.Request{}
@@ -651,6 +655,7 @@ func (r *DeploymentReconciler) findDeploymentsForRecipe(ctx context.Context, obj
 			},
 		})
 	}
+
 	return requests
 }
 
@@ -666,28 +671,32 @@ func (r *DeploymentReconciler) requeueDelay() time.Duration {
 const indexField = "spec.recipe-reference"
 
 func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, indexField, func(rawObj client.Object) []string {
-		deployment := rawObj.(*appsv1.Deployment)
-		annotations, err := readAnnotations(deployment)
-		if err != nil {
-			return []string{}
-		} else if annotations.Configuration == nil {
-			return []string{}
-		}
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(),
+		&appsv1.Deployment{}, indexField, func(rawObj client.Object) []string {
+			deployment := rawObj.(*appsv1.Deployment)
+			annotations, err := readAnnotations(deployment)
+			if err != nil {
+				return []string{}
+			} else if annotations.Configuration == nil {
+				return []string{}
+			}
 
-		recipes := []string{}
-		for _, recipe := range annotations.Configuration.Connections {
-			recipes = append(recipes, recipe)
-		}
+			recipes := []string{}
+			for _, recipe := range annotations.Configuration.Connections {
+				recipes = append(recipes, recipe)
+			}
 
-		return recipes
-	}); err != nil {
+			return recipes
+		}); err != nil {
 		return err
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1.Deployment{}).
-		Watches(&radappiov1alpha3.Recipe{}, handler.EnqueueRequestsFromMapFunc(r.findDeploymentsForRecipe), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Watches(&radappiov1alpha3.Recipe{},
+			handler.EnqueueRequestsFromMapFunc(r.findDeploymentsForRecipe),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
 		Owns(&corev1.Secret{}).
 		Complete(r)
 }
