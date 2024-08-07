@@ -562,7 +562,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }},global.azureWorkloadIdentity.enabled=true
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -576,7 +576,8 @@ jobs:
           echo "*** Configuring Azure provider ***"
           rad env update kind-radius --azure-subscription-id ${{ secrets.AZURE_TEST_SUBSCRIPTIONID }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          rad credential register azure wi --client-id ${{ secrets.AZURE_TEST_APPID }} \
+          rad credential register azure wi \
+            --client-id ${{ secrets.AZURE_TEST_APPID }} \
             --tenant-id ${{ secrets.AZURE_TEST_TENANTID }}
 
           echo "*** Configuring AWS provider ***"
