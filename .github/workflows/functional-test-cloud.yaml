@@ -256,13 +256,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: 'Login via Azure CLI'
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
-          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
-          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
 
       - uses: marocchino/sticky-pull-request-comment@v2
         if: env.PR_NUMBER != ''
@@ -660,6 +653,9 @@ jobs:
             "extensions": {
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+            },
+            "cloud": {
+              "credentialPrecedence": ["Environment"]
             }
           }
           EOF

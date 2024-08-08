@@ -320,9 +320,16 @@ jobs:
         run: |
           make publish-test-terraform-recipes
 
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
+
       - name: Publish bicep types 
         run: | 
-          ./.rad/bin/rad-bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
 
       - name: Generate test bicepconfig.json
         run: |
@@ -341,6 +348,9 @@ jobs:
             "extensions": {
               "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+            },
+            "cloud": {
+              "credentialPrecedence": ["Environment"]
             }
           }
           EOF
