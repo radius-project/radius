@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
@@ -481,7 +480,7 @@ func Test_Update(t *testing.T) {
 				existingEnvironment.Properties.Providers = tc.expectedProviders
 
 				appManagementClient.EXPECT().
-					CreateOrUpdateEnvironment(gomock.Any(), "test-env", &v20231001preview.EnvironmentResource{
+					CreateOrUpdateEnvironment(gomock.Any(), "test-env", &corerp.EnvironmentResource{
 						Location:   to.Ptr(v1.LocationGlobal),
 						Properties: existingEnvironment.Properties,
 					}).
