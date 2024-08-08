@@ -367,6 +367,7 @@ func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
 			require.Equal(t, tt.expectedConfig[azureClientIDParam], config[azureClientIDParam])
 			require.Equal(t, tt.expectedConfig[azureClientSecretParam], config[azureClientSecretParam])
 			require.Equal(t, tt.expectedConfig[azureTenantIDParam], config[azureTenantIDParam])
+			require.Equal(t, tt.expectedConfig[azureUseOIDCParam], config[azureUseOIDCParam])
 		})
 	}
 }
