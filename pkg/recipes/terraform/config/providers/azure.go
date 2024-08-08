@@ -39,12 +39,20 @@ import (
 const (
 	AzureProviderName = "azurerm"
 
-	azureFeaturesParam     = "features"
-	azureSubIDParam        = "subscription_id"
-	azureClientIDParam     = "client_id"
-	azureClientSecretParam = "client_secret"
-	azureTenantIDParam     = "tenant_id"
-	azureUseOIDCParam      = "use_oidc"
+	azureFeaturesParam          = "features"
+	azureSubIDParam             = "subscription_id"
+	azureClientIDParam          = "client_id"
+	azureClientSecretParam      = "client_secret"
+	azureTenantIDParam          = "tenant_id"
+	azureUseOIDCParam           = "use_oidc"
+	azureUseCLIParam            = "use_cli"
+	azureOIDCTokenFilePathParam = "oidc_token_file_path"
+
+	// The Azure AD Workload Identity Mutating Admission Webhook projects a signed service account token to
+	// this well known path.
+	// https://azure.github.io/azure-workload-identity/docs/installation/mutating-admission-webhook.html
+	// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#argument-reference
+	azureOIDCTokenFilePath = "/var/run/secrets/azure/tokens/azure-identity-token"
 )
 
 var _ Provider = (*azureProvider)(nil)
@@ -176,7 +184,9 @@ func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, cred
 			credentials.WorkloadIdentity.TenantID != "" {
 			configMap[azureClientIDParam] = credentials.WorkloadIdentity.ClientID
 			configMap[azureTenantIDParam] = credentials.WorkloadIdentity.TenantID
+			configMap[azureUseCLIParam] = false
 			configMap[azureUseOIDCParam] = true
+			configMap[azureOIDCTokenFilePathParam] = azureOIDCTokenFilePath
 		}
 	}
 
