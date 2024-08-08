@@ -1,4 +1,4 @@
-import aws as aws 
+extension aws
 
 param creationTimestamp string
 param bucketName string

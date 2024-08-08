@@ -1,4 +1,4 @@
-import radius as radius
+extension radius
 
 param magpieimage string
 param environment string
@@ -19,7 +19,7 @@ resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
     container: {
       image: magpieimage
       env: {
-        DBCONNECTION: redis.connectionString()
+        DBCONNECTION: redis.listSecrets().connectionString
       }
       readinessProbe: {
         kind: 'httpGet'
