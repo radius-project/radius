@@ -171,14 +171,21 @@ func refreshAzureWorkloadIdentityCredentials(ctx context.Context, c *UCPCredenti
 
 	logger.Info("Retrieved Azure Credential - ClientID: " + azureWorkloadIdentityCredential.ClientID)
 
-	var opt *azidentity.DefaultAzureCredentialOptions
+	var opt *azidentity.WorkloadIdentityCredentialOptions
 	if c.options.ClientOptions != nil {
-		opt = &azidentity.DefaultAzureCredentialOptions{
+		opt = &azidentity.WorkloadIdentityCredentialOptions{
+			ClientID:      azureWorkloadIdentityCredential.ClientID,
+			TenantID:      azureWorkloadIdentityCredential.TenantID,
 			ClientOptions: *c.options.ClientOptions,
+		}
+	} else {
+		opt = &azidentity.WorkloadIdentityCredentialOptions{
+			ClientID: azureWorkloadIdentityCredential.ClientID,
+			TenantID: azureWorkloadIdentityCredential.TenantID,
 		}
 	}
 
-	azCred, err := azidentity.NewDefaultAzureCredential(opt)
+	azCred, err := azidentity.NewWorkloadIdentityCredential(opt)
 	if err != nil {
 		return err
 	}

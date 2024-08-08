@@ -24,8 +24,6 @@ import (
 // GetResourceGroupLocation retrieves the location of a given resource group from an Azure subscription. It returns an
 // error if the resource group or the subscription cannot be found.
 func GetResourceGroupLocation(ctx context.Context, subscriptionID string, resourceGroupName string, options *Options) (*string, error) {
-	fmt.Printf("made it to common.go 12: %+v\n", options.Cred)
-	fmt.Println(options)
 	client, err := NewResourceGroupsClient(subscriptionID, options)
 	if err != nil {
 		return nil, err

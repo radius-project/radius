@@ -17,7 +17,6 @@ limitations under the License.
 package armauth
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -73,7 +72,6 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	// https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=go#azure-identity-client-libraries
 	switch authMethod {
 	case UCPCredentialAuth:
-		fmt.Println("willsmith: Using UCP credential")
 		return azcred.NewUCPCredential(azcred.UCPCredentialOptions{
 			Provider: opt.CredentialProvider,
 		})
