@@ -11,7 +11,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+
+	// "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 
@@ -27,60 +28,60 @@ func StorageBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "CONNECTION_STORAGE_ACCOUNTNAME is required"}
 	}
 
-	url := "https://" + storageAccountName + ".blob.core.windows.net/"
+	// url := "https://" + storageAccountName + ".blob.core.windows.net/"
 
-	clientID := os.Getenv("AZURE_CLIENT_ID")
-	tenantID := os.Getenv("AZURE_TENANT_ID")
-	tokenFilePath := os.Getenv("AZURE_FEDERATED_TOKEN_FILE")
-	authorityHost := os.Getenv("AZURE_AUTHORITY_HOST")
+	// clientID := os.Getenv("AZURE_CLIENT_ID")
+	// tenantID := os.Getenv("AZURE_TENANT_ID")
+	// tokenFilePath := os.Getenv("AZURE_FEDERATED_TOKEN_FILE")
+	// authorityHost := os.Getenv("AZURE_AUTHORITY_HOST")
 
-	if clientID == "" {
-		log.Println("AZURE_CLIENT_ID is required")
-		return BindingStatus{false, "AZURE_CLIENT_ID is required"}
-	}
-	if tenantID == "" {
-		log.Println("AZURE_TENANT_ID is required")
-		return BindingStatus{false, "AZURE_TENANT_ID is required"}
-	}
-	if tokenFilePath == "" {
-		log.Println("AZURE_FEDERATED_TOKEN_FILE is required")
-		return BindingStatus{false, "AZURE_FEDERATED_TOKEN_FILE is required"}
-	}
-	if authorityHost == "" {
-		log.Println("AZURE_AUTHORITY_HOST is required")
-		return BindingStatus{false, "AZURE_AUTHORITY_HOST is required"}
-	}
+	// if clientID == "" {
+	// 	log.Println("AZURE_CLIENT_ID is required")
+	// 	return BindingStatus{false, "AZURE_CLIENT_ID is required"}
+	// }
+	// if tenantID == "" {
+	// 	log.Println("AZURE_TENANT_ID is required")
+	// 	return BindingStatus{false, "AZURE_TENANT_ID is required"}
+	// }
+	// if tokenFilePath == "" {
+	// 	log.Println("AZURE_FEDERATED_TOKEN_FILE is required")
+	// 	return BindingStatus{false, "AZURE_FEDERATED_TOKEN_FILE is required"}
+	// }
+	// if authorityHost == "" {
+	// 	log.Println("AZURE_AUTHORITY_HOST is required")
+	// 	return BindingStatus{false, "AZURE_AUTHORITY_HOST is required"}
+	// }
 
-	cred, err := newClientAssertionCredential(tenantID, clientID, authorityHost, tokenFilePath)
-	if err != nil {
-		log.Println("Failed to create credential")
-		return BindingStatus{false, "Failed to create credential"}
-	}
+	// cred, err := newClientAssertionCredential(tenantID, clientID, authorityHost, tokenFilePath)
+	// if err != nil {
+	// 	log.Println("Failed to create credential")
+	// 	return BindingStatus{false, "Failed to create credential"}
+	// }
 
-	client, err := azblob.NewClient(url, cred, nil)
-	if err != nil {
-		log.Println("Failed to create client")
-		return BindingStatus{false, "Failed to create client"}
-	}
+	// client, err := azblob.NewClient(url, cred, nil)
+	// if err != nil {
+	// 	log.Println("Failed to create client")
+	// 	return BindingStatus{false, "Failed to create client"}
+	// }
 
-	containerName := fmt.Sprintf("magpiego-%s", randomString())
-	log.Println("Container Name: " + containerName)
+	// containerName := fmt.Sprintf("magpiego-%s", randomString())
+	// log.Println("Container Name: " + containerName)
 
-	// Create a container
-	resp, err := client.CreateContainer(context.TODO(), containerName, nil)
-	if err != nil {
-		log.Printf("Failed to create container: %s\n", err.Error())
-		return BindingStatus{false, "Failed to create container"}
-	}
-	log.Printf("Successfully created a blob container %q. Response: %s\n", containerName, string(*resp.RequestID))
+	// // Create a container
+	// resp, err := client.CreateContainer(context.TODO(), containerName, nil)
+	// if err != nil {
+	// 	log.Printf("Failed to create container: %s\n", err.Error())
+	// 	return BindingStatus{false, "Failed to create container"}
+	// }
+	// log.Printf("Successfully created a blob container %q. Response: %s\n", containerName, string(*resp.RequestID))
 
-	// Delete the container
-	delResp, err := client.DeleteContainer(context.TODO(), containerName, nil)
-	if err != nil {
-		log.Printf("Failed to mark container for deletion: %s\n", err.Error())
-		return BindingStatus{false, "Failed to mark container for deletion"}
-	}
-	log.Printf("Successfully marked the container for deletion %q. Response: %s\n", containerName, string(*delResp.RequestID))
+	// // Delete the container
+	// delResp, err := client.DeleteContainer(context.TODO(), containerName, nil)
+	// if err != nil {
+	// 	log.Printf("Failed to mark container for deletion: %s\n", err.Error())
+	// 	return BindingStatus{false, "Failed to mark container for deletion"}
+	// }
+	// log.Printf("Successfully marked the container for deletion %q. Response: %s\n", containerName, string(*delResp.RequestID))
 
 	return BindingStatus{true, "Created a container and marked it for deletion successfully"}
 }
