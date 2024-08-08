@@ -92,6 +92,7 @@ resource adminRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01
   name: guid(grafana.id, roleDefinitionId.GrafanaAdmin.id)
   scope: grafana
   properties: {
+    #disable-next-line use-resource-id-functions
     roleDefinitionId: roleDefinitionId.GrafanaAdmin.id
     principalId: adminObjectId
   }
@@ -102,6 +103,7 @@ resource readerRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-0
   name: guid(grafana.id, roleDefinitionId.MonitoringReader.id)
   scope: grafana
   properties: {
+    #disable-next-line use-resource-id-functions
     roleDefinitionId: roleDefinitionId.MonitoringReader.id
     principalId: grafana.identity.principalId
   }

@@ -36,20 +36,14 @@ jobs:
     name: Validate Bicep Code
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
       - name: Setup and verify bicep CLI
         run: |
           curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
           chmod +x ./bicep
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
-      - name: 'Login via Azure CLI'
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
-          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
-          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
+      - name: Check out repo
+        uses: actions/checkout@v4
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
         env:
