@@ -182,6 +182,9 @@ func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, cred
 		if credentials.WorkloadIdentity != nil &&
 			credentials.WorkloadIdentity.ClientID != "" &&
 			credentials.WorkloadIdentity.TenantID != "" {
+
+			// Use OIDC for Workload Identity
+			// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/service_principal_oidc
 			configMap[azureClientIDParam] = credentials.WorkloadIdentity.ClientID
 			configMap[azureTenantIDParam] = credentials.WorkloadIdentity.TenantID
 			configMap[azureUseCLIParam] = false
