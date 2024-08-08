@@ -314,10 +314,13 @@ func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
 			subscription: testSubscription,
 			credentials:  testAzureWorkloadIdentityCredential,
 			expectedConfig: map[string]any{
-				azureFeaturesParam: map[string]any{},
-				azureSubIDParam:    testSubscription,
-				azureTenantIDParam: testAzureWorkloadIdentityCredential.WorkloadIdentity.TenantID,
-				azureClientIDParam: testAzureWorkloadIdentityCredential.WorkloadIdentity.ClientID,
+				azureFeaturesParam:          map[string]any{},
+				azureSubIDParam:             testSubscription,
+				azureTenantIDParam:          testAzureWorkloadIdentityCredential.WorkloadIdentity.TenantID,
+				azureClientIDParam:          testAzureWorkloadIdentityCredential.WorkloadIdentity.ClientID,
+				azureUseCLIParam:            false,
+				azureUseOIDCParam:           true,
+				azureOIDCTokenFilePathParam: "/var/run/secrets/azure/tokens/azure-identity-token",
 			},
 		},
 		{
@@ -368,6 +371,8 @@ func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
 			require.Equal(t, tt.expectedConfig[azureClientSecretParam], config[azureClientSecretParam])
 			require.Equal(t, tt.expectedConfig[azureTenantIDParam], config[azureTenantIDParam])
 			require.Equal(t, tt.expectedConfig[azureUseOIDCParam], config[azureUseOIDCParam])
+			require.Equal(t, tt.expectedConfig[azureUseCLIParam], config[azureUseCLIParam])
+			require.Equal(t, tt.expectedConfig[azureOIDCTokenFilePathParam], config[azureOIDCTokenFilePathParam])
 		})
 	}
 }
