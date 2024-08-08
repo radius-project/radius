@@ -19,8 +19,30 @@ func Test_populateSecretData(t *testing.T) {
 		expectedErrMsg  string
 	}{
 		{
-			name:       "success",
-			secretKeys: []string{"secretKey1", "secretKey2"},
+			name:       "success - data for input secretKey returned",
+			secretKeys: []string{"secretKey1"},
+			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
+				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
+					Data: map[string]*v20231001preview.SecretValueProperties{
+						"secretKey1": {
+							Value: to.Ptr("secretValue1"),
+						},
+						"secretKey2": {
+							Value: to.Ptr("secretValue2"),
+						},
+					}},
+			},
+			secretStoreID: "testSecretStore",
+			expectedSecrets: map[string]map[string]string{
+				"testSecretStore": {
+					"secretKey1": "secretValue1",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name:       "success - data for all keys returned with nil secretKeys input",
+			secretKeys: nil,
 			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
 				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
 					Data: map[string]*v20231001preview.SecretValueProperties{
@@ -40,6 +62,17 @@ func Test_populateSecretData(t *testing.T) {
 				},
 			},
 			expectError: false,
+		},
+		{
+			name:       "success - returned with nil secretKeys input when no secret data exist",
+			secretKeys: nil,
+			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
+				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
+					Data: nil},
+			},
+			secretStoreID:   "testSecretStore",
+			expectedSecrets: map[string]map[string]string{},
+			expectError:     false,
 		},
 		{
 			name:            "fail with nil secrets input",
