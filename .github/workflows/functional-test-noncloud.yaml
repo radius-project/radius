@@ -211,9 +211,6 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
-
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
           make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
