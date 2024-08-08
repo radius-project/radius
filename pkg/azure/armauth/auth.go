@@ -17,6 +17,7 @@ limitations under the License.
 package armauth
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -80,6 +81,7 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 	case ManagedIdentityAuth:
 		return azidentity.NewManagedIdentityCredential(nil)
 	case WorkloadIdentityAuth:
+		fmt.Println("made it to auth.go 1")
 		return azidentity.NewDefaultAzureCredential(nil)
 	default:
 		return azidentity.NewAzureCLICredential(nil)
@@ -88,6 +90,7 @@ func NewARMCredential(opt *Options) (azcore.TokenCredential, error) {
 
 // GetAuthMethod returns the authentication method to use based on environment variables.
 func GetAuthMethod() string {
+	fmt.Println("made it to auth.go 2")
 	// Allow explicit configuration of the auth method, and fall back
 	// to auto-detection if unspecified
 	authMethod := os.Getenv("ARM_AUTH_METHOD")
