@@ -49,6 +49,9 @@ type UCPCredentialOptions struct {
 
 	// ClientOptions is the options for azure client.
 	ClientOptions *azcore.ClientOptions
+
+	// TokenFilePath is the path to the azure token file (for use with Azure workload identity)
+	TokenFilePath string
 }
 
 // UCPCredential authenticates service principal using UCP credential APIs.
@@ -176,12 +179,14 @@ func refreshAzureWorkloadIdentityCredentials(ctx context.Context, c *UCPCredenti
 		opt = &azidentity.WorkloadIdentityCredentialOptions{
 			ClientID:      azureWorkloadIdentityCredential.ClientID,
 			TenantID:      azureWorkloadIdentityCredential.TenantID,
+			TokenFilePath: c.options.TokenFilePath,
 			ClientOptions: *c.options.ClientOptions,
 		}
 	} else {
 		opt = &azidentity.WorkloadIdentityCredentialOptions{
-			ClientID: azureWorkloadIdentityCredential.ClientID,
-			TenantID: azureWorkloadIdentityCredential.TenantID,
+			TokenFilePath: c.options.TokenFilePath,
+			ClientID:      azureWorkloadIdentityCredential.ClientID,
+			TenantID:      azureWorkloadIdentityCredential.TenantID,
 		}
 	}
 
