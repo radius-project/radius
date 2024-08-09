@@ -25,7 +25,7 @@ import (
 	"github.com/radius-project/radius/test/validation"
 )
 
-// Test_Storage tests if a container can be created and then deleted by the magpiego with the workload identity.
+// Test_Storage tests if a container on an Azure Storage Account can be created and then deleted by the magpiego with the workload identity.
 func Test_Storage(t *testing.T) {
 	template := "testdata/corerp-resources-container-workload.bicep"
 	name := "corerp-resources-container-workload"

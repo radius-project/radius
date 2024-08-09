@@ -97,7 +97,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 
 	identity, err := msiClient.CreateOrUpdate(ctx, rgName, identityName, armmsi.Identity{Location: &resourceLocation}, nil)
 	if err != nil {
-		return properties, fmt.Errorf("failed to create user assigned managed identity: %w", err)
+		return properties, fmt.Errorf("failed to create user-assigned managed identity: %w", err)
 	}
 
 	properties[UserAssignedIdentityIDKey] = to.String(identity.ID)
@@ -111,7 +111,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	}
 
 	options.Resource.ID = id
-	logger.Info("Created managed identity for KeyVault access", logging.LogFieldLocalID, rpv1.LocalIDUserAssignedManagedIdentity)
+	logger.Info("Created user-assigned managed identity", logging.LogFieldLocalID, rpv1.LocalIDUserAssignedManagedIdentity)
 
 	return properties, nil
 }
