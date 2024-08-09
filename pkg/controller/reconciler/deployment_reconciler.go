@@ -630,7 +630,10 @@ func (r *DeploymentReconciler) saveState(ctx context.Context, deployment *appsv1
 }
 
 func (r *DeploymentReconciler) findDeploymentsForRecipe(ctx context.Context, obj client.Object) []reconcile.Request {
-	recipe := obj.(*radappiov1alpha3.Recipe)
+	recipe, ok := obj.(*radappiov1alpha3.Recipe)
+	if !ok {
+		return []reconcile.Request{}
+	}
 
 	deployments := &appsv1.DeploymentList{}
 	options := &client.ListOptions{
