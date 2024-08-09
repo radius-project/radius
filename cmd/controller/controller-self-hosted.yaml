@@ -13,7 +13,7 @@ server:
   host: "0.0.0.0"
   port: 8083
 
-# workerServer port specifies port set for Health Checks   
+# workerServer port specifies port set for Health Checks
 workerServer:
   port: 3000
 ucp:
