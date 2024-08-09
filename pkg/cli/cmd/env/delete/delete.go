@@ -149,13 +149,19 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Prompt user to confirm deletion
 	if !r.Confirm {
+		// Doesn't list applications
+		resourcesInEnvironment, err := client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+		if err != nil {
+			return err
+		}
+
 		appsInEnvironment, err := client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, "Applications.Core/applications")
 		if err != nil {
 			return err
 		}
 
 		var promptBuilder strings.Builder
-		if len(appsInEnvironment) > 0 {
+		if len(appsInEnvironment) > 0 || len(resourcesInEnvironment) > 0 {
 			promptBuilder.WriteString(warnDependencies)
 			promptBuilder.WriteString(" ")
 		}
