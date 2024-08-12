@@ -50,7 +50,7 @@ jobs:
         run: |
           # Add credential preference to the bicepconfig.json file
           jq '. + {"cloud": {"credentialPrecedence": ["Environment"]}}' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
-      - name: Print updated bicepconfig.json to verify changes
+      - name: Print updated bicepconfig.json
         run: cat bicepconfig.json
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
