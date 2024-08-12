@@ -9,6 +9,9 @@
 		"aws": "br:biceptypes.azurecr.io/aws:latest"
 	},
 	"cloud": {
-		"credentialPrecedence": ["Environment"]
+		"credentialPrecedence": [
+			"Environment", 
+			"AzureCLI"
+		]
 	}
 }
