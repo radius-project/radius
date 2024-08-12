@@ -327,7 +327,7 @@ jobs:
       - name: Upload Radius Bicep types artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.name }}_radius_bicep_types
+          name: radius_bicep_types_cloud
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
 
