@@ -171,6 +171,14 @@ func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties 
 	}
 }
 
+// BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
+// deployment.
+type BicepConfigProperties struct {
+	// Authentication information used to access private bicep registries, which is a map of registry hostname to secret config
+// that contains credential information.
+	Authentication map[string]*RegistrySecretConfig
+}
+
 // BicepRecipeProperties - Represents Bicep recipe properties.
 type BicepRecipeProperties struct {
 	// REQUIRED; Discriminator property for RecipeProperties.
@@ -1312,6 +1320,9 @@ type Recipe struct {
 
 // RecipeConfigProperties - Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 type RecipeConfigProperties struct {
+	// Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.
+	Bicep *BicepConfigProperties
+
 	// Environment variables injected during Terraform Recipe execution for the recipes in the environment.
 	Env map[string]*string
 
@@ -1401,6 +1412,13 @@ type RecipeUpdate struct {
 
 	// Key/value parameters to pass into the recipe at deployment
 	Parameters map[string]any
+}
+
+// RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
+type RegistrySecretConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container
+// registry.The keys in the secretstore depends on the type.
+	Secret *string
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources

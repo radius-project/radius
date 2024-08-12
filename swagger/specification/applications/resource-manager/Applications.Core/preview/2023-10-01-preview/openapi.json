@@ -2500,6 +2500,19 @@
       ],
       "x-ms-discriminator-value": "azure.com.keyvault"
     },
+    "BicepConfigProperties": {
+      "type": "object",
+      "description": "Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.",
+      "properties": {
+        "authentication": {
+          "type": "object",
+          "description": "Authentication information used to access private bicep registries, which is a map of registry hostname to secret config that contains credential information.",
+          "additionalProperties": {
+            "$ref": "#/definitions/RegistrySecretConfig"
+          }
+        }
+      }
+    },
     "BicepRecipeProperties": {
       "type": "object",
       "description": "Represents Bicep recipe properties.",
@@ -4354,6 +4367,10 @@
           "$ref": "#/definitions/TerraformConfigProperties",
           "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
         },
+        "bicep": {
+          "$ref": "#/definitions/BicepConfigProperties",
+          "description": "Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment."
+        },
         "env": {
           "$ref": "#/definitions/EnvironmentVariables",
           "description": "Environment variables injected during Terraform Recipe execution for the recipes in the environment."
@@ -4498,6 +4515,16 @@
           "type": "object",
           "description": "Key/value parameters to pass into the recipe at deployment",
           "properties": {}
+        }
+      }
+    },
+    "RegistrySecretConfig": {
+      "type": "object",
+      "description": "Registry Secret Configuration used to authenticate to private bicep registries.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container registry.The keys in the secretstore depends on the type."
         }
       }
     },

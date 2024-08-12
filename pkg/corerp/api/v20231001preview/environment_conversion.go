@@ -206,6 +206,18 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 
 			recipeConfig.Terraform.Providers = toRecipeConfigTerraformProvidersDatamodel(config)
 		}
+		if config.Bicep != nil {
+			recipeConfig.Bicep = datamodel.BicepConfigProperties{}
+			if config.Bicep.Authentication != nil {
+				authConfig := map[string]datamodel.RegistrySecretConfig{}
+				for k, v := range config.Bicep.Authentication {
+					authConfig[k] = datamodel.RegistrySecretConfig{
+						Secret: to.String(v.Secret),
+					}
+				}
+				recipeConfig.Bicep.Authentication = authConfig
+			}
+		}
 
 		recipeConfig.Env = toRecipeConfigEnvDatamodel(config)
 		recipeConfig.EnvSecrets = toSecretReferenceDatamodel(config.EnvSecrets)
@@ -237,6 +249,17 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 			}
 
 			recipeConfig.Terraform.Providers = fromRecipeConfigTerraformProvidersDatamodel(config)
+		}
+		if !reflect.DeepEqual(config.Bicep, datamodel.BicepConfigProperties{}) {
+			recipeConfig.Bicep = &BicepConfigProperties{}
+			if config.Bicep.Authentication != nil {
+				recipeConfig.Bicep.Authentication = map[string]*RegistrySecretConfig{}
+				for k, v := range config.Bicep.Authentication {
+					recipeConfig.Bicep.Authentication[k] = &RegistrySecretConfig{
+						Secret: to.Ptr(v.Secret),
+					}
+				}
+			}
 		}
 
 		recipeConfig.Env = fromRecipeConfigEnvDatamodel(config)
