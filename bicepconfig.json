@@ -10,7 +10,7 @@
 	},
 	"cloud": {
 		"credentialPrecedence": [
-			"Environment", 
+			"Environment",
 			"AzureCLI"
 		]
 	}
