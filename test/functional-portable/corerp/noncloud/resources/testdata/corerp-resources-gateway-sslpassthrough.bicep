@@ -1,8 +1,8 @@
-import kubernetes as kubernetes {
+extension kubernetes with {
   kubeConfig: ''
   namespace: 'default'
-}
-import radius as radius
+} as kubernetes
+extension radius
 
 @description('Specifies the location for resources.')
 param location string = 'local'

@@ -17,6 +17,7 @@ limitations under the License.
 package setup
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,6 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
+
+const latest = "latest"
 
 func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 	directory := t.TempDir()
@@ -33,6 +36,7 @@ func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 
 	require.FileExists(t, filepath.Join(directory, ".rad", "rad.yaml"))
 	require.FileExists(t, filepath.Join(directory, "app.bicep"))
+	require.FileExists(t, filepath.Join(directory, "bicepconfig.json"))
 
 	b, err := os.ReadFile(filepath.Join(directory, ".rad", "rad.yaml"))
 	require.NoError(t, err)
@@ -51,6 +55,10 @@ func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 	b, err = os.ReadFile(filepath.Join(directory, "app.bicep"))
 	require.NoError(t, err)
 	require.Equal(t, appBicepTemplate, string(b))
+
+	b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest), string(b))
 }
 
 func Test_ScaffoldApplication_KeepsAppBicepButWritesRadYaml(t *testing.T) {
@@ -62,6 +70,8 @@ func Test_ScaffoldApplication_KeepsAppBicepButWritesRadYaml(t *testing.T) {
 	err = os.WriteFile(filepath.Join(directory, ".rad", "rad.yaml"), []byte("something else"), 0644)
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(directory, "app.bicep"), []byte("something else"), 0644)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(directory, "bicepconfig.json"), []byte("something else"), 0644)
 	require.NoError(t, err)
 
 	err = ScaffoldApplication(directory, "cool-application")
@@ -85,6 +95,10 @@ func Test_ScaffoldApplication_KeepsAppBicepButWritesRadYaml(t *testing.T) {
 	require.Equal(t, expectedYaml, actualYaml)
 
 	b, err = os.ReadFile(filepath.Join(directory, "app.bicep"))
+	require.NoError(t, err)
+	require.Equal(t, "something else", string(b))
+
+	b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
 	require.NoError(t, err)
 	require.Equal(t, "something else", string(b))
 }

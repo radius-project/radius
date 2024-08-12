@@ -23,6 +23,7 @@ vendor/
 # Radius scaffolding
 app.bicep
 .rad/
+bicepconfig.json
 
 # Build Output
 bin/
