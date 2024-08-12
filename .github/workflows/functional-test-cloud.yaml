@@ -411,7 +411,7 @@ jobs:
   
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: [build, publish-test-bicep-types]
+    needs: [build]
     if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     strategy:
       fail-fast: true
