@@ -315,6 +315,30 @@ jobs:
           message: |
             :hourglass: Publishing Bicep Recipes for functional tests...
 
+      - name: Generate test bicepconfig.json
+        run: |
+          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+            RADIUS_VERSION="latest"
+          else
+            RADIUS_VERSION="${{ env.REL_VERSION }}"
+          fi
+          cat <<EOF > ./test/bicepconfig.json
+          {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true,
+              "extensionRegistry": true,
+              "dynamicTypeLoading": true
+            },
+            "extensions": {
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+            },
+            "cloud": {
+              "credentialPrecedence": ["Environment"]
+            }
+          }
+          EOF
+
       - name: Publish Bicep Test Recipes
         run: |
           mkdir ./bin
