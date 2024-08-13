@@ -44,6 +44,14 @@ jobs:
           bicep --version
       - name: Check out repo
         uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get install -y jq
+      - name: Modify bicepconfig.json
+        run: |
+          # Add credential preference to the bicepconfig.json file
+          jq '. + {"cloud": {"credentialPrecedence": ["Environment"]}}' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
+      - name: Print updated bicepconfig.json
+        run: cat bicepconfig.json
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
         env:

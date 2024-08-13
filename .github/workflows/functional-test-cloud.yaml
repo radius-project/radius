@@ -314,6 +314,64 @@ jobs:
           append: true
           message: |
             :hourglass: Publishing Bicep Recipes for functional tests...
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Generate Bicep extensibility types from OpenAPI specs
+        run: |
+          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+
+      - name: Upload Radius Bicep types artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius_bicep_types_cloud
+          path: ./hack/bicep-types-radius/generated
+          if-no-files-found: error
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
+
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
+          
+      - name: Publish bicep types 
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+
+      - name: Generate test bicepconfig.json
+        run: |
+          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+            RADIUS_VERSION="latest"
+          else
+            RADIUS_VERSION="${{ env.REL_VERSION }}"
+          fi
+          cat <<EOF > ./test/bicepconfig.json
+          {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true,
+              "extensionRegistry": true,
+              "dynamicTypeLoading": true
+            },
+            "extensions": {
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+            },
+            "cloud": {
+              "credentialPrecedence": ["Environment"]
+            }
+          }
+          EOF
 
       - name: Publish Bicep Test Recipes
         run: |
@@ -351,50 +409,9 @@ jobs:
           message: |
             :x: Test recipe publishing failed
   
-  publish-test-bicep-types:
-    name: Publish Radius bicep types to ACR
-    runs-on: ubuntu-latest
-    steps: 
-      - name: Check out code
-        uses: actions/checkout@v4
-      - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
-      - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GOVER }}
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '18'
-      - name: Generate Bicep extensibility types from OpenAPI specs
-        run: |
-          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
-      - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.name }}_radius_bicep_types
-          path: ./hack/bicep-types-radius/generated
-          if-no-files-found: error
-      - name: 'Login via Azure CLI'
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
-          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
-          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
-      - name: Setup and verify bicep CLI
-        run: |
-          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
-          chmod +x ./bicep
-          sudo mv ./bicep /usr/local/bin/bicep
-          bicep --version
-      - name: Publish bicep types 
-        run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
-
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: [build, publish-test-bicep-types]
+    needs: [build]
     if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     strategy:
       fail-fast: true
