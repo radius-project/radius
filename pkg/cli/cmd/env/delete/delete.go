@@ -19,6 +19,7 @@ package delete
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
@@ -31,6 +32,7 @@ import (
 )
 
 const (
+	warnDependencies   = "There are currently application(s) or resource(s) associated with this environment."
 	deleteConfirmation = "Are you sure you want to delete environment '%v'?"
 )
 
@@ -140,20 +142,38 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run prompts the user to confirm the deletion of an environment, creates an applications management client, and
 // deletes the environment if confirmed. It returns an error if the prompt or client creation fails.
 func (r *Runner) Run(ctx context.Context) error {
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
 	// Prompt user to confirm deletion
 	if !r.Confirm {
-		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.EnvironmentName), prompt.ConfirmNo, r.InputPrompter)
+		// Doesn't list applications
+		resourcesInEnvironment, err := client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+		if err != nil {
+			return err
+		}
+
+		appsInEnvironment, err := client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, "Applications.Core/applications")
+		if err != nil {
+			return err
+		}
+
+		var promptBuilder strings.Builder
+		if len(appsInEnvironment) > 0 || len(resourcesInEnvironment) > 0 {
+			promptBuilder.WriteString(warnDependencies)
+			promptBuilder.WriteString(" ")
+		}
+		promptBuilder.WriteString(fmt.Sprintf(deleteConfirmation, r.EnvironmentName))
+
+		confirmed, err := prompt.YesOrNoPrompt(promptBuilder.String(), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			return err
 		}
 		if !confirmed {
 			return nil
 		}
-	}
-
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
 	}
 
 	deleted, err := client.DeleteEnvironment(ctx, r.EnvironmentName)
