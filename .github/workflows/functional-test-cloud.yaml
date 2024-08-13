@@ -63,7 +63,7 @@ env:
   # Azure Keyvault CSI driver chart version
   AZURE_KEYVAULT_CSI_DRIVER_VER: "1.4.2"
   # Azure workload identity webhook chart version
-  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: "1.1.0"
+  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: "1.3.0"
   # Container registry for storing container images
   CONTAINER_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing Bicep recipe artifacts
@@ -97,7 +97,7 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     env:
       DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
       DE_TAG: "latest"
@@ -119,7 +119,13 @@ jobs:
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
 
       - name: Set up checkout target (scheduled)
-        if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
+        if: github.event_name == 'schedule'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+
+      - name: Set up checkout target (repository_dispatch)
+        if: github.event_name == 'repository_dispatch'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
@@ -412,7 +418,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: [build]
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: true
       matrix:
@@ -616,7 +622,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }},global.azureWorkloadIdentity.enabled=true
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -630,8 +636,8 @@ jobs:
           echo "*** Configuring Azure provider ***"
           rad env update kind-radius --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          rad credential register azure sp --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
-            --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+          rad credential register azure wi \
+            --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
           echo "*** Configuring AWS provider ***"
