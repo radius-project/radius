@@ -22,7 +22,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -110,9 +109,9 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter: credentialCollectionRouter,
 			ResourceType: v20231001preview.AzureCredentialType,
 			Method:       v1.OperationList,
-			ControllerFactory: func(opt armrpc_controller.Options) (armrpc_controller.Controller, error) {
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewListResources(opt,
-					armrpc_controller.ResourceOptions[datamodel.AzureCredential]{
+					controller.ResourceOptions[datamodel.AzureCredential]{
 						RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
 						ResponseConverter: converter.AzureCredentialDataModelToVersioned,
 					},
@@ -123,9 +122,9 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter: credentialResourceRouter,
 			ResourceType: v20231001preview.AzureCredentialType,
 			Method:       v1.OperationGet,
-			ControllerFactory: func(opt armrpc_controller.Options) (armrpc_controller.Controller, error) {
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
-					armrpc_controller.ResourceOptions[datamodel.AzureCredential]{
+					controller.ResourceOptions[datamodel.AzureCredential]{
 						RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
 						ResponseConverter: converter.AzureCredentialDataModelToVersioned,
 					},
@@ -136,7 +135,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter: credentialResourceRouter,
 			Method:       v1.OperationPut,
 			ResourceType: v20231001preview.AzureCredentialType,
-			ControllerFactory: func(opt armrpc_controller.Options) (armrpc_controller.Controller, error) {
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return azure_credential_ctrl.NewCreateOrUpdateAzureCredential(opt, secretClient)
 			},
 		},
@@ -144,7 +143,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter: credentialResourceRouter,
 			Method:       v1.OperationDelete,
 			ResourceType: v20231001preview.AzureCredentialType,
-			ControllerFactory: func(opt armrpc_controller.Options) (armrpc_controller.Controller, error) {
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return azure_credential_ctrl.NewDeleteAzureCredential(opt, secretClient)
 			},
 		},
@@ -162,7 +161,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 	}
 
-	ctrlOpts := armrpc_controller.Options{
+	ctrlOpts := controller.Options{
 		Address:      m.options.Address,
 		PathBase:     m.options.PathBase,
 		DataProvider: m.options.DataProvider,

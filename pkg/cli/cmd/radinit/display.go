@@ -251,6 +251,7 @@ func (m *summaryModel) View() string {
 		message.WriteString(summaryApplicationHeadingIcon)
 		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldHeadingFmt, highlight(options.Application.Name)))
 		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldFile, highlight("app.bicep")))
+		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldFile, highlight("bicepconfig.json")))
 		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldFile, highlight(filepath.Join(".rad", "rad.yaml"))))
 	}
 

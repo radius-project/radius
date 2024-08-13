@@ -23,6 +23,9 @@ on:
       - main
       - release/*
 
+permissions:
+  id-token: write # Required for requesting the JWT
+
 concurrency:
   # Cancel the previously triggered build for only PR build.
   group: bicep-${{ github.event.pull_request.number || github.sha }}
@@ -33,17 +36,23 @@ jobs:
     name: Validate Bicep Code
     runs-on: ubuntu-latest
     steps:
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
       - name: Check out repo
         uses: actions/checkout@v4
-      - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
-      - uses: oras-project/setup-oras@main
-      - name: Download rad-bicep
+      - name: Install jq
+        run: sudo apt-get install -y jq
+      - name: Modify bicepconfig.json
         run: |
-          oras pull ghcr.io/radius-project/radius/bicep/rad-bicep/linux-x64:latest -o ./
-          chmod +x rad-bicep
-          ./rad-bicep --version
+          # Add credential preference to the bicepconfig.json file
+          jq '. + {"cloud": {"credentialPrecedence": ["Environment"]}}' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
+      - name: Print updated bicepconfig.json
+        run: cat bicepconfig.json
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
         env:
-          BICEP_PATH: './rad-bicep'
+          BICEP_PATH: 'bicep'

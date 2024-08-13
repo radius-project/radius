@@ -87,6 +87,21 @@
                 "RADIUSBACKENDURI": "http://localhost:9000",
             },
         },
+        {
+            "name": "Debug Bicep generator integration tests",
+            "type": "node",
+            "request": "launch",
+            "runtimeArgs": [
+              "--inspect-brk",
+              "${workspaceRoot}/hack/bicep-types-radius/src/autorest.bicep/node_modules/.bin/jest",
+              "--runInBand",
+              "--no-cache"
+            ],
+            "cwd": "${workspaceFolder}/hack/bicep-types-radius/src/autorest.bicep/src",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "sourceMaps": true
+        },
     ],
     "compounds": [
         {
