@@ -275,7 +275,7 @@ jobs:
         with:
           go-version: ${{ env.GOVER }}
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
       - name: Generate Bicep extensibility types from OpenAPI specs
