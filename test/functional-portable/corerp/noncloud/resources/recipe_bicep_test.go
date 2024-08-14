@@ -398,7 +398,17 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 						Details: []step.DeploymentErrorDetail{
 							{
 								Code:            "InvalidTemplate",
-								MessageContains: "Unable to process template language expressions for resource 'Applications.Core/extenders/corerp-resources-recipe-bicep-langugagefailure-failure' at line '1' and column '456'. 'Unable to evaluate the template language function 'substring'. The index parameter cannot be larger than the length of the string. The index parameter: '10', the length of the string parameter: '4'. Please see https://aka.ms/arm-function-substring for usage details.'",
+								MessageContains: "Unable to process template language expressions for resource 'Applications.Core/extenders/corerp-resources-recipe-bicep-langugagefailure-failure' at line '1' and column",
+							},
+						},
+					},
+					{
+						Code:            "DeploymentFailed",
+						MessageContains: "At least one resource deployment operation failed. Please see the details for the specific operation that failed.",
+						Details: []step.DeploymentErrorDetail{
+							{
+								Code:            "InvalidTemplate",
+								MessageContains: "'Unable to evaluate the template language function 'substring'. The index parameter cannot be larger than the length of the string. The index parameter: '10', the length of the string parameter: '4'. Please see https://aka.ms/arm-function-substring for usage details.'",
 							},
 						},
 					},
