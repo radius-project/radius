@@ -392,6 +392,9 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 				Code:            recipes.RecipeDeploymentFailed,
 				MessageContains: "failed to deploy recipe",
 				Details: []step.DeploymentErrorDetail{
+					// The column index flagged for the error is different depending on what version of the extension is used.
+					// These values might be different between functional test and long running test runs.
+					// Instead of hardcoding values, we'll validate that the rest of the message is correct.
 					{
 						Code:            "DeploymentFailed",
 						MessageContains: "At least one resource deployment operation failed. Please see the details for the specific operation that failed.",
