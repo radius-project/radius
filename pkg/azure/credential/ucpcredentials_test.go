@@ -43,8 +43,8 @@ func newServicePrincipalMockProvider() *mockProvider {
 		fakeCredential: &sdk_cred.AzureCredential{
 			Kind: sdk_cred.AzureServicePrincipalCredentialKind,
 			ServicePrincipal: &sdk_cred.AzureServicePrincipalCredential{
-				ClientID:     "fakeid",
-				TenantID:     "fakeid",
+				ClientID:     "fakeClientID",
+				TenantID:     "fakeTenantID",
 				ClientSecret: "fakeSecret",
 			},
 		},
@@ -56,8 +56,8 @@ func newWorkloadIdentityMockProvider() *mockProvider {
 		fakeCredential: &sdk_cred.AzureCredential{
 			Kind: sdk_cred.AzureWorkloadIdentityCredentialKind,
 			WorkloadIdentity: &sdk_cred.AzureWorkloadIdentityCredential{
-				ClientID: "fakeid",
-				TenantID: "fakeid",
+				ClientID: "fakeClientID",
+				TenantID: "fakeTenantID",
 			},
 		},
 	}
@@ -84,7 +84,7 @@ func Test_NewUCPCredential_WorkloadIdentity(t *testing.T) {
 }
 
 func Test_RefreshCredentials_ServicePrincipal(t *testing.T) {
-	t.Run("invalid credential", func(t *testing.T) {
+	t.Run("invalid service principal credential", func(t *testing.T) {
 		p := newServicePrincipalMockProvider()
 		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p})
 		require.NoError(t, err)
@@ -94,7 +94,7 @@ func Test_RefreshCredentials_ServicePrincipal(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("do not refresh credential", func(t *testing.T) {
+	t.Run("do not refresh service principal credential", func(t *testing.T) {
 		p := newServicePrincipalMockProvider()
 		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p})
 		require.NoError(t, err)
@@ -104,7 +104,7 @@ func Test_RefreshCredentials_ServicePrincipal(t *testing.T) {
 		require.False(t, c.isExpired())
 	})
 
-	t.Run("same credentials", func(t *testing.T) {
+	t.Run("same service principal credentials", func(t *testing.T) {
 		p := newServicePrincipalMockProvider()
 		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p})
 		require.NoError(t, err)
@@ -125,7 +125,7 @@ func Test_RefreshCredentials_ServicePrincipal(t *testing.T) {
 }
 
 func Test_RefreshCredentials_WorkloadIdentity(t *testing.T) {
-	t.Run("invalid credential", func(t *testing.T) {
+	t.Run("invalid workload identity credential", func(t *testing.T) {
 		p := newWorkloadIdentityMockProvider()
 		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p})
 		require.NoError(t, err)
@@ -135,9 +135,9 @@ func Test_RefreshCredentials_WorkloadIdentity(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("do not refresh credential", func(t *testing.T) {
+	t.Run("do not refresh workload identity credential", func(t *testing.T) {
 		p := newWorkloadIdentityMockProvider()
-		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p})
+		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p, TokenFilePath: "/var/run/secrets/azure/tokens/azure-identity-token"})
 		require.NoError(t, err)
 
 		err = c.refreshCredentials(context.TODO())
@@ -145,9 +145,9 @@ func Test_RefreshCredentials_WorkloadIdentity(t *testing.T) {
 		require.False(t, c.isExpired())
 	})
 
-	t.Run("same credentials", func(t *testing.T) {
+	t.Run("same workload identity credentials", func(t *testing.T) {
 		p := newWorkloadIdentityMockProvider()
-		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p})
+		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p, TokenFilePath: "/var/run/secrets/azure/tokens/azure-identity-token"})
 		require.NoError(t, err)
 
 		err = c.refreshCredentials(context.TODO())
