@@ -92,10 +92,7 @@ interface MongoDatabases {
     UCPBaseParameters<MongoDatabaseResource>
   >;
 
-  createOrUpdate is ArmResourceCreateOrReplaceAsync<
-    MongoDatabaseResource,
-    UCPBaseParameters<MongoDatabaseResource>
-  >;
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<MongoDatabaseResource>;
 
   update is ArmResourcePatchAsync<
     MongoDatabaseResource,
@@ -103,7 +100,7 @@ interface MongoDatabases {
     UCPBaseParameters<MongoDatabaseResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     MongoDatabaseResource,
     UCPBaseParameters<MongoDatabaseResource>
   >;

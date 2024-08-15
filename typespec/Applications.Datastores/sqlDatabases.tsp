@@ -91,10 +91,7 @@ interface SqlDatabases {
     UCPBaseParameters<SqlDatabaseResource>
   >;
 
-  createOrUpdate is ArmResourceCreateOrReplaceAsync<
-    SqlDatabaseResource,
-    UCPBaseParameters<SqlDatabaseResource>
-  >;
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<SqlDatabaseResource>;
 
   update is ArmResourcePatchAsync<
     SqlDatabaseResource,
@@ -102,7 +99,7 @@ interface SqlDatabases {
     UCPBaseParameters<SqlDatabaseResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     SqlDatabaseResource,
     UCPBaseParameters<SqlDatabaseResource>
   >;

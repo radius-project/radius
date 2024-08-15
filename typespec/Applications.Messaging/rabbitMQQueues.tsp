@@ -101,10 +101,7 @@ interface RabbitMQQueues {
     UCPBaseParameters<RabbitMQQueueResource>
   >;
 
-  createOrUpdate is ArmResourceCreateOrReplaceAsync<
-    RabbitMQQueueResource,
-    UCPBaseParameters<RabbitMQQueueResource>
-  >;
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<RabbitMQQueueResource>;
 
   update is ArmResourcePatchAsync<
     RabbitMQQueueResource,
@@ -112,7 +109,7 @@ interface RabbitMQQueues {
     UCPBaseParameters<RabbitMQQueueResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     RabbitMQQueueResource,
     UCPBaseParameters<RabbitMQQueueResource>
   >;

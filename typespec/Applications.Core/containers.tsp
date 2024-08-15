@@ -316,10 +316,7 @@ interface Containers {
     UCPBaseParameters<ContainerResource>
   >;
 
-  createOrUpdate is ArmResourceCreateOrReplaceAsync<
-    ContainerResource,
-    UCPBaseParameters<ContainerResource>
-  >;
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<ContainerResource>;
 
   update is ArmResourcePatchAsync<
     ContainerResource,
@@ -327,7 +324,7 @@ interface Containers {
     UCPBaseParameters<ContainerResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     ContainerResource,
     UCPBaseParameters<ContainerResource>
   >;

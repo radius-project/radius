@@ -63,10 +63,7 @@ interface StateStores {
     UCPBaseParameters<DaprStateStoreResource>
   >;
 
-  createOrUpdate is ArmResourceCreateOrReplaceAsync<
-    DaprStateStoreResource,
-    UCPBaseParameters<DaprStateStoreResource>
-  >;
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<DaprStateStoreResource>;
 
   update is ArmResourcePatchAsync<
     DaprStateStoreResource,
@@ -74,7 +71,7 @@ interface StateStores {
     UCPBaseParameters<DaprStateStoreResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>
   >;

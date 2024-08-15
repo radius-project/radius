@@ -117,10 +117,7 @@ interface SecretStores {
     UCPBaseParameters<SecretStoreResource>
   >;
 
-  createOrUpdate is ArmResourceCreateOrReplaceAsync<
-    SecretStoreResource,
-    UCPBaseParameters<SecretStoreResource>
-  >;
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<SecretStoreResource>;
 
   update is ArmResourcePatchAsync<
     SecretStoreResource,
@@ -128,7 +125,7 @@ interface SecretStores {
     UCPBaseParameters<SecretStoreResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>
   >;
