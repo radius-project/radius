@@ -70,7 +70,7 @@ enum SecretStoreDataType {
   certificate,
 
   @doc("basicAuthentication type is used to represent username and password based authentication and the secretstore resource is expected to have the keys 'username' and 'password'.")
-   basicAuthentication,
+  basicAuthentication,
 
   @doc("azureWorkloadIdentity type is used to represent registry authentication using azure federated identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'.")
   azureWorkloadIdentity,
