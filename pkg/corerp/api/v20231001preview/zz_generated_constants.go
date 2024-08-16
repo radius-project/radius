@@ -329,6 +329,15 @@ func PossibleRestartPolicyValues() []RestartPolicy {
 type SecretStoreDataType string
 
 const (
+	// SecretStoreDataTypeAwsIRSA - awsIRSA type is used to represent registry authentication using AWS IRSA(IAM Roles for Service
+// accounts) and the secretstore resource is expected to have the keys 'roleARN'.
+	SecretStoreDataTypeAwsIRSA SecretStoreDataType = "awsIRSA"
+	// SecretStoreDataTypeAzureWorkloadIdentity - azureWorkloadIdentity type is used to represent registry authentication using
+// azure federated identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'.
+	SecretStoreDataTypeAzureWorkloadIdentity SecretStoreDataType = "azureWorkloadIdentity"
+	// SecretStoreDataTypeBasicAuthentication - basicAuthentication type is used to represent username and password based authentication
+// and the secretstore resource is expected to have the keys 'username' and 'password'.
+	SecretStoreDataTypeBasicAuthentication SecretStoreDataType = "basicAuthentication"
 	// SecretStoreDataTypeCertificate - Certificate secret data type
 	SecretStoreDataTypeCertificate SecretStoreDataType = "certificate"
 	// SecretStoreDataTypeGeneric - Generic secret data type
@@ -338,6 +347,9 @@ const (
 // PossibleSecretStoreDataTypeValues returns the possible values for the SecretStoreDataType const type.
 func PossibleSecretStoreDataTypeValues() []SecretStoreDataType {
 	return []SecretStoreDataType{	
+		SecretStoreDataTypeAwsIRSA,
+		SecretStoreDataTypeAzureWorkloadIdentity,
+		SecretStoreDataTypeBasicAuthentication,
 		SecretStoreDataTypeCertificate,
 		SecretStoreDataTypeGeneric,
 	}

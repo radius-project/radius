@@ -51,6 +51,11 @@ const (
 	testFileGenericValueGlobalScope     = "secretstores_datamodel_global_scope.json"
 	testFileGenericValueInvalidResource = "secretstores_datamodel_global_scope_invalid_resource.json"
 	testFileGenericValueEmptyResource   = "secretstores_datamodel_global_scope_empty_resource.json"
+
+	testFileBasicAuthentication        = "secretstores_datamodel_basicAuthentication.json"
+	testFileBasicAuthenticationInvalid = "secretstores_datamodel_basicAuthentication_invalid.json"
+	testFileAWSIRSA                    = "secretstores_datamodel_AWSIRSA.json"
+	testFileAzureWorkloadIdentity      = "secretstores_datamodel_AZWorkloadIdentity.json"
 )
 
 func TestGetNamespace(t *testing.T) {
@@ -293,6 +298,46 @@ func TestValidateAndMutateRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, resp)
 		require.Equal(t, oldResource.Properties.Resource, newResource.Properties.Resource)
+	})
+
+	t.Run("new basicAuthentication resource", func(t *testing.T) {
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileBasicAuthentication)
+		resp, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, nil)
+		require.NoError(t, err)
+
+		// assert
+		require.NoError(t, err)
+		require.Nil(t, resp)
+	})
+
+	t.Run("invalid basicAuthentication resource", func(t *testing.T) {
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileBasicAuthenticationInvalid)
+		resp, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, nil)
+		require.NoError(t, err)
+
+		// assert
+		r := resp.(*rest.BadRequestResponse)
+		require.True(t, r.Body.Error.Message == "$.properties.data must contain 'password' key for basicAuthentication type.")
+	})
+
+	t.Run("new awsIRSA resource", func(t *testing.T) {
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileAWSIRSA)
+		resp, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, nil)
+		require.NoError(t, err)
+
+		// assert
+		require.NoError(t, err)
+		require.Nil(t, resp)
+	})
+
+	t.Run("new azureWorkloadIdentity resource", func(t *testing.T) {
+		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileAzureWorkloadIdentity)
+		resp, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, nil)
+		require.NoError(t, err)
+
+		// assert
+		require.NoError(t, err)
+		require.Nil(t, resp)
 	})
 }
 

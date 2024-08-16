@@ -45,6 +45,12 @@ const (
 	SecretTypeGeneric SecretType = "generic"
 	// SecretTypeCert is the certificate secret type.
 	SecretTypeCert SecretType = "certificate"
+	// SecretTypeBasicAuthentication is the basicAuthentication secret type.
+	SecretTypeBasicAuthentication SecretType = "basicAuthentication"
+	// SecretTypeAzureWorkloadIdentity is the azureFederatedIdentity secret type.
+	SecretTypeAzureWorkloadIdentity SecretType = "azureWorkloadIdentity"
+	// SecretTypeAWSIRSA is the awsIRSA secret type.
+	SecretTypeAWSIRSA SecretType = "awsIRSA"
 )
 
 // SecretStore represents secret store resource.
