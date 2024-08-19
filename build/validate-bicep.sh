@@ -5,7 +5,6 @@ then
     exit 1
 fi
 
-WARNING_MSG="WARNING: The following experimental Bicep features"
 FILES=$(find . -type f -name "*.bicep")
 
 # Get the first bicep file with Radius and AWS extensions from the list to restore extensions
@@ -37,6 +36,7 @@ STDERR=$($BICEP_PATH build $FIRST_FILE_AWS --stdout 2>&1 1>/dev/null)
 echo "Restoring AWS extension with response: $STDERR..."
 
 FAILURES=()
+WARNINGS=()
 for F in $FILES
 do
     echo "validating $F"
@@ -59,7 +59,13 @@ do
         exec 3>&-
     fi
     
-    if [[ ! $EXITCODE -eq 0 || ($STDERR != $WARNING_MSG* && $STDERR == *"Error"*) ]]
+    if [[ $STDERR == *"Warning"* ]]
+    then
+        echo $STDERR
+        WARNINGS+=$F
+    fi
+
+    if [[ ! $EXITCODE -eq 0 || $STDERR == *"Error"* ]]
     then
         echo $STDERR
         FAILURES+=$F
@@ -69,6 +75,11 @@ done
 for F in $FAILURES
 do
   echo "Failed: $F"
+done
+
+for F in $WARNINGS
+do
+  echo "Warning: $F"
 done
 
 exit ${#FAILURES[@]}
