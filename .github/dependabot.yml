@@ -23,4 +23,8 @@ updates:
     groups:
       all:
         patterns:
-        - "*"  
+        - "*"
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "weekly"
