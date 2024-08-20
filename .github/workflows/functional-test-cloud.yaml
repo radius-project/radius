@@ -42,6 +42,10 @@ on:
     workflows: ["Approve Functional Tests"]
     types:
       - completed
+  push:
+  # Avoid running the workflow when there is a push to the main branch.
+    branches-ignore:
+      - main    
 
 env:
   # Go version
