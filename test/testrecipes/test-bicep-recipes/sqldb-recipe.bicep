@@ -106,6 +106,7 @@ output result object = {
     username: username
   }
   secrets: {
+    #disable-next-line outputs-should-not-contain-secrets
     password: password
   }
 }
