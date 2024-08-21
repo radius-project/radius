@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	dockerParser "github.com/novln/docker-parser"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -132,4 +133,13 @@ func parsePath(path string) (repository string, tag string, err error) {
 	repository = reference.Repository()
 	tag = reference.Tag()
 	return
+}
+
+func GetRegistrySecrets(definition recipes.Configuration, templatePath string, secrets map[string]map[string]string) (map[string]string, error) {
+	parsedURL, err := url.Parse("https://" + templatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return secrets[definition.RecipeConfig.Bicep.Authentication[parsedURL.Host].Secret], nil
 }

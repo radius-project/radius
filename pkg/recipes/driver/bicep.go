@@ -87,8 +87,11 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
-
-	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, d.RegistryClient)
+	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
+	if err != nil {
+		return nil, err
+	}
+	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, d.RegistryClient)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))
@@ -402,4 +405,15 @@ func (d *bicepDriver) getGCOutputResources(current []string, previous []string) 
 	}
 
 	return diff, nil
+}
+
+func (d *bicepDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (secretStoreIDResourceKeys map[string][]string, err error) {
+	secretStoreIDResourceKeys = make(map[string][]string)
+	if envConfig.RecipeConfig.Bicep.Authentication != nil {
+		for _, v := range envConfig.RecipeConfig.Bicep.Authentication {
+			secretStoreIDResourceKeys[v.Secret] = []string{}
+		}
+	}
+
+	return secretStoreIDResourceKeys, err
 }
