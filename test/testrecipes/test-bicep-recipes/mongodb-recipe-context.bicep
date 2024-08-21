@@ -44,7 +44,9 @@ output result object = {
     username: account.name
   }
   secrets: {
+    #disable-next-line outputs-should-not-contain-secrets
     connectionString: account.listConnectionStrings().connectionStrings[0].connectionString
+    #disable-next-line outputs-should-not-contain-secrets
     password: account.listKeys().primaryMasterKey
   }
 }

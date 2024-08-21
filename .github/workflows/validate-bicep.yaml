@@ -26,6 +26,14 @@ on:
 permissions:
   id-token: write # Required for requesting the JWT
 
+env:
+  # Local Docker registry name
+  LOCAL_REGISTRY_NAME: "radius-registry"
+  # Local Docker registry server
+  LOCAL_REGISTRY_SERVER: "localhost"
+  # Local Docker registry port
+  LOCAL_REGISTRY_PORT: "5000"
+
 concurrency:
   # Cancel the previously triggered build for only PR build.
   group: bicep-${{ github.event.pull_request.number || github.sha }}
@@ -44,11 +52,23 @@ jobs:
           bicep --version
       - name: Check out repo
         uses: actions/checkout@v4
+      - name: Create a secure local registry
+        id: create-local-registry
+        uses: ./.github/actions/create-local-registry
+        with:
+          secure: "true"
+          registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
+          registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
+          registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
+      - name: Publish bicep types 
+        run: | 
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:latest --force  
       - name: Install jq
         run: sudo apt-get install -y jq
       - name: Modify bicepconfig.json
         run: |
           # Add credential preference to the bicepconfig.json file
+          jq '.extensions.radius = "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:latest"' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
           jq '. + {"cloud": {"credentialPrecedence": ["Environment"]}}' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
       - name: Print updated bicepconfig.json
         run: cat bicepconfig.json

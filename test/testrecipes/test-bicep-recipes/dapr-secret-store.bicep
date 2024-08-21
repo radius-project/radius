@@ -5,6 +5,7 @@ extension kubernetes with {
 
 param context object
 
+#disable-next-line BCP081
 resource dapr 'dapr.io/Component@v1alpha1' = {
   metadata: {
     name: context.resource.name
