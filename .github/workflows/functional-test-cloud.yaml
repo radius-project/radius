@@ -693,11 +693,7 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
 
           # Populate the following test environment variables from JSON secret.
-          # AZURE_MONGODB_RESOURCE_ID
           # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-          # AZURE_TABLESTORAGE_RESOURCE_ID
-          # AZURE_SERVICEBUS_RESOURCE_ID
-          # AZURE_REDIS_RESOURCE_ID
           # AZURE_MSSQL_RESOURCE_ID
           # AZURE_MSSQL_USERNAME
           # AZURE_MSSQL_PASSWORD
