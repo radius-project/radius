@@ -21,6 +21,7 @@ import (
 
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 var _ AuthClient = (*basicAuthentication)(nil)
@@ -30,11 +31,17 @@ type basicAuthentication struct {
 	password string
 }
 
-func NewAWSProvider(username string, password string) AuthClient {
+func NewBasicAuthentication(username string, password string) AuthClient {
 	return &basicAuthentication{username: username, password: password}
 }
 
 func (b *basicAuthentication) GetAuthClient(ctx context.Context) (remote.Client, error) {
 
-	return &auth.Client{}
+	return &auth.Client{
+		Client: retry.DefaultClient,
+		Credential: auth.StaticCredential("orasregistry.azurecr.io", auth.Credential{
+			Username: b.username,
+			Password: b.password,
+		}),
+	}, nil
 }

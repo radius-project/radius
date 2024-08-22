@@ -15,3 +15,25 @@ limitations under the License.
 */
 
 package authClient
+
+import (
+	"context"
+
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+)
+
+var _ AuthClient = (*awsIRSA)(nil)
+
+type awsIRSA struct {
+	roleARN string
+}
+
+func NewAwsIRSA(roleARN string) AuthClient {
+	return &awsIRSA{roleARN: roleARN}
+}
+
+func (b *awsIRSA) GetAuthClient(ctx context.Context) (remote.Client, error) {
+	// To Do
+	return &auth.Client{}, nil
+}

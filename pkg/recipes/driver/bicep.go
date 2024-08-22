@@ -37,6 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util"
+	"github.com/radius-project/radius/pkg/rp/util/authClient"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
@@ -87,11 +88,24 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
+	registryClient := d.RegistryClient
 	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
 	if err != nil {
 		return nil, err
 	}
-	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, d.RegistryClient)
+	if secrets != nil {
+		ac, err := authClient.GetRegistryAuthClients(secrets)
+		if err != nil {
+			return nil, err
+		}
+		authClient, err := ac.GetAuthClient(ctx)
+		if err != nil {
+			return nil, err
+		}
+		registryClient = authClient
+	}
+
+	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))

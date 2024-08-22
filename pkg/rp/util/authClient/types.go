@@ -18,10 +18,25 @@ package authClient
 
 import (
 	"context"
+	"errors"
 
 	"oras.land/oras-go/v2/registry/remote"
 )
 
 type AuthClient interface {
 	GetAuthClient(ctx context.Context) (remote.Client, error)
+}
+
+func GetRegistryAuthClients(secrets map[string]string) (AuthClient, error) {
+	switch secrets["type"] {
+	case "awsIRSA":
+		return NewAwsIRSA(secrets["roleARN"]), nil
+	case "azureWorkloadIdentity":
+		return NewAzureWorkloadIdentity(secrets["clientID"], secrets["tenantID"]), nil
+	case "basicAuthentication":
+		return NewBasicAuthentication(secrets["username"], secrets["password"]), nil
+	default:
+		return nil, errors.New("Invalid type")
+	}
+
 }
