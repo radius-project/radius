@@ -4356,7 +4356,7 @@
         },
         "env": {
           "$ref": "#/definitions/EnvironmentVariables",
-          "description": "Environment variables injected during Terraform Recipe execution for the recipes in the environment."
+          "description": "Environment variables injected during recipe execution for the recipes in the environment."
         },
         "envSecrets": {
           "type": "object",
