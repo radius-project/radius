@@ -66,7 +66,7 @@ type Options struct {
 	// Secrets represents a map of secrets required for recipe execution.
 	// The outer map's key represents the secretStoreIDs while
 	// while the inner map's key-value pairs represent the [secretKey]secretValue.
-	Secrets map[string]map[string]string
+	Secrets map[string]recipes.SecretData
 }
 
 // NewTerraform creates a working directory for Terraform execution and new Terraform executor with Terraform logs enabled.

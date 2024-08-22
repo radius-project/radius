@@ -225,7 +225,7 @@ func (e *engine) getDriver(ctx context.Context, recipeMetadata recipes.ResourceM
 	return definition, driver, nil
 }
 
-func (e *engine) getRecipeConfigSecrets(ctx context.Context, driver recipedriver.Driver, configuration *recipes.Configuration, definition *recipes.EnvironmentDefinition) (secretData map[string]map[string]string, err error) {
+func (e *engine) getRecipeConfigSecrets(ctx context.Context, driver recipedriver.Driver, configuration *recipes.Configuration, definition *recipes.EnvironmentDefinition) (secretData map[string]recipes.SecretData, err error) {
 	driverWithSecrets, ok := driver.(recipedriver.DriverWithSecrets)
 	if !ok {
 		return nil, nil

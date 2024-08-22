@@ -111,7 +111,7 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 // It also updates module provider block if aliases exist and required_provider configuration to the file.
 // Save() must be called to save the generated providers config. requiredProviders contains a list of provider names
 // that are required for the module.
-func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration, secrets map[string]map[string]string) error {
+func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration, secrets map[string]recipes.SecretData) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, ucpConfiguredProviders, envConfig, secrets)
 	if err != nil {
@@ -230,7 +230,7 @@ func newModuleConfig(moduleSource string, moduleVersion string, params ...Recipe
 // The function returns a map where the keys are provider names and the values are slices of maps.
 // Each map in the slice represents a specific configuration for the corresponding provider.
 // This structure allows for multiple configurations per provider.
-func getProviderConfigs(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration, secrets map[string]map[string]string) (map[string][]map[string]any, error) {
+func getProviderConfigs(ctx context.Context, requiredProviders map[string]*RequiredProviderInfo, ucpConfiguredProviders map[string]providers.Provider, envConfig *recipes.Configuration, secrets map[string]recipes.SecretData) (map[string][]map[string]any, error) {
 	// Get recipe provider configurations from the environment configuration
 	providerConfigs, err := providers.GetRecipeProviderConfigs(ctx, envConfig, secrets)
 	if err != nil {

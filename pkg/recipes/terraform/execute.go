@@ -225,7 +225,7 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 		for secretName, secretReference := range recipeConfig.EnvSecrets {
 			// Extract secret value from the secrets input
 			if secretIDs, ok := options.Secrets[secretReference.Source]; ok {
-				if secretValue, ok := secretIDs[secretReference.Key]; ok {
+				if secretValue, ok := secretIDs.Data[secretReference.Key]; ok {
 					envVarUpdate = true
 					envVars[secretName] = secretValue
 				} else {
