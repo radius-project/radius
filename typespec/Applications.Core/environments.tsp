@@ -79,7 +79,7 @@ model RecipeConfigProperties {
   @doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
   terraform?: TerraformConfigProperties;
 
-  @doc("Environment variables injected during Terraform Recipe execution for the recipes in the environment.")
+  @doc("Environment variables injected during recipe execution for the recipes in the environment.")
   env?: EnvironmentVariables;
 
   @doc("Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
