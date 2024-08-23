@@ -45,7 +45,7 @@ jobs:
         uses: snok/container-retention-policy@v3.0.0
         with:
           image-names: dev/*
-          cut-off: 2w 3d
+          cut-off: 3d
           account-type: org
           org-name: radius-project
           account: radius-project
