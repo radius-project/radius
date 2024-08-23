@@ -48,6 +48,7 @@ jobs:
           cut-off: 3 days ago UTC
           account-type: org
           org-name: radius-project
+          account: radius-project
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           keep-at-least: 1
 
