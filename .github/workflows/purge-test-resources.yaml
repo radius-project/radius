@@ -42,7 +42,7 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Delete 'dev' containers older than a week
-        uses: snok/container-retention-policy@v2
+        uses: snok/container-retention-policy@v3
         with:
           image-names: dev/*
           cut-off: 3 days ago UTC
