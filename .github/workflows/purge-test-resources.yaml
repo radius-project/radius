@@ -42,7 +42,7 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for actions/checkout
-      packages: all # Required for reading package versions and deleting packages
+      packages: delete # Required for reading package versions and deleting packages
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Delete 'dev' containers older than a week
