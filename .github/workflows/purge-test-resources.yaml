@@ -19,7 +19,9 @@ name: Purge test resources
 permissions:
   id-token: write # Required for requesting the JWT
   contents: read # Required for actions/checkout
-  packages: write # Required for reading package versions and deleting packages
+  packages: 
+    read: true # Required for reading package versions
+    write: write # Required for reading package versions and deleting packages
 
 on:
   # Enable manual trigger
@@ -50,76 +52,75 @@ jobs:
           org-name: radius-project
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           keep-at-least: 1
-          
 
-  # purge_azure_resources:
-  #   name: Azure resources clean-ups
-  #   runs-on: ubuntu-latest
-  #   if: github.repository == 'radius-project/radius'
-  #   steps:
-  #     - name: Setup Azure CLI
-  #       run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-  #     - name: Login to Azure
-  #       uses: azure/login@v2
-  #       with:
-  #         client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-  #         tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-  #         subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+  purge_azure_resources:
+    name: Azure resources clean-ups
+    runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
+    steps:
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
-  #     - name: Find old test resource groups
-  #       run: |
-  #         echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
+      - name: Find old test resource groups
+        run: |
+          echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
 
-  #         # Create the file to store the resource group list
-  #         touch ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+          # Create the file to store the resource group list
+          touch ${{ env.AZURE_RG_DELETE_LIST_FILE}}
 
-  #         az account set -s ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
-  #         resource_groups=$(az group list --query "[].{Name:name, creationTime:tags.creationTime}" -o tsv)
+          az account set -s ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          resource_groups=$(az group list --query "[].{Name:name, creationTime:tags.creationTime}" -o tsv)
 
-  #         current_time=$(date +%s)
-  #         hours_ago=$((current_time - ${{ env.VALID_RESOURCE_WINDOW }}))
-  #         while IFS=$'\t' read -r name creation_time; do
-  #           if [[ ! "$name" =~ ^"samplestest-" ]] && [[ ! "$name" =~ ^"radtest-" ]]; then
-  #             continue
-  #           fi
+          current_time=$(date +%s)
+          hours_ago=$((current_time - ${{ env.VALID_RESOURCE_WINDOW }}))
+          while IFS=$'\t' read -r name creation_time; do
+            if [[ ! "$name" =~ ^"samplestest-" ]] && [[ ! "$name" =~ ^"radtest-" ]]; then
+              continue
+            fi
 
-  #           if [ "$creation_time" = "None" ]; then
-  #             echo " * :wastebasket: $name - old resource"  >> $GITHUB_STEP_SUMMARY
-  #             echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
-  #             continue
-  #           fi
+            if [ "$creation_time" = "None" ]; then
+              echo " * :wastebasket: $name - old resource"  >> $GITHUB_STEP_SUMMARY
+              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+              continue
+            fi
 
-  #           # Check if the resource group was created more than 6 hours ago
-  #           if [ "$creation_time" -lt "$hours_ago" ]; then
-  #             echo " * :wastebasket: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
-  #             echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
-  #           else
-  #             echo " * :white_check_mark: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
-  #           fi
-  #         done <<< "$resource_groups"
+            # Check if the resource group was created more than 6 hours ago
+            if [ "$creation_time" -lt "$hours_ago" ]; then
+              echo " * :wastebasket: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
+              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+            else
+              echo " * :white_check_mark: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
+            fi
+          done <<< "$resource_groups"
 
-  #     - name: Delete Azure resource groups
-  #       run: |
-  #         echo "## Deleting resource group list" >> $GITHUB_STEP_SUMMARY
-  #         cat ${{ env.AZURE_RG_DELETE_LIST_FILE}} | while read line
-  #         do
-  #             echo " * $line" >> $GITHUB_STEP_SUMMARY
-  #             az group delete --resource-group $line --yes --verbose --no-wait
-  #         done
+      - name: Delete Azure resource groups
+        run: |
+          echo "## Deleting resource group list" >> $GITHUB_STEP_SUMMARY
+          cat ${{ env.AZURE_RG_DELETE_LIST_FILE}} | while read line
+          do
+              echo " * $line" >> $GITHUB_STEP_SUMMARY
+              az group delete --resource-group $line --yes --verbose --no-wait
+          done
 
-  # create_issue_on_failure:
-  #   name: Create issue for failing purge test resources run
-  #   needs: [purge_ghcr_dev, purge_azure_resources]
-  #   runs-on: ubuntu-latest
-  #   if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
-  #   steps:
-  #     - uses: actions/github-script@v7
-  #       with:
-  #         github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-  #         script: |
-  #           github.rest.issues.create({
-  #             ...context.repo,
-  #             title: `Purge test resources failed - Run ID: ${context.runId}`,
-  #             labels: ['bug', 'test-failure'],
-  #             body: `## Bug information \n\nThis bug is generated automatically if the purge test resources workflow fails. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
-  #           })
+  create_issue_on_failure:
+    name: Create issue for failing purge test resources run
+    needs: [purge_ghcr_dev, purge_azure_resources]
+    runs-on: ubuntu-latest
+    if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            github.rest.issues.create({
+              ...context.repo,
+              title: `Purge test resources failed - Run ID: ${context.runId}`,
+              labels: ['bug', 'test-failure'],
+              body: `## Bug information \n\nThis bug is generated automatically if the purge test resources workflow fails. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
+            })
