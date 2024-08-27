@@ -42,6 +42,7 @@ webhooks:
     operations:
     - CREATE
     - UPDATE
+    - DELETE
     resources:
     - recipes
   sideEffects: None
