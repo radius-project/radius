@@ -130,3 +130,8 @@ func AddAWSAccountFlag(cmd *cobra.Command) {
 func AddKubeContextFlagVar(cmd *cobra.Command, ref *string) {
 	cmd.Flags().StringVar(ref, "kubecontext", "", "The Kubernetes context to use, will use the default if unset")
 }
+
+// AddPurgeFlagVar adds a flag to the given command that allows the user to delete all Radius related resources.
+func AddPurgeFlagVar(cmd *cobra.Command, purge *bool) {
+	cmd.Flags().BoolVar(purge, "purge", false, "Delete all Radius related resources")
+}

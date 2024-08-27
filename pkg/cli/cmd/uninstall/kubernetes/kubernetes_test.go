@@ -18,6 +18,7 @@ package kubernetes
 
 import (
 	"context"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/helm"
@@ -111,6 +112,48 @@ func Test_Run(t *testing.T) {
 		expectedWrites := []any{
 			output.LogOutput{
 				Format: "Radius is not installed on the Kubernetes cluster",
+			},
+		}
+		require.Equal(t, expectedWrites, outputMock.Writes)
+	})
+	t.Run("Success: Installed -> Uninstalled -> Purge)", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		helmMock := helm.NewMockInterface(ctrl)
+		outputMock := &output.MockOutput{}
+		k8sMock := kubernetes.NewMockInterface(ctrl)
+
+		ctx := context.Background()
+		runner := &Runner{
+			Helm:       helmMock,
+			Output:     outputMock,
+			Kubernetes: k8sMock,
+
+			KubeContext: "test-context",
+			Purge:       true,
+		}
+
+		helmMock.EXPECT().CheckRadiusInstall("test-context").
+			Return(helm.InstallState{Installed: true, Version: "test-version"}, nil).
+			Times(1)
+
+		helmMock.EXPECT().UninstallRadius(ctx, "test-context").
+			Return(nil).
+			Times(1)
+
+		k8sMock.EXPECT().DeleteNamespace("test-context").Return(nil).Times(1)
+
+		err := runner.Run(ctx)
+		require.NoError(t, err)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: "Uninstalling Radius...",
+			},
+			output.LogOutput{
+				Format: "Deleting namespace...",
+			},
+			output.LogOutput{
+				Format: "Radius was fully uninstalled. Any existing data have been removed.",
 			},
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
