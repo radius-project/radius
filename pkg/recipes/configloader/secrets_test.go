@@ -21,7 +21,7 @@ func Test_populateSecretData(t *testing.T) {
 		expectedErrMsg  string
 	}{
 		{
-			name:       "success - data for input secretKey returned",
+			name:       "success - data for input secretKey1 returned",
 			secretKeys: []string{"secretKey1"},
 			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
 				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{

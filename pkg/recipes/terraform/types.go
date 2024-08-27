@@ -64,8 +64,7 @@ type Options struct {
 	ResourceRecipe *recipes.ResourceMetadata
 
 	// Secrets represents a map of secrets required for recipe execution.
-	// The outer map's key represents the secretStoreIDs while
-	// while the inner map's key-value pairs represent the [secretKey]secretValue.
+	// The map's key represents the secretStoreIDs while the value represents the secret data.
 	Secrets map[string]recipes.SecretData
 }
 
