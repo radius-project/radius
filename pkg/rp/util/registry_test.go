@@ -19,6 +19,8 @@ package util
 import (
 	"testing"
 
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,4 +36,61 @@ func Test_PathParserErr(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, "", repository)
 	require.Equal(t, "", tag)
+}
+
+func Test_GetRegistrySecrets(t *testing.T) {
+	testset := []struct {
+		definition   recipes.Configuration
+		templatePath string
+		secrets      map[string]map[string]string
+		exp          map[string]string
+	}{
+		{
+			definition: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Bicep: datamodel.BicepConfigProperties{
+						Authentication: map[string]datamodel.RegistrySecretConfig{
+							"test.azurecr.io": {
+								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr",
+							},
+							"123456789012.dkr.ecr.us-west-2.amazonaws.com": {
+								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/ecr",
+							},
+						},
+					},
+				},
+			},
+			templatePath: "test.azurecr.io/test-private-registry:latest",
+			secrets: map[string]map[string]string{
+				"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr": {
+					"username": "test-username",
+					"password": "test-password",
+				},
+			},
+			exp: map[string]string{
+				"username": "test-username",
+				"password": "test-password",
+			},
+		},
+		{
+			definition: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Bicep: datamodel.BicepConfigProperties{},
+				},
+			},
+			templatePath: "test.azurecr.io/test-private-registry:latest",
+			secrets: map[string]map[string]string{
+				"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr": {
+					"username": "test-username",
+					"password": "test-password",
+				},
+			},
+			exp: nil,
+		},
+	}
+	for _, tc := range testset {
+		secrets, err := GetRegistrySecrets(tc.definition, tc.templatePath, tc.secrets)
+		require.NoError(t, err)
+		require.Equal(t, secrets, tc.exp)
+	}
 }

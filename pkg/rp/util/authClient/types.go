@@ -19,15 +19,17 @@ package authClient
 import (
 	"context"
 	"errors"
+	"net/url"
 
 	"oras.land/oras-go/v2/registry/remote"
 )
 
+//go:generate mockgen -typed -destination=./mock_authClient.go -package=authClient -self_package github.com/radius-project/radius/pkg/rp/util/authClient github.com/radius-project/radius/pkg/rp/util/authClient AuthClient
 type AuthClient interface {
-	GetAuthClient(ctx context.Context) (remote.Client, error)
+	GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error)
 }
 
-func GetRegistryAuthClients(secrets map[string]string) (AuthClient, error) {
+func GetNewRegistryAuthClient(secrets map[string]string) (AuthClient, error) {
 	switch secrets["type"] {
 	case "awsIRSA":
 		return NewAwsIRSA(secrets["roleARN"]), nil
@@ -36,7 +38,15 @@ func GetRegistryAuthClients(secrets map[string]string) (AuthClient, error) {
 	case "basicAuthentication":
 		return NewBasicAuthentication(secrets["username"], secrets["password"]), nil
 	default:
-		return nil, errors.New("Invalid type")
+		return nil, errors.New("invalid type")
 	}
 
+}
+
+func getRegistryHostname(templatePath string) (string, error) {
+	registryURL, err := url.Parse("https://" + templatePath)
+	if err != nil {
+		return "", err
+	}
+	return registryURL.Host, nil
 }

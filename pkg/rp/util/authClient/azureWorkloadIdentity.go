@@ -34,7 +34,7 @@ func NewAzureWorkloadIdentity(clientID string, tenantID string) AuthClient {
 	return &azureWorkloadIdentity{clientID: clientID, tenantID: tenantID}
 }
 
-func (b *azureWorkloadIdentity) GetAuthClient(ctx context.Context) (remote.Client, error) {
+func (b *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
 	// To Do
 	return &auth.Client{}, nil
 }

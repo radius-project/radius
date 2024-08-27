@@ -35,11 +35,15 @@ func NewBasicAuthentication(username string, password string) AuthClient {
 	return &basicAuthentication{username: username, password: password}
 }
 
-func (b *basicAuthentication) GetAuthClient(ctx context.Context) (remote.Client, error) {
+func (b *basicAuthentication) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
+	registry, err := getRegistryHostname(templatePath)
+	if err != nil {
+		return nil, err
+	}
 
 	return &auth.Client{
 		Client: retry.DefaultClient,
-		Credential: auth.StaticCredential("orasregistry.azurecr.io", auth.Credential{
+		Credential: auth.StaticCredential(registry, auth.Credential{
 			Username: b.username,
 			Password: b.password,
 		}),

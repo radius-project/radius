@@ -93,15 +93,13 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	if err != nil {
 		return nil, err
 	}
+
 	if secrets != nil {
-		ac, err := authClient.GetRegistryAuthClients(secrets)
+		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
 		if err != nil {
 			return nil, err
 		}
-		authClient, err := ac.GetAuthClient(ctx)
-		if err != nil {
-			return nil, err
-		}
+
 		registryClient = authClient
 	}
 
@@ -272,8 +270,23 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (
 	//			}
 	//		}
 	//	}
+	registryClient := d.RegistryClient
 	recipeData := make(map[string]any)
-	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, d.RegistryClient)
+	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
+	if err != nil {
+		return nil, err
+	}
+
+	if secrets != nil {
+		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
+
+		registryClient = authClient
+	}
+
+	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		return nil, err
 	}
@@ -430,4 +443,18 @@ func (d *bicepDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Confi
 	}
 
 	return secretStoreIDResourceKeys, err
+}
+
+func getRegistryAuthClient(ctx context.Context, secrets map[string]string, templatePath string) (remote.Client, error) {
+	newRegistryClient, err := authClient.GetNewRegistryAuthClient(secrets)
+	if err != nil {
+		return nil, err
+	}
+
+	authClient, err := newRegistryClient.GetAuthClient(ctx, templatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return authClient, nil
 }

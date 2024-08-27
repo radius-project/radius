@@ -33,7 +33,7 @@ func NewAwsIRSA(roleARN string) AuthClient {
 	return &awsIRSA{roleARN: roleARN}
 }
 
-func (b *awsIRSA) GetAuthClient(ctx context.Context) (remote.Client, error) {
+func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
 	// To Do
 	return &auth.Client{}, nil
 }
