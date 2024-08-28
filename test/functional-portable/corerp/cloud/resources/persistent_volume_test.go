@@ -26,7 +26,7 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
-	t.Skip("https://github.com/radius-project/radius/issues/7853")
+	//t.Skip("https://github.com/radius-project/radius/issues/7853")
 	template := "testdata/corerp-resources-volume-azure-keyvault.bicep"
 	name := "corerp-resources-volume-azure-keyvault"
 	appNamespace := "corerp-resources-volume-azure-keyvault-app"
