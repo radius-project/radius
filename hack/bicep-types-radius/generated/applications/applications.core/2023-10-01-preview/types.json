@@ -2652,7 +2652,7 @@
       },
       "tags": {
         "type": {
-          "$ref": "#/219"
+          "$ref": "#/222"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2707,14 +2707,14 @@
       },
       "type": {
         "type": {
-          "$ref": "#/212"
+          "$ref": "#/215"
         },
         "flags": 0,
         "description": "The type of SecretStore data"
       },
       "data": {
         "type": {
-          "$ref": "#/218"
+          "$ref": "#/221"
         },
         "flags": 1,
         "description": "An object to represent key-value type secrets"
@@ -2791,6 +2791,18 @@
     "value": "certificate"
   },
   {
+    "$type": "StringLiteralType",
+    "value": "basicAuthentication"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "azureWorkloadIdentity"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "awsIRSA"
+  },
+  {
     "$type": "UnionType",
     "elements": [
       {
@@ -2798,6 +2810,15 @@
       },
       {
         "$ref": "#/211"
+      },
+      {
+        "$ref": "#/212"
+      },
+      {
+        "$ref": "#/213"
+      },
+      {
+        "$ref": "#/214"
       }
     ]
   },
@@ -2807,7 +2828,7 @@
     "properties": {
       "encoding": {
         "type": {
-          "$ref": "#/216"
+          "$ref": "#/219"
         },
         "flags": 0,
         "description": "The type of SecretValue Encoding"
@@ -2821,7 +2842,7 @@
       },
       "valueFrom": {
         "type": {
-          "$ref": "#/217"
+          "$ref": "#/220"
         },
         "flags": 0,
         "description": "The Secret value source properties"
@@ -2840,10 +2861,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/214"
+        "$ref": "#/217"
       },
       {
-        "$ref": "#/215"
+        "$ref": "#/218"
       }
     ]
   },
@@ -2872,7 +2893,7 @@
     "name": "SecretStorePropertiesData",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/213"
+      "$ref": "#/216"
     }
   },
   {
@@ -2889,14 +2910,14 @@
     "properties": {
       "type": {
         "type": {
-          "$ref": "#/223"
+          "$ref": "#/229"
         },
         "flags": 2,
         "description": "The type of SecretStore data"
       },
       "data": {
         "type": {
-          "$ref": "#/224"
+          "$ref": "#/230"
         },
         "flags": 2,
         "description": "An object to represent key-value type secrets"
@@ -2912,13 +2933,34 @@
     "value": "certificate"
   },
   {
+    "$type": "StringLiteralType",
+    "value": "basicAuthentication"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "azureWorkloadIdentity"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "awsIRSA"
+  },
+  {
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/221"
+        "$ref": "#/224"
       },
       {
-        "$ref": "#/222"
+        "$ref": "#/225"
+      },
+      {
+        "$ref": "#/226"
+      },
+      {
+        "$ref": "#/227"
+      },
+      {
+        "$ref": "#/228"
       }
     ]
   },
@@ -2927,14 +2969,14 @@
     "name": "SecretStoreListSecretsResultData",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/213"
+      "$ref": "#/216"
     }
   },
   {
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/220"
+      "$ref": "#/223"
     }
   },
   {
@@ -2948,7 +2990,7 @@
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/225"
+          "$ref": "#/231"
         },
         "description": "listSecrets"
       }
@@ -2982,28 +3024,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/227"
+          "$ref": "#/233"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/228"
+          "$ref": "#/234"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/230"
+          "$ref": "#/236"
         },
         "flags": 1,
         "description": "Volume properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/262"
+          "$ref": "#/268"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -3045,7 +3087,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/238"
+          "$ref": "#/244"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -3060,7 +3102,7 @@
     },
     "elements": {
       "azure.com.keyvault": {
-        "$ref": "#/239"
+        "$ref": "#/245"
       }
     }
   },
@@ -3096,25 +3138,25 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/231"
-      },
-      {
-        "$ref": "#/232"
-      },
-      {
-        "$ref": "#/233"
-      },
-      {
-        "$ref": "#/234"
-      },
-      {
-        "$ref": "#/235"
-      },
-      {
-        "$ref": "#/236"
-      },
-      {
         "$ref": "#/237"
+      },
+      {
+        "$ref": "#/238"
+      },
+      {
+        "$ref": "#/239"
+      },
+      {
+        "$ref": "#/240"
+      },
+      {
+        "$ref": "#/241"
+      },
+      {
+        "$ref": "#/242"
+      },
+      {
+        "$ref": "#/243"
       }
     ]
   },
@@ -3124,14 +3166,14 @@
     "properties": {
       "certificates": {
         "type": {
-          "$ref": "#/252"
+          "$ref": "#/258"
         },
         "flags": 0,
         "description": "The KeyVault certificates that this volume exposes"
       },
       "keys": {
         "type": {
-          "$ref": "#/254"
+          "$ref": "#/260"
         },
         "flags": 0,
         "description": "The KeyVault keys that this volume exposes"
@@ -3145,14 +3187,14 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/260"
+          "$ref": "#/266"
         },
         "flags": 0,
         "description": "The KeyVault secrets that this volume exposes"
       },
       "kind": {
         "type": {
-          "$ref": "#/261"
+          "$ref": "#/267"
         },
         "flags": 1,
         "description": "Discriminator property for VolumeProperties."
@@ -3172,14 +3214,14 @@
       },
       "encoding": {
         "type": {
-          "$ref": "#/244"
+          "$ref": "#/250"
         },
         "flags": 0,
         "description": "Represents secret encodings"
       },
       "format": {
         "type": {
-          "$ref": "#/247"
+          "$ref": "#/253"
         },
         "flags": 0,
         "description": "Represents certificate formats"
@@ -3193,7 +3235,7 @@
       },
       "certType": {
         "type": {
-          "$ref": "#/251"
+          "$ref": "#/257"
         },
         "flags": 0,
         "description": "Represents certificate types"
@@ -3223,13 +3265,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/241"
+        "$ref": "#/247"
       },
       {
-        "$ref": "#/242"
+        "$ref": "#/248"
       },
       {
-        "$ref": "#/243"
+        "$ref": "#/249"
       }
     ]
   },
@@ -3245,10 +3287,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/245"
+        "$ref": "#/251"
       },
       {
-        "$ref": "#/246"
+        "$ref": "#/252"
       }
     ]
   },
@@ -3268,13 +3310,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/248"
+        "$ref": "#/254"
       },
       {
-        "$ref": "#/249"
+        "$ref": "#/255"
       },
       {
-        "$ref": "#/250"
+        "$ref": "#/256"
       }
     ]
   },
@@ -3283,7 +3325,7 @@
     "name": "AzureKeyVaultVolumePropertiesCertificates",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/240"
+      "$ref": "#/246"
     }
   },
   {
@@ -3318,7 +3360,7 @@
     "name": "AzureKeyVaultVolumePropertiesKeys",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/253"
+      "$ref": "#/259"
     }
   },
   {
@@ -3334,7 +3376,7 @@
       },
       "encoding": {
         "type": {
-          "$ref": "#/259"
+          "$ref": "#/265"
         },
         "flags": 0,
         "description": "Represents secret encodings"
@@ -3371,13 +3413,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/256"
+        "$ref": "#/262"
       },
       {
-        "$ref": "#/257"
+        "$ref": "#/263"
       },
       {
-        "$ref": "#/258"
+        "$ref": "#/264"
       }
     ]
   },
@@ -3386,7 +3428,7 @@
     "name": "AzureKeyVaultVolumePropertiesSecrets",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/255"
+      "$ref": "#/261"
     }
   },
   {
@@ -3406,7 +3448,7 @@
     "name": "Applications.Core/volumes@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/229"
+      "$ref": "#/235"
     },
     "flags": 0,
     "functions": {}

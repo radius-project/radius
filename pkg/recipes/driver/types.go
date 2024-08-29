@@ -82,7 +82,7 @@ type BaseOptions struct {
 	//         "secretKey": "secretKeyXYZ",
 	//     },
 	// }
-	Secrets map[string]map[string]string
+	Secrets map[string]recipes.SecretData
 }
 
 // ExecuteOptions is the options for the Execute method.

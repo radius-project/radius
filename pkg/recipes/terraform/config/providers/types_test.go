@@ -13,7 +13,7 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 	testCases := []struct {
 		desc      string
 		envConfig *recipes.Configuration
-		secrets   map[string]map[string]string
+		secrets   map[string]recipes.SecretData
 		expected  map[string][]map[string]any
 	}{
 		{
@@ -132,9 +132,15 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 					},
 				},
 			},
-			secrets: map[string]map[string]string{
-				"secretstoreid1": {"secretkey1": "secretvalue1"},
-				"secretstoreid2": {"secretkey2": "secretvalue2"},
+			secrets: map[string]recipes.SecretData{
+				"secretstoreid1": {
+					Type: "generic",
+					Data: map[string]string{"secretkey1": "secretvalue1"},
+				},
+				"secretstoreid2": {
+					Type: "generic",
+					Data: map[string]string{"secretkey2": "secretvalue2"},
+				},
 			},
 			expected: map[string][]map[string]any{
 				"azurerm": {
@@ -172,9 +178,15 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 					},
 				},
 			},
-			secrets: map[string]map[string]string{
-				"secretstoreid1": {"secretkey1": "secretvalue1"},
-				"secretstoreid2": {"secretkey2": "secretvalue2"},
+			secrets: map[string]recipes.SecretData{
+				"secretstoreid1": {
+					Type: "generic",
+					Data: map[string]string{"secretkey1": "secretvalue1"},
+				},
+				"secretstoreid2": {
+					Type: "generic",
+					Data: map[string]string{"secretkey2": "secretvalue2"},
+				},
 			},
 			expected: map[string][]map[string]any{
 				"azurerm": {
@@ -218,10 +230,16 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 					},
 				},
 			},
-			secrets: map[string]map[string]string{
-				"secretstoreid1": {"secretkey1": "secretvalue1",
-					"secret-usedid-env": "secretvalue-usedid-env"},
-				"secretstore-env": {"secretkey-env": "secretvalue-env"},
+			secrets: map[string]recipes.SecretData{
+				"secretstoreid1": {
+					Type: "generic",
+					Data: map[string]string{"secretkey1": "secretvalue1",
+						"secret-usedid-env": "secretvalue-usedid-env"},
+				},
+				"secretstore-env": {
+					Type: "generic",
+					Data: map[string]string{"secretkey-env": "secretvalue-env"},
+				},
 			},
 			expected: map[string][]map[string]any{
 				"azurerm": {
@@ -258,8 +276,11 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 					},
 				},
 			},
-			secrets: map[string]map[string]string{
-				"secretstoreid1": {"secretkey1": "secretvalue-clientid"},
+			secrets: map[string]recipes.SecretData{
+				"secretstoreid1": {
+					Type: "generic",
+					Data: map[string]string{"secretkey1": "secretvalue-clientid"},
+				},
 			},
 			expected: map[string][]map[string]any{
 				"azurerm": {
@@ -287,7 +308,7 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 		name                 string
 		currentConfig        map[string]any
 		recipeConfigSecrets  map[string]datamodel.SecretReference
-		secrets              map[string]map[string]string
+		secrets              map[string]recipes.SecretData
 		expectedConfig       map[string]any
 		expectError          bool
 		expectedErrorMessage string
@@ -297,8 +318,11 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 			recipeConfigSecrets: map[string]datamodel.SecretReference{
 				"password": {Source: "dbSecrets", Key: "dbPass"},
 			},
-			secrets: map[string]map[string]string{
-				"dbSecrets": {"dbPass": "secretPassword"},
+			secrets: map[string]recipes.SecretData{
+				"dbSecrets": {
+					Type: "generic",
+					Data: map[string]string{"dbPass": "secretPassword"},
+				},
 			},
 			expectedConfig: map[string]any{
 				"password": "secretPassword",
@@ -310,8 +334,11 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 			recipeConfigSecrets: map[string]datamodel.SecretReference{
 				"password": {Source: "missingSource", Key: "dbPass"},
 			},
-			secrets: map[string]map[string]string{
-				"dbSecrets": {"dbPass": "secretPassword"},
+			secrets: map[string]recipes.SecretData{
+				"dbSecrets": {
+					Type: "generic",
+					Data: map[string]string{"dbPass": "secretPassword"},
+				},
 			},
 			expectError:          true,
 			expectedErrorMessage: "missing secret store id: missingSource",
@@ -321,8 +348,11 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 			recipeConfigSecrets: map[string]datamodel.SecretReference{
 				"password": {Source: "dbSecrets", Key: "missingKey"},
 			},
-			secrets: map[string]map[string]string{
-				"dbSecrets": {"dbPass": "secretPassword"},
+			secrets: map[string]recipes.SecretData{
+				"dbSecrets": {
+					Type: "generic",
+					Data: map[string]string{"dbPass": "secretPassword"},
+				},
 			},
 			expectError:          true,
 			expectedErrorMessage: "missing secret key in secret store id: dbSecrets",
@@ -339,11 +369,28 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 		{
 			name:                "missing recipeConfigSecrets",
 			recipeConfigSecrets: nil,
-			secrets: map[string]map[string]string{
-				"dbSecrets": {"dbPass": "secretPassword"},
+			secrets: map[string]recipes.SecretData{
+				"dbSecrets": {
+					Type: "generic",
+					Data: map[string]string{"dbPass": "secretPassword"},
+				},
 			},
 			expectedConfig: map[string]any{},
 			expectError:    false,
+		},
+		{
+			name: "missing secrets data",
+			recipeConfigSecrets: map[string]datamodel.SecretReference{
+				"password": {Source: "dbSecrets", Key: "missingKey"},
+			},
+			secrets: map[string]recipes.SecretData{
+				"dbSecrets": {
+					Type: "generic",
+				},
+			},
+			expectedConfig:       map[string]any{},
+			expectError:          true,
+			expectedErrorMessage: "missing secret key in secret store id: dbSecrets",
 		},
 	}
 
