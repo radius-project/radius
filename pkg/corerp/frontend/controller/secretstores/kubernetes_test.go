@@ -52,10 +52,10 @@ const (
 	testFileGenericValueInvalidResource = "secretstores_datamodel_global_scope_invalid_resource.json"
 	testFileGenericValueEmptyResource   = "secretstores_datamodel_global_scope_empty_resource.json"
 
-	testFileBasicAuthentication        = "secretstores_datamodel_basicAuthentication.json"
-	testFileBasicAuthenticationInvalid = "secretstores_datamodel_basicAuthentication_invalid.json"
-	testFileAWSIRSA                    = "secretstores_datamodel_AWSIRSA.json"
-	testFileAzureWorkloadIdentity      = "secretstores_datamodel_AZWorkloadIdentity.json"
+	testFileBasicAuthentication        = "secretstores_datamodel_basicauth.json"
+	testFileBasicAuthenticationInvalid = "secretstores_datamodel_basicauth_invalid.json"
+	testFileAWSIRSA                    = "secretstores_datamodel_awsirsa.json"
+	testFileAzureWorkloadIdentity      = "secretstores_datamodel_azwi.json"
 )
 
 func TestGetNamespace(t *testing.T) {
