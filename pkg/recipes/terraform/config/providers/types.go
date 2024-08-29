@@ -50,7 +50,7 @@ func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *
 // GetRecipeProviderConfigs returns the Terraform provider configurations for Terraform providers
 // specified under the RecipeConfig/Terraform/Providers section under environment configuration.
 // The function also extracts secrets from the secrets data input and updates the provider configurations with secrets as applicable.
-func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration, secrets map[string]map[string]string) (map[string][]map[string]any, error) {
+func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration, secrets map[string]recipes.SecretData) (map[string][]map[string]any, error) {
 	providerConfigs := make(map[string][]map[string]any)
 
 	// If the provider is not configured, or has empty configuration, skip this iteration
@@ -96,14 +96,14 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 }
 
 // extractSecretsFromRecipeConfig extracts secrets for env recipe configuration from the secrets data input and updates the currentConfig map.
-func extractSecretsFromRecipeConfig(recipeConfigSecrets map[string]datamodel.SecretReference, secrets map[string]map[string]string) (map[string]any, error) {
+func extractSecretsFromRecipeConfig(recipeConfigSecrets map[string]datamodel.SecretReference, secrets map[string]recipes.SecretData) (map[string]any, error) {
 	secretsConfig := make(map[string]any)
 
 	// Extract secrets from configDetails if they are present
 	for secretName, secretReference := range recipeConfigSecrets {
 		// Extract secret value from the secrets data input
 		if secretIDs, ok := secrets[secretReference.Source]; ok {
-			if secretValue, ok := secretIDs[secretReference.Key]; ok {
+			if secretValue, ok := secretIDs.Data[secretReference.Key]; ok {
 				secretsConfig[secretName] = secretValue
 			} else {
 				return nil, fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)

@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	git "github.com/go-git/go-git/v5"
+	"github.com/radius-project/radius/pkg/recipes"
 )
 
 // getGitURLWithSecrets returns the git URL with secrets information added.
@@ -147,7 +148,7 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 
 // addSecretsToGitConfigIfApplicable adds secrets to the Git configuration file if applicable.
 // It is a wrapper function to addSecretsToGitConfig()
-func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[string]map[string]string, requestDirPath string, templatePath string) error {
+func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[string]recipes.SecretData, requestDirPath string, templatePath string) error {
 	if secretStoreID == "" || secretData == nil {
 		return nil
 	}
@@ -157,7 +158,7 @@ func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[stri
 		return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
 	}
 
-	err := addSecretsToGitConfig(requestDirPath, secrets, templatePath)
+	err := addSecretsToGitConfig(requestDirPath, secrets.Data, templatePath)
 	if err != nil {
 		return err
 	}
@@ -167,7 +168,7 @@ func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[stri
 
 // unsetGitConfigForDir removes a conditional include directive from the global Git configuration if applicable.
 // It is a wrapper function to unsetGitConfigForDir()
-func unsetGitConfigForDirIfApplicable(secretStoreID string, secretData map[string]map[string]string, requestDirPath string, templatePath string) error {
+func unsetGitConfigForDirIfApplicable(secretStoreID string, secretData map[string]recipes.SecretData, requestDirPath string, templatePath string) error {
 	if secretStoreID == "" || secretData == nil {
 		return nil
 	}
@@ -177,7 +178,7 @@ func unsetGitConfigForDirIfApplicable(secretStoreID string, secretData map[strin
 		return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
 	}
 
-	err := unsetGitConfigForDir(requestDirPath, secrets, templatePath)
+	err := unsetGitConfigForDir(requestDirPath, secrets.Data, templatePath)
 	if err != nil {
 		return err
 	}

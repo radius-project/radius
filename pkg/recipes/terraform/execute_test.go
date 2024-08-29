@@ -157,13 +157,16 @@ func TestSetEnvironmentVariables(t *testing.T) {
 						},
 					},
 				},
-				Secrets: map[string]map[string]string{
-					"secretstoreid1": {"secretkey1": "secretvalue1"},
+				Secrets: map[string]recipes.SecretData{
+					"secretstoreid1": {
+						Type: "generic",
+						Data: map[string]string{"secretkey1": "secretvalue1"},
+					},
 				},
 			},
 		},
 		{
-			name: "missing secret data",
+			name: "missing secret keys",
 			opts: Options{
 				EnvConfig: &recipes.Configuration{
 					RecipeConfig: dm.RecipeConfigProperties{
@@ -181,8 +184,32 @@ func TestSetEnvironmentVariables(t *testing.T) {
 						},
 					},
 				},
-				Secrets: map[string]map[string]string{
-					"secretstoreid2": {"secretkey2": "secretvalue2"},
+				Secrets: map[string]recipes.SecretData{
+					"secretstoreid2": {
+						Type: "generic",
+						Data: map[string]string{"secretkey2": "secretvalue2"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing secret data",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						EnvSecrets: map[string]dm.SecretReference{
+							"TEST_ENV_VAR3": {
+								Source: "secretstoreid1",
+								Key:    "secretkey1",
+							},
+						},
+					},
+				},
+				Secrets: map[string]recipes.SecretData{
+					"secretstoreid2": {
+						Type: "generic",
+					},
 				},
 			},
 			wantErr: true,
