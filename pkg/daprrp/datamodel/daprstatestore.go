@@ -74,4 +74,6 @@ type DaprStateStoreProperties struct {
 	Resources            []*portableresources.ResourceReference `json:"resources,omitempty"`
 	Type                 string                                 `json:"type,omitempty"`
 	Version              string                                 `json:"version,omitempty"`
+	// SecretStoreComponentName represents the name of the Dapr secret store component to retrieve secrets from.
+	SecretStoreComponentName string `json:"secretStoreComponentName,omitempty"`
 }

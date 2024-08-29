@@ -15,6 +15,7 @@
     "env": "dev"
   },
   "properties": {
+    "secretStoreComponentName": "test-secretstore",
     "componentName": "test-dpsb",
     "status": {
       "outputResources": [

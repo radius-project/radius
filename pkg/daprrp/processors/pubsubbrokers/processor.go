@@ -77,9 +77,10 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprPubSubB
 
 	component, err := dapr.ConstructDaprGeneric(
 		dapr.DaprGeneric{
-			Metadata: resource.Properties.Metadata,
-			Type:     to.Ptr(resource.Properties.Type),
-			Version:  to.Ptr(resource.Properties.Version),
+			Metadata:                 resource.Properties.Metadata,
+			Type:                     to.Ptr(resource.Properties.Type),
+			Version:                  to.Ptr(resource.Properties.Version),
+			SecretStoreComponentName: to.Ptr(resource.Properties.SecretStoreComponentName),
 		},
 		options.RuntimeConfiguration.Kubernetes.Namespace,
 		resource.Properties.ComponentName,

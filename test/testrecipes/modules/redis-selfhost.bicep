@@ -6,6 +6,8 @@ extension kubernetes with {
 param namespace string
 param name string
 param application string = ''
+@secure()
+param password string = ''
 
 resource redis 'apps/Deployment@v1' = {
   metadata: {
@@ -34,6 +36,12 @@ resource redis 'apps/Deployment@v1' = {
             // This container is the running redis instance.
             name: 'redis'
             image: 'ghcr.io/radius-project/mirror/redis:6.2'
+            // Note :Using --requirepass with an empty password is
+            // equivalent to setting no password
+            args: [
+              '--requirepass'
+              password
+            ]
             ports: [
               {
                 containerPort: 6379
@@ -44,12 +52,11 @@ resource redis 'apps/Deployment@v1' = {
             // This container will connect to redis and stream logs to stdout for aid in development.
             name: 'redis-monitor'
             image: 'ghcr.io/radius-project/mirror/redis:6.2'
-            args: [
-              'redis-cli'
-              '-h'
-              'localhost'
-              'MONITOR'
-            ]
+            args: concat(
+                      ['redis-cli'],
+                      password != '' ? ['-a', password] : [],
+                      ['-h', 'localhost', 'MONITOR']
+                  )
           }
         ]
       }

@@ -29,6 +29,9 @@ type DaprPubSubBrokerProperties struct {
 	// A collection of references to resources associated with the pubSubBroker
 	Resources []*ResourceReference
 
+	// The name of the Dapr component to be used as a secret store
+	SecretStoreComponentName *string
+
 	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string
 
@@ -107,6 +110,9 @@ type DaprPubSubBrokerResourceUpdateProperties struct {
 
 	// A collection of references to resources associated with the pubSubBroker
 	Resources []*ResourceReference
+
+	// The name of the Dapr component to be used as a secret store
+	SecretStoreComponentName *string
 
 	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string
@@ -235,6 +241,9 @@ type DaprStateStoreProperties struct {
 	// A collection of references to resources associated with the state store
 	Resources []*ResourceReference
 
+	// The name of the Dapr component to be used as a secret store
+	SecretStoreComponentName *string
+
 	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string
 
@@ -313,6 +322,9 @@ type DaprStateStoreResourceUpdateProperties struct {
 
 	// A collection of references to resources associated with the state store
 	Resources []*ResourceReference
+
+	// The name of the Dapr component to be used as a secret store
+	SecretStoreComponentName *string
 
 	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string
@@ -404,6 +416,22 @@ func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 		Kind: k.Kind,
 		ResourceID: k.ResourceID,
 	}
+}
+
+// NonRedundantDaprResourceProperties - The base properties of a Dapr component object.
+type NonRedundantDaprResourceProperties struct {
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
+	Metadata map[string]any
+
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	Type *string
+
+	// Dapr component version
+	Version *string
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string
 }
 
 // Operation - Details of a REST API operation, returned from the Resource Provider Operations API

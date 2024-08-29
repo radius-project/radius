@@ -22,12 +22,14 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sort"
 )
 
 type DaprGeneric struct {
-	Type     *string
-	Version  *string
-	Metadata map[string]any
+	Type                     *string
+	Version                  *string
+	Metadata                 map[string]any
+	SecretStoreComponentName *string
 }
 
 // Validate checks if the required fields of a DaprGeneric struct are set and returns an error if any of them are not.
@@ -56,12 +58,27 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, namespace string, componentNa
 	// Dapr specs: https://docs.dapr.io/reference/components-reference/
 	yamlListItems := []any{} // K8s fake client requires this ..... :(
 	for k, v := range daprGeneric.Metadata {
+
 		yamlItem := map[string]any{
-			"name":  k,
-			"value": v,
+			"name": k,
+		}
+
+		// v = {value : "value"} || {secretKeyRef : {name : "name", key : "key"}}
+		if innerObj, ok := v.(map[string]any); ok {
+			for innerKey, innerVal := range innerObj {
+				yamlItem[innerKey] = innerVal
+			}
+		} else {
+			return unstructured.Unstructured{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(`Invalid metadata value for key "%s" in Dapr component "%s"`, k, componentName))
 		}
 		yamlListItems = append(yamlListItems, yamlItem)
 	}
+
+	// Note : Prevents flakiness in tests, a slice is not guaranteed to be sorted
+	// Without this, all tests containing Dapr components with multiple metadata would have to use a custom match function
+	sort.Slice(yamlListItems, func(i, j int) bool {
+		return yamlListItems[i].(map[string]any)["name"].(string) < yamlListItems[j].(map[string]any)["name"].(string)
+	})
 
 	// Translate into Dapr State Store schema
 	item := unstructured.Unstructured{
@@ -79,6 +96,15 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, namespace string, componentNa
 				"metadata": yamlListItems,
 			},
 		},
+	}
+
+	// Although an empty string value to the "secretStore" property is valid according to Dapr specs,
+	// meaning no secret store is used, it may cause confusion to users.
+	// Therefore, we only add the "auth" property if the secret store is specified.
+	if daprGeneric.SecretStoreComponentName != nil && *daprGeneric.SecretStoreComponentName != "" {
+		item.Object["auth"] = map[string]any{
+			"secretStore": *daprGeneric.SecretStoreComponentName,
+		}
 	}
 	return item, nil
 }

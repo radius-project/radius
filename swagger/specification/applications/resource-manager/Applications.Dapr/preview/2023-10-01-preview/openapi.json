@@ -993,6 +993,10 @@
           "type": "string",
           "description": "Dapr component version"
         },
+        "secretStoreComponentName": {
+          "type": "string",
+          "description": "The name of the Dapr component to be used as a secret store"
+        },
         "resources": {
           "type": "array",
           "description": "A collection of references to resources associated with the pubSubBroker",
@@ -1098,6 +1102,10 @@
         "version": {
           "type": "string",
           "description": "Dapr component version"
+        },
+        "secretStoreComponentName": {
+          "type": "string",
+          "description": "The name of the Dapr component to be used as a secret store"
         },
         "resources": {
           "type": "array",
@@ -1305,6 +1313,10 @@
           "type": "string",
           "description": "Dapr component version"
         },
+        "secretStoreComponentName": {
+          "type": "string",
+          "description": "The name of the Dapr component to be used as a secret store"
+        },
         "resources": {
           "type": "array",
           "description": "A collection of references to resources associated with the state store",
@@ -1411,6 +1423,10 @@
           "type": "string",
           "description": "Dapr component version"
         },
+        "secretStoreComponentName": {
+          "type": "string",
+          "description": "The name of the Dapr component to be used as a secret store"
+        },
         "resources": {
           "type": "array",
           "description": "A collection of references to resources associated with the state store",
@@ -1513,6 +1529,30 @@
         }
       ],
       "x-ms-discriminator-value": "kubernetes"
+    },
+    "NonRedundantDaprResourceProperties": {
+      "type": "object",
+      "description": "The base properties of a Dapr component object.",
+      "properties": {
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        }
+      }
     },
     "OutputResource": {
       "type": "object",

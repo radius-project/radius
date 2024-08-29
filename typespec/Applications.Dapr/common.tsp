@@ -33,4 +33,7 @@ model DaprResourceProperties {
 
   @doc("Dapr component version")
   version?: string;
+
+  @doc("The name of the Dapr component to be used as a secret store")
+  secretStoreComponentName?: string;
 }

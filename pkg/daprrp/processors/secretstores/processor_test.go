@@ -127,9 +127,13 @@ func Test_Process(t *testing.T) {
 					ComponentName: componentName,
 				},
 				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata:             map[string]any{"config": "extrasecure"},
-				Type:                 "secretstores.kubernetes",
-				Version:              "v1",
+				Metadata: map[string]any{
+					"config": map[string]any{
+						"value": "extrasecure",
+					},
+				},
+				Type:    "secretstores.kubernetes",
+				Version: "v1",
 			},
 		}
 
@@ -210,9 +214,13 @@ func Test_Process(t *testing.T) {
 					ComponentName: componentName,
 				},
 				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata:             map[string]any{"config": "extrasecure"},
-				Type:                 "secretstores.kubernetes",
-				Version:              "v1",
+				Metadata: map[string]any{
+					"config": map[string]any{
+						"value": "extrasecure",
+					},
+				},
+				Type:    "secretstores.kubernetes",
+				Version: "v1",
 			},
 		}
 
@@ -369,9 +377,13 @@ func Test_Process(t *testing.T) {
 					ComponentName: componentName,
 				},
 				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata:             map[string]any{"config": "extrasecure"},
-				Type:                 "secretstores.kubernetes",
-				Version:              "v1",
+				Metadata: map[string]any{
+					"config": map[string]any{
+						"value": "extrasecure",
+					},
+				},
+				Type:    "secretstores.kubernetes",
+				Version: "v1",
 			},
 		}
 

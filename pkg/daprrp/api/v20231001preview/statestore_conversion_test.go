@@ -81,6 +81,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 				expected.Properties.Metadata = map[string]any{
 					"foo": "bar",
 				}
+				expected.Properties.SecretStoreComponentName = "test-secret-store"
 				expected.Properties.Resources = []*portableresources.ResourceReference{
 					{
 						ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
@@ -151,11 +152,12 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 					"env": to.Ptr("dev"),
 				},
 				Properties: &DaprStateStoreProperties{
-					Application:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
-					Environment:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
-					ComponentName:     to.Ptr("stateStore0"),
-					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
-					Status:            resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{}),
+					Application:              to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					Environment:              to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					ComponentName:            to.Ptr("stateStore0"),
+					ProvisioningState:        to.Ptr(ProvisioningStateAccepted),
+					SecretStoreComponentName: to.Ptr("test-secret-store"),
+					Status:                   resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{}),
 				},
 			}
 

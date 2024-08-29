@@ -85,4 +85,7 @@ type DaprPubSubBrokerProperties struct {
 
 	// Version of the Dapr Pub/Sub Broker resource.
 	Version string `json:"version,omitempty"`
+
+	// SecretStoreComponentName represents the name of the Dapr secret store component to retrieve secrets from.
+	SecretStoreComponentName string `json:"secretStoreComponentName,omitempty"`
 }
