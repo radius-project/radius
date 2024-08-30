@@ -18,9 +18,16 @@ package authClient
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry"
+	"github.com/radius-project/radius/pkg/to"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 var _ AuthClient = (*azureWorkloadIdentity)(nil)
@@ -35,6 +42,48 @@ func NewAzureWorkloadIdentity(clientID string, tenantID string) AuthClient {
 }
 
 func (b *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
-	// To Do
-	return &auth.Client{}, nil
+	c := azcontainerregistry.AuthenticationClientOptions{
+		azcore.ClientOptions{
+			Retry: policy.RetryOptions{
+				MaxRetries: 10,
+			},
+		},
+	}
+
+	opt := &azidentity.WorkloadIdentityCredentialOptions{
+		ClientID: b.clientID,
+		TenantID: b.tenantID,
+	}
+
+	cred, err := azidentity.NewWorkloadIdentityCredential(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	aadToken, err := cred.GetToken(ctx, policy.TokenRequestOptions{
+		Scopes: []string{"https://containerregistry.azure.net/.default"}})
+	if err != nil {
+		return nil, err
+	}
+
+	registryHost, err := getRegistryHostname(templatePath)
+	if err != nil {
+		return nil, err
+	}
+	ac, err := azcontainerregistry.NewAuthenticationClient(fmt.Sprintf("https://%s", registryHost), &c)
+	if err != nil {
+		return nil, err
+	}
+
+	rt, err := ac.ExchangeAADAccessTokenForACRRefreshToken(ctx, "access_token", registryHost, &azcontainerregistry.AuthenticationClientExchangeAADAccessTokenForACRRefreshTokenOptions{
+		AccessToken: to.Ptr(aadToken.Token),
+		Tenant:      to.Ptr(b.tenantID),
+	})
+
+	return &auth.Client{
+		Client: retry.DefaultClient,
+		Credential: auth.StaticCredential("orasregistry.azurecr.io", auth.Credential{
+			RefreshToken: *rt.RefreshToken,
+		}),
+	}, nil
 }

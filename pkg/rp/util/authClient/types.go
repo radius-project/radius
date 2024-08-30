@@ -36,7 +36,7 @@ func GetNewRegistryAuthClient(secrets recipes.SecretData) (AuthClient, error) {
 	case "awsIRSA":
 		return NewAwsIRSA(secretsData["roleARN"]), nil
 	case "azureWorkloadIdentity":
-		return NewAzureWorkloadIdentity(secretsData["clientID"], secretsData["tenantID"]), nil
+		return NewAzureWorkloadIdentity(secretsData["clientId"], secretsData["tenantId"]), nil
 	case "basicAuthentication":
 		return NewBasicAuthentication(secretsData["username"], secretsData["password"]), nil
 	default:

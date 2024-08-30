@@ -32,6 +32,8 @@ const (
 	username     = "test-username"
 	password     = "test-password"
 	templatePath = "test.azurecr.io/test-private-registry:latest"
+	clientID     = "test-client-id"
+	tenantID     = "test-tenant-id"
 )
 
 func Test_getRegistryAuthClient(t *testing.T) {
@@ -56,6 +58,23 @@ func Test_getRegistryAuthClient(t *testing.T) {
 				Credential: auth.StaticCredential("test.azurecr.io", auth.Credential{
 					Username: username,
 					Password: password,
+				}),
+			},
+		},
+		{
+			secrets: recipes.SecretData{
+				Type: "azureWorkloadIdentity",
+				Data: map[string]string{
+					"clientId": clientID,
+					"tenantId": tenantID,
+				},
+			},
+			templatePath:     templatePath,
+			expNewAuthClient: NewAzureWorkloadIdentity(clientID, tenantID),
+			expAuthClient: &auth.Client{
+				Client: retry.DefaultClient,
+				Credential: auth.StaticCredential("test.azurecr.io", auth.Credential{
+					RefreshToken: "test-refresh-token",
 				}),
 			},
 		},
