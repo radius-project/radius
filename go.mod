@@ -54,7 +54,7 @@ require (
 	github.com/novln/docker-parser v1.0.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0
-	github.com/projectcontour/contour v1.30.0
+	github.com/projectcontour/contour v1.29.0
 	github.com/prometheus/client_golang v1.20.2
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.8.1
@@ -82,14 +82,14 @@ require (
 	golang.org/x/text v0.17.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.15.4
-	k8s.io/api v0.31.0
+	k8s.io/api v0.30.3
 	k8s.io/apiextensions-apiserver v0.30.3
-	k8s.io/apimachinery v0.31.0
+	k8s.io/apimachinery v0.30.3
 	k8s.io/cli-runtime v0.30.3
-	k8s.io/client-go v0.31.0
+	k8s.io/client-go v0.30.3
 	k8s.io/kubectl v0.30.3
 	oras.land/oras-go/v2 v2.5.0
-	sigs.k8s.io/controller-runtime v0.18.4
+	sigs.k8s.io/controller-runtime v0.18.2
 	sigs.k8s.io/secrets-store-csi-driver v1.4.5
 )
 
@@ -119,7 +119,6 @@ require (
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
-	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
@@ -145,7 +144,6 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
-	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.mongodb.org/mongo-driver v1.15.1 // indirect
