@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 	"oras.land/oras-go/v2/registry/remote"
@@ -35,16 +36,18 @@ const (
 
 func Test_getRegistryAuthClient(t *testing.T) {
 	testset := []struct {
-		secrets          map[string]string
+		secrets          recipes.SecretData
 		templatePath     string
 		expNewAuthClient AuthClient
 		expAuthClient    remote.Client
 	}{
 		{
-			secrets: map[string]string{
-				"type":     "basicAuthentication",
-				"username": username,
-				"password": password,
+			secrets: recipes.SecretData{
+				Type: "basicAuthentication",
+				Data: map[string]string{
+					"username": username,
+					"password": password,
+				},
 			},
 			templatePath:     templatePath,
 			expNewAuthClient: NewBasicAuthentication(username, password),

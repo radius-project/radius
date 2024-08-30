@@ -21,6 +21,7 @@ import (
 	"errors"
 	"net/url"
 
+	"github.com/radius-project/radius/pkg/recipes"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -29,14 +30,15 @@ type AuthClient interface {
 	GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error)
 }
 
-func GetNewRegistryAuthClient(secrets map[string]string) (AuthClient, error) {
-	switch secrets["type"] {
+func GetNewRegistryAuthClient(secrets recipes.SecretData) (AuthClient, error) {
+	secretsData := secrets.Data
+	switch secrets.Type {
 	case "awsIRSA":
-		return NewAwsIRSA(secrets["roleARN"]), nil
+		return NewAwsIRSA(secretsData["roleARN"]), nil
 	case "azureWorkloadIdentity":
-		return NewAzureWorkloadIdentity(secrets["clientID"], secrets["tenantID"]), nil
+		return NewAzureWorkloadIdentity(secretsData["clientID"], secretsData["tenantID"]), nil
 	case "basicAuthentication":
-		return NewBasicAuthentication(secrets["username"], secrets["password"]), nil
+		return NewBasicAuthentication(secretsData["username"], secretsData["password"]), nil
 	default:
 		return nil, errors.New("invalid type")
 	}

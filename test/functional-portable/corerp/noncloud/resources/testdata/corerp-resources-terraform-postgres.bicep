@@ -1,4 +1,4 @@
-import radius as radius
+extension radius
 
 @description('The URL of the server hosting test Terraform modules.')
 param moduleServer string
@@ -24,13 +24,15 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
         providers: {
           postgresql: [ {
               alias: 'pgdb-test'
-              username: userName
-              password: password
               sslmode: 'disable'
-              secrets: {
-                host: {
-                  source: pgshostsecret.id
-                  key: 'host'
+              secrets: {               
+                username: {
+                  source: pgsecretstore.id
+                  key: 'username'
+                }
+                password: {
+                  source: pgsecretstore.id
+                  key: 'password'
                 }
               }
             } ]
@@ -38,6 +40,12 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       }
       env: {
         PGPORT: '5432'
+      }
+      envSecrets: {
+        PGHOST: {
+          source: pgsecretstore.id
+          key: 'host'
+        }
       }
     }
     recipes: {
@@ -79,12 +87,18 @@ resource pgsapp 'Applications.Core/extenders@2023-10-01-preview' = {
   }
 }
 
-resource pgshostsecret 'Applications.Core/secretStores@2023-10-01-preview' = {
-  name: 'pgs-hostsecret'
+resource pgsecretstore 'Applications.Core/secretStores@2023-10-01-preview' = {
+  name: 'pgs-secretstore'
   properties: {
-    resource: 'corerp-resources-terraform-pg-app/pgs-hostsecret'
+    resource: 'corerp-resources-terraform-pg-app/pgs-secretstore'
     type: 'generic'
     data: {
+      username: {
+        value: userName
+      }
+      password: {
+        value: password
+      }
       host: {
         value: 'postgres.corerp-resources-terraform-pg-app.svc.cluster.local'
       }

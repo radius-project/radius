@@ -1,11 +1,12 @@
-import radius as radius
+extension radius
 
 param magpieimage string
 param environment string 
+param location string = 'global'
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-extender'
-  location: 'global'
+  location: location
   properties: {
     environment: environment
   }
@@ -26,15 +27,15 @@ resource twilio 'Applications.Core/extenders@2023-10-01-preview' = {
 
 resource container 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'extr-ctnr'
-  location: 'global'
+  location: location
   properties: {
     application: app.id
     container: {
       image: magpieimage
       env: {
         TWILIO_NUMBER: twilio.properties.fromNumber
-        TWILIO_SID: twilio.secrets('accountSid')
-        TWILIO_ACCOUNT: twilio.secrets('authToken')
+        TWILIO_SID: twilio.listSecrets().accountSid
+        TWILIO_ACCOUNT: twilio.listSecrets().authToken
       }
     }
     connections: {}

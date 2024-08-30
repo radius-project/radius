@@ -23,6 +23,17 @@ on:
       - main
       - release/*
 
+permissions:
+  id-token: write # Required for requesting the JWT
+
+env:
+  # Local Docker registry name
+  LOCAL_REGISTRY_NAME: "radius-registry"
+  # Local Docker registry server
+  LOCAL_REGISTRY_SERVER: "localhost"
+  # Local Docker registry port
+  LOCAL_REGISTRY_PORT: "5000"
+
 concurrency:
   # Cancel the previously triggered build for only PR build.
   group: bicep-${{ github.event.pull_request.number || github.sha }}
@@ -33,17 +44,35 @@ jobs:
     name: Validate Bicep Code
     runs-on: ubuntu-latest
     steps:
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
       - name: Check out repo
         uses: actions/checkout@v4
-      - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
-      - uses: oras-project/setup-oras@main
-      - name: Download rad-bicep
+      - name: Create a secure local registry
+        id: create-local-registry
+        uses: ./.github/actions/create-local-registry
+        with:
+          secure: "true"
+          registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
+          registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
+          registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
+      - name: Publish bicep types 
+        run: | 
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:latest --force  
+      - name: Install jq
+        run: sudo apt-get install -y jq
+      - name: Modify bicepconfig.json
         run: |
-          oras pull ghcr.io/radius-project/radius/bicep/rad-bicep/linux-x64:latest -o ./
-          chmod +x rad-bicep
-          ./rad-bicep --version
+          # Add credential preference to the bicepconfig.json file
+          jq '.extensions.radius = "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:latest"' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
+          jq '. + {"cloud": {"credentialPrecedence": ["Environment"]}}' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
+      - name: Print updated bicepconfig.json
+        run: cat bicepconfig.json
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
         env:
-          BICEP_PATH: './rad-bicep'
+          BICEP_PATH: 'bicep'

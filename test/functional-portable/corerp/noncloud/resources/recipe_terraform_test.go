@@ -144,7 +144,7 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 	appName := "corerp-resources-terraform-pg-app"
 	envName := "corerp-resources-terraform-pg-env"
 	extenderName := "pgs-resources-terraform-pgsapp"
-	secretName := "pgs-hostsecret"
+	secretName := "pgs-secretstore"
 	secretResourceName := appName + "/" + secretName
 	userName := "postgres"
 	password := "abc-123-hgd-@#$'"

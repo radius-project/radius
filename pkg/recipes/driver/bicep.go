@@ -19,6 +19,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	reflect "reflect"
 	"strconv"
 	"time"
 
@@ -94,7 +95,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 		return nil, err
 	}
 
-	if secrets != nil {
+	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
 		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
 		if err != nil {
 			return nil, err
@@ -277,7 +278,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (
 		return nil, err
 	}
 
-	if secrets != nil {
+	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
 		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
 		if err != nil {
 			return nil, err
@@ -445,7 +446,7 @@ func (d *bicepDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Confi
 	return secretStoreIDResourceKeys, err
 }
 
-func getRegistryAuthClient(ctx context.Context, secrets map[string]string, templatePath string) (remote.Client, error) {
+func getRegistryAuthClient(ctx context.Context, secrets recipes.SecretData, templatePath string) (remote.Client, error) {
 	newRegistryClient, err := authClient.GetNewRegistryAuthClient(secrets)
 	if err != nil {
 		return nil, err

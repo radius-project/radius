@@ -135,10 +135,10 @@ func parsePath(path string) (repository string, tag string, err error) {
 	return
 }
 
-func GetRegistrySecrets(definition recipes.Configuration, templatePath string, secrets map[string]map[string]string) (map[string]string, error) {
+func GetRegistrySecrets(definition recipes.Configuration, templatePath string, secrets map[string]recipes.SecretData) (recipes.SecretData, error) {
 	parsedURL, err := url.Parse("https://" + templatePath)
 	if err != nil {
-		return nil, err
+		return recipes.SecretData{}, err
 	}
 
 	return secrets[definition.RecipeConfig.Bicep.Authentication[parsedURL.Host].Secret], nil

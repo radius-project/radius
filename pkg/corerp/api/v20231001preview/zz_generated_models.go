@@ -1323,7 +1323,7 @@ type RecipeConfigProperties struct {
 	// Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.
 	Bicep *BicepConfigProperties
 
-	// Environment variables injected during Terraform Recipe execution for the recipes in the environment.
+	// Environment variables injected during recipe execution for the recipes in the environment.
 	Env map[string]*string
 
 	// Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores

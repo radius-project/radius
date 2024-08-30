@@ -42,8 +42,8 @@ func Test_GetRegistrySecrets(t *testing.T) {
 	testset := []struct {
 		definition   recipes.Configuration
 		templatePath string
-		secrets      map[string]map[string]string
-		exp          map[string]string
+		secrets      map[string]recipes.SecretData
+		exp          recipes.SecretData
 	}{
 		{
 			definition: recipes.Configuration{
@@ -61,15 +61,21 @@ func Test_GetRegistrySecrets(t *testing.T) {
 				},
 			},
 			templatePath: "test.azurecr.io/test-private-registry:latest",
-			secrets: map[string]map[string]string{
+			secrets: map[string]recipes.SecretData{
 				"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr": {
+					Type: "basicAuthentication",
+					Data: map[string]string{
+						"username": "test-username",
+						"password": "test-password",
+					},
+				},
+			},
+			exp: recipes.SecretData{
+				Type: "basicAuthentication",
+				Data: map[string]string{
 					"username": "test-username",
 					"password": "test-password",
 				},
-			},
-			exp: map[string]string{
-				"username": "test-username",
-				"password": "test-password",
 			},
 		},
 		{
@@ -79,13 +85,16 @@ func Test_GetRegistrySecrets(t *testing.T) {
 				},
 			},
 			templatePath: "test.azurecr.io/test-private-registry:latest",
-			secrets: map[string]map[string]string{
+			secrets: map[string]recipes.SecretData{
 				"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr": {
-					"username": "test-username",
-					"password": "test-password",
+					Type: "basicAuthentication",
+					Data: map[string]string{
+						"username": "test-username",
+						"password": "test-password",
+					},
 				},
 			},
-			exp: nil,
+			exp: recipes.SecretData{},
 		},
 	}
 	for _, tc := range testset {

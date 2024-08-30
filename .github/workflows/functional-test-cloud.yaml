@@ -63,7 +63,7 @@ env:
   # Azure Keyvault CSI driver chart version
   AZURE_KEYVAULT_CSI_DRIVER_VER: "1.4.2"
   # Azure workload identity webhook chart version
-  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: "1.1.0"
+  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: "1.3.0"
   # Container registry for storing container images
   CONTAINER_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing Bicep recipe artifacts
@@ -90,12 +90,14 @@ env:
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
   # The number of failed tests to report.
   ISSUE_CREATE_THRESHOLD: 2
+  # bicep-types ACR url for uploading Radius Bicep types
+  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
 
 jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     env:
       DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
       DE_TAG: "latest"
@@ -117,7 +119,13 @@ jobs:
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
 
       - name: Set up checkout target (scheduled)
-        if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
+        if: github.event_name == 'schedule'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+
+      - name: Set up checkout target (repository_dispatch)
+        if: github.event_name == 'repository_dispatch'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
@@ -312,6 +320,64 @@ jobs:
           append: true
           message: |
             :hourglass: Publishing Bicep Recipes for functional tests...
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Generate Bicep extensibility types from OpenAPI specs
+        run: |
+          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+
+      - name: Upload Radius Bicep types artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius_bicep_types_cloud
+          path: ./hack/bicep-types-radius/generated
+          if-no-files-found: error
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
+
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
+          
+      - name: Publish bicep types 
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+
+      - name: Generate test bicepconfig.json
+        run: |
+          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+            RADIUS_VERSION="latest"
+          else
+            RADIUS_VERSION="${{ env.REL_VERSION }}"
+          fi
+          cat <<EOF > ./test/bicepconfig.json
+          {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true,
+              "extensionRegistry": true,
+              "dynamicTypeLoading": true
+            },
+            "extensions": {
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+            },
+            "cloud": {
+              "credentialPrecedence": ["Environment"]
+            }
+          }
+          EOF
 
       - name: Publish Bicep Test Recipes
         run: |
@@ -348,11 +414,11 @@ jobs:
           append: true
           message: |
             :x: Test recipe publishing failed
-
+  
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: build
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
+    needs: [build]
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: true
       matrix:
@@ -556,7 +622,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }},global.azureWorkloadIdentity.enabled=true
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -570,8 +636,8 @@ jobs:
           echo "*** Configuring Azure provider ***"
           rad env update kind-radius --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          rad credential register azure sp --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
-            --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+          rad credential register azure wi \
+            --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
           echo "*** Configuring AWS provider ***"
@@ -593,7 +659,29 @@ jobs:
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
-
+      - name: Generate test bicepconfig.json
+        run: |
+          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+            RADIUS_VERSION="latest"
+          else
+            RADIUS_VERSION="${{ env.REL_VERSION }}"
+          fi
+          cat <<EOF > ./test/bicepconfig.json
+          {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true,
+              "extensionRegistry": true,
+              "dynamicTypeLoading": true
+            },
+            "extensions": {
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+            },
+            "cloud": {
+              "credentialPrecedence": ["Environment"]
+            }
+          }
+          EOF
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
@@ -605,11 +693,7 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
 
           # Populate the following test environment variables from JSON secret.
-          # AZURE_MONGODB_RESOURCE_ID
           # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-          # AZURE_TABLESTORAGE_RESOURCE_ID
-          # AZURE_SERVICEBUS_RESOURCE_ID
-          # AZURE_REDIS_RESOURCE_ID
           # AZURE_MSSQL_RESOURCE_ID
           # AZURE_MSSQL_USERNAME
           # AZURE_MSSQL_PASSWORD

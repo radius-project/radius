@@ -1,7 +1,7 @@
-import kubernetes as kubernetes {
+extension kubernetes with {
   namespace: context.runtime.kubernetes.namespace
   kubeConfig: ''
-}
+} as kubernetes
 
 param context object
 
@@ -14,6 +14,7 @@ module redis '../../../test/testrecipes/modules/redis-selfhost.bicep' = {
   }
 }
 
+#disable-next-line BCP081
 resource dapr 'dapr.io/Component@v1alpha1' = {
   metadata: {
     name: context.resource.name

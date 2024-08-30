@@ -1,7 +1,7 @@
-import kubernetes as kubernetes {
+extension kubernetes with {
   kubeConfig: ''
   namespace: context.runtime.kubernetes.namespace
-}
+} as kubernetes
 
 param context object
 
@@ -90,6 +90,7 @@ output result object = {
     username: username
   }
   secrets: {
+    #disable-next-line outputs-should-not-contain-secrets
     password: password
   }
 }

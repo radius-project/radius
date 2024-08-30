@@ -20,10 +20,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/radius-project/radius/pkg/version"
 )
 
 const (
-	appBicepTemplate = `import radius as radius
+	appBicepTemplate = `extension radius
 
 @description('The Radius Application ID. Injected automatically by the rad CLI.')
 param application string
@@ -47,6 +49,18 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 	radYamlTemplate = `workspace:
   application: %q
 ` // Trailing newline intentional.
+
+	bicepConfigTemplate = `{
+	"experimentalFeaturesEnabled": {
+		"extensibility": true,
+		"extensionRegistry": true,
+		"dynamicTypeLoading": true
+	},
+	"extensions": {
+		"radius": "br:biceptypes.azurecr.io/radius:%s",
+		"aws": "br:biceptypes.azurecr.io/aws:%s"
+	}
+}`
 )
 
 // ScaffoldApplication creates a working sample application in the provided directory
@@ -60,7 +74,7 @@ func ScaffoldApplication(directory string, name string) error {
 		return err
 	}
 
-	// We NEVER overwrite app.bicep if it exists. We assume the user might have changed it, and don't
+	// We NEVER overwrite app.bicep or the bicepconfig.json if it exists. We assume the user might have changed it, and don't
 	// want them to lose their content.
 	//
 	// On the other hand, we ALWAYS overwrite rad.yaml if it exists. We assume that the reason why
@@ -76,6 +90,17 @@ func ScaffoldApplication(directory string, name string) error {
 		return err
 	}
 
+	bicepConfigFilepath := filepath.Join(directory, "bicepconfig.json")
+	_, err = os.Stat(bicepConfigFilepath)
+	if os.IsNotExist(err) {
+		err = os.WriteFile(bicepConfigFilepath, []byte(getVersionedBicepConfig()), 0644)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
 	radYamlFilepath := filepath.Join(directory, ".rad", "rad.yaml")
 	err = os.WriteFile(radYamlFilepath, []byte(fmt.Sprintf(radYamlTemplate, name)), 0644)
 	if err != nil {
@@ -83,4 +108,13 @@ func ScaffoldApplication(directory string, name string) error {
 	}
 
 	return nil
+}
+
+func getVersionedBicepConfig() string {
+	tag := version.Channel()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
+
+	return fmt.Sprintf(bicepConfigTemplate, tag, tag)
 }

@@ -108,6 +108,12 @@ type RecipeOutput struct {
 	Status *rpv1.RecipeStatus
 }
 
+// SecretData represents secrets data and includes secret type and a map of secret keys to their values.
+type SecretData struct {
+	Type string            `json:"type"`
+	Data map[string]string `json:"data"`
+}
+
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.
 // outputs map is the value of "result" output from the recipe deployment response.
 func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error {

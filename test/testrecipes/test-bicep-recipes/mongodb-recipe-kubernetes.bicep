@@ -1,7 +1,7 @@
-import kubernetes as kubernetes {
+extension kubernetes with {
   kubeConfig: ''
   namespace: context.runtime.kubernetes.namespace
-}
+} as kubernetes
 
 param context object
 
@@ -102,8 +102,10 @@ output result object = {
     database: context.resource.name
   }
   secrets: {
+    #disable-next-line outputs-should-not-contain-secrets
     connectionString: 'mongodb://${username}:${password}@${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local:27017'
     username: username
+  #disable-next-line outputs-should-not-contain-secrets
     password: password
   }
 }
