@@ -1312,7 +1312,8 @@ type Recipe struct {
 
 // RecipeConfigProperties - Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 type RecipeConfigProperties struct {
-	// Environment variables injected during recipe execution for the recipes in the environment.
+	// Environment variables injected during recipe execution for the recipes in the environment, currently supported for Terraform
+// recipes.
 	Env map[string]*string
 
 	// Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores

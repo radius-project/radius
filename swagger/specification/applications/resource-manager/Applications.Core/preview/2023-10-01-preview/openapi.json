@@ -4356,7 +4356,7 @@
         },
         "env": {
           "$ref": "#/definitions/EnvironmentVariables",
-          "description": "Environment variables injected during recipe execution for the recipes in the environment."
+          "description": "Environment variables injected during recipe execution for the recipes in the environment, currently supported for Terraform recipes."
         },
         "envSecrets": {
           "type": "object",
@@ -4692,7 +4692,7 @@
           {
             "name": "awsIRSA",
             "value": "awsIRSA",
-            "description": "awsIRSA type is used to represent registry authentication using AWS IRSA(IAM Roles for Service accounts) and the secretstore resource is expected to have the keys 'roleARN'."
+            "description": "awsIRSA type is used to represent registry authentication using AWS IRSA (IAM Roles for Service accounts) and the secretstore resource is expected to have the key 'roleARN'."
           }
         ]
       }
