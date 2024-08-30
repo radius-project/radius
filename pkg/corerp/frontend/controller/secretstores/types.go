@@ -19,4 +19,11 @@ package secretstores
 const (
 	// ResourceTypeName is the resource type name for secret stores.
 	ResourceTypeName = "Applications.Core/secretStores"
+
+	// The following are possible required keys in a SecretStore depending on it's SecretType
+	RequiredUsername = "username"
+	RequiredPassword = "password"
+	RequiredClientId = "clientId"
+	RequiredTenantId = "tenantId"
+	RequiredRoleARN  = "roleARN"
 )

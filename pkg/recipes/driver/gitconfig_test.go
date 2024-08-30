@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -192,24 +193,31 @@ func Test_GetGitURL(t *testing.T) {
 // Additional tests exist for inner function call addSecretsToGitConfig() in TestAddConfig().
 func Test_addSecretsToGitConfigIfApplicable(t *testing.T) {
 	templatePath := "git::dev.azure.com/project/module"
+	secretDetails := map[string]recipes.SecretData{
+		"existingID": {
+			Type: "generic",
+			Data: map[string]string{"key": "value"},
+		},
+	}
+
 	tests := []struct {
 		name          string
 		secretStoreID string
-		secretData    map[string]map[string]string
+		secretData    map[string]recipes.SecretData
 		expectError   bool
 		expectErrMsg  string
 	}{
 		{
 			name:          "Secrets not found for secret store ID",
 			secretStoreID: "missingID",
-			secretData:    map[string]map[string]string{"existingID": {"key": "value"}},
+			secretData:    secretDetails,
 			expectError:   true,
 			expectErrMsg:  "secrets not found for secret store ID \"missingID\"",
 		},
 		{
 			name:          "Successful secrets addition",
 			secretStoreID: "existingID",
-			secretData:    map[string]map[string]string{"existingID": {"key": "value"}},
+			secretData:    secretDetails,
 			expectError:   false,
 		},
 		{
@@ -247,7 +255,7 @@ func Test_unsetGitConfigForDirIfApplicable(t *testing.T) {
 	tests := []struct {
 		name             string
 		secretStoreID    string
-		secretData       map[string]map[string]string
+		secretData       map[string]recipes.SecretData
 		expectError      bool
 		expectErrMsg     string
 		expectCallToFunc bool
@@ -255,14 +263,24 @@ func Test_unsetGitConfigForDirIfApplicable(t *testing.T) {
 		{
 			name:          "Secrets not found for secret store ID",
 			secretStoreID: "missingID",
-			secretData:    map[string]map[string]string{"existingID": {"key": "value"}},
-			expectError:   true,
-			expectErrMsg:  "secrets not found for secret store ID \"missingID\"",
+			secretData: map[string]recipes.SecretData{
+				"existingID": {
+					Type: "generic",
+					Data: map[string]string{"key": "value"},
+				},
+			},
+			expectError:  true,
+			expectErrMsg: "secrets not found for secret store ID \"missingID\"",
 		},
 		{
-			name:             "Successful call to unsetGitConfigForDir",
-			secretStoreID:    "existingID",
-			secretData:       map[string]map[string]string{"existingID": {"username": "test-user"}, "pat": {"pat": "ghp_token"}},
+			name:          "Successful call to unsetGitConfigForDir",
+			secretStoreID: "existingID",
+			secretData: map[string]recipes.SecretData{
+				"existingID": {
+					Type: "generic",
+					Data: map[string]string{"username": "test-user", "pat": "ghp_token"},
+				},
+			},
 			expectError:      false,
 			expectCallToFunc: true,
 		},

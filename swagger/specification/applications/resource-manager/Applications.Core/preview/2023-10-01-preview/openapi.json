@@ -4356,7 +4356,7 @@
         },
         "env": {
           "$ref": "#/definitions/EnvironmentVariables",
-          "description": "Environment variables injected during Terraform Recipe execution for the recipes in the environment."
+          "description": "Environment variables injected during recipe execution for the recipes in the environment."
         },
         "envSecrets": {
           "type": "object",
@@ -4660,7 +4660,10 @@
       "description": "The type of SecretStore data",
       "enum": [
         "generic",
-        "certificate"
+        "certificate",
+        "basicAuthentication",
+        "azureWorkloadIdentity",
+        "awsIRSA"
       ],
       "x-ms-enum": {
         "name": "SecretStoreDataType",
@@ -4675,6 +4678,21 @@
             "name": "certificate",
             "value": "certificate",
             "description": "Certificate secret data type"
+          },
+          {
+            "name": "basicAuthentication",
+            "value": "basicAuthentication",
+            "description": "basicAuthentication type is used to represent username and password based authentication and the secretstore resource is expected to have the keys 'username' and 'password'."
+          },
+          {
+            "name": "azureWorkloadIdentity",
+            "value": "azureWorkloadIdentity",
+            "description": "azureWorkloadIdentity type is used to represent registry authentication using azure federated identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'."
+          },
+          {
+            "name": "awsIRSA",
+            "value": "awsIRSA",
+            "description": "awsIRSA type is used to represent registry authentication using AWS IRSA(IAM Roles for Service accounts) and the secretstore resource is expected to have the keys 'roleARN'."
           }
         ]
       }
