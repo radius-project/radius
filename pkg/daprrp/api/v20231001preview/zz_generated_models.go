@@ -18,7 +18,7 @@ type DaprPubSubBrokerProperties struct {
 	Application *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValue
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe
@@ -39,7 +39,7 @@ type DaprPubSubBrokerProperties struct {
 	Version *string
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
+	// use the Dapr component.
 	ComponentName *string
 
 	// READ-ONLY; The status of the asynchronous operation.
@@ -100,7 +100,7 @@ type DaprPubSubBrokerResourceUpdateProperties struct {
 	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValueUpdate
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *RecipeUpdate
@@ -130,7 +130,7 @@ type DaprSecretStoreProperties struct {
 	Application *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValue
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe
@@ -145,7 +145,7 @@ type DaprSecretStoreProperties struct {
 	Version *string
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
+	// use the Dapr component.
 	ComponentName *string
 
 	// READ-ONLY; The status of the asynchronous operation.
@@ -206,7 +206,7 @@ type DaprSecretStoreResourceUpdateProperties struct {
 	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValueUpdate
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *RecipeUpdate
@@ -230,7 +230,7 @@ type DaprStateStoreProperties struct {
 	Application *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValue
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe
@@ -251,7 +251,7 @@ type DaprStateStoreProperties struct {
 	Version *string
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
+	// use the Dapr component.
 	ComponentName *string
 
 	// READ-ONLY; The status of the asynchronous operation.
@@ -312,7 +312,7 @@ type DaprStateStoreResourceUpdateProperties struct {
 	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValueUpdate
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *RecipeUpdate
@@ -412,16 +412,39 @@ type KubernetesCompute struct {
 // GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type KubernetesCompute.
 func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 	return &EnvironmentCompute{
-		Identity: k.Identity,
-		Kind: k.Kind,
+		Identity:   k.Identity,
+		Kind:       k.Kind,
 		ResourceID: k.ResourceID,
 	}
+}
+
+type MetadataValue struct {
+	SecretKeyRef *MetadataValueFromSecret
+	Value        *string
+}
+
+type MetadataValueFromSecret struct {
+	// REQUIRED
+	Key *string
+
+	// REQUIRED
+	Name *string
+}
+
+type MetadataValueFromSecretUpdate struct {
+	Key  *string
+	Name *string
+}
+
+type MetadataValueUpdate struct {
+	SecretKeyRef *MetadataValueFromSecretUpdate
+	Value        *string
 }
 
 // NonRedundantDaprResourceProperties - The base properties of a Dapr component object.
 type NonRedundantDaprResourceProperties struct {
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValue
 
 	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string
@@ -430,7 +453,7 @@ type NonRedundantDaprResourceProperties struct {
 	Version *string
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
+	// use the Dapr component.
 	ComponentName *string
 }
 
@@ -443,15 +466,15 @@ type Operation struct {
 	ActionType *ActionType
 
 	// READ-ONLY; Whether the operation applies to data-plane. This is "true" for data-plane operations and "false" for ARM/control-plane
-// operations.
+	// operations.
 	IsDataAction *bool
 
 	// READ-ONLY; The name of the operation, as per Resource-Based Access Control (RBAC). Examples: "Microsoft.Compute/virtualMachines/write",
-// "Microsoft.Compute/virtualMachines/capture/action"
+	// "Microsoft.Compute/virtualMachines/capture/action"
 	Name *string
 
 	// READ-ONLY; The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
-// value is "user,system"
+	// value is "user,system"
 	Origin *Origin
 }
 
@@ -461,15 +484,15 @@ type OperationDisplay struct {
 	Description *string
 
 	// READ-ONLY; The concise, localized friendly name for the operation; suitable for dropdowns. E.g. "Create or Update Virtual
-// Machine", "Restart Virtual Machine".
+	// Machine", "Restart Virtual Machine".
 	Operation *string
 
 	// READ-ONLY; The localized friendly form of the resource provider name, e.g. "Microsoft Monitoring Insights" or "Microsoft
-// Compute".
+	// Compute".
 	Provider *string
 
 	// READ-ONLY; The localized friendly name of the resource type related to this operation. E.g. "Virtual Machines" or "Job
-// Schedule Collections".
+	// Schedule Collections".
 	Resource *string
 }
 
@@ -489,8 +512,8 @@ type OutputResource struct {
 	ID *string
 
 	// The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency
-// relationship. LocalIDs do not have any particular format or meaning beyond
-// being compared to determine dependency relationships.
+	// relationship. LocalIDs do not have any particular format or meaning beyond
+	// being compared to determine dependency relationships.
 	LocalID *string
 
 	// Determines whether Radius manages the lifecycle of the underlying resource.
@@ -602,4 +625,3 @@ type TrackedResource struct {
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
-

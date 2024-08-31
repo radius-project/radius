@@ -983,7 +983,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValue"
+          }
         },
         "type": {
           "type": "string",
@@ -1093,7 +1095,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValueUpdate"
+          }
         },
         "type": {
           "type": "string",
@@ -1154,7 +1158,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValue"
+          }
         },
         "type": {
           "type": "string",
@@ -1253,7 +1259,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValueUpdate"
+          }
         },
         "type": {
           "type": "string",
@@ -1303,7 +1311,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValue"
+          }
         },
         "type": {
           "type": "string",
@@ -1413,7 +1423,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValueUpdate"
+          }
         },
         "type": {
           "type": "string",
@@ -1530,6 +1542,54 @@
       ],
       "x-ms-discriminator-value": "kubernetes"
     },
+    "MetadataValue": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "secretKeyRef": {
+          "$ref": "#/definitions/MetadataValueFromSecret"
+        }
+      }
+    },
+    "MetadataValueFromSecret": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "key"
+      ]
+    },
+    "MetadataValueFromSecretUpdate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        }
+      }
+    },
+    "MetadataValueUpdate": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "secretKeyRef": {
+          "$ref": "#/definitions/MetadataValueFromSecretUpdate"
+        }
+      }
+    },
     "NonRedundantDaprResourceProperties": {
       "type": "object",
       "description": "The base properties of a Dapr component object.",
@@ -1542,7 +1602,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValue"
+          }
         },
         "type": {
           "type": "string",
