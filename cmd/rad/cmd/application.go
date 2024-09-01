@@ -28,7 +28,7 @@ func NewAppCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:     "application",
 		Aliases: []string{"app"},
-		Short:   "Manage Radius Applications",
+		Short:   "Manage Radius Applicationssss",
 		Long:    `Manage Radius Applications`,
 	}
 }
