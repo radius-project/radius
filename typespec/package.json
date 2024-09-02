@@ -4,7 +4,7 @@
   "type": "module",
   "dependencies": {
     "@typespec/compiler": "latest",
-    "@azure-tools/typespec-autorest": "latest",
+    "@azure-tools/typespec-autorest": "0.44.1",
     "@azure-tools/typespec-azure-core": "latest",
     "@azure-tools/typespec-azure-resource-manager": "latest",
     "@azure-tools/typespec-providerhub": "latest",
