@@ -8,7 +8,7 @@
     "@azure-tools/typespec-azure-core": "latest",
     "@azure-tools/typespec-azure-resource-manager": "latest",
     "@azure-tools/typespec-providerhub": "latest",
-    "@typespec/http": "latest",
+    "@typespec/http": "0.59.0",
     "@typespec/openapi": "latest",
     "@typespec/rest": "latest",
     "@typespec/versioning": "latest"
