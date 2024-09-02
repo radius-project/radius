@@ -40,14 +40,15 @@ model DaprResourceProperties {
 
 @doc("Authentication properties for a Dapr component object")
 model DaprResourceAuth {
-    @doc("Secret store to fetch secrets from")
-    secretStore?: string;
+  @doc("Secret store to fetch secrets from")
+  secretStore?: string;
 }
 
 @doc("A single metadata for a Dapr component object")
 model MetadataValue {
   @doc("The plain text value of the metadata")
   value?: string;
+
   @doc("A reference of a value in a secret store component")
   secretKeyRef?: MetadataValueFromSecret;
 }
@@ -56,6 +57,7 @@ model MetadataValue {
 model MetadataValueFromSecret {
   @doc("Secret name in the secret store component")
   name: string;
+
   @doc("The field to select in the secret value. If the secret value is a string, it should be equal to the secret name")
   key: string;
 }
