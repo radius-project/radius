@@ -21,12 +21,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/radius-project/radius/pkg/cli/helm"
-	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s_runtime "k8s.io/apimachinery/pkg/runtime"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -121,18 +121,18 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 	return nil
 }
 
-// DeleteNamespace delete the specified namespace.
-func DeleteNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
-	gracePeriodSeconds := int64(10)
+// deleteNamespace delete the specified namespace.
+func deleteNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	if err := client.CoreV1().Namespaces().
-		Delete(ctx, namespace, metav1.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds}); err != nil {
+		Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
 
+	// Ensure the namespace is deleted. This will block until the namespace is no longer exist.
 	err := wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (done bool, err error) {
 		_, err = client.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 		if err != nil {
-			if errors2.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				return true, nil
 			}
 			return false, err
@@ -203,12 +203,11 @@ func (i *Impl) GetKubeContext() (*api.Config, error) {
 }
 
 func (i *Impl) DeleteNamespace(kubeContext string) error {
-	output.LogInfo("Deleting namespace: %s", helm.RadiusSystemNamespace)
 	clientSet, _, err := NewClientset(kubeContext)
 	if err != nil {
 		return err
 	}
-	if err := DeleteNamespace(context.Background(), clientSet, helm.RadiusSystemNamespace); err != nil {
+	if err := deleteNamespace(context.Background(), clientSet, helm.RadiusSystemNamespace); err != nil {
 		return err
 	}
 	return nil

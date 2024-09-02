@@ -49,7 +49,7 @@ rad uninstall kubernetes --kubecontext my-kubecontext`,
 	}
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
-	commonflags.AddPurgeFlagVar(cmd, &runner.Purge)
+	cmd.Flags().BoolVar(&runner.Purge, "purge", false, "Delete all data stored by Radius.")
 
 	return cmd, runner
 }
@@ -103,7 +103,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.Purge {
-		r.Output.LogInfo("Deleting namespace...")
+		r.Output.LogInfo("Deleting namespace %s", helm.RadiusSystemNamespace)
 		if err := r.Kubernetes.DeleteNamespace(r.KubeContext); err != nil {
 			return err
 		}

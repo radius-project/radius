@@ -150,7 +150,8 @@ func Test_Run(t *testing.T) {
 				Format: "Uninstalling Radius...",
 			},
 			output.LogOutput{
-				Format: "Deleting namespace...",
+				Format: "Deleting namespace %s",
+				Params: []any{helm.RadiusSystemNamespace},
 			},
 			output.LogOutput{
 				Format: "Radius was fully uninstalled. Any existing data have been removed.",

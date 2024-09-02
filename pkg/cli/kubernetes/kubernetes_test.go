@@ -19,13 +19,13 @@ package kubernetes
 import (
 	"context"
 	"errors"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"os"
 	"testing"
 
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
@@ -54,13 +54,13 @@ func TestDeleteNamespace(t *testing.T) {
 	namespace := "radius-test"
 	f := k8sfake.NewSimpleClientset(&v1.Namespace{ObjectMeta: meta_v1.ObjectMeta{Name: namespace}})
 
-	ctx := context.TODO()
+	ctx := context.Background()
 	_, err := f.CoreV1().Namespaces().Get(ctx, namespace, meta_v1.GetOptions{})
 	require.NoError(t, err)
-	err = DeleteNamespace(ctx, f, namespace)
+	err = deleteNamespace(ctx, f, namespace)
 	require.NoError(t, err)
 	_, err = f.CoreV1().Namespaces().Get(ctx, namespace, meta_v1.GetOptions{})
-	require.True(t, k8serrors.IsNotFound(err), "expected not found error but got %v", err)
+	require.True(t, apierrors.IsNotFound(err), "expected not found error but got %v", err)
 }
 
 func TestGetContextFromConfigFileIfExists(t *testing.T) {
