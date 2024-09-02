@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "dependencies": {
-    "@typespec/compiler": "latest",
+    "@typespec/compiler": "0.59.0",
     "@azure-tools/typespec-autorest": "latest",
     "@azure-tools/typespec-azure-core": "latest",
     "@azure-tools/typespec-azure-resource-manager": "latest",
