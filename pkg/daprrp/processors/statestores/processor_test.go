@@ -182,10 +182,12 @@ func Test_Process(t *testing.T) {
 							},
 						},
 					},
-					Resources:                []*portableresources.ResourceReference{{ID: externalResourceID1}},
-					Type:                     "state.redis",
-					Version:                  "v1",
-					SecretStoreComponentName: secretStoreComponentName,
+					Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+					Type:      "state.redis",
+					Version:   "v1",
+					Auth: &rpv1.DaprComponentAuth{
+						SecretStore: secretStoreComponentName,
+					},
 				},
 				generated: &unstructured.Unstructured{
 					Object: map[string]any{

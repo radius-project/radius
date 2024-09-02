@@ -27,10 +27,10 @@ import (
 )
 
 type DaprGeneric struct {
-	Type                     *string
-	Version                  *string
-	Metadata                 map[string]*rpv1.DaprComponentMetadataValue
-	SecretStoreComponentName *string
+	Type     *string
+	Version  *string
+	Metadata map[string]*rpv1.DaprComponentMetadataValue
+	Auth     *rpv1.DaprComponentAuth
 }
 
 // Validate checks if the required fields of a DaprGeneric struct are set and returns an error if any of them are not.
@@ -103,9 +103,9 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, namespace string, componentNa
 	// Although an empty string value to the "secretStore" property is valid according to Dapr specs,
 	// meaning no secret store is used, it may cause confusion to users.
 	// Therefore, we only add the "auth" property if the secret store is specified.
-	if daprGeneric.SecretStoreComponentName != nil && *daprGeneric.SecretStoreComponentName != "" {
+	if daprGeneric.Auth != nil && daprGeneric.Auth.SecretStore != "" {
 		item.Object["auth"] = map[string]any{
-			"secretStore": *daprGeneric.SecretStoreComponentName,
+			"secretStore": daprGeneric.Auth.SecretStore,
 		}
 	}
 	return item, nil

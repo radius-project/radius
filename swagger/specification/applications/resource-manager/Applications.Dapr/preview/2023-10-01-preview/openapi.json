@@ -995,8 +995,8 @@
           "type": "string",
           "description": "Dapr component version"
         },
-        "secretStoreComponentName": {
-          "type": "string",
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
           "description": "The name of the Dapr component to be used as a secret store"
         },
         "resources": {
@@ -1107,8 +1107,8 @@
           "type": "string",
           "description": "Dapr component version"
         },
-        "secretStoreComponentName": {
-          "type": "string",
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
           "description": "The name of the Dapr component to be used as a secret store"
         },
         "resources": {
@@ -1125,6 +1125,16 @@
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
+    "DaprResourceAuth": {
+      "type": "object",
+      "description": "Authentication properties for a Dapr component object",
+      "properties": {
+        "secretStore": {
+          "type": "string",
+          "description": "Secret store to fetch secrets from"
         }
       }
     },
@@ -1323,8 +1333,8 @@
           "type": "string",
           "description": "Dapr component version"
         },
-        "secretStoreComponentName": {
-          "type": "string",
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
           "description": "The name of the Dapr component to be used as a secret store"
         },
         "resources": {
@@ -1435,8 +1445,8 @@
           "type": "string",
           "description": "Dapr component version"
         },
-        "secretStoreComponentName": {
-          "type": "string",
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
           "description": "The name of the Dapr component to be used as a secret store"
         },
         "resources": {

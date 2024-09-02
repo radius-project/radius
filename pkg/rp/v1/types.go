@@ -65,6 +65,12 @@ type DaprComponentSecretRef struct {
 	Key string `json:"key,omitempty"`
 }
 
+// DaprComponentAuth represents the auth configuration for a Dapr component
+type DaprComponentAuth struct {
+	// SecretStore is the name of the secret store to fetch secrets from
+	SecretStore string `json:"secretStore,omitempty"`
+}
+
 // Method EqualLinkedResource compares two BasicResourceProperties objects and returns true if their Application and
 // Environment fields are equal (i.e. resource belongs to the same env and app).
 func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {

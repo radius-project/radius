@@ -18,6 +18,7 @@ import (
 func (d DaprPubSubBrokerProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", d.Application)
+	populate(objectMap, "auth", d.Auth)
 	populate(objectMap, "componentName", d.ComponentName)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "metadata", d.Metadata)
@@ -25,7 +26,6 @@ func (d DaprPubSubBrokerProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "secretStoreComponentName", d.SecretStoreComponentName)
 	populate(objectMap, "status", d.Status)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -43,6 +43,9 @@ func (d *DaprPubSubBrokerProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &d.Application)
+			delete(rawMsg, key)
+		case "auth":
+			err = unpopulate(val, "Auth", &d.Auth)
 			delete(rawMsg, key)
 		case "componentName":
 			err = unpopulate(val, "ComponentName", &d.ComponentName)
@@ -64,9 +67,6 @@ func (d *DaprPubSubBrokerProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resources":
 			err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "secretStoreComponentName":
-			err = unpopulate(val, "SecretStoreComponentName", &d.SecretStoreComponentName)
 			delete(rawMsg, key)
 		case "status":
 			err = unpopulate(val, "Status", &d.Status)
@@ -202,12 +202,12 @@ func (d *DaprPubSubBrokerResourceUpdate) UnmarshalJSON(data []byte) error {
 func (d DaprPubSubBrokerResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", d.Application)
+	populate(objectMap, "auth", d.Auth)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "secretStoreComponentName", d.SecretStoreComponentName)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
 	return json.Marshal(objectMap)
@@ -225,6 +225,9 @@ func (d *DaprPubSubBrokerResourceUpdateProperties) UnmarshalJSON(data []byte) er
 		case "application":
 			err = unpopulate(val, "Application", &d.Application)
 			delete(rawMsg, key)
+		case "auth":
+			err = unpopulate(val, "Auth", &d.Auth)
+			delete(rawMsg, key)
 		case "environment":
 			err = unpopulate(val, "Environment", &d.Environment)
 			delete(rawMsg, key)
@@ -240,14 +243,38 @@ func (d *DaprPubSubBrokerResourceUpdateProperties) UnmarshalJSON(data []byte) er
 		case "resources":
 			err = unpopulate(val, "Resources", &d.Resources)
 			delete(rawMsg, key)
-		case "secretStoreComponentName":
-			err = unpopulate(val, "SecretStoreComponentName", &d.SecretStoreComponentName)
-			delete(rawMsg, key)
 		case "type":
 			err = unpopulate(val, "Type", &d.Type)
 			delete(rawMsg, key)
 		case "version":
 			err = unpopulate(val, "Version", &d.Version)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", d, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprResourceAuth.
+func (d DaprResourceAuth) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "secretStore", d.SecretStore)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprResourceAuth.
+func (d *DaprResourceAuth) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", d, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "secretStore":
+			err = unpopulate(val, "SecretStore", &d.SecretStore)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -488,6 +515,7 @@ func (d *DaprSecretStoreResourceUpdateProperties) UnmarshalJSON(data []byte) err
 func (d DaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", d.Application)
+	populate(objectMap, "auth", d.Auth)
 	populate(objectMap, "componentName", d.ComponentName)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "metadata", d.Metadata)
@@ -495,7 +523,6 @@ func (d DaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "secretStoreComponentName", d.SecretStoreComponentName)
 	populate(objectMap, "status", d.Status)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -513,6 +540,9 @@ func (d *DaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &d.Application)
+			delete(rawMsg, key)
+		case "auth":
+			err = unpopulate(val, "Auth", &d.Auth)
 			delete(rawMsg, key)
 		case "componentName":
 			err = unpopulate(val, "ComponentName", &d.ComponentName)
@@ -534,9 +564,6 @@ func (d *DaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resources":
 			err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "secretStoreComponentName":
-			err = unpopulate(val, "SecretStoreComponentName", &d.SecretStoreComponentName)
 			delete(rawMsg, key)
 		case "status":
 			err = unpopulate(val, "Status", &d.Status)
@@ -672,12 +699,12 @@ func (d *DaprStateStoreResourceUpdate) UnmarshalJSON(data []byte) error {
 func (d DaprStateStoreResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", d.Application)
+	populate(objectMap, "auth", d.Auth)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "secretStoreComponentName", d.SecretStoreComponentName)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
 	return json.Marshal(objectMap)
@@ -695,6 +722,9 @@ func (d *DaprStateStoreResourceUpdateProperties) UnmarshalJSON(data []byte) erro
 		case "application":
 			err = unpopulate(val, "Application", &d.Application)
 			delete(rawMsg, key)
+		case "auth":
+			err = unpopulate(val, "Auth", &d.Auth)
+			delete(rawMsg, key)
 		case "environment":
 			err = unpopulate(val, "Environment", &d.Environment)
 			delete(rawMsg, key)
@@ -709,9 +739,6 @@ func (d *DaprStateStoreResourceUpdateProperties) UnmarshalJSON(data []byte) erro
 			delete(rawMsg, key)
 		case "resources":
 			err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "secretStoreComponentName":
-			err = unpopulate(val, "SecretStoreComponentName", &d.SecretStoreComponentName)
 			delete(rawMsg, key)
 		case "type":
 			err = unpopulate(val, "Type", &d.Type)

@@ -62,6 +62,9 @@ resource pubsubBroker 'Applications.Dapr/pubSubBrokers@2023-10-01-preview' = {
     environment: environment
     resourceProvisioning: 'manual'
     type: 'pubsub.redis'
+    auth: {
+        secretStore: secretstore.name
+    }
     metadata: {
       redisHost: {
         value: '${redis.outputs.host}:${redis.outputs.port}'

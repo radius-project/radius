@@ -62,7 +62,9 @@ resource statestore 'Applications.Dapr/stateStores@2023-10-01-preview' = {
     environment: environment
     resourceProvisioning: 'manual'
     type: 'state.redis'
-    secretStoreComponentName: secretstore.name
+    auth: {
+        secretStore: secretstore.name
+    }
     metadata: {
       redisHost: {
         value: '${redis.outputs.host}:${redis.outputs.port}'

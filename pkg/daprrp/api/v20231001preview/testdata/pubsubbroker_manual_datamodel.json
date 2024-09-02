@@ -15,7 +15,9 @@
     "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
   },
   "properties": {
-    "secretStoreComponentName": "test-secretstore",
+    "auth": {
+      "secretStore": "test-secret-store"
+    },
     "componentName": "test-dpsb",
     "status": {
       "outputResources": [

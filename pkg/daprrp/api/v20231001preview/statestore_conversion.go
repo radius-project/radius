@@ -45,7 +45,7 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	converted.Properties.Resources = toResourcesDataModel(src.Properties.Resources)
-	converted.Properties.SecretStoreComponentName = to.String(src.Properties.SecretStoreComponentName)
+	converted.Properties.Auth = toAuthDataModel(src.Properties.Auth)
 
 	// Note: The metadata, type, and version fields cannot be specified when using recipes since
 	// the recipe is expected to create the Dapr Component manifest. However, they are required
@@ -110,13 +110,13 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 			OutputResources: toOutputResources(daprStateStore.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(daprStateStore.Properties.Status.Recipe),
 		},
-		ProvisioningState:        fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
-		Environment:              to.Ptr(daprStateStore.Properties.Environment),
-		Application:              to.Ptr(daprStateStore.Properties.Application),
-		ComponentName:            to.Ptr(daprStateStore.Properties.ComponentName),
-		ResourceProvisioning:     fromResourceProvisioningDataModel(daprStateStore.Properties.ResourceProvisioning),
-		Resources:                fromResourcesDataModel(daprStateStore.Properties.Resources),
-		SecretStoreComponentName: to.Ptr(daprStateStore.Properties.SecretStoreComponentName),
+		ProvisioningState:    fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
+		Environment:          to.Ptr(daprStateStore.Properties.Environment),
+		Application:          to.Ptr(daprStateStore.Properties.Application),
+		ComponentName:        to.Ptr(daprStateStore.Properties.ComponentName),
+		ResourceProvisioning: fromResourceProvisioningDataModel(daprStateStore.Properties.ResourceProvisioning),
+		Resources:            fromResourcesDataModel(daprStateStore.Properties.Resources),
+		Auth:                 fromAuthDataModel(daprStateStore.Properties.Auth),
 	}
 
 	if daprStateStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {

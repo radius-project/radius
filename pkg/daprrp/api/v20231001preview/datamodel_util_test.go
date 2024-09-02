@@ -372,3 +372,77 @@ func TestFromMetadataDataModel(t *testing.T) {
 		require.Equal(t, tt.expected, actual)
 	}
 }
+
+func TestToAuthDataModel(t *testing.T) {
+	testCases := []struct {
+		auth     *DaprResourceAuth
+		expected *rpv1.DaprComponentAuth
+	}{
+		{
+			auth:     nil,
+			expected: nil,
+		},
+		{
+			auth: &DaprResourceAuth{
+				SecretStore: to.Ptr("test-secretstore"),
+			},
+			expected: &rpv1.DaprComponentAuth{
+				SecretStore: "test-secretstore",
+			},
+		},
+		{
+			auth: &DaprResourceAuth{
+				SecretStore: nil,
+			},
+			expected: &rpv1.DaprComponentAuth{
+				SecretStore: "",
+			},
+		},
+		{
+			auth: &DaprResourceAuth{
+				SecretStore: to.Ptr(""),
+			},
+			expected: &rpv1.DaprComponentAuth{
+				SecretStore: "",
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		actual := toAuthDataModel(tt.auth)
+		require.Equal(t, tt.expected, actual)
+	}
+}
+
+func TestFromAuthDataModel(t *testing.T) {
+	testCases := []struct {
+		auth     *rpv1.DaprComponentAuth
+		expected *DaprResourceAuth
+	}{
+		{
+			auth:     nil,
+			expected: nil,
+		},
+		{
+			auth: &rpv1.DaprComponentAuth{
+				SecretStore: "test-secretstore",
+			},
+			expected: &DaprResourceAuth{
+				SecretStore: to.Ptr("test-secretstore"),
+			},
+		},
+		{
+			auth: &rpv1.DaprComponentAuth{
+				SecretStore: "",
+			},
+			expected: &DaprResourceAuth{
+				SecretStore: to.Ptr(""),
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		actual := fromAuthDataModel(tt.auth)
+		require.Equal(t, tt.expected, actual)
+	}
+}

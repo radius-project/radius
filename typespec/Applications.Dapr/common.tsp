@@ -35,7 +35,13 @@ model DaprResourceProperties {
   version?: string;
 
   @doc("The name of the Dapr component to be used as a secret store")
-  secretStoreComponentName?: string;
+  auth?: DaprResourceAuth;
+}
+
+@doc("Authentication properties for a Dapr component object")
+model DaprResourceAuth {
+    @doc("Secret store to fetch secrets from")
+    secretStore?: string;
 }
 
 @doc("A single metadata for a Dapr component object")

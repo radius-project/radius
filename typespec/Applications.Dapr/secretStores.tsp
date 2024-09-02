@@ -47,7 +47,7 @@ model DaprSecretStoreResource
 
 // This is to prevent a secret store from referencing another secret store
 // This would be valid according to Dapr component specs, but may confuse users
-@withoutOmittedProperties("secretStoreComponentName")
+@withoutOmittedProperties("auth")
 model NonRedundantDaprResourceProperties is DaprResourceProperties;
 
 @doc("Dapr SecretStore portable resource properties")

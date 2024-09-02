@@ -193,6 +193,26 @@ func fromMetadataDataModel(metadata map[string]*rpv1.DaprComponentMetadataValue)
 	return meta
 }
 
+func toAuthDataModel(auth *DaprResourceAuth) *rpv1.DaprComponentAuth {
+	if auth == nil {
+		return nil
+	}
+
+	return &rpv1.DaprComponentAuth{
+		SecretStore: to.String(auth.SecretStore),
+	}
+}
+
+func fromAuthDataModel(auth *rpv1.DaprComponentAuth) *DaprResourceAuth {
+	if auth == nil {
+		return nil
+	}
+
+	return &DaprResourceAuth{
+		SecretStore: to.Ptr(auth.SecretStore),
+	}
+}
+
 func toResourcesDataModel(r []*ResourceReference) []*portableresources.ResourceReference {
 	if r == nil {
 		return nil

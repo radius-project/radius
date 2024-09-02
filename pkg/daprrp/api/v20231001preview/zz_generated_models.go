@@ -17,6 +17,9 @@ type DaprPubSubBrokerProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]*MetadataValue
 
@@ -28,9 +31,6 @@ type DaprPubSubBrokerProperties struct {
 
 	// A collection of references to resources associated with the pubSubBroker
 	Resources []*ResourceReference
-
-	// The name of the Dapr component to be used as a secret store
-	SecretStoreComponentName *string
 
 	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string
@@ -96,6 +96,9 @@ type DaprPubSubBrokerResourceUpdateProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
 	// Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
@@ -111,14 +114,17 @@ type DaprPubSubBrokerResourceUpdateProperties struct {
 	// A collection of references to resources associated with the pubSubBroker
 	Resources []*ResourceReference
 
-	// The name of the Dapr component to be used as a secret store
-	SecretStoreComponentName *string
-
 	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string
 
 	// Dapr component version
 	Version *string
+}
+
+// DaprResourceAuth - Authentication properties for a Dapr component object
+type DaprResourceAuth struct {
+	// Secret store to fetch secrets from
+	SecretStore *string
 }
 
 // DaprSecretStoreProperties - Dapr SecretStore portable resource properties
@@ -229,6 +235,9 @@ type DaprStateStoreProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]*MetadataValue
 
@@ -240,9 +249,6 @@ type DaprStateStoreProperties struct {
 
 	// A collection of references to resources associated with the state store
 	Resources []*ResourceReference
-
-	// The name of the Dapr component to be used as a secret store
-	SecretStoreComponentName *string
 
 	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string
@@ -308,6 +314,9 @@ type DaprStateStoreResourceUpdateProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
 	// Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
@@ -322,9 +331,6 @@ type DaprStateStoreResourceUpdateProperties struct {
 
 	// A collection of references to resources associated with the state store
 	Resources []*ResourceReference
-
-	// The name of the Dapr component to be used as a secret store
-	SecretStoreComponentName *string
 
 	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string
