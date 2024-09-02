@@ -80,8 +80,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) 
 		if src.Properties.Version == nil || *src.Properties.Version == "" {
 			msgs = append(msgs, "version must be specified when resourceProvisioning is set to manual")
 		}
-
-		converted.Properties.Metadata = src.Properties.Metadata
+		converted.Properties.Metadata = toMetadataDataModel(src.Properties.Metadata)
 		converted.Properties.Type = to.String(src.Properties.Type)
 		converted.Properties.Version = to.String(src.Properties.Version)
 	} else {
@@ -137,7 +136,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 	}
 
 	if daprPubSub.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
-		dst.Properties.Metadata = daprPubSub.Properties.Metadata
+		dst.Properties.Metadata = fromMetadataDataModel(daprPubSub.Properties.Metadata)
 		dst.Properties.Type = to.Ptr(daprPubSub.Properties.Type)
 		dst.Properties.Version = to.Ptr(daprPubSub.Properties.Version)
 	} else {

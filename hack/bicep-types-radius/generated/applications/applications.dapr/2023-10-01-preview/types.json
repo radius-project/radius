@@ -403,13 +403,15 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 0
+        "flags": 0,
+        "description": "The plain text value of the metadata"
       },
       "secretKeyRef": {
         "type": {
           "$ref": "#/26"
         },
-        "flags": 0
+        "flags": 0,
+        "description": "A reference of a value in a secret store component."
       }
     }
   },
@@ -421,13 +423,15 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 1
+        "flags": 1,
+        "description": "Secret name in the secret store component"
       },
       "key": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 1
+        "flags": 1,
+        "description": "The field to select in the secret value. If the secret value is a string, it should be equal to the secret name"
       }
     }
   },

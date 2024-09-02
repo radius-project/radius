@@ -1544,23 +1544,29 @@
     },
     "MetadataValue": {
       "type": "object",
+      "description": "A single metadata for a Dapr component object",
       "properties": {
         "value": {
-          "type": "string"
+          "type": "string",
+          "description": "The plain text value of the metadata"
         },
         "secretKeyRef": {
-          "$ref": "#/definitions/MetadataValueFromSecret"
+          "$ref": "#/definitions/MetadataValueFromSecret",
+          "description": "A reference of a value in a secret store component"
         }
       }
     },
     "MetadataValueFromSecret": {
       "type": "object",
+      "description": "A reference of a value in a secret store component.",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Secret name in the secret store component"
         },
         "key": {
-          "type": "string"
+          "type": "string",
+          "description": "The field to select in the secret value. If the secret value is a string, it should be equal to the secret name"
         }
       },
       "required": [
@@ -1570,23 +1576,29 @@
     },
     "MetadataValueFromSecretUpdate": {
       "type": "object",
+      "description": "A reference of a value in a secret store component.",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Secret name in the secret store component"
         },
         "key": {
-          "type": "string"
+          "type": "string",
+          "description": "The field to select in the secret value. If the secret value is a string, it should be equal to the secret name"
         }
       }
     },
     "MetadataValueUpdate": {
       "type": "object",
+      "description": "A single metadata for a Dapr component object",
       "properties": {
         "value": {
-          "type": "string"
+          "type": "string",
+          "description": "The plain text value of the metadata"
         },
         "secretKeyRef": {
-          "$ref": "#/definitions/MetadataValueFromSecretUpdate"
+          "$ref": "#/definitions/MetadataValueFromSecretUpdate",
+          "description": "A reference of a value in a secret store component"
         }
       }
     },

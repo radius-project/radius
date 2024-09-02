@@ -418,27 +418,40 @@ func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 	}
 }
 
+// MetadataValue - A single metadata for a Dapr component object
 type MetadataValue struct {
+	// A reference of a value in a secret store component
 	SecretKeyRef *MetadataValueFromSecret
-	Value        *string
+
+	// The plain text value of the metadata
+	Value *string
 }
 
+// MetadataValueFromSecret - A reference of a value in a secret store component.
 type MetadataValueFromSecret struct {
-	// REQUIRED
+	// REQUIRED; The field to select in the secret value. If the secret value is a string, it should be equal to the secret name
 	Key *string
 
-	// REQUIRED
+	// REQUIRED; Secret name in the secret store component
 	Name *string
 }
 
+// MetadataValueFromSecretUpdate - A reference of a value in a secret store component.
 type MetadataValueFromSecretUpdate struct {
-	Key  *string
+	// The field to select in the secret value. If the secret value is a string, it should be equal to the secret name
+	Key *string
+
+	// Secret name in the secret store component
 	Name *string
 }
 
+// MetadataValueUpdate - A single metadata for a Dapr component object
 type MetadataValueUpdate struct {
+	// A reference of a value in a secret store component
 	SecretKeyRef *MetadataValueFromSecretUpdate
-	Value        *string
+
+	// The plain text value of the metadata
+	Value *string
 }
 
 // NonRedundantDaprResourceProperties - The base properties of a Dapr component object.

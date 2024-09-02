@@ -78,8 +78,10 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 				expected.Properties.ResourceProvisioning = portableresources.ResourceProvisioningManual
 				expected.Properties.Type = "state.zookeeper"
 				expected.Properties.Version = "v1"
-				expected.Properties.Metadata = map[string]any{
-					"foo": "bar",
+				expected.Properties.Metadata = map[string]*rpv1.DaprComponentMetadataValue{
+					"foo": {
+						Value: "bar",
+					},
 				}
 				expected.Properties.SecretStoreComponentName = "test-secret-store"
 				expected.Properties.Resources = []*portableresources.ResourceReference{
@@ -165,8 +167,10 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 				expected.Properties.ResourceProvisioning = to.Ptr(ResourceProvisioningManual)
 				expected.Properties.Type = to.Ptr("state.zookeeper")
 				expected.Properties.Version = to.Ptr("v1")
-				expected.Properties.Metadata = map[string]any{
-					"foo": "bar",
+				expected.Properties.Metadata = map[string]*MetadataValue{
+					"foo": {
+						Value: to.Ptr("bar"),
+					},
 				}
 				expected.Properties.Resources = []*ResourceReference{
 					{

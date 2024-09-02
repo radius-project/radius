@@ -64,8 +64,10 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
 					ResourceProvisioning: portableresources.ResourceProvisioningManual,
-					Metadata: map[string]any{
-						"foo": "bar",
+					Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+						"foo": {
+							Value: "bar",
+						},
 					},
 					Type:    "secretstores.hashicorp.vault",
 					Version: "v1",
@@ -143,8 +145,10 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 				Properties: &DaprSecretStoreProperties{
 					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
 					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
-					Metadata: map[string]any{
-						"foo": "bar",
+					Metadata: map[string]*MetadataValue{
+						"foo": {
+							Value: to.Ptr("bar"),
+						},
 					},
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					Type:                 to.Ptr("secretstores.hashicorp.vault"),
@@ -176,9 +180,13 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 							"foo": "bar",
 						},
 					},
-					Type:              to.Ptr("secretstores.hashicorp.vault"),
-					Version:           to.Ptr("v1"),
-					Metadata:          map[string]any{"foo": "bar"},
+					Type:    to.Ptr("secretstores.hashicorp.vault"),
+					Version: to.Ptr("v1"),
+					Metadata: map[string]*MetadataValue{
+						"foo": {
+							Value: to.Ptr("bar"),
+						},
+					},
 					ComponentName:     to.Ptr("test-dss"),
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
 					Status: resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{

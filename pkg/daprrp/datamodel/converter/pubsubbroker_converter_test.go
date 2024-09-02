@@ -54,8 +54,10 @@ func TestPubSubBrokerDataModelToVersioned(t *testing.T) {
 				Properties: &v20231001preview.DaprPubSubBrokerProperties{
 					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
 					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
-					Metadata: map[string]interface{}{
-						"foo": "bar",
+					Metadata: map[string]*v20231001preview.MetadataValue{
+						"foo": {
+							Value: to.Ptr("bar"),
+						},
 					},
 					Recipe:               nil,
 					ResourceProvisioning: to.Ptr(v20231001preview.ResourceProvisioningManual),
@@ -97,8 +99,10 @@ func TestPubSubBrokerDataModelToVersioned(t *testing.T) {
 				Properties: &v20231001preview.DaprPubSubBrokerProperties{
 					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
 					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
-					Metadata: map[string]interface{}{
-						"foo": "bar",
+					Metadata: map[string]*v20231001preview.MetadataValue{
+						"foo": {
+							Value: to.Ptr("bar"),
+						},
 					},
 					Recipe:                   nil,
 					ResourceProvisioning:     to.Ptr(v20231001preview.ResourceProvisioningManual),

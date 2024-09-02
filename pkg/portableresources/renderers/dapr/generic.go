@@ -18,6 +18,7 @@ package dapr
 
 import (
 	"fmt"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/kubernetes"
@@ -28,7 +29,7 @@ import (
 type DaprGeneric struct {
 	Type                     *string
 	Version                  *string
-	Metadata                 map[string]any
+	Metadata                 map[string]*rpv1.DaprComponentMetadataValue
 	SecretStoreComponentName *string
 }
 
@@ -58,19 +59,20 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, namespace string, componentNa
 	// Dapr specs: https://docs.dapr.io/reference/components-reference/
 	yamlListItems := []any{} // K8s fake client requires this ..... :(
 	for k, v := range daprGeneric.Metadata {
-
+		// v = {value : "value"} || {secretKeyRef : {name : "name", key : "key"}}
 		yamlItem := map[string]any{
 			"name": k,
 		}
 
-		// v = {value : "value"} || {secretKeyRef : {name : "name", key : "key"}}
-		if innerObj, ok := v.(map[string]any); ok {
-			for innerKey, innerVal := range innerObj {
-				yamlItem[innerKey] = innerVal
+		if v.SecretKeyRef != nil {
+			yamlItem["secretKeyRef"] = map[string]any{
+				"name": v.SecretKeyRef.Name,
+				"key":  v.SecretKeyRef.Key,
 			}
 		} else {
-			return unstructured.Unstructured{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(`Invalid metadata value for key "%s" in Dapr component "%s"`, k, componentName))
+			yamlItem["value"] = v.Value
 		}
+
 		yamlListItems = append(yamlListItems, yamlItem)
 	}
 

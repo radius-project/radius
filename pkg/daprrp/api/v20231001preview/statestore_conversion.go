@@ -65,7 +65,7 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 			msgs = append(msgs, "version must be specified when resourceProvisioning is set to manual")
 		}
 
-		converted.Properties.Metadata = src.Properties.Metadata
+		converted.Properties.Metadata = toMetadataDataModel(src.Properties.Metadata)
 		converted.Properties.Type = to.String(src.Properties.Type)
 		converted.Properties.Version = to.String(src.Properties.Version)
 	} else {
@@ -122,7 +122,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 	if daprStateStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		dst.Properties.Type = to.Ptr(daprStateStore.Properties.Type)
 		dst.Properties.Version = to.Ptr(daprStateStore.Properties.Version)
-		dst.Properties.Metadata = daprStateStore.Properties.Metadata
+		dst.Properties.Metadata = fromMetadataDataModel(daprStateStore.Properties.Metadata)
 	} else {
 		dst.Properties.Recipe = fromRecipeDataModel(daprStateStore.Properties.Recipe)
 	}

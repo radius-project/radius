@@ -293,3 +293,82 @@ func TestToRecipeDataModel(t *testing.T) {
 		require.Equal(t, testCase.datamodel, sc)
 	}
 }
+
+func TestToMetadataDataModel(t *testing.T) {
+	testCases := []struct {
+		metadata map[string]*MetadataValue
+		expected map[string]*rpv1.DaprComponentMetadataValue
+	}{
+		{
+			metadata: nil,
+			expected: nil,
+		},
+		{
+			metadata: map[string]*MetadataValue{"config": {Value: to.Ptr("extrasecure")}},
+			expected: map[string]*rpv1.DaprComponentMetadataValue{"config": {Value: "extrasecure"}},
+		},
+		{
+			metadata: map[string]*MetadataValue{
+				"secret": {
+					SecretKeyRef: &MetadataValueFromSecret{
+						Key:  to.Ptr("secretKey"),
+						Name: to.Ptr("secretValue"),
+					},
+				},
+			},
+			expected: map[string]*rpv1.DaprComponentMetadataValue{
+				"secret": {
+					SecretKeyRef: &rpv1.DaprComponentSecretRef{
+						Key:  "secretKey",
+						Name: "secretValue",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		actual := toMetadataDataModel(tt.metadata)
+		require.Equal(t, tt.expected, actual)
+	}
+}
+
+func TestFromMetadataDataModel(t *testing.T) {
+	testCases := []struct {
+		metadata map[string]*rpv1.DaprComponentMetadataValue
+		expected map[string]*MetadataValue
+	}{
+		{
+			metadata: nil,
+			expected: nil,
+		},
+		{
+			metadata: map[string]*rpv1.DaprComponentMetadataValue{"config": {Value: "extrasecure"}},
+			expected: map[string]*MetadataValue{"config": {Value: to.Ptr("extrasecure")}},
+		},
+		{
+			metadata: map[string]*rpv1.DaprComponentMetadataValue{
+				"secret": {
+					SecretKeyRef: &rpv1.DaprComponentSecretRef{
+						Key:  "secretKey",
+						Name: "secretValue",
+					},
+				},
+			},
+			expected: map[string]*MetadataValue{
+				"secret": {
+					Value: to.Ptr(""),
+					SecretKeyRef: &MetadataValueFromSecret{
+						Key:  to.Ptr("secretKey"),
+						Name: to.Ptr("secretValue"),
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		actual := fromMetadataDataModel(tt.metadata)
+		require.Equal(t, tt.expected, actual)
+	}
+}

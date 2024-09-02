@@ -127,9 +127,9 @@ func Test_Process(t *testing.T) {
 					ComponentName: componentName,
 				},
 				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata: map[string]any{
-					"config": map[string]any{
-						"value": "extrasecure",
+				Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+					"config": {
+						Value: "extrasecure",
 					},
 				},
 				Type:    "secretstores.kubernetes",
@@ -214,9 +214,9 @@ func Test_Process(t *testing.T) {
 					ComponentName: componentName,
 				},
 				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata: map[string]any{
-					"config": map[string]any{
-						"value": "extrasecure",
+				Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+					"config": {
+						Value: "extrasecure",
 					},
 				},
 				Type:    "secretstores.kubernetes",
@@ -351,7 +351,7 @@ func Test_Process(t *testing.T) {
 			dapr.DaprGeneric{
 				Type:     to.Ptr("secretstores.kubernetes"),
 				Version:  to.Ptr("v1"),
-				Metadata: map[string]any{},
+				Metadata: map[string]*rpv1.DaprComponentMetadataValue{},
 			},
 			"test-namespace",
 			"test-component",
@@ -377,9 +377,9 @@ func Test_Process(t *testing.T) {
 					ComponentName: componentName,
 				},
 				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata: map[string]any{
-					"config": map[string]any{
-						"value": "extrasecure",
+				Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+					"config": {
+						Value: "extrasecure",
 					},
 				},
 				Type:    "secretstores.kubernetes",

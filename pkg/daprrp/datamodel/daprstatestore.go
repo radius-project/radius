@@ -68,12 +68,12 @@ type DaprStateStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
 	// Specifies how the underlying service/resource is provisioned and managed
-	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
-	Metadata             map[string]any                         `json:"metadata,omitempty"`
-	Recipe               portableresources.ResourceRecipe       `json:"recipe,omitempty"`
-	Resources            []*portableresources.ResourceReference `json:"resources,omitempty"`
-	Type                 string                                 `json:"type,omitempty"`
-	Version              string                                 `json:"version,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning      `json:"resourceProvisioning,omitempty"`
+	Metadata             map[string]*rpv1.DaprComponentMetadataValue `json:"metadata,omitempty"`
+	Recipe               portableresources.ResourceRecipe            `json:"recipe,omitempty"`
+	Resources            []*portableresources.ResourceReference      `json:"resources,omitempty"`
+	Type                 string                                      `json:"type,omitempty"`
+	Version              string                                      `json:"version,omitempty"`
 	// SecretStoreComponentName represents the name of the Dapr secret store component to retrieve secrets from.
 	SecretStoreComponentName string `json:"secretStoreComponentName,omitempty"`
 }

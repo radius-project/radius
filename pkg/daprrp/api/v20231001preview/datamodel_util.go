@@ -151,6 +151,48 @@ func fromRecipeDataModel(r portableresources.ResourceRecipe) *Recipe {
 	}
 }
 
+func toMetadataDataModel(metadata map[string]*MetadataValue) map[string]*rpv1.DaprComponentMetadataValue {
+	if metadata == nil {
+		return nil
+	}
+
+	dmMeta := make(map[string]*rpv1.DaprComponentMetadataValue, len(metadata))
+	for name, valueNode := range metadata {
+		dmMeta[name] = &rpv1.DaprComponentMetadataValue{
+			Value: to.String(valueNode.Value),
+		}
+
+		if valueNode.SecretKeyRef != nil {
+			dmMeta[name].SecretKeyRef = &rpv1.DaprComponentSecretRef{
+				Name: to.String(valueNode.SecretKeyRef.Name),
+				Key:  to.String(valueNode.SecretKeyRef.Key),
+			}
+		}
+	}
+	return dmMeta
+}
+
+func fromMetadataDataModel(metadata map[string]*rpv1.DaprComponentMetadataValue) map[string]*MetadataValue {
+	if metadata == nil {
+		return nil
+	}
+
+	meta := make(map[string]*MetadataValue, len(metadata))
+	for name, valueNode := range metadata {
+		meta[name] = &MetadataValue{
+			Value: to.Ptr(valueNode.Value),
+		}
+
+		if valueNode.SecretKeyRef != nil {
+			meta[name].SecretKeyRef = &MetadataValueFromSecret{
+				Name: to.Ptr(valueNode.SecretKeyRef.Name),
+				Key:  to.Ptr(valueNode.SecretKeyRef.Key),
+			}
+		}
+	}
+	return meta
+}
+
 func toResourcesDataModel(r []*ResourceReference) []*portableresources.ResourceReference {
 	if r == nil {
 		return nil

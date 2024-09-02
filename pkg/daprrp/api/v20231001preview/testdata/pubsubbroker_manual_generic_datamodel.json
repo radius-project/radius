@@ -31,7 +31,9 @@
     "type": "pubsub.kafka",
     "version": "v1",
     "metadata": {
-      "foo": "bar"
+      "foo": {
+        "value": "bar"
+      }
     }
   }
 }
