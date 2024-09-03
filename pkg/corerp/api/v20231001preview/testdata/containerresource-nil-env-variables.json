@@ -36,15 +36,7 @@
         "containerPort": 8080
       },
       "env": {
-        "DB_USER": { "value": "DB_USER" },
-        "DB_PASSWORD": {
-          "valueFrom": {
-            "secretRef": {
-              "source": "secret.id",
-              "key": "DB_PASSWORD"
-            }
-          }
-        }
+        "DB_USER": { }
       },
       "command": [
         "/bin/sh"

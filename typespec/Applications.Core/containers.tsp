@@ -240,7 +240,7 @@ model Container {
   imagePullPolicy?: ImagePullPolicy;
 
   @doc("environment")
-  env?: Record<string>;
+  env?: Record<EnvironmentVariable>;
 
   @doc("container ports")
   ports?: Record<ContainerPortProperties>;
@@ -262,6 +262,21 @@ model Container {
 
   @doc("Working directory for the container")
   workingDir?: string;
+}
+
+@doc("Environment variables type")
+model EnvironmentVariable {
+  @doc("The value of the environment variable")
+  value?: string;
+
+  @doc("The reference to the variable")
+  valueFrom?: EnvironmentVariableReference;
+}
+
+@doc("The reference to the variable")
+model EnvironmentVariableReference {
+  @doc("The secret reference")
+  secretRef: SecretReference;
 }
 
 @doc("The image pull policy for the container")

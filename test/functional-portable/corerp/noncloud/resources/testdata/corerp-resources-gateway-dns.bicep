@@ -79,7 +79,9 @@ resource backendcontainerdns 'Applications.Core/containers@2023-10-01-preview' =
 		container: {
 			image: magpieimage
 			env: {
-				gatewayUrl: gateway.properties.url
+				gatewayUrl: {
+					value: gateway.properties.url
+				}
 			}
 			ports: {
 				web: {

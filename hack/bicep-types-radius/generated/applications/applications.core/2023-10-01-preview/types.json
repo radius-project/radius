@@ -715,7 +715,7 @@
       },
       "tags": {
         "type": {
-          "$ref": "#/118"
+          "$ref": "#/121"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -777,7 +777,7 @@
       },
       "connections": {
         "type": {
-          "$ref": "#/103"
+          "$ref": "#/106"
         },
         "flags": 0,
         "description": "Specifies a connection to another resource."
@@ -791,35 +791,35 @@
       },
       "extensions": {
         "type": {
-          "$ref": "#/104"
+          "$ref": "#/107"
         },
         "flags": 0,
         "description": "Extensions spec of the resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/107"
+          "$ref": "#/110"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user manages the resource."
       },
       "resources": {
         "type": {
-          "$ref": "#/109"
+          "$ref": "#/112"
         },
         "flags": 0,
         "description": "A collection of references to resources associated with the container"
       },
       "restartPolicy": {
         "type": {
-          "$ref": "#/113"
+          "$ref": "#/116"
         },
         "flags": 0,
         "description": "Restart policy for the container"
       },
       "runtimes": {
         "type": {
-          "$ref": "#/114"
+          "$ref": "#/117"
         },
         "flags": 0,
         "description": "The properties for runtime configuration"
@@ -900,49 +900,49 @@
       },
       "env": {
         "type": {
-          "$ref": "#/71"
+          "$ref": "#/74"
         },
         "flags": 0,
         "description": "environment"
       },
       "ports": {
         "type": {
-          "$ref": "#/76"
+          "$ref": "#/79"
         },
         "flags": 0,
         "description": "container ports"
       },
       "readinessProbe": {
         "type": {
-          "$ref": "#/77"
+          "$ref": "#/80"
         },
         "flags": 0,
         "description": "Properties for readiness/liveness probe"
       },
       "livenessProbe": {
         "type": {
-          "$ref": "#/77"
+          "$ref": "#/80"
         },
         "flags": 0,
         "description": "Properties for readiness/liveness probe"
       },
       "volumes": {
         "type": {
-          "$ref": "#/96"
+          "$ref": "#/99"
         },
         "flags": 0,
         "description": "container volumes"
       },
       "command": {
         "type": {
-          "$ref": "#/97"
+          "$ref": "#/100"
         },
         "flags": 0,
         "description": "Entrypoint array. Overrides the container image's ENTRYPOINT"
       },
       "args": {
         "type": {
-          "$ref": "#/98"
+          "$ref": "#/101"
         },
         "flags": 0,
         "description": "Arguments to the entrypoint. Overrides the container image's CMD"
@@ -984,10 +984,63 @@
   },
   {
     "$type": "ObjectType",
+    "name": "EnvironmentVariable",
+    "properties": {
+      "value": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The value of the environment variable"
+      },
+      "valueFrom": {
+        "type": {
+          "$ref": "#/72"
+        },
+        "flags": 0,
+        "description": "The reference to the variable"
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "EnvironmentVariableReference",
+    "properties": {
+      "secretRef": {
+        "type": {
+          "$ref": "#/73"
+        },
+        "flags": 1,
+        "description": "This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "SecretReference",
+    "properties": {
+      "source": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution."
+      },
+      "key": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The key for the secret in the secret store."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
     "name": "ContainerEnv",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/0"
+      "$ref": "#/71"
     }
   },
   {
@@ -1003,7 +1056,7 @@
       },
       "protocol": {
         "type": {
-          "$ref": "#/75"
+          "$ref": "#/78"
         },
         "flags": 0,
         "description": "The protocol in use by the port"
@@ -1036,10 +1089,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/73"
+        "$ref": "#/76"
       },
       {
-        "$ref": "#/74"
+        "$ref": "#/77"
       }
     ]
   },
@@ -1048,7 +1101,7 @@
     "name": "ContainerPorts",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/72"
+      "$ref": "#/75"
     }
   },
   {
@@ -1087,13 +1140,13 @@
     },
     "elements": {
       "exec": {
-        "$ref": "#/78"
+        "$ref": "#/81"
       },
       "httpGet": {
-        "$ref": "#/80"
+        "$ref": "#/83"
       },
       "tcp": {
-        "$ref": "#/83"
+        "$ref": "#/86"
       }
     }
   },
@@ -1110,7 +1163,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/79"
+          "$ref": "#/82"
         },
         "flags": 1,
         "description": "Discriminator property for HealthProbeProperties."
@@ -1141,14 +1194,14 @@
       },
       "headers": {
         "type": {
-          "$ref": "#/81"
+          "$ref": "#/84"
         },
         "flags": 0,
         "description": "Custom HTTP headers to add to the get request"
       },
       "kind": {
         "type": {
-          "$ref": "#/82"
+          "$ref": "#/85"
         },
         "flags": 1,
         "description": "Discriminator property for HealthProbeProperties."
@@ -1180,7 +1233,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/84"
+          "$ref": "#/87"
         },
         "flags": 1,
         "description": "Discriminator property for HealthProbeProperties."
@@ -1206,10 +1259,10 @@
     },
     "elements": {
       "ephemeral": {
-        "$ref": "#/86"
+        "$ref": "#/89"
       },
       "persistent": {
-        "$ref": "#/91"
+        "$ref": "#/94"
       }
     }
   },
@@ -1219,14 +1272,14 @@
     "properties": {
       "managedStore": {
         "type": {
-          "$ref": "#/89"
+          "$ref": "#/92"
         },
         "flags": 1,
         "description": "The managed store for the ephemeral volume"
       },
       "kind": {
         "type": {
-          "$ref": "#/90"
+          "$ref": "#/93"
         },
         "flags": 1,
         "description": "Discriminator property for Volume."
@@ -1245,10 +1298,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/87"
+        "$ref": "#/90"
       },
       {
-        "$ref": "#/88"
+        "$ref": "#/91"
       }
     ]
   },
@@ -1262,7 +1315,7 @@
     "properties": {
       "permission": {
         "type": {
-          "$ref": "#/94"
+          "$ref": "#/97"
         },
         "flags": 0,
         "description": "The persistent volume permission"
@@ -1276,7 +1329,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/95"
+          "$ref": "#/98"
         },
         "flags": 1,
         "description": "Discriminator property for Volume."
@@ -1295,10 +1348,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/92"
+        "$ref": "#/95"
       },
       {
-        "$ref": "#/93"
+        "$ref": "#/96"
       }
     ]
   },
@@ -1311,7 +1364,7 @@
     "name": "ContainerVolumes",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/85"
+      "$ref": "#/88"
     }
   },
   {
@@ -1346,7 +1399,7 @@
       },
       "iam": {
         "type": {
-          "$ref": "#/100"
+          "$ref": "#/103"
         },
         "flags": 0,
         "description": "IAM properties"
@@ -1359,14 +1412,14 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/101"
+          "$ref": "#/104"
         },
         "flags": 1,
         "description": "The kind of IAM provider to configure"
       },
       "roles": {
         "type": {
-          "$ref": "#/102"
+          "$ref": "#/105"
         },
         "flags": 0,
         "description": "RBAC permissions to be assigned on the source resource"
@@ -1388,7 +1441,7 @@
     "name": "ContainerPropertiesConnections",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/99"
+      "$ref": "#/102"
     }
   },
   {
@@ -1409,10 +1462,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/105"
+        "$ref": "#/108"
       },
       {
-        "$ref": "#/106"
+        "$ref": "#/109"
       }
     ]
   },
@@ -1432,7 +1485,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/108"
+      "$ref": "#/111"
     }
   },
   {
@@ -1451,13 +1504,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/110"
+        "$ref": "#/113"
       },
       {
-        "$ref": "#/111"
+        "$ref": "#/114"
       },
       {
-        "$ref": "#/112"
+        "$ref": "#/115"
       }
     ]
   },
@@ -1467,7 +1520,7 @@
     "properties": {
       "kubernetes": {
         "type": {
-          "$ref": "#/115"
+          "$ref": "#/118"
         },
         "flags": 0,
         "description": "The runtime configuration properties for Kubernetes"
@@ -1487,7 +1540,7 @@
       },
       "pod": {
         "type": {
-          "$ref": "#/117"
+          "$ref": "#/120"
         },
         "flags": 0,
         "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed."
@@ -1502,7 +1555,7 @@
     "name": "KubernetesPodSpec",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/116"
+      "$ref": "#/119"
     }
   },
   {
@@ -1551,28 +1604,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/120"
+          "$ref": "#/123"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/121"
+          "$ref": "#/124"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/123"
+          "$ref": "#/126"
         },
         "flags": 1,
         "description": "Environment properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/156"
+          "$ref": "#/158"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1599,7 +1652,7 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/131"
+          "$ref": "#/134"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -1613,7 +1666,7 @@
       },
       "providers": {
         "type": {
-          "$ref": "#/132"
+          "$ref": "#/135"
         },
         "flags": 0,
         "description": "The Cloud providers configuration."
@@ -1627,21 +1680,21 @@
       },
       "recipes": {
         "type": {
-          "$ref": "#/141"
+          "$ref": "#/144"
         },
         "flags": 0,
         "description": "Specifies Recipes linked to the Environment."
       },
       "recipeConfig": {
         "type": {
-          "$ref": "#/142"
+          "$ref": "#/145"
         },
         "flags": 0,
         "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
       },
       "extensions": {
         "type": {
-          "$ref": "#/155"
+          "$ref": "#/157"
         },
         "flags": 0,
         "description": "The environment extension."
@@ -1680,15 +1733,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/124"
-      },
-      {
-        "$ref": "#/125"
-      },
-      {
-        "$ref": "#/126"
-      },
-      {
         "$ref": "#/127"
       },
       {
@@ -1699,6 +1743,15 @@
       },
       {
         "$ref": "#/130"
+      },
+      {
+        "$ref": "#/131"
+      },
+      {
+        "$ref": "#/132"
+      },
+      {
+        "$ref": "#/133"
       }
     ]
   },
@@ -1708,14 +1761,14 @@
     "properties": {
       "azure": {
         "type": {
-          "$ref": "#/133"
+          "$ref": "#/136"
         },
         "flags": 0,
         "description": "The Azure cloud provider definition."
       },
       "aws": {
         "type": {
-          "$ref": "#/134"
+          "$ref": "#/137"
         },
         "flags": 0,
         "description": "The AWS cloud provider definition."
@@ -1762,7 +1815,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/116"
+          "$ref": "#/119"
         },
         "flags": 0,
         "description": "Any object"
@@ -1770,10 +1823,10 @@
     },
     "elements": {
       "bicep": {
-        "$ref": "#/136"
+        "$ref": "#/139"
       },
       "terraform": {
-        "$ref": "#/138"
+        "$ref": "#/141"
       }
     }
   },
@@ -1790,7 +1843,7 @@
       },
       "templateKind": {
         "type": {
-          "$ref": "#/137"
+          "$ref": "#/140"
         },
         "flags": 1,
         "description": "Discriminator property for RecipeProperties."
@@ -1814,7 +1867,7 @@
       },
       "templateKind": {
         "type": {
-          "$ref": "#/139"
+          "$ref": "#/142"
         },
         "flags": 1,
         "description": "Discriminator property for RecipeProperties."
@@ -1830,7 +1883,7 @@
     "name": "DictionaryOfRecipeProperties",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/135"
+      "$ref": "#/138"
     }
   },
   {
@@ -1838,7 +1891,7 @@
     "name": "EnvironmentPropertiesRecipes",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/140"
+      "$ref": "#/143"
     }
   },
   {
@@ -1847,21 +1900,21 @@
     "properties": {
       "terraform": {
         "type": {
-          "$ref": "#/143"
+          "$ref": "#/146"
         },
         "flags": 0,
         "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
       },
       "env": {
         "type": {
-          "$ref": "#/153"
+          "$ref": "#/155"
         },
         "flags": 0,
         "description": "The environment variables injected during Terraform Recipe execution for the recipes in the environment."
       },
       "envSecrets": {
         "type": {
-          "$ref": "#/154"
+          "$ref": "#/156"
         },
         "flags": 0,
         "description": "Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource."
@@ -1874,14 +1927,14 @@
     "properties": {
       "authentication": {
         "type": {
-          "$ref": "#/144"
+          "$ref": "#/147"
         },
         "flags": 0,
         "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git."
       },
       "providers": {
         "type": {
-          "$ref": "#/152"
+          "$ref": "#/154"
         },
         "flags": 0,
         "description": "Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration."
@@ -1894,7 +1947,7 @@
     "properties": {
       "git": {
         "type": {
-          "$ref": "#/145"
+          "$ref": "#/148"
         },
         "flags": 0,
         "description": "Authentication information used to access private Terraform modules from Git repository sources."
@@ -1907,7 +1960,7 @@
     "properties": {
       "pat": {
         "type": {
-          "$ref": "#/147"
+          "$ref": "#/150"
         },
         "flags": 0,
         "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms."
@@ -1932,7 +1985,7 @@
     "name": "GitAuthConfigPat",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/146"
+      "$ref": "#/149"
     }
   },
   {
@@ -1941,34 +1994,14 @@
     "properties": {
       "secrets": {
         "type": {
-          "$ref": "#/150"
+          "$ref": "#/152"
         },
         "flags": 0,
         "description": "Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource."
       }
     },
     "additionalProperties": {
-      "$ref": "#/116"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "SecretReference",
-    "properties": {
-      "source": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution."
-      },
-      "key": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The key for the secret in the secret store."
-      }
+      "$ref": "#/119"
     }
   },
   {
@@ -1976,13 +2009,13 @@
     "name": "ProviderConfigPropertiesSecrets",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/149"
+      "$ref": "#/73"
     }
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/148"
+      "$ref": "#/151"
     }
   },
   {
@@ -1990,7 +2023,7 @@
     "name": "TerraformConfigPropertiesProviders",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/151"
+      "$ref": "#/153"
     }
   },
   {
@@ -2006,7 +2039,7 @@
     "name": "RecipeConfigPropertiesEnvSecrets",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/149"
+      "$ref": "#/73"
     }
   },
   {
@@ -2028,7 +2061,7 @@
     "name": "Applications.Core/environments@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/122"
+      "$ref": "#/125"
     },
     "flags": 0,
     "functions": {}
@@ -2061,28 +2094,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/158"
+          "$ref": "#/160"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/159"
+          "$ref": "#/161"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/161"
+          "$ref": "#/163"
         },
         "flags": 1,
         "description": "ExtenderResource portable resource properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/174"
+          "$ref": "#/176"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2123,7 +2156,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/169"
+          "$ref": "#/171"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -2137,28 +2170,28 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/116"
+          "$ref": "#/119"
         },
         "flags": 0,
         "description": "Any object"
       },
       "recipe": {
         "type": {
-          "$ref": "#/170"
+          "$ref": "#/172"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/173"
+          "$ref": "#/175"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
       }
     },
     "additionalProperties": {
-      "$ref": "#/116"
+      "$ref": "#/119"
     }
   },
   {
@@ -2193,12 +2226,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/162"
-      },
-      {
-        "$ref": "#/163"
-      },
-      {
         "$ref": "#/164"
       },
       {
@@ -2212,6 +2239,12 @@
       },
       {
         "$ref": "#/168"
+      },
+      {
+        "$ref": "#/169"
+      },
+      {
+        "$ref": "#/170"
       }
     ]
   },
@@ -2228,7 +2261,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/116"
+          "$ref": "#/119"
         },
         "flags": 0,
         "description": "Any object"
@@ -2247,10 +2280,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/171"
+        "$ref": "#/173"
       },
       {
-        "$ref": "#/172"
+        "$ref": "#/174"
       }
     ]
   },
@@ -2266,7 +2299,7 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/116"
+      "$ref": "#/119"
     }
   },
   {
@@ -2274,13 +2307,13 @@
     "name": "Applications.Core/extenders@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/160"
+      "$ref": "#/162"
     },
     "flags": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/175"
+          "$ref": "#/177"
         },
         "description": "listSecrets"
       }
@@ -2314,28 +2347,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/177"
+          "$ref": "#/179"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/178"
+          "$ref": "#/180"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/180"
+          "$ref": "#/182"
         },
         "flags": 1,
         "description": "Gateway properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/196"
+          "$ref": "#/198"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2376,7 +2409,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/188"
+          "$ref": "#/190"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -2397,21 +2430,21 @@
       },
       "hostname": {
         "type": {
-          "$ref": "#/189"
+          "$ref": "#/191"
         },
         "flags": 0,
         "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io."
       },
       "routes": {
         "type": {
-          "$ref": "#/191"
+          "$ref": "#/193"
         },
         "flags": 1,
         "description": "Routes attached to this Gateway"
       },
       "tls": {
         "type": {
-          "$ref": "#/192"
+          "$ref": "#/194"
         },
         "flags": 0,
         "description": "TLS configuration definition for Gateway resource."
@@ -2457,12 +2490,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/181"
-      },
-      {
-        "$ref": "#/182"
-      },
-      {
         "$ref": "#/183"
       },
       {
@@ -2476,6 +2503,12 @@
       },
       {
         "$ref": "#/187"
+      },
+      {
+        "$ref": "#/188"
+      },
+      {
+        "$ref": "#/189"
       }
     ]
   },
@@ -2536,7 +2569,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/190"
+      "$ref": "#/192"
     }
   },
   {
@@ -2552,7 +2585,7 @@
       },
       "minimumProtocolVersion": {
         "type": {
-          "$ref": "#/195"
+          "$ref": "#/197"
         },
         "flags": 0,
         "description": "Tls Minimum versions for Gateway resource."
@@ -2578,10 +2611,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/193"
+        "$ref": "#/195"
       },
       {
-        "$ref": "#/194"
+        "$ref": "#/196"
       }
     ]
   },
@@ -2598,7 +2631,7 @@
     "name": "Applications.Core/gateways@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/179"
+      "$ref": "#/181"
     },
     "flags": 0,
     "functions": {}
@@ -2631,21 +2664,21 @@
       },
       "type": {
         "type": {
-          "$ref": "#/198"
+          "$ref": "#/200"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/199"
+          "$ref": "#/201"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/201"
+          "$ref": "#/203"
         },
         "flags": 1,
         "description": "The properties of SecretStore"
@@ -2693,7 +2726,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/209"
+          "$ref": "#/211"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -2760,12 +2793,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/202"
-      },
-      {
-        "$ref": "#/203"
-      },
-      {
         "$ref": "#/204"
       },
       {
@@ -2779,6 +2806,12 @@
       },
       {
         "$ref": "#/208"
+      },
+      {
+        "$ref": "#/209"
+      },
+      {
+        "$ref": "#/210"
       }
     ]
   },
@@ -2806,7 +2839,7 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/210"
+        "$ref": "#/212"
       },
       {
         "$ref": "#/211"
@@ -2984,7 +3017,7 @@
     "name": "Applications.Core/secretStores@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/200"
+      "$ref": "#/202"
     },
     "flags": 0,
     "functions": {
