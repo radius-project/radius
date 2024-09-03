@@ -21,7 +21,7 @@ param rootScope string = resourceGroup().id
 
 @description('Specifies the environment for resources.')
 #disable-next-line no-hardcoded-env-urls
-param oidcIssuer string = 'https://rttest.blob.core.windows.net/kubeoidc/'
+param oidcIssuer string = 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
 
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
@@ -98,7 +98,7 @@ resource keyvaultVolume 'Applications.Core/volumes@2023-10-01-preview' = {
   }
 }
 
-/*
+
 // Due to the soft-delete production of keyvault, this test uses the existing test keyvault.
 // If you want to create keyvault while deploying this bicep template, please uncomment the below resource template.
 resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
@@ -130,5 +130,5 @@ resource mySecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
     }
   }
 }
-*/
+
 
