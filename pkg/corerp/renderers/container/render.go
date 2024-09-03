@@ -73,7 +73,7 @@ type Renderer struct {
 	RoleAssignmentMap map[datamodel.IAMKind]RoleAssignmentData
 }
 
-// GetDependencyIDs parses the connections, ports and volumes of a container resource to return the Radius and Azure
+// GetDependencyIDs parses the connections, ports, environment variables, and volumes of a container resource to return the Radius and Azure
 // resource IDs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
@@ -106,6 +106,23 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		if resources_radius.IsRadiusResource(resourceID) {
 			radiusResourceIDs = append(radiusResourceIDs, resourceID)
 			continue
+		}
+	}
+
+	// Environment variables can be sourced from secrets, which are resources. We need to iterate over the environment variables to handle any possible instances.
+	for _, envVars := range properties.Container.Env {
+		if envVars.ValueFrom != nil && envVars.ValueFrom.SecretRef != nil {
+			// If the string begins with a '/', it is a radius resourceID.
+			if strings.HasPrefix(envVars.ValueFrom.SecretRef.Source, "/") {
+				resourceID, err := resources.ParseResource(envVars.ValueFrom.SecretRef.Source)
+				if err != nil {
+					return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a kubernetes secret name or a valid resourceID", envVars.ValueFrom.SecretRef.Source))
+				}
+
+				if resources_radius.IsRadiusResource(resourceID) {
+					radiusResourceIDs = append(radiusResourceIDs, resourceID)
+				}
+			}
 		}
 	}
 
@@ -362,7 +379,10 @@ func (r Renderer) makeDeployment(
 	}
 
 	for k, v := range properties.Container.Env {
-		env[k] = corev1.EnvVar{Name: k, Value: v}
+		env[k], err = convertEnvVar(k, v, options)
+		if err != nil {
+			return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to convert environment variable: %w", err)
+		}
 	}
 
 	// Append in sorted order
@@ -614,6 +634,67 @@ func (r Renderer) makeDeployment(
 
 	outputResources = append(outputResources, deploymentOutput)
 	return outputResources, secretData, nil
+}
+
+// convertEnvVar function to convert from map[string]EnvironmentVariable to map[string]corev1.EnvVar
+func convertEnvVar(key string, env datamodel.EnvironmentVariable, options renderers.RenderOptions) (corev1.EnvVar, error) {
+	if env.Value != nil {
+		return corev1.EnvVar{Name: key, Value: *env.Value}, nil
+	} else if env.ValueFrom != nil {
+		// There are two cases to handle here:
+		// 1. The value comes from a kubernetes secret
+		// 2. The value comes from a Applications.Core/SecretStore resource id.
+
+		// If the value comes from a kubernetes secret, we'll reference it.
+		if strings.HasPrefix(env.ValueFrom.SecretRef.Source, "/") {
+			secretStore, ok := options.Dependencies[env.ValueFrom.SecretRef.Source].Resource.(*datamodel.SecretStore)
+			if !ok {
+				return corev1.EnvVar{}, fmt.Errorf("failed to find source in dependencies: %s", env.ValueFrom.SecretRef.Source)
+			}
+
+			// The format may be <namespace>/<name> or <name>, as an example "default/my-secret" or "my-secret". We split the string on '/'
+			// and take the second part if the secret is namespace qualified.
+			var name string
+			if strings.Contains(secretStore.Properties.Resource, "/") {
+				parts := strings.Split(secretStore.Properties.Resource, "/")
+				if len(parts) == 2 {
+					name = parts[1]
+				} else {
+					name = secretStore.Properties.Resource
+				}
+			} else {
+				name = env.ValueFrom.SecretRef.Source
+			}
+
+			return corev1.EnvVar{
+				Name: key,
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: name,
+						},
+						Key: env.ValueFrom.SecretRef.Key,
+					},
+				},
+			}, nil
+
+		} else {
+			return corev1.EnvVar{
+				Name: key,
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: env.ValueFrom.SecretRef.Source,
+						},
+						Key: env.ValueFrom.SecretRef.Key,
+					},
+				},
+			}, nil
+		}
+
+	} else {
+		return corev1.EnvVar{}, fmt.Errorf("failed to convert environment variable: %s, both value and valueFrom cannot be nil", key)
+	}
 }
 
 func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte, error) {

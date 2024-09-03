@@ -116,16 +116,37 @@ type ConnectionProperties struct {
 
 // Container - Definition of a container.
 type Container struct {
-	Image           string                      `json:"image,omitempty"`
-	ImagePullPolicy string                      `json:"imagePullPolicy,omitempty"`
-	Env             map[string]string           `json:"env,omitempty"`
-	LivenessProbe   HealthProbeProperties       `json:"livenessProbe,omitempty"`
-	Ports           map[string]ContainerPort    `json:"ports,omitempty"`
-	ReadinessProbe  HealthProbeProperties       `json:"readinessProbe,omitempty"`
-	Volumes         map[string]VolumeProperties `json:"volumes,omitempty"`
-	Command         []string                    `json:"command,omitempty"`
-	Args            []string                    `json:"args,omitempty"`
-	WorkingDir      string                      `json:"workingDir,omitempty"`
+	Image           string                         `json:"image,omitempty"`
+	ImagePullPolicy string                         `json:"imagePullPolicy,omitempty"`
+	Env             map[string]EnvironmentVariable `json:"env,omitempty"`
+	LivenessProbe   HealthProbeProperties          `json:"livenessProbe,omitempty"`
+	Ports           map[string]ContainerPort       `json:"ports,omitempty"`
+	ReadinessProbe  HealthProbeProperties          `json:"readinessProbe,omitempty"`
+	Volumes         map[string]VolumeProperties    `json:"volumes,omitempty"`
+	Command         []string                       `json:"command,omitempty"`
+	Args            []string                       `json:"args,omitempty"`
+	WorkingDir      string                         `json:"workingDir,omitempty"`
+}
+
+// EnvironmentVariable - Environment variable for the container
+type EnvironmentVariable struct {
+	// Value is the property for the environment variable specified by the user. Such as "key": "value"
+	Value *string `json:"value,omitempty"`
+	// ValueFrom is the property for the environment variable specified by a reference to a secret.
+	ValueFrom *EnvironmentVariableReference `json:"valueFrom,omitempty"`
+}
+
+// EnvironmentVariableReference - Environment variable reference for the container
+type EnvironmentVariableReference struct {
+	// SecretRef is the property for the environment variable specified by a reference to a secret.
+	SecretRef *EnvironmentVariableSecretReference `json:"secretRef"`
+}
+
+// EnvironmentVariableSecretReference - Environment variable secret reference for the container
+type EnvironmentVariableSecretReference struct {
+	// Source is either the resource id of a radius Applications.Core/secretStore resource or a kubernetes secret reference.
+	Source string `json:"source"`
+	Key    string `json:"key"`
 }
 
 // ContainerPort - Specifies a listening port for the container
