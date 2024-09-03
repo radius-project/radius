@@ -46,6 +46,9 @@ func getOrDefaultType(t datamodel.SecretType) (datamodel.SecretType, error) {
 		t = datamodel.SecretTypeGeneric
 	case datamodel.SecretTypeCert:
 	case datamodel.SecretTypeGeneric:
+	case datamodel.SecretTypeBasicAuthentication:
+	case datamodel.SecretTypeAzureWorkloadIdentity:
+	case datamodel.SecretTypeAWSIRSA:
 	default:
 		err = fmt.Errorf("'%s' is invalid secret type", t)
 	}
@@ -76,9 +79,16 @@ func getOrDefaultEncoding(t datamodel.SecretType, e datamodel.SecretValueEncodin
 }
 
 // ValidateAndMutateRequest checks the type and encoding of the secret store, and ensures that the secret store data is
-// valid. If any of these checks fail, a BadRequestResponse is returned.
+// valid and required keys are present for the secret type. If any of these checks fail, a BadRequestResponse is returned.
 func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.SecretStore, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
+	// Define a map of required keys for each SecretType
+	var requiredKeys = map[datamodel.SecretType][]string{
+		datamodel.SecretTypeBasicAuthentication:   {UsernameKey, PasswordKey},
+		datamodel.SecretTypeAzureWorkloadIdentity: {ClientIdKey, TenantIdKey},
+		datamodel.SecretTypeAWSIRSA:               {RoleARNKey},
+	}
 	var err error
+
 	newResource.Properties.Type, err = getOrDefaultType(newResource.Properties.Type)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -113,6 +123,15 @@ func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.Secret
 
 		if refResourceID == "" && secret.Value == nil {
 			return rest.NewBadRequestResponse(fmt.Sprintf("$.properties.data[%s].Value must be given to create the secret.", k)), nil
+		}
+	}
+
+	// Validate that required keys for the secret type are present in the secret data
+	if keys, ok := requiredKeys[newResource.Properties.Type]; ok {
+		for _, key := range keys {
+			if _, ok := newResource.Properties.Data[key]; !ok {
+				return rest.NewBadRequestResponse(fmt.Sprintf("$.properties.data must contain '%s' key for %s type.", key, newResource.Properties.Type)), nil
+			}
 		}
 	}
 

@@ -19,4 +19,19 @@ package secretstores
 const (
 	// ResourceTypeName is the resource type name for secret stores.
 	ResourceTypeName = "Applications.Core/secretStores"
+
+	// UsernameKey is a required key in a secret store when SecretType is Basic Authentication.
+	UsernameKey = "username"
+
+	// PasswordKey is a required key in a secret store when SecretType is Basic Authentication.
+	PasswordKey = "password"
+
+	// ClientIdKey is a required key in a secret store when SecretType is Azure Workload Identity.
+	ClientIdKey = "clientId"
+
+	// TenantIdKey is a required key in a secret store when SecretType is Azure workload Identity.
+	TenantIdKey = "tenantId"
+
+	// RoleARNKey is a required key in a  secret store when SecretType is AWS IRSA.
+	RoleARNKey = "roleARN"
 )

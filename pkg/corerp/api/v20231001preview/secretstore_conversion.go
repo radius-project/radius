@@ -106,6 +106,12 @@ func toSecretStoreDataTypeDataModel(src *SecretStoreDataType) datamodel.SecretTy
 		return datamodel.SecretTypeGeneric
 	case SecretStoreDataTypeCertificate:
 		return datamodel.SecretTypeCert
+	case SecretStoreDataTypeBasicAuthentication:
+		return datamodel.SecretTypeBasicAuthentication
+	case SecretStoreDataTypeAzureWorkloadIdentity:
+		return datamodel.SecretTypeAzureWorkloadIdentity
+	case SecretStoreDataTypeAwsIRSA:
+		return datamodel.SecretTypeAWSIRSA
 	}
 
 	return datamodel.SecretTypeGeneric
@@ -117,6 +123,12 @@ func fromSecretStoreDataTypeDataModel(src datamodel.SecretType) *SecretStoreData
 		return to.Ptr(SecretStoreDataTypeGeneric)
 	case datamodel.SecretTypeCert:
 		return to.Ptr(SecretStoreDataTypeCertificate)
+	case datamodel.SecretTypeBasicAuthentication:
+		return to.Ptr(SecretStoreDataTypeBasicAuthentication)
+	case datamodel.SecretTypeAzureWorkloadIdentity:
+		return to.Ptr(SecretStoreDataTypeAzureWorkloadIdentity)
+	case datamodel.SecretTypeAWSIRSA:
+		return to.Ptr(SecretStoreDataTypeAwsIRSA)
 	}
 	return nil
 }
