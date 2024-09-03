@@ -33,9 +33,15 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
     container: {
       image: magpieimage
       env: {
-        TWILIO_NUMBER: twilio.properties.fromNumber
-        TWILIO_SID: twilio.listSecrets().accountSid
-        TWILIO_ACCOUNT: twilio.listSecrets().authToken
+        TWILIO_NUMBER: {
+          value: twilio.properties.fromNumber
+        }
+        TWILIO_SID: {
+          value: twilio.listSecrets().accountSid
+        }
+        TWILIO_ACCOUNT: {
+          value: twilio.listSecrets().authToken
+        }
       }
     }
     connections: {}

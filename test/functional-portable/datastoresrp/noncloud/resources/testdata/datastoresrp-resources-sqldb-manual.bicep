@@ -46,7 +46,9 @@ resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
     container: {
       image: magpieImage
       env: {
-        CONNECTION_SQL_CONNECTIONSTRING: db.listSecrets().connectionString
+        CONNECTION_SQL_CONNECTIONSTRING: {
+          value: db.listSecrets().connectionString
+        }
       }
       readinessProbe: {
         kind: 'httpGet'
@@ -82,9 +84,15 @@ resource sqlContainer 'Applications.Core/containers@2023-10-01-preview' = {
     container: {
       image: sqlImage
       env: {
-        ACCEPT_EULA: 'Y'
-        MSSQL_PID: 'Developer'
-        MSSQL_SA_PASSWORD: password
+        ACCEPT_EULA: {
+          value: 'Y'
+        }
+        MSSQL_PID: {
+          value: 'Developer'
+        }
+        MSSQL_SA_PASSWORD: {
+          value: password
+        }
       }
       ports: {
         sql: {

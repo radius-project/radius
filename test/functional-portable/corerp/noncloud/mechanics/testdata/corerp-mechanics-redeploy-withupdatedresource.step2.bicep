@@ -25,7 +25,9 @@ resource mechanicsd 'Applications.Core/containers@2023-10-01-preview' = {
     container: {
       image: magpieimage
       env: {
-        TEST: 'updated'
+        TEST: {
+          value: 'updated'
+        }
       }
     }
   }
