@@ -80,9 +80,13 @@ func (b *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath 
 		Tenant:      to.Ptr(b.tenantID),
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
 	return &auth.Client{
 		Client: retry.DefaultClient,
-		Credential: auth.StaticCredential("orasregistry.azurecr.io", auth.Credential{
+		Credential: auth.StaticCredential(registryHost, auth.Credential{
 			RefreshToken: *rt.RefreshToken,
 		}),
 	}, nil
