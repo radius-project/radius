@@ -21,7 +21,7 @@ param rootScope string = resourceGroup().id
 
 @description('Specifies the environment for resources.')
 #disable-next-line no-hardcoded-env-urls
-param oidcIssuer string = 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
+param oidcIssuer string = 'https://rttest.blob.core.windows.net/kubeoidc/'
 
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
