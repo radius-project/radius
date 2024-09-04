@@ -26,8 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/ucp/resources"
-	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/spf13/cobra"
 )
 
@@ -101,22 +99,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if format == "" {
 		format = "table"
 	}
-	var resourcegroup string
-	if len(args) == 1 {
-		resourcegroup, err = cli.RequireUCPResourceGroup(cmd, args)
-		if err != nil {
-			return err
-		}
-	} else {
-		id, err := resources.ParseScope(workspace.Scope)
-		if err != nil {
-			return err
-		}
-		resourcegroup = id.FindScope(resources_radius.ScopeResourceGroups)
+
+	resourceGroup, err := cli.RequireResourceGroupNameArgs(cmd, args, workspace)
+	if err != nil {
+		return err
 	}
 
 	r.Format = format
-	r.UCPResourceGroupName = resourcegroup
+	r.UCPResourceGroupName = resourceGroup
 	r.Workspace = workspace
 
 	return nil
