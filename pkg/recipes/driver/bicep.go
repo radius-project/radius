@@ -95,6 +95,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 		return nil, err
 	}
 
+	// get ORAS authentication client if secrets are found for the registry.
 	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
 		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
 		if err != nil {
@@ -278,6 +279,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (
 		return nil, err
 	}
 
+	// get ORAS authentication client if secrets are found for the registry.
 	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
 		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
 		if err != nil {

@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry"
@@ -41,18 +40,10 @@ func NewAzureWorkloadIdentity(clientID string, tenantID string) AuthClient {
 	return &azureWorkloadIdentity{clientID: clientID, tenantID: tenantID}
 }
 
-func (b *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
-	c := azcontainerregistry.AuthenticationClientOptions{
-		azcore.ClientOptions{
-			Retry: policy.RetryOptions{
-				MaxRetries: 10,
-			},
-		},
-	}
-
+func (wi *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
 	opt := &azidentity.WorkloadIdentityCredentialOptions{
-		ClientID: b.clientID,
-		TenantID: b.tenantID,
+		ClientID: wi.clientID,
+		TenantID: wi.tenantID,
 	}
 
 	cred, err := azidentity.NewWorkloadIdentityCredential(opt)
@@ -70,14 +61,15 @@ func (b *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath 
 	if err != nil {
 		return nil, err
 	}
-	ac, err := azcontainerregistry.NewAuthenticationClient(fmt.Sprintf("https://%s", registryHost), &c)
+
+	ac, err := azcontainerregistry.NewAuthenticationClient(fmt.Sprintf("https://%s", registryHost), &azcontainerregistry.AuthenticationClientOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	rt, err := ac.ExchangeAADAccessTokenForACRRefreshToken(ctx, "access_token", registryHost, &azcontainerregistry.AuthenticationClientExchangeAADAccessTokenForACRRefreshTokenOptions{
 		AccessToken: to.Ptr(aadToken.Token),
-		Tenant:      to.Ptr(b.tenantID),
+		Tenant:      to.Ptr(wi.tenantID),
 	})
 
 	if err != nil {

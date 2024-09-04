@@ -26,10 +26,14 @@ import (
 )
 
 //go:generate mockgen -typed -destination=./mock_authClient.go -package=authClient -self_package github.com/radius-project/radius/pkg/rp/util/authClient github.com/radius-project/radius/pkg/rp/util/authClient AuthClient
+
+// AuthClient is an interface for getting appropriate ORAS auth client based on the auth type.
 type AuthClient interface {
+	// GetAuthClient returns ORAS authentication client used to authenticate private bicep registry.
 	GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error)
 }
 
+// GetNewRegistryAuthClient creates and returns an appropriate AuthClient based on the provided secret data type.
 func GetNewRegistryAuthClient(secrets recipes.SecretData) (AuthClient, error) {
 	secretsData := secrets.Data
 	switch secrets.Type {

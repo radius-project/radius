@@ -237,7 +237,7 @@ func (r *Runner) prepareSource(ctx context.Context) (*memory.Store, error) {
 	}
 
 	// Push config blob
-	configDesc, err := pushBlob(ctx, configMediaType, nil, src)
+	configDesc, err := pushBlob(ctx, configMediaType, []byte("{}"), src)
 	if err != nil {
 		return nil, err
 	}
