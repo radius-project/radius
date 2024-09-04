@@ -36,6 +36,27 @@ For the entire release process, directly clone repositories under the radius-pro
 When starting the release process, we first kick it off by creating an RC release. If we find issues in validation, we can create additional RC releases until we feel confident in the release.
 
 Follow the steps below to create an RC release.
+1. Create new credentials for different PR endpoints and tags used during the release process. Request someone with admin access to run the below command using different subjects.
+   ```
+   az ad app federated-credential create --id <APPLICATION-OBJECT-ID> --parameters credential.json
+   ("credential.json" contains the following content)
+   {
+      "name": "<CREDENTIAL-NAME>",
+      "issuer": "
+   https://token.actions.githubusercontent.com"
+   ,
+      "subject": "<subjects-listed-below>",
+      "description": "Testing",
+      "audiences": [
+         "api://AzureADTokenExchange"
+      ]
+   }
+   ```
+   Subject list:
+   - repo:radius-project/radius:ref:refs/tags/v0.37.0-rc1
+   - repo:radius-project/radius:ref:refs/tags/v0.37.0
+   - repo:radius-project/bicep-types-aws:ref:refs/tags/v0.37.0-rc1
+   - repo:radius-project/bicep-types-aws:ref:refs/tags/v0.37.0
 
 1. Clone the [radius-project/radius](https://github.com/radius-project/radius) repo locally, or use your existing local copy.
    ```
@@ -87,42 +108,6 @@ Once an RC release has been created and validated, we can proceed to creating th
 
 Follow the steps below to create a final release.
 
-1. Clone the [radius-project/bicep](https://github.com/radius-project/bicep) repo locally, or use your existing local copy.
-   ```
-   git clone git@github.com:radius-project/bicep.git
-   ```
-
-1. Create a new branch from `bicep-extensibility`.
-   ```
-   git checkout bicep-extensibility
-   git checkout -b <USERNAME>/<BRANCHNAME>
-   ```
-
-1. In your local branch, update the `version.json` file.
-Update it to reflect the new release version that we would like to release ([Example](https://github.com/radius-project/bicep/pull/703/files)).
-
-1. Push these changes to a remote branch and create a pull request against `bicep-extensibility`.
-   ```
-   git push origin <USERNAME>/<BRANCHNAME>
-   ```
-
-1. After maintainer approval, merge the pull request to `bicep-extensiblity`.
-
-1. Create a new branch from the release branch we want to release. The release branch should already exist in the repo. Release branches are in the format `release/x.y`.
-   ```
-   git checkout release/0.<VERSION>
-   git checkout -b <USERNAME>/<BRANCHNAME>
-   ```
-
-1. Cherry-pick the `version.json` changes from the previous steps in this PR. This will ensure that the version changes are included in the release branch ([Example](https://github.com/radius-project/bicep/pull/704/files)). You can get the commit hash by running `git log --oneline` in the bicep-extensibility branch. PLEASE USE `-x` HERE TO ENSURE VERSION HISTORY IS PRESERVED.
-   ```
-   git cherry-pick -x <COMMIT HASH>
-   ```
-
-1. Create a PR to merge into the release branch in the bicep repo.
-
-1. After maintainer approval, merge the pull request to the release branch.
-
 1. Move to your local copy of the `radius-project/radius` repo.
 
 1. Create a new branch from `main`.
@@ -159,10 +144,6 @@ Update it to reflect the new release version that we would like to release ([Exa
    > If this workflow run fails, then there should be further investigation. Try checking the logs to see what failed and why, and checking if there is already an issue open for this failure in the samples repo. Sometimes, the workflow run will fail because of flaky tests. Try re-running, and if the failure is persistent, then file an issue in the samples repo and raise it with the maintainers.
 
 1. If these workflows pass, then the release has been successfully created and validated. If the workflows fail, then we need to fix the issues and create a new release.
-
-1. Download the Radius Bicep .vsix file from here: https://github.com/radius-project/bicep/releases. Scroll down to the most recent release and download the .vsix file.
-
-1. Upload the Radius Bicep .vsix to the [VS marketplace](https://marketplace.visualstudio.com/manage/publishers/ms-azuretools). You may need access permissions, if so, ask @sk593 or @willdavsmith. Click on the ... for Radius Bicep, then Update, then upload the .vsix file. The site will verify it then the version number should be updated to the right one.
 
 ## Patching
 
