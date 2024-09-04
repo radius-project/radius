@@ -36,16 +36,23 @@ type azureWorkloadIdentity struct {
 	tenantID string
 }
 
+// NewAzureWorkloadIdentity creates a new NewAzureWorkloadIdentity instance.
 func NewAzureWorkloadIdentity(clientID string, tenantID string) AuthClient {
 	return &azureWorkloadIdentity{clientID: clientID, tenantID: tenantID}
 }
 
+// GetAuthClient retrieves an authenticated client for accessing Azure Container Registry (ACR) using
+// Azure Workload Identity. It first acquires an Azure Active Directory (AAD) access token by leveraging
+// the federated token provided by AKS. The AAD access token is then exchanged for an ACR refresh token.
+// The function returns a remote.Client that can authenticate and interact with the container registry
+// using the obtained refresh token.
 func (wi *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
 	opt := &azidentity.WorkloadIdentityCredentialOptions{
 		ClientID: wi.clientID,
 		TenantID: wi.tenantID,
 	}
 
+	// Get AAD access token by sending projected federated token from AKS
 	cred, err := azidentity.NewWorkloadIdentityCredential(opt)
 	if err != nil {
 		return nil, err
@@ -67,6 +74,7 @@ func (wi *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath
 		return nil, err
 	}
 
+	// Get refresh token from ACR by exchanging for the above AAD access token
 	rt, err := ac.ExchangeAADAccessTokenForACRRefreshToken(ctx, "access_token", registryHost, &azcontainerregistry.AuthenticationClientExchangeAADAccessTokenForACRRefreshTokenOptions{
 		AccessToken: to.Ptr(aadToken.Token),
 		Tenant:      to.Ptr(wi.tenantID),
@@ -76,6 +84,7 @@ func (wi *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath
 		return nil, err
 	}
 
+	// Return a new auth.Client using the retrieved refresh token for ACR
 	return &auth.Client{
 		Client: retry.DefaultClient,
 		Credential: auth.StaticCredential(registryHost, auth.Credential{

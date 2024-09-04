@@ -31,10 +31,14 @@ type basicAuthentication struct {
 	password string
 }
 
+// NewBasicAuthentication creates a new NewBasicAuthentication instance.
 func NewBasicAuthentication(username string, password string) AuthClient {
 	return &basicAuthentication{username: username, password: password}
 }
 
+// GetAuthClient creates and returns an authentication client for accessing a private bicep registry
+// using basic authentication. It returns an auth.Client configured with the
+// provided username and password for the registry.
 func (b *basicAuthentication) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
 	registry, err := getRegistryHostname(templatePath)
 	if err != nil {
