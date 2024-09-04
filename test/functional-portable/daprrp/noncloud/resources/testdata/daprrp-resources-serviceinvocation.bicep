@@ -21,7 +21,9 @@ resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
       image: magpieimage
       env: {
         // Used by magpie to communicate with the backend.
-        CONNECTION_DAPRHTTP_APPID: 'backend'
+        CONNECTION_DAPRHTTP_APPID: {
+          value: 'backend'
+        }
       }
       readinessProbe:{
         kind:'httpGet'

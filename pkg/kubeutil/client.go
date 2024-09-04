@@ -28,6 +28,9 @@ import (
 	"k8s.io/client-go/rest"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
+
+	// Import kubernetes auth plugins
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 // Clients is a collection of Kubernetes clients.

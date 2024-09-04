@@ -82,7 +82,7 @@ model RecipeConfigProperties {
   @doc("Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.")
   bicep?: BicepConfigProperties;
 
-  @doc("Environment variables injected during recipe execution for the recipes in the environment.")
+  @doc("Environment variables injected during recipe execution for the recipes in the environment, currently supported for Terraform recipes.")
   env?: EnvironmentVariables;
 
   @doc("Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
