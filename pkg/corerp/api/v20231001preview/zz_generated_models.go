@@ -278,7 +278,7 @@ type Container struct {
 	Command []*string
 
 	// environment
-	Env map[string]*string
+	Env map[string]*EnvironmentVariable
 
 	// The pull policy for the container image
 	ImagePullPolicy *ImagePullPolicy
@@ -454,7 +454,7 @@ type ContainerUpdate struct {
 	Command []*string
 
 	// environment
-	Env map[string]*string
+	Env map[string]*EnvironmentVariableUpdate
 
 	// The registry and image to download and run in your container
 	Image *string
@@ -618,6 +618,36 @@ type EnvironmentResourceUpdateProperties struct {
 
 	// Simulated environment.
 	Simulated *bool
+}
+
+// EnvironmentVariable - Environment variables type
+type EnvironmentVariable struct {
+	// The value of the environment variable
+	Value *string
+
+	// The reference to the variable
+	ValueFrom *EnvironmentVariableReference
+}
+
+// EnvironmentVariableReference - The reference to the variable
+type EnvironmentVariableReference struct {
+	// REQUIRED; The secret reference
+	SecretRef *SecretReference
+}
+
+// EnvironmentVariableReferenceUpdate - The reference to the variable
+type EnvironmentVariableReferenceUpdate struct {
+	// The secret reference
+	SecretRef *SecretReferenceUpdate
+}
+
+// EnvironmentVariableUpdate - Environment variables type
+type EnvironmentVariableUpdate struct {
+	// The value of the environment variable
+	Value *string
+
+	// The reference to the variable
+	ValueFrom *EnvironmentVariableReferenceUpdate
 }
 
 // EphemeralVolume - Specifies an ephemeral volume for a container
@@ -1312,7 +1342,8 @@ type Recipe struct {
 
 // RecipeConfigProperties - Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 type RecipeConfigProperties struct {
-	// Environment variables injected during recipe execution for the recipes in the environment.
+	// Environment variables injected during recipe execution for the recipes in the environment, currently supported for Terraform
+// recipes.
 	Env map[string]*string
 
 	// Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores
@@ -1472,6 +1503,16 @@ type SecretReference struct {
 	Key *string
 
 	// REQUIRED; The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
+	Source *string
+}
+
+// SecretReferenceUpdate - This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control,
+// auditing and are recommended to be used to hold sensitive data.
+type SecretReferenceUpdate struct {
+	// The key for the secret in the secret store.
+	Key *string
+
+	// The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
 	Source *string
 }
 

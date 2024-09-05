@@ -43,6 +43,15 @@ func Test_Validate(t *testing.T) {
 
 	testcases := []radcli.ValidateInput{
 		{
+			Name:          "Show Command with no args",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
 			Name:          "Show Command with incorrect args",
 			Input:         []string{""},
 			ExpectedValid: false,

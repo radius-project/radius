@@ -159,3 +159,49 @@ func TestSecretStoreConvertFromValidation(t *testing.T) {
 		require.ErrorAs(t, tc.err, &err)
 	}
 }
+
+func TestSecretStorefromSecretStoreDataTypeDataModel(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    datamodel.SecretType
+		expected *SecretStoreDataType
+	}{
+		{
+			name:     "Generic Secret Type",
+			input:    datamodel.SecretTypeGeneric,
+			expected: to.Ptr(SecretStoreDataTypeGeneric),
+		},
+		{
+			name:     "Certificate Secret Type",
+			input:    datamodel.SecretTypeCert,
+			expected: to.Ptr(SecretStoreDataTypeCertificate),
+		},
+		{
+			name:     "Basic Authentication Secret Type",
+			input:    datamodel.SecretTypeBasicAuthentication,
+			expected: to.Ptr(SecretStoreDataTypeBasicAuthentication),
+		},
+		{
+			name:     "Azure Workload Identity Secret Type",
+			input:    datamodel.SecretTypeAzureWorkloadIdentity,
+			expected: to.Ptr(SecretStoreDataTypeAzureWorkloadIdentity),
+		},
+		{
+			name:     "AWS IRSA Secret Type",
+			input:    datamodel.SecretTypeAWSIRSA,
+			expected: to.Ptr(SecretStoreDataTypeAwsIRSA),
+		},
+		{
+			name:     "None Secret Type",
+			input:    datamodel.SecretTypeNone,
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := fromSecretStoreDataTypeDataModel(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

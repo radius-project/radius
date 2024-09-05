@@ -75,7 +75,7 @@ enum SecretStoreDataType {
   @doc("azureWorkloadIdentity type is used to represent registry authentication using azure federated identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'.")
   azureWorkloadIdentity,
 
-  @doc("awsIRSA type is used to represent registry authentication using AWS IRSA(IAM Roles for Service accounts) and the secretstore resource is expected to have the keys 'roleARN'.")
+  @doc("awsIRSA type is used to represent registry authentication using AWS IRSA (IAM Roles for Service accounts) and the secretstore resource is expected to have the key 'roleARN'.")
   awsIRSA,
 }
 

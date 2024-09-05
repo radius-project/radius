@@ -78,17 +78,17 @@ func getOrDefaultEncoding(t datamodel.SecretType, e datamodel.SecretValueEncodin
 	return e, err
 }
 
-// Define a map of required keys for each SecretType
-var requiredKeys = map[datamodel.SecretType][]string{
-	datamodel.SecretTypeBasicAuthentication:   {RequiredUsername, RequiredPassword},
-	datamodel.SecretTypeAzureWorkloadIdentity: {RequiredClientId, RequiredTenantId},
-	datamodel.SecretTypeAWSIRSA:               {RequiredRoleARN},
-}
-
 // ValidateAndMutateRequest checks the type and encoding of the secret store, and ensures that the secret store data is
 // valid and required keys are present for the secret type. If any of these checks fail, a BadRequestResponse is returned.
 func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.SecretStore, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
+	// Define a map of required keys for each SecretType
+	var requiredKeys = map[datamodel.SecretType][]string{
+		datamodel.SecretTypeBasicAuthentication:   {UsernameKey, PasswordKey},
+		datamodel.SecretTypeAzureWorkloadIdentity: {ClientIdKey, TenantIdKey},
+		datamodel.SecretTypeAWSIRSA:               {RoleARNKey},
+	}
 	var err error
+
 	newResource.Properties.Type, err = getOrDefaultType(newResource.Properties.Type)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil

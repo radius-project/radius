@@ -61,6 +61,11 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 			err:      nil,
 			emptyExt: true,
 		},
+		{
+			filename: "containerresource-nil-env-variables.json",
+			err:      v1.NewClientErrInvalidRequest("Environment variable DB_USER has neither value nor secret value"),
+			emptyExt: false,
+		},
 	}
 
 	for _, tt := range conversionTests {
@@ -89,6 +94,22 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 					require.Equal(t, datamodel.ContainerResourceProvisioningManual, ct.Properties.ResourceProvisioning)
 					require.Equal(t, []datamodel.ResourceReference{{ID: "/planes/test/local/providers/Test.Namespace/testResources/test-resource"}}, ct.Properties.Resources)
 					return
+				}
+
+				if tt.filename == "containerresource.json" {
+					require.Equal(t, map[string]datamodel.EnvironmentVariable{
+						"DB_USER": {
+							Value: to.Ptr("DB_USER"),
+						},
+						"DB_PASSWORD": {
+							ValueFrom: &datamodel.EnvironmentVariableReference{
+								SecretRef: &datamodel.EnvironmentVariableSecretReference{
+									Source: "secret.id",
+									Key:    "DB_PASSWORD",
+								},
+							},
+						},
+					}, ct.Properties.Container.Env)
 				}
 
 				val, ok := ct.Properties.Connections["inventory"]
@@ -174,6 +195,22 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 					require.Equal(t, ContainerResourceProvisioning("manual"), *versioned.Properties.ResourceProvisioning)
 					require.Equal(t, []*ResourceReference{{ID: to.Ptr("/planes/test/local/providers/Test.Namespace/testResources/test-resource")}}, versioned.Properties.Resources)
 					return
+				}
+
+				if tt.filename == "containerresourcedatamodel.json" {
+					require.Equal(t, map[string]datamodel.EnvironmentVariable{
+						"DB_USER": {
+							Value: to.Ptr("DB_USER"),
+						},
+						"DB_PASSWORD": {
+							ValueFrom: &datamodel.EnvironmentVariableReference{
+								SecretRef: &datamodel.EnvironmentVariableSecretReference{
+									Source: "secret.id",
+									Key:    "DB_PASSWORD",
+								},
+							},
+						},
+					}, r.Properties.Container.Env)
 				}
 
 				val, ok := r.Properties.Connections["inventory"]
