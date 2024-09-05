@@ -15,6 +15,9 @@
     "env": "dev"
   },
   "properties": {
+    "auth": {
+      "secretStore": "test-secret-store"
+    },
     "componentName": "test-dpsb",
     "status": {
       "outputResources": [
@@ -30,7 +33,9 @@
     "type": "pubsub.kafka",
     "version": "v1",
     "metadata": {
-      "foo": "bar"
+      "foo": {
+        "value": "bar"
+      }
     }
   }
 }

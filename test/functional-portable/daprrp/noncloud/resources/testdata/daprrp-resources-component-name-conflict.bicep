@@ -21,7 +21,9 @@ resource pubsub 'Applications.Dapr/pubSubBrokers@2023-10-01-preview' = {
     type: 'pubsub.azure.servicebus'
     version: 'v1'
     metadata: {
-      name: 'test'
+      name: {
+        value: 'test'
+      }
     }
   }
 }
@@ -36,7 +38,9 @@ resource secretstore 'Applications.Dapr/secretStores@2023-10-01-preview' = {
     resourceProvisioning: 'manual'
     type: 'secretstores.kubernetes'
     metadata: {
-      vaultName: 'test'
+      vaultName: {
+        value: 'test'
+      }
     }
     version: 'v1'
   }

@@ -3,21 +3,26 @@ extension radius
 param magpieimage string
 param environment string
 param namespace string = 'default'
+param baseName string = 'dapr-sts-manual-secret'
+@secure()
+param redisPassword string = ''
+param secretName string = 'redisauth'
+param location string = resourceGroup().location
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'dpsb-manual-app'
+  name: baseName
   properties: {
     environment: environment
   }
 }
 
 resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'dpsb-manual-app-ctnr'
+  name: '${baseName}-ctnr'
   properties: {
     application: app.id
     connections: {
-      daprpubsub: {
-        source: pubsubBroker.id
+      daprstatestore: {
+        source: statestore.id
       }
     }
     container: {
@@ -31,7 +36,7 @@ resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'dpsb-manual-app-ctnr'
+        appId: 'gnrc-sts-ctnr'
         appPort: 3000
       }
     ]
@@ -40,30 +45,54 @@ resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
 
 
 module redis '../../../../../../test/testrecipes/modules/redis-selfhost.bicep' = {
-  name: 'dpsb-manual-redis-deployment'
+  name: '${baseName}-redis-deployment'
   params: {
-    name: 'dpsb-manual-redis'
+    name: '${baseName}-redis'
     namespace: namespace
     application: app.name
+    password: redisPassword
   }
 }
 
 
-resource pubsubBroker 'Applications.Dapr/pubSubBrokers@2023-10-01-preview' = {
-  name: 'dpsb-manual'
+resource statestore 'Applications.Dapr/stateStores@2023-10-01-preview' = {
+  name: '${baseName}-sts'
   properties: {
     application: app.id
     environment: environment
     resourceProvisioning: 'manual'
-    type: 'pubsub.redis'
+    type: 'state.redis'
+    auth: {
+        secretStore: secretstore.name
+    }
     metadata: {
       redisHost: {
         value: '${redis.outputs.host}:${redis.outputs.port}'
       }
       redisPassword: {
-        value: ''
+        secretKeyRef: {
+            name: secretName
+            key: 'password'
+        }
       }
     }
     version: 'v1'
+  }
+}
+
+resource secretstore 'Applications.Dapr/secretStores@2023-10-01-preview' = {
+  name: '${baseName}-scs'
+  location: location
+  properties: {
+    environment: environment
+    application: app.id
+    resourceProvisioning: 'manual'
+    type: 'secretstores.kubernetes'
+    version: 'v1'
+    metadata: {
+      vaultName: {
+        value: 'test'
+      }
+    }
   }
 }
