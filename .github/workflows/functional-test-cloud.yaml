@@ -127,6 +127,14 @@ jobs:
             echo "Event Repository ID: ${{ github.event.workflow_run.repository.id }}"
             echo "Event Repository Name: ${{ github.event.workflow_run.repository.name }}"
             echo "Event Repository Full Name: ${{ github.event.workflow_run.repository.full_name }}"
+            echo "Workflow ID: ${{ github.event.workflow_run.workflow_id }}"
+            echo "Workflow Run ID: ${{ github.event.workflow_run.id }}"
+            echo "Workflow Name: ${{ github.event.workflow_run.name }}"
+            echo "Run Number: ${{ github.event.workflow_run.run_number }}"
+            echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+            echo "Status: ${{ github.event.workflow_run.status }}"
+            echo "Created At: ${{ github.event.workflow_run.created_at }}"
+            echo "Updated At: ${{ github.event.workflow_run.updated_at }}"
           fi
       - name: Get GitHub app token
         uses: tibdex/github-app-token@v2
