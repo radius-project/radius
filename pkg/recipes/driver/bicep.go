@@ -38,7 +38,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util"
-	"github.com/radius-project/radius/pkg/rp/util/authClient"
+	"github.com/radius-project/radius/pkg/rp/util/authclient"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
@@ -89,13 +89,13 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
-	registryClient := d.RegistryClient
 	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
 	if err != nil {
 		return nil, err
 	}
 
-	// get ORAS authentication client if secrets are found for the registry.
+	registryClient := d.RegistryClient
+	// Get ORAS authentication client if secrets are found for the registry.
 	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
 		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
 		if err != nil {
@@ -272,14 +272,14 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (
 	//			}
 	//		}
 	//	}
-	registryClient := d.RegistryClient
 	recipeData := make(map[string]any)
 	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
 	if err != nil {
 		return nil, err
 	}
 
-	// get ORAS authentication client if secrets are found for the registry.
+	registryClient := d.RegistryClient
+	// Get ORAS authentication client if secrets are found for the registry.
 	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
 		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
 		if err != nil {
@@ -449,15 +449,10 @@ func (d *bicepDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Confi
 }
 
 func getRegistryAuthClient(ctx context.Context, secrets recipes.SecretData, templatePath string) (remote.Client, error) {
-	newRegistryClient, err := authClient.GetNewRegistryAuthClient(secrets)
+	newRegistryClient, err := authclient.GetNewRegistryAuthClient(secrets)
 	if err != nil {
 		return nil, err
 	}
 
-	authClient, err := newRegistryClient.GetAuthClient(ctx, templatePath)
-	if err != nil {
-		return nil, err
-	}
-
-	return authClient, nil
+	return newRegistryClient.GetAuthClient(ctx, templatePath)
 }

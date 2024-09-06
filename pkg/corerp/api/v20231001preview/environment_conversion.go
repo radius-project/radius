@@ -206,6 +206,7 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 
 			recipeConfig.Terraform.Providers = toRecipeConfigTerraformProvidersDatamodel(config)
 		}
+
 		if config.Bicep != nil {
 			recipeConfig.Bicep = datamodel.BicepConfigProperties{}
 			if config.Bicep.Authentication != nil {
@@ -250,6 +251,7 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 
 			recipeConfig.Terraform.Providers = fromRecipeConfigTerraformProvidersDatamodel(config)
 		}
+
 		if !reflect.DeepEqual(config.Bicep, datamodel.BicepConfigProperties{}) {
 			recipeConfig.Bicep = &BicepConfigProperties{}
 			if config.Bicep.Authentication != nil {

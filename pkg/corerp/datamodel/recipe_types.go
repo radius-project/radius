@@ -21,7 +21,7 @@ type RecipeConfigProperties struct {
 	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
 	Terraform TerraformConfigProperties `json:"terraform,omitempty"`
 
-	// Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.
+	// BicepConfigProperties represent configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.
 	Bicep BicepConfigProperties `json:"bicep,omitempty"`
 
 	// Env specifies the environment variables to be set during the Terraform Recipe execution.
@@ -45,15 +45,15 @@ type TerraformConfigProperties struct {
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
 // deployment.
 type BicepConfigProperties struct {
-	// Authentication information used to access private bicep registries, which is a map of registry hostname to secret config
+	// Authentication holds the information used to access private bicep registries, which is a map of registry hostname to secret config
 	// that contains credential information.
 	Authentication map[string]RegistrySecretConfig
 }
 
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
 type RegistrySecretConfig struct {
-	// The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container
-	// registry. The keys in the secretstore depends on the type.
+	// Secret is the ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private
+	// container registry. The keys in the secretstore depends on the type.
 	Secret string
 }
 

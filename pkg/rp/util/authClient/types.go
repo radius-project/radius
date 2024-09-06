@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package authClient
+package authclient
 
 import (
 	"context"
@@ -25,7 +25,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-//go:generate mockgen -typed -destination=./mock_authClient.go -package=authClient -self_package github.com/radius-project/radius/pkg/rp/util/authClient github.com/radius-project/radius/pkg/rp/util/authClient AuthClient
+//go:generate mockgen -typed -destination=./mock_authclient.go -package=authclient -self_package github.com/radius-project/radius/pkg/rp/util/authclient github.com/radius-project/radius/pkg/rp/util/authclient AuthClient
 
 // AuthClient is an interface for getting appropriate ORAS auth client based on the auth type.
 type AuthClient interface {

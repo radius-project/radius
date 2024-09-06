@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package authClient
+package authclient
 
 import (
 	"context"
@@ -36,7 +36,7 @@ type azureWorkloadIdentity struct {
 	tenantID string
 }
 
-// NewAzureWorkloadIdentity creates a new NewAzureWorkloadIdentity instance.
+// NewAzureWorkloadIdentity creates a new azureWorkloadIdentity instance.
 func NewAzureWorkloadIdentity(clientID string, tenantID string) AuthClient {
 	return &azureWorkloadIdentity{clientID: clientID, tenantID: tenantID}
 }

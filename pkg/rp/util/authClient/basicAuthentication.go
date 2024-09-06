@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package authClient
+package authclient
 
 import (
 	"context"
@@ -31,7 +31,7 @@ type basicAuthentication struct {
 	password string
 }
 
-// NewBasicAuthentication creates a new NewBasicAuthentication instance.
+// NewBasicAuthentication creates a new basicAuthentication instance.
 func NewBasicAuthentication(username string, password string) AuthClient {
 	return &basicAuthentication{username: username, password: password}
 }

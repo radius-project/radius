@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package authClient
+package authclient
 
 import (
 	"context"
@@ -58,14 +58,12 @@ func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remot
 
 	awscfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(region))
-
 	if err != nil {
 		return nil, errors.New("first error : " + err.Error())
 	}
 
-	stsclient := sts.NewFromConfig(awscfg)
 	credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
-		stsclient,
+		sts.NewFromConfig(awscfg),
 		b.roleARN,
 		stscreds.IdentityTokenFile(ucp_aws.TokenFilePath),
 		func(o *stscreds.WebIdentityRoleOptions) {
@@ -77,19 +75,17 @@ func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remot
 		config.WithRegion(region),
 		config.WithCredentialsProvider(credsCache),
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	ecrClient := ecr.NewFromConfig(ecrCfg)
 	authTokenOutput, err := ecrClient.GetAuthorizationToken(ctx, nil)
-
 	if err != nil {
 		return nil, err
 	}
 
-	if len(authTokenOutput.AuthorizationData) == 0 {
+	if authTokenOutput == nil || len(authTokenOutput.AuthorizationData) == 0 {
 		return nil, fmt.Errorf("no authorization data found")
 	}
 
@@ -123,6 +119,5 @@ func getECRRegion(ecrHost string) (string, error) {
 	}
 
 	// The region is the third part of the hostname
-	region := parts[3]
-	return region, nil
+	return parts[3], nil
 }
