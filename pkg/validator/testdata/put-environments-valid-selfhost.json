@@ -1,8 +1,8 @@
 {
-	"location": "West US",
-	"properties": {
-		"compute": {
-			"kind": "kubernetes"
-		}
-	}
+  "location": "West US",
+  "properties": {
+    "compute": {
+      "kind": "kubernetes"
+    }
+  }
 }

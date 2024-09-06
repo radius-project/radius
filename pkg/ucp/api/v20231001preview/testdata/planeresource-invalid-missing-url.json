@@ -1,11 +1,11 @@
 {
-    "id": "/planes/radius/local",
-    "name": "local",
-    "type": "System.Radius/planes",
-    "properties": {
-        "kind": "Azure",
-        "resourceProviders": {
-            "Applications.Core": "https://applications.core.radius.azure.com"
-        }
+  "id": "/planes/radius/local",
+  "name": "local",
+  "type": "System.Radius/planes",
+  "properties": {
+    "kind": "Azure",
+    "resourceProviders": {
+      "Applications.Core": "https://applications.core.radius.azure.com"
     }
+  }
 }

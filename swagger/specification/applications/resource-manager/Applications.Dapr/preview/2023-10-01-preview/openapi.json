@@ -10,21 +10,13 @@
       }
     ]
   },
-  "schemes": [
-    "https"
-  ],
+  "schemes": ["https"],
   "host": "management.azure.com",
-  "produces": [
-    "application/json"
-  ],
-  "consumes": [
-    "application/json"
-  ],
+  "produces": ["application/json"],
+  "consumes": ["application/json"],
   "security": [
     {
-      "azure_auth": [
-        "user_impersonation"
-      ]
+      "azure_auth": ["user_impersonation"]
     }
   ],
   "securityDefinitions": {
@@ -56,9 +48,7 @@
     "/{rootScope}/providers/Applications.Dapr/pubSubBrokers": {
       "get": {
         "operationId": "PubSubBrokers_ListByScope",
-        "tags": [
-          "PubSubBrokers"
-        ],
+        "tags": ["PubSubBrokers"],
         "description": "List DaprPubSubBrokerResource resources by Scope",
         "parameters": [
           {
@@ -98,9 +88,7 @@
     "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}": {
       "get": {
         "operationId": "PubSubBrokers_Get",
-        "tags": [
-          "PubSubBrokers"
-        ],
+        "tags": ["PubSubBrokers"],
         "description": "Get a DaprPubSubBrokerResource",
         "parameters": [
           {
@@ -141,9 +129,7 @@
       },
       "put": {
         "operationId": "PubSubBrokers_CreateOrUpdate",
-        "tags": [
-          "PubSubBrokers"
-        ],
+        "tags": ["PubSubBrokers"],
         "description": "Create a DaprPubSubBrokerResource",
         "parameters": [
           {
@@ -213,9 +199,7 @@
       },
       "patch": {
         "operationId": "PubSubBrokers_Update",
-        "tags": [
-          "PubSubBrokers"
-        ],
+        "tags": ["PubSubBrokers"],
         "description": "Update a DaprPubSubBrokerResource",
         "parameters": [
           {
@@ -283,9 +267,7 @@
       },
       "delete": {
         "operationId": "PubSubBrokers_Delete",
-        "tags": [
-          "PubSubBrokers"
-        ],
+        "tags": ["PubSubBrokers"],
         "description": "Delete a DaprPubSubBrokerResource",
         "parameters": [
           {
@@ -346,9 +328,7 @@
     "/{rootScope}/providers/Applications.Dapr/secretStores": {
       "get": {
         "operationId": "SecretStores_ListByScope",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "List DaprSecretStoreResource resources by Scope",
         "parameters": [
           {
@@ -388,9 +368,7 @@
     "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}": {
       "get": {
         "operationId": "SecretStores_Get",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "Get a DaprSecretStoreResource",
         "parameters": [
           {
@@ -431,9 +409,7 @@
       },
       "put": {
         "operationId": "SecretStores_CreateOrUpdate",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "Create a DaprSecretStoreResource",
         "parameters": [
           {
@@ -500,9 +476,7 @@
       },
       "patch": {
         "operationId": "SecretStores_Update",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "Update a DaprSecretStoreResource",
         "parameters": [
           {
@@ -570,9 +544,7 @@
       },
       "delete": {
         "operationId": "SecretStores_Delete",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "Delete a DaprSecretStoreResource",
         "parameters": [
           {
@@ -633,9 +605,7 @@
     "/{rootScope}/providers/Applications.Dapr/stateStores": {
       "get": {
         "operationId": "StateStores_ListByScope",
-        "tags": [
-          "StateStores"
-        ],
+        "tags": ["StateStores"],
         "description": "List DaprStateStoreResource resources by Scope",
         "parameters": [
           {
@@ -675,9 +645,7 @@
     "/{rootScope}/providers/Applications.Dapr/stateStores/{stateStoreName}": {
       "get": {
         "operationId": "StateStores_Get",
-        "tags": [
-          "StateStores"
-        ],
+        "tags": ["StateStores"],
         "description": "Get a DaprStateStoreResource",
         "parameters": [
           {
@@ -718,9 +686,7 @@
       },
       "put": {
         "operationId": "StateStores_CreateOrUpdate",
-        "tags": [
-          "StateStores"
-        ],
+        "tags": ["StateStores"],
         "description": "Create a DaprStateStoreResource",
         "parameters": [
           {
@@ -790,9 +756,7 @@
       },
       "patch": {
         "operationId": "StateStores_Update",
-        "tags": [
-          "StateStores"
-        ],
+        "tags": ["StateStores"],
         "description": "Update a DaprStateStoreResource",
         "parameters": [
           {
@@ -860,9 +824,7 @@
       },
       "delete": {
         "operationId": "StateStores_Delete",
-        "tags": [
-          "StateStores"
-        ],
+        "tags": ["StateStores"],
         "description": "Delete a DaprStateStoreResource",
         "parameters": [
           {
@@ -923,9 +885,7 @@
     "/providers/Applications.Dapr/operations": {
       "get": {
         "operationId": "Operations_List",
-        "tags": [
-          "Operations"
-        ],
+        "tags": ["Operations"],
         "description": "List the operations for the provider",
         "parameters": [
           {
@@ -1015,9 +975,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "required": [
-        "environment"
-      ]
+      "required": ["environment"]
     },
     "DaprPubSubBrokerResource": {
       "type": "object",
@@ -1027,15 +985,10 @@
           "$ref": "#/definitions/DaprPubSubBrokerProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1059,9 +1012,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "DaprPubSubBrokerResourceUpdate": {
       "type": "object",
@@ -1189,9 +1140,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "required": [
-        "environment"
-      ]
+      "required": ["environment"]
     },
     "DaprSecretStoreResource": {
       "type": "object",
@@ -1201,15 +1150,10 @@
           "$ref": "#/definitions/DaprSecretStoreProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1233,9 +1177,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "DaprSecretStoreResourceUpdate": {
       "type": "object",
@@ -1353,9 +1295,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "required": [
-        "environment"
-      ]
+      "required": ["environment"]
     },
     "DaprStateStoreResource": {
       "type": "object",
@@ -1365,15 +1305,10 @@
           "$ref": "#/definitions/DaprStateStoreProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1397,9 +1332,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "DaprStateStoreResourceUpdate": {
       "type": "object",
@@ -1484,17 +1417,12 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "IdentitySettingKind": {
       "type": "string",
       "description": "IdentitySettingKind is the kind of supported external identity setting",
-      "enum": [
-        "undefined",
-        "azure.com.workload"
-      ],
+      "enum": ["undefined", "azure.com.workload"],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
         "modelAsString": true,
@@ -1529,9 +1457,7 @@
           "description": "The resource ID of the provisioned identity"
         }
       },
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "KubernetesCompute": {
       "type": "object",
@@ -1542,9 +1468,7 @@
           "description": "The namespace to use for the environment."
         }
       },
-      "required": [
-        "namespace"
-      ],
+      "required": ["namespace"],
       "allOf": [
         {
           "$ref": "#/definitions/EnvironmentCompute"
@@ -1579,10 +1503,7 @@
           "description": "The field to select in the secret value. If the secret value is a string, it should be equal to the secret name"
         }
       },
-      "required": [
-        "name",
-        "key"
-      ]
+      "required": ["name", "key"]
     },
     "MetadataValueFromSecretUpdate": {
       "type": "object",
@@ -1725,9 +1646,7 @@
           "properties": {}
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "RecipeStatus": {
       "type": "object",
@@ -1746,10 +1665,7 @@
           "description": "TemplateVersion is the version number of the template."
         }
       },
-      "required": [
-        "templateKind",
-        "templatePath"
-      ]
+      "required": ["templateKind", "templatePath"]
     },
     "RecipeUpdate": {
       "type": "object",
@@ -1769,10 +1685,7 @@
     "ResourceProvisioning": {
       "type": "string",
       "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
-      "enum": [
-        "recipe",
-        "manual"
-      ],
+      "enum": ["recipe", "manual"],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
         "modelAsString": true,
@@ -1799,9 +1712,7 @@
           "description": "Resource id of an existing resource"
         }
       },
-      "required": [
-        "id"
-      ]
+      "required": ["id"]
     },
     "ResourceStatus": {
       "type": "object",
@@ -1829,9 +1740,7 @@
     "Versions": {
       "type": "string",
       "description": "Supported API versions for the Applications.Dapr resource provider.",
-      "enum": [
-        "2023-10-01-preview"
-      ],
+      "enum": ["2023-10-01-preview"],
       "x-ms-enum": {
         "name": "Versions",
         "modelAsString": true,

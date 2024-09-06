@@ -1,7 +1,5 @@
 {
-  "schemes": [
-    "https"
-  ],
+  "schemes": ["https"],
   "swagger": "2.0",
   "info": {
     "title": "Test.Rp1 spec",
@@ -9,12 +7,8 @@
     "version": "2021-10-31"
   },
   "host": "management.azure.com",
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "securityDefinitions": {
     "azure_auth": {
       "type": "oauth2",
@@ -51,10 +45,7 @@
         },
         "stringEnum": {
           "type": "string",
-          "enum": [
-            "Foo",
-            "Bar"
-          ],
+          "enum": ["Foo", "Bar"],
           "x-ms-enum": {
             "name": "StringEnum",
             "values": [
@@ -89,9 +80,7 @@
           "description": "The foo request string"
         }
       },
-      "required": [
-        "someString"
-      ]
+      "required": ["someString"]
     },
     "ArrayOfFoosResponse": {
       "type": "array",

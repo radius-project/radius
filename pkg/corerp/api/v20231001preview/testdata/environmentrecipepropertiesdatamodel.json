@@ -7,8 +7,8 @@
       "defaultValue": 200
     },
     "location": {
-      "type" : "string",
-      "defaultValue" : "[resourceGroup().location]"
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
     }
   }
 }

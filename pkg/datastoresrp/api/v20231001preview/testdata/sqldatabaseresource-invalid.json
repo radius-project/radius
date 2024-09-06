@@ -1,9 +1,9 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
-    "name": "sql0",
-    "type": "Applications.Datastores/sqlDatabases",
-    "properties": {
-        "database": 12345,
-        "resourceProvisioning":"manual"
-    }
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
+  "name": "sql0",
+  "type": "Applications.Datastores/sqlDatabases",
+  "properties": {
+    "database": 12345,
+    "resourceProvisioning": "manual"
+  }
 }

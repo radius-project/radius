@@ -1,58 +1,56 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-    "languageVersion": "1.9-experimental",
-    "contentVersion": "1.0.0.0",
-    "metadata": {
-        "EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
-        "_generator": {
-            "name": "bicep",
-            "version": "0.7.10.37724",
-            "templateHash": "2346558594741670581"
-        }
-    },
-    "parameters": {
-        "location": {
-            "type": "string",
-            "defaultValue": "westus2",
-            "metadata": {
-                "description": "Specifies the location for resources."
-            }
-        }
-    },
-    "imports": {
-        "radius": {
-            "provider": "Radius",
-            "version": "1.0"
-        }
-    },
-    "resources": {
-        "env": {
-            "import": "radius",
-            "type": "Applications.Core/environments@2023-10-01-preview",
-            "properties": {
-                "name": "corerp-resources-application-env",
-                "location": "[parameters('location')]",
-                "properties": {
-                    "compute": {
-                        "kind": "kubernetes",
-                        "resourceId": "cluster"
-                    }
-                }
-            }
-        },
-        "app": {
-            "import": "radius",
-            "type": "Applications.Core/applications@2023-10-01-preview",
-            "properties": {
-                "name": "corerp-resources-application-app",
-                "location": "[parameters('location')]",
-                "properties": {
-                    "environment": "[reference('env').id]"
-                }
-            },
-            "dependsOn": [
-                "env"
-            ]
-        }
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "1.9-experimental",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "EXPERIMENTAL_WARNING": "Symbolic name support in ARM is experimental, and should be enabled for testing purposes only. Do not enable this setting for any production usage, or you may be unexpectedly broken at any time!",
+    "_generator": {
+      "name": "bicep",
+      "version": "0.7.10.37724",
+      "templateHash": "2346558594741670581"
     }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "westus2",
+      "metadata": {
+        "description": "Specifies the location for resources."
+      }
+    }
+  },
+  "imports": {
+    "radius": {
+      "provider": "Radius",
+      "version": "1.0"
+    }
+  },
+  "resources": {
+    "env": {
+      "import": "radius",
+      "type": "Applications.Core/environments@2023-10-01-preview",
+      "properties": {
+        "name": "corerp-resources-application-env",
+        "location": "[parameters('location')]",
+        "properties": {
+          "compute": {
+            "kind": "kubernetes",
+            "resourceId": "cluster"
+          }
+        }
+      }
+    },
+    "app": {
+      "import": "radius",
+      "type": "Applications.Core/applications@2023-10-01-preview",
+      "properties": {
+        "name": "corerp-resources-application-app",
+        "location": "[parameters('location')]",
+        "properties": {
+          "environment": "[reference('env').id]"
+        }
+      },
+      "dependsOn": ["env"]
+    }
+  }
 }

@@ -1,6 +1,5 @@
 {
-    "location": "global",
-    "name": "test-rg",
-    "properties":{
-    }
+  "location": "global",
+  "name": "test-rg",
+  "properties": {}
 }

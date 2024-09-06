@@ -15,12 +15,12 @@
         "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb",
         "parameters": {
           "throughput": {
-            "type" : "int",
-            "defaultValue" : 400
+            "type": "int",
+            "defaultValue": 400
           },
           "location": {
-            "type" : "string",
-            "defaultValue" : "[resourceGroup().location]"
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]"
           }
         }
       }

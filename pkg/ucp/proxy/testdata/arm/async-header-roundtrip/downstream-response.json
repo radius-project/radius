@@ -1,8 +1,10 @@
 {
-    "statusCode": 200,
-    "body": "{}",
-    "headers": {
-        "Azure-Asyncoperation": ["http://localhost:9443/planes/example/local/asyncresponseID"],
-        "Location": ["http://localhost:9443/planes/example/local/asyncresponseID"]
-    } 
+  "statusCode": 200,
+  "body": "{}",
+  "headers": {
+    "Azure-Asyncoperation": [
+      "http://localhost:9443/planes/example/local/asyncresponseID"
+    ],
+    "Location": ["http://localhost:9443/planes/example/local/asyncresponseID"]
+  }
 }

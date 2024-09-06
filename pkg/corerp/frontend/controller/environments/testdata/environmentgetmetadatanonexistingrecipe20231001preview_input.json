@@ -1,4 +1,4 @@
 {
-    "name":"mongodb",
-    "resourceType":"Applications.Datastores/mongoDatabases"
+  "name": "mongodb",
+  "resourceType": "Applications.Datastores/mongoDatabases"
 }

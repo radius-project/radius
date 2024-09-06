@@ -1,8 +1,8 @@
 {
-    "url": "http://example.com/some-path?query=yes",
-    "method": "GET",
-    "headers": {
-        "traceparent": ["traceid"]
-    },
-    "body": ""
+  "url": "http://example.com/some-path?query=yes",
+  "method": "GET",
+  "headers": {
+    "traceparent": ["traceid"]
+  },
+  "body": ""
 }

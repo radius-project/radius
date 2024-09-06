@@ -1,9 +1,9 @@
 {
-    "location": "global",
-    "id": "/planes/azure/public",
-    "name": "local",
-    "type": "System.Azure/planes",
-    "properties": {
-        "kind": "Azure"
-    }
+  "location": "global",
+  "id": "/planes/azure/public",
+  "name": "local",
+  "type": "System.Azure/planes",
+  "properties": {
+    "kind": "Azure"
+  }
 }

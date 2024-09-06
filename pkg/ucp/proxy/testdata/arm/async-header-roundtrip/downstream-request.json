@@ -1,8 +1,10 @@
 {
-    "url": "http://example.com/planes/example/local/some-path?query=yes",
-    "method": "PUT",
-    "headers": {
-        "Referer": ["http://ucp.example.com/planes/example/local/some-path?query=yes"]
-    },
-    "body": ""
+  "url": "http://example.com/planes/example/local/some-path?query=yes",
+  "method": "PUT",
+  "headers": {
+    "Referer": [
+      "http://ucp.example.com/planes/example/local/some-path?query=yes"
+    ]
+  },
+  "body": ""
 }

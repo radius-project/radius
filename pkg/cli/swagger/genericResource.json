@@ -6,20 +6,12 @@
     "version": "2023-10-01-preview"
   },
   "host": "management.azure.com",
-  "schemes": [
-    "https"
-  ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "security": [
     {
-      "azure_auth": [
-        "user_impersonation"
-      ]
+      "azure_auth": ["user_impersonation"]
     }
   ],
   "securityDefinitions": {
@@ -38,17 +30,13 @@
       "get": {
         "description": "Lists information about all resources of the given resource type in the given root scope",
         "operationId": "GenericResources_ListByRootScope",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "x-ms-examples": {
           "GenericResourceListByRootScope": {
             "$ref": "./examples/GenericResourceListByRootScope.json"
           }
         },
-        "tags": [
-          "GenericResources"
-        ],
+        "tags": ["GenericResources"],
         "parameters": [
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -84,17 +72,13 @@
       "get": {
         "description": "Retrieves information about a generic resource with the name given of the type given within the root scope",
         "operationId": "GenericResources_Get",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "x-ms-examples": {
           "GenericResources_Get": {
             "$ref": "./examples/GenericResources_Get.json"
           }
         },
-        "tags": [
-          "GenericResources"
-        ],
+        "tags": ["GenericResources"],
         "parameters": [
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -127,17 +111,13 @@
       "put": {
         "description": "Creates or updates a Generic resource",
         "operationId": "GenericResources_CreateOrUpdate",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "x-ms-examples": {
           "GenericResources_CreateOrUpdate": {
             "$ref": "./examples/GenericResources_CreateOrUpdate.json"
           }
         },
-        "tags": [
-          "GenericResources"
-        ],
+        "tags": ["GenericResources"],
         "parameters": [
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -189,17 +169,13 @@
       "delete": {
         "description": "Deletes an existing Generic resource",
         "operationId": "GenericResources_Delete",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "x-ms-examples": {
           "GenericResources_Delete": {
             "$ref": "./examples/GenericResources_Delete.json"
           }
         },
-        "tags": [
-          "GenericResources"
-        ],
+        "tags": ["GenericResources"],
         "parameters": [
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -241,17 +217,13 @@
       "post": {
         "description": "Lists secrets for a resource",
         "operationId": "GenericResources_ListSecrets",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "x-ms-examples": {
           "GenericResources_ListSecrets": {
             "$ref": "./examples/GenericResources_ListSecrets.json"
           }
         },
-        "tags": [
-          "GenericResources"
-        ],
+        "tags": ["GenericResources"],
         "parameters": [
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -309,9 +281,7 @@
           "$ref": "#/definitions/TrackedResource"
         }
       ],
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "properties": {
         "systemData": {
           "$ref": "#/definitions/systemData"
@@ -364,10 +334,7 @@
           "items": {
             "$ref": "#/definitions/ErrorDetail"
           },
-          "x-ms-identifiers": [
-            "message",
-            "target"
-          ],
+          "x-ms-identifiers": ["message", "target"],
           "description": "The error details."
         },
         "additionalInfo": {
@@ -407,25 +374,16 @@
           "additionalProperties": {
             "type": "string"
           },
-          "x-ms-mutability": [
-            "read",
-            "create",
-            "update"
-          ],
+          "x-ms-mutability": ["read", "create", "update"],
           "description": "Resource tags."
         },
         "location": {
           "type": "string",
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ],
+          "x-ms-mutability": ["read", "create"],
           "description": "The geo-location where the resource lives"
         }
       },
-      "required": [
-        "location"
-      ],
+      "required": ["location"],
       "allOf": [
         {
           "$ref": "#/definitions/Resource"
@@ -467,12 +425,7 @@
         "createdByType": {
           "type": "string",
           "description": "The type of identity that created the resource.",
-          "enum": [
-            "User",
-            "Application",
-            "ManagedIdentity",
-            "Key"
-          ],
+          "enum": ["User", "Application", "ManagedIdentity", "Key"],
           "x-ms-enum": {
             "name": "createdByType",
             "modelAsString": true
@@ -490,12 +443,7 @@
         "lastModifiedByType": {
           "type": "string",
           "description": "The type of identity that last modified the resource.",
-          "enum": [
-            "User",
-            "Application",
-            "ManagedIdentity",
-            "Key"
-          ],
+          "enum": ["User", "Application", "ManagedIdentity", "Key"],
           "x-ms-enum": {
             "name": "createdByType",
             "modelAsString": true
