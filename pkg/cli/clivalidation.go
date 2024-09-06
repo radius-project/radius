@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -357,6 +358,31 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper, dc *config.Direct
 	}
 
 	return ws, nil
+}
+
+// RequireResourceGroupNameArgs is used by commands that require a resource group name to be specified. If no group is passed then the default workspace group is used.
+func RequireResourceGroupNameArgs(cmd *cobra.Command, args []string, workspace *workspaces.Workspace) (string, error) {
+	var resourceGroup string
+	var err error
+
+	if len(args) > 0 {
+		resourceGroup, err = ReadResourceGroupNameArgs(cmd, args)
+		if err != nil {
+			return "", err
+		}
+		// If an argument is provided but is empty, we should return an error
+		if resourceGroup == "" {
+			return "", fmt.Errorf("resource group name is not provided or is empty ")
+		}
+	} else {
+		id, err := resources.ParseScope(workspace.Scope)
+		if err != nil {
+			return "", err
+		}
+		resourceGroup = id.FindScope(resources_radius.ScopeResourceGroups)
+	}
+
+	return resourceGroup, nil
 }
 
 // RequireUCPResourceGroup is used by commands that require specifying a UCP resource group name using flag or positional args

@@ -99,13 +99,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if format == "" {
 		format = "table"
 	}
-	resourcegroup, err := cli.RequireUCPResourceGroup(cmd, args)
+
+	resourceGroup, err := cli.RequireResourceGroupNameArgs(cmd, args, workspace)
 	if err != nil {
 		return err
 	}
 
 	r.Format = format
-	r.UCPResourceGroupName = resourcegroup
+	r.UCPResourceGroupName = resourceGroup
 	r.Workspace = workspace
 
 	return nil

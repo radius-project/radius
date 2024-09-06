@@ -72,7 +72,7 @@ type DaprPubSubBrokerProperties struct {
 	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// Metadata of the Dapr Pub/Sub Broker resource.
-	Metadata map[string]any `json:"metadata,omitempty"`
+	Metadata map[string]*rpv1.DaprComponentMetadataValue `json:"metadata,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the Dapr Pub/Sub Broker resource.
 	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
@@ -85,4 +85,7 @@ type DaprPubSubBrokerProperties struct {
 
 	// Version of the Dapr Pub/Sub Broker resource.
 	Version string `json:"version,omitempty"`
+
+	// Authentication information for the Dapr Pub/Sub Broker resource, mainly secret store name.
+	Auth *rpv1.DaprComponentAuth `json:"auth,omitempty"`
 }

@@ -61,6 +61,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) 
 	}
 
 	converted.Properties.Resources = toResourcesDataModel(src.Properties.Resources)
+	converted.Properties.Auth = toAuthDataModel(src.Properties.Auth)
 
 	// Note: The metadata, type, and version fields cannot be specified when using recipes since
 	// the recipe is expected to create the Dapr Component manifest. However, they are required
@@ -79,8 +80,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) 
 		if src.Properties.Version == nil || *src.Properties.Version == "" {
 			msgs = append(msgs, "version must be specified when resourceProvisioning is set to manual")
 		}
-
-		converted.Properties.Metadata = src.Properties.Metadata
+		converted.Properties.Metadata = toMetadataDataModel(src.Properties.Metadata)
 		converted.Properties.Type = to.String(src.Properties.Type)
 		converted.Properties.Version = to.String(src.Properties.Version)
 	} else {
@@ -132,10 +132,11 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 			OutputResources: toOutputResources(daprPubSub.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(daprPubSub.Properties.Status.Recipe),
 		},
+		Auth: fromAuthDataModel(daprPubSub.Properties.Auth),
 	}
 
 	if daprPubSub.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
-		dst.Properties.Metadata = daprPubSub.Properties.Metadata
+		dst.Properties.Metadata = fromMetadataDataModel(daprPubSub.Properties.Metadata)
 		dst.Properties.Type = to.Ptr(daprPubSub.Properties.Type)
 		dst.Properties.Version = to.Ptr(daprPubSub.Properties.Version)
 	} else {

@@ -39,6 +39,44 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
+// DeleteNamespace mocks base method.
+func (m *MockInterface) DeleteNamespace(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteNamespace", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteNamespace indicates an expected call of DeleteNamespace.
+func (mr *MockInterfaceMockRecorder) DeleteNamespace(arg0 any) *MockInterfaceDeleteNamespaceCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNamespace", reflect.TypeOf((*MockInterface)(nil).DeleteNamespace), arg0)
+	return &MockInterfaceDeleteNamespaceCall{Call: call}
+}
+
+// MockInterfaceDeleteNamespaceCall wrap *gomock.Call
+type MockInterfaceDeleteNamespaceCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceDeleteNamespaceCall) Return(arg0 error) *MockInterfaceDeleteNamespaceCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceDeleteNamespaceCall) Do(f func(string) error) *MockInterfaceDeleteNamespaceCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceDeleteNamespaceCall) DoAndReturn(f func(string) error) *MockInterfaceDeleteNamespaceCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetKubeContext mocks base method.
 func (m *MockInterface) GetKubeContext() (*api.Config, error) {
 	m.ctrl.T.Helper()

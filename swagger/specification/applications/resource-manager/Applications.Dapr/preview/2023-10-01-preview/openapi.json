@@ -983,7 +983,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValue"
+          }
         },
         "type": {
           "type": "string",
@@ -992,6 +994,10 @@
         "version": {
           "type": "string",
           "description": "Dapr component version"
+        },
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
+          "description": "The name of the Dapr component to be used as a secret store"
         },
         "resources": {
           "type": "array",
@@ -1089,7 +1095,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValueUpdate"
+          }
         },
         "type": {
           "type": "string",
@@ -1098,6 +1106,10 @@
         "version": {
           "type": "string",
           "description": "Dapr component version"
+        },
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
+          "description": "The name of the Dapr component to be used as a secret store"
         },
         "resources": {
           "type": "array",
@@ -1113,6 +1125,16 @@
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
+    "DaprResourceAuth": {
+      "type": "object",
+      "description": "Authentication properties for a Dapr component object",
+      "properties": {
+        "secretStore": {
+          "type": "string",
+          "description": "Secret store to fetch secrets from"
         }
       }
     },
@@ -1146,7 +1168,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValue"
+          }
         },
         "type": {
           "type": "string",
@@ -1245,7 +1269,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValueUpdate"
+          }
         },
         "type": {
           "type": "string",
@@ -1295,7 +1321,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValue"
+          }
         },
         "type": {
           "type": "string",
@@ -1304,6 +1332,10 @@
         "version": {
           "type": "string",
           "description": "Dapr component version"
+        },
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
+          "description": "The name of the Dapr component to be used as a secret store"
         },
         "resources": {
           "type": "array",
@@ -1401,7 +1433,9 @@
         "metadata": {
           "type": "object",
           "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValueUpdate"
+          }
         },
         "type": {
           "type": "string",
@@ -1410,6 +1444,10 @@
         "version": {
           "type": "string",
           "description": "Dapr component version"
+        },
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
+          "description": "The name of the Dapr component to be used as a secret store"
         },
         "resources": {
           "type": "array",
@@ -1513,6 +1551,92 @@
         }
       ],
       "x-ms-discriminator-value": "kubernetes"
+    },
+    "MetadataValue": {
+      "type": "object",
+      "description": "A single metadata for a Dapr component object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The plain text value of the metadata"
+        },
+        "secretKeyRef": {
+          "$ref": "#/definitions/MetadataValueFromSecret",
+          "description": "A reference of a value in a secret store component"
+        }
+      }
+    },
+    "MetadataValueFromSecret": {
+      "type": "object",
+      "description": "A reference of a value in a secret store component.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Secret name in the secret store component"
+        },
+        "key": {
+          "type": "string",
+          "description": "The field to select in the secret value. If the secret value is a string, it should be equal to the secret name"
+        }
+      },
+      "required": [
+        "name",
+        "key"
+      ]
+    },
+    "MetadataValueFromSecretUpdate": {
+      "type": "object",
+      "description": "A reference of a value in a secret store component.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Secret name in the secret store component"
+        },
+        "key": {
+          "type": "string",
+          "description": "The field to select in the secret value. If the secret value is a string, it should be equal to the secret name"
+        }
+      }
+    },
+    "MetadataValueUpdate": {
+      "type": "object",
+      "description": "A single metadata for a Dapr component object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The plain text value of the metadata"
+        },
+        "secretKeyRef": {
+          "$ref": "#/definitions/MetadataValueFromSecretUpdate",
+          "description": "A reference of a value in a secret store component"
+        }
+      }
+    },
+    "NonRedundantDaprResourceProperties": {
+      "type": "object",
+      "description": "The base properties of a Dapr component object.",
+      "properties": {
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValue"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        }
+      }
     },
     "OutputResource": {
       "type": "object",

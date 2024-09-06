@@ -77,6 +77,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprPubSubB
 
 	component, err := dapr.ConstructDaprGeneric(
 		dapr.DaprGeneric{
+			Auth:     resource.Properties.Auth,
 			Metadata: resource.Properties.Metadata,
 			Type:     to.Ptr(resource.Properties.Type),
 			Version:  to.Ptr(resource.Properties.Version),
