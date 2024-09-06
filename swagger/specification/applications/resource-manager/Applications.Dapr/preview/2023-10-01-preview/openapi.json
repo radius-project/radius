@@ -50,9 +50,302 @@
     },
     {
       "name": "PubSubBrokers"
+    },
+    {
+      "name": "ConfigurationStores"
     }
   ],
   "paths": {
+    "/{rootScope}/providers/Applications.Dapr/configurationStores": {
+      "get": {
+        "operationId": "ConfigurationStores_ListByScope",
+        "tags": [
+          "ConfigurationStores"
+        ],
+        "description": "List DaprConfigurationStoreResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprConfigurationStoreResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List a ConfigurationStore resource by resource group": {
+            "$ref": "./examples/ConfigurationStores_List.json"
+          },
+          "List a ConfigurationStores resource by rootScope": {
+            "$ref": "./examples/ConfigurationStores_ListByRootScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Dapr/configurationStores/{configurationStoreName}": {
+      "get": {
+        "operationId": "ConfigurationStores_Get",
+        "tags": [
+          "ConfigurationStores"
+        ],
+        "description": "Get a DaprConfigurationStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "configurationStoreName",
+            "in": "path",
+            "description": "Configuration Store name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprConfigurationStoreResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a PubSubBroker resource": {
+            "$ref": "./examples/ConfigurationStores_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "ConfigurationStores_CreateOrUpdate",
+        "tags": [
+          "ConfigurationStores"
+        ],
+        "description": "Create a DaprConfigurationStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "configurationStoreName",
+            "in": "path",
+            "description": "Configuration Store name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprConfigurationStoreResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'DaprConfigurationStoreResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprConfigurationStoreResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'DaprConfigurationStoreResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprConfigurationStoreResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a ConfigurationStore resource": {
+            "$ref": "./examples/ConfigurationStores_CreateOrUpdate.json"
+          },
+          "Create or update a configurationStore resource with recipe": {
+            "$ref": "./examples/ConfigurationStores_CreateOrUpdateWithRecipe.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "ConfigurationStores_Update",
+        "tags": [
+          "ConfigurationStores"
+        ],
+        "description": "Update a DaprConfigurationStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "configurationStoreName",
+            "in": "path",
+            "description": "Configuration Store name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprConfigurationStoreResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprConfigurationStoreResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update a ConfigurationStore resource": {
+            "$ref": "./examples/ConfigurationStores_Update.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "ConfigurationStores_Delete",
+        "tags": [
+          "ConfigurationStores"
+        ],
+        "description": "Delete a DaprConfigurationStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "configurationStoreName",
+            "in": "path",
+            "description": "Configuration Store name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a ConfigurationStore resource": {
+            "$ref": "./examples/ConfigurationStores_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
     "/{rootScope}/providers/Applications.Dapr/pubSubBrokers": {
       "get": {
         "operationId": "PubSubBrokers_ListByScope",
@@ -953,6 +1246,181 @@
     }
   },
   "definitions": {
+    "DaprConfigurationStoreProperties": {
+      "type": "object",
+      "description": "Dapr configuration store portable resource properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValue"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
+          "description": "The name of the Dapr component to be used as a secret store"
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the configuration store",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "DaprConfigurationStoreResource": {
+      "type": "object",
+      "description": "Dapr configuration store portable resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprConfigurationStoreProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "DaprConfigurationStoreResourceListResult": {
+      "type": "object",
+      "description": "The response of a DaprConfigurationStoreResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The DaprConfigurationStoreResource items on this page",
+          "items": {
+            "$ref": "#/definitions/DaprConfigurationStoreResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "DaprConfigurationStoreResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the DaprConfigurationStoreResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprConfigurationStoreResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprConfigurationStoreResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprConfigurationStoreResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "additionalProperties": {
+            "$ref": "#/definitions/MetadataValueUpdate"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "auth": {
+          "$ref": "#/definitions/DaprResourceAuth",
+          "description": "The name of the Dapr component to be used as a secret store"
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the configuration store",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
     "DaprPubSubBrokerProperties": {
       "type": "object",
       "description": "Dapr PubSubBroker portable resource properties",

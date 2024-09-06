@@ -1,0 +1,66 @@
+{
+  "operationId": "ConfigurationStores_CreateOrUpdate",
+  "title": "Create or update a configurationStore resource with recipe",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "configurationStoreName": "configstore0",
+    "api-version": "2023-10-01-preview",
+    "configurationStoreParameters": {
+      "location": "West US",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "recipe": {
+          "name": "configstore-test",
+          "parameters": {
+            "port": 6081
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/configurationStores/configstore0",
+        "name": "configstore0",
+        "type": "Applications.Dapr/configurationStores",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "recipe",
+          "type": "configuration.azure.appconfig",
+          "recipe": {
+            "name": "configstore-test",
+            "parameters": {
+              "port": 6081
+            }
+          }
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/configurationStores/configstore0",
+        "name": "configstore0",
+        "type": "Applications.Dapr/configurationStores",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "recipe",
+          "type": "configuration.azure.appconfig",
+          "recipe": {
+            "name": "configstore-test",
+            "parameters": {
+              "port": 6081
+            }
+          }
+        }
+      }
+    }
+  }
+}

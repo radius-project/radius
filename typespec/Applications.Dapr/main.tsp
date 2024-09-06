@@ -20,6 +20,7 @@ import "@azure-tools/typespec-azure-resource-manager";
 import "./secretStores.tsp";
 import "./stateStores.tsp";
 import "./pubSubBrokers.tsp";
+import "./configurationStores.tsp";
 
 using TypeSpec.Versioning;
 using Azure.ResourceManager;

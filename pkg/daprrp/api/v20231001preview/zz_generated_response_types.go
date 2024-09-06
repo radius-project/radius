@@ -7,6 +7,35 @@
 
 package v20231001preview
 
+// ConfigurationStoresClientCreateOrUpdateResponse contains the response from method ConfigurationStoresClient.BeginCreateOrUpdate.
+type ConfigurationStoresClientCreateOrUpdateResponse struct {
+	// Dapr configuration store portable resource
+	DaprConfigurationStoreResource
+}
+
+// ConfigurationStoresClientDeleteResponse contains the response from method ConfigurationStoresClient.BeginDelete.
+type ConfigurationStoresClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// ConfigurationStoresClientGetResponse contains the response from method ConfigurationStoresClient.Get.
+type ConfigurationStoresClientGetResponse struct {
+	// Dapr configuration store portable resource
+	DaprConfigurationStoreResource
+}
+
+// ConfigurationStoresClientListByScopeResponse contains the response from method ConfigurationStoresClient.NewListByScopePager.
+type ConfigurationStoresClientListByScopeResponse struct {
+	// The response of a DaprConfigurationStoreResource list operation.
+	DaprConfigurationStoreResourceListResult
+}
+
+// ConfigurationStoresClientUpdateResponse contains the response from method ConfigurationStoresClient.BeginUpdate.
+type ConfigurationStoresClientUpdateResponse struct {
+	// Dapr configuration store portable resource
+	DaprConfigurationStoreResource
+}
+
 // OperationsClientListResponse contains the response from method OperationsClient.NewListPager.
 type OperationsClientListResponse struct {
 	// A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.

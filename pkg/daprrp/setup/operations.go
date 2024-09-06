@@ -139,4 +139,34 @@ var operationList = []v1.Operation{
 		},
 		IsDataAction: false,
 	},
+	{
+		Name: "Applications.Dapr/configurationStores/read",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Applications.Dapr",
+			Resource:    "configurationStores",
+			Operation:   "Get/List Dapr configurationStores",
+			Description: "Gets/Lists Dapr configurationStores resource(s).",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Applications.Dapr/configurationStores/write",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Applications.Dapr",
+			Resource:    "configurationStores",
+			Operation:   "Create/Update Dapr configurationStores",
+			Description: "Creates or updates a Dapr configurationStores resource.",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Applications.Dapr/configurationStores/delete",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Applications.Dapr",
+			Resource:    "configurationStores",
+			Operation:   "Delete Dapr configurationStores",
+			Description: "Deletes a Dapr configurationStores resource.",
+		},
+		IsDataAction: false,
+	},
 }

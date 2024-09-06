@@ -7,6 +7,38 @@
 
 package v20231001preview
 
+// ConfigurationStoresClientBeginCreateOrUpdateOptions contains the optional parameters for the ConfigurationStoresClient.BeginCreateOrUpdate
+// method.
+type ConfigurationStoresClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ConfigurationStoresClientBeginDeleteOptions contains the optional parameters for the ConfigurationStoresClient.BeginDelete
+// method.
+type ConfigurationStoresClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ConfigurationStoresClientBeginUpdateOptions contains the optional parameters for the ConfigurationStoresClient.BeginUpdate
+// method.
+type ConfigurationStoresClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ConfigurationStoresClientGetOptions contains the optional parameters for the ConfigurationStoresClient.Get method.
+type ConfigurationStoresClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ConfigurationStoresClientListByScopeOptions contains the optional parameters for the ConfigurationStoresClient.NewListByScopePager
+// method.
+type ConfigurationStoresClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
 // OperationsClientListOptions contains the optional parameters for the OperationsClient.NewListPager method.
 type OperationsClientListOptions struct {
 	// placeholder for future optional parameters

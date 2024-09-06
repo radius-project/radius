@@ -1,0 +1,56 @@
+{
+  "operationId": "ConfigurationStores_ListByScope",
+  "title": "List a ConfigurationStores resource by rootScope",
+  "parameters": {
+    "rootScope": "/planes/radius/local",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/configurationStores/configstore0",
+            "name": "configstore0",
+            "type": "Applications.Dapr/configurationStores",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "resources": [
+                {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.AppConfiguration/configurationStores/testappconfig"
+                }
+              ],
+              "type": "configuration.azure.appconfig",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
+              }
+            }
+          },
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Dapr/configurationStores/configstore1",
+            "name": "configstore1",
+            "type": "Applications.Dapr/configurationStores",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "type": "configuration.redis",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/providers/Applications.Dapr/configurationStores?api-version=2023-10-01-preview&$skipToken=X'12345'"
+      }
+    }
+  }
+}
