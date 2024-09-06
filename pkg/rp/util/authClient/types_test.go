@@ -18,6 +18,7 @@ package authClient
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/recipes"
@@ -90,5 +91,35 @@ func Test_getRegistryAuthClient(t *testing.T) {
 		ac, err := mClient.GetAuthClient(context.Background(), tc.templatePath)
 		require.NoError(t, err)
 		require.Equal(t, ac, tc.expAuthClient)
+	}
+}
+
+func Test_getECRRegion(t *testing.T) {
+	testset := []struct {
+		templatePath string
+		exp          string
+		err          error
+	}{
+		{
+			templatePath: "account-id.dkr.ecr.us-east-2.amazonaws.com/test-registry:1.0",
+			exp:          "us-east-2",
+			err:          nil,
+		},
+		{
+			templatePath: "account-id.ecr.us-east-2.amazonaws.com/test-registry:1.0",
+			err:          fmt.Errorf("invalid ECR URL format"),
+		},
+	}
+	for _, tc := range testset {
+		host, err := getRegistryHostname(tc.templatePath)
+		require.NoError(t, err)
+		reg, err := getECRRegion(host)
+		if tc.err != nil {
+			require.Equal(t, err, tc.err)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, reg, "us-east-2")
+		}
+
 	}
 }

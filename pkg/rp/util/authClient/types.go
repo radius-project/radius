@@ -49,6 +49,7 @@ func GetNewRegistryAuthClient(secrets recipes.SecretData) (AuthClient, error) {
 
 }
 
+// getRegistryHostname returns the hostname from the registry template path
 func getRegistryHostname(templatePath string) (string, error) {
 	registryURL, err := url.Parse("https://" + templatePath)
 	if err != nil {
