@@ -21,7 +21,7 @@ type RecipeConfigProperties struct {
 	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
 	Terraform TerraformConfigProperties `json:"terraform,omitempty"`
 
-	// BicepConfigProperties represent configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.
+	// BicepConfigProperties represents configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.
 	Bicep BicepConfigProperties `json:"bicep,omitempty"`
 
 	// Env specifies the environment variables to be set during the Terraform Recipe execution.

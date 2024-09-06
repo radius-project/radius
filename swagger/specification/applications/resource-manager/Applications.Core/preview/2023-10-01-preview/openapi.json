@@ -4779,12 +4779,12 @@
           {
             "name": "azureWorkloadIdentity",
             "value": "azureWorkloadIdentity",
-            "description": "azureWorkloadIdentity type is used to represent registry authentication using azure federated identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'."
+            "description": "azureWorkloadIdentity type is used to represent authentication using azure federated identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'."
           },
           {
             "name": "awsIRSA",
             "value": "awsIRSA",
-            "description": "awsIRSA type is used to represent registry authentication using AWS IRSA (IAM Roles for Service accounts) and the secretstore resource is expected to have the key 'roleARN'."
+            "description": "awsIRSA type is used to represent authentication using AWS IRSA (IAM Roles for Service accounts) and the secretstore resource is expected to have the key 'roleARN'."
           }
         ]
       }
