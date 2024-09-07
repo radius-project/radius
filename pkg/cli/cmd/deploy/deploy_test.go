@@ -116,6 +116,30 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "rad deploy - valid with env ID",
+			Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.ApplicationManagementClient.EXPECT().
+					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod").
+					Return(v20231001preview.EnvironmentResource{
+						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod"),
+					}, nil).
+					Times(1)
+			},
+			ValidateCallback: func(t *testing.T, obj framework.Runner) {
+				runner := obj.(*Runner)
+				scope := "/planes/radius/local/resourceGroups/test-resource-group"
+				environmentID := scope + "/providers/applications.core/environments/prod"
+				require.Equal(t, scope, runner.Workspace.Scope)
+				require.Equal(t, environmentID, runner.Workspace.Environment)
+			},
+		},
+		{
 			Name:          "rad deploy - valid with app and env",
 			Input:         []string{"app.bicep", "-e", "prod", "-a", "my-app"},
 			ExpectedValid: true,
