@@ -43,6 +43,7 @@ func Test_CommandValidation(t *testing.T) {
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
+
 		{
 			Name:          "rad deploy - valid",
 			Input:         []string{"app.bicep"},
@@ -53,7 +54,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), radcli.TestEnvironmentName).
+					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -68,7 +69,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), radcli.TestEnvironmentName).
+					GetEnvironment(gomock.Any(), radcli.TestEnvironmentID).
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 
@@ -125,7 +126,9 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "prod").
-					Return(v20231001preview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{
+						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod"),
+					}, nil).
 					Times(1)
 			},
 			ValidateCallback: func(t *testing.T, obj framework.Runner) {
@@ -243,7 +246,7 @@ func Test_Run(t *testing.T) {
 		filePath := "app.bicep"
 		progressText := fmt.Sprintf(
 			"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress...", filePath, radcli.TestEnvironmentName, workspace.Name)
+				"Deployment In Progress...", filePath, radcli.TestEnvironmentID, workspace.Name)
 
 		options := deploy.Options{
 			Workspace:      *workspace,
@@ -266,14 +269,14 @@ func Test_Run(t *testing.T) {
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Bicep:           bicep,
-			Deploy:          deployMock,
-			Output:          outputSink,
-			FilePath:        filePath,
-			EnvironmentName: radcli.TestEnvironmentName,
-			Parameters:      map[string]map[string]any{},
-			Workspace:       workspace,
-			Providers:       provider,
+			Bicep:               bicep,
+			Deploy:              deployMock,
+			Output:              outputSink,
+			FilePath:            filePath,
+			EnvironmentNameOrID: radcli.TestEnvironmentID,
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
+			Providers:           provider,
 		}
 
 		err := runner.Run(context.Background())
@@ -317,7 +320,7 @@ func Test_Run(t *testing.T) {
 		filePath := "app.bicep"
 		progressText := fmt.Sprintf(
 			"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress...", filePath, radcli.TestEnvironmentName, workspace.Name)
+				"Deployment In Progress...", filePath, radcli.TestEnvironmentID, workspace.Name)
 
 		options := deploy.Options{
 			Workspace:      *workspace,
@@ -340,14 +343,14 @@ func Test_Run(t *testing.T) {
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Bicep:           bicep,
-			Deploy:          deployMock,
-			Output:          outputSink,
-			Providers:       &ProviderConfig,
-			FilePath:        filePath,
-			EnvironmentName: radcli.TestEnvironmentName,
-			Parameters:      map[string]map[string]any{},
-			Workspace:       workspace,
+			Bicep:               bicep,
+			Deploy:              deployMock,
+			Output:              outputSink,
+			Providers:           &ProviderConfig,
+			FilePath:            filePath,
+			EnvironmentNameOrID: radcli.TestEnvironmentID,
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
 		}
 
 		err := runner.Run(context.Background())
@@ -410,16 +413,16 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
-			Bicep:             bicep,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
-			Deploy:            deployMock,
-			Output:            outputSink,
-			Providers:         &providers,
-			FilePath:          "app.bicep",
-			ApplicationName:   "test-application",
-			EnvironmentName:   radcli.TestEnvironmentName,
-			Parameters:        map[string]map[string]any{},
-			Workspace:         workspace,
+			Bicep:               bicep,
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
+			Deploy:              deployMock,
+			Output:              outputSink,
+			Providers:           &providers,
+			FilePath:            "app.bicep",
+			ApplicationName:     "test-application",
+			EnvironmentNameOrID: radcli.TestEnvironmentName,
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
 		}
 
 		err := runner.Run(context.Background())
@@ -477,16 +480,16 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
-			Bicep:             bicep,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
-			Deploy:            deployMock,
-			Output:            outputSink,
-			Providers:         &providers,
-			FilePath:          "app.bicep",
-			ApplicationName:   "appdoesntexist",
-			EnvironmentName:   "envdoesntexist",
-			Parameters:        map[string]map[string]any{},
-			Workspace:         workspace,
+			Bicep:               bicep,
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
+			Deploy:              deployMock,
+			Output:              outputSink,
+			Providers:           &providers,
+			FilePath:            "app.bicep",
+			ApplicationName:     "appdoesntexist",
+			EnvironmentNameOrID: "envdoesntexist",
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
 		}
 
 		err := runner.Run(context.Background())
@@ -500,6 +503,7 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Deployment with missing parameters", func(t *testing.T) {
+		//t.Skip()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -532,14 +536,14 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
-			Bicep:             bicep,
-			ConnectionFactory: &connections.MockFactory{},
-			Output:            outputSink,
-			Providers:         &providers,
-			EnvironmentName:   radcli.TestEnvironmentName,
-			FilePath:          "app.bicep",
-			Parameters:        map[string]map[string]any{},
-			Workspace:         workspace,
+			Bicep:               bicep,
+			ConnectionFactory:   &connections.MockFactory{},
+			Output:              outputSink,
+			Providers:           &providers,
+			EnvironmentNameOrID: radcli.TestEnvironmentName,
+			FilePath:            "app.bicep",
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
 		}
 
 		err := runner.Run(context.Background())

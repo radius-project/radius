@@ -73,6 +73,7 @@ func Test_Validate(t *testing.T) {
 					Times(1)
 			},
 		},
+
 		{
 			Name:          "rad run - app set by directory config",
 			Input:         []string{"app.bicep", "-e", "prod"},
@@ -103,7 +104,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), radcli.TestEnvironmentName).
+					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -265,12 +266,12 @@ func Test_Run(t *testing.T) {
 				ApplicationsManagementClient: clientMock,
 			},
 
-			FilePath:        "app.bicep",
-			ApplicationName: "test-application",
-			EnvironmentName: radcli.TestEnvironmentName,
-			Parameters:      map[string]map[string]any{},
-			Workspace:       workspace,
-			Providers:       providers,
+			FilePath:            "app.bicep",
+			ApplicationName:     "test-application",
+			EnvironmentNameOrID: radcli.TestEnvironmentName,
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
+			Providers:           providers,
 		},
 		Logstream:        logstreamMock,
 		Portforward:      portforwardMock,
@@ -440,12 +441,12 @@ func Test_Run_NoDashboard(t *testing.T) {
 				ApplicationsManagementClient: clientMock,
 			},
 
-			FilePath:        "app.bicep",
-			ApplicationName: "test-application",
-			EnvironmentName: radcli.TestEnvironmentName,
-			Parameters:      map[string]map[string]any{},
-			Workspace:       workspace,
-			Providers:       providers,
+			FilePath:            "app.bicep",
+			ApplicationName:     "test-application",
+			EnvironmentNameOrID: radcli.TestEnvironmentName,
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
+			Providers:           providers,
 		},
 		Logstream:        logstreamMock,
 		Portforward:      portforwardMock,
