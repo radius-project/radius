@@ -159,6 +159,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								},
 							},
 						},
+						Bicep: datamodel.BicepConfigProperties{
+							Authentication: map[string]datamodel.RegistrySecretConfig{
+								"test.azurecr.io": {
+									Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr-secret",
+								},
+							},
+						},
 						Env: datamodel.EnvironmentVariables{
 							AdditionalProperties: map[string]string{
 								"myEnvVar": "myEnvValue",
@@ -425,6 +432,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplatePath))
 					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplateKind))
 					require.Equal(t, baseSecretStorePath+"github", string(*versioned.Properties.RecipeConfig.Terraform.Authentication.Git.Pat["dev.azure.com"].Secret))
+					require.Equal(t, baseSecretStorePath+"acr-secret", string(*versioned.Properties.RecipeConfig.Bicep.Authentication["test.azurecr.io"].Secret))
 					switch c := recipeDetails.(type) {
 					case *TerraformRecipeProperties:
 						require.Equal(t, "1.1.0", string(*c.TemplateVersion))
