@@ -41,16 +41,19 @@ type awsIRSA struct {
 	roleARN string
 }
 
+// NewAwsIRSA creates a new awsIRSA instance.
 func NewAwsIRSA(roleARN string) AuthClient {
 	return &awsIRSA{roleARN: roleARN}
 }
 
+// GetAuthClient retrieves an authenticated client for accessing remote client for interacting with an Amazon ECR registry using AWS IRSA.
 func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
 	registryHost, err := getRegistryHostname(templatePath)
 	if err != nil {
 		return nil, err
 	}
 
+	// Determine the AWS region for the ECR registry based on the registry hostname.
 	region, err := getECRRegion(registryHost)
 	if err != nil {
 		return nil, err
@@ -62,6 +65,7 @@ func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remot
 		return nil, errors.New("first error : " + err.Error())
 	}
 
+	// Create a credentials cache using the Web Identity Role Provider for AWS STS.
 	credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
 		sts.NewFromConfig(awscfg),
 		b.roleARN,
@@ -89,12 +93,14 @@ func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remot
 		return nil, fmt.Errorf("no authorization data found")
 	}
 
+	// Decode the authorization token from base64 encoding.
 	authData := authTokenOutput.AuthorizationData[0]
 	authToken, err := base64.StdEncoding.DecodeString(*authData.AuthorizationToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode authorization token: %w", err)
 	}
 
+	// Split the decoded token into username and password.
 	creds := strings.SplitN(string(authToken), ":", 2)
 	if len(creds) != 2 {
 		return nil, fmt.Errorf("malformed authorization token")

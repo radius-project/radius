@@ -136,6 +136,8 @@ func parsePath(path string) (repository string, tag string, err error) {
 	return
 }
 
+// GetRegistrySecrets retrieves secret data based on the recipe configuration and template path.
+// It matches the secretstore resource ID associated with the template path in recipe configuration to the secretstore resource id in the secrets data.
 func GetRegistrySecrets(definition recipes.Configuration, templatePath string, secrets map[string]recipes.SecretData) (recipes.SecretData, error) {
 	parsedURL, err := url.Parse("https://" + templatePath)
 	if err != nil {

@@ -44,6 +44,7 @@ func Test_GetRegistrySecrets(t *testing.T) {
 		templatePath string
 		secrets      map[string]recipes.SecretData
 		exp          recipes.SecretData
+		err          string
 	}{
 		{
 			definition: recipes.Configuration{
@@ -96,10 +97,43 @@ func Test_GetRegistrySecrets(t *testing.T) {
 			},
 			exp: recipes.SecretData{},
 		},
+		{
+			definition: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Bicep: datamodel.BicepConfigProperties{
+						Authentication: map[string]datamodel.RegistrySecretConfig{
+							"test.azurecr.io": {
+								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr",
+							},
+							"123456789012.dkr.ecr.us-west-2.amazonaws.com": {
+								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/ecr",
+							},
+						},
+					},
+				},
+			},
+			templatePath: "test.azu recr.io/test-private-registry:latest",
+			secrets: map[string]recipes.SecretData{
+				"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr": {
+					Type: "basicAuthentication",
+					Data: map[string]string{
+						"username": "test-username",
+						"password": "test-password",
+					},
+				},
+			},
+			exp: recipes.SecretData{},
+			err: "invalid character \" \" in host name",
+		},
 	}
 	for _, tc := range testset {
 		secrets, err := GetRegistrySecrets(tc.definition, tc.templatePath, tc.secrets)
-		require.NoError(t, err)
-		require.Equal(t, secrets, tc.exp)
+		if tc.err != "" {
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.err)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, secrets, tc.exp)
+		}
 	}
 }
