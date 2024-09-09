@@ -155,7 +155,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
 			rawPayload := testutil.ReadFixture(test.payload)
-			versionedResource := &DaprStateStoreResource{}
+			versionedResource := &DaprPubSubBrokerResource{}
 			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
