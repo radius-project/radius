@@ -203,9 +203,10 @@ func (e *engine) getRecipeMetadataCore(ctx context.Context, opts GetRecipeMetada
 	}
 
 	return driver.GetRecipeMetadata(ctx, recipedriver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: opts.RecipeDefinition,
-		Secrets:    secrets,
+		Recipe:        recipes.ResourceMetadata{},
+		Definition:    opts.RecipeDefinition,
+		Secrets:       secrets,
+		Configuration: *configuration,
 	})
 }
 

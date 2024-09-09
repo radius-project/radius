@@ -79,11 +79,26 @@ model RecipeConfigProperties {
   @doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
   terraform?: TerraformConfigProperties;
 
+  @doc("Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.")
+  bicep?: BicepConfigProperties;
+
   @doc("Environment variables injected during recipe execution for the recipes in the environment, currently supported for Terraform recipes.")
   env?: EnvironmentVariables;
 
   @doc("Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
   envSecrets?: Record<SecretReference>;
+}
+
+@doc("Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.")
+model BicepConfigProperties {
+  @doc("Authentication information used to access private bicep registries, which is a map of registry hostname to secret config that contains credential information.")
+  authentication?: Record<RegistrySecretConfig>;
+}
+
+@doc("Registry Secret Configuration used to authenticate to private bicep registries.")
+model RegistrySecretConfig {
+  @doc("The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container registry.The keys in the secretstore depends on the type.")
+  secret?: string;
 }
 
 @doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")

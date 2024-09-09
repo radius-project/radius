@@ -423,6 +423,33 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type BicepConfigProperties.
+func (b BicepConfigProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "authentication", b.Authentication)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type BicepConfigProperties.
+func (b *BicepConfigProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", b, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "authentication":
+				err = unpopulate(val, "Authentication", &b.Authentication)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", b, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type BicepRecipeProperties.
 func (b BicepRecipeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -3218,6 +3245,7 @@ func (r *Recipe) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipeConfigProperties.
 func (r RecipeConfigProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "bicep", r.Bicep)
 	populate(objectMap, "env", r.Env)
 	populate(objectMap, "envSecrets", r.EnvSecrets)
 	populate(objectMap, "terraform", r.Terraform)
@@ -3233,6 +3261,9 @@ func (r *RecipeConfigProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "bicep":
+				err = unpopulate(val, "Bicep", &r.Bicep)
+			delete(rawMsg, key)
 		case "env":
 				err = unpopulate(val, "Env", &r.Env)
 			delete(rawMsg, key)
@@ -3451,6 +3482,33 @@ func (r *RecipeUpdate) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "parameters":
 				err = unpopulate(val, "Parameters", &r.Parameters)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RegistrySecretConfig.
+func (r RegistrySecretConfig) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "secret", r.Secret)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RegistrySecretConfig.
+func (r *RegistrySecretConfig) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "secret":
+				err = unpopulate(val, "Secret", &r.Secret)
 			delete(rawMsg, key)
 		}
 		if err != nil {

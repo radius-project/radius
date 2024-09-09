@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	dockerParser "github.com/novln/docker-parser"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -42,6 +43,7 @@ func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinit
 	if err != nil {
 		return fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
+
 	repo.Client = client
 
 	if definition.PlainHTTP {
@@ -132,4 +134,15 @@ func parsePath(path string) (repository string, tag string, err error) {
 	repository = reference.Repository()
 	tag = reference.Tag()
 	return
+}
+
+// GetRegistrySecrets retrieves secret data based on the recipe configuration and template path.
+// It matches the secretstore resource ID associated with the template path in recipe configuration to the secretstore resource id in the secrets data.
+func GetRegistrySecrets(definition recipes.Configuration, templatePath string, secrets map[string]recipes.SecretData) (recipes.SecretData, error) {
+	parsedURL, err := url.Parse("https://" + templatePath)
+	if err != nil {
+		return recipes.SecretData{}, err
+	}
+
+	return secrets[definition.RecipeConfig.Bicep.Authentication[parsedURL.Host].Secret], nil
 }

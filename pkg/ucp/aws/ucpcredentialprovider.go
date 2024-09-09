@@ -43,7 +43,7 @@ const (
 	// CredentialKind is AccessKey
 	CredentialKindAccessKey = "AccessKey"
 	// Token file path for IRSA
-	tokenFilePath = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
+	TokenFilePath = "/var/run/secrets/eks.amazonaws.com/serviceaccount/token"
 	// AWS STS Signing region
 	awsSTSGlobalEndPointSigningRegion = "us-east-1"
 	// AWS IRSA session name prefix
@@ -133,7 +133,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
 			client,
 			s.IRSACredential.RoleARN,
-			stscreds.IdentityTokenFile(tokenFilePath),
+			stscreds.IdentityTokenFile(TokenFilePath),
 			func(o *stscreds.WebIdentityRoleOptions) {
 				o.RoleSessionName = sessionPrefix + uuid.New().String()
 			},

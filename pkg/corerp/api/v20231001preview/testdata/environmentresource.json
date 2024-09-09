@@ -45,6 +45,13 @@
           ]
         }
       },
+      "bicep": {
+        "authentication": {
+          "test.azurecr.io": {
+            "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr-secret"
+          }
+        }
+      },
       "env": {
         "myEnvVar": "myEnvValue"
       },
