@@ -68,7 +68,7 @@ type DaprConfigurationStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
 
-	// Specifies how the underlying service/resource is provisioned and managed
+	// ResourceProvisioning specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// Metadata of the Dapr Configuration store resource.
