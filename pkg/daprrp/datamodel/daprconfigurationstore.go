@@ -80,7 +80,7 @@ type DaprConfigurationStoreProperties struct {
 	// List of the resource IDs that support the Dapr Configuration store Broker resource.
 	Resources []*portableresources.ResourceReference `json:"resources,omitempty"`
 
-	// Type of the Dapr  Configuration store resource.
+	// Type of the Dapr Configuration Store resource.
 	Type string `json:"type,omitempty"`
 
 	// Version of the Dapr Pub/Sub Broker resource.
