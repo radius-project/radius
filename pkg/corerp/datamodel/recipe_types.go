@@ -21,6 +21,9 @@ type RecipeConfigProperties struct {
 	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
 	Terraform TerraformConfigProperties `json:"terraform,omitempty"`
 
+	// BicepConfigProperties represents configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.
+	Bicep BicepConfigProperties `json:"bicep,omitempty"`
+
 	// Env specifies the environment variables to be set during the Terraform Recipe execution.
 	Env EnvironmentVariables `json:"env,omitempty"`
 
@@ -37,6 +40,21 @@ type TerraformConfigProperties struct {
 
 	// Providers specifies the Terraform provider configurations. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs: https://developer.hashicorp.com/terraform/language/providers/configuration.// Providers specifies the Terraform provider configurations.
 	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
+}
+
+// BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
+// deployment.
+type BicepConfigProperties struct {
+	// Authentication holds the information used to access private bicep registries, which is a map of registry hostname to secret config
+	// that contains credential information.
+	Authentication map[string]RegistrySecretConfig
+}
+
+// RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
+type RegistrySecretConfig struct {
+	// Secret is the ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private
+	// container registry. The keys in the secretstore depends on the type.
+	Secret string
 }
 
 // AuthConfig - Authentication information used to access private Terraform module sources. Supported module sources: Git.

@@ -20,9 +20,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/radius-project/radius/pkg/cli/helm"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s_runtime "k8s.io/apimachinery/pkg/runtime"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -117,6 +121,30 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 	return nil
 }
 
+// deleteNamespace delete the specified namespace.
+func deleteNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
+	if err := client.CoreV1().Namespaces().
+		Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
+		return err
+	}
+
+	// Ensure the namespace is deleted. This will block until the namespace is no longer exist.
+	err := wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (done bool, err error) {
+		_, err = client.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // NewCLIClientConfig creates new Kubernetes client config loading from local home directory with CLI options.
 //
 
@@ -160,6 +188,7 @@ func GetContextFromConfigFileIfExists(configFilePath, context string) (string, e
 //go:generate mockgen -typed -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/radius-project/radius/pkg/cli/kubernetes github.com/radius-project/radius/pkg/cli/kubernetes Interface
 type Interface interface {
 	GetKubeContext() (*api.Config, error)
+	DeleteNamespace(string) error
 }
 
 type Impl struct {
@@ -171,4 +200,15 @@ type Impl struct {
 // GetKubeContext loads the kube configuration file and returns a Config object and an error if the file cannot be loaded.
 func (i *Impl) GetKubeContext() (*api.Config, error) {
 	return kubeutil.LoadConfigFile("")
+}
+
+func (i *Impl) DeleteNamespace(kubeContext string) error {
+	clientSet, _, err := NewClientset(kubeContext)
+	if err != nil {
+		return err
+	}
+	if err := deleteNamespace(context.Background(), clientSet, helm.RadiusSystemNamespace); err != nil {
+		return err
+	}
+	return nil
 }

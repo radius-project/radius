@@ -237,7 +237,10 @@ func (r *Runner) prepareSource(ctx context.Context) (*memory.Store, error) {
 	}
 
 	// Push config blob
-	configDesc, err := pushBlob(ctx, configMediaType, nil, src)
+	// Set blob content to an empty descriptor instead of nil as some registries that implement the OCI image manifest specification,
+	// such as AWS ECR, do not support pushing empty content.
+	// Ref: https://git.homegu.com/devcontainers/cli/issues/814
+	configDesc, err := pushBlob(ctx, configMediaType, []byte("{}"), src)
 	if err != nil {
 		return nil, err
 	}

@@ -26,7 +26,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"go.uber.org/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
@@ -44,6 +43,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 type ValidateInput struct {
@@ -202,6 +202,7 @@ func validateRequiredFlags(c *cobra.Command) error {
 const (
 	TestWorkspaceName   = "test-workspace"
 	TestEnvironmentName = "test-environment"
+	TestEnvironmentID   = "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment"
 )
 
 // LoadConfig reads a YAML configuration from a string and returns a Viper object.

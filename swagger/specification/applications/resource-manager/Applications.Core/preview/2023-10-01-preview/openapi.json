@@ -2500,6 +2500,19 @@
       ],
       "x-ms-discriminator-value": "azure.com.keyvault"
     },
+    "BicepConfigProperties": {
+      "type": "object",
+      "description": "Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.",
+      "properties": {
+        "authentication": {
+          "type": "object",
+          "description": "Authentication information used to access private bicep registries, which is a map of registry hostname to secret config that contains credential information.",
+          "additionalProperties": {
+            "$ref": "#/definitions/RegistrySecretConfig"
+          }
+        }
+      }
+    },
     "BicepRecipeProperties": {
       "type": "object",
       "description": "Represents Bicep recipe properties.",
@@ -2676,7 +2689,7 @@
           "type": "object",
           "description": "environment",
           "additionalProperties": {
-            "type": "string"
+            "$ref": "#/definitions/EnvironmentVariable"
           }
         },
         "ports": {
@@ -3002,7 +3015,7 @@
           "type": "object",
           "description": "environment",
           "additionalProperties": {
-            "type": "string"
+            "$ref": "#/definitions/EnvironmentVariableUpdate"
           }
         },
         "ports": {
@@ -3317,6 +3330,57 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        }
+      }
+    },
+    "EnvironmentVariable": {
+      "type": "object",
+      "description": "Environment variables type",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The value of the environment variable"
+        },
+        "valueFrom": {
+          "$ref": "#/definitions/EnvironmentVariableReference",
+          "description": "The reference to the variable"
+        }
+      }
+    },
+    "EnvironmentVariableReference": {
+      "type": "object",
+      "description": "The reference to the variable",
+      "properties": {
+        "secretRef": {
+          "$ref": "#/definitions/SecretReference",
+          "description": "The secret reference"
+        }
+      },
+      "required": [
+        "secretRef"
+      ]
+    },
+    "EnvironmentVariableReferenceUpdate": {
+      "type": "object",
+      "description": "The reference to the variable",
+      "properties": {
+        "secretRef": {
+          "$ref": "#/definitions/SecretReferenceUpdate",
+          "description": "The secret reference"
+        }
+      }
+    },
+    "EnvironmentVariableUpdate": {
+      "type": "object",
+      "description": "Environment variables type",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The value of the environment variable"
+        },
+        "valueFrom": {
+          "$ref": "#/definitions/EnvironmentVariableReferenceUpdate",
+          "description": "The reference to the variable"
         }
       }
     },
@@ -4354,6 +4418,10 @@
           "$ref": "#/definitions/TerraformConfigProperties",
           "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
         },
+        "bicep": {
+          "$ref": "#/definitions/BicepConfigProperties",
+          "description": "Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment."
+        },
         "env": {
           "$ref": "#/definitions/EnvironmentVariables",
           "description": "Environment variables injected during recipe execution for the recipes in the environment, currently supported for Terraform recipes."
@@ -4498,6 +4566,16 @@
           "type": "object",
           "description": "Key/value parameters to pass into the recipe at deployment",
           "properties": {}
+        }
+      }
+    },
+    "RegistrySecretConfig": {
+      "type": "object",
+      "description": "Registry Secret Configuration used to authenticate to private bicep registries.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container registry.The keys in the secretstore depends on the type."
         }
       }
     },
@@ -4655,6 +4733,20 @@
         "key"
       ]
     },
+    "SecretReferenceUpdate": {
+      "type": "object",
+      "description": "This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data.",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution."
+        },
+        "key": {
+          "type": "string",
+          "description": "The key for the secret in the secret store."
+        }
+      }
+    },
     "SecretStoreDataType": {
       "type": "string",
       "description": "The type of SecretStore data",
@@ -4687,12 +4779,12 @@
           {
             "name": "azureWorkloadIdentity",
             "value": "azureWorkloadIdentity",
-            "description": "azureWorkloadIdentity type is used to represent registry authentication using azure federated identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'."
+            "description": "azureWorkloadIdentity type is used to represent authentication using azure federated identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'."
           },
           {
             "name": "awsIRSA",
             "value": "awsIRSA",
-            "description": "awsIRSA type is used to represent registry authentication using AWS IRSA (IAM Roles for Service accounts) and the secretstore resource is expected to have the key 'roleARN'."
+            "description": "awsIRSA type is used to represent authentication using AWS IRSA (IAM Roles for Service accounts) and the secretstore resource is expected to have the key 'roleARN'."
           }
         ]
       }

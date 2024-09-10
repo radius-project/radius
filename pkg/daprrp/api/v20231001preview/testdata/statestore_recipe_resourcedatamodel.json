@@ -16,6 +16,9 @@
   },
   "properties": {
     "componentName": "stateStore0",
+    "auth": {
+      "secretStore": "test-secret-store"
+    },
     "status": {
       "outputResources": [
         {

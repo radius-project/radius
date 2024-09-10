@@ -49,6 +49,28 @@ type BasicResourceProperties struct {
 	Status ResourceStatus `json:"status,omitempty"`
 }
 
+// DaprComponentMetadataValue is the value of a Dapr Metadata
+type DaprComponentMetadataValue struct {
+	// Plain text value
+	Value string `json:"value,omitempty"`
+	// SecretKeyRef is a reference to a secret in a Dapr secret store
+	SecretKeyRef *DaprComponentSecretRef `json:"secretKeyRef,omitempty"`
+}
+
+// DaprComponentSecretRef is a reference to a secret in a Dapr secret store
+type DaprComponentSecretRef struct {
+	// Name of the secret in the secret store
+	Name string `json:"name,omitempty"`
+	// Key of the secret in the secret store
+	Key string `json:"key,omitempty"`
+}
+
+// DaprComponentAuth represents the auth configuration for a Dapr component
+type DaprComponentAuth struct {
+	// SecretStore is the name of the secret store to fetch secrets from
+	SecretStore string `json:"secretStore,omitempty"`
+}
+
 // Method EqualLinkedResource compares two BasicResourceProperties objects and returns true if their Application and
 // Environment fields are equal (i.e. resource belongs to the same env and app).
 func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {

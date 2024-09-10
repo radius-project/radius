@@ -47,6 +47,7 @@ func Test_Process(t *testing.T) {
 	const appID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
 	const envID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/test-env"
 	const componentName = "test-dapr-pubsub-broker"
+	const secretStoreComponentName = "test-dapr-secret-store"
 
 	t.Run("success - recipe", func(t *testing.T) {
 		processor := Processor{
@@ -117,93 +118,168 @@ func Test_Process(t *testing.T) {
 	})
 
 	t.Run("success - manual", func(t *testing.T) {
-		processor := Processor{
-			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
-		}
-
-		resource := &datamodel.DaprPubSubBroker{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: "some-other-name",
+		testset := []struct {
+			description string
+			properties  *datamodel.DaprPubSubBrokerProperties
+			generated   *unstructured.Unstructured
+		}{
+			{
+				description: "Raw values",
+				properties: &datamodel.DaprPubSubBrokerProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: appID,
+						Environment: envID,
+					},
+					BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
+						ComponentName: componentName,
+					},
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
+					Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+						"config": {
+							Value: "extrasecure",
+						},
+					},
+					Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+					Type:      "pubsub.redis",
+					Version:   "v1",
+				},
+				generated: &unstructured.Unstructured{
+					Object: map[string]any{
+						"apiVersion": dapr.DaprAPIVersion,
+						"kind":       dapr.DaprKind,
+						"metadata": map[string]any{
+							"namespace":       "test-namespace",
+							"name":            "test-dapr-pubsub-broker",
+							"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprPubSubBrokersResourceType),
+							"resourceVersion": "1",
+						},
+						"spec": map[string]any{
+							"type":    "pubsub.redis",
+							"version": "v1",
+							"metadata": []any{
+								map[string]any{
+									"name":  "config",
+									"value": "extrasecure",
+								},
+							},
+						},
+					},
 				},
 			},
-			Properties: datamodel.DaprPubSubBrokerProperties{
-				BasicResourceProperties: rpv1.BasicResourceProperties{
-					Application: appID,
-					Environment: envID,
+			{
+				description: "With secret store",
+				properties: &datamodel.DaprPubSubBrokerProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: appID,
+						Environment: envID,
+					},
+					BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
+						ComponentName: componentName,
+					},
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
+					Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+						"config": {
+							Value: "extrasecure",
+						},
+						"connectionString": {
+							SecretKeyRef: &rpv1.DaprComponentSecretRef{
+								Name: "secretStoreName",
+								Key:  "secretStoreKey",
+							},
+						},
+					},
+					Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+					Type:      "pubsub.redis",
+					Version:   "v1",
+					Auth: &rpv1.DaprComponentAuth{
+						SecretStore: secretStoreComponentName,
+					},
 				},
-				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
-					ComponentName: componentName,
-				},
-				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata: map[string]any{
-					"config": "extrasecure",
-				},
-				Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
-				Type:      "pubsub.redis",
-				Version:   "v1",
-			},
-		}
-
-		options := processors.Options{
-			RuntimeConfiguration: recipes.RuntimeConfiguration{
-				Kubernetes: &recipes.KubernetesRuntime{
-					Namespace: "test-namespace",
-				},
-			},
-		}
-
-		err := processor.Process(context.Background(), resource, options)
-		require.NoError(t, err)
-
-		require.Equal(t, componentName, resource.Properties.ComponentName)
-
-		expectedValues := map[string]any{
-			"componentName": componentName,
-		}
-		expectedSecrets := map[string]rpv1.SecretValueReference{}
-
-		expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField(resource.Properties.Resources)
-
-		generated := &unstructured.Unstructured{
-			Object: map[string]any{
-				"apiVersion": dapr.DaprAPIVersion,
-				"kind":       dapr.DaprKind,
-				"metadata": map[string]any{
-					"namespace":       "test-namespace",
-					"name":            "test-dapr-pubsub-broker",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprPubSubBrokersResourceType),
-					"resourceVersion": "1",
-				},
-				"spec": map[string]any{
-					"type":    "pubsub.redis",
-					"version": "v1",
-					"metadata": []any{
-						map[string]any{
-							"name":  "config",
-							"value": "extrasecure",
+				generated: &unstructured.Unstructured{
+					Object: map[string]any{
+						"apiVersion": dapr.DaprAPIVersion,
+						"kind":       dapr.DaprKind,
+						"metadata": map[string]any{
+							"namespace":       "test-namespace",
+							"name":            "test-dapr-pubsub-broker",
+							"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprPubSubBrokersResourceType),
+							"resourceVersion": "1",
+						},
+						"spec": map[string]any{
+							"type":    "pubsub.redis",
+							"version": "v1",
+							"metadata": []any{
+								map[string]any{
+									"name":  "config",
+									"value": "extrasecure",
+								},
+								map[string]any{
+									"name": "connectionString",
+									"secretKeyRef": map[string]any{
+										"name": "secretStoreName",
+										"key":  "secretStoreKey",
+									},
+								},
+							},
+						},
+						"auth": map[string]any{
+							"secretStore": secretStoreComponentName,
 						},
 					},
 				},
 			},
 		}
 
-		component := rpv1.NewKubernetesOutputResource("Component", generated, metav1.ObjectMeta{Name: generated.GetName(), Namespace: generated.GetNamespace()})
-		component.RadiusManaged = to.Ptr(true)
-		expectedOutputResources = append(expectedOutputResources, component)
-		require.NoError(t, err)
+		for _, tc := range testset {
+			t.Run(tc.description, func(t *testing.T) {
+				processor := Processor{
+					Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
+				}
+				resource := &datamodel.DaprPubSubBroker{
+					BaseResource: v1.BaseResource{
+						TrackedResource: v1.TrackedResource{
+							Name: "some-other-name",
+						},
+					},
+					Properties: *tc.properties,
+				}
+				options := processors.Options{
+					RuntimeConfiguration: recipes.RuntimeConfiguration{
+						Kubernetes: &recipes.KubernetesRuntime{
+							Namespace: "test-namespace",
+						},
+					},
+				}
+				err := processor.Process(context.Background(), resource, options)
+				require.NoError(t, err)
 
-		require.Equal(t, expectedValues, resource.ComputedValues)
-		require.Equal(t, expectedSecrets, resource.SecretValues)
-		require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
+				require.Equal(t, componentName, resource.Properties.ComponentName)
 
-		components := unstructured.UnstructuredList{}
-		components.SetAPIVersion("dapr.io/v1alpha1")
-		components.SetKind("Component")
-		err = processor.Client.List(context.Background(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
-		require.NoError(t, err)
-		require.NotEmpty(t, components.Items)
-		require.Equal(t, []unstructured.Unstructured{*generated}, components.Items)
+				expectedValues := map[string]any{
+					"componentName": componentName,
+				}
+				expectedSecrets := map[string]rpv1.SecretValueReference{}
+
+				expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField(resource.Properties.Resources)
+				component := rpv1.NewKubernetesOutputResource("Component", tc.generated, metav1.ObjectMeta{Name: tc.generated.GetName(), Namespace: tc.generated.GetNamespace()})
+				component.RadiusManaged = to.Ptr(true)
+				expectedOutputResources = append(expectedOutputResources, component)
+				require.NoError(t, err)
+
+				require.Equal(t, expectedValues, resource.ComputedValues)
+				require.Equal(t, expectedSecrets, resource.SecretValues)
+				require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
+
+				components := unstructured.UnstructuredList{}
+				components.SetAPIVersion("dapr.io/v1alpha1")
+				components.SetKind("Component")
+				err = processor.Client.List(context.Background(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
+				require.NoError(t, err)
+				require.NotEmpty(t, components.Items)
+				require.Equal(t, []unstructured.Unstructured{*tc.generated}, components.Items)
+
+			})
+		}
 	})
 
 	t.Run("success - manual (no application)", func(t *testing.T) {
@@ -225,8 +301,10 @@ func Test_Process(t *testing.T) {
 					ComponentName: componentName,
 				},
 				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata: map[string]any{
-					"config": "extrasecure",
+				Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+					"config": {
+						Value: "extrasecure",
+					},
 				},
 				Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
 				Type:      "pubsub.redis",
@@ -374,7 +452,7 @@ func Test_Process(t *testing.T) {
 			dapr.DaprGeneric{
 				Type:     to.Ptr("pubsub.redis"),
 				Version:  to.Ptr("v1"),
-				Metadata: map[string]any{},
+				Metadata: map[string]*rpv1.DaprComponentMetadataValue{},
 			},
 			"test-namespace",
 			"test-dapr-pubsub-broker",
@@ -400,10 +478,14 @@ func Test_Process(t *testing.T) {
 					ComponentName: componentName,
 				},
 				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata:             map[string]any{"config": "extrasecure"},
-				Resources:            []*portableresources.ResourceReference{{ID: externalResourceID1}},
-				Type:                 "pubsub.redis",
-				Version:              "v1",
+				Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+					"config": {
+						Value: "extrasecure",
+					},
+				},
+				Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+				Type:      "pubsub.redis",
+				Version:   "v1",
 			},
 		}
 

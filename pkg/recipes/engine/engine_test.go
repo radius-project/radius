@@ -848,8 +848,9 @@ func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
 		Times(1).
 		Return(envConfig, nil)
 	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: recipeDefinition,
+		Recipe:        recipes.ResourceMetadata{},
+		Definition:    recipeDefinition,
+		Configuration: *envConfig,
 	}).Times(1).Return(outputParams, nil)
 
 	recipeData, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
@@ -918,8 +919,9 @@ func Test_Engine_GetRecipeMetadata_Private_Module_Success(t *testing.T) {
 		Times(1).
 		Return(nil, nil)
 	driverWithSecrets.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: *recipeDefinition,
+		Recipe:        recipes.ResourceMetadata{},
+		Definition:    *recipeDefinition,
+		Configuration: *envConfig,
 	}).Times(1).Return(outputParams, nil)
 
 	recipeData, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
@@ -954,8 +956,9 @@ func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
 		Times(1).
 		Return(envConfig, nil)
 	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: recipeDefinition,
+		Recipe:        recipes.ResourceMetadata{},
+		Definition:    recipeDefinition,
+		Configuration: *envConfig,
 	}).Times(1).Return(nil, errors.New("driver failure"))
 
 	_, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{

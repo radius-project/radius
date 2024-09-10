@@ -17,8 +17,11 @@ type DaprPubSubBrokerProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValue
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe
@@ -93,11 +96,14 @@ type DaprPubSubBrokerResourceUpdateProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
 	// Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValueUpdate
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *RecipeUpdate
@@ -115,6 +121,12 @@ type DaprPubSubBrokerResourceUpdateProperties struct {
 	Version *string
 }
 
+// DaprResourceAuth - Authentication properties for a Dapr component object
+type DaprResourceAuth struct {
+	// Secret store to fetch secrets from
+	SecretStore *string
+}
+
 // DaprSecretStoreProperties - Dapr SecretStore portable resource properties
 type DaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
@@ -124,7 +136,7 @@ type DaprSecretStoreProperties struct {
 	Application *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValue
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe
@@ -200,7 +212,7 @@ type DaprSecretStoreResourceUpdateProperties struct {
 	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValueUpdate
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *RecipeUpdate
@@ -223,8 +235,11 @@ type DaprStateStoreProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValue
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe
@@ -299,11 +314,14 @@ type DaprStateStoreResourceUpdateProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
 	// Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]any
+	Metadata map[string]*MetadataValueUpdate
 
 	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *RecipeUpdate
@@ -404,6 +422,58 @@ func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 		Kind: k.Kind,
 		ResourceID: k.ResourceID,
 	}
+}
+
+// MetadataValue - A single metadata for a Dapr component object
+type MetadataValue struct {
+	// A reference of a value in a secret store component
+	SecretKeyRef *MetadataValueFromSecret
+
+	// The plain text value of the metadata
+	Value *string
+}
+
+// MetadataValueFromSecret - A reference of a value in a secret store component.
+type MetadataValueFromSecret struct {
+	// REQUIRED; The field to select in the secret value. If the secret value is a string, it should be equal to the secret name
+	Key *string
+
+	// REQUIRED; Secret name in the secret store component
+	Name *string
+}
+
+// MetadataValueFromSecretUpdate - A reference of a value in a secret store component.
+type MetadataValueFromSecretUpdate struct {
+	// The field to select in the secret value. If the secret value is a string, it should be equal to the secret name
+	Key *string
+
+	// Secret name in the secret store component
+	Name *string
+}
+
+// MetadataValueUpdate - A single metadata for a Dapr component object
+type MetadataValueUpdate struct {
+	// A reference of a value in a secret store component
+	SecretKeyRef *MetadataValueFromSecretUpdate
+
+	// The plain text value of the metadata
+	Value *string
+}
+
+// NonRedundantDaprResourceProperties - The base properties of a Dapr component object.
+type NonRedundantDaprResourceProperties struct {
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
+	Metadata map[string]*MetadataValue
+
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	Type *string
+
+	// Dapr component version
+	Version *string
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string
 }
 
 // Operation - Details of a REST API operation, returned from the Resource Provider Operations API

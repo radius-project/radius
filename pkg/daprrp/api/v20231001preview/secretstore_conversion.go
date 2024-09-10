@@ -73,7 +73,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 			msgs = append(msgs, "version must be specified when resourceProvisioning is set to manual")
 		}
 
-		converted.Properties.Metadata = src.Properties.Metadata
+		converted.Properties.Metadata = toMetadataDataModel(src.Properties.Metadata)
 		converted.Properties.Type = to.String(src.Properties.Type)
 		converted.Properties.Version = to.String(src.Properties.Version)
 	} else {
@@ -120,7 +120,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		Application:          to.Ptr(daprSecretStore.Properties.Application),
 		Type:                 to.Ptr(daprSecretStore.Properties.Type),
 		Version:              to.Ptr(daprSecretStore.Properties.Version),
-		Metadata:             daprSecretStore.Properties.Metadata,
+		Metadata:             fromMetadataDataModel(daprSecretStore.Properties.Metadata),
 		ComponentName:        to.Ptr(daprSecretStore.Properties.ComponentName),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(daprSecretStore.Properties.Status.OutputResources),
@@ -128,7 +128,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		},
 	}
 	if daprSecretStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
-		dst.Properties.Metadata = daprSecretStore.Properties.Metadata
+		dst.Properties.Metadata = fromMetadataDataModel(daprSecretStore.Properties.Metadata)
 		dst.Properties.Type = to.Ptr(daprSecretStore.Properties.Type)
 		dst.Properties.Version = to.Ptr(daprSecretStore.Properties.Version)
 	} else {

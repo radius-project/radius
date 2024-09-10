@@ -16,6 +16,9 @@
   },
   "properties": {
     "componentName": "stateStore0",
+    "auth": {
+      "secretStore": "test-secret-store"
+    },
     "status": {
       "outputResources": [
         {
@@ -29,7 +32,9 @@
     "type": "state.zookeeper",
     "version": "v1",
     "metadata": {
-      "foo": "bar"
+      "foo": {
+        "value": "bar"
+      }
     },
     "resources": [
       {

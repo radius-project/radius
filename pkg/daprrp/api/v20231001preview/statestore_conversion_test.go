@@ -78,9 +78,12 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 				expected.Properties.ResourceProvisioning = portableresources.ResourceProvisioningManual
 				expected.Properties.Type = "state.zookeeper"
 				expected.Properties.Version = "v1"
-				expected.Properties.Metadata = map[string]any{
-					"foo": "bar",
+				expected.Properties.Metadata = map[string]*rpv1.DaprComponentMetadataValue{
+					"foo": {
+						Value: "bar",
+					},
 				}
+				expected.Properties.Auth = &rpv1.DaprComponentAuth{SecretStore: "test-secret-store"}
 				expected.Properties.Resources = []*portableresources.ResourceReference{
 					{
 						ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
@@ -155,6 +158,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 					Environment:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
 					ComponentName:     to.Ptr("stateStore0"),
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
+					Auth:              &DaprResourceAuth{SecretStore: to.Ptr("test-secret-store")},
 					Status:            resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{}),
 				},
 			}
@@ -163,8 +167,10 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 				expected.Properties.ResourceProvisioning = to.Ptr(ResourceProvisioningManual)
 				expected.Properties.Type = to.Ptr("state.zookeeper")
 				expected.Properties.Version = to.Ptr("v1")
-				expected.Properties.Metadata = map[string]any{
-					"foo": "bar",
+				expected.Properties.Metadata = map[string]*MetadataValue{
+					"foo": {
+						Value: to.Ptr("bar"),
+					},
 				}
 				expected.Properties.Resources = []*ResourceReference{
 					{

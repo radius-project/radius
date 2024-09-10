@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -100,10 +101,34 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 	return environmentName, err
 }
 
+// RequireEnvironmentNameOrID checks if an environment name or ID is provided as a flag or as a default environment in the workspace,
+// and returns an error if neither is present. It also handles any errors that occur while parsing the resource.
+func RequireEnvironmentNameOrID(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
+	environmentNameOrID, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return "", err
+	}
+
+	// We store the environment id in config
+	if environmentNameOrID == "" && workspace.Environment != "" {
+		environmentNameOrID = workspace.Environment
+	}
+
+	if environmentNameOrID == "" && workspace.IsEditableWorkspace() {
+		// Setting a default environment only applies to editable workspaces
+		return "", fmt.Errorf("no environment name or ID provided and no default environment set, " +
+			"either pass in an environment name or ID or set a default environment by using `rad env switch`")
+	} else if environmentNameOrID == "" {
+		return "", fmt.Errorf("no environment name or ID provided, pass in an environment name or ID")
+	}
+
+	return environmentNameOrID, err
+}
+
 // DidSpecifyEnvironmentName checks if an environment name is provided as a flag
 func DidSpecifyEnvironmentName(cmd *cobra.Command, args []string) bool {
 	environmentName, err := cmd.Flags().GetString("environment")
-	return err == nil && environmentName != ""
+	return err == nil && environmentName != "" && !strings.HasPrefix(environmentName, resources.SegmentSeparator)
 }
 
 // RequireKubeContext is used by commands that need a kubernetes context name to be specified using -c flag or has a default kubecontext
@@ -357,6 +382,31 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper, dc *config.Direct
 	}
 
 	return ws, nil
+}
+
+// RequireResourceGroupNameArgs is used by commands that require a resource group name to be specified. If no group is passed then the default workspace group is used.
+func RequireResourceGroupNameArgs(cmd *cobra.Command, args []string, workspace *workspaces.Workspace) (string, error) {
+	var resourceGroup string
+	var err error
+
+	if len(args) > 0 {
+		resourceGroup, err = ReadResourceGroupNameArgs(cmd, args)
+		if err != nil {
+			return "", err
+		}
+		// If an argument is provided but is empty, we should return an error
+		if resourceGroup == "" {
+			return "", fmt.Errorf("resource group name is not provided or is empty ")
+		}
+	} else {
+		id, err := resources.ParseScope(workspace.Scope)
+		if err != nil {
+			return "", err
+		}
+		resourceGroup = id.FindScope(resources_radius.ScopeResourceGroups)
+	}
+
+	return resourceGroup, nil
 }
 
 // RequireUCPResourceGroup is used by commands that require specifying a UCP resource group name using flag or positional args

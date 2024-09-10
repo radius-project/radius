@@ -12,7 +12,9 @@
     "type": "state.zookeeper",
     "version": "v1",
     "metadata": {
-      "foo": "bar"
+      "foo": {
+        "value": "bar"
+      }
     }
   }
 }

@@ -171,6 +171,14 @@ func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties 
 	}
 }
 
+// BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
+// deployment.
+type BicepConfigProperties struct {
+	// Authentication information used to access private bicep registries, which is a map of registry hostname to secret config
+// that contains credential information.
+	Authentication map[string]*RegistrySecretConfig
+}
+
 // BicepRecipeProperties - Represents Bicep recipe properties.
 type BicepRecipeProperties struct {
 	// REQUIRED; Discriminator property for RecipeProperties.
@@ -278,7 +286,7 @@ type Container struct {
 	Command []*string
 
 	// environment
-	Env map[string]*string
+	Env map[string]*EnvironmentVariable
 
 	// The pull policy for the container image
 	ImagePullPolicy *ImagePullPolicy
@@ -454,7 +462,7 @@ type ContainerUpdate struct {
 	Command []*string
 
 	// environment
-	Env map[string]*string
+	Env map[string]*EnvironmentVariableUpdate
 
 	// The registry and image to download and run in your container
 	Image *string
@@ -618,6 +626,36 @@ type EnvironmentResourceUpdateProperties struct {
 
 	// Simulated environment.
 	Simulated *bool
+}
+
+// EnvironmentVariable - Environment variables type
+type EnvironmentVariable struct {
+	// The value of the environment variable
+	Value *string
+
+	// The reference to the variable
+	ValueFrom *EnvironmentVariableReference
+}
+
+// EnvironmentVariableReference - The reference to the variable
+type EnvironmentVariableReference struct {
+	// REQUIRED; The secret reference
+	SecretRef *SecretReference
+}
+
+// EnvironmentVariableReferenceUpdate - The reference to the variable
+type EnvironmentVariableReferenceUpdate struct {
+	// The secret reference
+	SecretRef *SecretReferenceUpdate
+}
+
+// EnvironmentVariableUpdate - Environment variables type
+type EnvironmentVariableUpdate struct {
+	// The value of the environment variable
+	Value *string
+
+	// The reference to the variable
+	ValueFrom *EnvironmentVariableReferenceUpdate
 }
 
 // EphemeralVolume - Specifies an ephemeral volume for a container
@@ -1312,6 +1350,9 @@ type Recipe struct {
 
 // RecipeConfigProperties - Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 type RecipeConfigProperties struct {
+	// Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.
+	Bicep *BicepConfigProperties
+
 	// Environment variables injected during recipe execution for the recipes in the environment, currently supported for Terraform
 // recipes.
 	Env map[string]*string
@@ -1404,6 +1445,13 @@ type RecipeUpdate struct {
 	Parameters map[string]any
 }
 
+// RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
+type RegistrySecretConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container
+// registry.The keys in the secretstore depends on the type.
+	Secret *string
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -1473,6 +1521,16 @@ type SecretReference struct {
 	Key *string
 
 	// REQUIRED; The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
+	Source *string
+}
+
+// SecretReferenceUpdate - This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control,
+// auditing and are recommended to be used to hold sensitive data.
+type SecretReferenceUpdate struct {
+	// The key for the secret in the secret store.
+	Key *string
+
+	// The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
 	Source *string
 }
 

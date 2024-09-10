@@ -19,6 +19,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	reflect "reflect"
 	"strconv"
 	"time"
 
@@ -37,6 +38,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util"
+	"github.com/radius-project/radius/pkg/rp/util/authclient"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
@@ -87,8 +89,23 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
+	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
+	if err != nil {
+		return nil, err
+	}
 
-	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, d.RegistryClient)
+	registryClient := d.RegistryClient
+	// Get ORAS authentication client if secrets are found for the registry.
+	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
+		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
+
+		registryClient = authClient
+	}
+
+	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))
@@ -256,7 +273,23 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (
 	//		}
 	//	}
 	recipeData := make(map[string]any)
-	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, d.RegistryClient)
+	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
+	if err != nil {
+		return nil, err
+	}
+
+	registryClient := d.RegistryClient
+	// Get ORAS authentication client if secrets are found for the registry.
+	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
+		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
+
+		registryClient = authClient
+	}
+
+	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		return nil, err
 	}
@@ -402,4 +435,24 @@ func (d *bicepDriver) getGCOutputResources(current []string, previous []string) 
 	}
 
 	return diff, nil
+}
+
+func (d *bicepDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (secretStoreIDResourceKeys map[string][]string, err error) {
+	secretStoreIDResourceKeys = make(map[string][]string)
+	if envConfig.RecipeConfig.Bicep.Authentication != nil {
+		for _, v := range envConfig.RecipeConfig.Bicep.Authentication {
+			secretStoreIDResourceKeys[v.Secret] = []string{}
+		}
+	}
+
+	return secretStoreIDResourceKeys, err
+}
+
+func getRegistryAuthClient(ctx context.Context, secrets recipes.SecretData, templatePath string) (remote.Client, error) {
+	newRegistryClient, err := authclient.GetNewRegistryAuthClient(secrets)
+	if err != nil {
+		return nil, err
+	}
+
+	return newRegistryClient.GetAuthClient(ctx, templatePath)
 }

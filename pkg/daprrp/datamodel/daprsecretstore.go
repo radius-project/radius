@@ -59,11 +59,11 @@ func (r *DaprSecretStore) ResourceTypeName() string {
 type DaprSecretStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Type                 string                                 `json:"type,omitempty"`
-	Version              string                                 `json:"version,omitempty"`
-	Metadata             map[string]any                         `json:"metadata,omitempty"`
-	Recipe               portableresources.ResourceRecipe       `json:"recipe,omitempty"`
-	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	Type                 string                                      `json:"type,omitempty"`
+	Version              string                                      `json:"version,omitempty"`
+	Metadata             map[string]*rpv1.DaprComponentMetadataValue `json:"metadata,omitempty"`
+	Recipe               portableresources.ResourceRecipe            `json:"recipe,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning      `json:"resourceProvisioning,omitempty"`
 }
 
 // Recipe returns the Recipe from the DaprSecretStore Properties if ResourceProvisioning is not set to Manual,
