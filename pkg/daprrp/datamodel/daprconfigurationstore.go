@@ -86,6 +86,6 @@ type DaprConfigurationStoreProperties struct {
 	// Version of the Dapr Pub/Sub Broker resource.
 	Version string `json:"version,omitempty"`
 
-	// Authentication information for the Dapr Configuration store resource, mainly secret store name.
+	// Auth information for the Dapr Configuration Store resource, mainly secret store name.
 	Auth *rpv1.DaprComponentAuth `json:"auth,omitempty"`
 }
