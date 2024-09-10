@@ -465,6 +465,7 @@ func Test_Process(t *testing.T) {
 		processor := Processor{
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}, &existing),
 		}
+
 		resource := &datamodel.DaprConfigurationStore{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{

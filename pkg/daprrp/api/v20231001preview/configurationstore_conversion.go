@@ -45,10 +45,12 @@ func (src *DaprConfigurationStoreResource) ConvertTo() (v1.DataModelInterface, e
 		Location: to.String(src.Location),
 		Tags:     to.StringMap(src.Tags),
 	}
+
 	internalMetadata := v1.InternalMetadata{
 		UpdatedAPIVersion:      Version,
 		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 	}
+
 	converted := &datamodel.DaprConfigurationStore{}
 	converted.TrackedResource = trackedResource
 	converted.InternalMetadata = internalMetadata
@@ -109,38 +111,38 @@ func (src *DaprConfigurationStoreResource) ConvertTo() (v1.DataModelInterface, e
 // ConvertFrom converts from version-agnostic datamodel to the versioned DaprConfigurationStore resource.
 // If the DataModelInterface is not of the correct type, an error is returned.
 func (dst *DaprConfigurationStoreResource) ConvertFrom(src v1.DataModelInterface) error {
-	daprConfigStore, ok := src.(*datamodel.DaprConfigurationStore)
+	daprConfigstore, ok := src.(*datamodel.DaprConfigurationStore)
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(daprPubSub.ID)
-	dst.Name = to.Ptr(daprPubSub.Name)
-	dst.Type = to.Ptr(daprPubSub.Type)
-	dst.SystemData = fromSystemDataModel(daprPubSub.SystemData)
-	dst.Location = to.Ptr(daprPubSub.Location)
-	dst.Tags = *to.StringMapPtr(daprPubSub.Tags)
+	dst.ID = to.Ptr(daprConfigstore.ID)
+	dst.Name = to.Ptr(daprConfigstore.Name)
+	dst.Type = to.Ptr(daprConfigstore.Type)
+	dst.SystemData = fromSystemDataModel(daprConfigstore.SystemData)
+	dst.Location = to.Ptr(daprConfigstore.Location)
+	dst.Tags = *to.StringMapPtr(daprConfigstore.Tags)
 
 	dst.Properties = &DaprConfigurationStoreProperties{
-		Environment:          to.Ptr(daprPubSub.Properties.Environment),
-		Application:          to.Ptr(daprPubSub.Properties.Application),
-		ResourceProvisioning: fromResourceProvisioningDataModel(daprPubSub.Properties.ResourceProvisioning),
-		Resources:            fromResourcesDataModel(daprPubSub.Properties.Resources),
-		ComponentName:        to.Ptr(daprPubSub.Properties.ComponentName),
-		ProvisioningState:    fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
+		Environment:          to.Ptr(daprConfigstore.Properties.Environment),
+		Application:          to.Ptr(daprConfigstore.Properties.Application),
+		ResourceProvisioning: fromResourceProvisioningDataModel(daprConfigstore.Properties.ResourceProvisioning),
+		Resources:            fromResourcesDataModel(daprConfigstore.Properties.Resources),
+		ComponentName:        to.Ptr(daprConfigstore.Properties.ComponentName),
+		ProvisioningState:    fromProvisioningStateDataModel(daprConfigstore.InternalMetadata.AsyncProvisioningState),
 		Status: &ResourceStatus{
-			OutputResources: toOutputResources(daprPubSub.Properties.Status.OutputResources),
-			Recipe:          fromRecipeStatus(daprPubSub.Properties.Status.Recipe),
+			OutputResources: toOutputResources(daprConfigstore.Properties.Status.OutputResources),
+			Recipe:          fromRecipeStatus(daprConfigstore.Properties.Status.Recipe),
 		},
-		Auth: fromAuthDataModel(daprPubSub.Properties.Auth),
+		Auth: fromAuthDataModel(daprConfigstore.Properties.Auth),
 	}
 
-	if daprPubSub.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
-		dst.Properties.Metadata = fromMetadataDataModel(daprPubSub.Properties.Metadata)
-		dst.Properties.Type = to.Ptr(daprPubSub.Properties.Type)
-		dst.Properties.Version = to.Ptr(daprPubSub.Properties.Version)
+	if daprConfigstore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
+		dst.Properties.Metadata = fromMetadataDataModel(daprConfigstore.Properties.Metadata)
+		dst.Properties.Type = to.Ptr(daprConfigstore.Properties.Type)
+		dst.Properties.Version = to.Ptr(daprConfigstore.Properties.Version)
 	} else {
-		dst.Properties.Recipe = fromRecipeDataModel(daprPubSub.Properties.Recipe)
+		dst.Properties.Recipe = fromRecipeDataModel(daprConfigstore.Properties.Recipe)
 	}
 
 	return nil

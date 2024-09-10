@@ -20,7 +20,7 @@ import (
 	"context"
 
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
-	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	"github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/portableresources"
@@ -33,11 +33,11 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
+	runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Processor struct {
-	Client runtime_client.Client
+	Client runtime.Client
 }
 
 // Process validates resource properties, and applies output values from the recipe output. If the resource is
@@ -86,7 +86,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprConfigu
 		resource.Properties.ComponentName,
 		applicationID.Name(),
 		resource.Name,
-		dapr_ctrl.DaprConfigurationStoresResourceType)
+		controller.DaprConfigurationStoresResourceType)
 	if err != nil {
 		return err
 	}
@@ -96,12 +96,12 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprConfigu
 		return &processors.ResourceError{Inner: err}
 	}
 
-	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, dapr_ctrl.DaprConfigurationStoresResourceType)
+	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, controller.DaprConfigurationStoresResourceType)
 	if err != nil {
 		return &processors.ValidationError{Message: err.Error()}
 	}
 
-	err = p.Client.Patch(ctx, &component, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: kubernetes.FieldManager})
+	err = p.Client.Patch(ctx, &component, runtime.Apply, &runtime.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return &processors.ResourceError{Inner: err}
 	}
@@ -142,7 +142,7 @@ func (p *Processor) Delete(ctx context.Context, resource *datamodel.DaprConfigur
 			"metadata": map[string]any{
 				"namespace": options.RuntimeConfiguration.Kubernetes.Namespace,
 				"name":      kubernetes.NormalizeDaprResourceName(resource.Properties.ComponentName),
-				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, dapr_ctrl.DaprConfigurationStoresResourceType),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, controller.DaprConfigurationStoresResourceType),
 			},
 		},
 	}

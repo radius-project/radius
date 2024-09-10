@@ -18,9 +18,9 @@ package datamodel
 
 import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	"github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
-	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -32,7 +32,7 @@ type DaprConfigurationStore struct {
 	Properties DaprConfigurationStoreProperties `json:"properties"`
 
 	// ResourceMetadata represents internal DataModel properties common to all portable resource types.
-	pr_dm.PortableResourceMetadata
+	datamodel.PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput updates the DaprConfigurationStore resource with the DeploymentOutput values.
@@ -52,7 +52,7 @@ func (r *DaprConfigurationStore) ResourceMetadata() *rpv1.BasicResourcePropertie
 
 // ResourceTypeName returns a string representing the resource type.
 func (r *DaprConfigurationStore) ResourceTypeName() string {
-	return dapr_ctrl.DaprConfigurationStoresResourceType
+	return controller.DaprConfigurationStoresResourceType
 }
 
 // Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.
