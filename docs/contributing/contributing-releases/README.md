@@ -36,6 +36,7 @@ For the entire release process, directly clone repositories under the radius-pro
 When starting the release process, we first kick it off by creating an RC release. If we find issues in validation, we can create additional RC releases until we feel confident in the release.
 
 Follow the steps below to create an RC release.
+
 1. Clone the [radius-project/radius](https://github.com/radius-project/radius) repo locally, or use your existing local copy.
    ```
    git clone git@github.com:radius-project/radius.git
