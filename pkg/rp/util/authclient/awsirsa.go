@@ -19,7 +19,6 @@ package authclient
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -59,10 +58,10 @@ func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remot
 		return nil, err
 	}
 
-	awscfg, err := config.LoadDefaultConfig(context.TODO(),
+	awscfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(region))
 	if err != nil {
-		return nil, errors.New("first error : " + err.Error())
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	// Create a credentials cache using the Web Identity Role Provider for AWS STS.
