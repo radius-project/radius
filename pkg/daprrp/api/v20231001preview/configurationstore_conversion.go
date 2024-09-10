@@ -109,7 +109,7 @@ func (src *DaprConfigurationStoreResource) ConvertTo() (v1.DataModelInterface, e
 // ConvertFrom converts from version-agnostic datamodel to the versioned DaprConfigurationStore resource.
 // If the DataModelInterface is not of the correct type, an error is returned.
 func (dst *DaprConfigurationStoreResource) ConvertFrom(src v1.DataModelInterface) error {
-	daprPubSub, ok := src.(*datamodel.DaprConfigurationStore)
+	daprConfigStore, ok := src.(*datamodel.DaprConfigurationStore)
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
