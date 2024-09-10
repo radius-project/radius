@@ -36,28 +36,6 @@ For the entire release process, directly clone repositories under the radius-pro
 When starting the release process, we first kick it off by creating an RC release. If we find issues in validation, we can create additional RC releases until we feel confident in the release.
 
 Follow the steps below to create an RC release.
-1. Create new credentials for different PR endpoints and tags used during the release process. Request someone with admin access to run the below command using different subjects.
-   ```
-   az ad app federated-credential create --id <APPLICATION-OBJECT-ID> --parameters credential.json
-   ("credential.json" contains the following content)
-   {
-      "name": "<CREDENTIAL-NAME>",
-      "issuer": "
-   https://token.actions.githubusercontent.com"
-   ,
-      "subject": "<subjects-listed-below>",
-      "description": "Testing",
-      "audiences": [
-         "api://AzureADTokenExchange"
-      ]
-   }
-   ```
-   Subject list:
-   - repo:radius-project/radius:ref:refs/tags/v0.37.0-rc1
-   - repo:radius-project/radius:ref:refs/tags/v0.37.0
-   - repo:radius-project/bicep-types-aws:ref:refs/tags/v0.37.0-rc1
-   - repo:radius-project/bicep-types-aws:ref:refs/tags/v0.37.0
-
 1. Clone the [radius-project/radius](https://github.com/radius-project/radius) repo locally, or use your existing local copy.
    ```
    git clone git@github.com:radius-project/radius.git
