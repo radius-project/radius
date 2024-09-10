@@ -34,7 +34,7 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 		Details: []step.DeploymentErrorDetail{
 			{
 				Code:            v1.CodeInternal,
-				MessageContains: "the Dapr component name '\"dapr-component\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, etc.). Please select a new name and try again",
+				MessageContains: "the Dapr component name '\"dapr-component\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, ConfigurationStores etc.). Please select a new name and try again",
 			},
 		},
 	})
