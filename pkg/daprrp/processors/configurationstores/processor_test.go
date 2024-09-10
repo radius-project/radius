@@ -502,6 +502,6 @@ func Test_Process(t *testing.T) {
 		err = processor.Process(context.Background(), resource, options)
 		require.Error(t, err)
 		assert.IsType(t, &processors.ValidationError{}, err)
-		assert.Equal(t, fmt.Sprintf("the Dapr component name '\"%s\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, etc.). Please select a new name and try again", componentName), err.Error())
+		assert.Equal(t, fmt.Sprintf("the Dapr component name '\"%s\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, ConfigurationStores etc.). Please select a new name and try again", componentName), err.Error())
 	})
 }
