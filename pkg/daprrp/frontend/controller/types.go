@@ -44,7 +44,7 @@ const (
 
 	// DaprConfigurationStoresResourceType represents the resource type for Dapr configuration store.
 	DaprConfigurationStoresResourceType = "Applications.Dapr/configurationStores"
-	// AsyncCreateOrUpdateDaprConfigurationStoreTimeout is the timeout for async create or update dapr configuration store
+	// AsyncCreateOrUpdateDaprConfigurationStoreTimeout is the timeout for async create or update Dapr Configuration Store
 	AsyncCreateOrUpdateDaprConfigurationStoreTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprConfigurationStoreTimeout is the timeout for async delete dapr configuration store
 	AsyncDeleteDaprConfigurationStoreTimeout = time.Duration(60) * time.Minute
