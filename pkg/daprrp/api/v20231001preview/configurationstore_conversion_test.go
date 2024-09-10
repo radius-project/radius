@@ -175,7 +175,7 @@ func TestDaprConfigurationStore_ConvertDataModelToVersioned(t *testing.T) {
 		expected *DaprConfigurationStoreResource
 	}{
 		{
-			desc: "Convert manually provisioned DaprPubSubBroker datamodel to versioned resource",
+			desc: "Convert manually provisioned DaprConfigurationStore datamodel to versioned resource",
 			file: "configurationstore_manual_datamodel.json",
 			expected: &DaprConfigurationStoreResource{
 				Location: to.Ptr(v1.LocationGlobal),
