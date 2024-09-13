@@ -6,7 +6,7 @@
     "planeType": "radius",
     "planeName": "local",
     "resourceGroupName": "rg1",
-    "ResourceGroup": {
+    "resource": {
       "location": "global"
     }
   },
@@ -16,6 +16,17 @@
         "location": "global",
         "id": "/planes/radius/local/resourcegroups/rg1",
         "name": "rg1"
+      }
+    },
+    "201": {
+      "body": {
+        "location": "global",
+        "id": "/planes/radius/local/resourcegroups/rg1",
+        "name": "rg1"
+      },
+      "headers": {
+        "azure-asyncoperation": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd",
+        "location": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd"
       }
     }
   }
