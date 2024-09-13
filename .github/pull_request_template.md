@@ -23,3 +23,11 @@ Please update the following to link the associated issue. This is required for s
 -->
 
 Fixes: #issue_number
+
+## Contributor checklist
+Please verify that the PR meets the following requirements, where applicable:
+
+- [ ] An overview of proposed schema changes is included in a linked GitHub issue.
+- [ ] A design document PR is created in the [design-notes repository](https://github.com/radius-project/design-notes/), if new APIs are being introduced.
+- [ ] A PR for the [samples repository](https://github.com/radius-project/samples) is created, if existing samples are affected by the changes in this PR.
+- [ ] A PR for the [documentation repository](https://github.com/radius-project/docs) is created, if the changes in this PR affect the documentation.
