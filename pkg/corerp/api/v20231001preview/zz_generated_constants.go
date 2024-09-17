@@ -142,21 +142,6 @@ func PossibleDirectionValues() []Direction {
 	}
 }
 
-// IAMKind - The kind of IAM provider to configure
-type IAMKind string
-
-const (
-	// IAMKindAzure - Azure Active Directory
-	IAMKindAzure IAMKind = "azure"
-)
-
-// PossibleIAMKindValues returns the possible values for the IAMKind const type.
-func PossibleIAMKindValues() []IAMKind {
-	return []IAMKind{	
-		IAMKindAzure,
-	}
-}
-
 // IdentitySettingKind - IdentitySettingKind is the kind of supported external identity setting
 type IdentitySettingKind string
 
@@ -257,15 +242,14 @@ type ProvisioningState string
 const (
 	// ProvisioningStateAccepted - The resource create request has been accepted
 	ProvisioningStateAccepted ProvisioningState = "Accepted"
-	// ProvisioningStateCanceled - Resource creation was canceled.
-	ProvisioningStateCanceled ProvisioningState = "Canceled"
 	// ProvisioningStateDeleting - The resource is being deleted
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
-	// ProvisioningStateFailed - Resource creation failed.
+	// ProvisioningStateFailed - The resource provisioning has failed
 	ProvisioningStateFailed ProvisioningState = "Failed"
 	// ProvisioningStateProvisioning - The resource is being provisioned
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
-	// ProvisioningStateSucceeded - Resource has been created.
+	ProvisioningStateResourceProvisioningState ProvisioningState = "ResourceProvisioningState"
+	// ProvisioningStateSucceeded - The resource provisioning has succeeded
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
 	// ProvisioningStateUpdating - The resource is updating
 	ProvisioningStateUpdating ProvisioningState = "Updating"
@@ -275,10 +259,10 @@ const (
 func PossibleProvisioningStateValues() []ProvisioningState {
 	return []ProvisioningState{	
 		ProvisioningStateAccepted,
-		ProvisioningStateCanceled,
 		ProvisioningStateDeleting,
 		ProvisioningStateFailed,
 		ProvisioningStateProvisioning,
+		ProvisioningStateResourceProvisioningState,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
 	}
@@ -373,7 +357,7 @@ func PossibleSecretValueEncodingValues() []SecretValueEncoding {
 	}
 }
 
-// TLSMinVersion - Tls Minimum versions for Gateway resource.
+// TLSMinVersion - TLS minimum protocol version (defaults to 1.2).
 type TLSMinVersion string
 
 const (
@@ -388,21 +372,6 @@ func PossibleTLSMinVersionValues() []TLSMinVersion {
 	return []TLSMinVersion{	
 		TLSMinVersionTls12,
 		TLSMinVersionTls13,
-	}
-}
-
-// Versions - Supported API versions for the Applications.Core resource provider.
-type Versions string
-
-const (
-	// VersionsV20231001Preview - 2023-10-01-preview
-	VersionsV20231001Preview Versions = "2023-10-01-preview"
-)
-
-// PossibleVersionsValues returns the possible values for the Versions const type.
-func PossibleVersionsValues() []Versions {
-	return []Versions{	
-		VersionsV20231001Preview,
 	}
 }
 
@@ -424,7 +393,7 @@ func PossibleVolumePermissionValues() []VolumePermission {
 	}
 }
 
-// VolumeSecretEncodings - Represents secret encodings
+// VolumeSecretEncodings - Encoding format. Default utf-8
 type VolumeSecretEncodings string
 
 const (

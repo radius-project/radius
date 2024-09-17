@@ -24,7 +24,6 @@ import "@azure-tools/typespec-providerhub";
 
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
-import "./common.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;
@@ -34,6 +33,8 @@ using Azure.Core;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Foundations;
 using OpenAPI;
+
+namespace Ucp;
 
 @doc("The UCP HTTP request base parameters.")
 model CredentialBaseParameters<TResource, TPlaneName = {}> {

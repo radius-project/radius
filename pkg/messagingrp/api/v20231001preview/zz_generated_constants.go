@@ -89,15 +89,14 @@ type ProvisioningState string
 const (
 	// ProvisioningStateAccepted - The resource create request has been accepted
 	ProvisioningStateAccepted ProvisioningState = "Accepted"
-	// ProvisioningStateCanceled - Resource creation was canceled.
-	ProvisioningStateCanceled ProvisioningState = "Canceled"
 	// ProvisioningStateDeleting - The resource is being deleted
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
-	// ProvisioningStateFailed - Resource creation failed.
+	// ProvisioningStateFailed - The resource provisioning has failed
 	ProvisioningStateFailed ProvisioningState = "Failed"
 	// ProvisioningStateProvisioning - The resource is being provisioned
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
-	// ProvisioningStateSucceeded - Resource has been created.
+	ProvisioningStateResourceProvisioningState ProvisioningState = "ResourceProvisioningState"
+	// ProvisioningStateSucceeded - The resource provisioning has succeeded
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
 	// ProvisioningStateUpdating - The resource is updating
 	ProvisioningStateUpdating ProvisioningState = "Updating"
@@ -107,10 +106,10 @@ const (
 func PossibleProvisioningStateValues() []ProvisioningState {
 	return []ProvisioningState{	
 		ProvisioningStateAccepted,
-		ProvisioningStateCanceled,
 		ProvisioningStateDeleting,
 		ProvisioningStateFailed,
 		ProvisioningStateProvisioning,
+		ProvisioningStateResourceProvisioningState,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
 	}
@@ -133,21 +132,6 @@ func PossibleResourceProvisioningValues() []ResourceProvisioning {
 	return []ResourceProvisioning{	
 		ResourceProvisioningManual,
 		ResourceProvisioningRecipe,
-	}
-}
-
-// Versions - Supported API versions for the Applications.Messaging resource provider.
-type Versions string
-
-const (
-	// VersionsV20231001Preview - 2023-10-01-preview
-	VersionsV20231001Preview Versions = "2023-10-01-preview"
-)
-
-// PossibleVersionsValues returns the possible values for the Versions const type.
-func PossibleVersionsValues() []Versions {
-	return []Versions{	
-		VersionsV20231001Preview,
 	}
 }
 

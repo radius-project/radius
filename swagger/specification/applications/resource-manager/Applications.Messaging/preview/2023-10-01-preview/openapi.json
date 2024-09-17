@@ -64,7 +64,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RabbitMQQueueResourceListResult"
             }
@@ -115,7 +115,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RabbitMQQueueResource"
             }
@@ -178,6 +178,10 @@
               "$ref": "#/definitions/RabbitMQQueueResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -236,7 +240,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RabbitMQQueueResource"
             }
@@ -244,14 +248,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -296,25 +300,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -363,14 +364,13 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RabbitMQListSecretsResult"
             }
@@ -403,7 +403,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
             }
@@ -422,6 +422,24 @@
     }
   },
   "definitions": {
+    "Azure.ResourceManager.CommonTypes.TrackedResourceUpdate": {
+      "type": "object",
+      "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/Resource"
+        }
+      ]
+    },
     "EnvironmentCompute": {
       "type": "object",
       "description": "Represents backing compute resource",
@@ -453,7 +471,7 @@
       ],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "undefined",
@@ -530,32 +548,21 @@
       "type": "string",
       "description": "Provisioning state of the resource at the time the operation was called",
       "enum": [
-        "Succeeded",
-        "Failed",
-        "Canceled",
+        "ResourceProvisioningState",
         "Provisioning",
         "Updating",
         "Deleting",
-        "Accepted"
+        "Accepted",
+        "Succeeded",
+        "Failed"
       ],
       "x-ms-enum": {
         "name": "ProvisioningState",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
-            "name": "Succeeded",
-            "value": "Succeeded",
-            "description": "Resource has been created."
-          },
-          {
-            "name": "Failed",
-            "value": "Failed",
-            "description": "Resource creation failed."
-          },
-          {
-            "name": "Canceled",
-            "value": "Canceled",
-            "description": "Resource creation was canceled."
+            "name": "ResourceProvisioningState",
+            "value": "ResourceProvisioningState"
           },
           {
             "name": "Provisioning",
@@ -576,6 +583,16 @@
             "name": "Accepted",
             "value": "Accepted",
             "description": "The resource create request has been accepted"
+          },
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "The resource provisioning has succeeded"
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "The resource provisioning has failed"
           }
         ]
       },
@@ -712,78 +729,12 @@
     },
     "RabbitMQQueueResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the RabbitMQQueueResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/RabbitMQQueueResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "RabbitMQQueue portable resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "RabbitMQQueueResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the RabbitMQQueueResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-        },
-        "secrets": {
-          "$ref": "#/definitions/RabbitMQSecrets",
-          "description": "The secrets to connect to the RabbitMQ instance"
-        },
-        "queue": {
-          "type": "string",
-          "description": "The name of the queue"
-        },
-        "host": {
-          "type": "string",
-          "description": "The hostname of the RabbitMQ instance"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The port of the RabbitMQ instance. Defaults to 5672"
-        },
-        "vHost": {
-          "type": "string",
-          "description": "The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost."
-        },
-        "username": {
-          "type": "string",
-          "description": "The username to use when connecting to the RabbitMQ instance"
-        },
-        "resources": {
-          "type": "array",
-          "description": "List of the resource IDs that support the rabbitMQ resource",
-          "items": {
-            "$ref": "#/definitions/ResourceReference"
-          }
-        },
-        "tls": {
-          "type": "boolean",
-          "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
-        },
-        "recipe": {
-          "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        }
-      }
+      ]
     },
     "RabbitMQSecrets": {
       "type": "object",
@@ -809,8 +760,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
       "required": [
@@ -839,21 +789,6 @@
         "templatePath"
       ]
     },
-    "RecipeUpdate": {
-      "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the recipe within the environment to use"
-        },
-        "parameters": {
-          "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
-        }
-      }
-    },
     "ResourceProvisioning": {
       "type": "string",
       "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
@@ -863,7 +798,7 @@
       ],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "recipe",
@@ -912,24 +847,6 @@
           },
           "x-ms-identifiers": []
         }
-      }
-    },
-    "Versions": {
-      "type": "string",
-      "description": "Supported API versions for the Applications.Messaging resource provider.",
-      "enum": [
-        "2023-10-01-preview"
-      ],
-      "x-ms-enum": {
-        "name": "Versions",
-        "modelAsString": true,
-        "values": [
-          {
-            "name": "v2023_10_01_preview",
-            "value": "2023-10-01-preview",
-            "description": "2023-10-01-preview"
-          }
-        ]
       }
     }
   },

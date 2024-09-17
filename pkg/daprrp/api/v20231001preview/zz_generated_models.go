@@ -9,6 +9,25 @@ package v20231001preview
 
 import "time"
 
+// AzureResourceManagerCommonTypesTrackedResourceUpdate - The resource model definition for an Azure Resource Manager tracked
+// top level resource which has 'tags' and a 'location'
+type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
 // DaprPubSubBrokerProperties - Dapr PubSubBroker portable resource properties
 type DaprPubSubBrokerProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
@@ -82,43 +101,22 @@ type DaprPubSubBrokerResourceListResult struct {
 	NextLink *string
 }
 
-// DaprPubSubBrokerResourceUpdate - The type used for update operations of the DaprPubSubBrokerResource.
+// DaprPubSubBrokerResourceUpdate - Dapr PubSubBroker portable resource
 type DaprPubSubBrokerResourceUpdate struct {
-	// The updatable properties of the DaprPubSubBrokerResource.
-	Properties *DaprPubSubBrokerResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// DaprPubSubBrokerResourceUpdateProperties - The updatable properties of the DaprPubSubBrokerResource.
-type DaprPubSubBrokerResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// The name of the Dapr component to be used as a secret store
-	Auth *DaprResourceAuth
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]*MetadataValueUpdate
-
-	// The recipe used to automatically deploy underlying infrastructure for the resource
-	Recipe *RecipeUpdate
-
-	// Specifies how the underlying service/resource is provisioned and managed.
-	ResourceProvisioning *ResourceProvisioning
-
-	// A collection of references to resources associated with the pubSubBroker
-	Resources []*ResourceReference
-
-	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
-
-	// Dapr component version
-	Version *string
 }
 
 // DaprResourceAuth - Authentication properties for a Dapr component object
@@ -194,37 +192,22 @@ type DaprSecretStoreResourceListResult struct {
 	NextLink *string
 }
 
-// DaprSecretStoreResourceUpdate - The type used for update operations of the DaprSecretStoreResource.
+// DaprSecretStoreResourceUpdate - Dapr SecretStore portable resource
 type DaprSecretStoreResourceUpdate struct {
-	// The updatable properties of the DaprSecretStoreResource.
-	Properties *DaprSecretStoreResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// DaprSecretStoreResourceUpdateProperties - The updatable properties of the DaprSecretStoreResource.
-type DaprSecretStoreResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]*MetadataValueUpdate
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// The recipe used to automatically deploy underlying infrastructure for the resource
-	Recipe *RecipeUpdate
-
-	// Specifies how the underlying service/resource is provisioned and managed.
-	ResourceProvisioning *ResourceProvisioning
-
-	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
-
-	// Dapr component version
-	Version *string
 }
 
 // DaprStateStoreProperties - Dapr StateStore portable resource properties
@@ -300,43 +283,22 @@ type DaprStateStoreResourceListResult struct {
 	NextLink *string
 }
 
-// DaprStateStoreResourceUpdate - The type used for update operations of the DaprStateStoreResource.
+// DaprStateStoreResourceUpdate - Dapr StateStore portable resource
 type DaprStateStoreResourceUpdate struct {
-	// The updatable properties of the DaprStateStoreResource.
-	Properties *DaprStateStoreResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// DaprStateStoreResourceUpdateProperties - The updatable properties of the DaprStateStoreResource.
-type DaprStateStoreResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// The name of the Dapr component to be used as a secret store
-	Auth *DaprResourceAuth
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// The metadata for Dapr resource which must match the values specified in Dapr component spec
-	Metadata map[string]*MetadataValueUpdate
-
-	// The recipe used to automatically deploy underlying infrastructure for the resource
-	Recipe *RecipeUpdate
-
-	// Specifies how the underlying service/resource is provisioned and managed.
-	ResourceProvisioning *ResourceProvisioning
-
-	// A collection of references to resources associated with the state store
-	Resources []*ResourceReference
-
-	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
-
-	// Dapr component version
-	Version *string
 }
 
 // EnvironmentCompute - Represents backing compute resource
@@ -442,24 +404,6 @@ type MetadataValueFromSecret struct {
 	Name *string
 }
 
-// MetadataValueFromSecretUpdate - A reference of a value in a secret store component.
-type MetadataValueFromSecretUpdate struct {
-	// The field to select in the secret value. If the secret value is a string, it should be equal to the secret name
-	Key *string
-
-	// Secret name in the secret store component
-	Name *string
-}
-
-// MetadataValueUpdate - A single metadata for a Dapr component object
-type MetadataValueUpdate struct {
-	// A reference of a value in a secret store component
-	SecretKeyRef *MetadataValueFromSecretUpdate
-
-	// The plain text value of the metadata
-	Value *string
-}
-
 // NonRedundantDaprResourceProperties - The base properties of a Dapr component object.
 type NonRedundantDaprResourceProperties struct {
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
@@ -558,15 +502,6 @@ type RecipeStatus struct {
 
 	// TemplateVersion is the version number of the template.
 	TemplateVersion *string
-}
-
-// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
-type RecipeUpdate struct {
-	// The name of the recipe within the environment to use
-	Name *string
-
-	// Key/value parameters to pass into the recipe at deployment
-	Parameters map[string]any
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources

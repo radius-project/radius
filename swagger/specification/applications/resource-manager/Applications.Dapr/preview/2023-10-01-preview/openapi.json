@@ -70,7 +70,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResourceListResult"
             }
@@ -121,7 +121,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResource"
             }
@@ -184,6 +184,10 @@
               "$ref": "#/definitions/DaprPubSubBrokerResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -245,7 +249,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResource"
             }
@@ -253,14 +257,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -305,25 +309,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -360,7 +361,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResourceListResult"
             }
@@ -411,7 +412,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResource"
             }
@@ -474,6 +475,10 @@
               "$ref": "#/definitions/DaprSecretStoreResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -532,7 +537,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResource"
             }
@@ -540,14 +545,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -592,25 +597,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -647,7 +649,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResourceListResult"
             }
@@ -698,7 +700,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResource"
             }
@@ -761,6 +763,10 @@
               "$ref": "#/definitions/DaprStateStoreResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -822,7 +828,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResource"
             }
@@ -830,14 +836,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -882,25 +888,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -934,7 +937,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
             }
@@ -953,6 +956,24 @@
     }
   },
   "definitions": {
+    "Azure.ResourceManager.CommonTypes.TrackedResourceUpdate": {
+      "type": "object",
+      "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/Resource"
+        }
+      ]
+    },
     "DaprPubSubBrokerProperties": {
       "type": "object",
       "description": "Dapr PubSubBroker portable resource properties",
@@ -1065,68 +1086,12 @@
     },
     "DaprPubSubBrokerResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the DaprPubSubBrokerResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/DaprPubSubBrokerResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "Dapr PubSubBroker portable resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "DaprPubSubBrokerResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the DaprPubSubBrokerResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-        },
-        "metadata": {
-          "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "additionalProperties": {
-            "$ref": "#/definitions/MetadataValueUpdate"
-          }
-        },
-        "type": {
-          "type": "string",
-          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        },
-        "auth": {
-          "$ref": "#/definitions/DaprResourceAuth",
-          "description": "The name of the Dapr component to be used as a secret store"
-        },
-        "resources": {
-          "type": "array",
-          "description": "A collection of references to resources associated with the pubSubBroker",
-          "items": {
-            "$ref": "#/definitions/ResourceReference"
-          }
-        },
-        "recipe": {
-          "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        }
-      }
+      ]
     },
     "DaprResourceAuth": {
       "type": "object",
@@ -1239,57 +1204,12 @@
     },
     "DaprSecretStoreResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the DaprSecretStoreResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/DaprSecretStoreResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "Dapr SecretStore portable resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "DaprSecretStoreResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the DaprSecretStoreResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-        },
-        "metadata": {
-          "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "additionalProperties": {
-            "$ref": "#/definitions/MetadataValueUpdate"
-          }
-        },
-        "type": {
-          "type": "string",
-          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        },
-        "recipe": {
-          "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        }
-      }
+      ]
     },
     "DaprStateStoreProperties": {
       "type": "object",
@@ -1403,68 +1323,12 @@
     },
     "DaprStateStoreResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the DaprStateStoreResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/DaprStateStoreResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "Dapr StateStore portable resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "DaprStateStoreResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the DaprStateStoreResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-        },
-        "metadata": {
-          "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "additionalProperties": {
-            "$ref": "#/definitions/MetadataValueUpdate"
-          }
-        },
-        "type": {
-          "type": "string",
-          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
-        },
-        "auth": {
-          "$ref": "#/definitions/DaprResourceAuth",
-          "description": "The name of the Dapr component to be used as a secret store"
-        },
-        "resources": {
-          "type": "array",
-          "description": "A collection of references to resources associated with the state store",
-          "items": {
-            "$ref": "#/definitions/ResourceReference"
-          }
-        },
-        "recipe": {
-          "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        }
-      }
+      ]
     },
     "EnvironmentCompute": {
       "type": "object",
@@ -1497,7 +1361,7 @@
       ],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "undefined",
@@ -1584,34 +1448,6 @@
         "key"
       ]
     },
-    "MetadataValueFromSecretUpdate": {
-      "type": "object",
-      "description": "A reference of a value in a secret store component.",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Secret name in the secret store component"
-        },
-        "key": {
-          "type": "string",
-          "description": "The field to select in the secret value. If the secret value is a string, it should be equal to the secret name"
-        }
-      }
-    },
-    "MetadataValueUpdate": {
-      "type": "object",
-      "description": "A single metadata for a Dapr component object",
-      "properties": {
-        "value": {
-          "type": "string",
-          "description": "The plain text value of the metadata"
-        },
-        "secretKeyRef": {
-          "$ref": "#/definitions/MetadataValueFromSecretUpdate",
-          "description": "A reference of a value in a secret store component"
-        }
-      }
-    },
     "NonRedundantDaprResourceProperties": {
       "type": "object",
       "description": "The base properties of a Dapr component object.",
@@ -1660,32 +1496,21 @@
       "type": "string",
       "description": "Provisioning state of the resource at the time the operation was called",
       "enum": [
-        "Succeeded",
-        "Failed",
-        "Canceled",
+        "ResourceProvisioningState",
         "Provisioning",
         "Updating",
         "Deleting",
-        "Accepted"
+        "Accepted",
+        "Succeeded",
+        "Failed"
       ],
       "x-ms-enum": {
         "name": "ProvisioningState",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
-            "name": "Succeeded",
-            "value": "Succeeded",
-            "description": "Resource has been created."
-          },
-          {
-            "name": "Failed",
-            "value": "Failed",
-            "description": "Resource creation failed."
-          },
-          {
-            "name": "Canceled",
-            "value": "Canceled",
-            "description": "Resource creation was canceled."
+            "name": "ResourceProvisioningState",
+            "value": "ResourceProvisioningState"
           },
           {
             "name": "Provisioning",
@@ -1706,6 +1531,16 @@
             "name": "Accepted",
             "value": "Accepted",
             "description": "The resource create request has been accepted"
+          },
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "The resource provisioning has succeeded"
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "The resource provisioning has failed"
           }
         ]
       },
@@ -1721,8 +1556,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
       "required": [
@@ -1751,21 +1585,6 @@
         "templatePath"
       ]
     },
-    "RecipeUpdate": {
-      "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the recipe within the environment to use"
-        },
-        "parameters": {
-          "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
-        }
-      }
-    },
     "ResourceProvisioning": {
       "type": "string",
       "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
@@ -1775,7 +1594,7 @@
       ],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "recipe",
@@ -1824,24 +1643,6 @@
           },
           "x-ms-identifiers": []
         }
-      }
-    },
-    "Versions": {
-      "type": "string",
-      "description": "Supported API versions for the Applications.Dapr resource provider.",
-      "enum": [
-        "2023-10-01-preview"
-      ],
-      "x-ms-enum": {
-        "name": "Versions",
-        "modelAsString": true,
-        "values": [
-          {
-            "name": "v2023_10_01_preview",
-            "value": "2023-10-01-preview",
-            "description": "2023-10-01-preview"
-          }
-        ]
       }
     }
   },

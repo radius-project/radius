@@ -330,8 +330,9 @@ type ComponentsKhmx01SchemasGenericresourceAllof0 struct {
 
 // CredentialStorageProperties - The base credential storage properties
 type CredentialStorageProperties struct {
-	// REQUIRED; The kind of credential storage
-	Kind *CredentialStorageKind
+	// CONSTANT; The kind of credential storage
+// Field has constant value "Internal", any specified value is ignored.
+	Kind *string
 }
 
 // GetCredentialStorageProperties implements the CredentialStoragePropertiesClassification interface for type CredentialStorageProperties.
@@ -439,8 +440,9 @@ type GenericResourceListResult struct {
 
 // InternalCredentialStorageProperties - Internal credential storage properties
 type InternalCredentialStorageProperties struct {
-	// REQUIRED; The kind of credential storage
-	Kind *CredentialStorageKind
+	// CONSTANT; The kind of credential storage
+// Field has constant value "Internal", any specified value is ignored.
+	Kind *string
 
 	// READ-ONLY; The name of secret stored.
 	SecretName *string

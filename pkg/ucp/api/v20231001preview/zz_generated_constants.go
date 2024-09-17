@@ -68,36 +68,20 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
-// CredentialStorageKind - Credential store kinds supported.
-type CredentialStorageKind string
-
-const (
-	// CredentialStorageKindInternal - Internal credential storage
-	CredentialStorageKindInternal CredentialStorageKind = "Internal"
-)
-
-// PossibleCredentialStorageKindValues returns the possible values for the CredentialStorageKind const type.
-func PossibleCredentialStorageKindValues() []CredentialStorageKind {
-	return []CredentialStorageKind{	
-		CredentialStorageKindInternal,
-	}
-}
-
 // ProvisioningState - Provisioning state of the resource at the time the operation was called
 type ProvisioningState string
 
 const (
 	// ProvisioningStateAccepted - The resource create request has been accepted
 	ProvisioningStateAccepted ProvisioningState = "Accepted"
-	// ProvisioningStateCanceled - Resource creation was canceled.
-	ProvisioningStateCanceled ProvisioningState = "Canceled"
 	// ProvisioningStateDeleting - The resource is being deleted
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
-	// ProvisioningStateFailed - Resource creation failed.
+	// ProvisioningStateFailed - The resource provisioning has failed
 	ProvisioningStateFailed ProvisioningState = "Failed"
 	// ProvisioningStateProvisioning - The resource is being provisioned
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
-	// ProvisioningStateSucceeded - Resource has been created.
+	ProvisioningStateResourceProvisioningState ProvisioningState = "ResourceProvisioningState"
+	// ProvisioningStateSucceeded - The resource provisioning has succeeded
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
 	// ProvisioningStateUpdating - The resource is updating
 	ProvisioningStateUpdating ProvisioningState = "Updating"
@@ -107,27 +91,12 @@ const (
 func PossibleProvisioningStateValues() []ProvisioningState {
 	return []ProvisioningState{	
 		ProvisioningStateAccepted,
-		ProvisioningStateCanceled,
 		ProvisioningStateDeleting,
 		ProvisioningStateFailed,
 		ProvisioningStateProvisioning,
+		ProvisioningStateResourceProvisioningState,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
-	}
-}
-
-// Versions - Supported API versions for Universal Control Plane resource provider.
-type Versions string
-
-const (
-	// VersionsV20231001Preview - 2023-10-01-preview
-	VersionsV20231001Preview Versions = "2023-10-01-preview"
-)
-
-// PossibleVersionsValues returns the possible values for the Versions const type.
-func PossibleVersionsValues() []Versions {
-	return []Versions{	
-		VersionsV20231001Preview,
 	}
 }
 

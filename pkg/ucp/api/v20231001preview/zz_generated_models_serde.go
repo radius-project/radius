@@ -1099,7 +1099,7 @@ func (g *GenericResourceListResult) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type InternalCredentialStorageProperties.
 func (i InternalCredentialStorageProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	objectMap["kind"] = CredentialStorageKindInternal
+	objectMap["kind"] = "Internal"
 	populate(objectMap, "secretName", i.SecretName)
 	return json.Marshal(objectMap)
 }

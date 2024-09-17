@@ -65,7 +65,7 @@ func unmarshalCredentialStoragePropertiesClassification(rawMsg json.RawMessage) 
 	}
 	var b CredentialStoragePropertiesClassification
 	switch m["kind"] {
-	case string(CredentialStorageKindInternal):
+	case "Internal":
 		b = &InternalCredentialStorageProperties{}
 	default:
 		b = &CredentialStorageProperties{}

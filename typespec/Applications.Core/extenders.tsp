@@ -82,7 +82,7 @@ interface Extenders {
     UCPBaseParameters<ExtenderResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>
   >;

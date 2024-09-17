@@ -145,7 +145,7 @@ func (client *ExtendersClient) deleteOperation(ctx context.Context, extenderName
 	if err != nil {
 		return nil, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(httpResp, http.StatusAccepted, http.StatusNoContent) {
 		err = runtime.NewResponseError(httpResp)
 		return nil, err
 	}
@@ -301,8 +301,7 @@ func (client *ExtendersClient) ListSecrets(ctx context.Context, extenderName str
 		err = runtime.NewResponseError(httpResp)
 		return ExtendersClientListSecretsResponse{}, err
 	}
-	resp, err := client.listSecretsHandleResponse(httpResp)
-	return resp, err
+	return ExtendersClientListSecretsResponse{}, nil
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
@@ -325,15 +324,6 @@ func (client *ExtendersClient) listSecretsCreateRequest(ctx context.Context, ext
 	return nil, err
 }
 	return req, nil
-}
-
-// listSecretsHandleResponse handles the ListSecrets response.
-func (client *ExtendersClient) listSecretsHandleResponse(resp *http.Response) (ExtendersClientListSecretsResponse, error) {
-	result := ExtendersClientListSecretsResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.Object); err != nil {
-		return ExtendersClientListSecretsResponse{}, err
-	}
-	return result, nil
 }
 
 // BeginUpdate - Update a ExtenderResource

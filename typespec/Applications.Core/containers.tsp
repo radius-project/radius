@@ -342,7 +342,7 @@ interface Containers {
     UCPBaseParameters<ContainerResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     ContainerResource,
     UCPBaseParameters<ContainerResource>
   >;

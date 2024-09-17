@@ -21,6 +21,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.20.5
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.53.5
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.177.0
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.32.4
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.5
 	github.com/aws/smithy-go v1.20.4
 	github.com/charmbracelet/bubbles v0.19.0
@@ -106,7 +107,6 @@ require (
 	github.com/Microsoft/hcsshim v0.12.4 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/aws/aws-sdk-go v1.54.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.32.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.4 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect

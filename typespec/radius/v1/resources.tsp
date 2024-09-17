@@ -166,7 +166,7 @@ model ResourceReference {
 @doc("Provisioning state of the resource at the time the operation was called")
 @lroStatus
 enum ProvisioningState {
-  ...ResourceProvisioningState,
+  ResourceProvisioningState,
 
   @doc("The resource is being provisioned")
   Provisioning,
@@ -179,6 +179,12 @@ enum ProvisioningState {
 
   @doc("The resource create request has been accepted")
   Accepted,
+
+  @doc("The resource provisioning has succeeded")
+  Succeeded,
+
+  @doc("The resource provisioning has failed")
+  Failed,
 }
 
 @doc("The base properties of Recipe")

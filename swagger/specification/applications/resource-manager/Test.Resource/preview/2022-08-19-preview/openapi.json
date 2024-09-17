@@ -64,7 +64,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/TestAsyncResourceListResult"
             }
@@ -77,11 +77,11 @@
           }
         },
         "x-ms-examples": {
-          "List TestAsyncResource resources by resourcegroup": {
-            "$ref": "./examples/TestAsyncResource_List.json"
-          },
           "List TestAsyncResource resources at root scope": {
             "$ref": "./examples/TestAsyncResource_ListByScope.json"
+          },
+          "List TestAsyncResource resources by resourcegroup": {
+            "$ref": "./examples/TestAsyncResource_List.json"
           }
         },
         "x-ms-pageable": {
@@ -115,7 +115,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/TestAsyncResource"
             }
@@ -178,6 +178,10 @@
               "$ref": "#/definitions/TestAsyncResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -236,7 +240,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/TestAsyncResource"
             }
@@ -244,14 +248,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -296,25 +300,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -348,7 +349,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
             }
@@ -367,6 +368,24 @@
     }
   },
   "definitions": {
+    "Azure.ResourceManager.CommonTypes.TrackedResourceUpdate": {
+      "type": "object",
+      "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/Resource"
+        }
+      ]
+    },
     "EnvironmentCompute": {
       "type": "object",
       "description": "Represents backing compute resource",
@@ -398,7 +417,7 @@
       ],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "undefined",
@@ -473,34 +492,23 @@
     },
     "ProvisioningState": {
       "type": "string",
-      "description": "Provisioning state of the portable resource at the time the operation was called",
+      "description": "Provisioning state of the resource at the time the operation was called",
       "enum": [
-        "Succeeded",
-        "Failed",
-        "Canceled",
+        "ResourceProvisioningState",
         "Provisioning",
         "Updating",
         "Deleting",
-        "Accepted"
+        "Accepted",
+        "Succeeded",
+        "Failed"
       ],
       "x-ms-enum": {
         "name": "ProvisioningState",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
-            "name": "Succeeded",
-            "value": "Succeeded",
-            "description": "Resource has been created."
-          },
-          {
-            "name": "Failed",
-            "value": "Failed",
-            "description": "Resource creation failed."
-          },
-          {
-            "name": "Canceled",
-            "value": "Canceled",
-            "description": "Resource creation was canceled."
+            "name": "ResourceProvisioningState",
+            "value": "ResourceProvisioningState"
           },
           {
             "name": "Provisioning",
@@ -521,10 +529,42 @@
             "name": "Accepted",
             "value": "Accepted",
             "description": "The resource create request has been accepted"
+          },
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "The resource provisioning has succeeded"
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "The resource provisioning has failed"
           }
         ]
       },
       "readOnly": true
+    },
+    "RecipeStatus": {
+      "type": "object",
+      "description": "Recipe status at deployment time for a resource.",
+      "properties": {
+        "templateKind": {
+          "type": "string",
+          "description": "TemplateKind is the kind of the recipe template used by the portable resource upon deployment."
+        },
+        "templatePath": {
+          "type": "string",
+          "description": "TemplatePath is the path of the recipe consumed by the portable resource upon deployment."
+        },
+        "templateVersion": {
+          "type": "string",
+          "description": "TemplateVersion is the version number of the template."
+        }
+      },
+      "required": [
+        "templateKind",
+        "templatePath"
+      ]
     },
     "ResourceStatus": {
       "type": "object",
@@ -533,6 +573,11 @@
         "compute": {
           "$ref": "#/definitions/EnvironmentCompute",
           "description": "The compute resource associated with the resource."
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeStatus",
+          "description": "The recipe data at the time of deployment",
+          "readOnly": true
         },
         "outputResources": {
           "type": "array",
@@ -550,12 +595,7 @@
       "properties": {
         "properties": {
           "$ref": "#/definitions/TestAsyncResourceProperties",
-          "description": "The resource-specific properties for this resource.",
-          "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "description": "The resource-specific properties for this resource."
         }
       },
       "allOf": [
@@ -591,11 +631,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -617,34 +657,17 @@
         "property1"
       ]
     },
-    "TestAsyncResourceUpdate": {
+    "TestAsyncResourcePropertiesUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the TestAsyncResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/TestAsyncResourceUpdateProperties",
-          "x-ms-client-flatten": true
-        }
-      }
-    },
-    "TestAsyncResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the TestAsyncResource.",
+      "description": "TestAsyncResource properties",
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "property1": {
           "type": "string",
@@ -652,18 +675,28 @@
         }
       }
     },
+    "TestAsyncResourceUpdate": {
+      "type": "object",
+      "description": "The TestAsyncResource which implements asynchornous API.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/TestAsyncResourcePropertiesUpdate",
+          "description": "The resource-specific properties for this resource."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
+        }
+      ]
+    },
     "TestSyncResource": {
       "type": "object",
       "description": "The TestSyncResource type.",
       "properties": {
         "properties": {
           "$ref": "#/definitions/TestSyncResourceProperties",
-          "description": "The resource-specific properties for this resource.",
-          "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "description": "The resource-specific properties for this resource."
         }
       },
       "allOf": [
@@ -678,11 +711,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -703,30 +736,6 @@
         "application",
         "property1"
       ]
-    },
-    "Versions": {
-      "type": "string",
-      "description": "Supported API versions for the Test.Resource resource provider.",
-      "enum": [
-        "2022-08-19-preview",
-        "2023-08-19"
-      ],
-      "x-ms-enum": {
-        "name": "Versions",
-        "modelAsString": true,
-        "values": [
-          {
-            "name": "v2022_08_19_preview",
-            "value": "2022-08-19-preview",
-            "description": "2022-08-19-preview"
-          },
-          {
-            "name": "v2023_08_19",
-            "value": "2023-08-19",
-            "description": "2023-08-19"
-          }
-        ]
-      }
     }
   },
   "parameters": {
