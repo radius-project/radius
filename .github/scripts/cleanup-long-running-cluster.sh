@@ -18,7 +18,7 @@
 
 set -e
 
-echo "cleaning up cluster"
+echo "cleaning up long-running cluster on Azure"
 
 # Delete all test resources in queuemessages.
 if kubectl get crd queuemessages.ucp.dev >/dev/null 2>&1; then
