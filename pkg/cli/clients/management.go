@@ -62,6 +62,7 @@ var (
 		dapr_ctrl.DaprStateStoresResourceType,
 		dapr_ctrl.DaprSecretStoresResourceType,
 		dapr_ctrl.DaprPubSubBrokersResourceType,
+		dapr_ctrl.DaprConfigurationStoresResourceType,
 		ext_ctrl.ResourceTypeName,
 		gtwy_ctrl.ResourceTypeName,
 		cntr_ctrl.ResourceTypeName,

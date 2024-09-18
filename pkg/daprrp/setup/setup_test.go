@@ -109,6 +109,31 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/secretstore",
 		Method:        http.MethodDelete,
 	},
+	{
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprConfigurationStoresResourceType, Method: v1.OperationPlaneScopeList},
+		Path:          "/providers/applications.dapr/configurationstores",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprConfigurationStoresResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/configurationstores",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprConfigurationStoresResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/configurationstores/configstore",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprConfigurationStoresResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/configurationstores/configstore",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprConfigurationStoresResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/configurationstores/configstore",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprConfigurationStoresResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/configurationstores/configstore",
+		Method:        http.MethodDelete,
+	},
 }
 
 func TestRouter(t *testing.T) {

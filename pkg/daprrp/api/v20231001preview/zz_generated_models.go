@@ -9,6 +9,118 @@ package v20231001preview
 
 import "time"
 
+// DaprConfigurationStoreProperties - Dapr configuration store portable resource properties
+type DaprConfigurationStoreProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string
+
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string
+
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
+	Metadata map[string]*MetadataValue
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *Recipe
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning
+
+	// A collection of references to resources associated with the configuration store
+	Resources []*ResourceReference
+
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	Type *string
+
+	// Dapr component version
+	Version *string
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus
+}
+
+// DaprConfigurationStoreResource - Dapr configuration store portable resource
+type DaprConfigurationStoreResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *DaprConfigurationStoreProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// DaprConfigurationStoreResourceListResult - The response of a DaprConfigurationStoreResource list operation.
+type DaprConfigurationStoreResourceListResult struct {
+	// REQUIRED; The DaprConfigurationStoreResource items on this page
+	Value []*DaprConfigurationStoreResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// DaprConfigurationStoreResourceUpdate - The type used for update operations of the DaprConfigurationStoreResource.
+type DaprConfigurationStoreResourceUpdate struct {
+	// The updatable properties of the DaprConfigurationStoreResource.
+	Properties *DaprConfigurationStoreResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// DaprConfigurationStoreResourceUpdateProperties - The updatable properties of the DaprConfigurationStoreResource.
+type DaprConfigurationStoreResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string
+
+	// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string
+
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
+	Metadata map[string]*MetadataValueUpdate
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning
+
+	// A collection of references to resources associated with the configuration store
+	Resources []*ResourceReference
+
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	Type *string
+
+	// Dapr component version
+	Version *string
+}
+
 // DaprPubSubBrokerProperties - Dapr PubSubBroker portable resource properties
 type DaprPubSubBrokerProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to

@@ -42,14 +42,15 @@ const (
 	VolumesResource      = "applications.core/volumes"
 	SecretStoresResource = "applications.core/secretStores"
 
-	RabbitMQQueuesResource    = "applications.messaging/rabbitMQQueues"
-	DaprPubSubBrokersResource = "applications.dapr/pubSubBrokers"
-	DaprSecretStoresResource  = "applications.dapr/secretStores"
-	DaprStateStoresResource   = "applications.dapr/stateStores"
-	MongoDatabasesResource    = "applications.datastores/mongoDatabases"
-	RedisCachesResource       = "applications.datastores/redisCaches"
-	SQLDatabasesResource      = "applications.datastores/sqlDatabases"
-	ExtendersResource         = "applications.core/extenders"
+	RabbitMQQueuesResource          = "applications.messaging/rabbitMQQueues"
+	DaprPubSubBrokersResource       = "applications.dapr/pubSubBrokers"
+	DaprSecretStoresResource        = "applications.dapr/secretStores"
+	DaprStateStoresResource         = "applications.dapr/stateStores"
+	DaprConfigurationStoresResource = "applications.dapr/configurationStores"
+	MongoDatabasesResource          = "applications.datastores/mongoDatabases"
+	RedisCachesResource             = "applications.datastores/redisCaches"
+	SQLDatabasesResource            = "applications.datastores/sqlDatabases"
+	ExtendersResource               = "applications.core/extenders"
 )
 
 type RPResource struct {

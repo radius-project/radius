@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const daprConflictFmt = "the Dapr component name '%q' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, etc.). Please select a new name and try again"
+const daprConflictFmt = "the Dapr component name '%q' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (e.g., StateStores, PubSubBrokers, SecretStores, ConfigurationStores, etc.). Please select a new name and try again."
 
 // CheckDaprResourceNameUniqueness checks if the resource name is unique in the namespace. If the resource name is not unique, it returns an error.
 //

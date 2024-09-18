@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package secretstores
+package configurationstores
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -41,31 +42,35 @@ import (
 )
 
 func Test_Process(t *testing.T) {
+	const externalResourceID1 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis1"
+	const externalResourceID2 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis2"
 	const kubernetesResource = "/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-component"
-	const applicationID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
+	const appID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
 	const envID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/test-env"
-	const componentName = "test-component"
+	const componentName = "test-dapr-configuration-store"
+	const secretStoreComponentName = "test-dapr-secret-store"
 
 	t.Run("success - recipe", func(t *testing.T) {
 		processor := Processor{
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme),
 		}
 
-		resource := &datamodel.DaprSecretStore{
+		resource := &datamodel.DaprConfigurationStore{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					Name: componentName,
 				},
 			},
-			Properties: datamodel.DaprSecretStoreProperties{
+			Properties: datamodel.DaprConfigurationStoreProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
-					Application: applicationID,
+					Application: appID,
 				},
 				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
 					ComponentName: componentName,
 				},
 			},
 		}
+
 		options := processors.Options{
 			RuntimeConfiguration: recipes.RuntimeConfiguration{
 				Kubernetes: &recipes.KubernetesRuntime{
@@ -74,6 +79,7 @@ func Test_Process(t *testing.T) {
 			},
 			RecipeOutput: &recipes.RecipeOutput{
 				Resources: []string{
+					externalResourceID1,
 					kubernetesResource,
 				},
 				Values:  map[string]any{}, // Component name will be computed for resource name.
@@ -103,110 +109,192 @@ func Test_Process(t *testing.T) {
 		components.SetKind("Component")
 
 		// No components created for a recipe
-		err = processor.Client.List(context.Background(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
+		err = processor.Client.List(context.Background(), &components,
+			&client.ListOptions{
+				Namespace: options.RuntimeConfiguration.Kubernetes.Namespace,
+			},
+		)
 		require.NoError(t, err)
 		require.Empty(t, components.Items)
 	})
 
-	t.Run("success - values", func(t *testing.T) {
-		processor := Processor{
-			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
-		}
-
-		resource := &datamodel.DaprSecretStore{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: "some-other-name",
+	t.Run("success - manual", func(t *testing.T) {
+		testset := []struct {
+			description string
+			properties  *datamodel.DaprConfigurationStoreProperties
+			generated   *unstructured.Unstructured
+		}{
+			{
+				description: "Raw values",
+				properties: &datamodel.DaprConfigurationStoreProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: appID,
+						Environment: envID,
+					},
+					BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
+						ComponentName: componentName,
+					},
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
+					Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+						"config": {
+							Value: "extrasecure",
+						},
+					},
+					Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+					Type:      "configuration.redis",
+					Version:   "v1",
 				},
-			},
-			Properties: datamodel.DaprSecretStoreProperties{
-				BasicResourceProperties: rpv1.BasicResourceProperties{
-					Application: applicationID,
-				},
-				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
-					ComponentName: componentName,
-				},
-				ResourceProvisioning: portableresources.ResourceProvisioningManual,
-				Metadata: map[string]*rpv1.DaprComponentMetadataValue{
-					"config": {
-						Value: "extrasecure",
+				generated: &unstructured.Unstructured{
+					Object: map[string]any{
+						"apiVersion": dapr.DaprAPIVersion,
+						"kind":       dapr.DaprKind,
+						"metadata": map[string]any{
+							"namespace":       "test-namespace",
+							"name":            componentName,
+							"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprConfigurationStoresResourceType),
+							"resourceVersion": "1",
+						},
+						"spec": map[string]any{
+							"type":    "configuration.redis",
+							"version": "v1",
+							"metadata": []any{
+								map[string]any{
+									"name":  "config",
+									"value": "extrasecure",
+								},
+							},
+						},
 					},
 				},
-				Type:    "secretstores.kubernetes",
-				Version: "v1",
 			},
-		}
-
-		options := processors.Options{
-			RuntimeConfiguration: recipes.RuntimeConfiguration{
-				Kubernetes: &recipes.KubernetesRuntime{
-					Namespace: "test-namespace",
+			{
+				description: "With secret store",
+				properties: &datamodel.DaprConfigurationStoreProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: appID,
+						Environment: envID,
+					},
+					BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
+						ComponentName: componentName,
+					},
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
+					Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+						"config": {
+							Value: "extrasecure",
+						},
+						"connectionString": {
+							SecretKeyRef: &rpv1.DaprComponentSecretRef{
+								Name: "secretStoreName",
+								Key:  "secretStoreKey",
+							},
+						},
+					},
+					Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+					Type:      "configuration.redis",
+					Version:   "v1",
+					Auth: &rpv1.DaprComponentAuth{
+						SecretStore: secretStoreComponentName,
+					},
 				},
-			},
-		}
-
-		err := processor.Process(context.Background(), resource, options)
-		require.NoError(t, err)
-
-		require.Equal(t, componentName, resource.Properties.ComponentName)
-
-		expectedValues := map[string]any{
-			"componentName": componentName,
-		}
-		expectedSecrets := map[string]rpv1.SecretValueReference{}
-		generated := &unstructured.Unstructured{
-			Object: map[string]any{
-				"apiVersion": dapr.DaprAPIVersion,
-				"kind":       dapr.DaprKind,
-				"metadata": map[string]any{
-					"namespace":       "test-namespace",
-					"name":            "test-component",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprSecretStoresResourceType),
-					"resourceVersion": "1",
-				},
-				"spec": map[string]any{
-					"type":    "secretstores.kubernetes",
-					"version": "v1",
-					"metadata": []any{
-						map[string]any{
-							"name":  "config",
-							"value": "extrasecure",
+				generated: &unstructured.Unstructured{
+					Object: map[string]any{
+						"apiVersion": dapr.DaprAPIVersion,
+						"kind":       dapr.DaprKind,
+						"metadata": map[string]any{
+							"namespace":       "test-namespace",
+							"name":            componentName,
+							"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprConfigurationStoresResourceType),
+							"resourceVersion": "1",
+						},
+						"spec": map[string]any{
+							"type":    "configuration.redis",
+							"version": "v1",
+							"metadata": []any{
+								map[string]any{
+									"name":  "config",
+									"value": "extrasecure",
+								},
+								map[string]any{
+									"name": "connectionString",
+									"secretKeyRef": map[string]any{
+										"name": "secretStoreName",
+										"key":  "secretStoreKey",
+									},
+								},
+							},
+						},
+						"auth": map[string]any{
+							"secretStore": secretStoreComponentName,
 						},
 					},
 				},
 			},
 		}
 
-		component := rpv1.NewKubernetesOutputResource("Component", generated, metav1.ObjectMeta{Name: generated.GetName(), Namespace: generated.GetNamespace()})
-		component.RadiusManaged = to.Ptr(true)
-		expectedOutputResources := []rpv1.OutputResource{component}
-		require.NoError(t, err)
+		for _, tc := range testset {
+			t.Run(tc.description, func(t *testing.T) {
+				processor := Processor{
+					Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
+				}
+				resource := &datamodel.DaprConfigurationStore{
+					BaseResource: v1.BaseResource{
+						TrackedResource: v1.TrackedResource{
+							Name: "some-other-name",
+						},
+					},
+					Properties: *tc.properties,
+				}
+				options := processors.Options{
+					RuntimeConfiguration: recipes.RuntimeConfiguration{
+						Kubernetes: &recipes.KubernetesRuntime{
+							Namespace: "test-namespace",
+						},
+					},
+				}
+				err := processor.Process(context.Background(), resource, options)
+				require.NoError(t, err)
 
-		require.Equal(t, expectedValues, resource.ComputedValues)
-		require.Equal(t, expectedSecrets, resource.SecretValues)
-		require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
+				require.Equal(t, componentName, resource.Properties.ComponentName)
 
-		components := unstructured.UnstructuredList{}
-		components.SetAPIVersion("dapr.io/v1alpha1")
-		components.SetKind("Component")
-		err = processor.Client.List(context.Background(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
-		require.NoError(t, err)
-		require.NotEmpty(t, components.Items)
-		require.Equal(t, []unstructured.Unstructured{*generated}, components.Items)
+				expectedValues := map[string]any{
+					"componentName": componentName,
+				}
+				expectedSecrets := map[string]rpv1.SecretValueReference{}
+
+				expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField(resource.Properties.Resources)
+				component := rpv1.NewKubernetesOutputResource("Component", tc.generated, metav1.ObjectMeta{Name: tc.generated.GetName(), Namespace: tc.generated.GetNamespace()})
+				component.RadiusManaged = to.Ptr(true)
+				expectedOutputResources = append(expectedOutputResources, component)
+				require.NoError(t, err)
+
+				require.Equal(t, expectedValues, resource.ComputedValues)
+				require.Equal(t, expectedSecrets, resource.SecretValues)
+				require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
+
+				components := unstructured.UnstructuredList{}
+				components.SetAPIVersion("dapr.io/v1alpha1")
+				components.SetKind("Component")
+				err = processor.Client.List(context.Background(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
+				require.NoError(t, err)
+				require.NotEmpty(t, components.Items)
+				require.Equal(t, []unstructured.Unstructured{*tc.generated}, components.Items)
+
+			})
+		}
 	})
 
-	t.Run("success - values (no application)", func(t *testing.T) {
+	t.Run("success - manual (no application)", func(t *testing.T) {
 		processor := Processor{
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
 		}
 
-		resource := &datamodel.DaprSecretStore{
+		resource := &datamodel.DaprConfigurationStore{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					Name: "some-other-name",
 				},
 			},
-			Properties: datamodel.DaprSecretStoreProperties{
+			Properties: datamodel.DaprConfigurationStoreProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: envID,
 				},
@@ -219,8 +307,9 @@ func Test_Process(t *testing.T) {
 						Value: "extrasecure",
 					},
 				},
-				Type:    "secretstores.kubernetes",
-				Version: "v1",
+				Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+				Type:      "configuration.redis",
+				Version:   "v1",
 			},
 		}
 
@@ -241,18 +330,21 @@ func Test_Process(t *testing.T) {
 			"componentName": componentName,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{}
+
+		expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField(resource.Properties.Resources)
+
 		generated := &unstructured.Unstructured{
 			Object: map[string]any{
 				"apiVersion": dapr.DaprAPIVersion,
 				"kind":       dapr.DaprKind,
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
-					"name":            "test-component",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("", "some-other-name", dapr_ctrl.DaprSecretStoresResourceType),
+					"name":            componentName,
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("", "some-other-name", dapr_ctrl.DaprConfigurationStoresResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
-					"type":    "secretstores.kubernetes",
+					"type":    "configuration.redis",
 					"version": "v1",
 					"metadata": []any{
 						map[string]any{
@@ -266,7 +358,7 @@ func Test_Process(t *testing.T) {
 
 		component := rpv1.NewKubernetesOutputResource("Component", generated, metav1.ObjectMeta{Name: generated.GetName(), Namespace: generated.GetNamespace()})
 		component.RadiusManaged = to.Ptr(true)
-		expectedOutputResources := []rpv1.OutputResource{component}
+		expectedOutputResources = append(expectedOutputResources, component)
 		require.NoError(t, err)
 
 		require.Equal(t, expectedValues, resource.ComputedValues)
@@ -282,23 +374,24 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, []unstructured.Unstructured{*generated}, components.Items)
 	})
 
-	t.Run("success - recipe with value overrides", func(t *testing.T) {
+	t.Run("success - recipe with overrides", func(t *testing.T) {
 		processor := Processor{
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme),
 		}
 
-		resource := &datamodel.DaprSecretStore{
+		resource := &datamodel.DaprConfigurationStore{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					Name: "some-other-name",
 				},
 			},
-			Properties: datamodel.DaprSecretStoreProperties{
+			Properties: datamodel.DaprConfigurationStoreProperties{
 				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
 					ComponentName: componentName,
 				},
 			},
 		}
+
 		options := processors.Options{
 			RuntimeConfiguration: recipes.RuntimeConfiguration{
 				Kubernetes: &recipes.KubernetesRuntime{
@@ -307,6 +400,7 @@ func Test_Process(t *testing.T) {
 			},
 			RecipeOutput: &recipes.RecipeOutput{
 				Resources: []string{
+					externalResourceID2,
 					kubernetesResource,
 				},
 
@@ -327,12 +421,16 @@ func Test_Process(t *testing.T) {
 			"componentName": componentName,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{}
-
 		expectedOutputResources := []rpv1.OutputResource{}
 
 		recipeOutputResources, err := processors.GetOutputResourcesFromRecipe(options.RecipeOutput)
 		require.NoError(t, err)
 		expectedOutputResources = append(expectedOutputResources, recipeOutputResources...)
+
+		resourcesFieldOutputResources, err := processors.GetOutputResourcesFromResourcesField(resource.Properties.Resources)
+		require.NoError(t, err)
+		expectedOutputResources = append(expectedOutputResources, resourcesFieldOutputResources...)
+
 		require.Equal(t, expectedValues, resource.ComputedValues)
 		require.Equal(t, expectedSecrets, resource.SecretValues)
 		require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
@@ -340,7 +438,11 @@ func Test_Process(t *testing.T) {
 		components := unstructured.UnstructuredList{}
 		components.SetAPIVersion("dapr.io/v1alpha1")
 		components.SetKind("Component")
-		err = processor.Client.List(context.Background(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
+		err = processor.Client.List(context.Background(), &components,
+			&client.ListOptions{
+				Namespace: options.RuntimeConfiguration.Kubernetes.Namespace,
+			},
+		)
 		require.NoError(t, err)
 		require.Empty(t, components.Items)
 	})
@@ -349,29 +451,30 @@ func Test_Process(t *testing.T) {
 		// Create a duplicate with the same component name.
 		existing, err := dapr.ConstructDaprGeneric(
 			dapr.DaprGeneric{
-				Type:     to.Ptr("secretstores.kubernetes"),
+				Type:     to.Ptr("configuration.redis"),
 				Version:  to.Ptr("v1"),
 				Metadata: map[string]*rpv1.DaprComponentMetadataValue{},
 			},
 			"test-namespace",
-			"test-component",
+			componentName,
 			"test-app",
 			"some-other-other-name",
-			dapr_ctrl.DaprSecretStoresResourceType)
+			dapr_ctrl.DaprConfigurationStoresResourceType)
 		require.NoError(t, err)
 
 		processor := Processor{
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}, &existing),
 		}
-		resource := &datamodel.DaprSecretStore{
+
+		resource := &datamodel.DaprConfigurationStore{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					Name: "some-other-name",
 				},
 			},
-			Properties: datamodel.DaprSecretStoreProperties{
+			Properties: datamodel.DaprConfigurationStoreProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
-					Application: applicationID,
+					Application: appID,
 				},
 				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
 					ComponentName: componentName,
@@ -382,8 +485,9 @@ func Test_Process(t *testing.T) {
 						Value: "extrasecure",
 					},
 				},
-				Type:    "secretstores.kubernetes",
-				Version: "v1",
+				Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+				Type:      "configuration.redis",
+				Version:   "v1",
 			},
 		}
 
@@ -398,6 +502,6 @@ func Test_Process(t *testing.T) {
 		err = processor.Process(context.Background(), resource, options)
 		require.Error(t, err)
 		assert.IsType(t, &processors.ValidationError{}, err)
-		assert.Equal(t, "the Dapr component name '\"test-component\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (e.g., StateStores, PubSubBrokers, SecretStores, ConfigurationStores, etc.). Please select a new name and try again.", err.Error())
+		assert.Equal(t, fmt.Sprintf("the Dapr component name '\"%s\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (e.g., StateStores, PubSubBrokers, SecretStores, ConfigurationStores, etc.). Please select a new name and try again.", componentName), err.Error())
 	})
 }

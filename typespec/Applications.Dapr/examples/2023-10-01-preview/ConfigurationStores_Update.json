@@ -1,0 +1,77 @@
+{
+  "operationId": "ConfigurationStores_Update",
+  "title": "Update a ConfigurationStore resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "ConfigurationStoreName": "configstore0",
+    "api-version": "2023-10-01-preview",
+    "ConfigurationStoreParameters": {
+      "location": "West US",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "resourceProvisioning": "manual",
+        "resources": [
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.AppConfiguration/configurationStores/testappconfig"
+          }
+        ],
+        "type": "configuration.azure.appconfig",
+        "version": "v1",
+        "metadata": {
+          "foo": "bar"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/configurationStores/configstore0",
+        "name": "configstore0",
+        "type": "Applications.Dapr/configurationStores",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "resources": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.AppConfiguration/configurationStores/testappconfig"
+            }
+          ],
+          "type": "configuration.azure.appconfig",
+          "version": "v1",
+          "metadata": {
+            "foo": "bar"
+          }
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/configurationStores/configstore0",
+        "name": "configstore0",
+        "type": "Applications.Dapr/configurationStores",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "resources": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.AppConfiguration/configurationStores/testappconfig"
+            }
+          ],
+          "type": "configuration.azure.appconfig",
+          "version": "v1",
+          "metadata": {
+            "foo": "bar"
+          }
+        }
+      }
+    }
+  }
+}

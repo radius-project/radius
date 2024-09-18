@@ -22,7 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
-	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	"github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
@@ -31,21 +31,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
+func TestDaprConfigurationStore_ConvertVersionedToDataModel(t *testing.T) {
 	testCases := []struct {
 		desc     string
 		file     string
-		expected *datamodel.DaprPubSubBroker
+		expected *datamodel.DaprConfigurationStore
 	}{
 		{
-			desc: "Manual provisioning of a DaprPubSubBroker",
-			file: "pubsubbroker_manual_resource.json",
-			expected: &datamodel.DaprPubSubBroker{
+			desc: "Manual provisioning of a DaprConfigurationStore",
+			file: "configurationstore_manual_resource.json",
+			expected: &datamodel.DaprConfigurationStore{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
-						Name:     "test-dpsb",
-						Type:     dapr_ctrl.DaprPubSubBrokersResourceType,
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/configurationStores/test-dcs",
+						Name:     "test-dcs",
+						Type:     controller.DaprConfigurationStoresResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -58,7 +58,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 					},
 					SystemData: v1.SystemData{},
 				},
-				Properties: datamodel.DaprPubSubBrokerProperties{
+				Properties: datamodel.DaprConfigurationStoreProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
@@ -74,20 +74,20 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 							ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async",
 						},
 					},
-					Type:    "pubsub.azure.servicebus",
+					Type:    "configuration.azure.appconfig",
 					Version: "v1",
 				},
 			},
 		},
 		{
-			desc: "Provisioning by a Recipe of a pubSubBroker",
-			file: "pubsubbroker_recipe_resource.json",
-			expected: &datamodel.DaprPubSubBroker{
+			desc: "Provisioning by a Recipe of a configuration store",
+			file: "configurationstore_recipe_resource.json",
+			expected: &datamodel.DaprConfigurationStore{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
-						Name:     "test-dpsb",
-						Type:     dapr_ctrl.DaprPubSubBrokersResourceType,
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/configurationStores/test-dcs",
+						Name:     "test-dcs",
+						Type:     controller.DaprConfigurationStoresResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -100,14 +100,14 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 					},
 					SystemData: v1.SystemData{},
 				},
-				Properties: datamodel.DaprPubSubBrokerProperties{
+				Properties: datamodel.DaprConfigurationStoreProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
 					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
 					Recipe: portableresources.ResourceRecipe{
-						Name: "dpsb-recipe",
+						Name: "dcs-recipe",
 					},
 				},
 			},
@@ -118,7 +118,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
 			rawPayload := testutil.ReadFixture(tc.file)
-			versionedResource := &DaprPubSubBrokerResource{}
+			versionedResource := &DaprConfigurationStoreResource{}
 			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
@@ -127,26 +127,26 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 
 			// assert
 			require.NoError(t, err)
-			convertedResource := dm.(*datamodel.DaprPubSubBroker)
+			convertedResource := dm.(*datamodel.DaprConfigurationStore)
 
 			require.Equal(t, tc.expected, convertedResource)
 		})
 	}
 }
 
-func TestDaprPubSubBroker_ConvertVersionedToDataModel_Invalid(t *testing.T) {
+func TestDaprConfigurationStore_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 	testset := []struct {
 		payload string
 		errType error
 		message string
 	}{
 		{
-			"pubsubbroker_invalidmanual_resource.json",
+			"configurationstore_invalidmanual_resource.json",
 			&v1.ErrClientRP{},
 			"code BadRequest: err error(s) found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual",
 		},
 		{
-			"pubsubbroker_invalidrecipe_resource.json",
+			"configurationstore_invalidrecipe_resource.json",
 			&v1.ErrClientRP{},
 			"code BadRequest: err error(s) found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)",
 		},
@@ -155,7 +155,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
 			rawPayload := testutil.ReadFixture(test.payload)
-			versionedResource := &DaprPubSubBrokerResource{}
+			versionedResource := &DaprConfigurationStoreResource{}
 			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
@@ -168,18 +168,18 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 	}
 }
 
-func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
+func TestDaprConfigurationStore_ConvertDataModelToVersioned(t *testing.T) {
 	testCases := []struct {
 		desc     string
 		file     string
-		expected *DaprPubSubBrokerResource
+		expected *DaprConfigurationStoreResource
 	}{
 		{
-			desc: "Convert manually provisioned DaprPubSubBroker datamodel to versioned resource",
-			file: "pubsubbroker_manual_datamodel.json",
-			expected: &DaprPubSubBrokerResource{
+			desc: "Convert manually provisioned DaprConfigurationStore datamodel to versioned resource",
+			file: "configurationstore_manual_datamodel.json",
+			expected: &DaprConfigurationStoreResource{
 				Location: to.Ptr(v1.LocationGlobal),
-				Properties: &DaprPubSubBrokerProperties{
+				Properties: &DaprConfigurationStoreProperties{
 					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
 					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
 					Metadata: map[string]*MetadataValue{
@@ -193,9 +193,9 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 							ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async"),
 						},
 					},
-					Type:              to.Ptr("pubsub.azure.servicebus"),
+					Type:              to.Ptr("configuration.azure.appconfig"),
 					Version:           to.Ptr("v1"),
-					ComponentName:     to.Ptr("test-dpsb"),
+					ComponentName:     to.Ptr("test-dcs"),
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
 					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 					Auth:              &DaprResourceAuth{SecretStore: to.Ptr("test-secret-store")},
@@ -203,24 +203,24 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
-				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb"),
-				Name: to.Ptr("test-dpsb"),
-				Type: to.Ptr(dapr_ctrl.DaprPubSubBrokersResourceType),
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/configurationStores/test-dcs"),
+				Name: to.Ptr("test-dcs"),
+				Type: to.Ptr(controller.DaprConfigurationStoresResourceType),
 			},
 		},
 		{
-			desc: "Convert DaprPubSubBroker datamodel provisioned by a recipe to versioned resource",
-			file: "pubsubbroker_recipe_datamodel.json",
-			expected: &DaprPubSubBrokerResource{
+			desc: "Convert DaprConfigurationStore datamodel provisioned by a recipe to versioned resource",
+			file: "configurationstore_recipe_datamodel.json",
+			expected: &DaprConfigurationStoreResource{
 				Location: to.Ptr(v1.LocationGlobal),
-				Properties: &DaprPubSubBrokerProperties{
+				Properties: &DaprConfigurationStoreProperties{
 					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
 					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
 					Recipe: &Recipe{
-						Name: to.Ptr("dpsb-recipe"),
+						Name: to.Ptr("dcs-recipe"),
 					},
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
-					ComponentName:        to.Ptr("test-dpsb"),
+					ComponentName:        to.Ptr("test-dcs"),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Status:               resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{}),
 					Auth:                 nil,
@@ -228,9 +228,9 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
-				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb"),
-				Name: to.Ptr("test-dpsb"),
-				Type: to.Ptr(dapr_ctrl.DaprPubSubBrokersResourceType),
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/configurationStores/test-dcs"),
+				Name: to.Ptr("test-dcs"),
+				Type: to.Ptr(controller.DaprConfigurationStoresResourceType),
 			},
 		},
 	}
@@ -238,11 +238,11 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			rawPayload := testutil.ReadFixture(tc.file)
-			resource := &datamodel.DaprPubSubBroker{}
+			resource := &datamodel.DaprConfigurationStore{}
 			err := json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
-			versionedResource := &DaprPubSubBrokerResource{}
+			versionedResource := &DaprConfigurationStoreResource{}
 			err = versionedResource.ConvertFrom(resource)
 			require.NoError(t, err)
 
@@ -254,7 +254,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 	}
 }
 
-func TestDaprPubSubBroker_ConvertFromValidation(t *testing.T) {
+func TestDaprConfigurationStore_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
 		src v1.DataModelInterface
 		err error
@@ -264,7 +264,7 @@ func TestDaprPubSubBroker_ConvertFromValidation(t *testing.T) {
 	}
 
 	for _, tc := range validationTests {
-		versioned := &DaprPubSubBrokerResource{}
+		versioned := &DaprConfigurationStoreResource{}
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}
