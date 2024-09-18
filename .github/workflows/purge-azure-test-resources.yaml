@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-name: Purge test resources
+name: Purge Azure test resources
 
 permissions:
   id-token: write # Required for requesting the JWT
@@ -36,23 +36,8 @@ env:
   ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
 jobs:
-  purge_ghcr_dev:
-    name: Delete old unused container images
-    runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
-    steps:
-      - name: Delete 'dev' containers older than a week
-        uses: snok/container-retention-policy@v3.0.0
-        with:
-          account: radius-project
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          image-names: dev/*
-          image-tags: "pr-*"
-          cut-off: 1w
-          keep-n-most-recent: 1
-
   purge_azure_resources:
-    name: Azure resources clean-ups
+    name: Clean up unused Azure resources
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
     steps:
@@ -107,8 +92,8 @@ jobs:
           done
 
   create_issue_on_failure:
-    name: Create issue for failing purge test resources run
-    needs: [purge_ghcr_dev, purge_azure_resources]
+    name: Create issue for failing purge Azure test resources run
+    needs: [purge_azure_resources]
     runs-on: ubuntu-latest
     if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
     steps:
@@ -118,7 +103,7 @@ jobs:
           script: |
             github.rest.issues.create({
               ...context.repo,
-              title: `Purge test resources failed - Run ID: ${context.runId}`,
+              title: `Purge Azure test resources failed - Run ID: ${context.runId}`,
               labels: ['bug', 'test-failure'],
-              body: `## Bug information \n\nThis bug is generated automatically if the purge test resources workflow fails. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
+              body: `## Bug information \n\nThis bug is generated automatically if the purge Azure test resources workflow fails. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })
