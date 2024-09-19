@@ -13,23 +13,22 @@
 
 ## How releases work
 
-Each release belongs to a *channel* named `<major>.<minor>`. Releases will only interact with assets from their channel. For example, the `0.1` `rad` CLI will:
+Each release belongs to a _channel_ named `<major>.<minor>`. Releases will only interact with assets from their channel. For example, the `0.1` `rad` CLI will:
 
 - Create an environment using the `0.1` version of the RP and environment setup script
 
 > ⚠️ Compatibility ⚠️
-At this time we do not guarantee compatibility across releases or provide a migration path. For example, the behavior of a `0.1` `rad` CLI talking to a `0.2` control plane is unspecifed. We expect the project to change too frequently to provide compatibility guarantees at this time.
+> At this time we do not guarantee compatibility across releases or provide a migration path. For example, the behavior of a `0.1` `rad` CLI talking to a `0.2` control plane is unspecifed. We expect the project to change too frequently to provide compatibility guarantees at this time.
 
-Conceptually we scope channels to a major+minor pair because this allows us to freely patch assets as needed without needing to change the intermediate pieces. For example pushing a `v0.1.1` tag will update the assets in the `v0.1` channel. This works as long as it is a *true* patch release and maintains compatibility.
+Conceptually we scope channels to a major+minor pair because this allows us to freely patch assets as needed without needing to change the intermediate pieces. For example pushing a `v0.1.1` tag will update the assets in the `v0.1` channel. This works as long as it is a _true_ patch release and maintains compatibility.
 
 ## Cadence
 
 We follow a monthly release cadence. Any contributions that have been merged through the pull-request process will be present in the next scheduled release.
 
-
 ## Release Process
 
-For the entire release process, directly clone repositories under the radius-project organization and create branches off of them. Do not create branches in your personal forks when creating pull requests. This is due to an error accessing the GitHub token when forks are used. 
+For the entire release process, directly clone repositories under the radius-project organization and create branches off of them. Do not create branches in your personal forks when creating pull requests. This is due to an error accessing the GitHub token when forks are used.
 
 ### Creating an RC release
 
@@ -38,12 +37,14 @@ When starting the release process, we first kick it off by creating an RC releas
 Follow the steps below to create an RC release.
 
 1. Clone the [radius-project/radius](https://github.com/radius-project/radius) repo locally, or use your existing local copy.
-   ```
+
+   ```bash
    git clone git@github.com:radius-project/radius.git
    ```
 
 1. Create a new branch from `main`.
-   ```
+
+   ```bash
    git checkout main
    git checkout -b <USERNAME>/<BRANCHNAME>
    ```
@@ -51,7 +52,8 @@ Follow the steps below to create an RC release.
 1. In your local branch, update the `versions.yaml` file to to reflect the new release candidate version that we would like to release. The `versions.yaml` file is a declarative version tracking file that the Radius community maintains ([Example](https://github.com/radius-project/radius/pull/6077/files)).
 
 1. Push these changes to a remote branch and create a pull request against `main`.
-   ```
+
+   ```bash
    git push origin <USERNAME>/<BRANCHNAME>
    ```
 
@@ -75,8 +77,7 @@ Follow the steps below to create an RC release.
 
 1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius RC release version number being released.
 
-   > The `Test Samples` workflow should only be run once the upmerge PR has been merged to `edge`. 
-      
+   > The `Test Samples` workflow should only be run once the upmerge PR has been merged to `edge`.
    > If this workflow run fails, then there should be further investigation. Try checking the logs to see what failed and why, and checking if there is already an issue open for this failure in the samples repo. Sometimes, the workflow run will fail because of flaky tests. Try re-running, and if the failure is persistent, then file an issue in the samples repo and raise it with the maintainers.
 
 1. If these workflows pass, then the release candidate has been successfully created and validated. We can now proceed to creating the final release. If the workflows fail, then we need to fix the issues and create a new RC release.
@@ -99,7 +100,8 @@ Follow the steps below to create a final release.
 
 1. After maintainer approval, merge the pull request to `main`.
 
-1. Create a PR to merge into the release branch (format: `release/x.y`) in the radius repo. Cherry-pick the commit containing the `versions.yaml` changes and the release notes from the previous steps in this PR. You can get the commit hash by running `git log --oneline` in the main branch. This will ensure that the version changes and release notes are included in the release branch ([Example](https://github.com/radius-project/radius/pull/6114/files)). PLEASE USE `-x` HERE TO ENSURE VERSION HISTORY IS PRESERVED.
+1. Create a new branch and a PR from that branch to merge into the release branch (format: `release/x.y`) in the radius repo. Cherry-pick the commit containing the `versions.yaml` changes and the release notes from the previous steps in this PR. You can get the commit hash by running `git log --oneline` in the main branch. This will ensure that the version changes and release notes are included in the release branch ([Example](https://github.com/radius-project/radius/pull/6114/files)). PLEASE USE `-x` HERE TO ENSURE VERSION HISTORY IS PRESERVED.
+
    ```bash
    git cherry-pick -x <COMMIT HASH>
    ```
@@ -112,9 +114,9 @@ Follow the steps below to create a final release.
 
 1. Verify that a release was created on Github Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
-1. In the project-radius/docs repository, run the [Release docs](https://github.com/radius-project/docs/actions/workflows/release.yaml) workflow.
+1. In the project-radius/docs repository, run the [Release docs](https://github.com/radius-project/docs/actions/workflows/release.yaml) workflow. Use the workflow from the edge branch and add the Radius version number (x.y.z) that is being released.
 
-1. In the project-radius/samples repository, run the [Release samples](https://github.com/radius-project/samples/actions/workflows/release.yaml) workflow.
+1. In the project-radius/samples repository, run the [Release samples](https://github.com/radius-project/samples/actions/workflows/release.yaml) workflow. Use the workflow from the edge branch and add the Radius version number (x.y.z) that is being released.
 
 1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius release version number being released.
 
@@ -137,13 +139,15 @@ Let's say we have a bug in a release that needs to be patched for an already-cre
 1. After maintainer approval, merge the pull request to `main`.
 
 1. Create a new branch from the release branch we want to patch. The release branch should already exist in the repo. Release branches are in the format `release/x.y`.
-   ```
+
+   ```bash
    git checkout release/0.<VERSION>
    git checkout -b <USERNAME>/<BRANCHNAME>
    ```
 
 1. Cherry-pick the bug fix as well as the `versions.yaml` changes from the previous steps in this PR. This will ensure that the version changes are included in the release branch. You can get the commit hash by running `git log --oneline` in the main branch. PLEASE USE `-x` HERE TO ENSURE VERSION HISTORY IS PRESERVED.
-   ```
+
+   ```bash
    git cherry-pick -x <BUGFIX_COMMIT HASH>
    git cherry-pick -x <VERSIONFILE_COMMIT HASH>
    ```
