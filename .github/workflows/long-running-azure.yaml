@@ -382,7 +382,9 @@ jobs:
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Clean up cluster
-        run: ./.github/scripts/cleanup-cluster.sh
+        if: always()
+        timeout-minutes: 60
+        run: ./.github/scripts/cleanup-long-running-cluster.sh
       - name: Download Bicep
         run: |
           chmod +x ./bin/rad
@@ -512,7 +514,7 @@ jobs:
       - name: Clean up cluster
         if: always()
         timeout-minutes: 60
-        run: ./.github/scripts/cleanup-cluster.sh
+        run: ./.github/scripts/cleanup-long-running-cluster.sh
   report-failure:
     name: Report test failure
     needs: [build, tests]
