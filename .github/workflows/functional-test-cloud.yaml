@@ -558,6 +558,7 @@ jobs:
         with:
           version: ${{ env.HELM_VER }}
       - name: Create storage account
+        if: github.event_name == 'workflow_dispatch'
         run: |
           export AZURE_STORAGE_ACCOUNT="oidcissuer$(openssl rand -hex 4)"
           export AZURE_STORAGE_CONTAINER="oidc-test"
@@ -565,6 +566,7 @@ jobs:
           az storage container create --name "${AZURE_STORAGE_CONTAINER}" --public-access blob
 
       - name: Delete storage account
+        if: github.event_name == 'workflow_dispatch'
         run: |
           az storage account delete --name "${AZURE_STORAGE_ACCOUNT}" --resource-group "${RESOURCE_GROUP}"
       - name: Create KinD cluster
