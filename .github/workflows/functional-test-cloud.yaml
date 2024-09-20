@@ -563,8 +563,6 @@ jobs:
           tar -xvf azwi-v1.3.0-linux-amd64.tar.gz
           sudo mv azwi /usr/local/bin/
           sudo chmod +x /usr/local/bin/azwi
-          azwi --version
-
       - name: Create storage account
         if: github.event_name == 'workflow_dispatch'
         run: |
