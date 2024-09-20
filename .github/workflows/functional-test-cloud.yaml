@@ -557,6 +557,14 @@ jobs:
       - uses: azure/setup-helm@v4
         with:
           version: ${{ env.HELM_VER }}
+      - name: Install azwi
+        run: |
+          wget https://github.com/Azure/azure-workload-identity/releases/download/v1.3.0/azwi-v1.3.0-linux-amd64.tar.gz
+          tar -xvf azwi-v1.3.0-linux-amd64.tar.gz
+          sudo mv azwi /usr/local/bin/
+          sudo chmod +x /usr/local/bin/azwi
+          azwi --version
+
       - name: Create storage account
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -593,15 +601,15 @@ jobs:
           azwi jwks --public-keys sa.pub --output-file jwks.json
 
           az storage blob upload \
-          --container-name "${AZURE_STORAGE_CONTAINER}" \
+          --container-name ${AZURE_STORAGE_CONTAINER} \
           --file jwks.json \
           --name openid/v1/jwks
           
 
       - name: Delete storage account
-        if: github.event_name == 'workflow_dispatch'
+        if: always()
         run: |
-          az storage account delete --name "${AZURE_STORAGE_ACCOUNT}" --resource-group "${RESOURCE_GROUP}"
+          az storage account delete --name ${AZURE_STORAGE_ACCOUNT} --resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Create KinD cluster
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
