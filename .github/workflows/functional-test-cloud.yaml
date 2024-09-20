@@ -562,8 +562,41 @@ jobs:
         run: |
           export AZURE_STORAGE_ACCOUNT="oidcissuer$(openssl rand -hex 4)"
           export AZURE_STORAGE_CONTAINER="oidc-test"
-          az storage account create --resource-group "${RESOURCE_GROUP}" --name "${AZURE_STORAGE_ACCOUNT}" --allow-blob-public-access true
-          az storage container create --name "${AZURE_STORAGE_CONTAINER}" --public-access blob
+          echo ${AZURE_STORAGE_ACCOUNT}
+          echo ${AZURE_STORAGE_CONTAINER}
+          az storage account create --resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }} --name ${AZURE_STORAGE_ACCOUNT} --allow-blob-public-access true
+          az storage container create --name ${AZURE_STORAGE_CONTAINER} --public-access blob
+          cat <<EOF > openid-configuration.json
+          {
+            "issuer": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/",
+            "jwks_uri": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/openid/v1/jwks",
+            "response_types_supported": [
+              "id_token"
+            ],
+            "subject_types_supported": [
+              "public"
+            ],
+            "id_token_signing_alg_values_supported": [
+              "RS256"
+            ]
+          }
+          EOF
+
+          az storage blob upload \
+          --container-name "${AZURE_STORAGE_CONTAINER}" \
+          --file openid-configuration.json \
+          --name .well-known/openid-configuration
+
+          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
+          echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
+
+          azwi jwks --public-keys sa.pub --output-file jwks.json
+
+          az storage blob upload \
+          --container-name "${AZURE_STORAGE_CONTAINER}" \
+          --file jwks.json \
+          --name openid/v1/jwks
+          
 
       - name: Delete storage account
         if: github.event_name == 'workflow_dispatch'
