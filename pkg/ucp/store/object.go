@@ -23,10 +23,8 @@ import (
 type ETag = string
 
 type Metadata struct {
-	ID          string
-	ETag        ETag
-	APIVersion  string
-	ContentType string
+	ID   string
+	ETag ETag
 }
 
 type Object struct {

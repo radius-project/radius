@@ -42,7 +42,7 @@ func Test_GenericPlane_ConvertDataModelToVersioned(t *testing.T) {
 			expected: &GenericPlaneResource{
 				ID:       to.Ptr("/planes/aws/aws"),
 				Name:     to.Ptr("aws"),
-				Type:     to.Ptr("System.AWS/planes"),
+				Type:     to.Ptr(datamodel.AWSPlaneResourceType),
 				Location: to.Ptr("global"),
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

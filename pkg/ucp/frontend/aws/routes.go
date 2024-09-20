@@ -93,7 +93,6 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	}
 
 	// URLs for lifecycle of planes
-	planeResourceType := "System.AWS/planes"
 	planeCollectionRouter := server.NewSubrouter(baseRouter, planeCollectionPath, apiValidator)
 	planeResourceRouter := server.NewSubrouter(baseRouter, planeResourcePath, apiValidator)
 
@@ -102,7 +101,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			// This is a scope query so we can't use the default operation.
 			ParentRouter:  planeCollectionRouter,
 			Method:        v1.OperationList,
-			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationList},
+			OperationType: &v1.OperationType{Type: datamodel.AWSPlaneResourceType, Method: v1.OperationList},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return &planes_ctrl.ListPlanesByType[*datamodel.AWSPlane, datamodel.AWSPlane]{
 					Operation: controller.NewOperation(opts, planeResourceOptions),
@@ -112,7 +111,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationGet,
-			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationGet},
+			OperationType: &v1.OperationType{Type: datamodel.AWSPlaneResourceType, Method: v1.OperationGet},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewGetResource(opts, planeResourceOptions)
 			},
@@ -120,7 +119,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationPut,
-			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationPut},
+			OperationType: &v1.OperationType{Type: datamodel.AWSPlaneResourceType, Method: v1.OperationPut},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewDefaultSyncPut(opts, planeResourceOptions)
 			},
@@ -128,7 +127,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationDelete,
-			OperationType: &v1.OperationType{Type: planeResourceType, Method: v1.OperationDelete},
+			OperationType: &v1.OperationType{Type: datamodel.AWSPlaneResourceType, Method: v1.OperationDelete},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewDefaultSyncDelete(opts, planeResourceOptions)
 			},

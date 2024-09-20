@@ -20,6 +20,11 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
+const (
+	// AWSPlaneResourceType is the type of the AWS plane.
+	AWSPlaneResourceType = "System.AWS/planes"
+)
+
 // AwsPlaneProperties is the properties of an AWS plane.
 type AWSPlaneProperties struct {
 }

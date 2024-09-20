@@ -22,6 +22,11 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
+const (
+	// RadiusPlaneResourceType is the type of the Radius plane.
+	RadiusPlaneResourceType = "System.Radius/planes"
+)
+
 // RadiusPlaneProperties is the properties of a Radius plane.
 type RadiusPlaneProperties struct {
 

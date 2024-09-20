@@ -41,7 +41,7 @@ func Test_AzurePlane_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/planes/azure/azurecloud",
 						Name:     "azurecloud",
-						Type:     "System.Azure/planes",
+						Type:     datamodel.AzurePlaneResourceType,
 						Location: "global",
 						Tags: map[string]string{
 							"env": "dev",
@@ -89,7 +89,7 @@ func Test_AzurePlane_ConvertDataModelToVersioned(t *testing.T) {
 			expected: &AzurePlaneResource{
 				ID:       to.Ptr("/planes/azure/azurecloud"),
 				Name:     to.Ptr("azurecloud"),
-				Type:     to.Ptr("System.Azure/planes"),
+				Type:     to.Ptr(datamodel.AzurePlaneResourceType),
 				Location: to.Ptr("global"),
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

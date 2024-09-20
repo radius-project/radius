@@ -225,79 +225,79 @@ func Test_APIServer_Client(t *testing.T) {
 
 		// In this test we're going to **similuate** a hash collision and verify that it is saved correctly.
 		//
-		// Let's PRETEND that shared.BasicResource1ID and shared.BasicResource2ID result in the same
+		// Let's PRETEND that shared.BasicResource2ID and shared.BasicResource3ID result in the same
 		// resource name. That's obviously not the case, but it's good enough for tests.
 		resource := ucpv1alpha1.Resource{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.Resource1ID),
+				Name:      resourceName(shared.Resource2ID),
 				Namespace: ns,
 			},
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
-					ID:   shared.Resource2ID.String(),
-					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
-					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
+					ID:   shared.Resource3ID.String(),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data3)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data3)},
 				},
 			},
 		}
 		err := rc.Create(ctx, &resource)
 		require.NoError(t, err)
 
-		obj1 := store.Object{
+		obj2 := store.Object{
 			Metadata: store.Metadata{
-				ID: shared.Resource1ID.String(),
+				ID: shared.Resource2ID.String(),
 			},
-			Data: shared.Data1,
+			Data: shared.Data2,
 		}
-		err = client.Save(ctx, &obj1)
+		err = client.Save(ctx, &obj2)
 		require.NoError(t, err)
 
 		// Now let's look at the kubernetes object.
-		resourceName := resourceName(shared.Resource1ID)
+		resourceName := resourceName(shared.Resource2ID)
 
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
 		require.NoError(t, err)
 
 		expectedLabels := map[string]string{
 			"ucp.dev/kind":                 "resource",
-			"ucp.dev/resource-type":        "m_u_l_t_i_p_l_e",
+			"ucp.dev/resource-type":        "system.resources_resourcetype2",
 			"ucp.dev/scope-radius":         "local",
-			"ucp.dev/scope-resourcegroups": "m_u_l_t_i_p_l_e",
+			"ucp.dev/scope-resourcegroups": "group2",
 		}
 		require.Equal(t, expectedLabels, resource.Labels)
 
 		expectedEntries := []ucpv1alpha1.ResourceEntry{
 			{
+				ID:   shared.Resource3ID.String(),
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data3)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data3)},
+			},
+			{
 				ID:   shared.Resource2ID.String(),
 				ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
 				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 			},
-			{
-				ID:   shared.Resource1ID.String(),
-				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
-				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
-			},
 		}
 		require.Equal(t, expectedEntries, resource.Entries)
 
-		// Now we should be able to get resource 1 directly. We can't get resource 2 directly because we stored it
+		// Now we should be able to get resource 3 directly. We can't get resource 2 directly because we stored it
 		// with the wrong name on purpose.
-		obj, err := client.Get(ctx, shared.Resource1ID.String())
+		obj, err := client.Get(ctx, shared.Resource2ID.String())
 		require.NoError(t, err)
-		require.Equal(t, shared.Resource1ID.String(), obj.ID)
-		require.Equal(t, shared.Data1, obj.Data)
+		require.Equal(t, shared.Resource2ID.String(), obj.ID)
+		require.Equal(t, shared.Data2, obj.Data)
 
 		// We can query it though...
-		objs, err := client.Query(ctx, store.Query{RootScope: shared.RadiusScope, ScopeRecursive: true})
+		objs, err := client.Query(ctx, store.Query{RootScope: shared.RadiusScope, ScopeRecursive: true, ResourceType: shared.ResourceType2})
 		require.NoError(t, err)
 		expected := []store.Object{
 			*obj,
 			{
 				Metadata: store.Metadata{
-					ID:   shared.Resource2ID.String(),
-					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+					ID:   shared.Resource3ID.String(),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data3)),
 				},
-				Data: shared.Data2,
+				Data: shared.Data3,
 			},
 		}
 		shared.CompareObjectLists(t, expected, objs.Items)

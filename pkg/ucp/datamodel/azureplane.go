@@ -20,6 +20,11 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
+const (
+	// AzurePlaneResourceType is the type of the Azure plane.
+	AzurePlaneResourceType = "System.Azure/planes"
+)
+
 // AzurePlaneProperties is the properties of an Azure plane.
 type AzurePlaneProperties struct {
 	URL string

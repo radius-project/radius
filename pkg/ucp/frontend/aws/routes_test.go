@@ -27,6 +27,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
@@ -39,19 +40,19 @@ const pathBase = "/some-path-base"
 func Test_Routes(t *testing.T) {
 	tests := []rpctest.HandlerTestSpec{
 		{
-			OperationType: v1.OperationType{Type: "System.AWS/planes", Method: v1.OperationList},
+			OperationType: v1.OperationType{Type: datamodel.AWSPlaneResourceType, Method: v1.OperationList},
 			Method:        http.MethodGet,
 			Path:          "/planes/aws",
 		}, {
-			OperationType: v1.OperationType{Type: "System.AWS/planes", Method: v1.OperationGet},
+			OperationType: v1.OperationType{Type: datamodel.AWSPlaneResourceType, Method: v1.OperationGet},
 			Method:        http.MethodGet,
 			Path:          "/planes/aws/someName",
 		}, {
-			OperationType: v1.OperationType{Type: "System.AWS/planes", Method: v1.OperationPut},
+			OperationType: v1.OperationType{Type: datamodel.AWSPlaneResourceType, Method: v1.OperationPut},
 			Method:        http.MethodPut,
 			Path:          "/planes/aws/someName",
 		}, {
-			OperationType: v1.OperationType{Type: "System.AWS/planes", Method: v1.OperationDelete},
+			OperationType: v1.OperationType{Type: datamodel.AWSPlaneResourceType, Method: v1.OperationDelete},
 			Method:        http.MethodDelete,
 			Path:          "/planes/aws/someName",
 		}, {
