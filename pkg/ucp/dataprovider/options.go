@@ -34,6 +34,9 @@ type StorageProviderOptions struct {
 
 	// ETCD configures options for the etcd store. Will be ignored if another store is configured.
 	ETCD ETCDOptions `yaml:"etcd,omitempty"`
+
+	// InMemory configures options for the in-memory store. Will be ignored if another store is configured.
+	InMemory InMemoryOptions `yaml:"inmemory,omitempty"`
 }
 
 // APIServerOptions represents options for the configuring the Kubernetes APIServer store.
@@ -65,3 +68,6 @@ type ETCDOptions struct {
 	// We need a way to share state between the etcd service and the things that want to consume it. This is that.
 	Client *hosting.AsyncValue[etcdclient.Client] `yaml:"-"`
 }
+
+// InMemoryOptions represents options for the in-memory store.
+type InMemoryOptions struct{}

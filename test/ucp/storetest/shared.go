@@ -521,7 +521,9 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		})
 
 		t.Run("query_scopes_with_filter_non_matching", func(t *testing.T) {
-			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, IsScopeQuery: true, ResourceType: "subscriptions"})
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, IsScopeQuery: true, ResourceType: "resourcegroups", Filters: []store.QueryFilter{
+				{Field: "value", Value: "asdf"},
+			}})
 			require.NoError(t, err)
 			expected := []store.Object{}
 			CompareObjectLists(t, expected, objs.Items)

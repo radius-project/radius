@@ -257,3 +257,152 @@ func Test_IDMatchesQuery(t *testing.T) {
 		})
 	}
 }
+
+func Test_NormalizePart(t *testing.T) {
+	type testcase struct {
+		Input    string
+		Expected string
+	}
+
+	cases := []testcase{
+		{
+			Input:    "",
+			Expected: "",
+		},
+		{
+			Input:    "part",
+			Expected: "/part/",
+		},
+		{
+			Input:    "/part",
+			Expected: "/part/",
+		},
+		{
+			Input:    "part/",
+			Expected: "/part/",
+		},
+		{
+			Input:    "/part/",
+			Expected: "/part/",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.Input, func(t *testing.T) {
+			result := NormalizePart(tc.Input)
+			require.Equal(t, tc.Expected, result)
+		})
+	}
+}
+
+func Test_NormalizeResourceID(t *testing.T) {
+	type testcase struct {
+		Input    string
+		Expected string
+		IsError  bool
+	}
+
+	cases := []testcase{
+		{
+			Input:    "/planes/radius/local/resourceGroups/my-rg/providers/Applications.Core/applications/my-app",
+			Expected: "/planes/radius/local/resourceGroups/my-rg/providers/Applications.Core/applications/my-app",
+			IsError:  false,
+		},
+		{
+			Input:    "/planes/radius/local/resourceGroups/my-rg",
+			Expected: "/planes/radius/local/providers/System.Resources/resourceGroups/my-rg",
+			IsError:  false,
+		},
+		{
+			Input:    "/planes/azure/my-plane",
+			Expected: "/planes/providers/System.Azure/planes/my-plane",
+			IsError:  false,
+		},
+		{
+			Input:    "/planes/aws/my-plane",
+			Expected: "/planes/providers/System.AWS/planes/my-plane",
+			IsError:  false,
+		},
+		{
+			Input:    "/planes/radius/my-plane",
+			Expected: "/planes/providers/System.Radius/planes/my-plane",
+			IsError:  false,
+		},
+		{
+			Input:    "/planes/radius/my-plane/resourceGroups/my-rg",
+			Expected: "/planes/radius/my-plane/providers/System.Resources/resourceGroups/my-rg",
+			IsError:  false,
+		},
+		{
+			Input:   "/invalid/id",
+			IsError: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.Input, func(t *testing.T) {
+			id, err := resources.Parse(tc.Input)
+			require.NoError(t, err)
+
+			result, err := NormalizeResourceID(id)
+			if tc.IsError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.Expected, result.String())
+			}
+		})
+	}
+}
+
+func Test_NormalizeResourceType(t *testing.T) {
+	type testcase struct {
+		Input    string
+		Expected string
+		IsError  bool
+	}
+
+	cases := []testcase{
+		{
+			Input:    "Applications.Core/applications",
+			Expected: "Applications.Core/applications",
+			IsError:  false,
+		},
+		{
+			Input:    "resourceGroups",
+			Expected: "System.Resources/resourceGroups",
+			IsError:  false,
+		},
+		{
+			Input:    "aws",
+			Expected: "System.Aws/planes",
+			IsError:  false,
+		},
+		{
+			Input:    "azure",
+			Expected: "System.Azure/planes",
+			IsError:  false,
+		},
+		{
+			Input:    "radius",
+			Expected: "System.Radius/planes",
+			IsError:  false,
+		},
+		{
+			Input:   "invalidType",
+			IsError: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.Input, func(t *testing.T) {
+			result, err := NormalizeResourceType(tc.Input)
+			if tc.IsError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.Expected, result)
+			}
+		})
+	}
+}
