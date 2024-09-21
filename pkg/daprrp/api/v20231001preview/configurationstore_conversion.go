@@ -73,7 +73,7 @@ func (src *DaprConfigurationStoreResource) ConvertTo() (v1.DataModelInterface, e
 		if src.Properties.Recipe != nil && (!reflect.ValueOf(*src.Properties.Recipe).IsZero()) {
 			msgs = append(msgs, "recipe details cannot be specified when resourceProvisioning is set to manual")
 		}
-		if src.Properties.Metadata == nil || len(src.Properties.Metadata) == 0 {
+		if len(src.Properties.Metadata) == 0 {
 			msgs = append(msgs, "metadata must be specified when resourceProvisioning is set to manual")
 		}
 		if src.Properties.Type == nil || *src.Properties.Type == "" {

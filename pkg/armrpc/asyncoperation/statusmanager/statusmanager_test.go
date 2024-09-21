@@ -18,6 +18,7 @@ package statusmanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -131,21 +132,21 @@ func TestCreateAsyncOperationStatus(t *testing.T) {
 		},
 		{
 			Desc:       "create_save-error",
-			SaveErr:    fmt.Errorf(saveErr),
+			SaveErr:    errors.New(saveErr),
 			EnqueueErr: nil,
 			DeleteErr:  nil,
 		},
 		{
 			Desc:       "create_enqueue-error",
 			SaveErr:    nil,
-			EnqueueErr: fmt.Errorf(enqueueErr),
+			EnqueueErr: errors.New(enqueueErr),
 			DeleteErr:  nil,
 		},
 		{
 			Desc:       "create_delete-error",
 			SaveErr:    nil,
-			EnqueueErr: fmt.Errorf(enqueueErr),
-			DeleteErr:  fmt.Errorf(deleteErr),
+			EnqueueErr: errors.New(enqueueErr),
+			DeleteErr:  errors.New(deleteErr),
 		},
 	}
 
@@ -202,7 +203,7 @@ func TestDeleteAsyncOperationStatus(t *testing.T) {
 		},
 		{
 			Desc:      "delete_error",
-			DeleteErr: fmt.Errorf(deleteErr),
+			DeleteErr: errors.New(deleteErr),
 		},
 	}
 
@@ -241,7 +242,7 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 		},
 		{
 			Desc:   "create_enqueue-error",
-			GetErr: fmt.Errorf(getErr),
+			GetErr: errors.New(getErr),
 			Obj:    nil,
 		},
 	}

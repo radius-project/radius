@@ -38,7 +38,7 @@ var versionCmd = &cobra.Command{
 			outFormat, _ := cmd.Flags().GetString("output")
 			writeVersionString(outFormat, cmd.OutOrStdout())
 		} else {
-			output.LogInfo(version.Version())
+			output.LogInfo("%s", version.Version())
 		}
 		return nil
 	},

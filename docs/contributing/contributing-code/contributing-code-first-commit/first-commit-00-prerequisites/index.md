@@ -29,9 +29,9 @@ However, you can also install all tools locally. This is the list of core depend
 - [Node.js](https://nodejs.org/en/)
 - [Python](https://www.python.org/downloads/)
 - [Golangci-lint](https://golangci-lint.run/usage/install/#local-installation)
-- [jq](https://jqlang.github.io/jq/download/)  
-- Make  
-  
+- [jq](https://jqlang.github.io/jq/download/)
+- Make
+
 ### Install make
 
 For `make` we advice the following installation steps depending on you OS.
@@ -48,13 +48,13 @@ sudo apt-get install build-essential
 
 Using Xcode:
 
-```bash  
+```bash
 xcode-select --install
 ```
 
 Using Homebrew:
 
-```bash  
+```bash
 brew install make
 ```
 
