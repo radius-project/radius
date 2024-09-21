@@ -56,7 +56,7 @@ func (*Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	}
 
 	if !ok {
-		output.LogInfo(fmt.Sprintf("Downloading Bicep for channel %s...", version.Channel()))
+		output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
 		err = DownloadBicep()
 		if err != nil {
 			return nil, fmt.Errorf("failed to download rad-bicep: %w", err)

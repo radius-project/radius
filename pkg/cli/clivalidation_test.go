@@ -65,7 +65,7 @@ func Test_RequireResourceType(t *testing.T) {
 			name:    "Unsupported resource type",
 			args:    []string{"unsupported"},
 			want:    "",
-			wantErr: fmt.Errorf("'unsupported' is not a valid resource type. Available Types are: \n\n" + resourceTypesErrorString + "\n"),
+			wantErr: fmt.Errorf("'unsupported' is not a valid resource type. Available Types are: \n\n%s\n", resourceTypesErrorString),
 		},
 	}
 

@@ -2,7 +2,7 @@
 
 ## Your first pull request
 
-At this point you've experienced the basic dev flow for the `rad` CLI. 
+At this point you've experienced the basic dev flow for the `rad` CLI.
 
 It's time to pick an issue to work on! You can find a query [here](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22).
 
@@ -10,7 +10,7 @@ It's time to pick an issue to work on! You can find a query [here](https://githu
 
 If you find an issue you want to help with, then please comment on that issue and ask for one of the maintainers to assign it to you. If you have questions or anything you want to discuss, use the issue to communicate about it.
 
-Now you've got something to work on. Once you've developed and tested your change resume this guide. 
+Now you've got something to work on. Once you've developed and tested your change resume this guide.
 
 ## One last check
 
@@ -64,7 +64,7 @@ At this point you should review the PR checks and make sure they pass. Failing P
 
 If you have any failing checks try to investigate the details and solve them if possible. If you get stuck and need to know the reason for failure, ask a maintainer.
 
-At this point one or more core team members will review your code changes. 
+At this point one or more core team members will review your code changes.
 
 Reviewers will leave their feedback via comments. Discuss as needed and resolve the feedback when both you and the reviewers are happy.
 

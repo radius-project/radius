@@ -36,7 +36,7 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 		return clients.DeploymentResult{}, err
 	}
 
-	step := output.BeginStep(options.ProgressText)
+	step := output.BeginStep("%s", options.ProgressText)
 	output.LogInfo("")
 
 	// Watch for progress while we're deploying.
@@ -65,7 +65,7 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 	output.LogInfo("")
 	output.CompleteStep(step)
 
-	output.LogInfo(options.CompletionText)
+	output.LogInfo("%s", options.CompletionText)
 	output.LogInfo("")
 
 	if len(result.Resources) > 0 {
@@ -73,7 +73,7 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 
 		for _, resource := range result.Resources {
 			if output.ShowResource(resource) {
-				output.LogInfo("    " + output.FormatResourceForDisplay(resource))
+				output.LogInfo("    %s", output.FormatResourceForDisplay(resource))
 			}
 		}
 		var diagnosticsClient clients.DiagnosticsClient

@@ -64,7 +64,7 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 					currentProviderConfig := make(map[string]any)
 
 					// Retrieve configuration details from 'AdditionalProperties' property and add to currentConfig.
-					if configDetails.AdditionalProperties != nil && len(configDetails.AdditionalProperties) > 0 {
+					if len(configDetails.AdditionalProperties) > 0 {
 						currentProviderConfig = configDetails.AdditionalProperties
 					}
 

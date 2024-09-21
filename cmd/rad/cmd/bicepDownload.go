@@ -17,8 +17,6 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/version"
@@ -30,7 +28,7 @@ var bicepDownloadCmd = &cobra.Command{
 	Short: "Download the bicep compiler",
 	Long:  `Downloads the bicep compiler locally`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		output.LogInfo(fmt.Sprintf("Downloading Bicep for channel %s...", version.Channel()))
+		output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
 		err := bicep.DownloadBicep()
 		return err
 	},
