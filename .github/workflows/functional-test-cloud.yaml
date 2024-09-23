@@ -564,7 +564,7 @@ jobs:
           sudo mv azwi /usr/local/bin/
           sudo chmod +x /usr/local/bin/azwi
       - name: Create storage account
-        if: create_storage_account
+        id: create_storage_account
         if: github.event_name == 'workflow_dispatch'
         run: |
           export AZURE_STORAGE_ACCOUNT="oidcissuer$(openssl rand -hex 4)"
