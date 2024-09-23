@@ -58,6 +58,8 @@ cat <<EOF > params-ucp.json
 EOF
 az ad app federated-credential create --id "${APPLICATION_OBJECT_ID}" --parameters @params-ucp.json
 
+echo "------- app id -------"
+echo ${APPLICATION_CLIENT_ID}
 # Set the permissions for the application
 az ad sp create --id ${APPLICATION_CLIENT_ID}
 az role assignment create --assignee "${APPLICATION_CLIENT_ID}" --role "Owner" --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${AZURE_RESOURCE_GROUP}"
