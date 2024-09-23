@@ -608,11 +608,12 @@ jobs:
           --file jwks.json \
           --name openid/v1/jwks
           
+          OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/
+          echo $OIDC
+          echo $${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          echo ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          ./.github/scripts/setup-azure-federated-credentials radius-test-wi ${{ env.AZURE_TEST_RESOURCE_GROUP }} ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} $OIDC
 
-      - name: Delete storage account
-        if: always()
-        run: |
-          az storage account delete --name ${AZURE_STORAGE_ACCOUNT} --resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - name: Create KinD cluster
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
