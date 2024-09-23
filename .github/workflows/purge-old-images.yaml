@@ -17,7 +17,7 @@ env:
 
 jobs:
   purge_ghcr_dev:
-    name: Delete old unused container images
+    name: Delete old unused test container images
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
     steps:
