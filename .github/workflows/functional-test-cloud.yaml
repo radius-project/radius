@@ -619,6 +619,7 @@ jobs:
       - name: Setup azure federated credentials
         if: always()
         run: |
+          ls -la .github/scripts
           .github/scripts/setup-azure-federated-credentials.sh radius-test-wi ${{ env.AZURE_TEST_RESOURCE_GROUP }} ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} ${{steps.create_storage_account.outputs.OIDC_TEST}}
       - name: Create KinD cluster
         run: |
