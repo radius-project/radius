@@ -27,6 +27,7 @@ import (
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/radius-project/radius/pkg/ucp/store/cosmosdb"
 	"github.com/radius-project/radius/pkg/ucp/store/etcdstore"
+	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,6 +39,7 @@ var storageClientFactory = map[StorageProviderType]storageFactoryFunc{
 	TypeAPIServer: initAPIServerClient,
 	TypeCosmosDB:  initCosmosDBClient,
 	TypeETCD:      InitETCDClient,
+	TypeInMemory:  initInMemoryClient,
 }
 
 func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
@@ -116,4 +118,9 @@ func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (
 
 	etcdClient := etcdstore.NewETCDClient(client)
 	return etcdClient, nil
+}
+
+// initInMemoryClient creates a new in-memory store client.
+func initInMemoryClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
+	return inmemory.NewClient(), nil
 }

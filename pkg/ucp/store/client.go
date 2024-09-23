@@ -33,10 +33,52 @@ var fieldRegex = regexp.MustCompile(fmt.Sprintf(`^(%s)(\.%s)*$`, jsonPropertyPat
 
 //go:generate mockgen -typed -destination=./mock_storageClient.go -package=store -self_package github.com/radius-project/radius/pkg/ucp/store github.com/radius-project/radius/pkg/ucp/store StorageClient
 
+// StorageClient is the interface for persisting and querying resource data.
+//
+// The StorageClient is purpose-built to work with resource data and understands concepts like
+// scopes, resource types, and resource ids. This is a higher level abstraction than a generic
+// key-value store, but low-level enough to support multiple implementation strategies.
+//
+// The StorageClient provides a optimistic concurrency control using ETags. Callers that want
+// to enforce OCC should provide the ETag value in the options when calling Save or Delete.
+//
+// The StorageClient may return the errors ErrNotFound, ErrInvalid, and ErrConcurrency.
+//
+// - Callers should handle ErrNotFound on Get, Save, and Delete operations.
+// - Callers should handle ErrConcurrency when using ETags.
+// - Callers should not handle ErrInvalid as it represents a programming error.
+//
+// When using ETags, the Save or Delete operation will fail with ErrConcurrency (rather than ErrNotFound)
+// if the underlying resource has been deleted.
 type StorageClient interface {
+	// Query executes a query against the data store and returns the results.
+	//
+	// Queries must provide a root scope and a resource type. Other fields are optional.
 	Query(ctx context.Context, query Query, options ...QueryOptions) (*ObjectQueryResult, error)
+
+	// Get retrieves a single resource from the data store by its resource id.
+	//
+	// Get will return ErrNotFound if the resource is not found.
 	Get(ctx context.Context, id string, options ...GetOptions) (*Object, error)
+
+	// Delete removes a single resource from the data store by its resource id.
+	//
+	// Delete will return ErrNotFound if the resource is not found.
+	// When providing an ETag, Delete will return ErrConcurrency if the resource has been
+	// modified OR deleted since the ETag was retrieved.
 	Delete(ctx context.Context, id string, options ...DeleteOptions) error
+
+	// Save persists a single resource to the data store. Same is a logical PUT
+	// operation and will either create a new entry or update the existing entry.
+	//
+	// Save operations must set the ID field of the obj parameter.
+	// The ETag field of the obj parameter is read-only and will be updated by the Save operation.
+	//
+	// Use the options to pass an ETag if you want to enforce optimistic concurrency control.
+	//
+	// Save will return ErrNotFound if the resource is not found.
+	// When providing an ETag, Save will return ErrConcurrency if the resource has been
+	// modified OR deleted since the ETag was retrieved.
 	Save(ctx context.Context, obj *Object, options ...SaveOptions) error
 }
 
