@@ -55,7 +55,7 @@ func Test_ListPlanesByType(t *testing.T) {
 
 	testPlaneId := "/planes/radius/local"
 	testPlaneName := "local"
-	testPlaneType := "System.Radius/planes"
+	testPlaneType := datamodel.RadiusPlaneResourceType
 
 	planeData := datamodel.RadiusPlane{
 		BaseResource: v1.BaseResource{

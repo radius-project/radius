@@ -18,7 +18,18 @@ package store
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"regexp"
 )
+
+// jsonPropertyPattern is the pattern for a valid JSON property name.
+var jsonPropertyPattern = "[a-zA-Z$_][a-zA-Z0-9$_]*"
+
+// fieldRegex is the regular expression to validate a field path in a query. It matches:
+// - A single property OR
+// - Multople properties separated by a '.'
+var fieldRegex = regexp.MustCompile(fmt.Sprintf(`^(%s)(\.%s)*$`, jsonPropertyPattern, jsonPropertyPattern))
 
 //go:generate mockgen -typed -destination=./mock_storageClient.go -package=store -self_package github.com/radius-project/radius/pkg/ucp/store github.com/radius-project/radius/pkg/ucp/store StorageClient
 
@@ -29,7 +40,7 @@ type StorageClient interface {
 	Save(ctx context.Context, obj *Object, options ...SaveOptions) error
 }
 
-// Query specifies the structure of a query. RootScope is required and other fields are optional.
+// Query specifies the structure of a query. RootScope and ResourceType are required and other fields are optional.
 type Query struct {
 	// Scope sets the root scope of the query. This will be the fully-qualified root scope. This can be a
 	// UCP scope ('/planes/...') or an ARM scope as long as the data-store is self-consistent.
@@ -77,8 +88,55 @@ type Query struct {
 	Filters []QueryFilter
 }
 
+// Validate validates the Query.
+func (q Query) Validate() error {
+	var err error
+	if q.RootScope == "" {
+		err = errors.Join(err, &ErrInvalid{Message: "RootScope is required"})
+	}
+
+	if q.ResourceType == "" {
+		err = errors.Join(err, &ErrInvalid{Message: "ResourceType is required"})
+	}
+
+	if q.IsScopeQuery && q.RoutingScopePrefix != "" {
+		err = errors.Join(err, &ErrInvalid{Message: "RoutingScopePrefix' is not supported for scope queries"})
+	}
+
+	for _, filter := range q.Filters {
+		err = errors.Join(filter.Validate())
+	}
+
+	return err
+}
+
 // QueryFilter is the filter which filters property in resource entity.
 type QueryFilter struct {
+	// Field specifies the property name to filter.
+	//
+	// Field can be a simple property name of a '.' separated property path.
+	// Examples:
+	//	- "location"
+	//	- "properties.application"
 	Field string
+
+	// Value specifies the value to filter. The value must be a string and will be
+	// compared case-insentively with the property value.
 	Value string
+}
+
+// Validate validates the QueryFilter.
+func (f QueryFilter) Validate() error {
+	var err error
+	if f.Field == "" {
+		err = errors.Join(err, &ErrInvalid{Message: fmt.Sprintf("Field is required in filter: %+v", f)})
+	}
+
+	if !fieldRegex.Match([]byte(f.Field)) {
+		err = errors.Join(err, &ErrInvalid{Message: fmt.Sprintf("Field is invalid in filter: %+v", f)})
+	}
+
+	// Value can be blank. If it is blank, the filter will match the empty string in the target property.
+
+	return err
 }

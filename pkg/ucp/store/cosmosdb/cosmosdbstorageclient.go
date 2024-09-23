@@ -237,11 +237,9 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
-	if query.RootScope == "" {
-		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RootScope' is required"}
-	}
-	if query.IsScopeQuery && query.RoutingScopePrefix != "" {
-		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RoutingScopePrefix' is not supported for scope queries"}
+	err := query.Validate()
+	if err != nil {
+		return nil, &store.ErrInvalid{Message: fmt.Sprintf("invalid argument. Query is invalid: %s", err.Error())}
 	}
 
 	cfg := store.NewQueryConfig(opts...)

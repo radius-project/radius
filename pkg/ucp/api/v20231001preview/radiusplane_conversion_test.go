@@ -41,7 +41,7 @@ func Test_RadiusPlane_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/planes/radius/local",
 						Name:     "local",
-						Type:     "System.Radius/planes",
+						Type:     datamodel.RadiusPlaneResourceType,
 						Location: "global",
 						Tags: map[string]string{
 							"env": "dev",
@@ -91,7 +91,7 @@ func Test_RadiusPlane_ConvertDataModelToVersioned(t *testing.T) {
 			expected: &RadiusPlaneResource{
 				ID:       to.Ptr("/planes/radius/local"),
 				Name:     to.Ptr("local"),
-				Type:     to.Ptr("System.Radius/planes"),
+				Type:     to.Ptr(datamodel.RadiusPlaneResourceType),
 				Location: to.Ptr("global"),
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

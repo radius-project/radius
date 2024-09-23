@@ -22,11 +22,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
 	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	test "github.com/radius-project/radius/test/ucp"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +41,41 @@ func Test_Plane_Operations(t *testing.T) {
 		test := test.NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 			// By default, we configure default planes in UCP. Verify that by calling List Planes
 			planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes?api-version=%s", url, apiVersion))
-			require.Equal(t, 2, len(planes.Value))
+
+			for _, plane := range planes.Value {
+				t.Logf("Found plane: %s", spew.Sdump(plane))
+			}
+
+			// Due to an order dependency with other tests, we can't guarantee the number or exact set of planes.
+			//
+			// Instead let's verify that the default one are present.
+			containsPlane := func(expectedID string) bool {
+				for _, plane := range planes.Value {
+					obj, ok := plane.(map[string]any)
+					if !ok {
+						continue
+					}
+
+					objID, ok := obj["id"]
+					if !ok {
+						continue
+					}
+
+					id, ok := objID.(string)
+					if !ok {
+						continue
+					}
+
+					if strings.EqualFold(expectedID, id) {
+						return true
+					}
+				}
+
+				return false
+			}
+
+			require.Truef(t, containsPlane("/planes/aws/aws"), "Expected to find plane /planes/aws/aws")
+			require.Truef(t, containsPlane("/planes/radius/local"), "Expected to find plane /planes/radius/local")
 		})
 		test.Test(t)
 	})
@@ -113,7 +150,7 @@ func Test_Plane_Operations(t *testing.T) {
 
 			expected := v20231001preview.AzurePlaneResource{
 				ID:       to.Ptr(planeID),
-				Type:     to.Ptr("System.Azure/planes"),
+				Type:     to.Ptr(datamodel.AzurePlaneResourceType),
 				Name:     to.Ptr("testplane"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.AzurePlaneResourceProperties{
@@ -166,7 +203,7 @@ func Test_Plane_Operations(t *testing.T) {
 
 			expected := v20231001preview.RadiusPlaneResource{
 				ID:       to.Ptr(planeID),
-				Type:     to.Ptr("System.Radius/planes"),
+				Type:     to.Ptr(datamodel.RadiusPlaneResourceType),
 				Name:     to.Ptr("testplane"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.RadiusPlaneResourceProperties{

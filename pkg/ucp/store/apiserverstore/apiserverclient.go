@@ -105,11 +105,9 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
-	if query.RootScope == "" {
-		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RootScope' is required"}
-	}
-	if query.IsScopeQuery && query.RoutingScopePrefix != "" {
-		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RoutingScopePrefix' is not supported for scope queries"}
+	err := query.Validate()
+	if err != nil {
+		return nil, &store.ErrInvalid{Message: fmt.Sprintf("invalid argument. Query is invalid: %s", err.Error())}
 	}
 
 	selector, err := createLabelSelector(query)
@@ -535,10 +533,8 @@ func readEntry(entry *ucpv1alpha1.ResourceEntry) (*store.Object, error) {
 
 	obj := store.Object{
 		Metadata: store.Metadata{
-			ID:          entry.ID,
-			ETag:        entry.ETag,
-			APIVersion:  entry.APIVersion,
-			ContentType: entry.ContentType,
+			ID:   entry.ID,
+			ETag: entry.ETag,
 		},
 		Data: data,
 	}
@@ -563,11 +559,9 @@ func convert(obj *store.Object) (*ucpv1alpha1.ResourceEntry, error) {
 	}
 
 	resource := ucpv1alpha1.ResourceEntry{
-		ID:          obj.ID,
-		APIVersion:  obj.APIVersion,
-		ETag:        etag.New(raw), // Don't trust the ETag on the object, it's likely unset.
-		ContentType: obj.ContentType,
-		Data:        &runtime.RawExtension{Raw: raw},
+		ID:   obj.ID,
+		ETag: etag.New(raw), // Don't trust the ETag on the object, it's likely unset.
+		Data: &runtime.RawExtension{Raw: raw},
 	}
 
 	return &resource, nil

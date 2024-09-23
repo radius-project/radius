@@ -49,6 +49,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -78,11 +79,10 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
-	if query.RootScope == "" {
-		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RootScope' is required"}
-	}
-	if query.IsScopeQuery && query.RoutingScopePrefix != "" {
-		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RoutingScopePrefix' is not supported for scope queries"}
+	
+	err := query.Validate()
+	if err != nil {
+		return nil, &store.ErrInvalid{Message: fmt.Sprintf("invalid argument. Query is invalid: %s", err.Error())}
 	}
 
 	key := keyFromQuery(query)

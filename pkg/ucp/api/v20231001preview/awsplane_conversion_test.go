@@ -41,7 +41,7 @@ func Test_AWSPlane_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/planes/aws/aws",
 						Name:     "aws",
-						Type:     "System.AWS/planes",
+						Type:     datamodel.AWSPlaneResourceType,
 						Location: "global",
 						Tags: map[string]string{
 							"env": "dev",
@@ -87,7 +87,7 @@ func Test_AWSPlane_ConvertDataModelToVersioned(t *testing.T) {
 			expected: &AwsPlaneResource{
 				ID:       to.Ptr("/planes/aws/aws"),
 				Name:     to.Ptr("aws"),
-				Type:     to.Ptr("System.AWS/planes"),
+				Type:     to.Ptr(datamodel.AWSPlaneResourceType),
 				Location: to.Ptr("global"),
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

@@ -41,14 +41,9 @@ func Test_ListPlanes(t *testing.T) {
 
 	url := "/planes?api-version=2023-10-01-preview"
 
-	query := store.Query{
-		RootScope:    "/planes",
-		IsScopeQuery: true,
-	}
-
-	testPlaneId := "/planes/radius"
-	testPlaneName := "radius"
-	testPlaneType := "planes"
+	testPlaneId := "/planes/aws"
+	testPlaneName := "aws"
+	testPlaneType := datamodel.AWSPlaneResourceType
 
 	planeData := datamodel.AWSPlane{
 		BaseResource: v1.BaseResource{
@@ -62,7 +57,11 @@ func Test_ListPlanes(t *testing.T) {
 		Properties: datamodel.AWSPlaneProperties{},
 	}
 
-	mockStorageClient.EXPECT().Query(gomock.Any(), query).Return(&store.ObjectQueryResult{
+	mockStorageClient.EXPECT().Query(gomock.Any(), store.Query{
+		RootScope:    "/planes",
+		ResourceType: "aws",
+		IsScopeQuery: true,
+	}).Return(&store.ObjectQueryResult{
 		Items: []store.Object{
 			{
 				Metadata: store.Metadata{},
@@ -70,6 +69,18 @@ func Test_ListPlanes(t *testing.T) {
 			},
 		},
 	}, nil)
+
+	mockStorageClient.EXPECT().Query(gomock.Any(), store.Query{
+		RootScope:    "/planes",
+		ResourceType: "azure",
+		IsScopeQuery: true,
+	}).Return(&store.ObjectQueryResult{}, nil)
+
+	mockStorageClient.EXPECT().Query(gomock.Any(), store.Query{
+		RootScope:    "/planes",
+		ResourceType: "radius",
+		IsScopeQuery: true,
+	}).Return(&store.ObjectQueryResult{}, nil)
 
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)

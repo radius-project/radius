@@ -54,28 +54,43 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	query := store.Query{
-		RootScope:    serviceCtx.ResourceID.String(),
-		IsScopeQuery: true,
+	// The plane objects are all stored separately (by plane type). We need to query each type separately.
+	planeTypes := []string{
+		"aws",
+		"azure",
+		"radius",
 	}
-	logger.Info(fmt.Sprintf("Listing planes in scope %s", query.RootScope))
-	result, err := e.StorageClient().Query(ctx, query)
+
+	objs := []store.Object{}
+	for _, planeType := range planeTypes {
+		query := store.Query{
+			RootScope:    serviceCtx.ResourceID.String(),
+			ResourceType: planeType,
+			IsScopeQuery: true,
+		}
+
+		logger.Info(fmt.Sprintf("Listing planes of type %s in scope %s", query.ResourceType, query.RootScope))
+		result, err := e.StorageClient().Query(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+
+		objs = append(objs, result.Items...)
+	}
+
+	planes, err := e.createResponse(ctx, objs)
 	if err != nil {
 		return nil, err
 	}
-	listOfPlanes, err := e.createResponse(ctx, result)
-	if err != nil {
-		return nil, err
-	}
-	var ok = armrpc_rest.NewOKResponse(listOfPlanes)
+	var ok = armrpc_rest.NewOKResponse(planes)
 	return ok, nil
 }
 
-func (p *ListPlanes) createResponse(ctx context.Context, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+func (p *ListPlanes) createResponse(ctx context.Context, objs []store.Object) (*v1.PaginatedList, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	items := v1.PaginatedList{}
 
-	for _, item := range result.Items {
+	for _, item := range objs {
 		var plane datamodel.GenericPlane
 		err := item.As(&plane)
 		if err != nil {
