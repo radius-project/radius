@@ -1,4 +1,4 @@
-name: Purge old images
+name: Purge test container images
 
 permissions:
   id-token: write
