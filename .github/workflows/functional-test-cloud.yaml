@@ -564,6 +564,7 @@ jobs:
           sudo mv azwi /usr/local/bin/
           sudo chmod +x /usr/local/bin/azwi
       - name: Create storage account
+        if: create_storage_account
         if: github.event_name == 'workflow_dispatch'
         run: |
           export AZURE_STORAGE_ACCOUNT="oidcissuer$(openssl rand -hex 4)"
@@ -609,11 +610,16 @@ jobs:
           --name openid/v1/jwks
           
           OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/
+          echo "OIDC_TEST=$OIDC" >> $GITHUB_OUTPUT
           echo $OIDC
           echo $${{ env.AZURE_TEST_RESOURCE_GROUP }}
           echo ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
           ./.github/scripts/setup-azure-federated-credentials.sh radius-test-wi ${{ env.AZURE_TEST_RESOURCE_GROUP }} ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} $OIDC
 
+      - name: Setup azure federated credentials
+        if: always()
+        run: |
+          ./.github/scripts/setup-azure-federated-credentials.sh radius-test-wi ${{ env.AZURE_TEST_RESOURCE_GROUP }} ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} ${{steps.create_storage_account.outputs.OIDC_TEST}}
       - name: Create KinD cluster
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
