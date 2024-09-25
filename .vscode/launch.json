@@ -72,22 +72,6 @@
             }
         },
         {
-            "name": "Launch Deployment Engine",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "Build Deployment Engine",
-            "program": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine/bin/Debug/net6.0/arm-de.dll",
-            "args": [],
-            "cwd": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine",
-            "stopAtEntry": false,
-            "env": {
-                "ASPNETCORE_URLS": "http://localhost:5017",
-                "ASPNETCORE_ENVIRONMENT": "Development",
-                "KUBERNETESBICEPEXTENSIBILITYURL": "http://localhost:5017/api",
-                "RADIUSBACKENDURI": "http://localhost:9000",
-            },
-        },
-        {
             "name": "Debug Bicep generator integration tests",
             "type": "node",
             "request": "launch",
@@ -110,7 +94,6 @@
                 "Launch UCP",
                 "Launch Applications RP",
                 "Launch Controller",
-                "Launch Deployment Engine",
             ],
             "stopAll": true
         }

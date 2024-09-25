@@ -27,13 +27,9 @@ If you need to manually test APIs you can reach them at the following endpoints 
 ## Prerequisites
 
 1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data.
-2. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other.
-3. Run `git submodule update --init` in the `deployment-engine` repo.
-4. Install .NET 6.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/6.0>.
-5. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
-6. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
+2. Clone the `radius-project/radius` 
+3. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
   
-> 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
 > 💡 Radius will use your locally configured Azure or AWS credentials. If you are able to use the `az` or `aws` CLI then you don't need to do any additional setup.
 
 ## Setup Step 1: Run `rad init`
@@ -105,6 +101,10 @@ Run this command to create the namespace that will be used to store data.
 kubectl create namespace radius-testing
 ```
 
+## Setup Step 4: port-forward Deployment Engine
+
+kubectl port-forward --namespace=radius-system svc/bicep-de 5017:6443
+
 ## Setup Step 3: Create Resource Group and Environment
 
 At this point Radius is working but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
@@ -135,32 +135,4 @@ Now you can launch the Radius locally through the VSCode menu.
 - Press Debug
 - You're up and running!
 
-## Troubleshooting
 
-### I got an error saying I need to clone the deployment engine
-
-> The radius-project/deployment-engine is not cloned as a sibling to the Radius repo. Please clone the radius-project/deployment-engine repo next to the Radius repo and try again.
-
-You should be to successfully the following commands from the Radius repository root:
-
-```sh
-ls ../deployment-engine/src
-ls ../deployment-engine/submodules/bicep-extensibility/src
-```
-
-If these commands fail, please re-read the prerequisites related to cloning the deployment engine.
-
-### I got an error related to missing dotnet or missing .NET SDK
-
-Make sure that `dotnet` is on your path. If you just installed .NET then you might need to reopen VS Code and your terminal.
-
-If `dotnet` is on your path you should be able to run the following commands:
-
-```sh
-dotnet --list-runtimes
-dotnet --list-sdks
-```
-
-Make sure you see a `6.0` entry in `--list-runtimes` for `Microsoft.AspNetCore.App` and a `6.0` or newer entry for `--list-sdks`.
-
-If you run into issues here, please re-read the prerequisites related to installing .NET.
