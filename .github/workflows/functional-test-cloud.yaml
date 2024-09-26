@@ -400,9 +400,6 @@ jobs:
             "extensions": {
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
-            },
-            "cloud": {
-              "credentialPrecedence": ["Environment"]
             }
           }
           EOF

@@ -51,17 +51,19 @@ Visit the [docs](https://github.com/radius-project/docs/) and [samples](https://
 
 # Testing schema changes locally
 
-If you would like to test that your schema changes are compilable in a Bicep template, you can do so by publishing them to an OCI registry using the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/). 
+If you would like to test that your schema changes are compilable in a Bicep template, you can do so by publishing them to a file system using the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/). 
 
 ## Step 1: Download the Bicep CLI
 
-1. Follow the steps in the Bicep [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) to download Bicep
+1. Follow the steps in the Bicep [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) to download Bicep. 
 
-## Step 2: Create an OCI compliant registry 
+Note: Alternatively, if you already have the Radius CLI installed, you can choose to use the Bicep binary that is installed as part of Radius. The Bicep binary gets downloaded to `./.rad/bin/rad-bicep`. You can use this file path instead.
 
-1. Create an OCI compliant registry of your choice. Keep the registry endpoint handy for the next steps. 
+## Step 2: Create a file directory  
 
-## Step 3: Upload the new schema types to an OCI registry
+1. Create a file directory in your location of choice. Keep the directory path handy for the next steps. 
+
+## Step 3: Upload the new schema types to the file directory
 1. Run `make generate` to generate the OpenAPI spec and API clients:
 
     ```bash
@@ -69,10 +71,10 @@ If you would like to test that your schema changes are compilable in a Bicep tem
     ```
 
 1. `cd` into the `hack/bicep-types-radius/generated` folder
-1. Run `bicep publish-provider <file> --target <ref>` to upload the schema changes to your OCI registry. The file uploaded will be the `index.json` file as it contains all references to the types schema. 
+1. Run `bicep publish-provider <file> --target <ref>` to upload the schema changes to your file system. The file uploaded will be the `index.json` file as it contains all references to the types schema. The `<file-name>` can be named as desired, but we recommend using an archive (i.e. `.zip`, `.tgz`, etc). This will make it easier to view the files that get uploaded if needed. 
 
     ```bash
-    bicep publish-extension index.json --target <OCI-registry-endpoint>
+    bicep publish-extension index.json --target <directory-path>/<file-name>
     ```
 
 ## Step 4: Update the `bicepconfig.json` to use your newly published types
@@ -86,9 +88,11 @@ If you would like to test that your schema changes are compilable in a Bicep tem
             "dynamicTypeLoading": true
         },
         "extensions": {
-            "radius": "br:<OCI-registry-endpoint>",
-            "aws": "br:<OCI-registry-endpoint>"
+            "radius": "<file-path>",
+            "aws": "br:biceptypes.azurecr.io/aws:latest"
         }
     }
     ```
 1. Once Bicep restores the new extensions, you should be able to use the new schema changes in your Bicep templates. 
+
+Note: You can also choose to publish the types to an OCI registry. The `--target` field will be your OCI registry endpoint when running the `bicep publish-extension` command. Make sure to update the `radius` extension field with your OCI registry endpoint in the `bicepconfig.json`.
