@@ -21,6 +21,7 @@ import "./secretStores.tsp";
 import "./stateStores.tsp";
 import "./pubSubBrokers.tsp";
 import "./configurationStores.tsp";
+import "./bindings.tsp";
 
 using TypeSpec.Versioning;
 using Azure.ResourceManager;

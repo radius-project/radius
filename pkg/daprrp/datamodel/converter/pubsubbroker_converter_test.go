@@ -74,6 +74,7 @@ func TestPubSubBrokerDataModelToVersioned(t *testing.T) {
 					Auth: &v20231001preview.DaprResourceAuth{
 						SecretStore: to.Ptr("test-secret-store"),
 					},
+					Scopes: []*string{to.Ptr("test-scope-1"), to.Ptr("test-scope-2")},
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

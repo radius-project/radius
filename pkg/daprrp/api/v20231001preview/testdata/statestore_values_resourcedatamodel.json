@@ -40,6 +40,10 @@
       {
         "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
       }
+    ],
+    "scopes": [
+      "test-scope-1",
+      "test-scope-2"
     ]
   }
 }

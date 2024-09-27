@@ -31,6 +31,7 @@ type DaprGeneric struct {
 	Version  *string
 	Metadata map[string]*rpv1.DaprComponentMetadataValue
 	Auth     *rpv1.DaprComponentAuth
+	Scopes   []string
 }
 
 // Validate checks if the required fields of a DaprGeneric struct are set and returns an error if any of them are not.
@@ -108,5 +109,15 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, namespace string, componentNa
 			"secretStore": daprGeneric.Auth.SecretStore,
 		}
 	}
+
+	if len(daprGeneric.Scopes) > 0 {
+		// K8s fake client requires this to perform a deep copy of the object
+		yamlScopes := []any{}
+		for _, scope := range daprGeneric.Scopes {
+			yamlScopes = append(yamlScopes, scope)
+		}
+		item.Object["scopes"] = yamlScopes
+	}
+
 	return item, nil
 }

@@ -76,6 +76,7 @@ func TestDaprConfigurationStore_ConvertVersionedToDataModel(t *testing.T) {
 					},
 					Type:    "configuration.azure.appconfig",
 					Version: "v1",
+					Scopes:  []string{"test-scope-1", "test-scope-2"},
 				},
 			},
 		},
@@ -199,6 +200,7 @@ func TestDaprConfigurationStore_ConvertDataModelToVersioned(t *testing.T) {
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
 					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 					Auth:              &DaprResourceAuth{SecretStore: to.Ptr("test-secret-store")},
+					Scopes:            []*string{to.Ptr("test-scope-1"), to.Ptr("test-scope-2")},
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

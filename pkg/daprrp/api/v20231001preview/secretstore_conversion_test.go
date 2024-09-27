@@ -71,6 +71,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 					},
 					Type:    "secretstores.hashicorp.vault",
 					Version: "v1",
+					Scopes:  []string{"test-scope-1", "test-scope-2"},
 				},
 			},
 		},
@@ -156,6 +157,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 					ComponentName:        to.Ptr("test-dss"),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+					Scopes:               []*string{to.Ptr("test-scope-1"), to.Ptr("test-scope-2")},
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

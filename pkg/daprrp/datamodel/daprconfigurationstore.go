@@ -88,4 +88,7 @@ type DaprConfigurationStoreProperties struct {
 
 	// Auth information for the Dapr Configuration Store resource, mainly secret store name.
 	Auth *rpv1.DaprComponentAuth `json:"auth,omitempty"`
+
+	// The list of Dapr app-IDs this component applies to. It applies to all apps when no scopes are specified.
+	Scopes []string `json:"scopes,omitempty"`
 }

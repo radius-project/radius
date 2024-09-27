@@ -228,6 +228,51 @@ func Test_Process(t *testing.T) {
 					},
 				},
 			},
+			{
+				description: "Scoped",
+				properties: &datamodel.DaprPubSubBrokerProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: appID,
+						Environment: envID,
+					},
+					BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
+						ComponentName: componentName,
+					},
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
+					Metadata: map[string]*rpv1.DaprComponentMetadataValue{
+						"config": {
+							Value: "extrasecure",
+						},
+					},
+					Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+					Type:      "pubsub.redis",
+					Version:   "v1",
+					Scopes:    []string{"test-scope-1"},
+				},
+				generated: &unstructured.Unstructured{
+					Object: map[string]any{
+						"apiVersion": dapr.DaprAPIVersion,
+						"kind":       dapr.DaprKind,
+						"metadata": map[string]any{
+							"namespace":       "test-namespace",
+							"name":            "test-dapr-pubsub-broker",
+							"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprPubSubBrokersResourceType),
+							"resourceVersion": "1",
+						},
+						"spec": map[string]any{
+							"type":    "pubsub.redis",
+							"version": "v1",
+							"metadata": []any{
+								map[string]any{
+									"name":  "config",
+									"value": "extrasecure",
+								},
+							},
+						},
+						"scopes": []any{"test-scope-1"},
+					},
+				},
+			},
 		}
 
 		for _, tc := range testset {
@@ -500,6 +545,6 @@ func Test_Process(t *testing.T) {
 		err = processor.Process(context.Background(), resource, options)
 		require.Error(t, err)
 		assert.IsType(t, &processors.ValidationError{}, err)
-		assert.Equal(t, "the Dapr component name '\"test-dapr-pubsub-broker\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (e.g., StateStores, PubSubBrokers, SecretStores, ConfigurationStores, etc.). Please select a new name and try again.", err.Error())
+		assert.Equal(t, "the Dapr component name '\"test-dapr-pubsub-broker\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (e.g., StateStores, PubSubBrokers, SecretStores, ConfigurationStores, Bindings etc.). Please select a new name and try again.", err.Error())
 	})
 }

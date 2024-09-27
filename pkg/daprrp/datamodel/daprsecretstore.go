@@ -64,6 +64,8 @@ type DaprSecretStoreProperties struct {
 	Metadata             map[string]*rpv1.DaprComponentMetadataValue `json:"metadata,omitempty"`
 	Recipe               portableresources.ResourceRecipe            `json:"recipe,omitempty"`
 	ResourceProvisioning portableresources.ResourceProvisioning      `json:"resourceProvisioning,omitempty"`
+	// The list of Dapr app-IDs this component applies to. It applies to all apps when no scopes are specified.
+	Scopes []string `json:"scopes,omitempty"`
 }
 
 // Recipe returns the Recipe from the DaprSecretStore Properties if ResourceProvisioning is not set to Manual,

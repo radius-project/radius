@@ -88,4 +88,7 @@ type DaprPubSubBrokerProperties struct {
 
 	// Authentication information for the Dapr Pub/Sub Broker resource, mainly secret store name.
 	Auth *rpv1.DaprComponentAuth `json:"auth,omitempty"`
+
+	// The list of Dapr app-IDs this component applies to. It applies to all apps when no scopes are specified.
+	Scopes []string `json:"scopes,omitempty"`
 }
