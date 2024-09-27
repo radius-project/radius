@@ -76,6 +76,8 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Metadata = toMetadataDataModel(src.Properties.Metadata)
 		converted.Properties.Type = to.String(src.Properties.Type)
 		converted.Properties.Version = to.String(src.Properties.Version)
+		converted.Properties.Scopes = toScopesDataModel(src.Properties.Scopes)
+
 	} else {
 		if src.Properties.Metadata != nil && (!reflect.ValueOf(src.Properties.Metadata).IsZero()) {
 			msgs = append(msgs, "metadata cannot be specified when resourceProvisioning is set to recipe (default)")
@@ -126,6 +128,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 			OutputResources: toOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(daprSecretStore.Properties.Status.Recipe),
 		},
+		Scopes: fromScopesDataModel(daprSecretStore.Properties.Scopes),
 	}
 	if daprSecretStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		dst.Properties.Metadata = fromMetadataDataModel(daprSecretStore.Properties.Metadata)

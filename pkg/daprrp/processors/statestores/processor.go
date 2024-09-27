@@ -79,6 +79,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprStateSt
 		dapr.DaprGeneric{
 			Auth:     resource.Properties.Auth,
 			Metadata: resource.Properties.Metadata,
+			Scopes:   resource.Properties.Scopes,
 			Type:     to.Ptr(resource.Properties.Type),
 			Version:  to.Ptr(resource.Properties.Version),
 		},

@@ -36,6 +36,9 @@ model DaprResourceProperties {
 
   @doc("The name of the Dapr component to be used as a secret store")
   auth?: DaprResourceAuth;
+
+  @doc("The list of Dapr app-IDs this component applies to. It applies to all apps when no scopes are specified.")
+  scopes?: string[];
 }
 
 @doc("Authentication properties for a Dapr component object")

@@ -1,0 +1,73 @@
+{
+  "operationId": "Bindings_ListByScope",
+  "title": "List a Binding resource by resource group",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/bindings/binding0",
+            "name": "binding0",
+            "type": "Applications.Dapr/bindings",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "resources": [
+                {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.AppConfiguration/bindings/testbinding"
+                }
+              ],
+              "type": "bindings.azure.blobstorage",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
+              }
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/bindings/binding1",
+            "name": "binding1",
+            "type": "Applications.Dapr/bindings",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "type": "bindings.http",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
+              }
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/bindings/binding2",
+            "name": "binding2",
+            "type": "Applications.Dapr/bindings",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "recipe": {
+                "name": "binding-test",
+                "parameters": {
+                  "port": 6081
+                }
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/bindings?api-version=2023-10-01-preview&$skipToken=X'12345'"
+      }
+    }
+  }
+}

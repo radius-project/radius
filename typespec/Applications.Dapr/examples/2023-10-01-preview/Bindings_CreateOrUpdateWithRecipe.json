@@ -1,0 +1,66 @@
+{
+  "operationId": "Bindings_CreateOrUpdate",
+  "title": "Create or update a binding resource with recipe",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "bindingName": "binding0",
+    "api-version": "2023-10-01-preview",
+    "bindingParameters": {
+      "location": "West US",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "recipe": {
+          "name": "binding-test",
+          "parameters": {
+            "port": 6081
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/bindings/binding0",
+        "name": "binding0",
+        "type": "Applications.Dapr/bindings",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "recipe",
+          "type": "bindings.azure.blobstorage",
+          "recipe": {
+            "name": "binding-test",
+            "parameters": {
+              "port": 6081
+            }
+          }
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/bindings/binding0",
+        "name": "binding0",
+        "type": "Applications.Dapr/bindings",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "recipe",
+          "type": "bindings.azure.blobstorage",
+          "recipe": {
+            "name": "binding-test",
+            "parameters": {
+              "port": 6081
+            }
+          }
+        }
+      }
+    }
+  }
+}

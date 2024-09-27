@@ -62,6 +62,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) 
 
 	converted.Properties.Resources = toResourcesDataModel(src.Properties.Resources)
 	converted.Properties.Auth = toAuthDataModel(src.Properties.Auth)
+	converted.Properties.Scopes = toScopesDataModel(src.Properties.Scopes)
 
 	// Note: The metadata, type, and version fields cannot be specified when using recipes since
 	// the recipe is expected to create the Dapr Component manifest. However, they are required
@@ -132,7 +133,8 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 			OutputResources: toOutputResources(daprPubSub.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(daprPubSub.Properties.Status.Recipe),
 		},
-		Auth: fromAuthDataModel(daprPubSub.Properties.Auth),
+		Auth:   fromAuthDataModel(daprPubSub.Properties.Auth),
+		Scopes: fromScopesDataModel(daprPubSub.Properties.Scopes),
 	}
 
 	if daprPubSub.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {

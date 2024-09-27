@@ -64,6 +64,7 @@ func (src *DaprConfigurationStoreResource) ConvertTo() (v1.DataModelInterface, e
 
 	converted.Properties.Resources = toResourcesDataModel(src.Properties.Resources)
 	converted.Properties.Auth = toAuthDataModel(src.Properties.Auth)
+	converted.Properties.Scopes = toScopesDataModel(src.Properties.Scopes)
 
 	// Note: The metadata, type, and version fields cannot be specified when using recipes since
 	// the recipe is expected to create the Dapr Component manifest. However, they are required
@@ -134,7 +135,8 @@ func (dst *DaprConfigurationStoreResource) ConvertFrom(src v1.DataModelInterface
 			OutputResources: toOutputResources(daprConfigstore.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(daprConfigstore.Properties.Status.Recipe),
 		},
-		Auth: fromAuthDataModel(daprConfigstore.Properties.Auth),
+		Auth:   fromAuthDataModel(daprConfigstore.Properties.Auth),
+		Scopes: fromScopesDataModel(daprConfigstore.Properties.Scopes),
 	}
 
 	if daprConfigstore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
