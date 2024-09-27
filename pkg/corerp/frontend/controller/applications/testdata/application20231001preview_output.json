@@ -1,31 +1,31 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/app0",
-    "location": "West US",
-    "name": "app0",
-    "properties": {
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
-        "provisioningState": "Succeeded",
-        "extensions": [
-            {
-                "kind": "kubernetesNamespace",
-                "namespace": "app0-ns"
-            }
-        ],
-        "status": {
-            "compute": {
-                "kind": "kubernetes",
-                "namespace": "app0-ns"
-            }
-        }
-    },
-    "systemData": {
-        "createdAt": "2022-03-22T18:54:52.6857175Z",
-        "createdBy": "fake@hotmail.com",
-        "createdByType": "User",
-        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
-        "lastModifiedBy": "fake@hotmail.com",
-        "lastModifiedByType": "User"
-    },
-    "tags": {},
-    "type": "applications.core/applications"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/app0",
+  "location": "West US",
+  "name": "app0",
+  "properties": {
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+    "provisioningState": "Succeeded",
+    "extensions": [
+      {
+        "kind": "kubernetesNamespace",
+        "namespace": "app0-ns"
+      }
+    ],
+    "status": {
+      "compute": {
+        "kind": "kubernetes",
+        "namespace": "app0-ns"
+      }
+    }
+  },
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "fake@hotmail.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "fake@hotmail.com",
+    "lastModifiedByType": "User"
+  },
+  "tags": {},
+  "type": "applications.core/applications"
 }

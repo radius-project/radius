@@ -1,39 +1,39 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-    "name": "env0",
-    "type": "Applications.Core/environments",
-    "properties": {
-        "compute": {
-            "kind": "kubernetes",
-            "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
-            "namespace": "default",
-            "identity": {
-                "kind": "azure.com.workload",
-                "resource": "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
-                "oidcIssuer": "https://oidcurl/guid"
-            }
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+  "name": "env0",
+  "type": "Applications.Core/environments",
+  "properties": {
+    "compute": {
+      "kind": "kubernetes",
+      "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+      "namespace": "default",
+      "identity": {
+        "kind": "azure.com.workload",
+        "resource": "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
+        "oidcIssuer": "https://oidcurl/guid"
+      }
+    },
+    "providers": {
+      "azure": {
+        "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
+      }
+    },
+    "recipeConfig": {
+      "terraform": {
+        "authentication": {
+          "git": {}
         },
-        "providers": {
-            "azure": {
-                "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
-            }
-        },
-        "recipeConfig": {
-            "terraform": {
-                "authentication": {
-                    "git": {}
-                },
-                "providers": {}
-            },
-            "env": {}
-        },
-        "recipes": {
-            "Applications.Datastores/mongoDatabases": {
-                "cosmos-recipe": {
-                    "templateKind": "bicep",
-                    "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"
-                }
-            }
+        "providers": {}
+      },
+      "env": {}
+    },
+    "recipes": {
+      "Applications.Datastores/mongoDatabases": {
+        "cosmos-recipe": {
+          "templateKind": "bicep",
+          "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"
         }
+      }
     }
+  }
 }

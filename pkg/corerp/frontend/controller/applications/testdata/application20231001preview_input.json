@@ -1,13 +1,13 @@
 {
-    "location": "West US",
-    "properties": {
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
-        "provisioningState": "Succeeded",
-        "extensions": [
-            {
-                "kind": "kubernetesNamespace",
-                "namespace": "app0-ns"
-            }
-        ]
-    }
+  "location": "West US",
+  "properties": {
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+    "provisioningState": "Succeeded",
+    "extensions": [
+      {
+        "kind": "kubernetesNamespace",
+        "namespace": "app0-ns"
+      }
+    ]
+  }
 }

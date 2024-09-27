@@ -62,9 +62,7 @@
           }
         }
       },
-      "dependsOn": [
-        "app"
-      ]
+      "dependsOn": ["app"]
     },
     "containerb": {
       "import": "radius",
@@ -79,9 +77,7 @@
           }
         }
       },
-      "dependsOn": [
-        "app"
-      ]
+      "dependsOn": ["app"]
     }
   }
 }

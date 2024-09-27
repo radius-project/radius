@@ -16,13 +16,13 @@
             "properties": {
               "provisioningState": "Succeeded",
               "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-              "routes":[
+              "routes": [
                 {
                   "destination": "http://frontend",
-                  "path":"/"
+                  "path": "/"
                 }
-              ],    
-              "tls":{
+              ],
+              "tls": {
                 "sslPassthrough": false,
                 "hostname": "myapp.radapp.io",
                 "minimumProtocolVersion": "1.2",
@@ -37,13 +37,13 @@
             "properties": {
               "provisioningState": "Succeeded",
               "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-              "routes":[
+              "routes": [
                 {
                   "destination": "http://frontend",
-                  "path":"/backend2"
+                  "path": "/backend2"
                 }
-              ],    
-              "tls":{
+              ],
+              "tls": {
                 "sslPassthrough": false,
                 "hostname": "myapp.radapp.io",
                 "minimumProtocolVersion": "1.2",

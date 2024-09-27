@@ -1,15 +1,15 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/westus/operationsStatuses/00000000-0000-0000-0000-000000000000",
-    "name": "op0",
-    "type": "Applications.Core/operationStatuses",
-    "operationType": "PUT",
-    "location": "West US",
-    "status": "Succeeded",
-    "startTime": "2022-05-16T10:24:58.000000Z",
-    "endTime": "2022-05-16T17:24:58.000000Z",
-    "percentComplete": "100",
-    "properties": {
-        "provisioningState": "Succeeded"
-    },
-    "error": {}
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/westus/operationsStatuses/00000000-0000-0000-0000-000000000000",
+  "name": "op0",
+  "type": "Applications.Core/operationStatuses",
+  "operationType": "PUT",
+  "location": "West US",
+  "status": "Succeeded",
+  "startTime": "2022-05-16T10:24:58.000000Z",
+  "endTime": "2022-05-16T17:24:58.000000Z",
+  "percentComplete": "100",
+  "properties": {
+    "provisioningState": "Succeeded"
+  },
+  "error": {}
 }

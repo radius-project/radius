@@ -10,21 +10,13 @@
       }
     ]
   },
-  "schemes": [
-    "https"
-  ],
+  "schemes": ["https"],
   "host": "management.azure.com",
-  "produces": [
-    "application/json"
-  ],
-  "consumes": [
-    "application/json"
-  ],
+  "produces": ["application/json"],
+  "consumes": ["application/json"],
   "security": [
     {
-      "azure_auth": [
-        "user_impersonation"
-      ]
+      "azure_auth": ["user_impersonation"]
     }
   ],
   "securityDefinitions": {
@@ -56,9 +48,7 @@
     "/{rootScope}/providers/Applications.Datastores/mongoDatabases": {
       "get": {
         "operationId": "MongoDatabases_ListByScope",
-        "tags": [
-          "MongoDatabases"
-        ],
+        "tags": ["MongoDatabases"],
         "description": "List MongoDatabaseResource resources by Scope",
         "parameters": [
           {
@@ -98,9 +88,7 @@
     "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}": {
       "get": {
         "operationId": "MongoDatabases_Get",
-        "tags": [
-          "MongoDatabases"
-        ],
+        "tags": ["MongoDatabases"],
         "description": "Get a MongoDatabaseResource",
         "parameters": [
           {
@@ -141,9 +129,7 @@
       },
       "put": {
         "operationId": "MongoDatabases_CreateOrUpdate",
-        "tags": [
-          "MongoDatabases"
-        ],
+        "tags": ["MongoDatabases"],
         "description": "Create a MongoDatabaseResource",
         "parameters": [
           {
@@ -213,9 +199,7 @@
       },
       "patch": {
         "operationId": "MongoDatabases_Update",
-        "tags": [
-          "MongoDatabases"
-        ],
+        "tags": ["MongoDatabases"],
         "description": "Update a MongoDatabaseResource",
         "parameters": [
           {
@@ -278,9 +262,7 @@
       },
       "delete": {
         "operationId": "MongoDatabases_Delete",
-        "tags": [
-          "MongoDatabases"
-        ],
+        "tags": ["MongoDatabases"],
         "description": "Delete a MongoDatabaseResource",
         "parameters": [
           {
@@ -341,9 +323,7 @@
     "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}/listSecrets": {
       "post": {
         "operationId": "MongoDatabases_ListSecrets",
-        "tags": [
-          "MongoDatabases"
-        ],
+        "tags": ["MongoDatabases"],
         "description": "Lists secrets values for the specified MongoDatabases resource",
         "parameters": [
           {
@@ -396,9 +376,7 @@
     "/{rootScope}/providers/Applications.Datastores/redisCaches": {
       "get": {
         "operationId": "RedisCaches_ListByScope",
-        "tags": [
-          "RedisCaches"
-        ],
+        "tags": ["RedisCaches"],
         "description": "List RedisCacheResource resources by Scope",
         "parameters": [
           {
@@ -438,9 +416,7 @@
     "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}": {
       "get": {
         "operationId": "RedisCaches_Get",
-        "tags": [
-          "RedisCaches"
-        ],
+        "tags": ["RedisCaches"],
         "description": "Get a RedisCacheResource",
         "parameters": [
           {
@@ -481,9 +457,7 @@
       },
       "put": {
         "operationId": "RedisCaches_CreateOrUpdate",
-        "tags": [
-          "RedisCaches"
-        ],
+        "tags": ["RedisCaches"],
         "description": "Create a RedisCacheResource",
         "parameters": [
           {
@@ -556,9 +530,7 @@
       },
       "patch": {
         "operationId": "RedisCaches_Update",
-        "tags": [
-          "RedisCaches"
-        ],
+        "tags": ["RedisCaches"],
         "description": "Update a RedisCacheResource",
         "parameters": [
           {
@@ -626,9 +598,7 @@
       },
       "delete": {
         "operationId": "RedisCaches_Delete",
-        "tags": [
-          "RedisCaches"
-        ],
+        "tags": ["RedisCaches"],
         "description": "Delete a RedisCacheResource",
         "parameters": [
           {
@@ -689,9 +659,7 @@
     "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}/listSecrets": {
       "post": {
         "operationId": "RedisCaches_ListSecrets",
-        "tags": [
-          "RedisCaches"
-        ],
+        "tags": ["RedisCaches"],
         "description": "Lists secrets values for the specified RedisCache resource",
         "parameters": [
           {
@@ -744,9 +712,7 @@
     "/{rootScope}/providers/Applications.Datastores/sqlDatabases": {
       "get": {
         "operationId": "SqlDatabases_ListByScope",
-        "tags": [
-          "SqlDatabases"
-        ],
+        "tags": ["SqlDatabases"],
         "description": "List SqlDatabaseResource resources by Scope",
         "parameters": [
           {
@@ -786,9 +752,7 @@
     "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}": {
       "get": {
         "operationId": "SqlDatabases_Get",
-        "tags": [
-          "SqlDatabases"
-        ],
+        "tags": ["SqlDatabases"],
         "description": "Get a SqlDatabaseResource",
         "parameters": [
           {
@@ -829,9 +793,7 @@
       },
       "put": {
         "operationId": "SqlDatabases_CreateOrUpdate",
-        "tags": [
-          "SqlDatabases"
-        ],
+        "tags": ["SqlDatabases"],
         "description": "Create a SqlDatabaseResource",
         "parameters": [
           {
@@ -898,9 +860,7 @@
       },
       "patch": {
         "operationId": "SqlDatabases_Update",
-        "tags": [
-          "SqlDatabases"
-        ],
+        "tags": ["SqlDatabases"],
         "description": "Update a SqlDatabaseResource",
         "parameters": [
           {
@@ -968,9 +928,7 @@
       },
       "delete": {
         "operationId": "SqlDatabases_Delete",
-        "tags": [
-          "SqlDatabases"
-        ],
+        "tags": ["SqlDatabases"],
         "description": "Delete a SqlDatabaseResource",
         "parameters": [
           {
@@ -1031,9 +989,7 @@
     "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}/listSecrets": {
       "post": {
         "operationId": "SqlDatabases_ListSecrets",
-        "tags": [
-          "SqlDatabases"
-        ],
+        "tags": ["SqlDatabases"],
         "description": "Lists secrets values for the specified SqlDatabase resource",
         "parameters": [
           {
@@ -1081,9 +1037,7 @@
     "/providers/Applications.Datastores/operations": {
       "get": {
         "operationId": "Operations_List",
-        "tags": [
-          "Operations"
-        ],
+        "tags": ["Operations"],
         "description": "List the operations for the provider",
         "parameters": [
           {
@@ -1129,17 +1083,12 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "IdentitySettingKind": {
       "type": "string",
       "description": "IdentitySettingKind is the kind of supported external identity setting",
-      "enum": [
-        "undefined",
-        "azure.com.workload"
-      ],
+      "enum": ["undefined", "azure.com.workload"],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
         "modelAsString": true,
@@ -1174,9 +1123,7 @@
           "description": "The resource ID of the provisioned identity"
         }
       },
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "KubernetesCompute": {
       "type": "object",
@@ -1187,9 +1134,7 @@
           "description": "The namespace to use for the environment."
         }
       },
-      "required": [
-        "namespace"
-      ],
+      "required": ["namespace"],
       "allOf": [
         {
           "$ref": "#/definitions/EnvironmentCompute"
@@ -1270,9 +1215,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "required": [
-        "environment"
-      ]
+      "required": ["environment"]
     },
     "MongoDatabaseResource": {
       "type": "object",
@@ -1282,15 +1225,10 @@
           "$ref": "#/definitions/MongoDatabaseProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1314,9 +1252,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "MongoDatabaseResourceUpdate": {
       "type": "object",
@@ -1486,9 +1422,7 @@
           "properties": {}
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "RecipeStatus": {
       "type": "object",
@@ -1507,10 +1441,7 @@
           "description": "TemplateVersion is the version number of the template."
         }
       },
-      "required": [
-        "templateKind",
-        "templatePath"
-      ]
+      "required": ["templateKind", "templatePath"]
     },
     "RecipeUpdate": {
       "type": "object",
@@ -1604,9 +1535,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "required": [
-        "environment"
-      ]
+      "required": ["environment"]
     },
     "RedisCacheResource": {
       "type": "object",
@@ -1616,15 +1545,10 @@
           "$ref": "#/definitions/RedisCacheProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1648,9 +1572,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "RedisCacheResourceUpdate": {
       "type": "object",
@@ -1740,10 +1662,7 @@
     "ResourceProvisioning": {
       "type": "string",
       "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
-      "enum": [
-        "recipe",
-        "manual"
-      ],
+      "enum": ["recipe", "manual"],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
         "modelAsString": true,
@@ -1770,9 +1689,7 @@
           "description": "Resource id of an existing resource"
         }
       },
-      "required": [
-        "id"
-      ]
+      "required": ["id"]
     },
     "ResourceStatus": {
       "type": "object",
@@ -1870,9 +1787,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "required": [
-        "environment"
-      ]
+      "required": ["environment"]
     },
     "SqlDatabaseResource": {
       "type": "object",
@@ -1882,15 +1797,10 @@
           "$ref": "#/definitions/SqlDatabaseProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1914,9 +1824,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "SqlDatabaseResourceUpdate": {
       "type": "object",
@@ -2002,9 +1910,7 @@
     "Versions": {
       "type": "string",
       "description": "Supported API versions for the Applications.Databases resource provider.",
-      "enum": [
-        "2023-10-01-preview"
-      ],
+      "enum": ["2023-10-01-preview"],
       "x-ms-enum": {
         "name": "Versions",
         "modelAsString": true,

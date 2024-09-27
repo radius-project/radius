@@ -1,10 +1,9 @@
 {
-    "id": "/planes/radius/local",
-    "name": "local",
-    "type": "System.Radius/planes",
-    "properties": {
-        "kind": "UCPNative",
-        "resourceProviders": {
-        }
-    }
+  "id": "/planes/radius/local",
+  "name": "local",
+  "type": "System.Radius/planes",
+  "properties": {
+    "kind": "UCPNative",
+    "resourceProviders": {}
+  }
 }

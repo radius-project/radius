@@ -10,21 +10,13 @@
       }
     ]
   },
-  "schemes": [
-    "https"
-  ],
+  "schemes": ["https"],
   "host": "management.azure.com",
-  "produces": [
-    "application/json"
-  ],
-  "consumes": [
-    "application/json"
-  ],
+  "produces": ["application/json"],
+  "consumes": ["application/json"],
   "security": [
     {
-      "azure_auth": [
-        "user_impersonation"
-      ]
+      "azure_auth": ["user_impersonation"]
     }
   ],
   "securityDefinitions": {
@@ -50,9 +42,7 @@
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues": {
       "get": {
         "operationId": "RabbitMqQueues_ListByScope",
-        "tags": [
-          "RabbitMQQueues"
-        ],
+        "tags": ["RabbitMQQueues"],
         "description": "List RabbitMQQueueResource resources by Scope",
         "parameters": [
           {
@@ -92,9 +82,7 @@
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}": {
       "get": {
         "operationId": "RabbitMqQueues_Get",
-        "tags": [
-          "RabbitMQQueues"
-        ],
+        "tags": ["RabbitMQQueues"],
         "description": "Get a RabbitMQQueueResource",
         "parameters": [
           {
@@ -135,9 +123,7 @@
       },
       "put": {
         "operationId": "RabbitMqQueues_CreateOrUpdate",
-        "tags": [
-          "RabbitMQQueues"
-        ],
+        "tags": ["RabbitMQQueues"],
         "description": "Create a RabbitMQQueueResource",
         "parameters": [
           {
@@ -204,9 +190,7 @@
       },
       "patch": {
         "operationId": "RabbitMqQueues_Update",
-        "tags": [
-          "RabbitMQQueues"
-        ],
+        "tags": ["RabbitMQQueues"],
         "description": "Update a RabbitMQQueueResource",
         "parameters": [
           {
@@ -274,9 +258,7 @@
       },
       "delete": {
         "operationId": "RabbitMqQueues_Delete",
-        "tags": [
-          "RabbitMQQueues"
-        ],
+        "tags": ["RabbitMQQueues"],
         "description": "Delete a RabbitMQQueueResource",
         "parameters": [
           {
@@ -337,9 +319,7 @@
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}/listSecrets": {
       "post": {
         "operationId": "RabbitMqQueues_ListSecrets",
-        "tags": [
-          "RabbitMQQueues"
-        ],
+        "tags": ["RabbitMQQueues"],
         "description": "Lists secrets values for the specified RabbitMQQueue resource",
         "parameters": [
           {
@@ -392,9 +372,7 @@
     "/providers/Applications.Messaging/operations": {
       "get": {
         "operationId": "Operations_List",
-        "tags": [
-          "Operations"
-        ],
+        "tags": ["Operations"],
         "description": "List the operations for the provider",
         "parameters": [
           {
@@ -440,17 +418,12 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "IdentitySettingKind": {
       "type": "string",
       "description": "IdentitySettingKind is the kind of supported external identity setting",
-      "enum": [
-        "undefined",
-        "azure.com.workload"
-      ],
+      "enum": ["undefined", "azure.com.workload"],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
         "modelAsString": true,
@@ -485,9 +458,7 @@
           "description": "The resource ID of the provisioned identity"
         }
       },
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "KubernetesCompute": {
       "type": "object",
@@ -498,9 +469,7 @@
           "description": "The namespace to use for the environment."
         }
       },
-      "required": [
-        "namespace"
-      ],
+      "required": ["namespace"],
       "allOf": [
         {
           "$ref": "#/definitions/EnvironmentCompute"
@@ -662,9 +631,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "required": [
-        "environment"
-      ]
+      "required": ["environment"]
     },
     "RabbitMQQueueResource": {
       "type": "object",
@@ -674,15 +641,10 @@
           "$ref": "#/definitions/RabbitMQQueueProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -706,9 +668,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "RabbitMQQueueResourceUpdate": {
       "type": "object",
@@ -813,9 +773,7 @@
           "properties": {}
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "RecipeStatus": {
       "type": "object",
@@ -834,10 +792,7 @@
           "description": "TemplateVersion is the version number of the template."
         }
       },
-      "required": [
-        "templateKind",
-        "templatePath"
-      ]
+      "required": ["templateKind", "templatePath"]
     },
     "RecipeUpdate": {
       "type": "object",
@@ -857,10 +812,7 @@
     "ResourceProvisioning": {
       "type": "string",
       "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
-      "enum": [
-        "recipe",
-        "manual"
-      ],
+      "enum": ["recipe", "manual"],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
         "modelAsString": true,
@@ -887,9 +839,7 @@
           "description": "Resource id of an existing resource"
         }
       },
-      "required": [
-        "id"
-      ]
+      "required": ["id"]
     },
     "ResourceStatus": {
       "type": "object",
@@ -917,9 +867,7 @@
     "Versions": {
       "type": "string",
       "description": "Supported API versions for the Applications.Messaging resource provider.",
-      "enum": [
-        "2023-10-01-preview"
-      ],
+      "enum": ["2023-10-01-preview"],
       "x-ms-enum": {
         "name": "Versions",
         "modelAsString": true,

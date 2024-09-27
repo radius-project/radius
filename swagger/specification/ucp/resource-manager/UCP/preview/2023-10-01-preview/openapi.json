@@ -10,21 +10,13 @@
       }
     ]
   },
-  "schemes": [
-    "https"
-  ],
+  "schemes": ["https"],
   "host": "management.azure.com",
-  "produces": [
-    "application/json"
-  ],
-  "consumes": [
-    "application/json"
-  ],
+  "produces": ["application/json"],
+  "consumes": ["application/json"],
   "security": [
     {
-      "azure_auth": [
-        "user_impersonation"
-      ]
+      "azure_auth": ["user_impersonation"]
     }
   ],
   "securityDefinitions": {
@@ -68,9 +60,7 @@
     "/planes": {
       "get": {
         "operationId": "Planes_ListPlanes",
-        "tags": [
-          "Planes"
-        ],
+        "tags": ["Planes"],
         "description": "List all planes",
         "parameters": [
           {
@@ -104,9 +94,7 @@
     "/planes/aws": {
       "get": {
         "operationId": "AwsPlanes_List",
-        "tags": [
-          "AwsPlanes"
-        ],
+        "tags": ["AwsPlanes"],
         "description": "List AWS planes",
         "parameters": [
           {
@@ -135,9 +123,7 @@
     "/planes/aws/{planeName}": {
       "get": {
         "operationId": "AwsPlanes_Get",
-        "tags": [
-          "AwsPlanes"
-        ],
+        "tags": ["AwsPlanes"],
         "description": "Get a plane by name",
         "parameters": [
           {
@@ -170,9 +156,7 @@
       },
       "put": {
         "operationId": "AwsPlanes_CreateOrUpdate",
-        "tags": [
-          "AwsPlanes"
-        ],
+        "tags": ["AwsPlanes"],
         "description": "Create or update a plane",
         "parameters": [
           {
@@ -231,9 +215,7 @@
       },
       "patch": {
         "operationId": "AwsPlanes_Update",
-        "tags": [
-          "AwsPlanes"
-        ],
+        "tags": ["AwsPlanes"],
         "description": "Update a plane",
         "parameters": [
           {
@@ -293,9 +275,7 @@
       },
       "delete": {
         "operationId": "AwsPlanes_Delete",
-        "tags": [
-          "AwsPlanes"
-        ],
+        "tags": ["AwsPlanes"],
         "description": "Delete a plane",
         "parameters": [
           {
@@ -348,9 +328,7 @@
     "/planes/aws/{planeName}/providers/System.AWS/credentials": {
       "get": {
         "operationId": "AwsCredentials_List",
-        "tags": [
-          "AwsCredentials"
-        ],
+        "tags": ["AwsCredentials"],
         "description": "List AWS credentials",
         "parameters": [
           {
@@ -390,9 +368,7 @@
     "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}": {
       "get": {
         "operationId": "AwsCredentials_Get",
-        "tags": [
-          "AwsCredentials"
-        ],
+        "tags": ["AwsCredentials"],
         "description": "Get an AWS credential",
         "parameters": [
           {
@@ -436,9 +412,7 @@
       },
       "put": {
         "operationId": "AwsCredentials_CreateOrUpdate",
-        "tags": [
-          "AwsCredentials"
-        ],
+        "tags": ["AwsCredentials"],
         "description": "Create or update an AWS credential",
         "parameters": [
           {
@@ -497,9 +471,7 @@
       },
       "patch": {
         "operationId": "AwsCredentials_Update",
-        "tags": [
-          "AwsCredentials"
-        ],
+        "tags": ["AwsCredentials"],
         "description": "Update an AWS credential",
         "parameters": [
           {
@@ -552,9 +524,7 @@
       },
       "delete": {
         "operationId": "AwsCredentials_Delete",
-        "tags": [
-          "AwsCredentials"
-        ],
+        "tags": ["AwsCredentials"],
         "description": "Delete an AWS credential",
         "parameters": [
           {
@@ -600,9 +570,7 @@
     "/planes/azure": {
       "get": {
         "operationId": "AzurePlanes_List",
-        "tags": [
-          "AzurePlanes"
-        ],
+        "tags": ["AzurePlanes"],
         "description": "List azure planes",
         "parameters": [
           {
@@ -631,9 +599,7 @@
     "/planes/azure/{planeName}": {
       "get": {
         "operationId": "AzurePlanes_Get",
-        "tags": [
-          "AzurePlanes"
-        ],
+        "tags": ["AzurePlanes"],
         "description": "Get a plane by name",
         "parameters": [
           {
@@ -666,9 +632,7 @@
       },
       "put": {
         "operationId": "AzurePlanes_CreateOrUpdate",
-        "tags": [
-          "AzurePlanes"
-        ],
+        "tags": ["AzurePlanes"],
         "description": "Create or update a plane",
         "parameters": [
           {
@@ -727,9 +691,7 @@
       },
       "patch": {
         "operationId": "AzurePlanes_Update",
-        "tags": [
-          "AzurePlanes"
-        ],
+        "tags": ["AzurePlanes"],
         "description": "Update a plane",
         "parameters": [
           {
@@ -789,9 +751,7 @@
       },
       "delete": {
         "operationId": "AzurePlanes_Delete",
-        "tags": [
-          "AzurePlanes"
-        ],
+        "tags": ["AzurePlanes"],
         "description": "Delete a plane",
         "parameters": [
           {
@@ -844,9 +804,7 @@
     "/planes/azure/{planeName}/providers/System.Azure/credentials": {
       "get": {
         "operationId": "AzureCredentials_List",
-        "tags": [
-          "AzureCredentials"
-        ],
+        "tags": ["AzureCredentials"],
         "description": "List Azure credentials",
         "parameters": [
           {
@@ -886,9 +844,7 @@
     "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}": {
       "get": {
         "operationId": "AzureCredentials_Get",
-        "tags": [
-          "AzureCredentials"
-        ],
+        "tags": ["AzureCredentials"],
         "description": "Get an Azure credential",
         "parameters": [
           {
@@ -932,9 +888,7 @@
       },
       "put": {
         "operationId": "AzureCredentials_CreateOrUpdate",
-        "tags": [
-          "AzureCredentials"
-        ],
+        "tags": ["AzureCredentials"],
         "description": "Create or update an Azure credential",
         "parameters": [
           {
@@ -993,9 +947,7 @@
       },
       "patch": {
         "operationId": "AzureCredentials_Update",
-        "tags": [
-          "AzureCredentials"
-        ],
+        "tags": ["AzureCredentials"],
         "description": "Update an Azure credential",
         "parameters": [
           {
@@ -1048,9 +1000,7 @@
       },
       "delete": {
         "operationId": "AzureCredentials_Delete",
-        "tags": [
-          "AzureCredentials"
-        ],
+        "tags": ["AzureCredentials"],
         "description": "Delete an Azure credential",
         "parameters": [
           {
@@ -1096,9 +1046,7 @@
     "/planes/radius": {
       "get": {
         "operationId": "RadiusPlanes_List",
-        "tags": [
-          "RadiusPlanes"
-        ],
+        "tags": ["RadiusPlanes"],
         "description": "List Radius planes",
         "parameters": [
           {
@@ -1127,9 +1075,7 @@
     "/planes/radius/{planeName}": {
       "get": {
         "operationId": "RadiusPlanes_Get",
-        "tags": [
-          "RadiusPlanes"
-        ],
+        "tags": ["RadiusPlanes"],
         "description": "Get a plane by name",
         "parameters": [
           {
@@ -1162,9 +1108,7 @@
       },
       "put": {
         "operationId": "RadiusPlanes_CreateOrUpdate",
-        "tags": [
-          "RadiusPlanes"
-        ],
+        "tags": ["RadiusPlanes"],
         "description": "Create or update a plane",
         "parameters": [
           {
@@ -1223,9 +1167,7 @@
       },
       "patch": {
         "operationId": "RadiusPlanes_Update",
-        "tags": [
-          "RadiusPlanes"
-        ],
+        "tags": ["RadiusPlanes"],
         "description": "Update a plane",
         "parameters": [
           {
@@ -1285,9 +1227,7 @@
       },
       "delete": {
         "operationId": "RadiusPlanes_Delete",
-        "tags": [
-          "RadiusPlanes"
-        ],
+        "tags": ["RadiusPlanes"],
         "description": "Delete a plane",
         "parameters": [
           {
@@ -1340,9 +1280,7 @@
     "/planes/radius/{planeName}/resourcegroups": {
       "get": {
         "operationId": "ResourceGroups_List",
-        "tags": [
-          "ResourceGroups"
-        ],
+        "tags": ["ResourceGroups"],
         "description": "List resource groups",
         "parameters": [
           {
@@ -1385,9 +1323,7 @@
     "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}": {
       "get": {
         "operationId": "ResourceGroups_Get",
-        "tags": [
-          "ResourceGroups"
-        ],
+        "tags": ["ResourceGroups"],
         "description": "Get a resource group",
         "parameters": [
           {
@@ -1434,9 +1370,7 @@
       },
       "put": {
         "operationId": "ResourceGroups_CreateOrUpdate",
-        "tags": [
-          "ResourceGroups"
-        ],
+        "tags": ["ResourceGroups"],
         "description": "Create or update a resource group",
         "parameters": [
           {
@@ -1498,9 +1432,7 @@
       },
       "patch": {
         "operationId": "ResourceGroups_Update",
-        "tags": [
-          "ResourceGroups"
-        ],
+        "tags": ["ResourceGroups"],
         "description": "Update a resource group",
         "parameters": [
           {
@@ -1556,9 +1488,7 @@
       },
       "delete": {
         "operationId": "ResourceGroups_Delete",
-        "tags": [
-          "ResourceGroups"
-        ],
+        "tags": ["ResourceGroups"],
         "description": "Delete a resource group",
         "parameters": [
           {
@@ -1607,9 +1537,7 @@
     "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}/resources": {
       "get": {
         "operationId": "Resources_List",
-        "tags": [
-          "Resources"
-        ],
+        "tags": ["Resources"],
         "description": "List resources in a resource group",
         "parameters": [
           {
@@ -1663,10 +1591,7 @@
     "AWSCredentialKind": {
       "type": "string",
       "description": "AWS credential kind",
-      "enum": [
-        "AccessKey",
-        "IRSA"
-      ],
+      "enum": ["AccessKey", "IRSA"],
       "x-ms-enum": {
         "name": "AWSCredentialKind",
         "modelAsString": true,
@@ -1705,11 +1630,7 @@
           "description": "The storage properties"
         }
       },
-      "required": [
-        "accessKeyId",
-        "secretAccessKey",
-        "storage"
-      ],
+      "required": ["accessKeyId", "secretAccessKey", "storage"],
       "allOf": [
         {
           "$ref": "#/definitions/AwsCredentialProperties"
@@ -1732,9 +1653,7 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "AwsCredentialResource": {
       "type": "object",
@@ -1744,15 +1663,10 @@
           "$ref": "#/definitions/AwsCredentialProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1776,9 +1690,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "AwsCredentialResourceTagsUpdate": {
       "type": "object",
@@ -1806,10 +1718,7 @@
           "description": "The storage properties"
         }
       },
-      "required": [
-        "roleARN",
-        "storage"
-      ],
+      "required": ["roleARN", "storage"],
       "allOf": [
         {
           "$ref": "#/definitions/AwsCredentialProperties"
@@ -1825,15 +1734,10 @@
           "$ref": "#/definitions/AwsPlaneResourceProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1857,9 +1761,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "AwsPlaneResourceProperties": {
       "type": "object",
@@ -1888,10 +1790,7 @@
     "AzureCredentialKind": {
       "type": "string",
       "description": "Azure credential kinds supported.",
-      "enum": [
-        "ServicePrincipal",
-        "WorkloadIdentity"
-      ],
+      "enum": ["ServicePrincipal", "WorkloadIdentity"],
       "x-ms-enum": {
         "name": "AzureCredentialKind",
         "modelAsString": true,
@@ -1924,9 +1823,7 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "AzureCredentialResource": {
       "type": "object",
@@ -1936,15 +1833,10 @@
           "$ref": "#/definitions/AzureCredentialProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1968,9 +1860,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "AzureCredentialResourceTagsUpdate": {
       "type": "object",
@@ -1993,15 +1883,10 @@
           "$ref": "#/definitions/AzurePlaneResourceProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2025,9 +1910,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "AzurePlaneResourceProperties": {
       "type": "object",
@@ -2043,9 +1926,7 @@
           "description": "The URL used to proxy requests."
         }
       },
-      "required": [
-        "url"
-      ]
+      "required": ["url"]
     },
     "AzurePlaneResourceTagsUpdate": {
       "type": "object",
@@ -2082,12 +1963,7 @@
           "description": "The storage properties"
         }
       },
-      "required": [
-        "clientId",
-        "clientSecret",
-        "tenantId",
-        "storage"
-      ],
+      "required": ["clientId", "clientSecret", "tenantId", "storage"],
       "allOf": [
         {
           "$ref": "#/definitions/AzureCredentialProperties"
@@ -2112,11 +1988,7 @@
           "description": "The storage properties"
         }
       },
-      "required": [
-        "clientId",
-        "tenantId",
-        "storage"
-      ],
+      "required": ["clientId", "tenantId", "storage"],
       "allOf": [
         {
           "$ref": "#/definitions/AzureCredentialProperties"
@@ -2127,9 +1999,7 @@
     "CredentialStorageKind": {
       "type": "string",
       "description": "Credential store kinds supported.",
-      "enum": [
-        "Internal"
-      ],
+      "enum": ["Internal"],
       "x-ms-enum": {
         "name": "CredentialStorageKind",
         "modelAsString": true,
@@ -2152,9 +2022,7 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "GenericPlaneResource": {
       "type": "object",
@@ -2164,15 +2032,10 @@
           "$ref": "#/definitions/GenericPlaneResourceProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2196,9 +2059,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "GenericPlaneResourceProperties": {
       "type": "object",
@@ -2221,9 +2082,7 @@
           "readOnly": true
         }
       },
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "allOf": [
         {
           "type": "object",
@@ -2233,10 +2092,7 @@
               "$ref": "#/definitions/ResourceProperties",
               "description": "The resource-specific properties for this resource.",
               "x-ms-client-flatten": true,
-              "x-ms-mutability": [
-                "read",
-                "create"
-              ]
+              "x-ms-mutability": ["read", "create"]
             }
           },
           "allOf": [
@@ -2264,9 +2120,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "InternalCredentialStorageProperties": {
       "type": "object",
@@ -2278,9 +2132,7 @@
           "readOnly": true
         }
       },
-      "required": [
-        "secretName"
-      ],
+      "required": ["secretName"],
       "allOf": [
         {
           "$ref": "#/definitions/CredentialStorageProperties"
@@ -2299,9 +2151,7 @@
           "x-ms-skip-url-encoding": true
         }
       },
-      "required": [
-        "planeName"
-      ]
+      "required": ["planeName"]
     },
     "ProvisioningState": {
       "type": "string",
@@ -2366,15 +2216,10 @@
           "$ref": "#/definitions/RadiusPlaneResourceProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2398,9 +2243,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "RadiusPlaneResourceProperties": {
       "type": "object",
@@ -2419,9 +2262,7 @@
           }
         }
       },
-      "required": [
-        "resourceProviders"
-      ]
+      "required": ["resourceProviders"]
     },
     "RadiusPlaneResourceTagsUpdate": {
       "type": "object",
@@ -2455,10 +2296,7 @@
           "$ref": "#/definitions/ResourceGroupProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
       "allOf": [
@@ -2484,9 +2322,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "ResourceGroupResourceTagsUpdate": {
       "type": "object",
@@ -2515,9 +2351,7 @@
     "Versions": {
       "type": "string",
       "description": "Supported API versions for Universal Control Plane resource provider.",
-      "enum": [
-        "2023-10-01-preview"
-      ],
+      "enum": ["2023-10-01-preview"],
       "x-ms-enum": {
         "name": "Versions",
         "modelAsString": true,

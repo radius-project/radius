@@ -1,17 +1,17 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-    "name": "env0",
-    "type": "applications.core/environments",
-    "location": "global",
-    "provisioningState": "Succeeded",
-    "properties": {
-        "compute": {
-            "kind": "non-kubernetes"
-        }
-    },
-    "tenantId": "00000000-0000-0000-0000-000000000000",
-    "subscriptionId": "00000000-0000-0000-0000-000000000000",
-    "resourceGroup": "testGroup",
-    "createdApiVersion": "2023-10-01-preview",
-    "updatedApiVersion": "2023-10-01-preview"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+  "name": "env0",
+  "type": "applications.core/environments",
+  "location": "global",
+  "provisioningState": "Succeeded",
+  "properties": {
+    "compute": {
+      "kind": "non-kubernetes"
+    }
+  },
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "testGroup",
+  "createdApiVersion": "2023-10-01-preview",
+  "updatedApiVersion": "2023-10-01-preview"
 }

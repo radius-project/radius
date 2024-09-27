@@ -1,11 +1,11 @@
 {
-    "value": [
-        {
-            "location": "global",
-            "id": "/planes/radius/local/resourcegroups/test-rg",
-            "name": "test-rg",
-            "tags":{},
-            "type": "System.Resources/resourceGroups"
-        }
-    ]
+  "value": [
+    {
+      "location": "global",
+      "id": "/planes/radius/local/resourcegroups/test-rg",
+      "name": "test-rg",
+      "tags": {},
+      "type": "System.Resources/resourceGroups"
+    }
+  ]
 }

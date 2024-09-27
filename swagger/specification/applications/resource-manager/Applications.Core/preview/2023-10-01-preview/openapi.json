@@ -10,21 +10,13 @@
       }
     ]
   },
-  "schemes": [
-    "https"
-  ],
+  "schemes": ["https"],
   "host": "management.azure.com",
-  "produces": [
-    "application/json"
-  ],
-  "consumes": [
-    "application/json"
-  ],
+  "produces": ["application/json"],
+  "consumes": ["application/json"],
   "security": [
     {
-      "azure_auth": [
-        "user_impersonation"
-      ]
+      "azure_auth": ["user_impersonation"]
     }
   ],
   "securityDefinitions": {
@@ -68,9 +60,7 @@
     "/{rootScope}/providers/Applications.Core/applications": {
       "get": {
         "operationId": "Applications_ListByScope",
-        "tags": [
-          "Applications"
-        ],
+        "tags": ["Applications"],
         "description": "List ApplicationResource resources by Scope",
         "parameters": [
           {
@@ -110,9 +100,7 @@
     "/{rootScope}/providers/Applications.Core/applications/{applicationName}": {
       "get": {
         "operationId": "Applications_Get",
-        "tags": [
-          "Applications"
-        ],
+        "tags": ["Applications"],
         "description": "Get a ApplicationResource",
         "parameters": [
           {
@@ -153,9 +141,7 @@
       },
       "put": {
         "operationId": "Applications_CreateOrUpdate",
-        "tags": [
-          "Applications"
-        ],
+        "tags": ["Applications"],
         "description": "Create a ApplicationResource",
         "parameters": [
           {
@@ -211,9 +197,7 @@
       },
       "patch": {
         "operationId": "Applications_Update",
-        "tags": [
-          "Applications"
-        ],
+        "tags": ["Applications"],
         "description": "Update a ApplicationResource",
         "parameters": [
           {
@@ -263,9 +247,7 @@
       },
       "delete": {
         "operationId": "Applications_Delete",
-        "tags": [
-          "Applications"
-        ],
+        "tags": ["Applications"],
         "description": "Delete a ApplicationResource",
         "parameters": [
           {
@@ -308,9 +290,7 @@
     "/{rootScope}/providers/Applications.Core/applications/{applicationName}/getGraph": {
       "post": {
         "operationId": "Applications_GetGraph",
-        "tags": [
-          "Applications"
-        ],
+        "tags": ["Applications"],
         "description": "Gets the application graph and resources.",
         "parameters": [
           {
@@ -358,9 +338,7 @@
     "/{rootScope}/providers/Applications.Core/containers": {
       "get": {
         "operationId": "Containers_ListByScope",
-        "tags": [
-          "Containers"
-        ],
+        "tags": ["Containers"],
         "description": "List ContainerResource resources by Scope",
         "parameters": [
           {
@@ -400,9 +378,7 @@
     "/{rootScope}/providers/Applications.Core/containers/{containerName}": {
       "get": {
         "operationId": "Containers_Get",
-        "tags": [
-          "Containers"
-        ],
+        "tags": ["Containers"],
         "description": "Get a ContainerResource",
         "parameters": [
           {
@@ -443,9 +419,7 @@
       },
       "put": {
         "operationId": "Containers_CreateOrUpdate",
-        "tags": [
-          "Containers"
-        ],
+        "tags": ["Containers"],
         "description": "Create a ContainerResource",
         "parameters": [
           {
@@ -515,9 +489,7 @@
       },
       "patch": {
         "operationId": "Containers_Update",
-        "tags": [
-          "Containers"
-        ],
+        "tags": ["Containers"],
         "description": "Update a ContainerResource",
         "parameters": [
           {
@@ -580,9 +552,7 @@
       },
       "delete": {
         "operationId": "Containers_Delete",
-        "tags": [
-          "Containers"
-        ],
+        "tags": ["Containers"],
         "description": "Delete a ContainerResource",
         "parameters": [
           {
@@ -643,9 +613,7 @@
     "/{rootScope}/providers/Applications.Core/environments": {
       "get": {
         "operationId": "Environments_ListByScope",
-        "tags": [
-          "Environments"
-        ],
+        "tags": ["Environments"],
         "description": "List EnvironmentResource resources by Scope",
         "parameters": [
           {
@@ -685,9 +653,7 @@
     "/{rootScope}/providers/Applications.Core/environments/{environmentName}": {
       "get": {
         "operationId": "Environments_Get",
-        "tags": [
-          "Environments"
-        ],
+        "tags": ["Environments"],
         "description": "Get a EnvironmentResource",
         "parameters": [
           {
@@ -728,9 +694,7 @@
       },
       "put": {
         "operationId": "Environments_CreateOrUpdate",
-        "tags": [
-          "Environments"
-        ],
+        "tags": ["Environments"],
         "description": "Create a EnvironmentResource",
         "parameters": [
           {
@@ -786,9 +750,7 @@
       },
       "patch": {
         "operationId": "Environments_Update",
-        "tags": [
-          "Environments"
-        ],
+        "tags": ["Environments"],
         "description": "Update a EnvironmentResource",
         "parameters": [
           {
@@ -838,9 +800,7 @@
       },
       "delete": {
         "operationId": "Environments_Delete",
-        "tags": [
-          "Environments"
-        ],
+        "tags": ["Environments"],
         "description": "Delete a EnvironmentResource",
         "parameters": [
           {
@@ -883,9 +843,7 @@
     "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getMetadata": {
       "post": {
         "operationId": "Environments_GetMetadata",
-        "tags": [
-          "Environments"
-        ],
+        "tags": ["Environments"],
         "description": "Gets recipe metadata including parameters and any constraints on the parameters.",
         "parameters": [
           {
@@ -937,9 +895,7 @@
     "/{rootScope}/providers/Applications.Core/extenders": {
       "get": {
         "operationId": "Extenders_ListByScope",
-        "tags": [
-          "Extenders"
-        ],
+        "tags": ["Extenders"],
         "description": "List ExtenderResource resources by Scope",
         "parameters": [
           {
@@ -979,9 +935,7 @@
     "/{rootScope}/providers/Applications.Core/extenders/{extenderName}": {
       "get": {
         "operationId": "Extenders_Get",
-        "tags": [
-          "Extenders"
-        ],
+        "tags": ["Extenders"],
         "description": "Get a ExtenderResource",
         "parameters": [
           {
@@ -1022,9 +976,7 @@
       },
       "put": {
         "operationId": "Extenders_CreateOrUpdate",
-        "tags": [
-          "Extenders"
-        ],
+        "tags": ["Extenders"],
         "description": "Create a ExtenderResource",
         "parameters": [
           {
@@ -1094,9 +1046,7 @@
       },
       "patch": {
         "operationId": "Extenders_Update",
-        "tags": [
-          "Extenders"
-        ],
+        "tags": ["Extenders"],
         "description": "Update a ExtenderResource",
         "parameters": [
           {
@@ -1164,9 +1114,7 @@
       },
       "delete": {
         "operationId": "Extenders_Delete",
-        "tags": [
-          "Extenders"
-        ],
+        "tags": ["Extenders"],
         "description": "Delete a ExtenderResource",
         "parameters": [
           {
@@ -1227,9 +1175,7 @@
     "/{rootScope}/providers/Applications.Core/extenders/{extenderName}/listSecrets": {
       "post": {
         "operationId": "Extenders_ListSecrets",
-        "tags": [
-          "Extenders"
-        ],
+        "tags": ["Extenders"],
         "description": "Lists secrets values for the specified Extender resource",
         "parameters": [
           {
@@ -1282,9 +1228,7 @@
     "/{rootScope}/providers/Applications.Core/gateways": {
       "get": {
         "operationId": "Gateways_ListByScope",
-        "tags": [
-          "Gateways"
-        ],
+        "tags": ["Gateways"],
         "description": "List GatewayResource resources by Scope",
         "parameters": [
           {
@@ -1324,9 +1268,7 @@
     "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}": {
       "get": {
         "operationId": "Gateways_Get",
-        "tags": [
-          "Gateways"
-        ],
+        "tags": ["Gateways"],
         "description": "Get a GatewayResource",
         "parameters": [
           {
@@ -1367,9 +1309,7 @@
       },
       "put": {
         "operationId": "Gateways_Create",
-        "tags": [
-          "Gateways"
-        ],
+        "tags": ["Gateways"],
         "description": "Create a GatewayResource",
         "parameters": [
           {
@@ -1431,9 +1371,7 @@
       },
       "patch": {
         "operationId": "Gateways_CreateOrUpdate",
-        "tags": [
-          "Gateways"
-        ],
+        "tags": ["Gateways"],
         "description": "Update a GatewayResource",
         "parameters": [
           {
@@ -1501,9 +1439,7 @@
       },
       "delete": {
         "operationId": "Gateways_Delete",
-        "tags": [
-          "Gateways"
-        ],
+        "tags": ["Gateways"],
         "description": "Delete a GatewayResource",
         "parameters": [
           {
@@ -1564,9 +1500,7 @@
     "/{rootScope}/providers/Applications.Core/secretStores": {
       "get": {
         "operationId": "SecretStores_ListByScope",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "List SecretStoreResource resources by Scope",
         "parameters": [
           {
@@ -1603,9 +1537,7 @@
     "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}": {
       "get": {
         "operationId": "SecretStores_Get",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "Get a SecretStoreResource",
         "parameters": [
           {
@@ -1649,9 +1581,7 @@
       },
       "put": {
         "operationId": "SecretStores_CreateOrUpdate",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "Create a SecretStoreResource",
         "parameters": [
           {
@@ -1724,9 +1654,7 @@
       },
       "patch": {
         "operationId": "SecretStores_Update",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "Update a SecretStoreResource",
         "parameters": [
           {
@@ -1797,9 +1725,7 @@
       },
       "delete": {
         "operationId": "SecretStores_Delete",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "Delete a SecretStoreResource",
         "parameters": [
           {
@@ -1855,9 +1781,7 @@
     "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}/listSecrets": {
       "post": {
         "operationId": "SecretStores_ListSecrets",
-        "tags": [
-          "SecretStores"
-        ],
+        "tags": ["SecretStores"],
         "description": "List the secrets of a secret stores.",
         "parameters": [
           {
@@ -1910,9 +1834,7 @@
     "/{rootScope}/providers/Applications.Core/volumes": {
       "get": {
         "operationId": "Volumes_ListByScope",
-        "tags": [
-          "Volumes"
-        ],
+        "tags": ["Volumes"],
         "description": "List VolumeResource resources by Scope",
         "parameters": [
           {
@@ -1952,9 +1874,7 @@
     "/{rootScope}/providers/Applications.Core/volumes/{volumeName}": {
       "get": {
         "operationId": "Volumes_Get",
-        "tags": [
-          "Volumes"
-        ],
+        "tags": ["Volumes"],
         "description": "Get a VolumeResource",
         "parameters": [
           {
@@ -1995,9 +1915,7 @@
       },
       "put": {
         "operationId": "Volumes_CreateOrUpdate",
-        "tags": [
-          "Volumes"
-        ],
+        "tags": ["Volumes"],
         "description": "Create a VolumeResource",
         "parameters": [
           {
@@ -2064,9 +1982,7 @@
       },
       "patch": {
         "operationId": "Volumes_Update",
-        "tags": [
-          "Volumes"
-        ],
+        "tags": ["Volumes"],
         "description": "Update a VolumeResource",
         "parameters": [
           {
@@ -2134,9 +2050,7 @@
       },
       "delete": {
         "operationId": "Volumes_Delete",
-        "tags": [
-          "Volumes"
-        ],
+        "tags": ["Volumes"],
         "description": "Delete a VolumeResource",
         "parameters": [
           {
@@ -2197,9 +2111,7 @@
     "/providers/Applications.Core/operations": {
       "get": {
         "operationId": "Operations_List",
-        "tags": [
-          "Operations"
-        ],
+        "tags": ["Operations"],
         "description": "List the operations for the provider",
         "parameters": [
           {
@@ -2245,10 +2157,7 @@
           "description": "The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source."
         }
       },
-      "required": [
-        "id",
-        "direction"
-      ]
+      "required": ["id", "direction"]
     },
     "ApplicationGraphOutputResource": {
       "type": "object",
@@ -2267,11 +2176,7 @@
           "description": "The resource name."
         }
       },
-      "required": [
-        "id",
-        "type",
-        "name"
-      ]
+      "required": ["id", "type", "name"]
     },
     "ApplicationGraphResource": {
       "type": "object",
@@ -2295,9 +2200,7 @@
           "items": {
             "$ref": "#/definitions/ApplicationGraphOutputResource"
           },
-          "x-ms-identifiers": [
-            "id"
-          ]
+          "x-ms-identifiers": ["id"]
         },
         "connections": {
           "type": "array",
@@ -2331,14 +2234,10 @@
           "items": {
             "$ref": "#/definitions/ApplicationGraphResource"
           },
-          "x-ms-identifiers": [
-            "id"
-          ]
+          "x-ms-identifiers": ["id"]
         }
       },
-      "required": [
-        "resources"
-      ]
+      "required": ["resources"]
     },
     "ApplicationProperties": {
       "type": "object",
@@ -2367,9 +2266,7 @@
           "readOnly": true
         }
       },
-      "required": [
-        "environment"
-      ]
+      "required": ["environment"]
     },
     "ApplicationResource": {
       "type": "object",
@@ -2379,15 +2276,10 @@
           "$ref": "#/definitions/ApplicationProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2411,9 +2303,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "ApplicationResourceUpdate": {
       "type": "object",
@@ -2490,9 +2380,7 @@
           }
         }
       },
-      "required": [
-        "resource"
-      ],
+      "required": ["resource"],
       "allOf": [
         {
           "$ref": "#/definitions/VolumeProperties"
@@ -2548,10 +2436,7 @@
     "CertificateFormats": {
       "type": "string",
       "description": "Represents certificate formats",
-      "enum": [
-        "pem",
-        "pfx"
-      ],
+      "enum": ["pem", "pfx"],
       "x-ms-enum": {
         "name": "CertificateFormats",
         "modelAsString": true,
@@ -2600,18 +2485,12 @@
           "description": "Certificate version"
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "CertificateTypes": {
       "type": "string",
       "description": "Represents certificate types",
-      "enum": [
-        "certificate",
-        "privatekey",
-        "publickey"
-      ],
+      "enum": ["certificate", "privatekey", "publickey"],
       "x-ms-enum": {
         "name": "CertificateTypes",
         "modelAsString": true,
@@ -2651,9 +2530,7 @@
           "description": "iam properties"
         }
       },
-      "required": [
-        "source"
-      ]
+      "required": ["source"]
     },
     "ConnectionPropertiesUpdate": {
       "type": "object",
@@ -2733,9 +2610,7 @@
           "description": "Working directory for the container"
         }
       },
-      "required": [
-        "image"
-      ]
+      "required": ["image"]
     },
     "ContainerPortProperties": {
       "type": "object",
@@ -2760,9 +2635,7 @@
           "description": "Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired"
         }
       },
-      "required": [
-        "containerPort"
-      ]
+      "required": ["containerPort"]
     },
     "ContainerPortPropertiesUpdate": {
       "type": "object",
@@ -2853,10 +2726,7 @@
           "description": "Specifies Runtime-specific functionality"
         }
       },
-      "required": [
-        "application",
-        "container"
-      ]
+      "required": ["application", "container"]
     },
     "ContainerResource": {
       "type": "object",
@@ -2866,15 +2736,10 @@
           "$ref": "#/definitions/ContainerProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2898,17 +2763,12 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "ContainerResourceProvisioning": {
       "type": "string",
       "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user manages the resource.",
-      "enum": [
-        "internal",
-        "manual"
-      ],
+      "enum": ["internal", "manual"],
       "x-ms-enum": {
         "name": "ContainerResourceProvisioning",
         "modelAsString": true,
@@ -3082,9 +2942,7 @@
           "description": "Specifies the Dapr app-protocol to use for the resource."
         }
       },
-      "required": [
-        "appId"
-      ],
+      "required": ["appId"],
       "allOf": [
         {
           "$ref": "#/definitions/Extension"
@@ -3095,10 +2953,7 @@
     "DaprSidecarExtensionProtocol": {
       "type": "string",
       "description": "The Dapr sidecar extension protocol",
-      "enum": [
-        "http",
-        "grpc"
-      ],
+      "enum": ["http", "grpc"],
       "x-ms-enum": {
         "name": "DaprSidecarExtensionProtocol",
         "modelAsString": true,
@@ -3119,10 +2974,7 @@
     "Direction": {
       "type": "string",
       "description": "The direction of a connection.",
-      "enum": [
-        "Outbound",
-        "Inbound"
-      ],
+      "enum": ["Outbound", "Inbound"],
       "x-ms-enum": {
         "name": "Direction",
         "modelAsString": true,
@@ -3158,9 +3010,7 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "EnvironmentComputeUpdate": {
       "type": "object",
@@ -3180,9 +3030,7 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "EnvironmentProperties": {
       "type": "object",
@@ -3228,9 +3076,7 @@
           "x-ms-identifiers": []
         }
       },
-      "required": [
-        "compute"
-      ]
+      "required": ["compute"]
     },
     "EnvironmentResource": {
       "type": "object",
@@ -3240,15 +3086,10 @@
           "$ref": "#/definitions/EnvironmentProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -3272,9 +3113,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "EnvironmentResourceUpdate": {
       "type": "object",
@@ -3356,9 +3195,7 @@
           "description": "The secret reference"
         }
       },
-      "required": [
-        "secretRef"
-      ]
+      "required": ["secretRef"]
     },
     "EnvironmentVariableReferenceUpdate": {
       "type": "object",
@@ -3400,9 +3237,7 @@
           "description": "Backing store for the ephemeral volume"
         }
       },
-      "required": [
-        "managedStore"
-      ],
+      "required": ["managedStore"],
       "allOf": [
         {
           "$ref": "#/definitions/Volume"
@@ -3419,9 +3254,7 @@
           "description": "Command to execute to probe readiness/liveness"
         }
       },
-      "required": [
-        "command"
-      ],
+      "required": ["command"],
       "allOf": [
         {
           "$ref": "#/definitions/HealthProbeProperties"
@@ -3470,9 +3303,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "required": [
-        "environment"
-      ],
+      "required": ["environment"],
       "additionalProperties": true,
       "allOf": [
         {
@@ -3489,15 +3320,10 @@
           "$ref": "#/definitions/ExtenderProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -3521,9 +3347,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "ExtenderResourceUpdate": {
       "type": "object",
@@ -3579,9 +3403,7 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "GatewayHostname": {
       "type": "object",
@@ -3645,10 +3467,7 @@
           "readOnly": true
         }
       },
-      "required": [
-        "application",
-        "routes"
-      ]
+      "required": ["application", "routes"]
     },
     "GatewayResource": {
       "type": "object",
@@ -3658,15 +3477,10 @@
           "$ref": "#/definitions/GatewayProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -3690,9 +3504,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "GatewayResourceUpdate": {
       "type": "object",
@@ -3830,9 +3642,7 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "HttpGetHealthProbeProperties": {
       "type": "object",
@@ -3855,10 +3665,7 @@
           }
         }
       },
-      "required": [
-        "containerPort",
-        "path"
-      ],
+      "required": ["containerPort", "path"],
       "allOf": [
         {
           "$ref": "#/definitions/HealthProbeProperties"
@@ -3869,9 +3676,7 @@
     "IAMKind": {
       "type": "string",
       "description": "The kind of IAM provider to configure",
-      "enum": [
-        "azure"
-      ],
+      "enum": ["azure"],
       "x-ms-enum": {
         "name": "IAMKind",
         "modelAsString": true,
@@ -3900,9 +3705,7 @@
           }
         }
       },
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "IamPropertiesUpdate": {
       "type": "object",
@@ -3924,10 +3727,7 @@
     "IdentitySettingKind": {
       "type": "string",
       "description": "IdentitySettingKind is the kind of supported external identity setting",
-      "enum": [
-        "undefined",
-        "azure.com.workload"
-      ],
+      "enum": ["undefined", "azure.com.workload"],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
         "modelAsString": true,
@@ -3962,9 +3762,7 @@
           "description": "The resource ID of the provisioned identity"
         }
       },
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "IdentitySettingsUpdate": {
       "type": "object",
@@ -3987,11 +3785,7 @@
     "ImagePullPolicy": {
       "type": "string",
       "description": "The image pull policy for the container",
-      "enum": [
-        "Always",
-        "IfNotPresent",
-        "Never"
-      ],
+      "enum": ["Always", "IfNotPresent", "Never"],
       "x-ms-enum": {
         "name": "ImagePullPolicy",
         "modelAsString": true,
@@ -4031,9 +3825,7 @@
           "description": "Key version"
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "KubernetesCompute": {
       "type": "object",
@@ -4044,9 +3836,7 @@
           "description": "The namespace to use for the environment."
         }
       },
-      "required": [
-        "namespace"
-      ],
+      "required": ["namespace"],
       "allOf": [
         {
           "$ref": "#/definitions/EnvironmentCompute"
@@ -4105,9 +3895,7 @@
           "description": "The namespace of the application environment."
         }
       },
-      "required": [
-        "namespace"
-      ],
+      "required": ["namespace"],
       "allOf": [
         {
           "$ref": "#/definitions/Extension"
@@ -4137,10 +3925,7 @@
     "ManagedStore": {
       "type": "string",
       "description": "The managed store for the ephemeral volume",
-      "enum": [
-        "memory",
-        "disk"
-      ],
+      "enum": ["memory", "disk"],
       "x-ms-enum": {
         "name": "ManagedStore",
         "modelAsString": true,
@@ -4168,9 +3953,7 @@
           "description": "Replica count."
         }
       },
-      "required": [
-        "replicas"
-      ],
+      "required": ["replicas"],
       "allOf": [
         {
           "$ref": "#/definitions/Extension"
@@ -4209,9 +3992,7 @@
           "description": "The source of the volume"
         }
       },
-      "required": [
-        "source"
-      ],
+      "required": ["source"],
       "allOf": [
         {
           "$ref": "#/definitions/Volume"
@@ -4222,10 +4003,7 @@
     "PortProtocol": {
       "type": "string",
       "description": "The protocol in use by the port",
-      "enum": [
-        "TCP",
-        "UDP"
-      ],
+      "enum": ["TCP", "UDP"],
       "x-ms-enum": {
         "name": "PortProtocol",
         "modelAsString": true,
@@ -4286,9 +4064,7 @@
           "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
         }
       },
-      "required": [
-        "scope"
-      ]
+      "required": ["scope"]
     },
     "ProvidersAwsUpdate": {
       "type": "object",
@@ -4309,9 +4085,7 @@
           "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'."
         }
       },
-      "required": [
-        "scope"
-      ]
+      "required": ["scope"]
     },
     "ProvidersAzureUpdate": {
       "type": "object",
@@ -4406,9 +4180,7 @@
           "properties": {}
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "RecipeConfigProperties": {
       "type": "object",
@@ -4448,10 +4220,7 @@
           "description": "The name of the recipe registered to the environment."
         }
       },
-      "required": [
-        "resourceType",
-        "name"
-      ]
+      "required": ["resourceType", "name"]
     },
     "RecipeGetMetadataResponse": {
       "type": "object",
@@ -4479,11 +4248,7 @@
           "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
         }
       },
-      "required": [
-        "templateKind",
-        "templatePath",
-        "parameters"
-      ]
+      "required": ["templateKind", "templatePath", "parameters"]
     },
     "RecipeProperties": {
       "type": "object",
@@ -4504,10 +4269,7 @@
         }
       },
       "discriminator": "templateKind",
-      "required": [
-        "templateKind",
-        "templatePath"
-      ]
+      "required": ["templateKind", "templatePath"]
     },
     "RecipePropertiesUpdate": {
       "type": "object",
@@ -4528,9 +4290,7 @@
         }
       },
       "discriminator": "templateKind",
-      "required": [
-        "templateKind"
-      ]
+      "required": ["templateKind"]
     },
     "RecipeStatus": {
       "type": "object",
@@ -4549,10 +4309,7 @@
           "description": "TemplateVersion is the version number of the template."
         }
       },
-      "required": [
-        "templateKind",
-        "templatePath"
-      ]
+      "required": ["templateKind", "templatePath"]
     },
     "RecipeUpdate": {
       "type": "object",
@@ -4582,10 +4339,7 @@
     "ResourceProvisioning": {
       "type": "string",
       "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
-      "enum": [
-        "recipe",
-        "manual"
-      ],
+      "enum": ["recipe", "manual"],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
         "modelAsString": true,
@@ -4612,9 +4366,7 @@
           "description": "Resource id of an existing resource"
         }
       },
-      "required": [
-        "id"
-      ]
+      "required": ["id"]
     },
     "ResourceStatus": {
       "type": "object",
@@ -4642,11 +4394,7 @@
     "RestartPolicy": {
       "type": "string",
       "description": "Restart policy for the container",
-      "enum": [
-        "Always",
-        "OnFailure",
-        "Never"
-      ],
+      "enum": ["Always", "OnFailure", "Never"],
       "x-ms-enum": {
         "name": "RestartPolicy",
         "modelAsString": true,
@@ -4711,9 +4459,7 @@
           "description": "secret version"
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "SecretReference": {
       "type": "object",
@@ -4728,10 +4474,7 @@
           "description": "The key for the secret in the secret store."
         }
       },
-      "required": [
-        "source",
-        "key"
-      ]
+      "required": ["source", "key"]
     },
     "SecretReferenceUpdate": {
       "type": "object",
@@ -4805,10 +4548,7 @@
           }
         }
       },
-      "required": [
-        "type",
-        "data"
-      ]
+      "required": ["type", "data"]
     },
     "SecretStoreProperties": {
       "type": "object",
@@ -4849,9 +4589,7 @@
           "description": "The resource id of external secret store."
         }
       },
-      "required": [
-        "data"
-      ]
+      "required": ["data"]
     },
     "SecretStoreResource": {
       "type": "object",
@@ -4861,15 +4599,10 @@
           "$ref": "#/definitions/SecretStoreProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -4893,9 +4626,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "SecretStoreResourceUpdate": {
       "type": "object",
@@ -4947,10 +4678,7 @@
     "SecretValueEncoding": {
       "type": "string",
       "description": "The type of SecretValue Encoding",
-      "enum": [
-        "raw",
-        "base64"
-      ],
+      "enum": ["raw", "base64"],
       "x-ms-enum": {
         "name": "SecretValueEncoding",
         "modelAsString": true,
@@ -4999,9 +4727,7 @@
           "description": "The listening port number"
         }
       },
-      "required": [
-        "containerPort"
-      ],
+      "required": ["containerPort"],
       "allOf": [
         {
           "$ref": "#/definitions/HealthProbeProperties"
@@ -5065,10 +4791,7 @@
     "TlsMinVersion": {
       "type": "string",
       "description": "Tls Minimum versions for Gateway resource.",
-      "enum": [
-        "1.2",
-        "1.3"
-      ],
+      "enum": ["1.2", "1.3"],
       "x-ms-enum": {
         "name": "TlsMinVersion",
         "modelAsString": true,
@@ -5099,16 +4822,12 @@
           "description": "The version of the referenced secret."
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "Versions": {
       "type": "string",
       "description": "Supported API versions for the Applications.Core resource provider.",
-      "enum": [
-        "2023-10-01-preview"
-      ],
+      "enum": ["2023-10-01-preview"],
       "x-ms-enum": {
         "name": "Versions",
         "modelAsString": true,
@@ -5135,17 +4854,12 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "VolumePermission": {
       "type": "string",
       "description": "The persistent volume permission",
-      "enum": [
-        "read",
-        "write"
-      ],
+      "enum": ["read", "write"],
       "x-ms-enum": {
         "name": "VolumePermission",
         "modelAsString": true,
@@ -5191,10 +4905,7 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind",
-        "application"
-      ]
+      "required": ["kind", "application"]
     },
     "VolumeResource": {
       "type": "object",
@@ -5204,15 +4915,10 @@
           "$ref": "#/definitions/VolumeProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -5236,9 +4942,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "VolumeResourceUpdate": {
       "type": "object",
@@ -5274,11 +4978,7 @@
     "VolumeSecretEncodings": {
       "type": "string",
       "description": "Represents secret encodings",
-      "enum": [
-        "utf-8",
-        "hex",
-        "base64"
-      ],
+      "enum": ["utf-8", "hex", "base64"],
       "x-ms-enum": {
         "name": "VolumeSecretEncodings",
         "modelAsString": true,

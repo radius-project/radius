@@ -1,9 +1,9 @@
 {
-    "id": "/planes/radius/local/resourceGroups/test-rg",
-    "name": "test-rg",
-    "type": "System.Resources/resourceGroups",
-    "location": "global",
-    "tags": {
-        "env": "dev"
-    }
+  "id": "/planes/radius/local/resourceGroups/test-rg",
+  "name": "test-rg",
+  "type": "System.Resources/resourceGroups",
+  "location": "global",
+  "tags": {
+    "env": "dev"
+  }
 }

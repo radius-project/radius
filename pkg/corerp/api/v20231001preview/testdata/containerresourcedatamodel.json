@@ -28,9 +28,7 @@
         "source": "inventory_route_id",
         "iam": {
           "kind": "azure",
-          "roles": [
-            "read"
-          ]
+          "roles": ["read"]
         }
       }
     },
@@ -63,13 +61,8 @@
           }
         }
       },
-      "command": [
-        "/bin/sh"
-      ],
-      "args": [
-        "-c",
-        "while true; do echo hello; sleep 10;done"
-      ],
+      "command": ["/bin/sh"],
+      "args": ["-c", "while true; do echo hello; sleep 10;done"],
       "workingDir": "/app"
     },
     "extensions": [

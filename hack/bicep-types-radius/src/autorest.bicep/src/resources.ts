@@ -14,11 +14,29 @@
 // limitations under the License.
 // ------------------------------------------------------------.
 
-import { ChoiceSchema, CodeModel, HttpMethod, HttpParameter, HttpRequest, HttpResponse, ImplementationLocation, ObjectSchema, Operation, Parameter, ParameterLocation, Request, Response, Schema, SchemaResponse, SealedChoiceSchema, Metadata } from "@autorest/codemodel";
+import {
+  ChoiceSchema,
+  CodeModel,
+  HttpMethod,
+  HttpParameter,
+  HttpRequest,
+  HttpResponse,
+  ImplementationLocation,
+  ObjectSchema,
+  Operation,
+  Parameter,
+  ParameterLocation,
+  Request,
+  Response,
+  Schema,
+  SchemaResponse,
+  SealedChoiceSchema,
+  Metadata
+} from "@autorest/codemodel";
 import { Channel, AutorestExtensionHost } from "@autorest/extension-base";
-import { keys, Dictionary, values, groupBy } from 'lodash';
-import { success, failure, Result } from './utils';
-import { ScopeType }  from 'bicep-types';
+import { keys, Dictionary, values, groupBy } from "lodash";
+import { success, failure, Result } from "./utils";
+import { ScopeType } from "bicep-types";
 
 export interface ResourceDescriptor {
   scopeType: ScopeType;
@@ -51,19 +69,21 @@ export interface ResourceListActionDefinition {
   responseSchema?: Schema;
 }
 
-const parentScopePrefix = /^.*\/providers\//ig;
-const managementGroupPrefix = /^\/providers\/Microsoft.Management\/managementGroups\/{\w+}\/$/i;
+const parentScopePrefix = /^.*\/providers\//gi;
+const managementGroupPrefix =
+  /^\/providers\/Microsoft.Management\/managementGroups\/{\w+}\/$/i;
 const tenantPrefix = /^\/$/i;
 const subscriptionPrefix = /^\/subscriptions\/{\w+}\/$/i;
-const resourceGroupPrefix = /^\/subscriptions\/{\w+}\/resourceGroups\/{\w+}\/$/i;
+const resourceGroupPrefix =
+  /^\/subscriptions\/{\w+}\/resourceGroups\/{\w+}\/$/i;
 const resourceGroupMethod = /^\/subscriptions\/{\w+}\/resourceGroups\/{\w+}$/i;
 
 function trimScope(scope: string) {
-  return scope.replace(/\/*$/, '').replace(/^\/*/, '');
+  return scope.replace(/\/*$/, "").replace(/^\/*/, "");
 }
 
 function isPathVariable(pathSegment: string) {
-  return pathSegment.startsWith('{') && pathSegment.endsWith('}');
+  return pathSegment.startsWith("{") && pathSegment.endsWith("}");
 }
 
 function trimParamBraces(pathSegment: string) {
@@ -71,7 +91,7 @@ function trimParamBraces(pathSegment: string) {
 }
 
 function normalizeListActionName(actionName: string) {
-  if (actionName.toLowerCase().startsWith('list')) {
+  if (actionName.toLowerCase().startsWith("list")) {
     // force lower-case on the 'list' prefix for consistency
     return `list${actionName.substr(4)}`;
   }
@@ -80,11 +100,13 @@ function normalizeListActionName(actionName: string) {
 }
 
 export function getFullyQualifiedType(descriptor: ResourceDescriptor) {
-  return [descriptor.namespace, ...descriptor.typeSegments].join('/');
+  return [descriptor.namespace, ...descriptor.typeSegments].join("/");
 }
 
 function groupByType<T extends { descriptor: ResourceDescriptor }>(items: T[]) {
-  return groupBy(items, x => getFullyQualifiedType(x.descriptor).toLowerCase());
+  return groupBy(items, (x) =>
+    getFullyQualifiedType(x.descriptor).toLowerCase()
+  );
 }
 
 export function isRootType(descriptor: ResourceDescriptor) {
@@ -92,7 +114,10 @@ export function isRootType(descriptor: ResourceDescriptor) {
 }
 
 function getHttpRequests(requests: Request[] | undefined) {
-  return requests?.map(x => x.protocol.http as HttpRequest).filter(x => !!x) ?? [];
+  return (
+    requests?.map((x) => x.protocol.http as HttpRequest).filter((x) => !!x) ??
+    []
+  );
 }
 
 function hasStatusCode(response: Response, statusCode: string) {
@@ -113,11 +138,18 @@ function getNormalizedMethodPath(path: string) {
   return path;
 }
 
-export function getSerializedName(metadata: Metadata) { 
-  return metadata.language.default.serializedName ?? metadata.language.default.name;
+export function getSerializedName(metadata: Metadata) {
+  return (
+    metadata.language.default.serializedName ?? metadata.language.default.name
+  );
 }
 
-export function parseNameSchema<T>(request: HttpRequest, parameters: Parameter[], parseType: (schema: Schema) => T, createConstantName: (name: string) => T): Result<T, string> {
+export function parseNameSchema<T>(
+  request: HttpRequest,
+  parameters: Parameter[],
+  parseType: (schema: Schema) => T,
+  createConstantName: (name: string) => T
+): Result<T, string> {
   const path = getNormalizedMethodPath(request.path);
 
   const finalProvidersMatch = path.match(parentScopePrefix)?.slice(-1)[0];
@@ -128,13 +160,15 @@ export function parseNameSchema<T>(request: HttpRequest, parameters: Parameter[]
   const routingScope = trimScope(path.substr(finalProvidersMatch.length));
 
   // get the resource name parameter, e.g. {fooName}
-  let resNameParam = routingScope.substr(routingScope.lastIndexOf('/') + 1);
+  let resNameParam = routingScope.substr(routingScope.lastIndexOf("/") + 1);
 
   if (isPathVariable(resNameParam)) {
     // strip the enclosing braces
     resNameParam = trimParamBraces(resNameParam);
 
-    const param = parameters.filter(p => getSerializedName(p) === resNameParam)[0];
+    const param = parameters.filter(
+      (p) => getSerializedName(p) === resNameParam
+    )[0];
     if (!param) {
       return failure(`Unable to locate parameter with name '${resNameParam}'`);
     }
@@ -149,26 +183,32 @@ export function parseNameSchema<T>(request: HttpRequest, parameters: Parameter[]
   return success(createConstantName(resNameParam));
 }
 
-export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExtensionHost): ProviderDefinition[] {
+export function getProviderDefinitions(
+  codeModel: CodeModel,
+  host: AutorestExtensionHost
+): ProviderDefinition[] {
   function logWarning(message: string) {
     host.Message({
       Channel: Channel.Warning,
-      Text: message,
-    })
+      Text: message
+    });
   }
 
   function getProviderDefinitions() {
     const apiVersions = codeModel.operationGroups
-      .flatMap(group => group.operations
-        .flatMap(op => (op.apiVersions ?? []).map(v => v.version)))
+      .flatMap((group) =>
+        group.operations.flatMap((op) =>
+          (op.apiVersions ?? []).map((v) => v.version)
+        )
+      )
       .filter((x, i, a) => a.indexOf(x) === i);
 
-    return apiVersions.flatMap(v => getProviderDefinitionsForApiVersion(v));
+    return apiVersions.flatMap((v) => getProviderDefinitionsForApiVersion(v));
   }
 
   function getProviderDefinitionsForApiVersion(apiVersion: string) {
     const providerDefinitions: Dictionary<ProviderDefinition> = {};
-    const operations = codeModel.operationGroups.flatMap(x => x.operations);
+    const operations = codeModel.operationGroups.flatMap((x) => x.operations);
 
     const getOperationsByPath: Dictionary<Operation> = {};
     const putOperationsByPath: Dictionary<Operation> = {};
@@ -186,17 +226,17 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
       }
     }
 
-    operations.forEach(operation => {
+    operations.forEach((operation) => {
       const requests = getHttpRequests(operation.requests);
-      const getRequest = requests.filter(r => r.method === HttpMethod.Get)[0];
+      const getRequest = requests.filter((r) => r.method === HttpMethod.Get)[0];
       if (getRequest) {
         getOperationsByPath[getRequest.path.toLowerCase()] = operation;
       }
-      const putRequest = requests.filter(r => r.method === HttpMethod.Put)[0];
+      const putRequest = requests.filter((r) => r.method === HttpMethod.Put)[0];
       if (putRequest) {
         putOperationsByPath[putRequest.path.toLowerCase()] = operation;
       }
-      const postListRequest = requests.filter(r => { 
+      const postListRequest = requests.filter((r) => {
         if (r.method !== HttpMethod.Post) {
           return false;
         }
@@ -207,11 +247,14 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
         }
 
         const { routingScope: actionRoutingScope } = parseResult.value;
-        const actionName = actionRoutingScope.substr(actionRoutingScope.lastIndexOf('/') + 1);
-        return actionName.toLowerCase().startsWith('list');
+        const actionName = actionRoutingScope.substr(
+          actionRoutingScope.lastIndexOf("/") + 1
+        );
+        return actionName.toLowerCase().startsWith("list");
       })[0];
       if (postListRequest) {
-        postListOperationsByPath[postListRequest.path.toLowerCase()] = operation;
+        postListOperationsByPath[postListRequest.path.toLowerCase()] =
+          operation;
       }
     });
 
@@ -226,9 +269,15 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
         continue;
       }
 
-      const parseResult = parseResourceMethod(putData.request.path, putData.parameters, apiVersion);
+      const parseResult = parseResourceMethod(
+        putData.request.path,
+        putData.parameters,
+        apiVersion
+      );
       if (!parseResult.success) {
-        logWarning(`Skipping path '${putData.request.path}': ${parseResult.error}`);
+        logWarning(
+          `Skipping path '${putData.request.path}': ${parseResult.error}`
+        );
         continue;
       }
 
@@ -239,8 +288,10 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
           descriptor,
           putRequest: putData.request,
           putParameters: putData.parameters,
-          putSchema: (putData.schema instanceof ObjectSchema) ? putData.schema : undefined,
-          getSchema: (getData.schema instanceof ObjectSchema) ? getData.schema : undefined,
+          putSchema:
+            putData.schema instanceof ObjectSchema ? putData.schema : undefined,
+          getSchema:
+            getData.schema instanceof ObjectSchema ? getData.schema : undefined
         };
 
         const lcNamespace = descriptor.namespace.toLowerCase();
@@ -260,9 +311,15 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
         continue;
       }
 
-      const parseResult = parseResourceActionMethod(listData.request.path, listData.parameters, apiVersion);
+      const parseResult = parseResourceActionMethod(
+        listData.request.path,
+        listData.parameters,
+        apiVersion
+      );
       if (!parseResult.success) {
-        logWarning(`Skipping resource POST action path '${listData.request.path}': ${parseResult.error}`);
+        logWarning(
+          `Skipping resource POST action path '${listData.request.path}': ${parseResult.error}`
+        );
         continue;
       }
 
@@ -276,7 +333,7 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
           descriptor,
           postRequest: listData.request,
           requestSchema: listData.requestSchema,
-          responseSchema: listData.responseSchema,
+          responseSchema: listData.responseSchema
         };
 
         const lcNamespace = descriptor.namespace.toLowerCase();
@@ -288,14 +345,21 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     }
 
     for (const namespace of keys(providerDefinitions)) {
-      providerDefinitions[namespace].resourcesByType = collapseDefinitions(resourcesByProvider[namespace]);
-      providerDefinitions[namespace].resourceFunctions = groupByType(actionsByProvider[namespace]);
+      providerDefinitions[namespace].resourcesByType = collapseDefinitions(
+        resourcesByProvider[namespace]
+      );
+      providerDefinitions[namespace].resourceFunctions = groupByType(
+        actionsByProvider[namespace]
+      );
     }
 
     return values(providerDefinitions);
   }
-  
-  function getRequestSchema(operation: Operation | undefined, requests: Request[]) {
+
+  function getRequestSchema(
+    operation: Operation | undefined,
+    requests: Request[]
+  ) {
     if (!operation || requests.length === 0) {
       return;
     }
@@ -303,20 +367,26 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     for (const request of requests) {
       const parameters = combineParameters(operation, request);
 
-      const bodyParameter = parameters.filter(p => (p.protocol.http as HttpParameter)?.in === ParameterLocation.Body)[0];
+      const bodyParameter = parameters.filter(
+        (p) => (p.protocol.http as HttpParameter)?.in === ParameterLocation.Body
+      )[0];
 
-      if (request.protocol.http instanceof HttpRequest && bodyParameter instanceof Parameter && bodyParameter.schema) {
+      if (
+        request.protocol.http instanceof HttpRequest &&
+        bodyParameter instanceof Parameter &&
+        bodyParameter.schema
+      ) {
         return {
           request: request.protocol.http,
           parameters,
-          schema: bodyParameter.schema,
+          schema: bodyParameter.schema
         };
       }
     }
 
     return {
-      request: (requests[0].protocol.http as HttpRequest),
-      parameters: combineParameters(operation, requests[0]),
+      request: requests[0].protocol.http as HttpRequest,
+      parameters: combineParameters(operation, requests[0])
     };
   }
 
@@ -324,8 +394,8 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     const responses = operation?.responses ?? [];
     const validResponses = [
       // order 200 responses before default
-      ...responses.filter(r => hasStatusCode(r, "200")),
-      ...responses.filter(r => hasStatusCode(r, "default")),
+      ...responses.filter((r) => hasStatusCode(r, "200")),
+      ...responses.filter((r) => hasStatusCode(r, "default"))
     ];
 
     if (!operation || validResponses.length === 0) {
@@ -333,16 +403,20 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     }
 
     for (const response of validResponses) {
-      if (response.protocol.http instanceof HttpResponse && response instanceof SchemaResponse && response.schema) {
+      if (
+        response.protocol.http instanceof HttpResponse &&
+        response instanceof SchemaResponse &&
+        response.schema
+      ) {
         return {
           response: response.protocol.http,
-          schema: response.schema,
+          schema: response.schema
         };
       }
     }
 
     return {
-      response: (validResponses[0].protocol.http as HttpResponse),
+      response: validResponses[0].protocol.http as HttpResponse
     };
   }
 
@@ -356,14 +430,18 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
 
   function getPutSchema(operation?: Operation) {
     const requests = operation?.requests ?? [];
-    const validRequests = requests.filter(r => (r.protocol.http as HttpRequest)?.method === HttpMethod.Put);
+    const validRequests = requests.filter(
+      (r) => (r.protocol.http as HttpRequest)?.method === HttpMethod.Put
+    );
 
     return getRequestSchema(operation, validRequests);
   }
 
   function getPostSchema(operation?: Operation) {
     const requests = operation?.requests ?? [];
-    const validRequests = requests.filter(r => (r.protocol.http as HttpRequest)?.method === HttpMethod.Post);
+    const validRequests = requests.filter(
+      (r) => (r.protocol.http as HttpRequest)?.method === HttpMethod.Post
+    );
 
     const response = getResponseSchema(operation);
     const request = getRequestSchema(operation, validRequests);
@@ -376,11 +454,13 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
       request: request.request,
       parameters: request.parameters,
       requestSchema: request.schema,
-      responseSchema: response.schema,
+      responseSchema: response.schema
     };
   }
 
-  function parseResourceScopes(path: string): Result<{scopeType: ScopeType, routingScope: string}, string> {
+  function parseResourceScopes(
+    path: string
+  ): Result<{ scopeType: ScopeType; routingScope: string }, string> {
     path = getNormalizedMethodPath(path);
 
     const finalProvidersMatch = path.match(parentScopePrefix)?.slice(-1)[0];
@@ -388,7 +468,10 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
       return failure(`Unable to locate "/providers/" segment`);
     }
 
-    const parentScope = path.substr(0, finalProvidersMatch.length - "providers/".length);
+    const parentScope = path.substr(
+      0,
+      finalProvidersMatch.length - "providers/".length
+    );
     const routingScope = trimScope(path.substr(finalProvidersMatch.length));
 
     const scopeType = getScopeTypeFromParentScope(parentScope);
@@ -396,10 +479,17 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
     return success({ scopeType, routingScope });
   }
 
-  function parseResourceDescriptors(parameters: Parameter[], apiVersion: string, scopeType: ScopeType, routingScope: string): Result<ResourceDescriptor[], string> {
-    const namespace = routingScope.substr(0, routingScope.indexOf('/'));
+  function parseResourceDescriptors(
+    parameters: Parameter[],
+    apiVersion: string,
+    scopeType: ScopeType,
+    routingScope: string
+  ): Result<ResourceDescriptor[], string> {
+    const namespace = routingScope.substr(0, routingScope.indexOf("/"));
     if (isPathVariable(namespace)) {
-      return failure(`Unable to process parameterized provider namespace "${namespace}"`);
+      return failure(
+        `Unable to process parameterized provider namespace "${namespace}"`
+      );
     }
 
     const parseResult = parseResourceTypes(parameters, routingScope);
@@ -407,21 +497,27 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
       return parseResult;
     }
 
-    const resNameParam = routingScope.substr(routingScope.lastIndexOf('/') + 1);
-    const constantName = isPathVariable(resNameParam) ? undefined : resNameParam;
+    const resNameParam = routingScope.substr(routingScope.lastIndexOf("/") + 1);
+    const constantName = isPathVariable(resNameParam)
+      ? undefined
+      : resNameParam;
 
-    const descriptors: ResourceDescriptor[] = parseResult.value.map(type => ({
+    const descriptors: ResourceDescriptor[] = parseResult.value.map((type) => ({
       scopeType,
       namespace,
       typeSegments: type,
       apiVersion,
-      constantName,
+      constantName
     }));
 
     return success(descriptors);
   }
 
-  function parseResourceMethod(path: string, parameters: Parameter[], apiVersion: string) {
+  function parseResourceMethod(
+    path: string,
+    parameters: Parameter[],
+    apiVersion: string
+  ) {
     const resourceScopeResult = parseResourceScopes(path);
 
     if (!resourceScopeResult.success) {
@@ -430,68 +526,112 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
 
     const { scopeType, routingScope } = resourceScopeResult.value;
 
-    return parseResourceDescriptors(parameters, apiVersion, scopeType, routingScope);
+    return parseResourceDescriptors(
+      parameters,
+      apiVersion,
+      scopeType,
+      routingScope
+    );
   }
 
-  function parseResourceActionMethod(path: string, parameters: Parameter[], apiVersion: string) {
+  function parseResourceActionMethod(
+    path: string,
+    parameters: Parameter[],
+    apiVersion: string
+  ) {
     const resourceScopeResult = parseResourceScopes(path);
 
     if (!resourceScopeResult.success) {
       return failure(resourceScopeResult.error);
     }
 
-    const { routingScope: actionRoutingScope, scopeType } = resourceScopeResult.value;
+    const { routingScope: actionRoutingScope, scopeType } =
+      resourceScopeResult.value;
 
-    const routingScope = actionRoutingScope.substr(0, actionRoutingScope.lastIndexOf('/'));
-    const actionName = actionRoutingScope.substr(actionRoutingScope.lastIndexOf('/') + 1);
+    const routingScope = actionRoutingScope.substr(
+      0,
+      actionRoutingScope.lastIndexOf("/")
+    );
+    const actionName = actionRoutingScope.substr(
+      actionRoutingScope.lastIndexOf("/") + 1
+    );
 
-    const resourceDescriptorsResult = parseResourceDescriptors(parameters, apiVersion, scopeType, routingScope);
+    const resourceDescriptorsResult = parseResourceDescriptors(
+      parameters,
+      apiVersion,
+      scopeType,
+      routingScope
+    );
     if (!resourceDescriptorsResult.success) {
       return failure(resourceDescriptorsResult.error);
     }
 
-    return success({ 
+    return success({
       descriptors: resourceDescriptorsResult.value,
-      actionName: actionName,
+      actionName: actionName
     });
   }
 
-  function parseResourceTypes(parameters: Parameter[], routingScope: string): Result<string[][], string> {
-    const typeSegments = routingScope.split('/').slice(1).filter((_, i) => i % 2 === 0);
-    const nameSegments = routingScope.split('/').slice(1).filter((_, i) => i % 2 === 1);
+  function parseResourceTypes(
+    parameters: Parameter[],
+    routingScope: string
+  ): Result<string[][], string> {
+    const typeSegments = routingScope
+      .split("/")
+      .slice(1)
+      .filter((_, i) => i % 2 === 0);
+    const nameSegments = routingScope
+      .split("/")
+      .slice(1)
+      .filter((_, i) => i % 2 === 1);
 
     if (typeSegments.length === 0) {
       return failure(`Unable to find type segments`);
     }
 
     if (typeSegments.length !== nameSegments.length) {
-      return failure(`Found mismatch between type segments (${typeSegments.length}) and name segments (${nameSegments.length})`);
+      return failure(
+        `Found mismatch between type segments (${typeSegments.length}) and name segments (${nameSegments.length})`
+      );
     }
 
     let resourceTypes: string[][] = [[]];
     for (const typeSegment of typeSegments) {
       if (isPathVariable(typeSegment)) {
         const parameterName = trimParamBraces(typeSegment);
-        const parameter = parameters.filter(p =>
-          p.implementation === ImplementationLocation.Method &&
-          getSerializedName(p) === parameterName)[0];
+        const parameter = parameters.filter(
+          (p) =>
+            p.implementation === ImplementationLocation.Method &&
+            getSerializedName(p) === parameterName
+        )[0];
 
         if (!parameter) {
           return failure(`Found undefined parameter reference ${typeSegment}`);
         }
 
         const choiceSchema = parameter.schema;
-        if (!(choiceSchema instanceof ChoiceSchema || choiceSchema instanceof SealedChoiceSchema)) {
-          return failure(`Parameter reference ${typeSegment} is not defined as an enum`);
-        }        
-
-        if (choiceSchema.choices.length === 0) {
-          return failure(`Parameter reference ${typeSegment} is defined as an enum, but doesn't have any specified values`);
+        if (
+          !(
+            choiceSchema instanceof ChoiceSchema ||
+            choiceSchema instanceof SealedChoiceSchema
+          )
+        ) {
+          return failure(
+            `Parameter reference ${typeSegment} is not defined as an enum`
+          );
         }
 
-        resourceTypes = resourceTypes.flatMap(type => choiceSchema.choices.map(v => [...type, v.value.toString()]));
+        if (choiceSchema.choices.length === 0) {
+          return failure(
+            `Parameter reference ${typeSegment} is defined as an enum, but doesn't have any specified values`
+          );
+        }
+
+        resourceTypes = resourceTypes.flatMap((type) =>
+          choiceSchema.choices.map((v) => [...type, v.value.toString()])
+        );
       } else {
-        resourceTypes = resourceTypes.map(type => [...type, typeSegment]);
+        resourceTypes = resourceTypes.map((type) => [...type, typeSegment]);
       }
     }
 
@@ -536,7 +676,7 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
   function collapseDefinitionScopes(resources: ResourceDefinition[]) {
     const definitionsByName: Dictionary<ResourceDefinition> = {};
     for (const resource of resources) {
-      const name = resource.descriptor.constantName ?? '';
+      const name = resource.descriptor.constantName ?? "";
       if (definitionsByName[name]) {
         const curDescriptor = definitionsByName[name].descriptor;
         const newDescriptor = resource.descriptor;
@@ -545,8 +685,11 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
           ...definitionsByName[name],
           descriptor: {
             ...curDescriptor,
-            scopeType: mergeScopes(curDescriptor.scopeType, newDescriptor.scopeType),
-          },
+            scopeType: mergeScopes(
+              curDescriptor.scopeType,
+              newDescriptor.scopeType
+            )
+          }
         };
       } else {
         definitionsByName[name] = resource;
@@ -558,7 +701,9 @@ export function getProviderDefinitions(codeModel: CodeModel, host: AutorestExten
 
   function collapseDefinitions(resources: ResourceDefinition[]) {
     const resourcesByType = groupByType(resources);
-    const collapsedResources = Object.values(resourcesByType).flatMap(collapseDefinitionScopes);
+    const collapsedResources = Object.values(resourcesByType).flatMap(
+      collapseDefinitionScopes
+    );
 
     return groupByType(collapsedResources);
   }

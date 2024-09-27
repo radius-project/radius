@@ -10,21 +10,13 @@
       }
     ]
   },
-  "schemes": [
-    "https"
-  ],
+  "schemes": ["https"],
   "host": "management.azure.com",
-  "produces": [
-    "application/json"
-  ],
-  "consumes": [
-    "application/json"
-  ],
+  "produces": ["application/json"],
+  "consumes": ["application/json"],
   "security": [
     {
-      "azure_auth": [
-        "user_impersonation"
-      ]
+      "azure_auth": ["user_impersonation"]
     }
   ],
   "securityDefinitions": {
@@ -50,9 +42,7 @@
     "/{rootScope}/providers/Test.Resource/testAsyncResources": {
       "get": {
         "operationId": "TestAsyncResources_ListByScope",
-        "tags": [
-          "TestAsyncResources"
-        ],
+        "tags": ["TestAsyncResources"],
         "description": "List TestAsyncResource resources by Scope",
         "parameters": [
           {
@@ -92,9 +82,7 @@
     "/{rootScope}/providers/Test.Resource/testAsyncResources/{testAsyncResourceName}": {
       "get": {
         "operationId": "TestAsyncResources_Get",
-        "tags": [
-          "TestAsyncResources"
-        ],
+        "tags": ["TestAsyncResources"],
         "description": "Get a TestAsyncResource",
         "parameters": [
           {
@@ -135,9 +123,7 @@
       },
       "put": {
         "operationId": "TestAsyncResources_CreateOrUpdate",
-        "tags": [
-          "TestAsyncResources"
-        ],
+        "tags": ["TestAsyncResources"],
         "description": "Create a TestAsyncResource",
         "parameters": [
           {
@@ -204,9 +190,7 @@
       },
       "patch": {
         "operationId": "TestAsyncResources_Update",
-        "tags": [
-          "TestAsyncResources"
-        ],
+        "tags": ["TestAsyncResources"],
         "description": "Update a TestAsyncResource",
         "parameters": [
           {
@@ -274,9 +258,7 @@
       },
       "delete": {
         "operationId": "TestAsyncResources_Delete",
-        "tags": [
-          "TestAsyncResources"
-        ],
+        "tags": ["TestAsyncResources"],
         "description": "Delete a TestAsyncResource",
         "parameters": [
           {
@@ -337,9 +319,7 @@
     "/providers/Test.Resource/operations": {
       "get": {
         "operationId": "Operations_List",
-        "tags": [
-          "Operations"
-        ],
+        "tags": ["Operations"],
         "description": "List the operations for the provider",
         "parameters": [
           {
@@ -385,17 +365,12 @@
         }
       },
       "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "IdentitySettingKind": {
       "type": "string",
       "description": "IdentitySettingKind is the kind of supported external identity setting",
-      "enum": [
-        "undefined",
-        "azure.com.workload"
-      ],
+      "enum": ["undefined", "azure.com.workload"],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
         "modelAsString": true,
@@ -430,9 +405,7 @@
           "description": "The resource ID of the provisioned identity"
         }
       },
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "KubernetesCompute": {
       "type": "object",
@@ -443,9 +416,7 @@
           "description": "The namespace to use for the environment."
         }
       },
-      "required": [
-        "namespace"
-      ],
+      "required": ["namespace"],
       "allOf": [
         {
           "$ref": "#/definitions/EnvironmentCompute"
@@ -552,10 +523,7 @@
           "$ref": "#/definitions/TestAsyncResourceProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
       "allOf": [
@@ -581,9 +549,7 @@
           "description": "The link to the next page of items"
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     "TestAsyncResourceProperties": {
       "type": "object",
@@ -612,10 +578,7 @@
           "description": "The property1 of TestASyncResource"
         }
       },
-      "required": [
-        "application",
-        "property1"
-      ]
+      "required": ["application", "property1"]
     },
     "TestAsyncResourceUpdate": {
       "type": "object",
@@ -660,10 +623,7 @@
           "$ref": "#/definitions/TestSyncResourceProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
+          "x-ms-mutability": ["read", "create"]
         }
       },
       "allOf": [
@@ -699,18 +659,12 @@
           "description": "The property1 of TestSyncResource"
         }
       },
-      "required": [
-        "application",
-        "property1"
-      ]
+      "required": ["application", "property1"]
     },
     "Versions": {
       "type": "string",
       "description": "Supported API versions for the Test.Resource resource provider.",
-      "enum": [
-        "2022-08-19-preview",
-        "2023-08-19"
-      ],
+      "enum": ["2022-08-19-preview", "2023-08-19"],
       "x-ms-enum": {
         "name": "Versions",
         "modelAsString": true,
