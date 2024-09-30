@@ -134,7 +134,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest-m]
+        os: [ubuntu-latest]
         name:
           [
             cli-noncloud,

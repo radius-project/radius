@@ -297,7 +297,7 @@ jobs:
   tests:
     name: Run functional tests
     needs: build
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
     env:
       SKIP_BUILD: ${{ needs.build.outputs.SKIP_BUILD }}
