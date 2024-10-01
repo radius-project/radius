@@ -19,8 +19,6 @@ param adminUsername string
 @secure()
 param adminPassword string
 
-param mssqlresourceid string
-
 param database string
 
 param server string
@@ -68,7 +66,7 @@ resource db 'Applications.Datastores/sqlDatabases@2023-10-01-preview' = {
     resourceProvisioning: 'manual'
     resources: [
       {
-        id: mssqlresourceid
+        id: mssqlresource.id
       }
     ]
     database: database
@@ -77,6 +75,31 @@ resource db 'Applications.Datastores/sqlDatabases@2023-10-01-preview' = {
     username: adminUsername
     secrets: {
       password: adminPassword
+    }
+  }
+}
+
+resource mssqlresource 'Microsoft.Sql/servers@2021-02-01-preview' = {
+  name: server
+  location: location
+  tags: {
+    radiustest: 'corerp-resources-microsoft-sql'
+  }
+  properties: {
+    administratorLogin: adminUsername
+    administratorLoginPassword: adminPassword
+  }
+
+  resource db 'databases' = {
+    name: database
+    location: location
+  }
+
+  resource firewall 'firewallRules' = {
+    name: 'allow'
+    properties: {
+      startIpAddress: '0.0.0.0'
+      endIpAddress: '0.0.0.0'
     }
   }
 }

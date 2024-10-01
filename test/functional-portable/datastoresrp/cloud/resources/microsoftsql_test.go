@@ -17,9 +17,9 @@ limitations under the License.
 package resource_test
 
 import (
-	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
@@ -30,29 +30,15 @@ func Test_MicrosoftSQL_Manual(t *testing.T) {
 	template := "testdata/datastoresrp-resources-microsoft-sql.bicep"
 	name := "dsrp-resources-microsoft-sql"
 
-	var adminUsername, adminPassword string
-
-	if os.Getenv("AZURE_MSSQL_RESOURCE_ID") == "" {
-		t.Error("AZURE_MSSQL_RESOURCE_ID environment variable must be set to run this test.")
-	}
-	if os.Getenv("AZURE_MSSQL_DATABASE") == "" || os.Getenv("AZURE_MSSQL_SERVER") == "" {
-		t.Error("AZURE_MSSQL_DATABASE and AZURE_MSSQL_SERVER environment variable must be set to run this test.")
-	}
-	if os.Getenv("AZURE_MSSQL_USERNAME") != "" && os.Getenv("AZURE_MSSQL_PASSWORD") != "" {
-		adminUsername = "adminUsername=" + os.Getenv("AZURE_MSSQL_USERNAME")
-		adminPassword = "adminPassword=" + os.Getenv("AZURE_MSSQL_PASSWORD")
-	} else {
-		t.Error("AZURE_MSSQL_USERNAME and AZURE_MSSQL_PASSWORD environment variable must be set to run this test.")
-	}
-
-	mssqlresourceid := "mssqlresourceid=" + os.Getenv("AZURE_MSSQL_RESOURCE_ID")
-	sqlDatabse := "database=" + os.Getenv("AZURE_MSSQL_DATABASE")
-	sqlServer := "server=" + os.Getenv("AZURE_MSSQL_SERVER")
+	sqlDatabase := "database=database-" + uuid.New().String()
+	sqlServer := "server=server-" + uuid.New().String()
+	adminUsername := "adminUsername=adminUsername-" + uuid.New().String()
+	adminPassword := "adminPassword=" + uuid.New().String()
 	appNamespace := "default-dsrp-resources-microsoft-sql"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), mssqlresourceid, adminUsername, adminPassword, sqlDatabse, sqlServer),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), adminUsername, adminPassword, sqlDatabase, sqlServer),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
