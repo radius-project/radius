@@ -32,3 +32,4 @@ Please verify that the PR meets the following requirements, where applicable:
 - [ ] If applicable, design document has been reviewed and approved by Radius maintainers/approvers.
 - [ ] A PR for the [samples repository](https://github.com/radius-project/samples) is created, if existing samples are affected by the changes in this PR.
 - [ ] A PR for the [documentation repository](https://github.com/radius-project/docs) is created, if the changes in this PR affect the documentation or any user facing updates are made.
+- [ ] A PR for the [recipes repository](https://github.com/radius-project/recipes) is created, if existing recipes are affected by the changes in this PR.
