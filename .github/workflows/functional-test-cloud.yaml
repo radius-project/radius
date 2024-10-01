@@ -395,6 +395,9 @@ jobs:
             "extensions": {
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+            },
+            "cloud": {
+              "credentialPrecedence": ["Environment"]
             }
           }
           EOF
@@ -549,7 +552,6 @@ jobs:
       - uses: azure/setup-helm@v4
         with:
           version: ${{ env.HELM_VER }}
-
       - name: Install azwi
         run: |
           wget https://github.com/Azure/azure-workload-identity/releases/download/v1.3.0/azwi-v1.3.0-linux-amd64.tar.gz
@@ -603,14 +605,26 @@ jobs:
           --name openid/v1/jwks
           
           OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/
-          echo "OIDC_URL=$OIDC" >> $GITHUB_OUTPUT
+          echo "OIDC_TEST=$OIDC" >> $GITHUB_OUTPUT
           echo $OIDC
           echo $${{ env.AZURE_TEST_RESOURCE_GROUP }}
           echo ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
           # chmod +x ./.github/scripts/setup-azure-federated-credentials.sh
           # ./.github/scripts/setup-azure-federated-credentials.sh radius-test-wi ${{ env.AZURE_TEST_RESOURCE_GROUP }} ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} $OIDC
-      
-      
+      - name: entra app
+        run: |
+          export K8S_CLUSTER_NAME=radius-test
+          export AZURE_RESOURCE_GROUP=${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          export AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          export SERVICE_ACCOUNT_ISSUER=${{steps.create_storage_account.outputs.OIDC_TEST}}
+          APPLICATION_NAME=${K8S_CLUSTER_NAME}-radius-app
+          echo $APPLICATION_NAME
+          az ad app create --display-name ${APPLICATION_NAME}
+          APPLICATION_CLIENT_ID="$(az ad app list --display-name ${APPLICATION_NAME} --query [].appId -o tsv)"
+          APPLICATION_OBJECT_ID="$(az ad app show --id ${APPLICATION_CLIENT_ID} --query id -otsv)"
+          echo $APPLICATION_CLIENT_ID
+          echo $APPLICATION_OBJECT_ID
+
       - name: Create KinD cluster
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
