@@ -345,9 +345,6 @@ jobs:
             "extensions": {
               "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
-            },
-            "cloud": {
-              "credentialPrecedence": ["Environment"]
             }
           }
           EOF

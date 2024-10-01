@@ -34,7 +34,7 @@
                 "golang.go",
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "ms-azuretools.rad-vscode-bicep",
+                "ms-azuretools.vscode-bicep",
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
                 "ms-azuretools.vscode-dapr",
                 "ms-vscode.makefile-tools"

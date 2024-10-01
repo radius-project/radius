@@ -20,7 +20,9 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"regexp"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	store "github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/store/apiserverstore"
@@ -28,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/store/cosmosdb"
 	"github.com/radius-project/radius/pkg/ucp/store/etcdstore"
 	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
+	"github.com/radius-project/radius/pkg/ucp/store/postgres"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,10 +39,11 @@ import (
 type storageFactoryFunc func(context.Context, StorageProviderOptions, string) (store.StorageClient, error)
 
 var storageClientFactory = map[StorageProviderType]storageFactoryFunc{
-	TypeAPIServer: initAPIServerClient,
-	TypeCosmosDB:  initCosmosDBClient,
-	TypeETCD:      InitETCDClient,
-	TypeInMemory:  initInMemoryClient,
+	TypeAPIServer:  initAPIServerClient,
+	TypeCosmosDB:   initCosmosDBClient,
+	TypeETCD:       InitETCDClient,
+	TypeInMemory:   initInMemoryClient,
+	TypePostgreSQL: initPostgreSQLClient,
 }
 
 func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
@@ -123,4 +127,26 @@ func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (
 // initInMemoryClient creates a new in-memory store client.
 func initInMemoryClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
 	return inmemory.NewClient(), nil
+}
+
+// initPostgreSQLClient creates a new PostgreSQL store client.
+func initPostgreSQLClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
+	if opt.PostgreSQL.URL == "" {
+		return nil, errors.New("failed to initialize PostgreSQL client: URL is required")
+	}
+
+	url := opt.PostgreSQL.URL
+	regex := regexp.MustCompile(`$\{([a-zA-Z_]+)\}`)
+	matches := regex.FindSubmatch([]byte(opt.PostgreSQL.URL))
+	if len(matches) > 1 {
+		// Extract the captured expression.
+		url = string(matches[1])
+	}
+
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PostgreSQL client: %w", err)
+	}
+
+	return postgres.NewPostgresClient(pool), nil
 }

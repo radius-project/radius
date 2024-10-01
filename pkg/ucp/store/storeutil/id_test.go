@@ -295,7 +295,7 @@ func Test_NormalizePart(t *testing.T) {
 	}
 }
 
-func Test_NormalizeResourceID(t *testing.T) {
+func Test_ConvertScopeIDToResourceID(t *testing.T) {
 	type testcase struct {
 		Input    string
 		Expected string
@@ -344,7 +344,7 @@ func Test_NormalizeResourceID(t *testing.T) {
 			id, err := resources.Parse(tc.Input)
 			require.NoError(t, err)
 
-			result, err := NormalizeResourceID(id)
+			result, err := ConvertScopeIDToResourceID(id)
 			if tc.IsError {
 				require.Error(t, err)
 			} else {
@@ -355,7 +355,7 @@ func Test_NormalizeResourceID(t *testing.T) {
 	}
 }
 
-func Test_NormalizeResourceType(t *testing.T) {
+func Test_ConvertScopeTypeToResourceType(t *testing.T) {
 	type testcase struct {
 		Input    string
 		Expected string
@@ -396,7 +396,7 @@ func Test_NormalizeResourceType(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.Input, func(t *testing.T) {
-			result, err := NormalizeResourceType(tc.Input)
+			result, err := ConvertScopeTypeToResourceType(tc.Input)
 			if tc.IsError {
 				require.Error(t, err)
 			} else {
