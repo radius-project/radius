@@ -66,7 +66,7 @@ resource db 'Applications.Datastores/sqlDatabases@2023-10-01-preview' = {
     resourceProvisioning: 'manual'
     resources: [
       {
-        id: mssqlresource.id
+        id: mssqlresource::db.id
       }
     ]
     database: database
