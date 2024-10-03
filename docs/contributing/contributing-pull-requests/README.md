@@ -23,6 +23,7 @@ A pull request will need to pass the following checkpoints to be accepted:
 
 - Initial review: a maintainer will review your summary and make sure an appropriate issue is linked
 - Testing: automated tests will run against your changes
+- Contributor PR checklist: the PR meets the [checklist requirements](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md#contributor-checklist).
 - Code review: you will get feedback from a maintainer or other contributors in the form of comments
 
 We expect that contributors have run basic validations (`make build test lint`) before sending a pull request. See [building the repo](../contributing-code/contributing-code-building/) for more information. If you get stuck during this step feel free to open the pull request anyway and ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
