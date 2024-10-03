@@ -38,10 +38,23 @@ const (
 	radiusReleaseName     = "radius"
 	radiusHelmRepo        = "oci://ghcr.io/radius-project/helm-chart"
 	RadiusSystemNamespace = "radius-system"
+
+	daprReleaseName     = "dapr"
+	daprHelmRepo        = "oci://ghcr.io/Dapr-project/helm-charts"
+	DaprSystemNamespace = "dapr-system"
 )
 
-// RadiusOptions describes the options for the Radius helm chart.
-type RadiusOptions struct {
+// ChartOptions describes the options for the a helm chart.
+type ChartOptions struct {
+	// Target namespace for deployment
+	Namespace string
+
+	// ReleaseName specifies the release name for the helm chart.
+	ReleaseName string
+
+	// ChartRepo specifies the helm chart repository.
+	ChartRepo string
+
 	// Reinstall specifies whether to reinstall the chart (helm upgrade).
 	Reinstall bool
 
@@ -59,18 +72,15 @@ type RadiusOptions struct {
 	SetFileArgs []string
 }
 
-// Apply the radius helm chart.
-//
-
-// ApplyRadiusHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the
+// ApplyHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the
 // "Reinstall" option is set. It returns a boolean indicating if the chart was already installed and an error if one occurred.
-func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
+func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 	alreadyInstalled := false
-	namespace := RadiusSystemNamespace
+
 	flags := genericclioptions.ConfigFlags{
-		Namespace: &namespace,
+		Namespace: &options.Namespace,
 		Context:   &kubeContext,
 	}
 
@@ -81,7 +91,7 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 
 	var helmChart *chart.Chart
 	if options.ChartPath == "" {
-		helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, radiusHelmRepo, radiusReleaseName)
+		helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)
 	} else {
 		helmChart, err = loader.Load(options.ChartPath)
 	}
@@ -90,7 +100,7 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		return false, fmt.Errorf("failed to load Helm chart, err: %w, Helm output: %s", err, helmOutput.String())
 	}
 
-	err = AddRadiusValues(helmChart, &options)
+	err = AddValues(helmChart, &options)
 	if err != nil {
 		return false, fmt.Errorf("failed to add Radius values, err: %w, Helm output: %s", err, helmOutput.String())
 	}
@@ -109,12 +119,12 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	// and invoke the install client.
 	_, err = histClient.Run(radiusReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		err = runRadiusHelmInstall(helmConf, helmChart)
+		err = runHelmInstall(helmConf, helmChart, options)
 		if err != nil {
 			return false, fmt.Errorf("failed to run Radius Helm install, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
 	} else if options.Reinstall {
-		err = runRadiusHelmUpgrade(helmConf, radiusReleaseName, helmChart)
+		err = runHelmUpgrade(helmConf, radiusReleaseName, helmChart, options)
 		if err != nil {
 			return false, fmt.Errorf("failed to run Radius Helm upgrade, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
@@ -124,14 +134,9 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	return alreadyInstalled, err
 }
 
-// AddRadiusValues adds values to the helm chart. It overrides the default values in following order:
-// 1. lowest priority: Values from the helm chart default values.yaml
-// 2. highest priority: Values by the --set flag potentially overwriting values from step 1 and 2
-//
-
-// AddRadiusValues parses the --set arguments in order and adds them to the helm chart values, returning an error if any of
+// AddValues parses the --set arguments in order and adds them to the helm chart values, returning an error if any of
 // the arguments are invalid.
-func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
+func AddValues(helmChart *chart.Chart, options *ChartOptions) error {
 	values := helmChart.Values
 
 	// Parse --set arguments in order so that the last one wins.
@@ -161,35 +166,35 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	return nil
 }
 
-func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
+func runHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, options ChartOptions) error {
 	installClient := helm.NewInstall(helmConf)
-	installClient.ReleaseName = radiusReleaseName
-	installClient.Namespace = RadiusSystemNamespace
+	installClient.ReleaseName = options.ReleaseName
+	installClient.Namespace = options.Namespace
 	installClient.CreateNamespace = true
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
 	return runInstall(installClient, helmChart)
 }
 
-func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helmChart *chart.Chart) error {
+func runHelmUpgrade(helmConf *helm.Configuration, releaseName string, helmChart *chart.Chart, options ChartOptions) error {
 	installClient := helm.NewUpgrade(helmConf)
-	installClient.Namespace = RadiusSystemNamespace
+	installClient.Namespace = options.Namespace
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
 	installClient.Recreate = true //force recreating radius pods on adding or modfying azprovider
-	return runUpgrade(installClient, releaseName, helmChart)
+	return runUpgrade(installClient, options.ReleaseName, helmChart)
 }
 
 // RunRadiusHelmUninstall attempts to uninstall Radius from the Radius system namespace
 // using a helm configuration, and returns an error if the uninstall fails.
-func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
-	output.LogInfo("Uninstalling Radius from namespace: %s", RadiusSystemNamespace)
+func RunHelmUninstall(helmConf *helm.Configuration, options ChartOptions) error {
+	output.LogInfo("Uninstalling Radius from namespace: %s", options.Namespace)
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = uninstallTimeout
 	uninstallClient.Wait = true
-	_, err := uninstallClient.Run(radiusReleaseName)
+	_, err := uninstallClient.Run(options.ReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("Radius not found")
+		output.LogInfo("%s not found", options.ReleaseName)
 		return nil
 	}
 	return err

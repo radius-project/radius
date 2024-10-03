@@ -18,8 +18,9 @@ package kubernetes
 
 import (
 	"context"
-	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"testing"
+
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
 
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -68,7 +69,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
-			Return(helm.InstallState{Installed: true, Version: "test-version"}, nil).
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
 		helmMock.EXPECT().UninstallRadius(ctx, "test-context").
@@ -133,7 +134,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
-			Return(helm.InstallState{Installed: true, Version: "test-version"}, nil).
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
 		helmMock.EXPECT().UninstallRadius(ctx, "test-context").

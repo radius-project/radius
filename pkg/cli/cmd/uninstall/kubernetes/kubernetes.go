@@ -18,6 +18,7 @@ package kubernetes
 
 import (
 	"context"
+
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
@@ -91,7 +92,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !state.Installed {
+	if !state.RadiusInstalled {
 		r.Output.LogInfo("Radius is not installed on the Kubernetes cluster")
 		return nil
 	}

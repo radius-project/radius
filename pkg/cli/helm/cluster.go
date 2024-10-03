@@ -33,13 +33,15 @@ const (
 	ContourChartDefaultVersion = "11.1.1"
 )
 
+// TODO: Revisit and reevaluate
 type CLIClusterOptions struct {
-	Radius RadiusOptions
+	Radius ChartOptions
 }
 
 type ClusterOptions struct {
 	Contour ContourOptions
-	Radius  RadiusOptions
+	Radius  ChartOptions
+	Dapr    ChartOptions
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -56,7 +58,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 		Contour: ContourOptions{
 			ChartVersion: ContourChartDefaultVersion,
 		},
-		Radius: RadiusOptions{
+		Radius: ChartOptions{
 			ChartVersion: chartVersion,
 		},
 	}
@@ -87,49 +89,44 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	return options
 }
 
-// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
-//
-
 // Install takes in a context, clusterOptions and kubeContext and returns a boolean and an error. If an
 // error is encountered, it is returned.
 func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
-	foundExisting, err := InstallOnCluster(ctx, clusterOptions, kubeContext)
-	if err != nil {
-		return false, err
-	}
-
-	return foundExisting, nil
-}
-
-// InstallOnCluster applies the Helm charts for Radius and Contour to the cluster, and returns whether an existing
-// installation was found. If an error occurs, it is returned.
-func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext string) (bool, error) {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
 	// The RPs and other resources are all deployed to the
 	// 'radius-system' namespace. The namespace passed in will be
 	// where pods/services/deployments will be put for rad deploy.
-	foundExisting, err := ApplyRadiusHelmChart(options.Radius, kubeContext)
+	radiusFound, err := ApplyHelmChart(clusterOptions.Radius, kubeContext)
 	if err != nil {
 		return false, err
 	}
 
-	err = ApplyContourHelmChart(options.Contour, kubeContext)
+	// Install Dapr
+	daprFound, err := ApplyHelmChart(clusterOptions.Dapr, kubeContext)
 	if err != nil {
 		return false, err
 	}
 
-	return foundExisting, err
+	err = ApplyContourHelmChart(clusterOptions.Contour, kubeContext)
+	if err != nil {
+		return false, err
+	}
+	// If both Radius and Dapr are installed, return true
+	if radiusFound && daprFound {
+		return true, err
+	} else {
+		return false, err
+	}
 }
 
 // UninstallOnCluster retrieves the Helm configuration and runs the Contour and Radius Helm uninstall commands to remove
 // the Helm releases from the cluster.
-func UninstallOnCluster(kubeContext string) error {
+func UninstallOnCluster(kubeContext string, clusterOptions ClusterOptions) error {
 	var helmOutput strings.Builder
 
-	namespace := RadiusSystemNamespace
 	flags := genericclioptions.ConfigFlags{
-		Namespace: &namespace,
+		Namespace: &clusterOptions.Radius.Namespace,
 		Context:   &kubeContext,
 	}
 
@@ -143,7 +140,23 @@ func UninstallOnCluster(kubeContext string) error {
 		return err
 	}
 
-	err = RunRadiusHelmUninstall(helmConf)
+	// Uninstall Radius
+	err = RunHelmUninstall(helmConf, clusterOptions.Radius)
+	if err != nil {
+		return err
+	}
+
+	// Uninstall Dapr
+	daprFlags := genericclioptions.ConfigFlags{
+		Namespace: &clusterOptions.Dapr.Namespace,
+		Context:   &kubeContext,
+	}
+
+	daprHelmConf, err := HelmConfig(&helmOutput, &daprFlags)
+	if err != nil {
+		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+	}
+	err = RunHelmUninstall(daprHelmConf, clusterOptions.Dapr)
 	if err != nil {
 		return err
 	}
@@ -151,15 +164,10 @@ func UninstallOnCluster(kubeContext string) error {
 	return nil
 }
 
-// CheckRadiusInstall checks whether Radius is installed on the cluster, based on the specified Kubernetes context.
-//
-
-// CheckRadiusInstall checks if the Radius release is installed in the given kubeContext and returns an InstallState object
-// with the version of the release if installed, or an error if an error occurs while checking.
-func CheckRadiusInstall(kubeContext string) (InstallState, error) {
+// QueryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
+func queryRelease(kubeContext, namespace, releaseName string) (bool, string, error) {
 	var helmOutput strings.Builder
 
-	namespace := RadiusSystemNamespace
 	flags := genericclioptions.ConfigFlags{
 		Namespace: &namespace,
 		Context:   &kubeContext,
@@ -167,31 +175,55 @@ func CheckRadiusInstall(kubeContext string) (InstallState, error) {
 
 	helmConf, err := HelmConfig(&helmOutput, &flags)
 	if err != nil {
-		return InstallState{}, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+		return false, "", fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 	histClient := helmaction.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
-	releases, err := histClient.Run(radiusReleaseName)
+	releases, err := histClient.Run(releaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		return InstallState{}, nil
+		return false, "", driver.ErrReleaseNotFound
 	} else if err != nil {
-		return InstallState{}, err
+		return false, "", err
 	} else if len(releases) == 0 {
-		return InstallState{}, nil
+		return false, "", nil
 	}
 
-	version := releases[0].Chart.Metadata.Version
-	return InstallState{Installed: true, Version: version}, nil
+	return true, releases[0].Chart.Metadata.Version, nil
+}
+
+// CheckRadiusInstall checks if the Radius release is installed in the given kubeContext and returns an InstallState object
+// with the version of the release if installed, or an error if an error occurs while checking.
+func CheckRadiusInstall(kubeContext string) (InstallState, error) {
+
+	// Check if Radius is installed
+	radiusInstalled, radiusVersion, err := queryRelease(kubeContext, RadiusSystemNamespace, radiusReleaseName)
+	if err != nil {
+		return InstallState{}, err
+	}
+
+	// Check is Dapr is installed
+	daprInstalled, daprVersion, err := queryRelease(kubeContext, DaprSystemNamespace, daprReleaseName)
+	if err != nil {
+		return InstallState{}, err
+	}
+
+	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion, DaprInstalled: daprInstalled, DaprVersion: daprVersion}, nil
 }
 
 // InstallState represents the state of the Radius helm chart installation on a Kubernetes cluster.
 type InstallState struct {
-	// Installed denotes whether the Radius helm chart is installed on the cluster.
-	Installed bool
+	// RadiusInstalled denotes whether the Radius helm chart is installed on the cluster.
+	RadiusInstalled bool
 
-	// Version is the version of the Radius helm chart installed on the cluster. Will be blank if Radius is not installed.
-	Version string
+	// RadiusVersion is the version of the Radius helm chart installed on the cluster. Will be blank if Radius is not installed.
+	RadiusVersion string
+
+	// DaprInstalled denotes whether the Dapr helm chart is installed on the cluster.
+	DaprInstalled bool
+
+	// DaprVersion is the version of the Dapr helm chart installed on the cluster. Will be blank if Dapr is not installed.
+	DaprVersion string
 }
 
 //go:generate mockgen -typed -destination=./mock_cluster.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm Interface
@@ -222,6 +254,6 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 }
 
 // UninstallRadius uninstalls RADIUS from the specified Kubernetes cluster, and returns an error if it fails.
-func (i *Impl) UninstallRadius(ctx context.Context, kubeContext string) error {
-	return UninstallOnCluster(kubeContext)
+func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	return UninstallOnCluster(kubeContext, clusterOptions)
 }

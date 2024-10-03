@@ -39,11 +39,11 @@ func (r *Runner) enterClusterOptions(options *initOptions) error {
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Unable to verify Radius installation.")
 	}
-	options.Cluster.Install = !state.Installed
+	options.Cluster.Install = !state.RadiusInstalled
 
-	if state.Installed {
+	if state.RadiusInstalled {
 		options.Cluster.Install = false
-		options.Cluster.Version = state.Version
+		options.Cluster.Version = state.RadiusVersion
 	}
 
 	if options.Cluster.Install {
