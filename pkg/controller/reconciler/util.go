@@ -280,3 +280,19 @@ func createOrUpdateContainer(ctx context.Context, radius RadiusClient, container
 
 	return nil, nil
 }
+
+func createDefaultResourceGroup(ctx context.Context, radius RadiusClient) {
+	// NOTE: using resource groups with lowercase here is a workaround for a casing bug in `rad app graph`.
+	// When https://github.com/radius-project/radius/issues/6422 is fixed we can use the more correct casing.
+	resourceGroupID := "/planes/radius/local/resourcegroups/default"
+	err := createResourceGroupIfNotExists(ctx, radius, resourceGroupID)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func generateDeploymentResourceName(resourceId string) string {
+	resourceBaseName := strings.Split(resourceId, "/")[len(strings.Split(resourceId, "/"))-1]
+
+	return resourceBaseName
+}

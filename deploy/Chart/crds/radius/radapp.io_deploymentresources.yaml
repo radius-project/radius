@@ -1,0 +1,86 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.15.0
+  name: deploymentresources.radapp.io
+spec:
+  group: radapp.io
+  names:
+    kind: DeploymentResource
+    listKind: DeploymentResourceList
+    plural: deploymentresources
+    singular: deploymentresource
+  scope: Namespaced
+  versions:
+  - name: v1alpha3
+    schema:
+      openAPIV3Schema:
+        description: DeploymentResource is the Schema for the DeploymentResources
+          API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DeploymentResourceSpec defines the desired state of DeploymentResource
+            properties:
+              resourceId:
+                description: ResourceId is the Radius resource Id.
+                type: string
+            required:
+            - resourceId
+            type: object
+          status:
+            description: DeploymentResourceStatus defines the observed state of DeploymentResource
+            properties:
+              message:
+                description: Message is a human-readable description of the status
+                  of the Deployment Resource.
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this DeploymentResource.
+                format: int64
+                type: integer
+              operation:
+                description: Operation tracks the status of an in-progress provisioning
+                  operation.
+                properties:
+                  operationKind:
+                    description: OperationKind describes the type of operation being
+                      performed.
+                    type: string
+                  resumeToken:
+                    description: ResumeToken is a token that can be used to resume
+                      an in-progress provisioning operation.
+                    type: string
+                type: object
+              phrase:
+                description: Phrase indicates the current status of the Deployment
+                  Resource.
+                type: string
+              scope:
+                description: Scope is the resource ID of the scope.
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
