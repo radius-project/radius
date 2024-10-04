@@ -43,12 +43,16 @@ spec:
               parameters:
                 description: Parameters is the ARM JSON parameters for the template.
                 type: string
+              scope:
+                description: Scope is the resource id of the Radius scope.
+                type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources
                   to deploy.
                 type: string
             required:
             - parameters
+            - scope
             - template
             type: object
           status:
@@ -82,16 +86,26 @@ spec:
                 items:
                   type: string
                 type: array
+              parameters:
+                description: Parameters is the ARM JSON parameters for the template.
+                type: string
               phrase:
                 description: Phrase indicates the current status of the Deployment
                   Template.
                 type: string
               resource:
-                description: Resource is the resource ID of the deployment.
+                description: Resource is the resource id of the deployment.
                 type: string
               scope:
-                description: Scope is the resource ID of the scope.
+                description: Scope is the resource id of the Radius scope.
                 type: string
+              template:
+                description: Template is the ARM JSON manifest that defines the resources
+                  to deploy.
+                type: string
+            required:
+            - parameters
+            - template
             type: object
         type: object
     served: true

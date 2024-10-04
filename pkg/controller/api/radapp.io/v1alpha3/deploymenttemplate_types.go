@@ -27,6 +27,9 @@ type DeploymentTemplateSpec struct {
 
 	// Parameters is the ARM JSON parameters for the template.
 	Parameters string `json:"parameters"`
+
+	// Scope is the resource id of the Radius scope.
+	Scope string `json:"scope"`
 }
 
 // DeploymentTemplateStatus defines the observed state of DeploymentTemplate
@@ -34,10 +37,16 @@ type DeploymentTemplateStatus struct {
 	// ObservedGeneration is the most recent generation observed for this DeploymentTemplate.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// Scope is the resource ID of the scope.
+	// Template is the ARM JSON manifest that defines the resources to deploy.
+	Template string `json:"template"`
+
+	// Parameters is the ARM JSON parameters for the template.
+	Parameters string `json:"parameters"`
+
+	// Scope is the resource id of the Radius scope.
 	Scope string `json:"scope,omitempty"`
 
-	// Resource is the resource ID of the deployment.
+	// Resource is the resource id of the deployment.
 	Resource string `json:"resource,omitempty"`
 
 	// OutputResources is a list of the resourceIds that were created by the template.

@@ -1,0 +1,91 @@
+kind: DeploymentTemplate
+apiVersion: radapp.io/v1alpha3
+metadata:
+  name: demo.bicep
+  namespace: radius-system
+spec:
+  template: |
+    {
+      "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+      "languageVersion": "2.1-experimental",
+      "contentVersion": "1.0.0.0",
+      "metadata": {
+        "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
+        "_EXPERIMENTAL_FEATURES_ENABLED": [
+          "Extensibility"
+        ],
+        "_generator": {
+          "name": "bicep",
+          "version": "0.30.23.60470",
+          "templateHash": "12248912509408521812"
+        }
+      },
+      "parameters": {
+        "port": {
+          "type": "int"
+        },
+        "tag": {
+          "type": "string"
+        }
+      },
+      "imports": {
+        "Radius": {
+          "provider": "Radius",
+          "version": "latest"
+        }
+      },
+      "resources": {
+        "demoenv": {
+          "existing": true,
+          "import": "Radius",
+          "type": "Applications.Core/environments@2023-10-01-preview",
+          "properties": {
+            "name": "demoenv"
+          }
+        },
+        "demoapp": {
+          "import": "Radius",
+          "type": "Applications.Core/applications@2023-10-01-preview",
+          "properties": {
+            "name": "demoapp",
+            "properties": {
+              "environment": "[reference('demoenv').id]"
+            }
+          },
+          "dependsOn": [
+            "demoenv"
+          ]
+        },
+        "democtnr": {
+          "import": "Radius",
+          "type": "Applications.Core/containers@2023-10-01-preview",
+          "properties": {
+            "name": "democtnr",
+            "properties": {
+              "application": "[reference('demoapp').id]",
+              "container": {
+                "image": "[format('ghcr.io/radius-project/samples/demo:{0}', parameters('tag'))]",
+                "ports": {
+                  "web": {
+                    "containerPort": "[parameters('port')]"
+                  }
+                }
+              }
+            }
+          },
+          "dependsOn": [
+            "demoapp"
+          ]
+        }
+      }
+    }
+  parameters: |
+    {
+      "port": {
+        "value": 3000
+      },
+      "tag": {
+        "value": "latest"
+      }
+    }
+  scope: "/planes/radius/local/resourcegroups/default"

@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -40,9 +39,6 @@ import (
 
 const (
 	deploymentResourceType = "Microsoft.Resources/deployments"
-
-	// TODOWILLSMITH: hardcoded, how do we get this?
-	RadiusResourceGroup = "default"
 )
 
 // DeploymentTemplateReconciler reconciles a DeploymentTemplate object.
@@ -146,6 +142,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 		}
 
+		logger.Info("Creating output resources.")
+
 		//TODOWILLSMITH: clean this up
 		outputResources := make([]string, 0)
 		outputResourceList := resp.Properties["outputResources"].([]any)
@@ -162,6 +160,11 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		existingOutputResources := make(map[string]bool)
 		for _, resource := range deploymentTemplate.Status.OutputResources {
 			existingOutputResources[resource] = true
+		}
+
+		newOutputResources := make(map[string]bool)
+		for _, resource := range outputResources {
+			newOutputResources[resource] = true
 		}
 
 		for _, resource := range outputResources {
@@ -188,18 +191,18 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 					if err != nil {
 						return ctrl.Result{}, err
 					}
-				} else {
-					// TODOWILLSMITH: what do we do here?
 				}
 			}
 		}
 
 		for _, resource := range deploymentTemplate.Status.OutputResources {
-			if _, ok := existingOutputResources[resource]; !ok {
+			if _, ok := newOutputResources[resource]; !ok {
 				// resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
+				logger.Info("Deleting resource.", "resourceId", resource)
+				resourceName := generateDeploymentResourceName(resource)
 				err := r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resource,
+						Name:      resourceName,
 						Namespace: deploymentTemplate.Namespace,
 					},
 				})
@@ -214,7 +217,9 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		// NOTE: we don't need to save the status here, because we're going to continue reconciling.
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
-		deploymentTemplate.Status.Resource = deploymentTemplate.Status.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
+		deploymentTemplate.Status.Template = deploymentTemplate.Spec.Template
+		deploymentTemplate.Status.Parameters = deploymentTemplate.Spec.Parameters
+		deploymentTemplate.Status.Resource = deploymentTemplate.Spec.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 		return ctrl.Result{}, nil
 
 	} else if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
@@ -291,21 +296,6 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	// fully processed any status changes until the async operation completes.
 	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
 
-	// TODOWILLSMITH: Do some lookups to get the environment and application IDs.
-	// environmentName := ""
-	// applicationName := ""
-
-	// resourceGroupID, environmentID, applicationID, err := resolveDependencies(ctx, r.Radius, "/planes/radius/local", environmentName, applicationName, labels)
-	// if err != nil {
-	// 	r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "DependencyError", err.Error())
-	// 	logger.Error(err, "Unable to resolve dependencies.")
-	// 	return ctrl.Result{}, fmt.Errorf("failed to resolve dependencies: %w", err)
-	// }
-
-	// TODOWILLSMITH: This is a temporary workaround until we can get the correct resource group ID.
-	createDefaultResourceGroup(ctx, r.Radius)
-	deploymentTemplate.Status.Scope = "/planes/radius/local/resourcegroups/default"
-
 	updatePoller, deletePoller, err := r.startPutOrDeleteOperationIfNeeded(ctx, deploymentTemplate)
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
@@ -379,6 +369,7 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 
 		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
+		deploymentTemplate.Status.Scope = deploymentTemplate.Spec.Scope
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -413,30 +404,13 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 func (r *DeploymentTemplateReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	resourceID := deploymentTemplate.Status.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
-	if deploymentTemplate.Status.Resource != "" && !strings.EqualFold(deploymentTemplate.Status.Resource, resourceID) {
-		// If we get here it means that the environment or application changed, so we should delete
-		// the old resource and create a new one.
-		// TODOWILLSMITH: ???? what is happening here
-		logger.Info("Resource is already created but is out-of-date")
-
-		logger.Info("Starting DELETE operation.")
-		// poller, err := deleteResource(ctx, r.Radius, deploymentTemplate.Status.Resource)
-		// if err != nil {
-		// 	return nil, nil, err
-		// } else if poller != nil {
-		// 	return nil, poller, nil
-		// }
-
-		// Deletion was synchronous
-		deploymentTemplate.Status.Resource = ""
-	}
-
-	// Note: we separate this check from the previous block, because it could complete synchronously.
-	if deploymentTemplate.Status.Resource != "" {
+	// If the resource is already created and is up-to-date, then we don't need to do anything.
+	if deploymentTemplate.Status.Template == deploymentTemplate.Spec.Template && deploymentTemplate.Status.Parameters == deploymentTemplate.Spec.Parameters {
 		logger.Info("Resource is already created and is up-to-date.")
 		return nil, nil, nil
 	}
+
+	logger.Info("Template or parameters have changed, starting PUT operation.")
 
 	template := map[string]any{}
 	err := json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
@@ -457,13 +431,13 @@ func (r *DeploymentTemplateReconciler) startPutOrDeleteOperationIfNeeded(ctx con
 			"deployments": map[string]any{
 				"type": "Microsoft.Resources",
 				"value": map[string]any{
-					"scope": deploymentTemplate.Status.Scope,
+					"scope": deploymentTemplate.Spec.Scope,
 				},
 			},
 			"radius": map[string]any{
 				"type": "Radius",
 				"value": map[string]any{
-					"scope": deploymentTemplate.Status.Scope,
+					"scope": deploymentTemplate.Spec.Scope,
 				},
 			},
 		}, // TODOWILLSMITH: other providers (az, aws) get from env?
@@ -471,6 +445,7 @@ func (r *DeploymentTemplateReconciler) startPutOrDeleteOperationIfNeeded(ctx con
 		"parameters": parameters,
 	}
 
+	resourceID := deploymentTemplate.Spec.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 	poller, err := createOrUpdateResource(ctx, r.Radius, resourceID, properties)
 	if err != nil {
 		return nil, nil, err
@@ -490,13 +465,7 @@ func (r *DeploymentTemplateReconciler) startDeleteOperationIfNeeded(ctx context.
 		return nil, nil
 	}
 
-	logger.Info("Starting DELETE operation.")
-	// poller, err := deleteResource(ctx, r.Radius, deploymentTemplate.Status.Resource)
-	// if err != nil {
-	// 	return nil, err
-	// } else if poller != nil {
-	// 	return poller, err
-	// }
+	// TODOWILLSMITH: do we need to do anything here? wait for DeploymentResources to be deleted?
 
 	// Deletion was synchronous
 
