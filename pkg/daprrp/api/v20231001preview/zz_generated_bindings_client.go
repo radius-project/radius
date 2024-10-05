@@ -22,7 +22,7 @@ import (
 // BindingsClient contains the methods for the Bindings group.
 // Don't use this type directly, use NewBindingsClient() instead.
 type BindingsClient struct {
-	internal  *arm.Client
+	internal *arm.Client
 	rootScope string
 }
 
@@ -39,7 +39,7 @@ func NewBindingsClient(rootScope string, credential azcore.TokenCredential, opti
 	}
 	client := &BindingsClient{
 		rootScope: rootScope,
-		internal:  cl,
+	internal: cl,
 	}
 	return client, nil
 }
@@ -105,8 +105,8 @@ func (client *BindingsClient) createOrUpdateCreateRequest(ctx context.Context, b
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-		return nil, err
-	}
+	return nil, err
+}
 	return req, nil
 }
 
@@ -228,7 +228,7 @@ func (client *BindingsClient) getHandleResponse(resp *http.Response) (BindingsCl
 // Generated from API version 2023-10-01-preview
 //   - options - BindingsClientListByScopeOptions contains the optional parameters for the BindingsClient.NewListByScopePager
 //     method.
-func (client *BindingsClient) NewListByScopePager(options *BindingsClientListByScopeOptions) *runtime.Pager[BindingsClientListByScopeResponse] {
+func (client *BindingsClient) NewListByScopePager(options *BindingsClientListByScopeOptions) (*runtime.Pager[BindingsClientListByScopeResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[BindingsClientListByScopeResponse]{
 		More: func(page BindingsClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -340,7 +340,8 @@ func (client *BindingsClient) updateCreateRequest(ctx context.Context, bindingNa
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
+	return nil, err
+}
 	return req, nil
 }
+
