@@ -38,11 +38,6 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 	}, nil
 }
 
-func (c *ClientFactory) NewBindingsClient() *BindingsClient {
-	subClient, _ := NewBindingsClient(c.rootScope, c.credential, c.options)
-	return subClient
-}
-
 func (c *ClientFactory) NewConfigurationStoresClient() *ConfigurationStoresClient {
 	subClient, _ := NewConfigurationStoresClient(c.rootScope, c.credential, c.options)
 	return subClient

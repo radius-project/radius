@@ -14,257 +14,6 @@ import (
 	"reflect"
 )
 
-// MarshalJSON implements the json.Marshaller interface for type DaprBindingProperties.
-func (d DaprBindingProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "application", d.Application)
-	populate(objectMap, "auth", d.Auth)
-	populate(objectMap, "componentName", d.ComponentName)
-	populate(objectMap, "environment", d.Environment)
-	populate(objectMap, "metadata", d.Metadata)
-	populate(objectMap, "provisioningState", d.ProvisioningState)
-	populate(objectMap, "recipe", d.Recipe)
-	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
-	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "scopes", d.Scopes)
-	populate(objectMap, "status", d.Status)
-	populate(objectMap, "type", d.Type)
-	populate(objectMap, "version", d.Version)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprBindingProperties.
-func (d *DaprBindingProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", d, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &d.Application)
-			delete(rawMsg, key)
-		case "auth":
-				err = unpopulate(val, "Auth", &d.Auth)
-			delete(rawMsg, key)
-		case "componentName":
-				err = unpopulate(val, "ComponentName", &d.ComponentName)
-			delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &d.Environment)
-			delete(rawMsg, key)
-		case "metadata":
-				err = unpopulate(val, "Metadata", &d.Metadata)
-			delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, "ProvisioningState", &d.ProvisioningState)
-			delete(rawMsg, key)
-		case "recipe":
-				err = unpopulate(val, "Recipe", &d.Recipe)
-			delete(rawMsg, key)
-		case "resourceProvisioning":
-				err = unpopulate(val, "ResourceProvisioning", &d.ResourceProvisioning)
-			delete(rawMsg, key)
-		case "resources":
-				err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
-			delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &d.Status)
-			delete(rawMsg, key)
-		case "type":
-				err = unpopulate(val, "Type", &d.Type)
-			delete(rawMsg, key)
-		case "version":
-				err = unpopulate(val, "Version", &d.Version)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", d, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprBindingResource.
-func (d DaprBindingResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "id", d.ID)
-	populate(objectMap, "location", d.Location)
-	populate(objectMap, "name", d.Name)
-	populate(objectMap, "properties", d.Properties)
-	populate(objectMap, "systemData", d.SystemData)
-	populate(objectMap, "tags", d.Tags)
-	populate(objectMap, "type", d.Type)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprBindingResource.
-func (d *DaprBindingResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", d, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "id":
-				err = unpopulate(val, "ID", &d.ID)
-			delete(rawMsg, key)
-		case "location":
-				err = unpopulate(val, "Location", &d.Location)
-			delete(rawMsg, key)
-		case "name":
-				err = unpopulate(val, "Name", &d.Name)
-			delete(rawMsg, key)
-		case "properties":
-				err = unpopulate(val, "Properties", &d.Properties)
-			delete(rawMsg, key)
-		case "systemData":
-				err = unpopulate(val, "SystemData", &d.SystemData)
-			delete(rawMsg, key)
-		case "tags":
-				err = unpopulate(val, "Tags", &d.Tags)
-			delete(rawMsg, key)
-		case "type":
-				err = unpopulate(val, "Type", &d.Type)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", d, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprBindingResourceListResult.
-func (d DaprBindingResourceListResult) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "nextLink", d.NextLink)
-	populate(objectMap, "value", d.Value)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprBindingResourceListResult.
-func (d *DaprBindingResourceListResult) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", d, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "nextLink":
-				err = unpopulate(val, "NextLink", &d.NextLink)
-			delete(rawMsg, key)
-		case "value":
-				err = unpopulate(val, "Value", &d.Value)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", d, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprBindingResourceUpdate.
-func (d DaprBindingResourceUpdate) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "properties", d.Properties)
-	populate(objectMap, "tags", d.Tags)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprBindingResourceUpdate.
-func (d *DaprBindingResourceUpdate) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", d, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, "Properties", &d.Properties)
-			delete(rawMsg, key)
-		case "tags":
-				err = unpopulate(val, "Tags", &d.Tags)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", d, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprBindingResourceUpdateProperties.
-func (d DaprBindingResourceUpdateProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "application", d.Application)
-	populate(objectMap, "auth", d.Auth)
-	populate(objectMap, "environment", d.Environment)
-	populate(objectMap, "metadata", d.Metadata)
-	populate(objectMap, "recipe", d.Recipe)
-	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
-	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "scopes", d.Scopes)
-	populate(objectMap, "type", d.Type)
-	populate(objectMap, "version", d.Version)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprBindingResourceUpdateProperties.
-func (d *DaprBindingResourceUpdateProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", d, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &d.Application)
-			delete(rawMsg, key)
-		case "auth":
-				err = unpopulate(val, "Auth", &d.Auth)
-			delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &d.Environment)
-			delete(rawMsg, key)
-		case "metadata":
-				err = unpopulate(val, "Metadata", &d.Metadata)
-			delete(rawMsg, key)
-		case "recipe":
-				err = unpopulate(val, "Recipe", &d.Recipe)
-			delete(rawMsg, key)
-		case "resourceProvisioning":
-				err = unpopulate(val, "ResourceProvisioning", &d.ResourceProvisioning)
-			delete(rawMsg, key)
-		case "resources":
-				err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
-			delete(rawMsg, key)
-		case "type":
-				err = unpopulate(val, "Type", &d.Type)
-			delete(rawMsg, key)
-		case "version":
-				err = unpopulate(val, "Version", &d.Version)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", d, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type DaprConfigurationStoreProperties.
 func (d DaprConfigurationStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -277,7 +26,6 @@ func (d DaprConfigurationStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "scopes", d.Scopes)
 	populate(objectMap, "status", d.Status)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -319,9 +67,6 @@ func (d *DaprConfigurationStoreProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
 			delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &d.Status)
@@ -463,7 +208,6 @@ func (d DaprConfigurationStoreResourceUpdateProperties) MarshalJSON() ([]byte, e
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "scopes", d.Scopes)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
 	return json.Marshal(objectMap)
@@ -499,9 +243,6 @@ func (d *DaprConfigurationStoreResourceUpdateProperties) UnmarshalJSON(data []by
 		case "resources":
 				err = unpopulate(val, "Resources", &d.Resources)
 			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
-			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &d.Type)
 			delete(rawMsg, key)
@@ -528,7 +269,6 @@ func (d DaprPubSubBrokerProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "scopes", d.Scopes)
 	populate(objectMap, "status", d.Status)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -570,9 +310,6 @@ func (d *DaprPubSubBrokerProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
 			delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &d.Status)
@@ -714,7 +451,6 @@ func (d DaprPubSubBrokerResourceUpdateProperties) MarshalJSON() ([]byte, error) 
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "scopes", d.Scopes)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
 	return json.Marshal(objectMap)
@@ -749,9 +485,6 @@ func (d *DaprPubSubBrokerResourceUpdateProperties) UnmarshalJSON(data []byte) er
 			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
 			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &d.Type)
@@ -804,7 +537,6 @@ func (d DaprSecretStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "provisioningState", d.ProvisioningState)
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
-	populate(objectMap, "scopes", d.Scopes)
 	populate(objectMap, "status", d.Status)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -840,9 +572,6 @@ func (d *DaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resourceProvisioning":
 				err = unpopulate(val, "ResourceProvisioning", &d.ResourceProvisioning)
-			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
 			delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &d.Status)
@@ -982,7 +711,6 @@ func (d DaprSecretStoreResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
-	populate(objectMap, "scopes", d.Scopes)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
 	return json.Marshal(objectMap)
@@ -1012,9 +740,6 @@ func (d *DaprSecretStoreResourceUpdateProperties) UnmarshalJSON(data []byte) err
 		case "resourceProvisioning":
 				err = unpopulate(val, "ResourceProvisioning", &d.ResourceProvisioning)
 			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
-			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &d.Type)
 			delete(rawMsg, key)
@@ -1041,7 +766,6 @@ func (d DaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "scopes", d.Scopes)
 	populate(objectMap, "status", d.Status)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -1083,9 +807,6 @@ func (d *DaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
 			delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &d.Status)
@@ -1227,7 +948,6 @@ func (d DaprStateStoreResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resourceProvisioning", d.ResourceProvisioning)
 	populate(objectMap, "resources", d.Resources)
-	populate(objectMap, "scopes", d.Scopes)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
 	return json.Marshal(objectMap)
@@ -1262,9 +982,6 @@ func (d *DaprStateStoreResourceUpdateProperties) UnmarshalJSON(data []byte) erro
 			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &d.Resources)
-			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &d.Scopes)
 			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &d.Type)
@@ -1619,7 +1336,6 @@ func (n NonRedundantDaprResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "componentName", n.ComponentName)
 	populate(objectMap, "metadata", n.Metadata)
-	populate(objectMap, "scopes", n.Scopes)
 	populate(objectMap, "type", n.Type)
 	populate(objectMap, "version", n.Version)
 	return json.Marshal(objectMap)
@@ -1639,9 +1355,6 @@ func (n *NonRedundantDaprResourceProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "metadata":
 				err = unpopulate(val, "Metadata", &n.Metadata)
-			delete(rawMsg, key)
-		case "scopes":
-				err = unpopulate(val, "Scopes", &n.Scopes)
 			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &n.Type)
