@@ -33,10 +33,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -62,6 +62,9 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
+		Controller: crconfig.Controller{
+			SkipNameValidation: boolPtr(true),
+		},		
 
 		// Suppress metrics in tests to avoid conflicts.
 		Metrics: server.Options{
@@ -74,7 +77,7 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	err = (&DeploymentReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("recipe-controller"),
+		EventRecorder: mgr.GetEventRecorderFor("deployment-controller"),
 		Radius:        radius,
 		DelayInterval: deploymentTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
@@ -538,38 +541,6 @@ func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled(t *testing.T) {
 			Count:     2,
 		},
 	)
-}
-
-func makeDeployment(name types.NamespacedName) *appsv1.Deployment {
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name.Name,
-			Namespace:   name.Namespace,
-			Annotations: map[string]string{},
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": name.Name,
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": name.Name,
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  name.Name,
-							Image: "nginx:latest",
-						},
-					},
-				},
-			},
-		},
-	}
 }
 
 func waitForStateWaiting(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {

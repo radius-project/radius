@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
 	"github.com/radius-project/radius/pkg/ucp/store/postgres"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -60,6 +61,9 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 		return nil, err
 	}
 
+	// The client will log info the console that we don't really care about.
+	cfg.WarningHandler = rest.NoWarnings{}
+
 	// We only need to interact with UCP's store types.
 	scheme := runtime.NewScheme()
 
@@ -68,11 +72,6 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 
 	options := runtimeclient.Options{
 		Scheme: scheme,
-
-		// The client will log info the console that we don't really care about.
-		WarningHandler: runtimeclient.WarningHandlerOptions{
-			SuppressWarnings: true,
-		},
 	}
 
 	rc, err := runtimeclient.New(cfg, options)

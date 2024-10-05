@@ -19,27 +19,19 @@ package reconciler
 import (
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/test/testcontext"
-
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
-const (
-	recipeTestWaitDuration            = time.Second * 10
-	recipeTestWaitInterval            = time.Second * 1
-	recipeTestControllerDelayInterval = time.Millisecond * 100
-)
 
 func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	SkipWithoutEnvironment(t)
@@ -56,7 +48,10 @@ func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	t.Cleanup(cancel)
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
-		Scheme: scheme,
+		Scheme: scheme, 
+		Controller: crconfig.Controller{
+			SkipNameValidation: boolPtr(true),
+		},
 
 		// Suppress metrics in tests to avoid conflicts.
 		Metrics: server.Options{
@@ -352,94 +347,4 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	err = client.Get(ctx, name, &secret)
 	require.Error(t, err)
 	require.True(t, apierrors.IsNotFound(err))
-}
-
-func waitForRecipeStateUpdating(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
-
-	logger := t
-	status := &radappiov1alpha3.RecipeStatus{}
-	require.EventuallyWithT(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Recipe: %+v", name)
-		current := &radappiov1alpha3.Recipe{}
-		err := client.Get(ctx, name, current)
-		require.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("Recipe.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		if assert.Equal(t, radappiov1alpha3.PhraseUpdating, current.Status.Phrase) {
-			assert.NotEmpty(t, current.Status.Operation)
-			assert.NotEqual(t, oldOperation, current.Status.Operation)
-		}
-
-	}, recipeTestWaitDuration, recipeTestWaitInterval, "failed to enter updating state")
-
-	return status
-}
-
-func waitForRecipeStateReady(t *testing.T, client client.Client, name types.NamespacedName) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
-
-	logger := t
-	status := &radappiov1alpha3.RecipeStatus{}
-	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Recipe: %+v", name)
-		current := &radappiov1alpha3.Recipe{}
-		err := client.Get(ctx, name, current)
-		require.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("Recipe.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		if assert.Equal(t, radappiov1alpha3.PhraseReady, current.Status.Phrase) {
-			assert.Empty(t, current.Status.Operation)
-		}
-	}, recipeTestWaitDuration, recipeTestWaitInterval, "failed to enter updating state")
-
-	return status
-}
-
-func waitForRecipeStateDeleting(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
-
-	logger := t
-	status := &radappiov1alpha3.RecipeStatus{}
-	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Recipe: %+v", name)
-		current := &radappiov1alpha3.Recipe{}
-		err := client.Get(ctx, name, current)
-		assert.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("Recipe.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		if assert.Equal(t, radappiov1alpha3.PhraseDeleting, current.Status.Phrase) {
-			assert.NotEmpty(t, current.Status.Operation)
-			assert.NotEqual(t, oldOperation, current.Status.Operation)
-		}
-	}, recipeTestWaitDuration, recipeTestWaitInterval, "failed to enter deleting state")
-
-	return status
-}
-
-func waitForRecipeDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
-	ctx := testcontext.New(t)
-
-	logger := t
-	require.Eventuallyf(t, func() bool {
-		logger.Logf("Fetching Recipe: %+v", name)
-		current := &radappiov1alpha3.Recipe{}
-		err := client.Get(ctx, name, current)
-		if apierrors.IsNotFound(err) {
-			return true
-		}
-
-		logger.Logf("Recipe.Status: %+v", current.Status)
-		return false
-
-	}, recipeTestWaitDuration, recipeTestWaitInterval, "recipe still exists")
 }
