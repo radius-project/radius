@@ -75,7 +75,6 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 	component, err := dapr.ConstructDaprGeneric(
 		dapr.DaprGeneric{
 			Metadata: resource.Properties.Metadata,
-			Scopes:   resource.Properties.Scopes,
 			Type:     to.Ptr(resource.Properties.Type),
 			Version:  to.Ptr(resource.Properties.Version),
 		},

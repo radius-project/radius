@@ -169,34 +169,4 @@ var operationList = []v1.Operation{
 		},
 		IsDataAction: false,
 	},
-	{
-		Name: "Applications.Dapr/bindings/read",
-		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Dapr",
-			Resource:    "bindings",
-			Operation:   "Get/List Dapr bindings",
-			Description: "Gets/Lists Dapr bindings resource(s).",
-		},
-		IsDataAction: false,
-	},
-	{
-		Name: "Applications.Dapr/bindings/write",
-		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Dapr",
-			Resource:    "bindings",
-			Operation:   "Create/Update Dapr bindings",
-			Description: "Creates or updates a Dapr bindings resource.",
-		},
-		IsDataAction: false,
-	},
-	{
-		Name: "Applications.Dapr/bindings/delete",
-		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Dapr",
-			Resource:    "bindings",
-			Operation:   "Delete Dapr bindings",
-			Description: "Deletes a Dapr bindings resource.",
-		},
-		IsDataAction: false,
-	},
 }
