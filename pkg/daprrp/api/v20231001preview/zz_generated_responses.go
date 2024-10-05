@@ -4,35 +4,6 @@
 
 package v20231001preview
 
-// BindingsClientCreateOrUpdateResponse contains the response from method BindingsClient.BeginCreateOrUpdate.
-type BindingsClientCreateOrUpdateResponse struct {
-	// Dapr binding portable resource
-	DaprBindingResource
-}
-
-// BindingsClientDeleteResponse contains the response from method BindingsClient.BeginDelete.
-type BindingsClientDeleteResponse struct {
-	// placeholder for future response values
-}
-
-// BindingsClientGetResponse contains the response from method BindingsClient.Get.
-type BindingsClientGetResponse struct {
-	// Dapr binding portable resource
-	DaprBindingResource
-}
-
-// BindingsClientListByScopeResponse contains the response from method BindingsClient.NewListByScopePager.
-type BindingsClientListByScopeResponse struct {
-	// The response of a DaprBindingResource list operation.
-	DaprBindingResourceListResult
-}
-
-// BindingsClientUpdateResponse contains the response from method BindingsClient.BeginUpdate.
-type BindingsClientUpdateResponse struct {
-	// Dapr binding portable resource
-	DaprBindingResource
-}
-
 // ConfigurationStoresClientCreateOrUpdateResponse contains the response from method ConfigurationStoresClient.BeginCreateOrUpdate.
 type ConfigurationStoresClientCreateOrUpdateResponse struct {
 // Dapr configuration store portable resource

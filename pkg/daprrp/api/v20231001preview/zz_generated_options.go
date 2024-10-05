@@ -4,34 +4,6 @@
 
 package v20231001preview
 
-// BindingsClientBeginCreateOrUpdateOptions contains the optional parameters for the BindingsClient.BeginCreateOrUpdate method.
-type BindingsClientBeginCreateOrUpdateOptions struct {
-	// Resumes the LRO from the provided token.
-	ResumeToken string
-}
-
-// BindingsClientBeginDeleteOptions contains the optional parameters for the BindingsClient.BeginDelete method.
-type BindingsClientBeginDeleteOptions struct {
-	// Resumes the LRO from the provided token.
-	ResumeToken string
-}
-
-// BindingsClientBeginUpdateOptions contains the optional parameters for the BindingsClient.BeginUpdate method.
-type BindingsClientBeginUpdateOptions struct {
-	// Resumes the LRO from the provided token.
-	ResumeToken string
-}
-
-// BindingsClientGetOptions contains the optional parameters for the BindingsClient.Get method.
-type BindingsClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// BindingsClientListByScopeOptions contains the optional parameters for the BindingsClient.NewListByScopePager method.
-type BindingsClientListByScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
 // ConfigurationStoresClientBeginCreateOrUpdateOptions contains the optional parameters for the ConfigurationStoresClient.BeginCreateOrUpdate
 // method.
 type ConfigurationStoresClientBeginCreateOrUpdateOptions struct {

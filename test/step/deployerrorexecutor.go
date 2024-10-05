@@ -61,9 +61,6 @@ type DeploymentErrorDetail struct {
 
 	// The details to match. If provided, this will be matched against the details of the error.
 	Details []DeploymentErrorDetail
-
-	// The target to match. If provided, this will be matched against the end of the error
-	TargetEndsWith string
 }
 
 // NewDeployErrorExecutor creates a new DeployErrorExecutor instance with the given template, error code and parameters.
@@ -124,10 +121,6 @@ func (detail DeploymentErrorDetail) Matches(candidate v1.ErrorDetails) bool {
 	}
 
 	if detail.MessageContains != "" && !strings.Contains(candidate.Message, detail.MessageContains) {
-		return false
-	}
-
-	if detail.TargetEndsWith != "" && !strings.HasSuffix(candidate.Target, detail.TargetEndsWith) {
 		return false
 	}
 

@@ -258,31 +258,3 @@ func toOutputResources(outputResources []rpv1.OutputResource) []*OutputResource 
 	}
 	return outResources
 }
-
-func toScopesDataModel(inScopes []*string) []string {
-	if len(inScopes) == 0 {
-		return nil
-	}
-
-	var dmScopes []string
-	for _, scope := range inScopes {
-		if dmScope := to.String(scope); dmScope != "" {
-			dmScopes = append(dmScopes, dmScope)
-		}
-	}
-	return dmScopes
-}
-
-func fromScopesDataModel(dmScopes []string) []*string {
-	if len(dmScopes) == 0 {
-		return nil
-	}
-
-	var outScopes []*string
-	for _, dmScope := range dmScopes {
-		if dmScope != "" {
-			outScopes = append(outScopes, to.Ptr(dmScope))
-		}
-	}
-	return outScopes
-}

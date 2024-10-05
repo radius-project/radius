@@ -89,7 +89,6 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 						ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
 					},
 				}
-				expected.Properties.Scopes = []string{"test-scope-1", "test-scope-2"}
 			} else if payload == "statestore_recipe_resource.json" {
 				expected.Properties.ResourceProvisioning = portableresources.ResourceProvisioningRecipe
 				expected.Properties.Recipe.Name = "recipe-test"
@@ -179,8 +178,6 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 					},
 				}
 				expected.Properties.Status = resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{})
-				expected.Properties.Scopes = []*string{to.Ptr("test-scope-1"), to.Ptr("test-scope-2")}
-
 			} else if payload == "statestore_recipe_resourcedatamodel.json" {
 				expected.Properties.ResourceProvisioning = to.Ptr(ResourceProvisioningRecipe)
 				expected.Properties.Recipe = &Recipe{
