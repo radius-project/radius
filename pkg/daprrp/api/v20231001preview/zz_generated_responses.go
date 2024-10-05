@@ -154,3 +154,4 @@ type StateStoresClientUpdateResponse struct {
 // Dapr StateStore portable resource
 	DaprStateStoreResource
 }
+
