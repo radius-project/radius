@@ -1,0 +1,77 @@
+{
+  "operationId": "Bindings_Update",
+  "title": "Update a Binding resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "bindingName": "binding0",
+    "api-version": "2023-10-01-preview",
+    "bindingParameters": {
+      "location": "West US",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "resourceProvisioning": "manual",
+        "resources": [
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/testAcc/blobServices/containers/testCtn"
+          }
+        ],
+        "type": "bindings.azure.blobstorage",
+        "version": "v1",
+        "metadata": {
+          "foo": "bar"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/bindings/binding0",
+        "name": "binding0",
+        "type": "Applications.Dapr/bindings",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "resources": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/testAcc/blobServices/containers/testCtn"
+            }
+          ],
+          "type": "bindings.azure.blobstorage",
+          "version": "v1",
+          "metadata": {
+            "foo": "bar"
+          }
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/bindings/binding0",
+        "name": "binding0",
+        "type": "Applications.Dapr/bindings",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "resources": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/testAcc/blobServices/containers/testCtn"
+            }
+          ],
+          "type": "bindings.azure.blobstorage",
+          "version": "v1",
+          "metadata": {
+            "foo": "bar"
+          }
+        }
+      }
+    }
+  }
+}

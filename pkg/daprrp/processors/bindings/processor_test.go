@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package configurationstores
+package bindings
 
 import (
 	"context"
@@ -42,12 +42,12 @@ import (
 )
 
 func Test_Process(t *testing.T) {
-	const externalResourceID1 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis1"
-	const externalResourceID2 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis2"
+	const externalResourceID1 = "/subscriptions/0000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/testAcc1"
+	const externalResourceID2 = "/subscriptions/0000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/testAcc2"
 	const kubernetesResource = "/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-component"
 	const appID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
 	const envID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/test-env"
-	const componentName = "test-dapr-configuration-store"
+	const componentName = "test-dapr-binding"
 	const secretStoreComponentName = "test-dapr-secret-store"
 
 	t.Run("success - recipe", func(t *testing.T) {
@@ -55,13 +55,13 @@ func Test_Process(t *testing.T) {
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme),
 		}
 
-		resource := &datamodel.DaprConfigurationStore{
+		resource := &datamodel.DaprBinding{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					Name: componentName,
 				},
 			},
-			Properties: datamodel.DaprConfigurationStoreProperties{
+			Properties: datamodel.DaprBindingProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: appID,
 				},
@@ -121,12 +121,12 @@ func Test_Process(t *testing.T) {
 	t.Run("success - manual", func(t *testing.T) {
 		testset := []struct {
 			description string
-			properties  *datamodel.DaprConfigurationStoreProperties
+			properties  *datamodel.DaprBindingProperties
 			generated   *unstructured.Unstructured
 		}{
 			{
 				description: "Raw values",
-				properties: &datamodel.DaprConfigurationStoreProperties{
+				properties: &datamodel.DaprBindingProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: appID,
 						Environment: envID,
@@ -141,7 +141,7 @@ func Test_Process(t *testing.T) {
 						},
 					},
 					Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
-					Type:      "configuration.redis",
+					Type:      "bindings.azure.blobstorage",
 					Version:   "v1",
 				},
 				generated: &unstructured.Unstructured{
@@ -151,11 +151,11 @@ func Test_Process(t *testing.T) {
 						"metadata": map[string]any{
 							"namespace":       "test-namespace",
 							"name":            componentName,
-							"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprConfigurationStoresResourceType),
+							"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprBindingsResourceType),
 							"resourceVersion": "1",
 						},
 						"spec": map[string]any{
-							"type":    "configuration.redis",
+							"type":    "bindings.azure.blobstorage",
 							"version": "v1",
 							"metadata": []any{
 								map[string]any{
@@ -169,7 +169,7 @@ func Test_Process(t *testing.T) {
 			},
 			{
 				description: "With secret store",
-				properties: &datamodel.DaprConfigurationStoreProperties{
+				properties: &datamodel.DaprBindingProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: appID,
 						Environment: envID,
@@ -190,7 +190,7 @@ func Test_Process(t *testing.T) {
 						},
 					},
 					Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
-					Type:      "configuration.redis",
+					Type:      "bindings.azure.blobstorage",
 					Version:   "v1",
 					Auth: &rpv1.DaprComponentAuth{
 						SecretStore: secretStoreComponentName,
@@ -203,11 +203,11 @@ func Test_Process(t *testing.T) {
 						"metadata": map[string]any{
 							"namespace":       "test-namespace",
 							"name":            componentName,
-							"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprConfigurationStoresResourceType),
+							"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprBindingsResourceType),
 							"resourceVersion": "1",
 						},
 						"spec": map[string]any{
-							"type":    "configuration.redis",
+							"type":    "bindings.azure.blobstorage",
 							"version": "v1",
 							"metadata": []any{
 								map[string]any{
@@ -236,7 +236,7 @@ func Test_Process(t *testing.T) {
 				processor := Processor{
 					Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
 				}
-				resource := &datamodel.DaprConfigurationStore{
+				resource := &datamodel.DaprBinding{
 					BaseResource: v1.BaseResource{
 						TrackedResource: v1.TrackedResource{
 							Name: "some-other-name",
@@ -288,13 +288,13 @@ func Test_Process(t *testing.T) {
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
 		}
 
-		resource := &datamodel.DaprConfigurationStore{
+		resource := &datamodel.DaprBinding{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					Name: "some-other-name",
 				},
 			},
-			Properties: datamodel.DaprConfigurationStoreProperties{
+			Properties: datamodel.DaprBindingProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: envID,
 				},
@@ -308,7 +308,7 @@ func Test_Process(t *testing.T) {
 					},
 				},
 				Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
-				Type:      "configuration.redis",
+				Type:      "bindings.azure.blobstorage",
 				Version:   "v1",
 			},
 		}
@@ -340,11 +340,11 @@ func Test_Process(t *testing.T) {
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            componentName,
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("", "some-other-name", dapr_ctrl.DaprConfigurationStoresResourceType),
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("", "some-other-name", dapr_ctrl.DaprBindingsResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
-					"type":    "configuration.redis",
+					"type":    "bindings.azure.blobstorage",
 					"version": "v1",
 					"metadata": []any{
 						map[string]any{
@@ -379,13 +379,13 @@ func Test_Process(t *testing.T) {
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme),
 		}
 
-		resource := &datamodel.DaprConfigurationStore{
+		resource := &datamodel.DaprBinding{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					Name: "some-other-name",
 				},
 			},
-			Properties: datamodel.DaprConfigurationStoreProperties{
+			Properties: datamodel.DaprBindingProperties{
 				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
 					ComponentName: componentName,
 				},
@@ -451,7 +451,7 @@ func Test_Process(t *testing.T) {
 		// Create a duplicate with the same component name.
 		existing, err := dapr.ConstructDaprGeneric(
 			dapr.DaprGeneric{
-				Type:     to.Ptr("configuration.redis"),
+				Type:     to.Ptr("bindings.azure.blobstorage"),
 				Version:  to.Ptr("v1"),
 				Metadata: map[string]*rpv1.DaprComponentMetadataValue{},
 			},
@@ -459,20 +459,20 @@ func Test_Process(t *testing.T) {
 			componentName,
 			"test-app",
 			"some-other-other-name",
-			dapr_ctrl.DaprConfigurationStoresResourceType)
+			dapr_ctrl.DaprBindingsResourceType)
 		require.NoError(t, err)
 
 		processor := Processor{
 			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}, &existing),
 		}
 
-		resource := &datamodel.DaprConfigurationStore{
+		resource := &datamodel.DaprBinding{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					Name: "some-other-name",
 				},
 			},
-			Properties: datamodel.DaprConfigurationStoreProperties{
+			Properties: datamodel.DaprBindingProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: appID,
 				},
@@ -486,7 +486,7 @@ func Test_Process(t *testing.T) {
 					},
 				},
 				Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
-				Type:      "configuration.redis",
+				Type:      "bindings.azure.blobstorage",
 				Version:   "v1",
 			},
 		}
