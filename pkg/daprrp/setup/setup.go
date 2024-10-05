@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	bindings_proc "github.com/radius-project/radius/pkg/daprrp/processors/bindings"
 	configurationstores_proc "github.com/radius-project/radius/pkg/daprrp/processors/configurationstores"
 	pubsub_proc "github.com/radius-project/radius/pkg/daprrp/processors/pubsubbrokers"
 	secretstore_proc "github.com/radius-project/radius/pkg/daprrp/processors/secretstores"
@@ -172,6 +173,39 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				return pr_ctrl.NewDeleteResource[*datamodel.DaprConfigurationStore, datamodel.DaprConfigurationStore](options, &configurationstores_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    dapr_ctrl.AsyncDeleteDaprConfigurationStoreTimeout,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
+		},
+	})
+
+	_ = ns.AddResource("bindings", &builder.ResourceOption[*datamodel.DaprBinding, datamodel.DaprBinding]{
+		RequestConverter:  converter.BindingDataModelFromVersioned,
+		ResponseConverter: converter.BindingDataModelToVersioned,
+
+		Put: builder.Operation[datamodel.DaprBinding]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.DaprBinding]{
+				rp_frontend.PrepareRadiusResource[*datamodel.DaprBinding],
+			},
+			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprBinding, datamodel.DaprBinding](options, &bindings_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+			},
+			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprBindingTimeout,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
+		},
+		Patch: builder.Operation[datamodel.DaprBinding]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.DaprBinding]{
+				rp_frontend.PrepareRadiusResource[*datamodel.DaprBinding],
+			},
+			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprBinding, datamodel.DaprBinding](options, &bindings_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+			},
+			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprBindingTimeout,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
+		},
+		Delete: builder.Operation[datamodel.DaprBinding]{
+			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
+				return pr_ctrl.NewDeleteResource[*datamodel.DaprBinding, datamodel.DaprBinding](options, &bindings_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
+			},
+			AsyncOperationTimeout:    dapr_ctrl.AsyncDeleteDaprBindingTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 	})

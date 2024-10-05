@@ -15,9 +15,9 @@ import (
 // ClientFactory is a client factory used to create any client in this module.
 // Don't use this type directly, use NewClientFactory instead.
 type ClientFactory struct {
-	rootScope string
+	rootScope  string
 	credential azcore.TokenCredential
-	options *arm.ClientOptions
+	options    *arm.ClientOptions
 }
 
 // NewClientFactory creates a new instance of ClientFactory with the specified values.
@@ -33,9 +33,14 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 		return nil, err
 	}
 	return &ClientFactory{
-		rootScope: 	rootScope,		credential: credential,
+		rootScope: rootScope, credential: credential,
 		options: options.Clone(),
 	}, nil
+}
+
+func (c *ClientFactory) NewBindingsClient() *BindingsClient {
+	subClient, _ := NewBindingsClient(c.rootScope, c.credential, c.options)
+	return subClient
 }
 
 func (c *ClientFactory) NewConfigurationStoresClient() *ConfigurationStoresClient {
@@ -62,4 +67,3 @@ func (c *ClientFactory) NewStateStoresClient() *StateStoresClient {
 	subClient, _ := NewStateStoresClient(c.rootScope, c.credential, c.options)
 	return subClient
 }
-
