@@ -159,3 +159,4 @@ type StateStoresClientGetOptions struct {
 type StateStoresClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
+
