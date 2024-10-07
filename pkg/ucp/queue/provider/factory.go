@@ -69,7 +69,6 @@ func initAPIServer(ctx context.Context, opt QueueProviderOptions) (queue.Client,
 		Scheme: scheme,
 	}
 
-
 	rc, err := runtimeclient.New(cfg, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize APIServer client: %w", err)

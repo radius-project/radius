@@ -64,7 +64,7 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 		Scheme: scheme,
 		Controller: crconfig.Controller{
 			SkipNameValidation: boolPtr(true),
-		},		
+		},
 
 		// Suppress metrics in tests to avoid conflicts.
 		Metrics: server.Options{

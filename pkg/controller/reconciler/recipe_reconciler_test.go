@@ -27,11 +27,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
-	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
-
 
 func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	SkipWithoutEnvironment(t)
@@ -48,7 +47,7 @@ func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	t.Cleanup(cancel)
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
-		Scheme: scheme, 
+		Scheme: scheme,
 		Controller: crconfig.Controller{
 			SkipNameValidation: boolPtr(true),
 		},
