@@ -1,0 +1,16 @@
+{
+  "name": "Applications.Test",
+  "properties": {
+    "locations": {
+      "east": {}
+    },
+    "resourceTypes": {
+      "testResources": {
+        "defaultApiVersion": "2025-01-01",
+        "apiVersions": {
+          "2025-01-01": {}
+        }
+      }
+    }
+  }
+}

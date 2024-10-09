@@ -14,13 +14,11 @@
             {
               "id": "/planes/radius/local/resourcegroups/rg1/providers/Applications.Core/containers/my-container",
               "name": "my-container",
-              "location": "global",
               "type": "Applications.Core/containers"
             },
             {
                 "id": "/planes/radius/local/resourcegroups/rg1/providers/Applications.Core/applications/my-application",
                 "name": "my-application",
-                "location": "global",
                 "type": "Applications.Core/applications"
             }
           ]
