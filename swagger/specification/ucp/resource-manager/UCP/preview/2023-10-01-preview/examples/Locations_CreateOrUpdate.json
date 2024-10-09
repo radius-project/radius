@@ -1,0 +1,43 @@
+{
+  "operationId": "Locations_CreateOrUpdate",
+  "title": "Create or update a location supported by a resource provider.",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local",
+    "resourceProviderName": "Applications.Test",
+    "locationName": "east",
+    "resource": {
+      "properties": {
+        "resourceTypes": {}
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/locations/east",
+        "type": "System.Resources/resourceProviders/locations",
+        "name": "east",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "resourceTypes": {}
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/locations/east",
+        "type": "System.Resources/resourceProviders/locations",
+        "name": "east",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "resourceTypes": {}
+        }
+      },
+      "headers": {
+        "azure-asyncoperation": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd",
+        "location": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd"
+      }
+    }
+  }
+}

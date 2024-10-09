@@ -1,0 +1,23 @@
+{
+  "operationId": "ResourceTypes_Get",
+  "title": "Gets a resource type defined by a resource provider.",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local",
+    "resourceProviderName": "Applications.Test",
+    "resourceTypeName": "testResources"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
+        "type": "System.Resources/resourceProviders/resourceTypes",
+        "name": "testResources",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "defaultApiVersion": "2025-01-01"
+        }
+      }
+    }
+  }
+}

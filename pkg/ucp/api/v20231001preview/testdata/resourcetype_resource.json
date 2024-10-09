@@ -1,0 +1,7 @@
+{
+  "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
+  "name": "testResources",
+  "properties": {
+    "defaultApiVersion": "2025-01-01"
+  }
+}

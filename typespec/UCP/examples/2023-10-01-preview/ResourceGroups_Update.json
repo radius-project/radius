@@ -6,8 +6,10 @@
     "planeType": "radius",
     "planeName": "local",
     "resourceGroupName": "rg1",
-    "ResourceGroup": {
-      "location": "global"
+    "properties": {
+      "tags": {
+        "a": "b"
+      }
     }
   },
   "responses": {
@@ -15,7 +17,10 @@
       "body": {
         "location": "global",
         "id": "/planes/radius/local/resourcegroups/rg1",
-        "name": "rg1"
+        "name": "rg1",
+        "tags": {
+          "a": "b"
+        }
       }
     }
   }
