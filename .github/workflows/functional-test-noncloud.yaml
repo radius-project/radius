@@ -134,7 +134,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest]
+        os: [equinix-4cpu-16gb]
         name:
           [
             cli-noncloud,
