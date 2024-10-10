@@ -32,7 +32,7 @@ model TrackedResourceRequired<
   TProperties extends {},
   TResourceType extends valueof string,
   TResourceFriendlyName extends valueof string = TResourceType
-> extends Azure.ResourceManager.Foundations.TrackedResourceBase {
+> extends Azure.ResourceManager.Foundations.TrackedResource {
   #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-invalid-envelope-property" "template"
   #suppress "@azure-tools/typespec-azure-core/bad-record-type"
   @doc("The resource-specific properties for this resource.")

@@ -75,7 +75,7 @@ interface SecretStores {
     UCPBaseParameters<DaprSecretStoreResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     DaprSecretStoreResource,
     UCPBaseParameters<DaprSecretStoreResource>
   >;

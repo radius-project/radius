@@ -60,7 +60,8 @@ scalar LocationNameString extends string;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-path-segment-invalid-chars"
 @doc("The resource type for defining a resource provider.")
-model ResourceProviderResource is TrackedResource<ResourceProviderProperties> {
+model ResourceProviderResource
+  is Azure.ResourceManager.TrackedResource<ResourceProviderProperties> {
   @key("resourceProviderName")
   @doc("The resource provider name. This is also the resource provider namespace. Example: 'Applications.Datastores'.")
   @path
@@ -76,7 +77,8 @@ model ResourceProviderProperties {
 }
 
 @doc("The resource type for defining a resource type supported by the containing resource provider.")
-model ResourceTypeResource is ProxyResource<ResourceTypeProperties> {
+model ResourceTypeResource
+  is Azure.ResourceManager.ProxyResource<ResourceTypeProperties> {
   @key("resourceTypeName")
   @doc("The resource type name.")
   @path
@@ -95,7 +97,8 @@ model ResourceTypeProperties {
 }
 
 @doc("The resource type for defining an API version of a resource type supported by the containing resource provider.")
-model ApiVersionResource is ProxyResource<ApiVersionProperties> {
+model ApiVersionResource
+  is Azure.ResourceManager.ProxyResource<ApiVersionProperties> {
   @key("apiVersionName")
   @doc("The API version name.")
   @path
@@ -111,7 +114,8 @@ model ApiVersionProperties {
 }
 
 @doc("The resource type for defining a location of the containing resource provider. The location resource represents a logical location where the resource provider operates.")
-model LocationResource is ProxyResource<LocationProperties> {
+model LocationResource
+  is Azure.ResourceManager.ProxyResource<LocationProperties> {
   @key("locationName")
   @doc("The location name.")
   @path

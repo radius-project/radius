@@ -9,6 +9,25 @@ package v20231001preview
 
 import "time"
 
+// AzureResourceManagerCommonTypesTrackedResourceUpdate - The resource model definition for an Azure Resource Manager tracked
+// top level resource which has 'tags' and a 'location'
+type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
 // EnvironmentCompute - Represents backing compute resource
 type EnvironmentCompute struct {
 	// REQUIRED; Discriminator property for EnvironmentCompute.
@@ -175,46 +194,22 @@ type MongoDatabaseResourceListResult struct {
 	NextLink *string
 }
 
-// MongoDatabaseResourceUpdate - The type used for update operations of the MongoDatabaseResource.
+// MongoDatabaseResourceUpdate - MongoDatabase portable resource
 type MongoDatabaseResourceUpdate struct {
-	// The updatable properties of the MongoDatabaseResource.
-	Properties *MongoDatabaseResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// MongoDatabaseResourceUpdateProperties - The updatable properties of the MongoDatabaseResource.
-type MongoDatabaseResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// Database name of the target Mongo database
-	Database *string
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// Host name of the target Mongo database
-	Host *string
-
-	// Port value of the target Mongo database
-	Port *int32
-
-	// The recipe used to automatically deploy underlying infrastructure for the resource
-	Recipe *RecipeUpdate
-
-	// Specifies how the underlying service/resource is provisioned and managed.
-	ResourceProvisioning *ResourceProvisioning
-
-	// List of the resource IDs that support the MongoDB resource
-	Resources []*ResourceReference
-
-	// Secret values provided for the resource
-	Secrets *MongoDatabaseSecrets
-
-	// Username to use when connecting to the target Mongo database
-	Username *string
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
@@ -310,15 +305,6 @@ type RecipeStatus struct {
 	TemplateVersion *string
 }
 
-// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
-type RecipeUpdate struct {
-	// The name of the recipe within the environment to use
-	Name *string
-
-	// Key/value parameters to pass into the recipe at deployment
-	Parameters map[string]any
-}
-
 // RedisCacheListSecretsResult - The secret values for the given RedisCache resource
 type RedisCacheListSecretsResult struct {
 	// The connection string used to connect to the Redis cache
@@ -403,46 +389,22 @@ type RedisCacheResourceListResult struct {
 	NextLink *string
 }
 
-// RedisCacheResourceUpdate - The type used for update operations of the RedisCacheResource.
+// RedisCacheResourceUpdate - RedisCache portable resource
 type RedisCacheResourceUpdate struct {
-	// The updatable properties of the RedisCacheResource.
-	Properties *RedisCacheResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// RedisCacheResourceUpdateProperties - The updatable properties of the RedisCacheResource.
-type RedisCacheResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// The host name of the target Redis cache
-	Host *string
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// The port value of the target Redis cache
-	Port *int32
-
-	// The recipe used to automatically deploy underlying infrastructure for the resource
-	Recipe *RecipeUpdate
-
-	// Specifies how the underlying service/resource is provisioned and managed.
-	ResourceProvisioning *ResourceProvisioning
-
-	// List of the resource IDs that support the Redis resource
-	Resources []*ResourceReference
-
-	// Secrets provided by resource
-	Secrets *RedisCacheSecrets
-
-	// Specifies whether to enable SSL connections to the Redis cache
-	TLS *bool
-
-	// The username for Redis cache
-	Username *string
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // RedisCacheSecrets - The secret values for the given RedisCache resource
@@ -571,46 +533,22 @@ type SQLDatabaseResourceListResult struct {
 	NextLink *string
 }
 
-// SQLDatabaseResourceUpdate - The type used for update operations of the SqlDatabaseResource.
+// SQLDatabaseResourceUpdate - SqlDatabase portable resource
 type SQLDatabaseResourceUpdate struct {
-	// The updatable properties of the SqlDatabaseResource.
-	Properties *SQLDatabaseResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// SQLDatabaseResourceUpdateProperties - The updatable properties of the SqlDatabaseResource.
-type SQLDatabaseResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// The name of the Sql database.
-	Database *string
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// Port value of the target Sql database
-	Port *int32
-
-	// The recipe used to automatically deploy underlying infrastructure for the resource
-	Recipe *RecipeUpdate
-
-	// Specifies how the underlying service/resource is provisioned and managed.
-	ResourceProvisioning *ResourceProvisioning
-
-	// List of the resource IDs that support the SqlDatabase resource
-	Resources []*ResourceReference
-
-	// Secret values provided for the resource
-	Secrets *SQLDatabaseSecrets
-
-	// The fully qualified domain name of the Sql database.
-	Server *string
-
-	// Username to use when connecting to the target Sql database
-	Username *string
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // SQLDatabaseSecrets - The secret values for the given SqlDatabase resource

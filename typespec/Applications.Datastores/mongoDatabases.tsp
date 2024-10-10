@@ -103,7 +103,7 @@ interface MongoDatabases {
     UCPBaseParameters<MongoDatabaseResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     MongoDatabaseResource,
     UCPBaseParameters<MongoDatabaseResource>
   >;

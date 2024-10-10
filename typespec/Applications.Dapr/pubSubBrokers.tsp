@@ -76,7 +76,7 @@ interface PubSubBrokers {
     UCPBaseParameters<DaprPubSubBrokerResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     DaprPubSubBrokerResource,
     UCPBaseParameters<DaprPubSubBrokerResource>
   >;
