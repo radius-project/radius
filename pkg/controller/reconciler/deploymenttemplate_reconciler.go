@@ -38,6 +38,10 @@ import (
 )
 
 const (
+	TEMPDEFAULTRADIUSRESOURCEGROUP = "/planes/radius/local/resourcegroups/default"
+)
+
+const (
 	deploymentResourceType = "Microsoft.Resources/deployments"
 )
 
@@ -109,7 +113,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		poller, err := r.Radius.Resources(deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope, deploymentResourceType).ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
+		poller, err := r.Radius.Resources(TEMPDEFAULTRADIUSRESOURCEGROUP, deploymentResourceType).ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue PUT operation: %w", err)
 		}
@@ -219,11 +223,11 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.Template = deploymentTemplate.Spec.Template
 		deploymentTemplate.Status.Parameters = deploymentTemplate.Spec.Parameters
-		deploymentTemplate.Status.Resource = deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
+		deploymentTemplate.Status.Resource = TEMPDEFAULTRADIUSRESOURCEGROUP + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 		return ctrl.Result{}, nil
 
 	} else if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-		poller, err := r.Radius.Resources(deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
+		poller, err := r.Radius.Resources(TEMPDEFAULTRADIUSRESOURCEGROUP, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue DELETE operation: %w", err)
 		}
@@ -369,7 +373,7 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 
 		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
-		deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope = deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope
+		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -434,7 +438,7 @@ func (r *DeploymentTemplateReconciler) startPutOrDeleteOperationIfNeeded(ctx con
 		"parameters":     parameters,
 	}
 
-	resourceID := deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
+	resourceID := TEMPDEFAULTRADIUSRESOURCEGROUP + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 	poller, err := createOrUpdateResource(ctx, r.Radius, resourceID, properties)
 	if err != nil {
 		return nil, nil, err

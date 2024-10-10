@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.4
   name: deploymenttemplates.radapp.io
 spec:
   group: radapp.io
@@ -43,8 +43,8 @@ spec:
               parameters:
                 description: Parameters is the ARM JSON parameters for the template.
                 type: string
-              scope:
-                description: Scope is the resource id of the Radius scope.
+              providerConfig:
+                description: ProviderConfig specifies the scope for resources
                 type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources
@@ -52,7 +52,6 @@ spec:
                 type: string
             required:
             - parameters
-            - scope
             - template
             type: object
           status:
@@ -93,11 +92,11 @@ spec:
                 description: Phrase indicates the current status of the Deployment
                   Template.
                 type: string
+              providerConfig:
+                description: ProviderConfig specifies the scope for resources
+                type: string
               resource:
                 description: Resource is the resource id of the deployment.
-                type: string
-              scope:
-                description: Scope is the resource id of the Radius scope.
                 type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources

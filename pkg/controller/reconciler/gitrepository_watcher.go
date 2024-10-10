@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/radius-project/radius/pkg/sdk/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -111,7 +110,7 @@ func (r *GitRepositoryWatcher) processFile(ctx context.Context, f fs.DirEntry, p
 			Spec: radappiov1alpha3.DeploymentTemplateSpec{
 				Template:       template,
 				Parameters:     parameters,
-				ProviderConfig: &providerConfig,
+				ProviderConfig: providerConfig,
 			},
 		}
 
@@ -123,14 +122,16 @@ func (r *GitRepositoryWatcher) processFile(ctx context.Context, f fs.DirEntry, p
 	}
 }
 
-func (r *GitRepositoryWatcher) processBicepFile(ctx context.Context, path string) (string, string, clients.ProviderConfig) {
+func (r *GitRepositoryWatcher) processBicepFile(ctx context.Context, path string) (string, string, string) {
 	log := ctrl.LoggerFrom(ctx)
 
-	file, err := os.ReadFile(path)
+	_, err := os.ReadFile(path)
 	if err != nil {
 		log.Error(err, "unable to read file")
-		return "", "", clients.NewDefaultProviderConfig("default")
+		return "", "", ""
 	}
 
-	return string(file), "", clients.ProviderConfig{}
+	// TODOWILLSMITH: compilebicep
+
+	return "", "", ""
 }
