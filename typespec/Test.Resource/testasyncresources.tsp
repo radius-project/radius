@@ -71,7 +71,7 @@ interface TestAsyncResources {
     UCPBaseParameters<TestAsyncResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>
   >;

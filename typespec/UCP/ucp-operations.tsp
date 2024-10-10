@@ -35,7 +35,7 @@ using OpenAPI;
 @doc("List {name}", TResource)
 @segmentOf(TResource)
 @armResourceList(TResource)
-op UcpResourceList<TResource extends ArmResource, TBaseParameters>(
+op UcpResourceList<TResource extends Foundations.Resource, TBaseParameters>(
   ...TBaseParameters,
   ...ParentKeysOf<TResource>,
 ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
@@ -45,7 +45,7 @@ op UcpResourceList<TResource extends ArmResource, TBaseParameters>(
 @doc("Get a {name}", TResource)
 @get
 @armResourceRead(TResource)
-op UcpResourceRead<TResource extends ArmResource, TBaseParameters>(
+op UcpResourceRead<TResource extends Foundations.Resource, TBaseParameters>(
   ...TBaseParameters,
 ): ArmResponse<TResource> | ErrorResponse;
 
@@ -62,7 +62,7 @@ op UcpResourceRead<TResource extends ArmResource, TBaseParameters>(
 @armResourceCreateOrUpdate(TResource)
 @put
 op UcpResourceCreateOrUpdateAsync<
-  TResource extends ArmResource,
+  TResource extends Foundations.Resource,
   TBaseParameters
 >(
   ...TBaseParameters,
@@ -85,7 +85,7 @@ op UcpResourceCreateOrUpdateAsync<
 @armResourceUpdate(TResource)
 @patch
 op UcpCustomPatchAsync<
-  TResource extends ArmResource,
+  TResource extends Foundations.Resource,
   TBaseParameters,
   TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<TResource>
 >(
@@ -108,9 +108,10 @@ op UcpCustomPatchAsync<
 )
 @armResourceDelete(TResource)
 @delete
-op UcpResourceDeleteAsync<TResource extends ArmResource, TBaseParameters>(
-  ...TBaseParameters,
-):
+op UcpResourceDeleteAsync<
+  TResource extends Foundations.Resource,
+  TBaseParameters
+>(...TBaseParameters):
   | ArmDeletedResponse
   | ArmDeleteAcceptedLroResponse
   | ArmDeletedNoContentResponse
@@ -122,7 +123,7 @@ op UcpResourceDeleteAsync<TResource extends ArmResource, TBaseParameters>(
 @armResourceCreateOrUpdate(TResource)
 @put
 op UcpResourceCreateOrUpdateSync<
-  TResource extends ArmResource,
+  TResource extends Foundations.Resource,
   TBaseParameters
 >(
   ...TBaseParameters,
@@ -138,7 +139,7 @@ op UcpResourceCreateOrUpdateSync<
 @armResourceUpdate(TResource)
 @patch
 op UcpCustomPatchSync<
-  TResource extends ArmResource,
+  TResource extends Foundations.Resource,
   TBaseParameters,
   TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<TResource>
 >(
@@ -154,6 +155,9 @@ op UcpCustomPatchSync<
 @doc("Delete a {name}", TResource)
 @armResourceDelete(TResource)
 @delete
-op UcpResourceDeleteSync<TResource extends ArmResource, TBaseParameters>(
+op UcpResourceDeleteSync<
+  TResource extends Foundations.Resource,
+  TBaseParameters
+>(
   ...TBaseParameters,
 ): ArmDeletedResponse | ArmDeletedNoContentResponse | ErrorResponse;

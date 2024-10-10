@@ -131,8 +131,8 @@ type ExtendersClientListByScopeResponse struct {
 
 // ExtendersClientListSecretsResponse contains the response from method ExtendersClient.ListSecrets.
 type ExtendersClientListSecretsResponse struct {
-	// Any object
-	Object map[string]any
+	// Response for list secrets API call
+	Value map[string]any
 }
 
 // ExtendersClientUpdateResponse contains the response from method ExtendersClient.BeginUpdate.

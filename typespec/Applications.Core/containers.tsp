@@ -322,6 +322,10 @@ enum VolumePermission {
 enum IAMKind {
   @doc("Azure Active Directory")
   azure,
+
+  // This was added because typespec doesn't generate necessary functions and other variables for single value enums.
+  // This can be deleted if we add more values to the enum.
+  string,
 }
 
 @armResourceOperations
@@ -342,7 +346,7 @@ interface Containers {
     UCPBaseParameters<ContainerResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     ContainerResource,
     UCPBaseParameters<ContainerResource>
   >;

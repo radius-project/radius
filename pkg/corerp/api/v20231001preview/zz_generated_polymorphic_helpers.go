@@ -30,27 +30,6 @@ func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (Environm
 	return b, nil
 }
 
-func unmarshalEnvironmentComputeUpdateClassification(rawMsg json.RawMessage) (EnvironmentComputeUpdateClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]any
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b EnvironmentComputeUpdateClassification
-	switch m["kind"] {
-	case "kubernetes":
-		b = &KubernetesComputeUpdate{}
-	default:
-		b = &EnvironmentComputeUpdate{}
-	}
-	if err := json.Unmarshal(rawMsg, b); err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
 func unmarshalExtensionClassification(rawMsg json.RawMessage) (ExtensionClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
@@ -156,48 +135,6 @@ func unmarshalRecipePropertiesClassificationMap(rawMsg json.RawMessage) (map[str
 	fMap := make(map[string]RecipePropertiesClassification, len(rawMessages))
 	for key, rawMessage := range rawMessages {
 		f, err := unmarshalRecipePropertiesClassification(rawMessage)
-		if err != nil {
-			return nil, err
-		}
-		fMap[key] = f
-	}
-	return fMap, nil
-}
-
-func unmarshalRecipePropertiesUpdateClassification(rawMsg json.RawMessage) (RecipePropertiesUpdateClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]any
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b RecipePropertiesUpdateClassification
-	switch m["templateKind"] {
-	case "bicep":
-		b = &BicepRecipePropertiesUpdate{}
-	case "terraform":
-		b = &TerraformRecipePropertiesUpdate{}
-	default:
-		b = &RecipePropertiesUpdate{}
-	}
-	if err := json.Unmarshal(rawMsg, b); err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
-func unmarshalRecipePropertiesUpdateClassificationMap(rawMsg json.RawMessage) (map[string]RecipePropertiesUpdateClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var rawMessages map[string]json.RawMessage
-	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
-		return nil, err
-	}
-	fMap := make(map[string]RecipePropertiesUpdateClassification, len(rawMessages))
-	for key, rawMessage := range rawMessages {
-		f, err := unmarshalRecipePropertiesUpdateClassification(rawMessage)
 		if err != nil {
 			return nil, err
 		}
