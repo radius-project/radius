@@ -166,7 +166,7 @@ interface Volumes {
     UCPBaseParameters<VolumeResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     VolumeResource,
     UCPBaseParameters<VolumeResource>
   >;
