@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha3
 
 import (
+	"github.com/radius-project/radius/pkg/sdk/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,8 +29,8 @@ type DeploymentTemplateSpec struct {
 	// Parameters is the ARM JSON parameters for the template.
 	Parameters string `json:"parameters"`
 
-	// Scope is the resource id of the Radius scope.
-	Scope string `json:"scope"`
+	// ProviderConfig specifies the scope for resources
+	ProviderConfig *clients.ProviderConfig `json:"providerConfig,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of DeploymentTemplate
@@ -43,8 +44,8 @@ type DeploymentTemplateStatus struct {
 	// Parameters is the ARM JSON parameters for the template.
 	Parameters string `json:"parameters"`
 
-	// Scope is the resource id of the Radius scope.
-	Scope string `json:"scope,omitempty"`
+	// ProviderConfig specifies the scope for resources
+	ProviderConfig *clients.ProviderConfig `json:"providerConfig,omitempty"`
 
 	// Resource is the resource id of the deployment.
 	Resource string `json:"resource,omitempty"`

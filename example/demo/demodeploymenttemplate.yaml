@@ -17,15 +17,7 @@ spec:
         "_generator": {
           "name": "bicep",
           "version": "0.30.23.60470",
-          "templateHash": "12248912509408521812"
-        }
-      },
-      "parameters": {
-        "port": {
-          "type": "int"
-        },
-        "tag": {
-          "type": "string"
+          "templateHash": "14905601654846494245"
         }
       },
       "imports": {
@@ -55,37 +47,10 @@ spec:
           "dependsOn": [
             "demoenv"
           ]
-        },
-        "democtnr": {
-          "import": "Radius",
-          "type": "Applications.Core/containers@2023-10-01-preview",
-          "properties": {
-            "name": "democtnr",
-            "properties": {
-              "application": "[reference('demoapp').id]",
-              "container": {
-                "image": "[format('ghcr.io/radius-project/samples/demo:{0}', parameters('tag'))]",
-                "ports": {
-                  "web": {
-                    "containerPort": "[parameters('port')]"
-                  }
-                }
-              }
-            }
-          },
-          "dependsOn": [
-            "demoapp"
-          ]
         }
       }
     }
   parameters: |
     {
-      "port": {
-        "value": 3000
-      },
-      "tag": {
-        "value": "latest"
-      }
     }
   scope: "/planes/radius/local/resourcegroups/default"

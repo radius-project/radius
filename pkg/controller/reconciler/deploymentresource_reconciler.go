@@ -104,7 +104,7 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentResource.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-		poller, err := r.Radius.Resources(deploymentResource.Status.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
+		poller, err := r.Radius.Resources(deploymentResource.Status.ProviderConfig.Radius.Value.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue DELETE operation: %w", err)
 		}
@@ -216,7 +216,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	resourceId := deploymentResource.Spec.ResourceId
+	resourceId := deploymentResource.Spec.ID
 
 	logger.Info("Starting DELETE operation.")
 	poller, err := deleteResource(ctx, r.Radius, resourceId)

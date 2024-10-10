@@ -10,7 +10,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.30.23.60470",
-      "templateHash": "12233467588702176499"
+      "templateHash": "10554523723058743346"
     }
   },
   "parameters": {
@@ -38,7 +38,7 @@
           },
           "recipes": {
             "Applications.Datastores/redisCaches": {
-              "testrecipe": {
+              "default": {
                 "templateKind": "bicep",
                 "templatePath": "ghcr.io/radius-project/recipes/local-dev/rediscaches:latest"
               }

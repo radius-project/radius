@@ -109,7 +109,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		poller, err := r.Radius.Resources(deploymentTemplate.Status.Scope, deploymentResourceType).ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
+		poller, err := r.Radius.Resources(deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope, deploymentResourceType).ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue PUT operation: %w", err)
 		}
@@ -167,18 +167,18 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			newOutputResources[resource] = true
 		}
 
-		for _, resource := range outputResources {
-			if _, ok := existingOutputResources[resource]; !ok {
+		for _, outputResourceId := range outputResources {
+			if _, ok := existingOutputResources[outputResourceId]; !ok {
 				// resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
 
-				resourceName := generateDeploymentResourceName(resource)
+				resourceName := generateDeploymentResourceName(outputResourceId)
 				deploymentResource := &radappiov1alpha3.DeploymentResource{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: deploymentTemplate.Namespace,
 					},
 					Spec: radappiov1alpha3.DeploymentResourceSpec{
-						ResourceId: resource,
+						ID: outputResourceId,
 					},
 				}
 
@@ -219,11 +219,11 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.Template = deploymentTemplate.Spec.Template
 		deploymentTemplate.Status.Parameters = deploymentTemplate.Spec.Parameters
-		deploymentTemplate.Status.Resource = deploymentTemplate.Spec.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
+		deploymentTemplate.Status.Resource = deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 		return ctrl.Result{}, nil
 
 	} else if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-		poller, err := r.Radius.Resources(deploymentTemplate.Status.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
+		poller, err := r.Radius.Resources(deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue DELETE operation: %w", err)
 		}
@@ -369,7 +369,7 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 
 		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
-		deploymentTemplate.Status.Scope = deploymentTemplate.Spec.Scope
+		deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope = deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -424,28 +424,17 @@ func (r *DeploymentTemplateReconciler) startPutOrDeleteOperationIfNeeded(ctx con
 		return nil, nil, fmt.Errorf("failed to unmarshal parameters: %w", err)
 	}
 
+	providerConfig := deploymentTemplate.Spec.ProviderConfig
+
 	logger.Info("Starting PUT operation.")
 	properties := map[string]any{
-		"mode": "Incremental",
-		"providerConfig": map[string]any{
-			"deployments": map[string]any{
-				"type": "Microsoft.Resources",
-				"value": map[string]any{
-					"scope": deploymentTemplate.Spec.Scope,
-				},
-			},
-			"radius": map[string]any{
-				"type": "Radius",
-				"value": map[string]any{
-					"scope": deploymentTemplate.Spec.Scope,
-				},
-			},
-		}, // TODOWILLSMITH: other providers (az, aws) get from env?
-		"template":   template,
-		"parameters": parameters,
+		"mode":           "Incremental",
+		"providerConfig": providerConfig,
+		"template":       template,
+		"parameters":     parameters,
 	}
 
-	resourceID := deploymentTemplate.Spec.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
+	resourceID := deploymentTemplate.Status.ProviderConfig.Radius.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 	poller, err := createOrUpdateResource(ctx, r.Radius, resourceID, properties)
 	if err != nil {
 		return nil, nil, err
