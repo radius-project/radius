@@ -56,6 +56,18 @@ rad install kubernetes --set key=value
 
 # Install Radius with the intermediate root CA certificate in the current Kubernetes context
 rad install kubernetes --set-file global.rootCA.cert=/path/to/rootCA.crt
+
+# Install Radius with zipkin server for distributed tracing 
+rad install kubernetes --set global.zipkin.url=http://localhost:9411/api/v2/spans
+
+# Install Radius with central prometheus monitoring service
+rad install kubernetes --set global.prometheus.path=/customdomain.com/metrics,global.prometheus.port=443,global.rootCA.cert=/path/to/rootCA.crt 
+
+# Install Radius from helmchart referred from path
+rad install kubernetes --chart /root/radius/deploy/Chart
+
+# Re-install Radius with latest version
+rad install kubernetes --reinstall
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
