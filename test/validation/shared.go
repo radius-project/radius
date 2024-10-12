@@ -47,6 +47,7 @@ const (
 	DaprSecretStoresResource        = "applications.dapr/secretStores"
 	DaprStateStoresResource         = "applications.dapr/stateStores"
 	DaprConfigurationStoresResource = "applications.dapr/configurationStores"
+	DaprBindingsResource            = "applications.dapr/bindings"
 	MongoDatabasesResource          = "applications.datastores/mongoDatabases"
 	RedisCachesResource             = "applications.datastores/redisCaches"
 	SQLDatabasesResource            = "applications.datastores/sqlDatabases"
