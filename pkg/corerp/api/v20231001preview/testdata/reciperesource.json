@@ -1,4 +1,4 @@
 {
-    "resourceType":"Applications.Datastores/mongoDatabases",
-    "name":"mongo-azure"
+  "resourceType": "Applications.Datastores/mongoDatabases",
+  "name": "mongo-azure"
 }

@@ -10,12 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------.
-import path from 'path';
-import { createWriteStream } from 'fs';
-import { readdir, stat, mkdir, rm, copyFile } from 'fs/promises';
-import { series } from 'async';
-import { spawn } from 'child_process';
-import colors from 'colors';
+import path from "path";
+import { createWriteStream } from "fs";
+import { readdir, stat, mkdir, rm, copyFile } from "fs/promises";
+import { series } from "async";
+import { spawn } from "child_process";
+import colors from "colors";
 
 export interface ILogger {
   out: (data: string) => void;
@@ -23,20 +23,29 @@ export interface ILogger {
 }
 
 export const defaultLogger: ILogger = {
-  out: data => process.stdout.write(data),
-  err: data => process.stderr.write(data),
-}
+  out: (data) => process.stdout.write(data),
+  err: (data) => process.stderr.write(data),
+};
 
-export async function copyRecursive(sourceBasePath: string, destinationBasePath: string): Promise<void> {
+export async function copyRecursive(
+  sourceBasePath: string,
+  destinationBasePath: string,
+): Promise<void> {
   for (const filePath of await findRecursive(sourceBasePath, () => true)) {
-    const destinationPath = path.join(destinationBasePath, path.relative(sourceBasePath, filePath));
+    const destinationPath = path.join(
+      destinationBasePath,
+      path.relative(sourceBasePath, filePath),
+    );
 
     await mkdir(path.dirname(destinationPath), { recursive: true });
     await copyFile(filePath, destinationPath);
   }
 }
 
-export async function findRecursive(basePath: string, filter: (name: string) => boolean): Promise<string[]> {
+export async function findRecursive(
+  basePath: string,
+  filter: (name: string) => boolean,
+): Promise<string[]> {
   let results: string[] = [];
 
   for (const subPathName of await readdir(basePath)) {
@@ -63,10 +72,16 @@ export async function findRecursive(basePath: string, filter: (name: string) => 
   return results;
 }
 
-export function executeCmd(logger: ILogger, verbose: boolean, cwd: string, cmd: string, args: string[]) : Promise<void> {
+export function executeCmd(
+  logger: ILogger,
+  verbose: boolean,
+  cwd: string,
+  cmd: string,
+  args: string[],
+): Promise<void> {
   return new Promise((resolve, reject) => {
     if (verbose) {
-      logOut(logger, colors.green(`Executing: ${cmd} ${args.join(' ')}`));
+      logOut(logger, colors.green(`Executing: ${cmd} ${args.join(" ")}`));
     }
 
     const child = spawn(cmd, args, {
@@ -75,19 +90,23 @@ export function executeCmd(logger: ILogger, verbose: boolean, cwd: string, cmd: 
       shell: true,
     });
 
-    child.stdout.on('data', data => logger.out(colors.grey(data.toString())));
-    child.stderr.on('data', data => {
+    child.stdout.on("data", (data) => logger.out(colors.grey(data.toString())));
+    child.stderr.on("data", (data) => {
       const message = data.toString();
       logger.err(colors.red(message));
-      if (message.indexOf('FATAL ERROR') > -1 && message.indexOf('Allocation failed - JavaScript heap out of memory') > -1) {
-        reject('Child process has run out of memory');
+      if (
+        message.indexOf("FATAL ERROR") > -1 &&
+        message.indexOf("Allocation failed - JavaScript heap out of memory") >
+          -1
+      ) {
+        reject("Child process has run out of memory");
       }
     });
 
-    child.on('error', err => {
+    child.on("error", (err) => {
       reject(err);
     });
-    child.on('exit', code => {
+    child.on("exit", (code) => {
       if (code !== 0) {
         reject(`Exited with code ${code}`);
       } else {
@@ -98,13 +117,11 @@ export function executeCmd(logger: ILogger, verbose: boolean, cwd: string, cmd: 
 }
 
 export function executeSynchronous<T>(asyncFunc: () => Promise<T>) {
-  series(
-    [asyncFunc],
-    (error) => {
-      if (error) {
-        throw error;
-      }
-    });
+  series([asyncFunc], (error) => {
+    if (error) {
+      throw error;
+    }
+  });
 }
 
 export function lowerCaseCompare(a: string, b: string) {
@@ -129,7 +146,7 @@ export function logErr(logger: ILogger, line: any) {
 
 export async function getLogger(logFilePath: string): Promise<ILogger> {
   await rm(logFilePath, { force: true });
-  const logFileStream = createWriteStream(logFilePath, { flags: 'a' });
+  const logFileStream = createWriteStream(logFilePath, { flags: "a" });
 
   return {
     out: (data: string) => {

@@ -187,8 +187,10 @@ func Test_NewConfig(t *testing.T) {
 			// validate generated config
 			err = tfconfig.Save(testcontext.New(t), workingDir)
 			require.NoError(t, err)
+
 			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
 			require.NoError(t, err)
+
 			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
 			require.NoError(t, err)
 			require.Equal(t, string(expectedConfig), string(actualConfig))
@@ -291,8 +293,10 @@ func Test_AddRecipeContext(t *testing.T) {
 			// validate generated config
 			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
 			require.NoError(t, err)
+
 			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
 			require.NoError(t, err)
+
 			require.Equal(t, string(expectedConfig), string(actualConfig))
 		})
 	}
@@ -685,8 +689,10 @@ func Test_AddOutputs(t *testing.T) {
 			// Assert generated config file matches expected config in JSON format.
 			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
 			require.NoError(t, err)
+
 			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
 			require.NoError(t, err)
+
 			require.Equal(t, string(expectedConfig), string(actualConfig))
 		})
 	}
@@ -932,6 +938,7 @@ func Test_updateModuleWithProviderAliases(t *testing.T) {
 			// Assert generated config file matches expected config in JSON format.
 			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
 			require.NoError(t, err)
+
 			if tt.wantErr != true {
 				expectedConfig, err := os.ReadFile(tt.expectedConfigFile)
 				require.NoError(t, err)

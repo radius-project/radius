@@ -8,7 +8,8 @@
   "responses": {
     "200": {
       "body": {
-        "value": [{
+        "value": [
+          {
             "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/volumes/keyvault0",
             "name": "keyvault0",
             "type": "Applications.Core/volumes",
