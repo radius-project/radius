@@ -27,7 +27,7 @@ If you need to manually test APIs you can reach them at the following endpoints 
 ## Prerequisites
 
 1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data.
-2. Clone the `radius-project/radius` 
+2. Clone the `radius-project/radius` repo.
 3. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
   
 > 💡 Radius will use your locally configured Azure or AWS credentials. If you are able to use the `az` or `aws` CLI then you don't need to do any additional setup.
