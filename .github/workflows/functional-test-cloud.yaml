@@ -450,7 +450,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest-m]
+        os: [ubuntu-latest]
         name: [corerp-cloud, ucp-cloud, datastoresrp-cloud]
     runs-on: ${{ matrix.os }}
     env:
