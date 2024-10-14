@@ -79,7 +79,7 @@ interface ConfigurationStores {
     UCPBaseParameters<DaprConfigurationStoreResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     DaprConfigurationStoreResource,
     UCPBaseParameters<DaprConfigurationStoreResource>
   >;

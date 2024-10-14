@@ -9,6 +9,25 @@ package v20231001preview
 
 import "time"
 
+// AzureResourceManagerCommonTypesTrackedResourceUpdate - The resource model definition for an Azure Resource Manager tracked
+// top level resource which has 'tags' and a 'location'
+type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
 // EnvironmentCompute - Represents backing compute resource
 type EnvironmentCompute struct {
 	// REQUIRED; Discriminator property for EnvironmentCompute.
@@ -245,52 +264,22 @@ type RabbitMQQueueResourceListResult struct {
 	NextLink *string
 }
 
-// RabbitMQQueueResourceUpdate - The type used for update operations of the RabbitMQQueueResource.
+// RabbitMQQueueResourceUpdate - RabbitMQQueue portable resource
 type RabbitMQQueueResourceUpdate struct {
-	// The updatable properties of the RabbitMQQueueResource.
-	Properties *RabbitMQQueueResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// RabbitMQQueueResourceUpdateProperties - The updatable properties of the RabbitMQQueueResource.
-type RabbitMQQueueResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// The hostname of the RabbitMQ instance
-	Host *string
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// The port of the RabbitMQ instance. Defaults to 5672
-	Port *int32
-
-	// The name of the queue
-	Queue *string
-
-	// The recipe used to automatically deploy underlying infrastructure for the resource
-	Recipe *RecipeUpdate
-
-	// Specifies how the underlying service/resource is provisioned and managed.
-	ResourceProvisioning *ResourceProvisioning
-
-	// List of the resource IDs that support the rabbitMQ resource
-	Resources []*ResourceReference
-
-	// The secrets to connect to the RabbitMQ instance
-	Secrets *RabbitMQSecrets
-
-	// Specifies whether to use SSL when connecting to the RabbitMQ instance
-	TLS *bool
-
-	// The username to use when connecting to the RabbitMQ instance
-	Username *string
-
-	// The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.
-	VHost *string
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // RabbitMQSecrets - The connection secrets properties to the RabbitMQ instance
@@ -322,15 +311,6 @@ type RecipeStatus struct {
 
 	// TemplateVersion is the version number of the template.
 	TemplateVersion *string
-}
-
-// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
-type RecipeUpdate struct {
-	// The name of the recipe within the environment to use
-	Name *string
-
-	// Key/value parameters to pass into the recipe at deployment
-	Parameters map[string]any
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
