@@ -7,6 +7,29 @@
 
 package v20231001preview
 
+// APIVersionsClientCreateOrUpdateResponse contains the response from method APIVersionsClient.BeginCreateOrUpdate.
+type APIVersionsClientCreateOrUpdateResponse struct {
+	// The resource type for defining an API version of a resource type supported by the containing resource provider.
+	APIVersionResource
+}
+
+// APIVersionsClientDeleteResponse contains the response from method APIVersionsClient.BeginDelete.
+type APIVersionsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// APIVersionsClientGetResponse contains the response from method APIVersionsClient.Get.
+type APIVersionsClientGetResponse struct {
+	// The resource type for defining an API version of a resource type supported by the containing resource provider.
+	APIVersionResource
+}
+
+// APIVersionsClientListResponse contains the response from method APIVersionsClient.NewListPager.
+type APIVersionsClientListResponse struct {
+	// The response of a ApiVersionResource list operation.
+	APIVersionResourceListResult
+}
+
 // AwsCredentialsClientCreateOrUpdateResponse contains the response from method AwsCredentialsClient.CreateOrUpdate.
 type AwsCredentialsClientCreateOrUpdateResponse struct {
 	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
@@ -123,6 +146,31 @@ type AzurePlanesClientUpdateResponse struct {
 	AzurePlaneResource
 }
 
+// LocationsClientCreateOrUpdateResponse contains the response from method LocationsClient.BeginCreateOrUpdate.
+type LocationsClientCreateOrUpdateResponse struct {
+	// The resource type for defining a location of the containing resource provider. The location resource represents a logical
+// location where the resource provider operates.
+	LocationResource
+}
+
+// LocationsClientDeleteResponse contains the response from method LocationsClient.BeginDelete.
+type LocationsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// LocationsClientGetResponse contains the response from method LocationsClient.Get.
+type LocationsClientGetResponse struct {
+	// The resource type for defining a location of the containing resource provider. The location resource represents a logical
+// location where the resource provider operates.
+	LocationResource
+}
+
+// LocationsClientListResponse contains the response from method LocationsClient.NewListPager.
+type LocationsClientListResponse struct {
+	// The response of a LocationResource list operation.
+	LocationResourceListResult
+}
+
 // PlanesClientListPlanesResponse contains the response from method PlanesClient.NewListPlanesPager.
 type PlanesClientListPlanesResponse struct {
 	// The response of a GenericPlaneResource list operation.
@@ -185,6 +233,65 @@ type ResourceGroupsClientListResponse struct {
 type ResourceGroupsClientUpdateResponse struct {
 	// The resource group resource
 	ResourceGroupResource
+}
+
+// ResourceProvidersClientCreateOrUpdateResponse contains the response from method ResourceProvidersClient.BeginCreateOrUpdate.
+type ResourceProvidersClientCreateOrUpdateResponse struct {
+	// The resource type for defining a resource provider.
+	ResourceProviderResource
+}
+
+// ResourceProvidersClientDeleteResponse contains the response from method ResourceProvidersClient.BeginDelete.
+type ResourceProvidersClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// ResourceProvidersClientGetProviderSummaryResponse contains the response from method ResourceProvidersClient.GetProviderSummary.
+type ResourceProvidersClientGetProviderSummaryResponse struct {
+	// The summary of a resource provider configuration. This type is optimized for querying resource providers and supported
+// types.
+	ResourceProviderSummary
+}
+
+// ResourceProvidersClientGetResponse contains the response from method ResourceProvidersClient.Get.
+type ResourceProvidersClientGetResponse struct {
+	// The resource type for defining a resource provider.
+	ResourceProviderResource
+}
+
+// ResourceProvidersClientListProviderSummariesResponse contains the response from method ResourceProvidersClient.NewListProviderSummariesPager.
+type ResourceProvidersClientListProviderSummariesResponse struct {
+	// Paged collection of ResourceProviderSummary items
+	PagedResourceProviderSummary
+}
+
+// ResourceProvidersClientListResponse contains the response from method ResourceProvidersClient.NewListPager.
+type ResourceProvidersClientListResponse struct {
+	// The response of a ResourceProviderResource list operation.
+	ResourceProviderResourceListResult
+}
+
+// ResourceTypesClientCreateOrUpdateResponse contains the response from method ResourceTypesClient.BeginCreateOrUpdate.
+type ResourceTypesClientCreateOrUpdateResponse struct {
+	// The resource type for defining a resource type supported by the containing resource provider.
+	ResourceTypeResource
+}
+
+// ResourceTypesClientDeleteResponse contains the response from method ResourceTypesClient.BeginDelete.
+type ResourceTypesClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// ResourceTypesClientGetResponse contains the response from method ResourceTypesClient.Get.
+type ResourceTypesClientGetResponse struct {
+	// The resource type for defining a resource type supported by the containing resource provider.
+	ResourceTypeResource
+}
+
+// ResourceTypesClientListResponse contains the response from method ResourceTypesClient.NewListPager.
+type ResourceTypesClientListResponse struct {
+	// The response of a ResourceTypeResource list operation.
+	ResourceTypeResourceListResult
 }
 
 // ResourcesClientListResponse contains the response from method ResourcesClient.NewListPager.

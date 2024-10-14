@@ -29,7 +29,7 @@ generate: generate-genericcliclient generate-rad-corerp-client generate-rad-data
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
 	@echo "$(ARROW) Detecting tsp..."
-	cd typespec/ && npx$(CMD_EXT) -q tsp --help > /dev/null || { echo "run 'npm ci' in typespec directory."; exit 1; }
+	cd typespec/ && npx$(CMD_EXT) -q -y tsp --help > /dev/null || { echo "run 'npm ci' in typespec directory."; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-spec
@@ -56,7 +56,7 @@ generate-autorest-installed:
 .PHONY: generate-controller-gen-installed
 generate-controller-gen-installed:
 	@echo "$(ARROW) Detecting controller-gen..."
-	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0'"; exit 1; }
+	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.0'"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-ucp-crd

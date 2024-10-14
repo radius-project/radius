@@ -18,14 +18,17 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourcegroups"
+	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourceproviders"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
@@ -38,7 +41,7 @@ type Service struct {
 	worker.Service
 }
 
-// NewService creates new service instance to run AsyncReqeustProcessWorker.
+// NewService creates new service instance to run AsyncRequestProcessWorker.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
 		worker.Service{
@@ -74,7 +77,7 @@ func (w *Service) Run(ctx context.Context) error {
 		DataProvider: w.StorageProvider,
 	}
 
-	err := RegisterControllers(ctx, w.Controllers, opts)
+	err := RegisterControllers(ctx, w.Controllers, w.Options.UCPConnection, opts)
 	if err != nil {
 		return err
 	}
@@ -83,8 +86,42 @@ func (w *Service) Run(ctx context.Context) error {
 }
 
 // RegisterControllers registers the controllers for the UCP backend.
-func RegisterControllers(ctx context.Context, registry *worker.ControllerRegistry, opts ctrl.Options) error {
-	err := registry.Register(ctx, v20231001preview.ResourceType, v1.OperationMethod(datamodel.OperationProcess), resourcegroups.NewTrackedResourceProcessController, opts)
+func RegisterControllers(ctx context.Context, registry *worker.ControllerRegistry, connection sdk.Connection, opts ctrl.Options) error {
+	// Tracked resources
+	err := errors.Join(nil, registry.Register(ctx, v20231001preview.ResourceType, v1.OperationMethod(datamodel.OperationProcess), resourcegroups.NewTrackedResourceProcessController, opts))
+
+	// Resource providers and related types
+	err = errors.Join(err, registry.Register(ctx, datamodel.ResourceProviderResourceType, v1.OperationPut, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &resourceproviders.ResourceProviderPutController{BaseController: ctrl.NewBaseAsyncController(opts)}, nil
+	}, opts))
+	err = errors.Join(err, registry.Register(ctx, datamodel.ResourceProviderResourceType, v1.OperationDelete, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &resourceproviders.ResourceProviderDeleteController{
+			BaseController: ctrl.NewBaseAsyncController(opts),
+			Connection:     connection,
+		}, nil
+	}, opts))
+	err = errors.Join(err, registry.Register(ctx, datamodel.ResourceTypeResourceType, v1.OperationPut, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &resourceproviders.ResourceTypePutController{BaseController: ctrl.NewBaseAsyncController(opts)}, nil
+	}, opts))
+	err = errors.Join(err, registry.Register(ctx, datamodel.ResourceTypeResourceType, v1.OperationDelete, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &resourceproviders.ResourceTypeDeleteController{
+			BaseController: ctrl.NewBaseAsyncController(opts),
+			Connection:     connection,
+		}, nil
+	}, opts))
+	err = errors.Join(err, registry.Register(ctx, datamodel.APIVersionResourceType, v1.OperationPut, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &resourceproviders.APIVersionPutController{BaseController: ctrl.NewBaseAsyncController(opts)}, nil
+	}, opts))
+	err = errors.Join(err, registry.Register(ctx, datamodel.APIVersionResourceType, v1.OperationDelete, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &resourceproviders.APIVersionDeleteController{BaseController: ctrl.NewBaseAsyncController(opts)}, nil
+	}, opts))
+	err = errors.Join(err, registry.Register(ctx, datamodel.LocationResourceType, v1.OperationPut, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &resourceproviders.LocationPutController{BaseController: ctrl.NewBaseAsyncController(opts)}, nil
+	}, opts))
+	err = errors.Join(err, registry.Register(ctx, datamodel.LocationResourceType, v1.OperationDelete, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &resourceproviders.LocationDeleteController{BaseController: ctrl.NewBaseAsyncController(opts)}, nil
+	}, opts))
+
 	if err != nil {
 		return err
 	}

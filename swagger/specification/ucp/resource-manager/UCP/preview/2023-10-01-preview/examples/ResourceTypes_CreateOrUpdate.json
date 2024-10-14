@@ -1,0 +1,43 @@
+{
+  "operationId": "ResourceTypes_CreateOrUpdate",
+  "title": "Create or update a resource type defined by a resource provider.",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local",
+    "resourceProviderName": "Applications.Test",
+    "resourceTypeName": "testResources",
+    "resource": {
+      "properties": {
+        "defaultApiVersion": "2025-01-01"
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
+        "type": "System.Resources/resourceProviders/resourceTypes",
+        "name": "testResources",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "defaultApiVersion": "2025-01-01"
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
+        "type": "System.Resources/resourceProviders/resourceTypes",
+        "name": "testResources",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "defaultApiVersion": "2025-01-01"
+        }
+      },
+      "headers": {
+        "azure-asyncoperation": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd",
+        "location": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd"
+      }
+    }
+  }
+}

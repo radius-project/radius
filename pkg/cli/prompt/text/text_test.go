@@ -78,12 +78,12 @@ func validateNewTextModel(t *testing.T, model *Model, options *TextModelOptions)
 }
 
 func Test_E2E(t *testing.T) {
-	
+
 	const expectedPrompt = "\r" + testPrompt + "\n" +
-			"\n" +
-			"> " + testPlaceholder + "\n" +
-			"\n" +
-			"(ctrl+c to quit)"
+		"\n" +
+		"> " + testPlaceholder + "\n" +
+		"\n" +
+		"(ctrl+c to quit)"
 
 	setup := func(t *testing.T) *teatest.TestModel {
 		options := TextModelOptions{
@@ -117,11 +117,12 @@ func Test_E2E(t *testing.T) {
 		tm := setup(t)
 
 		output := waitForInitialRender(t, tm.Output())
-		
+
 		require.Equal(t, expectedPrompt, output)
 	})
 
 	t.Run("confirm default", func(t *testing.T) {
+		t.Skip("This test is intermittently failing in linux_amd64: https://github.com/radius-project/radius/issues/7670")
 		tm := setup(t)
 
 		tm.Send(tea.KeyMsg{Type: tea.KeyEnter})

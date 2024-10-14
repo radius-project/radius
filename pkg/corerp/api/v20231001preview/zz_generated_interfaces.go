@@ -16,15 +16,6 @@ type EnvironmentComputeClassification interface {
 	GetEnvironmentCompute() *EnvironmentCompute
 }
 
-// EnvironmentComputeUpdateClassification provides polymorphic access to related types.
-// Call the interface's GetEnvironmentComputeUpdate() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *EnvironmentComputeUpdate, *KubernetesComputeUpdate
-type EnvironmentComputeUpdateClassification interface {
-	// GetEnvironmentComputeUpdate returns the EnvironmentComputeUpdate content of the underlying type.
-	GetEnvironmentComputeUpdate() *EnvironmentComputeUpdate
-}
-
 // ExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
@@ -50,15 +41,6 @@ type HealthProbePropertiesClassification interface {
 type RecipePropertiesClassification interface {
 	// GetRecipeProperties returns the RecipeProperties content of the underlying type.
 	GetRecipeProperties() *RecipeProperties
-}
-
-// RecipePropertiesUpdateClassification provides polymorphic access to related types.
-// Call the interface's GetRecipePropertiesUpdate() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *BicepRecipePropertiesUpdate, *RecipePropertiesUpdate, *TerraformRecipePropertiesUpdate
-type RecipePropertiesUpdateClassification interface {
-	// GetRecipePropertiesUpdate returns the RecipePropertiesUpdate content of the underlying type.
-	GetRecipePropertiesUpdate() *RecipePropertiesUpdate
 }
 
 // VolumeClassification provides polymorphic access to related types.

@@ -34,6 +34,11 @@ func NewClientFactory( credential azcore.TokenCredential, options *arm.ClientOpt
 	}, nil
 }
 
+func (c *ClientFactory) NewAPIVersionsClient() *APIVersionsClient {
+	subClient, _ := NewAPIVersionsClient(c.credential, c.options)
+	return subClient
+}
+
 func (c *ClientFactory) NewAwsCredentialsClient() *AwsCredentialsClient {
 	subClient, _ := NewAwsCredentialsClient(c.credential, c.options)
 	return subClient
@@ -54,6 +59,11 @@ func (c *ClientFactory) NewAzurePlanesClient() *AzurePlanesClient {
 	return subClient
 }
 
+func (c *ClientFactory) NewLocationsClient() *LocationsClient {
+	subClient, _ := NewLocationsClient(c.credential, c.options)
+	return subClient
+}
+
 func (c *ClientFactory) NewPlanesClient() *PlanesClient {
 	subClient, _ := NewPlanesClient(c.credential, c.options)
 	return subClient
@@ -66,6 +76,16 @@ func (c *ClientFactory) NewRadiusPlanesClient() *RadiusPlanesClient {
 
 func (c *ClientFactory) NewResourceGroupsClient() *ResourceGroupsClient {
 	subClient, _ := NewResourceGroupsClient(c.credential, c.options)
+	return subClient
+}
+
+func (c *ClientFactory) NewResourceProvidersClient() *ResourceProvidersClient {
+	subClient, _ := NewResourceProvidersClient(c.credential, c.options)
+	return subClient
+}
+
+func (c *ClientFactory) NewResourceTypesClient() *ResourceTypesClient {
+	subClient, _ := NewResourceTypesClient(c.credential, c.options)
 	return subClient
 }
 

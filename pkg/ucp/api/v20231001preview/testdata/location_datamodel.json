@@ -1,0 +1,16 @@
+{
+  "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/locations/east",
+  "name": "east",
+  "type": "System.Resources/resourceProviders/locations",
+  "provisioningState": "Succeeded",
+  "properties": {
+    "address": "https://east.myrp.com",
+    "resourceTypes": {
+      "testResources": {
+        "apiVersions": {
+          "2025-01-01": {}
+        }
+      }
+    }
+  }
+}

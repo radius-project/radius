@@ -1,0 +1,6 @@
+{
+  "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test",
+  "name": "Applications.Test",
+  "location": "global",
+  "properties": {}
+}

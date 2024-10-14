@@ -1,0 +1,13 @@
+{
+  "value": [
+    {
+      "id": "/planes/radius/local/providers/System.Resources/resourceproviders/Applications.Test/locations/east",
+      "name": "east",
+      "properties": {
+        "provisioningState": "Succeeded",
+        "resourceTypes": {}
+      },
+      "type": "System.Resources/resourceProviders/locations"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "operationId": "ResourceTypes_Delete",
+  "title": "Delete a resource type defined by a resource provider.",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local",
+    "resourceProviderName": "Applications.Test",
+    "resourceTypeName": "testResources"
+  },
+  "responses": {
+    "200": {},
+    "202": {
+      "headers": {
+        "azure-asyncoperation": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd",
+        "location": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd"
+      }
+    },
+    "204": {}
+  }
+}

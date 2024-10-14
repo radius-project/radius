@@ -106,22 +106,22 @@ type ApplicationResourceListResult struct {
 	NextLink *string
 }
 
-// ApplicationResourceUpdate - The type used for update operations of the ApplicationResource.
+// ApplicationResourceUpdate - Radius Application resource
 type ApplicationResourceUpdate struct {
-	// The updatable properties of the ApplicationResource.
-	Properties *ApplicationResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// ApplicationResourceUpdateProperties - The updatable properties of the ApplicationResource.
-type ApplicationResourceUpdateProperties struct {
-	// Fully qualified resource ID for the environment that the application is linked to
-	Environment *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// The application extension.
-	Extensions []ExtensionClassification
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // AuthConfig - Authentication information used to access private Terraform module sources. Supported module sources: Git.
@@ -171,6 +171,25 @@ func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties 
 	}
 }
 
+// AzureResourceManagerCommonTypesTrackedResourceUpdate - The resource model definition for an Azure Resource Manager tracked
+// top level resource which has 'tags' and a 'location'
+type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
 // deployment.
 type BicepConfigProperties struct {
@@ -198,31 +217,6 @@ type BicepRecipeProperties struct {
 // GetRecipeProperties implements the RecipePropertiesClassification interface for type BicepRecipeProperties.
 func (b *BicepRecipeProperties) GetRecipeProperties() *RecipeProperties {
 	return &RecipeProperties{
-		Parameters: b.Parameters,
-		TemplateKind: b.TemplateKind,
-		TemplatePath: b.TemplatePath,
-	}
-}
-
-// BicepRecipePropertiesUpdate - Represents Bicep recipe properties.
-type BicepRecipePropertiesUpdate struct {
-	// REQUIRED; Discriminator property for RecipeProperties.
-	TemplateKind *string
-
-	// Key/value parameters to pass to the recipe template at deployment.
-	Parameters map[string]any
-
-	// Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS,
-// for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
-	PlainHTTP *bool
-
-	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
-	TemplatePath *string
-}
-
-// GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type BicepRecipePropertiesUpdate.
-func (b *BicepRecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate {
-	return &RecipePropertiesUpdate{
 		Parameters: b.Parameters,
 		TemplateKind: b.TemplateKind,
 		TemplatePath: b.TemplatePath,
@@ -262,18 +256,6 @@ type ConnectionProperties struct {
 	Iam *IamProperties
 }
 
-// ConnectionPropertiesUpdate - Connection Properties
-type ConnectionPropertiesUpdate struct {
-	// default environment variable override
-	DisableDefaultEnvVars *bool
-
-	// iam properties
-	Iam *IamPropertiesUpdate
-
-	// The source of the connection
-	Source *string
-}
-
 // Container - Definition of a container
 type Container struct {
 	// REQUIRED; The registry and image to download and run in your container
@@ -310,22 +292,6 @@ type Container struct {
 // ContainerPortProperties - Specifies a listening port for the container
 type ContainerPortProperties struct {
 	// REQUIRED; The listening port number
-	ContainerPort *int32
-
-	// Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired
-	Port *int32
-
-	// Protocol in use by the port
-	Protocol *PortProtocol
-
-	// Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults
-// to 'http' or 'https' depending on the port value
-	Scheme *string
-}
-
-// ContainerPortPropertiesUpdate - Specifies a listening port for the container
-type ContainerPortPropertiesUpdate struct {
-	// The listening port number
 	ContainerPort *int32
 
 	// Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired
@@ -411,79 +377,23 @@ type ContainerResourceListResult struct {
 	NextLink *string
 }
 
-// ContainerResourceUpdate - The type used for update operations of the ContainerResource.
+// ContainerResourceUpdate - Concrete tracked resource types can be created by aliasing this type using a specific property
+// type.
 type ContainerResourceUpdate struct {
-	// The updatable properties of the ContainerResource.
-	Properties *ContainerResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// ContainerResourceUpdateProperties - The updatable properties of the ContainerResource.
-type ContainerResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// Specifies a connection to another resource.
-	Connections map[string]*ConnectionPropertiesUpdate
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// Definition of a container.
-	Container *ContainerUpdate
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// Fully qualified resource ID for the environment that the application is linked to
-	Environment *string
-
-	// Extensions spec of the resource
-	Extensions []ExtensionClassification
-
-	// Configuration for supported external identity providers
-	Identity *IdentitySettingsUpdate
-
-	// Specifies how the underlying container resource is provisioned and managed.
-	ResourceProvisioning *ContainerResourceProvisioning
-
-	// A collection of references to resources associated with the container
-	Resources []*ResourceReference
-
-	// The restart policy for the underlying container
-	RestartPolicy *RestartPolicy
-
-	// Specifies Runtime-specific functionality
-	Runtimes *RuntimesProperties
-}
-
-// ContainerUpdate - Definition of a container
-type ContainerUpdate struct {
-	// Arguments to the entrypoint. Overrides the container image's CMD
-	Args []*string
-
-	// Entrypoint array. Overrides the container image's ENTRYPOINT
-	Command []*string
-
-	// environment
-	Env map[string]*EnvironmentVariableUpdate
-
-	// The registry and image to download and run in your container
-	Image *string
-
-	// The pull policy for the container image
-	ImagePullPolicy *ImagePullPolicy
-
-	// liveness probe properties
-	LivenessProbe HealthProbePropertiesClassification
-
-	// container ports
-	Ports map[string]*ContainerPortPropertiesUpdate
-
-	// readiness probe properties
-	ReadinessProbe HealthProbePropertiesClassification
-
-	// container volumes
-	Volumes map[string]VolumeClassification
-
-	// Working directory for the container
-	WorkingDir *string
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // DaprSidecarExtension - Specifies the resource should have a Dapr sidecar injected
@@ -525,21 +435,6 @@ type EnvironmentCompute struct {
 
 // GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
 func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
-
-// EnvironmentComputeUpdate - Represents backing compute resource
-type EnvironmentComputeUpdate struct {
-	// REQUIRED; Discriminator property for EnvironmentCompute.
-	Kind *string
-
-	// Configuration for supported external identity providers
-	Identity *IdentitySettingsUpdate
-
-	// The resource id of the compute resource for application environment.
-	ResourceID *string
-}
-
-// GetEnvironmentComputeUpdate implements the EnvironmentComputeUpdateClassification interface for type EnvironmentComputeUpdate.
-func (e *EnvironmentComputeUpdate) GetEnvironmentComputeUpdate() *EnvironmentComputeUpdate { return e }
 
 // EnvironmentProperties - Environment properties
 type EnvironmentProperties struct {
@@ -598,34 +493,22 @@ type EnvironmentResourceListResult struct {
 	NextLink *string
 }
 
-// EnvironmentResourceUpdate - The type used for update operations of the EnvironmentResource.
+// EnvironmentResourceUpdate - The environment resource
 type EnvironmentResourceUpdate struct {
-	// The updatable properties of the EnvironmentResource.
-	Properties *EnvironmentResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// EnvironmentResourceUpdateProperties - The updatable properties of the EnvironmentResource.
-type EnvironmentResourceUpdateProperties struct {
-	// The compute resource used by application environment.
-	Compute EnvironmentComputeUpdateClassification
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// The environment extension.
-	Extensions []ExtensionClassification
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// Cloud providers configuration for the environment.
-	Providers *ProvidersUpdate
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// Configuration for Recipes. Defines how each type of Recipe should be configured and run.
-	RecipeConfig *RecipeConfigProperties
-
-	// Specifies Recipes linked to the Environment.
-	Recipes map[string]map[string]RecipePropertiesUpdateClassification
-
-	// Simulated environment.
-	Simulated *bool
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // EnvironmentVariable - Environment variables type
@@ -641,21 +524,6 @@ type EnvironmentVariable struct {
 type EnvironmentVariableReference struct {
 	// REQUIRED; The secret reference
 	SecretRef *SecretReference
-}
-
-// EnvironmentVariableReferenceUpdate - The reference to the variable
-type EnvironmentVariableReferenceUpdate struct {
-	// The secret reference
-	SecretRef *SecretReferenceUpdate
-}
-
-// EnvironmentVariableUpdate - Environment variables type
-type EnvironmentVariableUpdate struct {
-	// The value of the environment variable
-	Value *string
-
-	// The reference to the variable
-	ValueFrom *EnvironmentVariableReferenceUpdate
 }
 
 // EphemeralVolume - Specifies an ephemeral volume for a container
@@ -804,31 +672,22 @@ type ExtenderResourceListResult struct {
 	NextLink *string
 }
 
-// ExtenderResourceUpdate - The type used for update operations of the ExtenderResource.
+// ExtenderResourceUpdate - ExtenderResource portable resource
 type ExtenderResourceUpdate struct {
-	// The updatable properties of the ExtenderResource.
-	Properties *ExtenderResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// ExtenderResourceUpdateProperties - The updatable properties of the ExtenderResource.
-type ExtenderResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// The recipe used to automatically deploy underlying infrastructure for the extender portable resource
-	Recipe *RecipeUpdate
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// Specifies how the underlying service/resource is provisioned and managed.
-	ResourceProvisioning *ResourceProvisioning
-
-	// The secrets for referenced resource
-	Secrets map[string]any
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // Extension of a environment/application resource.
@@ -914,34 +773,23 @@ type GatewayResourceListResult struct {
 	NextLink *string
 }
 
-// GatewayResourceUpdate - The type used for update operations of the GatewayResource.
+// GatewayResourceUpdate - Concrete tracked resource types can be created by aliasing this type using a specific property
+// type.
 type GatewayResourceUpdate struct {
-	// The updatable properties of the GatewayResource.
-	Properties *GatewayResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// GatewayResourceUpdateProperties - The updatable properties of the GatewayResource.
-type GatewayResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// Fully qualified resource ID for the environment that the application is linked to
-	Environment *string
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
-	Hostname *GatewayHostname
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
-	Internal *bool
-
-	// Routes attached to this Gateway
-	Routes []*GatewayRoute
-
-	// TLS configuration for the Gateway.
-	TLS *GatewayTLS
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // GatewayRoute - Route attached to Gateway
@@ -1046,30 +894,9 @@ type IamProperties struct {
 	Roles []*string
 }
 
-// IamPropertiesUpdate - IAM properties
-type IamPropertiesUpdate struct {
-	// The kind of IAM provider to configure
-	Kind *IAMKind
-
-	// RBAC permissions to be assigned on the source resource
-	Roles []*string
-}
-
 // IdentitySettings is the external identity setting.
 type IdentitySettings struct {
 	// REQUIRED; kind of identity setting
-	Kind *IdentitySettingKind
-
-	// The URI for your compute platform's OIDC issuer
-	OidcIssuer *string
-
-	// The resource ID of the provisioned identity
-	Resource *string
-}
-
-// IdentitySettingsUpdate - IdentitySettings is the external identity setting.
-type IdentitySettingsUpdate struct {
-	// kind of identity setting
 	Kind *IdentitySettingKind
 
 	// The URI for your compute platform's OIDC issuer
@@ -1109,30 +936,6 @@ type KubernetesCompute struct {
 // GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type KubernetesCompute.
 func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 	return &EnvironmentCompute{
-		Identity: k.Identity,
-		Kind: k.Kind,
-		ResourceID: k.ResourceID,
-	}
-}
-
-// KubernetesComputeUpdate - The Kubernetes compute configuration
-type KubernetesComputeUpdate struct {
-	// REQUIRED; Discriminator property for EnvironmentCompute.
-	Kind *string
-
-	// Configuration for supported external identity providers
-	Identity *IdentitySettingsUpdate
-
-	// The namespace to use for the environment.
-	Namespace *string
-
-	// The resource id of the compute resource for application environment.
-	ResourceID *string
-}
-
-// GetEnvironmentComputeUpdate implements the EnvironmentComputeUpdateClassification interface for type KubernetesComputeUpdate.
-func (k *KubernetesComputeUpdate) GetEnvironmentComputeUpdate() *EnvironmentComputeUpdate {
-	return &EnvironmentComputeUpdate{
 		Identity: k.Identity,
 		Kind: k.Kind,
 		ResourceID: k.ResourceID,
@@ -1312,31 +1115,10 @@ type ProvidersAws struct {
 	Scope *string
 }
 
-// ProvidersAwsUpdate - The AWS cloud provider definition.
-type ProvidersAwsUpdate struct {
-	// Target scope for AWS resources to be deployed into. For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'.
-	Scope *string
-}
-
 // ProvidersAzure - The Azure cloud provider definition.
 type ProvidersAzure struct {
 	// REQUIRED; Target scope for Azure resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'.
 	Scope *string
-}
-
-// ProvidersAzureUpdate - The Azure cloud provider definition.
-type ProvidersAzureUpdate struct {
-	// Target scope for Azure resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'.
-	Scope *string
-}
-
-// ProvidersUpdate - The Cloud providers configuration.
-type ProvidersUpdate struct {
-	// The AWS cloud provider configuration.
-	Aws *ProvidersAwsUpdate
-
-	// The Azure cloud provider configuration.
-	Azure *ProvidersAzureUpdate
 }
 
 // Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
@@ -1409,21 +1191,6 @@ type RecipeProperties struct {
 // GetRecipeProperties implements the RecipePropertiesClassification interface for type RecipeProperties.
 func (r *RecipeProperties) GetRecipeProperties() *RecipeProperties { return r }
 
-// RecipePropertiesUpdate - Format of the template provided by the recipe. Allowed values: bicep, terraform.
-type RecipePropertiesUpdate struct {
-	// REQUIRED; Discriminator property for RecipeProperties.
-	TemplateKind *string
-
-	// Key/value parameters to pass to the recipe template at deployment.
-	Parameters map[string]any
-
-	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
-	TemplatePath *string
-}
-
-// GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type RecipePropertiesUpdate.
-func (r *RecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate { return r }
-
 // RecipeStatus - Recipe status at deployment time for a resource.
 type RecipeStatus struct {
 	// REQUIRED; TemplateKind is the kind of the recipe template used by the portable resource upon deployment.
@@ -1434,15 +1201,6 @@ type RecipeStatus struct {
 
 	// TemplateVersion is the version number of the template.
 	TemplateVersion *string
-}
-
-// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
-type RecipeUpdate struct {
-	// The name of the recipe within the environment to use
-	Name *string
-
-	// Key/value parameters to pass into the recipe at deployment
-	Parameters map[string]any
 }
 
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
@@ -1524,16 +1282,6 @@ type SecretReference struct {
 	Source *string
 }
 
-// SecretReferenceUpdate - This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control,
-// auditing and are recommended to be used to hold sensitive data.
-type SecretReferenceUpdate struct {
-	// The key for the secret in the secret store.
-	Key *string
-
-	// The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
-	Source *string
-}
-
 // SecretStoreListSecretsResult - The list of secrets
 type SecretStoreListSecretsResult struct {
 	// REQUIRED; An object to represent key-value type secrets
@@ -1600,31 +1348,23 @@ type SecretStoreResourceListResult struct {
 	NextLink *string
 }
 
-// SecretStoreResourceUpdate - The type used for update operations of the SecretStoreResource.
+// SecretStoreResourceUpdate - Concrete tracked resource types can be created by aliasing this type using a specific property
+// type.
 type SecretStoreResourceUpdate struct {
-	// The updatable properties of the SecretStoreResource.
-	Properties *SecretStoreResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// SecretStoreResourceUpdateProperties - The updatable properties of the SecretStoreResource.
-type SecretStoreResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// An object to represent key-value type secrets
-	Data map[string]*SecretValueProperties
+	// READ-ONLY; The name of the resource
+	Name *string
 
-	// Fully qualified resource ID for the environment that the application is linked to
-	Environment *string
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
 
-	// The resource id of external secret store.
-	Resource *string
-
-	// The type of secret store data
-	Type *SecretStoreDataType
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // SecretValueProperties - The properties of SecretValue
@@ -1729,31 +1469,6 @@ func (t *TerraformRecipeProperties) GetRecipeProperties() *RecipeProperties {
 	}
 }
 
-// TerraformRecipePropertiesUpdate - Represents Terraform recipe properties.
-type TerraformRecipePropertiesUpdate struct {
-	// REQUIRED; Discriminator property for RecipeProperties.
-	TemplateKind *string
-
-	// Key/value parameters to pass to the recipe template at deployment.
-	Parameters map[string]any
-
-	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
-	TemplatePath *string
-
-	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
-// for other module sources.
-	TemplateVersion *string
-}
-
-// GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type TerraformRecipePropertiesUpdate.
-func (t *TerraformRecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate {
-	return &RecipePropertiesUpdate{
-		Parameters: t.Parameters,
-		TemplateKind: t.TemplateKind,
-		TemplatePath: t.TemplatePath,
-	}
-}
-
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'
 // and a 'location'
 type TrackedResource struct {
@@ -1851,21 +1566,21 @@ type VolumeResourceListResult struct {
 	NextLink *string
 }
 
-// VolumeResourceUpdate - The type used for update operations of the VolumeResource.
+// VolumeResourceUpdate - Radius Volume resource.
 type VolumeResourceUpdate struct {
-	// The updatable properties of the VolumeResource.
-	Properties *VolumeResourceUpdateProperties
-
 	// Resource tags.
 	Tags map[string]*string
-}
 
-// VolumeResourceUpdateProperties - The updatable properties of the VolumeResource.
-type VolumeResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application
-	Application *string
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
 
-	// Fully qualified resource ID for the environment that the application is linked to
-	Environment *string
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 

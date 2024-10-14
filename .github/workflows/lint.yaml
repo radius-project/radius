@@ -59,7 +59,7 @@ jobs:
       - name: Install mockgen
         run: go install go.uber.org/mock/mockgen@v0.4.0
       - name: Install controller-gen
-        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
+        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.0
       - name: Install helm
         uses: azure/setup-helm@v4
         with:

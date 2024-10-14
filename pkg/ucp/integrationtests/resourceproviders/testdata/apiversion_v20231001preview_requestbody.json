@@ -1,0 +1,7 @@
+{
+  "location": "global",
+  "tags": {
+    "test": "my-test"
+  },
+  "properties": {}
+}

@@ -104,7 +104,7 @@ interface RedisCaches {
     UCPBaseParameters<RedisCacheResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     RedisCacheResource,
     UCPBaseParameters<RedisCacheResource>
   >;

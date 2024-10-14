@@ -9,6 +9,40 @@ package v20231001preview
 
 import "time"
 
+// APIVersionProperties - The properties of an API version.
+type APIVersionProperties struct {
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// APIVersionResource - The resource type for defining an API version of a resource type supported by the containing resource
+// provider.
+type APIVersionResource struct {
+	// The resource-specific properties for this resource.
+	Properties *APIVersionProperties
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// APIVersionResourceListResult - The response of a ApiVersionResource list operation.
+type APIVersionResourceListResult struct {
+	// REQUIRED; The ApiVersionResource items on this page
+	Value []*APIVersionResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
 // AwsAccessKeyCredentialProperties - AWS credential properties for Access Key
 type AwsAccessKeyCredentialProperties struct {
 	// REQUIRED; Access key ID for AWS identity
@@ -453,6 +487,61 @@ func (i *InternalCredentialStorageProperties) GetCredentialStorageProperties() *
 	}
 }
 
+// LocationProperties - The properties of a location.
+type LocationProperties struct {
+	// Address of a resource provider implementation.
+	Address *string
+
+	// Configuration for resource types supported by the location.
+	ResourceTypes map[string]*LocationResourceType
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// LocationResource - The resource type for defining a location of the containing resource provider. The location resource
+// represents a logical location where the resource provider operates.
+type LocationResource struct {
+	// The resource-specific properties for this resource.
+	Properties *LocationProperties
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// LocationResourceListResult - The response of a LocationResource list operation.
+type LocationResourceListResult struct {
+	// REQUIRED; The LocationResource items on this page
+	Value []*LocationResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// LocationResourceType - The configuration for a resource type in a specific location.
+type LocationResourceType struct {
+	// The configuration for API versions of a resource type supported by the location.
+	APIVersions map[string]map[string]any
+}
+
+// PagedResourceProviderSummary - Paged collection of ResourceProviderSummary items
+type PagedResourceProviderSummary struct {
+	// REQUIRED; The ResourceProviderSummary items on this page
+	Value []*ResourceProviderSummary
+
+	// The link to the next page of items
+	NextLink *string
+}
+
 // PlaneNameParameter - The Plane Name parameter.
 type PlaneNameParameter struct {
 	// REQUIRED; The name of the plane
@@ -581,6 +670,103 @@ type ResourceGroupResourceListResult struct {
 type ResourceGroupResourceTagsUpdate struct {
 	// Resource tags.
 	Tags map[string]*string
+}
+
+// ResourceProviderProperties - The properties of a resource provider.
+type ResourceProviderProperties struct {
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// ResourceProviderResource - The resource type for defining a resource provider.
+type ResourceProviderResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// The resource-specific properties for this resource.
+	Properties *ResourceProviderProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// ResourceProviderResourceListResult - The response of a ResourceProviderResource list operation.
+type ResourceProviderResourceListResult struct {
+	// REQUIRED; The ResourceProviderResource items on this page
+	Value []*ResourceProviderResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// ResourceProviderSummary - The summary of a resource provider configuration. This type is optimized for querying resource
+// providers and supported types.
+type ResourceProviderSummary struct {
+	// REQUIRED; The resource provider locations.
+	Locations map[string]map[string]any
+
+	// REQUIRED; The resource provider name.
+	Name *string
+
+	// REQUIRED; The resource types supported by the resource provider.
+	ResourceTypes map[string]*ResourceProviderSummaryResourceType
+}
+
+// ResourceProviderSummaryResourceType - A resource type and its versions.
+type ResourceProviderSummaryResourceType struct {
+	// REQUIRED; API versions supported by the resource type.
+	APIVersions map[string]map[string]any
+
+	// REQUIRED; The default api version for the resource type.
+	DefaultAPIVersion *string
+}
+
+// ResourceTypeProperties - The properties of a resource type.
+type ResourceTypeProperties struct {
+	// REQUIRED; The default api version for the resource type.
+	DefaultAPIVersion *string
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// ResourceTypeResource - The resource type for defining a resource type supported by the containing resource provider.
+type ResourceTypeResource struct {
+	// The resource-specific properties for this resource.
+	Properties *ResourceTypeProperties
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// ResourceTypeResourceListResult - The response of a ResourceTypeResource list operation.
+type ResourceTypeResourceListResult struct {
+	// REQUIRED; The ResourceTypeResource items on this page
+	Value []*ResourceTypeResource
+
+	// The link to the next page of items
+	NextLink *string
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

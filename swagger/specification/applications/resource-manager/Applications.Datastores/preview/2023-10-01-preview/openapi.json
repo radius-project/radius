@@ -70,7 +70,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/MongoDatabaseResourceListResult"
             }
@@ -121,7 +121,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/MongoDatabaseResource"
             }
@@ -184,6 +184,10 @@
               "$ref": "#/definitions/MongoDatabaseResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -199,11 +203,11 @@
           }
         },
         "x-ms-examples": {
-          "Create or update a MongoDatabase resource with recipe": {
-            "$ref": "./examples/MongoDatabases_CreateOrUpdateRecipe.json"
-          },
           "Create or update a MongoDatabase resource": {
             "$ref": "./examples/MongoDatabases_CreateOrUpdateValues.json"
+          },
+          "Create or update a MongoDatabase resource with recipe": {
+            "$ref": "./examples/MongoDatabases_CreateOrUpdateRecipe.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -245,7 +249,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/MongoDatabaseResource"
             }
@@ -253,14 +257,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -300,25 +304,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -367,14 +368,13 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/MongoDatabaseListSecretsResult"
             }
@@ -410,7 +410,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RedisCacheResourceListResult"
             }
@@ -461,7 +461,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RedisCacheResource"
             }
@@ -524,6 +524,10 @@
               "$ref": "#/definitions/RedisCacheResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -588,7 +592,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RedisCacheResource"
             }
@@ -596,14 +600,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -648,25 +652,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -715,14 +716,13 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RedisCacheListSecretsResult"
             }
@@ -758,7 +758,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SqlDatabaseResourceListResult"
             }
@@ -809,7 +809,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SqlDatabaseResource"
             }
@@ -872,6 +872,10 @@
               "$ref": "#/definitions/SqlDatabaseResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -930,7 +934,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SqlDatabaseResource"
             }
@@ -938,14 +942,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -990,25 +994,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1057,14 +1058,13 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SqlDatabaseListSecretsResult"
             }
@@ -1092,7 +1092,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
             }
@@ -1111,6 +1111,24 @@
     }
   },
   "definitions": {
+    "Azure.ResourceManager.CommonTypes.TrackedResourceUpdate": {
+      "type": "object",
+      "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/Resource"
+        }
+      ]
+    },
     "EnvironmentCompute": {
       "type": "object",
       "description": "Represents backing compute resource",
@@ -1142,7 +1160,7 @@
       ],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "undefined",
@@ -1320,70 +1338,12 @@
     },
     "MongoDatabaseResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the MongoDatabaseResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/MongoDatabaseResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "MongoDatabase portable resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "MongoDatabaseResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the MongoDatabaseResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-        },
-        "secrets": {
-          "$ref": "#/definitions/MongoDatabaseSecrets",
-          "description": "Secret values provided for the resource"
-        },
-        "host": {
-          "type": "string",
-          "description": "Host name of the target Mongo database"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "Port value of the target Mongo database"
-        },
-        "database": {
-          "type": "string",
-          "description": "Database name of the target Mongo database"
-        },
-        "resources": {
-          "type": "array",
-          "description": "List of the resource IDs that support the MongoDB resource",
-          "items": {
-            "$ref": "#/definitions/ResourceReference"
-          }
-        },
-        "username": {
-          "type": "string",
-          "description": "Username to use when connecting to the target Mongo database"
-        },
-        "recipe": {
-          "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        }
-      }
+      ]
     },
     "MongoDatabaseSecrets": {
       "type": "object",
@@ -1421,42 +1381,28 @@
       "type": "string",
       "description": "Provisioning state of the resource at the time the operation was called",
       "enum": [
-        "Succeeded",
-        "Failed",
-        "Canceled",
-        "Provisioning",
+        "Creating",
         "Updating",
         "Deleting",
-        "Accepted"
+        "Accepted",
+        "Provisioning",
+        "Succeeded",
+        "Failed",
+        "Canceled"
       ],
       "x-ms-enum": {
         "name": "ProvisioningState",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
-            "name": "Succeeded",
-            "value": "Succeeded",
-            "description": "Resource has been created."
-          },
-          {
-            "name": "Failed",
-            "value": "Failed",
-            "description": "Resource creation failed."
-          },
-          {
-            "name": "Canceled",
-            "value": "Canceled",
-            "description": "Resource creation was canceled."
-          },
-          {
-            "name": "Provisioning",
-            "value": "Provisioning",
-            "description": "The resource is being provisioned"
+            "name": "Creating",
+            "value": "Creating",
+            "description": "The resource is being created"
           },
           {
             "name": "Updating",
             "value": "Updating",
-            "description": "The resource is updating"
+            "description": "The resource is being updated"
           },
           {
             "name": "Deleting",
@@ -1467,6 +1413,26 @@
             "name": "Accepted",
             "value": "Accepted",
             "description": "The resource create request has been accepted"
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "The resource is being provisioned"
+          },
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "The resource has been successfully provisioned"
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "The resource provisioning has failed"
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "The resource provisioning has been canceled"
           }
         ]
       },
@@ -1482,8 +1448,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
       "required": [
@@ -1511,21 +1476,6 @@
         "templateKind",
         "templatePath"
       ]
-    },
-    "RecipeUpdate": {
-      "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the recipe within the environment to use"
-        },
-        "parameters": {
-          "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
-        }
-      }
     },
     "RedisCacheListSecretsResult": {
       "type": "object",
@@ -1654,70 +1604,12 @@
     },
     "RedisCacheResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the RedisCacheResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/RedisCacheResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "RedisCache portable resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "RedisCacheResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the RedisCacheResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-        },
-        "secrets": {
-          "$ref": "#/definitions/RedisCacheSecrets",
-          "description": "Secrets provided by resource"
-        },
-        "host": {
-          "type": "string",
-          "description": "The host name of the target Redis cache"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The port value of the target Redis cache"
-        },
-        "username": {
-          "type": "string",
-          "description": "The username for Redis cache"
-        },
-        "tls": {
-          "type": "boolean",
-          "description": "Specifies whether to enable SSL connections to the Redis cache"
-        },
-        "resources": {
-          "type": "array",
-          "description": "List of the resource IDs that support the Redis resource",
-          "items": {
-            "$ref": "#/definitions/ResourceReference"
-          }
-        },
-        "recipe": {
-          "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        }
-      }
+      ]
     },
     "RedisCacheSecrets": {
       "type": "object",
@@ -1746,7 +1638,7 @@
       ],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "recipe",
@@ -1920,70 +1812,12 @@
     },
     "SqlDatabaseResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the SqlDatabaseResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/SqlDatabaseResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "SqlDatabase portable resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "SqlDatabaseResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the SqlDatabaseResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-        },
-        "database": {
-          "type": "string",
-          "description": "The name of the Sql database."
-        },
-        "server": {
-          "type": "string",
-          "description": "The fully qualified domain name of the Sql database."
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "Port value of the target Sql database"
-        },
-        "username": {
-          "type": "string",
-          "description": "Username to use when connecting to the target Sql database"
-        },
-        "resources": {
-          "type": "array",
-          "description": "List of the resource IDs that support the SqlDatabase resource",
-          "items": {
-            "$ref": "#/definitions/ResourceReference"
-          }
-        },
-        "secrets": {
-          "$ref": "#/definitions/SqlDatabaseSecrets",
-          "description": "Secret values provided for the resource"
-        },
-        "recipe": {
-          "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        }
-      }
+      ]
     },
     "SqlDatabaseSecrets": {
       "type": "object",
@@ -1997,24 +1831,6 @@
           "type": "string",
           "description": "Connection string used to connect to the target Sql database"
         }
-      }
-    },
-    "Versions": {
-      "type": "string",
-      "description": "Supported API versions for the Applications.Databases resource provider.",
-      "enum": [
-        "2023-10-01-preview"
-      ],
-      "x-ms-enum": {
-        "name": "Versions",
-        "modelAsString": true,
-        "values": [
-          {
-            "name": "v2023_10_01_preview",
-            "value": "2023-10-01-preview",
-            "description": "2023-10-01-preview"
-          }
-        ]
       }
     }
   },

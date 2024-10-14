@@ -1,0 +1,23 @@
+{
+  "operationId": "Locations_Get",
+  "title": "Gets a location supported by a resource provider.",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local",
+    "resourceProviderName": "Applications.Test",
+    "locationName": "east"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/locations/east",
+        "type": "System.Resources/resourceProviders/locations",
+        "name": "east",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "resourceTypes": {}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "operationId": "ResourceProviders_Get",
+  "title": "Gets a resource provider.",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local",
+    "resourceProviderName": "Applications.Test"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test",
+        "location": "global",
+        "type": "System.Resources/resourceProviders",
+        "name": "Applications.Test",
+        "properties": {
+          "provisioningState": "Succeeded"
+        }
+      }
+    }
+  }
+}
