@@ -101,7 +101,7 @@ Run this command to create the namespace that will be used to store data.
 kubectl create namespace radius-testing
 ```
 
-## Setup Step 4: port-forward Deployment Engine
+## Setup Step 4: Port forward Deployment Engine
 
 kubectl port-forward --namespace=radius-system svc/bicep-de 5017:6443
 
