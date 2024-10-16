@@ -20,7 +20,7 @@ import (
 func Test_Process(t *testing.T) {
 	processor := Processor{}
 
-	const azureSqlResourceID = "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.Sql/servers/mssql-radiustest/databases/database-radiustest"
+	const azureSqlResourceID = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Sql/servers/sql.server/databases/database-radiustest"
 	const server = "sql.server"
 	const database = "database-radiustest"
 	const port = 1433

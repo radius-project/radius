@@ -451,7 +451,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest-m]
-        name: [corerp-cloud, ucp-cloud, datastoresrp-cloud]
+        name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
