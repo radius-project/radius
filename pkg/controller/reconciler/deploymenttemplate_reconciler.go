@@ -1,5 +1,5 @@
 /*
-Copyright 2024.
+Copyright 2024 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,12 +33,9 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
-)
-
-const (
-	TEMPDEFAULTRADIUSRESOURCEGROUP = "/planes/radius/local/resourcegroups/default"
 )
 
 const (
@@ -113,7 +110,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		poller, err := r.Radius.Resources(TEMPDEFAULTRADIUSRESOURCEGROUP, deploymentResourceType).ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
+		poller, err := r.Radius.Resources(deploymentTemplate.Status.ProviderConfig.Deployments.Value.Scope, deploymentResourceType).ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue PUT operation: %w", err)
 		}
@@ -216,6 +213,12 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 		}
 
+		providerConfig := sdkclients.ProviderConfig{}
+		err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
+		}
+
 		// If we get here, the operation was a success. Update the status and continue.
 		//
 		// NOTE: we don't need to save the status here, because we're going to continue reconciling.
@@ -223,11 +226,18 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.Template = deploymentTemplate.Spec.Template
 		deploymentTemplate.Status.Parameters = deploymentTemplate.Spec.Parameters
-		deploymentTemplate.Status.Resource = TEMPDEFAULTRADIUSRESOURCEGROUP + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
+		deploymentTemplate.Status.Resource = providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
+		deploymentTemplate.Status.ProviderConfig = providerConfig
 		return ctrl.Result{}, nil
 
 	} else if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-		poller, err := r.Radius.Resources(TEMPDEFAULTRADIUSRESOURCEGROUP, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
+		providerConfig := sdkclients.ProviderConfig{}
+		err := json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
+		}
+
+		poller, err := r.Radius.Resources(providerConfig.Deployments.Value.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue DELETE operation: %w", err)
 		}
@@ -371,9 +381,15 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
 		}
 
+		providerConfig := sdkclients.ProviderConfig{}
+		err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
+		}
+
 		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
-		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
+		deploymentTemplate.Status.ProviderConfig = providerConfig
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -416,19 +432,36 @@ func (r *DeploymentTemplateReconciler) startPutOrDeleteOperationIfNeeded(ctx con
 
 	logger.Info("Template or parameters have changed, starting PUT operation.")
 
-	template := map[string]any{}
+	var template any
 	err := json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal template: %w", err)
 	}
 
-	parameters := map[string]map[string]any{}
+	var parameters any
 	err = json.Unmarshal([]byte(deploymentTemplate.Spec.Parameters), &parameters)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal parameters: %w", err)
 	}
 
-	providerConfig := deploymentTemplate.Spec.ProviderConfig
+	// TODO PR: Is there a better way to check for all of this stuff?
+	providerConfig := sdkclients.ProviderConfig{}
+	err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal template: %w", err)
+	}
+	if providerConfig.Deployments == nil {
+		return nil, nil, fmt.Errorf("providerConfig.Deployments is nil")
+	}
+	if providerConfig.Deployments.Value.Scope == "" {
+		return nil, nil, fmt.Errorf("providerConfig.Deployments.Value.Scope is empty")
+	}
+	if providerConfig.Radius == nil {
+		return nil, nil, fmt.Errorf("providerConfig.Radius is nil")
+	}
+	if providerConfig.Radius.Value.Scope == "" {
+		return nil, nil, fmt.Errorf("providerConfig.Radius.Value.Scope is empty")
+	}
 
 	logger.Info("Starting PUT operation.")
 	properties := map[string]any{
@@ -438,7 +471,7 @@ func (r *DeploymentTemplateReconciler) startPutOrDeleteOperationIfNeeded(ctx con
 		"parameters":     parameters,
 	}
 
-	resourceID := TEMPDEFAULTRADIUSRESOURCEGROUP + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
+	resourceID := providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 	poller, err := createOrUpdateResource(ctx, r.Radius, resourceID, properties)
 	if err != nil {
 		return nil, nil, err

@@ -116,7 +116,6 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 	resourceId = ucpresources.MakeUCPID(scopes, types, nil)
 	providerConfig := dc.GetProviderConfigs(options)
 
-	//TODOWILLSMITH: reference
 	poller, err := dc.Client.CreateOrUpdate(ctx,
 		sdkclients.Deployment{
 			Properties: &sdkclients.DeploymentProperties{

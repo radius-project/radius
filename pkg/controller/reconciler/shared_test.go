@@ -17,6 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -190,4 +191,33 @@ func makeDeployment(name types.NamespacedName) *appsv1.Deployment {
 
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+func makeDeploymentTemplate(name types.NamespacedName, template map[string]any) *radappiov1alpha3.DeploymentTemplate {
+	b, err := json.Marshal(template)
+	if err != nil {
+		panic(err)
+	}
+
+	return &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: ctrl.ObjectMeta{
+			Namespace: name.Namespace,
+			Name:      name.Name,
+		},
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template: string(b),
+		},
+	}
+}
+
+func makeDeploymentResource(name types.NamespacedName, id string) *radappiov1alpha3.DeploymentResource {
+	return &radappiov1alpha3.DeploymentResource{
+		ObjectMeta: ctrl.ObjectMeta{
+			Namespace: name.Namespace,
+			Name:      name.Name,
+		},
+		Spec: radappiov1alpha3.DeploymentResourceSpec{
+			ID: id,
+		},
+	}
 }

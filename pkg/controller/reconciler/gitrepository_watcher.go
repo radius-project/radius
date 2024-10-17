@@ -3,8 +3,10 @@ package reconciler
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"os"
+	"os/exec"
+	"path"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,7 +32,6 @@ func (r *GitRepositoryWatcher) SetupWithManager(mgr ctrl.Manager) error {
 		fetch.WithRetries(r.HttpRetry),
 		fetch.WithMaxDownloadSize(tar.UnlimitedUntarSize),
 		fetch.WithUntar(tar.WithMaxUntarSize(tar.UnlimitedUntarSize)),
-		// fetch.WithHostnameOverwrite(os.Getenv("SOURCE_CONTROLLER_LOCALHOST")),
 		fetch.WithLogger(nil),
 	)
 
@@ -45,7 +46,6 @@ func (r *GitRepositoryWatcher) SetupWithManager(mgr ctrl.Manager) error {
 func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	// get source object
 	var repository sourcev1.GitRepository
 	if err := r.Get(ctx, req.NamespacedName, &repository); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -67,7 +67,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}(tmpDir)
 
-	// download and extract artifact
+	log.Info("fetching artifact...", "url", artifact.URL)
 	if err := r.artifactFetcher.Fetch(artifact.URL, artifact.Digest, tmpDir); err != nil {
 		log.Error(err, "unable to fetch artifact")
 		return ctrl.Result{}, err
@@ -79,59 +79,116 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, fmt.Errorf("failed to list files, error: %w", err)
 	}
 
+	// TODOWILLSMITH: how do we decide which files to run bicep build on?
+	// for now, we'll just run it on all root files
 	for _, f := range files {
-		r.processFile(ctx, f, tmpDir+"/")
+		extension := path.Ext(f.Name())
+		if extension == ".bicep" {
+			template, err := r.runBicepBuild(ctx, tmpDir, f.Name())
+			if err != nil {
+				log.Error(err, "failed to run bicep build")
+				return ctrl.Result{}, err
+			}
+
+			// TODOWILLSMITH: how do we decide which parameters file to use?
+			// for now, we assume the parameters file is the same name as the bicep file
+			// in the same directory
+			// e.g. main.bicep -> main.bicepparam
+			parametersFile := strings.ReplaceAll(f.Name(), ".bicep", ".bicepparam")
+
+			parameters, err := r.runBicepBuildParams(ctx, tmpDir, parametersFile)
+			providerConfig := "providerConfig"
+			if err != nil {
+				log.Error(err, "failed to run bicep build-params")
+				return ctrl.Result{}, err
+			}
+
+			// TODOWILLSMITH: create/update or delete
+			// determine if this bicep file has already been deployed, if so update
+			// if not, create,
+			// if the bicep file has been deleted, delete the deployment template
+
+			// get all deployment templates on the cluster
+			// think ab multiple git repos scenario
+			// need to save name of git repo in deployment template?
+
+			r.createOrUpdateDeploymentTemplate(ctx, f.Name(), template, parameters, providerConfig)
+		}
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *GitRepositoryWatcher) processFile(ctx context.Context, f fs.DirEntry, path string) {
+func (r *GitRepositoryWatcher) runBicepBuild(ctx context.Context, filepath, filename string) (armJSON string, err error) {
+	// TODOWILLSMITH: bicep build is broken
 	log := ctrl.LoggerFrom(ctx)
 
-	if f.IsDir() {
-		log.Info("Processing Directory " + f.Name())
-		files, err := os.ReadDir(path + f.Name())
-		if err != nil {
-			log.Error(err, "failed to list files, error: %w", err)
+	log.Info("Running bicep build on " + path.Join(filepath, filename))
+
+	cmd := exec.Command("/work-dir/bicep", "build", path.Join(filepath, filename), "--stdout")
+	cmd.Dir = filepath
+
+	stdout, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Error(err, "failed to run bicep build", "out", string(stdout))
+		return "", err
+	}
+
+	log.Info("Bicep build output", "output", string(stdout))
+
+	return string(stdout), nil
+}
+
+func (r *GitRepositoryWatcher) runBicepBuildParams(ctx context.Context, filepath, filename string) (armJSON string, err error) {
+	log := ctrl.LoggerFrom(ctx)
+
+	log.Info("Running bicep build-params on " + filename)
+
+	cmd := exec.Command("/work-dir/bicep", "build-params", path.Join(filepath, filename), "--stdout")
+
+	stdout, err := cmd.Output()
+	if err != nil {
+		log.Error(err, "failed to run bicep build")
+		return "", err
+	}
+
+	log.Info("Bicep build output", "output", string(stdout))
+
+	return string(stdout), nil
+}
+
+func (r *GitRepositoryWatcher) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, template, parameters, providerConfig string) {
+	log := ctrl.LoggerFrom(ctx)
+
+	deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fileName,
+			Namespace: RadiusSystemNamespace,
+		},
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template:       template,
+			Parameters:     parameters,
+			ProviderConfig: providerConfig,
+		},
+	}
+
+	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(deploymentTemplate), deploymentTemplate); err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "unable to get deployment template")
+			return
 		}
 
-		for _, f := range files {
-			r.processFile(ctx, f, path+f.Name()+"/")
-		}
-	} else {
-		log.Info("Processing File" + f.Name())
-		template, parameters, providerConfig := r.processBicepFile(ctx, path+f.Name())
-		deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      f.Name(),
-				Namespace: "radius-system",
-			},
-			Spec: radappiov1alpha3.DeploymentTemplateSpec{
-				Template:       template,
-				Parameters:     parameters,
-				ProviderConfig: providerConfig,
-			},
-		}
-
-		if err := r.Create(ctx, deploymentTemplate); err != nil {
+		if err := r.Client.Create(ctx, deploymentTemplate); err != nil {
 			log.Error(err, "unable to create deployment template")
 		}
 
 		log.Info("Created Deployment Template", "name", deploymentTemplate.Name)
-	}
-}
-
-func (r *GitRepositoryWatcher) processBicepFile(ctx context.Context, path string) (string, string, string) {
-	log := ctrl.LoggerFrom(ctx)
-
-	_, err := os.ReadFile(path)
-	if err != nil {
-		log.Error(err, "unable to read file")
-		return "", "", ""
+		return
 	}
 
-	// TODOWILLSMITH: compilebicep
+	if err := r.Client.Update(ctx, deploymentTemplate); err != nil {
+		log.Error(err, "unable to create deployment template")
+	}
 
-	return "", "", ""
+	log.Info("Updated Deployment Template", "name", deploymentTemplate.Name)
 }

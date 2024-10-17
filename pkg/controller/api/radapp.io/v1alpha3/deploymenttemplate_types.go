@@ -1,5 +1,5 @@
 /*
-Copyright 2024.
+Copyright 2024 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,16 +17,17 @@ limitations under the License.
 package v1alpha3
 
 import (
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // DeploymentTemplateSpec defines the desired state of DeploymentTemplate
 type DeploymentTemplateSpec struct {
 	// Template is the ARM JSON manifest that defines the resources to deploy.
-	Template string `json:"template"`
+	Template string `json:"template,omitempty"`
 
 	// Parameters is the ARM JSON parameters for the template.
-	Parameters string `json:"parameters"`
+	Parameters string `json:"parameters,omitempty"`
 
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
@@ -35,21 +36,21 @@ type DeploymentTemplateSpec struct {
 // DeploymentTemplateStatus defines the observed state of DeploymentTemplate
 type DeploymentTemplateStatus struct {
 	// ObservedGeneration is the most recent generation observed for this DeploymentTemplate.
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`
 
 	// Template is the ARM JSON manifest that defines the resources to deploy.
-	Template string `json:"template"`
+	Template string `json:"template,omitempty"`
 
 	// Parameters is the ARM JSON parameters for the template.
-	Parameters string `json:"parameters"`
+	Parameters string `json:"parameters,omitempty"`
 
 	// ProviderConfig specifies the scope for resources
-	ProviderConfig string `json:"providerConfig,omitempty"`
+	ProviderConfig sdkclients.ProviderConfig `json:"providerConfig,omitempty"`
 
 	// Resource is the resource id of the deployment.
 	Resource string `json:"resource,omitempty"`
 
-	// OutputResources is a list of the resourceIds that were created by the template.
+	// OutputResources is a list of the resourceIDs that were created by the template on the last deployment.
 	OutputResources []string `json:"outputResources,omitempty"`
 
 	// Operation tracks the status of an in-progress provisioning operation.

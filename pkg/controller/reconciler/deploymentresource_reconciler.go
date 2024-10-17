@@ -1,5 +1,5 @@
 /*
-Copyright 2024.
+Copyright 2024 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -104,7 +106,13 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentResource.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-		poller, err := r.Radius.Resources(TEMPDEFAULTRADIUSRESOURCEGROUP, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
+		providerConfig := sdkclients.ProviderConfig{}
+		err := json.Unmarshal([]byte(deploymentResource.Spec.ProviderConfig), &providerConfig)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
+		}
+
+		poller, err := r.Radius.Resources(providerConfig.Deployments.Value.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue DELETE operation: %w", err)
 		}

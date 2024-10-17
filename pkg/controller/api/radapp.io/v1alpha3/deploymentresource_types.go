@@ -1,5 +1,5 @@
 /*
-Copyright 2024.
+Copyright 2024 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,22 +17,29 @@ limitations under the License.
 package v1alpha3
 
 import (
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // DeploymentResourceSpec defines the desired state of DeploymentResource
 type DeploymentResourceSpec struct {
 	// ID is the resource ID.
-	ID string `json:"id"`
+	ID string `json:"id,omitempty"`
+
+	// ProviderConfig specifies the scope for resources
+	ProviderConfig string `json:"providerConfig,omitempty"`
 }
 
 // DeploymentResourceStatus defines the observed state of DeploymentResource
 type DeploymentResourceStatus struct {
+	// ID is the resource ID.
+	ID string `json:"id,omitempty"`
+
 	// ProviderConfig specifies the scope for resources
-	ProviderConfig string `json:"providerConfig,omitempty"`
+	ProviderConfig sdkclients.ProviderConfig `json:"providerConfig,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed for this DeploymentResource.
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`
 
 	// Operation tracks the status of an in-progress provisioning operation.
 	Operation *ResourceOperation `json:"operation,omitempty"`
