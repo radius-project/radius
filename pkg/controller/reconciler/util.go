@@ -280,3 +280,9 @@ func createOrUpdateContainer(ctx context.Context, radius RadiusClient, container
 
 	return nil, nil
 }
+
+func generateDeploymentResourceName(resourceId string) string {
+	resourceBaseName := strings.Split(resourceId, "/")[len(strings.Split(resourceId, "/"))-1]
+
+	return resourceBaseName
+}
