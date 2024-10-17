@@ -66,7 +66,7 @@ rad install kubernetes --set global.prometheus.path=/customdomain.com/metrics,gl
 # Install Radius using a helmchart from specified file path
 rad install kubernetes --chart /root/radius/deploy/Chart
 
-# Re-install Radius with latest version
+# Force re-install Radius with latest version
 rad install kubernetes --reinstall
 `,
 		Args: cobra.ExactArgs(0),
