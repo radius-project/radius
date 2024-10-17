@@ -1,7 +1,6 @@
 module github.com/radius-project/radius
 
-go 1.22.0
-toolchain go1.23.2
+go 1.23.0
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.15.0
