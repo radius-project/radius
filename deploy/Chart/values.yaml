@@ -42,6 +42,12 @@ controller:
     limits:
       memory: "300Mi"
 
+# TODO: update with proper image name 
+controller-bicep:
+  image: ghcr.io/radius-project/controller-bicep # docker.io/sk593/bicep-image:latest
+  # Default tag uses Chart AppVersion.
+  # tag: latest
+
 de:
   image: ghcr.io/radius-project/deployment-engine
   # Default tag uses Chart AppVersion.

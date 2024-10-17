@@ -26,10 +26,22 @@ spec:
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
       {{- end }}
     spec:
+      # TODO: delete once tested. needed so the arm64 nodepool gets chosen on AKS cluster 
+      nodeSelector:
+        node.kubernetes.io/arch: arm64
       serviceAccountName: controller
+      initContainers:
+      - name: controller-bicep
+        # TODO: Fix image names
+        image: docker.io/sk593/bicep-image:latest # "{{ .Values.controller-bicep.image }}:{{ .Values.controller-bicep.tag | default $appversion }}""
+        # restartPolicy: Always TODO: if we just need the init container to download the binary, does it need to be a sidecar? 
+        command: ['sh', '-c', 'mv ./bicep /usr/local/bin/bicep']
+        volumeMounts:
+        - name: bicep 
+          mountPath: /usr/local/bin
       containers:
       - name: controller
-        image: "{{ .Values.controller.image }}:{{ .Values.controller.tag | default $appversion }}"
+        image: docker.io/sk593/controller-image:latest # "{{ .Values.controller.image }}:{{ .Values.controller.tag | default $appversion }}"
         imagePullPolicy: 'Always'
         args: 
         - '--config-file'
@@ -62,6 +74,8 @@ spec:
         resources:{{ toYaml .Values.controller.resources | nindent 10 }}
         {{- end }}
         volumeMounts:
+        - name: bicep
+          mountPath: /usr/local/bin
         - name: config-volume
           mountPath: /etc/config
         - name: cert
@@ -73,6 +87,8 @@ spec:
           readOnly: true
         {{- end }}
       volumes:
+        - name: bicep
+          emptyDir: {}
         - name: config-volume
           configMap:
             name: controller-config
