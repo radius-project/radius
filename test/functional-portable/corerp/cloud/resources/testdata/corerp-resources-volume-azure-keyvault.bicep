@@ -98,7 +98,7 @@ resource keyvaultVolume 'Applications.Core/volumes@2023-10-01-preview' = {
   }
 }
 
-/*
+
 // Due to the soft-delete production of keyvault, this test uses the existing test keyvault.
 // If you want to create keyvault while deploying this bicep template, please uncomment the below resource template.
 resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
@@ -130,5 +130,5 @@ resource mySecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
     }
   }
 }
-*/
+
 
