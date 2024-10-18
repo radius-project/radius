@@ -1956,6 +1956,10 @@ func Test_Render_BaseManifest(t *testing.T) {
 
 			actual, err := json.MarshalIndent(deployment, "", "  ")
 			require.NoError(t, err)
+			// Append a newline character to the actual output to match the expected output.
+			// This is necessary because a command was introduced to format all JSON files in the repository,
+			// and this command adds a newline character at the end of each JSON file.
+			actual = append(actual, '\n')
 
 			outputYaml := testutil.ReadFixture(tc.outFile)
 			require.Equal(t, string(outputYaml), string(actual), "actual output: %s", string(actual))

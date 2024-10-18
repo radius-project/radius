@@ -26,7 +26,7 @@
         "id": "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test",
         "name": "Applications.Test",
         "type": "System.Resources/resourceProviders",
-      "location": "global",
+        "location": "global",
         "properties": {
           "provisioningState": "Succeeded"
         }

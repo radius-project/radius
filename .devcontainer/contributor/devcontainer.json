@@ -1,50 +1,50 @@
 {
-    "name": "Radius - Contributor",
-    // For details see https://github.com/radius-project/radius/tree/main/docs/contributing/contributing-code/contributing-code-prerequisites
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-    "features": {
-        //Git and GitHub Setup
-        "ghcr.io/devcontainers/features/git:1": {},
-        "ghcr.io/devcontainers/features/github-cli:1": {},
-        //Programming languages        
-        "ghcr.io/devcontainers/features/go:1": {},
-        "ghcr.io/guiyomh/features/gotestsum:0.1.1": {},
-        "ghcr.io/devcontainers/features/node:1": {},
-        "ghcr.io/devcontainers-contrib/features/typescript:2": {},
-        "ghcr.io/devcontainers/features/python:1": {},
-        //Container and K8s
-        "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
-            "minikube": "none"
-        },
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {
-            "version": "latest",
-            "moby": true
-        },
-        //Tools
-        "ghcr.io/eitsupi/devcontainer-features/jq-likes:2": {},
-        "ghcr.io/mpriscella/features/kind:1": {},
-        "ghcr.io/dhoeric/features/stern:1": {},
-        //Dapr
-        "ghcr.io/dapr/cli/dapr-cli:0": {}
+  "name": "Radius - Contributor",
+  // For details see https://github.com/radius-project/radius/tree/main/docs/contributing/contributing-code/contributing-code-prerequisites
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    //Git and GitHub Setup
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    //Programming languages
+    "ghcr.io/devcontainers/features/go:1": {},
+    "ghcr.io/guiyomh/features/gotestsum:0.1.1": {},
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers-contrib/features/typescript:2": {},
+    "ghcr.io/devcontainers/features/python:1": {},
+    //Container and K8s
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "minikube": "none"
     },
-    "customizations": {
-        "vscode": {
-            "extensions": [
-                "redhat.vscode-yaml",
-                "golang.go",
-                "ms-python.python",
-                "ms-python.vscode-pylance",
-                "ms-azuretools.vscode-bicep",
-                "ms-kubernetes-tools.vscode-kubernetes-tools",
-                "ms-azuretools.vscode-dapr",
-                "ms-vscode.makefile-tools"
-            ]
-        }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
     },
-    // Prerequisite for Code Generation, see https://github.com/radius-project/radius/tree/main/docs/contributing/contributing-code/contributing-code-prerequisites#code-generation
-    // Adding workspace as safe directory to avoid permission issues
-    "postCreateCommand": "git config --global --add safe.directory /workspaces/radius && cd typespec && npm ci && npm install -g autorest && npm install -g oav && go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.0 && go install go.uber.org/mock/mockgen@v0.4.0",
-    "hostRequirements": {
-        "memory": "8gb"
-    },
+    //Tools
+    "ghcr.io/eitsupi/devcontainer-features/jq-likes:2": {},
+    "ghcr.io/mpriscella/features/kind:1": {},
+    "ghcr.io/dhoeric/features/stern:1": {},
+    //Dapr
+    "ghcr.io/dapr/cli/dapr-cli:0": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "redhat.vscode-yaml",
+        "golang.go",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-bicep",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "ms-azuretools.vscode-dapr",
+        "ms-vscode.makefile-tools"
+      ]
+    }
+  },
+  // Prerequisite for Code Generation, see https://github.com/radius-project/radius/tree/main/docs/contributing/contributing-code/contributing-code-prerequisites#code-generation
+  // Adding workspace as safe directory to avoid permission issues
+  "postCreateCommand": "git config --global --add safe.directory /workspaces/radius && cd typespec && npm ci && npm install -g autorest && npm install -g oav && go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.0 && go install go.uber.org/mock/mockgen@v0.4.0",
+  "hostRequirements": {
+    "memory": "8gb"
+  }
 }

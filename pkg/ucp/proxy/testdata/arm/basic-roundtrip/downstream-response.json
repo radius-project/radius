@@ -1,9 +1,7 @@
 {
-    "statusCode": 200,
-    "body": "{ \"message\": \"hello there!\" }",
-    "headers": {
-        "Content-Type": [
-            "application/json"
-        ]
-    } 
+  "statusCode": 200,
+  "body": "{ \"message\": \"hello there!\" }",
+  "headers": {
+    "Content-Type": ["application/json"]
+  }
 }

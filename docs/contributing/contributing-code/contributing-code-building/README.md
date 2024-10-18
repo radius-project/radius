@@ -11,7 +11,13 @@ You can build the repository with `make build`. This will build all of the packa
 The following command will build, run unit tests, and run linters. This command is handy for verifying that your local changes are working correctly.
 
 ```sh
-make build test lint
+make build test lint format-check
+```
+
+You should also run `make format-write` if you have errors in the `format-check` command that you ran above or have added new or changed existing TS, JS, MJS, and/or JSON files.
+
+```sh
+make format-write
 ```
 
 - See further information about tests [here](../contributing-code-tests/).

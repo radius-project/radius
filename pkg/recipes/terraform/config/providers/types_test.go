@@ -54,7 +54,7 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 					},
 				},
 			},
-			expected: map[string][]map[string]any{"aws": []map[string]any{}},
+			expected: map[string][]map[string]any{"aws": {}},
 		},
 		{
 			desc: "provider with config",

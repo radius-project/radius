@@ -1,12 +1,12 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-    "contentVersion": "1.0.0.0",
-    "parameters": {
-          "param1": {
-            "value": "value1"
-          },
-          "param2": {
-            "value": "value2"
-        }
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "param1": {
+      "value": "value1"
+    },
+    "param2": {
+      "value": "value2"
     }
+  }
 }
