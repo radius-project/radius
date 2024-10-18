@@ -45,7 +45,7 @@ type DeploymentProperties struct {
 	Template any `json:"template,omitempty"`
 	// TemplateLink - The URI of the template. Use either the templateLink property or the template property, but not both.
 	TemplateLink *armresources.TemplateLink `json:"templateLink,omitempty"`
-	//ProviderConfig specifies the scope for resources
+	// ProviderConfig specifies the scope for resources
 	ProviderConfig any `json:"providerconfig,omitempty"`
 	// Parameters - Name and value pairs that define the deployment parameters for the template. You use this element when you want to provide the parameter values directly in the request rather than link to an existing parameter file. Use either the parametersLink property or the parameters property, but not both. It can be a JObject or a well formed JSON string.
 	Parameters any `json:"parameters,omitempty"`

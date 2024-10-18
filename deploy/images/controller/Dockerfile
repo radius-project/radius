@@ -1,5 +1,5 @@
 # Use distroless image which already includes ca-certificates
-FROM gcr.io/distroless/static:nonroot
+FROM ubuntu
 
 # Argument for target architecture
 ARG TARGETARCH
@@ -11,7 +11,7 @@ WORKDIR /
 COPY ./linux_${TARGETARCH:-amd64}/release/controller /
 
 # Set the user to non-root (65532:65532 is the default non-root user in distroless)
-USER 65532:65532
+# USER 65532:65532
 
 # Set the entrypoint to the application binary
 ENTRYPOINT ["/controller"]
