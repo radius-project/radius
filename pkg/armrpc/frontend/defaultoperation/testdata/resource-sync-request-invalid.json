@@ -1,8 +1,7 @@
 {
-    "location": "global",
-    "properties": {
-        "kind": "UCPNative",
-        "resourceProviders": {
-        }
-    }
+  "location": "global",
+  "properties": {
+    "kind": "UCPNative",
+    "resourceProviders": {}
+  }
 }

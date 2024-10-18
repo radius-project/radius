@@ -4,7 +4,7 @@
 
 We welcome small pull request contributions from anyone (docs improvements, bug fixes, minor features.) as long as they follow a few guidelines:
 
-- For very minor changes like correcting a typo feel free to just send a pull request without any ceremony. Otherwise ... 
+- For very minor changes like correcting a typo feel free to just send a pull request without any ceremony. Otherwise ...
 - Please start by [choosing an existing issue](https://github.com/radius-project/radius/issues), or [opening an issue](https://github.com/radius-project/radius/issues/new/choose) to work on.
 - The maintainers will respond to your issue, please work with the maintainers to ensure that what you're doing is in scope for the project before writing any code.
 - If you have any doubt whether a contribution would be valuable, feel free to ask.
@@ -46,8 +46,8 @@ Keep reading for some tips about how to get your pull requests accepted!
 
 ## How to get help with a pull request
 
-* Notify the Radius Core team by commenting with `@radius-project/radius-core-team ` on your pull-request. 
-* Post on Discord in the [#Forum channel](https://discord.gg/GJHN7kQrMh) to start a conversation.
+- Notify the Radius Core team by commenting with `@radius-project/radius-core-team` on your pull-request.
+- Post on Discord in the [#Forum channel](https://discord.gg/GJHN7kQrMh) to start a conversation.
 
 ## Writing a good commit message
 
@@ -84,12 +84,11 @@ We run [CodeQL](https://codeql.github.com/) as part of the pull-request process 
 
 If CodeQL fails due to your changes, please work with the maintainers to resolve the issue.
 
-
 ## Code review
 
 The maintainers or other contributors will add comments to your pull request giving feedback, asking questions, and making suggestions. Please respond to these comments to either continue the discussion or explain whether or not you plan to address the feedback. Ultimately, accepting a pull request is at the maintainer's discretion.
 
-### Being proactive 
+### Being proactive
 
 It can be helpful for you to comment on your own PR to point out relevant locations, decisions, opportunities for feedback, and tricky parts. This will help reviewers focus their attention as well as save them time.
 

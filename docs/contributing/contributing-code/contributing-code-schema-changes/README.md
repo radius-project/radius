@@ -35,7 +35,7 @@ In order to update or create a new schema follow these steps:
     </details>
 1. Add any necessary changes to the Radius resource provider to support the newly added types.
 1. Add any necessary tests, as needed.
-1. Open a pull request in the Radius repo. 
+1. Open a pull request in the Radius repo.
 
 ## Step 2: Update docs and samples
 
@@ -51,19 +51,20 @@ Visit the [docs](https://github.com/radius-project/docs/) and [samples](https://
 
 # Testing schema changes locally
 
-If you would like to test that your schema changes are compilable in a Bicep template, you can do so by publishing them to a file system using the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/). 
+If you would like to test that your schema changes are compilable in a Bicep template, you can do so by publishing them to a file system using the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/).
 
 ## Step 1: Download the Bicep CLI
 
-1. Follow the steps in the Bicep [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) to download Bicep. 
+1. Follow the steps in the Bicep [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) to download Bicep.
 
 Note: Alternatively, if you already have the Radius CLI installed, you can choose to use the Bicep binary that is installed as part of Radius. The Bicep binary gets downloaded to `./.rad/bin/rad-bicep`. You can use this file path instead.
 
 ## Step 2: Create a file directory  
 
-1. Create a file directory in your location of choice. Keep the directory path handy for the next steps. 
+1. Create a file directory in your location of choice. Keep the directory path handy for the next steps.
 
 ## Step 3: Upload the new schema types to the file directory
+
 1. Run `make generate` to generate the OpenAPI spec and API clients:
 
     ```bash
@@ -71,7 +72,7 @@ Note: Alternatively, if you already have the Radius CLI installed, you can choos
     ```
 
 1. `cd` into the `hack/bicep-types-radius/generated` folder
-1. Run `bicep publish-provider <file> --target <ref>` to upload the schema changes to your file system. The file uploaded will be the `index.json` file as it contains all references to the types schema. The `<file-name>` can be named as desired, but we recommend using an archive (i.e. `.zip`, `.tgz`, etc). This will make it easier to view the files that get uploaded if needed. 
+1. Run `bicep publish-provider <file> --target <ref>` to upload the schema changes to your file system. The file uploaded will be the `index.json` file as it contains all references to the types schema. The `<file-name>` can be named as desired, but we recommend using an archive (i.e. `.zip`, `.tgz`, etc). This will make it easier to view the files that get uploaded if needed.
 
     ```bash
     bicep publish-extension index.json --target <directory-path>/<file-name>
@@ -79,7 +80,8 @@ Note: Alternatively, if you already have the Radius CLI installed, you can choos
 
 ## Step 4: Update the `bicepconfig.json` to use your newly published types
 
-1. Update the `bicepconfig.json` file in the root folder to reference your new published types. 
+1. Update the `bicepconfig.json` file in the root folder to reference your new published types.
+
     ```json
     {
         "experimentalFeaturesEnabled": {
@@ -93,6 +95,7 @@ Note: Alternatively, if you already have the Radius CLI installed, you can choos
         }
     }
     ```
-1. Once Bicep restores the new extensions, you should be able to use the new schema changes in your Bicep templates. 
+
+1. Once Bicep restores the new extensions, you should be able to use the new schema changes in your Bicep templates.
 
 Note: You can also choose to publish the types to an OCI registry. The `--target` field will be your OCI registry endpoint when running the `bicep publish-extension` command. Make sure to update the `radius` extension field with your OCI registry endpoint in the `bicepconfig.json`.
