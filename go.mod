@@ -20,7 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.41
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.22.2
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.55.3
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.183.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.184.0
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.36.2
 	github.com/aws/aws-sdk-go-v2/service/sts v1.32.2
 	github.com/aws/smithy-go v1.22.0
