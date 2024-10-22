@@ -85,9 +85,7 @@ Note: Alternatively, if you already have the Radius CLI installed, you can choos
     ```json
     {
         "experimentalFeaturesEnabled": {
-            "extensibility": true,
-            "extensionRegistry": true,
-            "dynamicTypeLoading": true
+            "extensibility": true
         },
         "extensions": {
             "radius": "<file-path>",

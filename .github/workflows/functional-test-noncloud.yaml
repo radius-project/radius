@@ -338,9 +338,7 @@ jobs:
           cat <<EOF > ./test/bicepconfig.json
           {
             "experimentalFeaturesEnabled": {
-              "extensibility": true,
-              "extensionRegistry": true,
-              "dynamicTypeLoading": true
+              "extensibility": true
             },
             "extensions": {
               "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
