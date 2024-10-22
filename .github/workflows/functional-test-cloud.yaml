@@ -122,7 +122,6 @@ jobs:
           # https://github.com/radius-project/radius/issues/7782
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             echo "Triggered by workflow_run."
-            echo "Head Ref: ${{ github.head_ref }}"
             echo "Ref: ${{ github.ref }}"
             echo "Head Branch Name: ${{ github.event.workflow_run.head_branch }}"
             echo "SHA Value: ${{ github.event.workflow_run.head_sha }}"
