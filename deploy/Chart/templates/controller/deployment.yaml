@@ -72,7 +72,23 @@ spec:
           mountPath: {{ .Values.global.rootCA.mountPath }}
           readOnly: true
         {{- end }}
+        - name: work-dir
+          mountPath: /work-dir
+      initContainers:
+        - name: bicep
+          image: "ghcr.io/willdavsmith/bicep:latest"
+          imagePullPolicy: 'Always'
+          # restartPolicy: Always
+          command:
+            - cp
+            - "/bicep"
+            - "/work-dir/bicep"
+          volumeMounts:
+          - name: work-dir
+            mountPath: "/work-dir"
       volumes:
+        - name: work-dir
+          emptyDir: {}
         - name: config-volume
           configMap:
             name: controller-config
