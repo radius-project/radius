@@ -30,6 +30,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2/registry/remote"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
@@ -162,6 +163,12 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 
 	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{Frequency: pollFrequency})
 	if err != nil {
+		errorDetails := recipes.GetErrorDetails(err)
+		for _, error := range errorDetails.Details {
+			if error.Code == "AuthorizationFailed" && providerConfig.Az == nil {
+				return nil, v1.NewClientErrInvalidRequest("Azure deployment failed due to authorization error, please ensure you have configured an Azure provider with your Radius environment: https://docs.radapp.io/guides/operations/providers/azure-provider/")
+			}
+		}
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
