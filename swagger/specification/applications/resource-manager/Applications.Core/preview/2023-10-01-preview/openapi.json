@@ -82,7 +82,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ApplicationResourceListResult"
             }
@@ -133,7 +133,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ApplicationResource"
             }
@@ -243,7 +243,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ApplicationResource"
             }
@@ -289,7 +289,7 @@
             "description": "Resource deleted successfully."
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -334,14 +334,13 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ApplicationGraphResponse"
             }
@@ -372,7 +371,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ContainerResourceListResult"
             }
@@ -423,7 +422,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ContainerResource"
             }
@@ -486,6 +485,10 @@
               "$ref": "#/definitions/ContainerResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -547,7 +550,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ContainerResource"
             }
@@ -555,14 +558,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -602,25 +605,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -657,7 +657,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/EnvironmentResourceListResult"
             }
@@ -708,7 +708,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/EnvironmentResource"
             }
@@ -818,7 +818,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/EnvironmentResource"
             }
@@ -864,7 +864,7 @@
             "description": "Resource deleted successfully."
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -915,7 +915,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RecipeGetMetadataResponse"
             }
@@ -951,7 +951,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ExtenderResourceListResult"
             }
@@ -1002,7 +1002,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ExtenderResource"
             }
@@ -1065,6 +1065,10 @@
               "$ref": "#/definitions/ExtenderResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -1126,7 +1130,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ExtenderResource"
             }
@@ -1134,14 +1138,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1186,25 +1190,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1253,14 +1254,13 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/ExtenderListSecretResponse"
             }
@@ -1296,7 +1296,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/GatewayResourceListResult"
             }
@@ -1347,7 +1347,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/GatewayResource"
             }
@@ -1410,6 +1410,10 @@
               "$ref": "#/definitions/GatewayResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -1463,7 +1467,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/GatewayResource"
             }
@@ -1471,14 +1475,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1523,25 +1527,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1578,7 +1579,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SecretStoreResourceListResult"
             }
@@ -1626,7 +1627,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SecretStoreResource"
             }
@@ -1692,6 +1693,10 @@
               "$ref": "#/definitions/SecretStoreResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -1710,11 +1715,11 @@
           "Create or Update a secret store resource with azure keyvault": {
             "$ref": "./examples/SecretStores_CreateOrUpdate.json"
           },
-          "Create or Update a secret store resource with valueFrom": {
-            "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
-          },
           "Create or Update a secret store resource with global scope": {
             "$ref": "./examples/SecretStores_CreateOrUpdate_GlobalScope.json"
+          },
+          "Create or Update a secret store resource with valueFrom": {
+            "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1756,7 +1761,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SecretStoreResource"
             }
@@ -1764,14 +1769,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1783,11 +1788,11 @@
           }
         },
         "x-ms-examples": {
-          "Update a secret store resource": {
-            "$ref": "./examples/SecretStores_Delete.json"
-          },
           "Update a secret store": {
             "$ref": "./examples/SecretStores_Update.json"
+          },
+          "Update a secret store resource": {
+            "$ref": "./examples/SecretStores_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1819,25 +1824,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -1881,14 +1883,13 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/SecretStoreListSecretsResult"
             }
@@ -1924,7 +1925,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/VolumeResourceListResult"
             }
@@ -1975,7 +1976,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/VolumeResource"
             }
@@ -2038,6 +2039,10 @@
               "$ref": "#/definitions/VolumeResource"
             },
             "headers": {
+              "Azure-AsyncOperation": {
+                "type": "string",
+                "description": "A link to the status monitor"
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
@@ -2096,7 +2101,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/VolumeResource"
             }
@@ -2104,14 +2109,14 @@
           "202": {
             "description": "Resource update request accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -2156,25 +2161,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
           "202": {
             "description": "Resource deletion accepted.",
             "headers": {
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              },
               "Retry-After": {
                 "type": "integer",
                 "format": "int32",
                 "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
           "204": {
-            "description": "Resource deleted successfully."
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -2208,7 +2210,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Azure operation completed successfully.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
             }
@@ -2417,38 +2419,12 @@
     },
     "ApplicationResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the ApplicationResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/ApplicationResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "Radius Application resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "ApplicationResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the ApplicationResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the application is linked to"
-        },
-        "extensions": {
-          "type": "array",
-          "description": "The application extension.",
-          "items": {
-            "$ref": "#/definitions/Extension"
-          },
-          "x-ms-identifiers": []
-        }
-      }
+      ]
     },
     "AuthConfig": {
       "type": "object",
@@ -2459,6 +2435,24 @@
           "description": "Authentication information used to access private Terraform modules from Git repository sources."
         }
       }
+    },
+    "Azure.ResourceManager.CommonTypes.TrackedResourceUpdate": {
+      "type": "object",
+      "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/Resource"
+        }
+      ]
     },
     "AzureKeyVaultVolumeProperties": {
       "type": "object",
@@ -2529,22 +2523,6 @@
       ],
       "x-ms-discriminator-value": "bicep"
     },
-    "BicepRecipePropertiesUpdate": {
-      "type": "object",
-      "description": "Represents Bicep recipe properties.",
-      "properties": {
-        "plainHttp": {
-          "type": "boolean",
-          "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
-        }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/RecipePropertiesUpdate"
-        }
-      ],
-      "x-ms-discriminator-value": "bicep"
-    },
     "CertificateFormats": {
       "type": "string",
       "description": "Represents certificate formats",
@@ -2554,7 +2532,7 @@
       ],
       "x-ms-enum": {
         "name": "CertificateFormats",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "pem",
@@ -2578,14 +2556,60 @@
           "description": "File name when written to disk"
         },
         "encoding": {
-          "$ref": "#/definitions/VolumeSecretEncodings",
+          "type": "string",
           "description": "Encoding format. Default utf-8",
-          "default": "utf-8"
+          "default": "utf-8",
+          "enum": [
+            "utf-8",
+            "hex",
+            "base64"
+          ],
+          "x-ms-enum": {
+            "name": "VolumeSecretEncodings",
+            "modelAsString": false,
+            "values": [
+              {
+                "name": "utf8",
+                "value": "utf-8",
+                "description": "UTF-8 encoding"
+              },
+              {
+                "name": "hex",
+                "value": "hex",
+                "description": "Hex encoding"
+              },
+              {
+                "name": "base64",
+                "value": "base64",
+                "description": "Base64 encoding"
+              }
+            ]
+          }
         },
         "format": {
-          "$ref": "#/definitions/CertificateFormats",
+          "type": "string",
           "description": "Certificate format. Default pem",
-          "default": "pem"
+          "default": "pem",
+          "enum": [
+            "pem",
+            "pfx"
+          ],
+          "x-ms-enum": {
+            "name": "CertificateFormats",
+            "modelAsString": false,
+            "values": [
+              {
+                "name": "pem",
+                "value": "pem",
+                "description": "PEM Certificate format"
+              },
+              {
+                "name": "pfx",
+                "value": "pfx",
+                "description": "PFX Certificate format"
+              }
+            ]
+          }
         },
         "name": {
           "type": "string",
@@ -2614,7 +2638,7 @@
       ],
       "x-ms-enum": {
         "name": "CertificateTypes",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "certificate",
@@ -2654,24 +2678,6 @@
       "required": [
         "source"
       ]
-    },
-    "ConnectionPropertiesUpdate": {
-      "type": "object",
-      "description": "Connection Properties",
-      "properties": {
-        "source": {
-          "type": "string",
-          "description": "The source of the connection"
-        },
-        "disableDefaultEnvVars": {
-          "type": "boolean",
-          "description": "default environment variable override"
-        },
-        "iam": {
-          "$ref": "#/definitions/IamPropertiesUpdate",
-          "description": "iam properties"
-        }
-      }
     },
     "Container": {
       "type": "object",
@@ -2763,30 +2769,6 @@
       "required": [
         "containerPort"
       ]
-    },
-    "ContainerPortPropertiesUpdate": {
-      "type": "object",
-      "description": "Specifies a listening port for the container",
-      "properties": {
-        "containerPort": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The listening port number"
-        },
-        "protocol": {
-          "$ref": "#/definitions/PortProtocol",
-          "description": "Protocol in use by the port"
-        },
-        "scheme": {
-          "type": "string",
-          "description": "Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value"
-        },
-        "port": {
-          "type": "integer",
-          "format": "int32",
-          "description": "Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired"
-        }
-      }
     },
     "ContainerProperties": {
       "type": "object",
@@ -2911,7 +2893,7 @@
       ],
       "x-ms-enum": {
         "name": "ContainerResourceProvisioning",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "internal",
@@ -2928,137 +2910,12 @@
     },
     "ContainerResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the ContainerResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/ContainerResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "ContainerResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the ContainerResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the application is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application"
-        },
-        "container": {
-          "$ref": "#/definitions/ContainerUpdate",
-          "description": "Definition of a container."
-        },
-        "connections": {
-          "type": "object",
-          "description": "Specifies a connection to another resource.",
-          "additionalProperties": {
-            "$ref": "#/definitions/ConnectionPropertiesUpdate"
-          }
-        },
-        "identity": {
-          "$ref": "#/definitions/IdentitySettingsUpdate",
-          "description": "Configuration for supported external identity providers"
-        },
-        "extensions": {
-          "type": "array",
-          "description": "Extensions spec of the resource",
-          "items": {
-            "$ref": "#/definitions/Extension"
-          },
-          "x-ms-identifiers": []
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ContainerResourceProvisioning",
-          "description": "Specifies how the underlying container resource is provisioned and managed."
-        },
-        "resources": {
-          "type": "array",
-          "description": "A collection of references to resources associated with the container",
-          "items": {
-            "$ref": "#/definitions/ResourceReference"
-          }
-        },
-        "restartPolicy": {
-          "$ref": "#/definitions/RestartPolicy",
-          "description": "The restart policy for the underlying container"
-        },
-        "runtimes": {
-          "$ref": "#/definitions/RuntimesProperties",
-          "description": "Specifies Runtime-specific functionality"
-        }
-      }
-    },
-    "ContainerUpdate": {
-      "type": "object",
-      "description": "Definition of a container",
-      "properties": {
-        "image": {
-          "type": "string",
-          "description": "The registry and image to download and run in your container"
-        },
-        "imagePullPolicy": {
-          "$ref": "#/definitions/ImagePullPolicy",
-          "description": "The pull policy for the container image"
-        },
-        "env": {
-          "type": "object",
-          "description": "environment",
-          "additionalProperties": {
-            "$ref": "#/definitions/EnvironmentVariableUpdate"
-          }
-        },
-        "ports": {
-          "type": "object",
-          "description": "container ports",
-          "additionalProperties": {
-            "$ref": "#/definitions/ContainerPortPropertiesUpdate"
-          }
-        },
-        "readinessProbe": {
-          "$ref": "#/definitions/HealthProbeProperties",
-          "description": "readiness probe properties"
-        },
-        "livenessProbe": {
-          "$ref": "#/definitions/HealthProbeProperties",
-          "description": "liveness probe properties"
-        },
-        "volumes": {
-          "type": "object",
-          "description": "container volumes",
-          "additionalProperties": {
-            "$ref": "#/definitions/Volume"
-          }
-        },
-        "command": {
-          "type": "array",
-          "description": "Entrypoint array. Overrides the container image's ENTRYPOINT",
-          "items": {
-            "type": "string"
-          }
-        },
-        "args": {
-          "type": "array",
-          "description": "Arguments to the entrypoint. Overrides the container image's CMD",
-          "items": {
-            "type": "string"
-          }
-        },
-        "workingDir": {
-          "type": "string",
-          "description": "Working directory for the container"
-        }
-      }
+      ]
     },
     "DaprSidecarExtension": {
       "type": "object",
@@ -3101,7 +2958,7 @@
       ],
       "x-ms-enum": {
         "name": "DaprSidecarExtensionProtocol",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "http",
@@ -3125,7 +2982,7 @@
       ],
       "x-ms-enum": {
         "name": "Direction",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "Outbound",
@@ -3154,28 +3011,6 @@
         },
         "identity": {
           "$ref": "#/definitions/IdentitySettings",
-          "description": "Configuration for supported external identity providers"
-        }
-      },
-      "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
-    },
-    "EnvironmentComputeUpdate": {
-      "type": "object",
-      "description": "Represents backing compute resource",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Discriminator property for EnvironmentCompute."
-        },
-        "resourceId": {
-          "type": "string",
-          "description": "The resource id of the compute resource for application environment."
-        },
-        "identity": {
-          "$ref": "#/definitions/IdentitySettingsUpdate",
           "description": "Configuration for supported external identity providers"
         }
       },
@@ -3278,60 +3113,12 @@
     },
     "EnvironmentResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the EnvironmentResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/EnvironmentResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "The environment resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "EnvironmentResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the EnvironmentResource.",
-      "properties": {
-        "compute": {
-          "$ref": "#/definitions/EnvironmentComputeUpdate",
-          "description": "The compute resource used by application environment."
-        },
-        "providers": {
-          "$ref": "#/definitions/ProvidersUpdate",
-          "description": "Cloud providers configuration for the environment."
-        },
-        "simulated": {
-          "type": "boolean",
-          "description": "Simulated environment."
-        },
-        "recipes": {
-          "type": "object",
-          "description": "Specifies Recipes linked to the Environment.",
-          "additionalProperties": {
-            "additionalProperties": {
-              "$ref": "#/definitions/RecipePropertiesUpdate"
-            },
-            "type": "object"
-          }
-        },
-        "recipeConfig": {
-          "$ref": "#/definitions/RecipeConfigProperties",
-          "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
-        },
-        "extensions": {
-          "type": "array",
-          "description": "The environment extension.",
-          "items": {
-            "$ref": "#/definitions/Extension"
-          },
-          "x-ms-identifiers": []
-        }
-      }
+      ]
     },
     "EnvironmentVariable": {
       "type": "object",
@@ -3359,30 +3146,6 @@
       "required": [
         "secretRef"
       ]
-    },
-    "EnvironmentVariableReferenceUpdate": {
-      "type": "object",
-      "description": "The reference to the variable",
-      "properties": {
-        "secretRef": {
-          "$ref": "#/definitions/SecretReferenceUpdate",
-          "description": "The secret reference"
-        }
-      }
-    },
-    "EnvironmentVariableUpdate": {
-      "type": "object",
-      "description": "Environment variables type",
-      "properties": {
-        "value": {
-          "type": "string",
-          "description": "The value of the environment variable"
-        },
-        "valueFrom": {
-          "$ref": "#/definitions/EnvironmentVariableReferenceUpdate",
-          "description": "The reference to the variable"
-        }
-      }
     },
     "EnvironmentVariables": {
       "type": "object",
@@ -3432,7 +3195,7 @@
     "ExtenderListSecretResponse": {
       "type": "object",
       "description": "Response for list secrets API call",
-      "properties": {}
+      "additionalProperties": {}
     },
     "ExtenderProperties": {
       "type": "object",
@@ -3458,8 +3221,7 @@
         },
         "secrets": {
           "type": "object",
-          "description": "The secrets for referenced resource",
-          "properties": {}
+          "description": "The secrets for referenced resource"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -3473,11 +3235,10 @@
       "required": [
         "environment"
       ],
-      "additionalProperties": true,
       "allOf": [
         {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": {}
         }
       ]
     },
@@ -3527,47 +3288,12 @@
     },
     "ExtenderResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the ExtenderResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/ExtenderResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "ExtenderResource portable resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "ExtenderResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the ExtenderResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-        },
-        "secrets": {
-          "type": "object",
-          "description": "The secrets for referenced resource",
-          "properties": {}
-        },
-        "recipe": {
-          "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the extender portable resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        }
-      }
+      ]
     },
     "Extension": {
       "type": "object",
@@ -3696,54 +3422,12 @@
     },
     "GatewayResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the GatewayResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/GatewayResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "GatewayResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the GatewayResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the application is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application"
-        },
-        "internal": {
-          "type": "boolean",
-          "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet)."
-        },
-        "hostname": {
-          "$ref": "#/definitions/GatewayHostname",
-          "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io."
-        },
-        "routes": {
-          "type": "array",
-          "description": "Routes attached to this Gateway",
-          "items": {
-            "$ref": "#/definitions/GatewayRoute"
-          },
-          "x-ms-identifiers": []
-        },
-        "tls": {
-          "$ref": "#/definitions/GatewayTls",
-          "description": "TLS configuration for the Gateway."
-        }
-      }
+      ]
     },
     "GatewayRoute": {
       "type": "object",
@@ -3776,9 +3460,29 @@
           "description": "If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption."
         },
         "minimumProtocolVersion": {
-          "$ref": "#/definitions/TlsMinVersion",
+          "type": "string",
           "description": "TLS minimum protocol version (defaults to 1.2).",
-          "default": "1.2"
+          "default": "1.2",
+          "enum": [
+            "1.2",
+            "1.3"
+          ],
+          "x-ms-enum": {
+            "name": "TlsMinVersion",
+            "modelAsString": false,
+            "values": [
+              {
+                "name": "tls12",
+                "value": "1.2",
+                "description": "TLS Version 1.2"
+              },
+              {
+                "name": "tls13",
+                "value": "1.3",
+                "description": "TLS Version 1.3"
+              }
+            ]
+          }
         },
         "certificateFrom": {
           "type": "string",
@@ -3870,16 +3574,21 @@
       "type": "string",
       "description": "The kind of IAM provider to configure",
       "enum": [
-        "azure"
+        "azure",
+        "string"
       ],
       "x-ms-enum": {
         "name": "IAMKind",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "azure",
             "value": "azure",
             "description": "Azure Active Directory"
+          },
+          {
+            "name": "string",
+            "value": "string"
           }
         ]
       }
@@ -3904,23 +3613,6 @@
         "kind"
       ]
     },
-    "IamPropertiesUpdate": {
-      "type": "object",
-      "description": "IAM properties",
-      "properties": {
-        "kind": {
-          "$ref": "#/definitions/IAMKind",
-          "description": "The kind of IAM provider to configure"
-        },
-        "roles": {
-          "type": "array",
-          "description": "RBAC permissions to be assigned on the source resource",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "IdentitySettingKind": {
       "type": "string",
       "description": "IdentitySettingKind is the kind of supported external identity setting",
@@ -3930,7 +3622,7 @@
       ],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "undefined",
@@ -3966,24 +3658,6 @@
         "kind"
       ]
     },
-    "IdentitySettingsUpdate": {
-      "type": "object",
-      "description": "IdentitySettings is the external identity setting.",
-      "properties": {
-        "kind": {
-          "$ref": "#/definitions/IdentitySettingKind",
-          "description": "kind of identity setting"
-        },
-        "oidcIssuer": {
-          "type": "string",
-          "description": "The URI for your compute platform's OIDC issuer"
-        },
-        "resource": {
-          "type": "string",
-          "description": "The resource ID of the provisioned identity"
-        }
-      }
-    },
     "ImagePullPolicy": {
       "type": "string",
       "description": "The image pull policy for the container",
@@ -3994,7 +3668,7 @@
       ],
       "x-ms-enum": {
         "name": "ImagePullPolicy",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "Always",
@@ -4054,22 +3728,6 @@
       ],
       "x-ms-discriminator-value": "kubernetes"
     },
-    "KubernetesComputeUpdate": {
-      "type": "object",
-      "description": "The Kubernetes compute configuration",
-      "properties": {
-        "namespace": {
-          "type": "string",
-          "description": "The namespace to use for the environment."
-        }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/EnvironmentComputeUpdate"
-        }
-      ],
-      "x-ms-discriminator-value": "kubernetes"
-    },
     "KubernetesMetadataExtension": {
       "type": "object",
       "description": "Kubernetes metadata extension of a environment/application resource.",
@@ -4118,7 +3776,7 @@
     "KubernetesPodSpec": {
       "type": "object",
       "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.",
-      "additionalProperties": true
+      "additionalProperties": {}
     },
     "KubernetesRuntimeProperties": {
       "type": "object",
@@ -4143,7 +3801,7 @@
       ],
       "x-ms-enum": {
         "name": "ManagedStore",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "memory",
@@ -4228,7 +3886,7 @@
       ],
       "x-ms-enum": {
         "name": "PortProtocol",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "TCP",
@@ -4255,11 +3913,10 @@
           }
         }
       },
-      "additionalProperties": true,
       "allOf": [
         {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": {}
         }
       ]
     },
@@ -4290,16 +3947,6 @@
         "scope"
       ]
     },
-    "ProvidersAwsUpdate": {
-      "type": "object",
-      "description": "The AWS cloud provider definition.",
-      "properties": {
-        "scope": {
-          "type": "string",
-          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
-        }
-      }
-    },
     "ProvidersAzure": {
       "type": "object",
       "description": "The Azure cloud provider definition.",
@@ -4313,70 +3960,32 @@
         "scope"
       ]
     },
-    "ProvidersAzureUpdate": {
-      "type": "object",
-      "description": "The Azure cloud provider definition.",
-      "properties": {
-        "scope": {
-          "type": "string",
-          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'."
-        }
-      }
-    },
-    "ProvidersUpdate": {
-      "type": "object",
-      "description": "The Cloud providers configuration.",
-      "properties": {
-        "azure": {
-          "$ref": "#/definitions/ProvidersAzureUpdate",
-          "description": "The Azure cloud provider configuration."
-        },
-        "aws": {
-          "$ref": "#/definitions/ProvidersAwsUpdate",
-          "description": "The AWS cloud provider configuration."
-        }
-      }
-    },
     "ProvisioningState": {
       "type": "string",
       "description": "Provisioning state of the resource at the time the operation was called",
       "enum": [
-        "Succeeded",
-        "Failed",
-        "Canceled",
-        "Provisioning",
+        "Creating",
         "Updating",
         "Deleting",
-        "Accepted"
+        "Accepted",
+        "Provisioning",
+        "Succeeded",
+        "Failed",
+        "Canceled"
       ],
       "x-ms-enum": {
         "name": "ProvisioningState",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
-            "name": "Succeeded",
-            "value": "Succeeded",
-            "description": "Resource has been created."
-          },
-          {
-            "name": "Failed",
-            "value": "Failed",
-            "description": "Resource creation failed."
-          },
-          {
-            "name": "Canceled",
-            "value": "Canceled",
-            "description": "Resource creation was canceled."
-          },
-          {
-            "name": "Provisioning",
-            "value": "Provisioning",
-            "description": "The resource is being provisioned"
+            "name": "Creating",
+            "value": "Creating",
+            "description": "The resource is being created"
           },
           {
             "name": "Updating",
             "value": "Updating",
-            "description": "The resource is updating"
+            "description": "The resource is being updated"
           },
           {
             "name": "Deleting",
@@ -4387,6 +3996,26 @@
             "name": "Accepted",
             "value": "Accepted",
             "description": "The resource create request has been accepted"
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "The resource is being provisioned"
+          },
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "The resource has been successfully provisioned"
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "The resource provisioning has failed"
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "The resource provisioning has been canceled"
           }
         ]
       },
@@ -4402,8 +4031,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
       "required": [
@@ -4471,8 +4099,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "The key/value parameters to pass to the recipe template at deployment.",
-          "properties": {}
+          "description": "The key/value parameters to pass to the recipe template at deployment."
         },
         "plainHttp": {
           "type": "boolean",
@@ -4499,37 +4126,13 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment.",
-          "properties": {}
+          "description": "Key/value parameters to pass to the recipe template at deployment."
         }
       },
       "discriminator": "templateKind",
       "required": [
         "templateKind",
         "templatePath"
-      ]
-    },
-    "RecipePropertiesUpdate": {
-      "type": "object",
-      "description": "Format of the template provided by the recipe. Allowed values: bicep, terraform.",
-      "properties": {
-        "templateKind": {
-          "type": "string",
-          "description": "Discriminator property for RecipeProperties."
-        },
-        "templatePath": {
-          "type": "string",
-          "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported."
-        },
-        "parameters": {
-          "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment.",
-          "properties": {}
-        }
-      },
-      "discriminator": "templateKind",
-      "required": [
-        "templateKind"
       ]
     },
     "RecipeStatus": {
@@ -4554,21 +4157,6 @@
         "templatePath"
       ]
     },
-    "RecipeUpdate": {
-      "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the recipe within the environment to use"
-        },
-        "parameters": {
-          "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
-        }
-      }
-    },
     "RegistrySecretConfig": {
       "type": "object",
       "description": "Registry Secret Configuration used to authenticate to private bicep registries.",
@@ -4588,7 +4176,7 @@
       ],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "recipe",
@@ -4649,7 +4237,7 @@
       ],
       "x-ms-enum": {
         "name": "RestartPolicy",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "Always",
@@ -4698,9 +4286,35 @@
           "description": "File name when written to disk"
         },
         "encoding": {
-          "$ref": "#/definitions/VolumeSecretEncodings",
+          "type": "string",
           "description": "Encoding format. Default utf-8",
-          "default": "utf-8"
+          "default": "utf-8",
+          "enum": [
+            "utf-8",
+            "hex",
+            "base64"
+          ],
+          "x-ms-enum": {
+            "name": "VolumeSecretEncodings",
+            "modelAsString": false,
+            "values": [
+              {
+                "name": "utf8",
+                "value": "utf-8",
+                "description": "UTF-8 encoding"
+              },
+              {
+                "name": "hex",
+                "value": "hex",
+                "description": "Hex encoding"
+              },
+              {
+                "name": "base64",
+                "value": "base64",
+                "description": "Base64 encoding"
+              }
+            ]
+          }
         },
         "name": {
           "type": "string",
@@ -4733,20 +4347,6 @@
         "key"
       ]
     },
-    "SecretReferenceUpdate": {
-      "type": "object",
-      "description": "This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data.",
-      "properties": {
-        "source": {
-          "type": "string",
-          "description": "The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution."
-        },
-        "key": {
-          "type": "string",
-          "description": "The key for the secret in the secret store."
-        }
-      }
-    },
     "SecretStoreDataType": {
       "type": "string",
       "description": "The type of SecretStore data",
@@ -4759,7 +4359,7 @@
       ],
       "x-ms-enum": {
         "name": "SecretStoreDataType",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "generic",
@@ -4833,9 +4433,47 @@
           "readOnly": true
         },
         "type": {
-          "$ref": "#/definitions/SecretStoreDataType",
+          "type": "string",
           "description": "The type of secret store data",
-          "default": "generic"
+          "default": "generic",
+          "enum": [
+            "generic",
+            "certificate",
+            "basicAuthentication",
+            "azureWorkloadIdentity",
+            "awsIRSA"
+          ],
+          "x-ms-enum": {
+            "name": "SecretStoreDataType",
+            "modelAsString": false,
+            "values": [
+              {
+                "name": "generic",
+                "value": "generic",
+                "description": "Generic secret data type"
+              },
+              {
+                "name": "certificate",
+                "value": "certificate",
+                "description": "Certificate secret data type"
+              },
+              {
+                "name": "basicAuthentication",
+                "value": "basicAuthentication",
+                "description": "basicAuthentication type is used to represent username and password based authentication and the secretstore resource is expected to have the keys 'username' and 'password'."
+              },
+              {
+                "name": "azureWorkloadIdentity",
+                "value": "azureWorkloadIdentity",
+                "description": "azureWorkloadIdentity type is used to represent authentication using azure federated identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'."
+              },
+              {
+                "name": "awsIRSA",
+                "value": "awsIRSA",
+                "description": "awsIRSA type is used to represent authentication using AWS IRSA (IAM Roles for Service accounts) and the secretstore resource is expected to have the key 'roleARN'."
+              }
+            ]
+          }
         },
         "data": {
           "type": "object",
@@ -4899,50 +4537,12 @@
     },
     "SecretStoreResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the SecretStoreResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/SecretStoreResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "SecretStoreResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the SecretStoreResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the application is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application"
-        },
-        "type": {
-          "$ref": "#/definitions/SecretStoreDataType",
-          "description": "The type of secret store data",
-          "default": "generic"
-        },
-        "data": {
-          "type": "object",
-          "description": "An object to represent key-value type secrets",
-          "additionalProperties": {
-            "$ref": "#/definitions/SecretValueProperties"
-          }
-        },
-        "resource": {
-          "type": "string",
-          "description": "The resource id of external secret store."
-        }
-      }
+      ]
     },
     "SecretValueEncoding": {
       "type": "string",
@@ -4953,7 +4553,7 @@
       ],
       "x-ms-enum": {
         "name": "SecretValueEncoding",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "raw",
@@ -4973,9 +4573,29 @@
       "description": "The properties of SecretValue",
       "properties": {
         "encoding": {
-          "$ref": "#/definitions/SecretValueEncoding",
+          "type": "string",
           "description": "The encoding of value",
-          "default": "raw"
+          "default": "raw",
+          "enum": [
+            "raw",
+            "base64"
+          ],
+          "x-ms-enum": {
+            "name": "SecretValueEncoding",
+            "modelAsString": false,
+            "values": [
+              {
+                "name": "raw",
+                "value": "raw",
+                "description": "The raw secret value"
+              },
+              {
+                "name": "base64",
+                "value": "base64",
+                "description": "The base64-encoded secret value"
+              }
+            ]
+          }
         },
         "value": {
           "type": "string",
@@ -5046,22 +4666,6 @@
       ],
       "x-ms-discriminator-value": "terraform"
     },
-    "TerraformRecipePropertiesUpdate": {
-      "type": "object",
-      "description": "Represents Terraform recipe properties.",
-      "properties": {
-        "templateVersion": {
-          "type": "string",
-          "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
-        }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/RecipePropertiesUpdate"
-        }
-      ],
-      "x-ms-discriminator-value": "terraform"
-    },
     "TlsMinVersion": {
       "type": "string",
       "description": "Tls Minimum versions for Gateway resource.",
@@ -5071,7 +4675,7 @@
       ],
       "x-ms-enum": {
         "name": "TlsMinVersion",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "tls12",
@@ -5103,24 +4707,6 @@
         "name"
       ]
     },
-    "Versions": {
-      "type": "string",
-      "description": "Supported API versions for the Applications.Core resource provider.",
-      "enum": [
-        "2023-10-01-preview"
-      ],
-      "x-ms-enum": {
-        "name": "Versions",
-        "modelAsString": true,
-        "values": [
-          {
-            "name": "v2023_10_01_preview",
-            "value": "2023-10-01-preview",
-            "description": "2023-10-01-preview"
-          }
-        ]
-      }
-    },
     "Volume": {
       "type": "object",
       "description": "Specifies a volume for a container",
@@ -5148,7 +4734,7 @@
       ],
       "x-ms-enum": {
         "name": "VolumePermission",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "read",
@@ -5242,34 +4828,12 @@
     },
     "VolumeResourceUpdate": {
       "type": "object",
-      "description": "The type used for update operations of the VolumeResource.",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "description": "Resource tags.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "$ref": "#/definitions/VolumeResourceUpdateProperties",
-          "x-ms-client-flatten": true
+      "description": "Radius Volume resource.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
-      }
-    },
-    "VolumeResourceUpdateProperties": {
-      "type": "object",
-      "description": "The updatable properties of the VolumeResource.",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the application is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application"
-        }
-      }
+      ]
     },
     "VolumeSecretEncodings": {
       "type": "string",
@@ -5281,7 +4845,7 @@
       ],
       "x-ms-enum": {
         "name": "VolumeSecretEncodings",
-        "modelAsString": true,
+        "modelAsString": false,
         "values": [
           {
             "name": "utf8",

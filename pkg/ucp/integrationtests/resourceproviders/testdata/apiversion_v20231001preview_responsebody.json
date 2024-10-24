@@ -1,0 +1,8 @@
+{
+  "id": "/planes/radius/local/providers/System.Resources/resourceproviders/Applications.Test/resourcetypes/testResources/apiversions/2025-01-01",
+  "name": "2025-01-01",
+  "properties": {
+    "provisioningState": "Succeeded"
+  },
+  "type": "System.Resources/resourceproviders/resourcetypes/apiversions"
+}

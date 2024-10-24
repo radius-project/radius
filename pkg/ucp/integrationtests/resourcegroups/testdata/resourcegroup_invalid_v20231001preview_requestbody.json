@@ -1,6 +1,5 @@
 {
-    "_location_oops": "global",
-    "name": "test-rg",
-    "properties":{
-    }
+  "_location_oops": "global",
+  "name": "test-rg",
+  "properties": {}
 }

@@ -14,21 +14,21 @@
 // limitations under the License.
 // ------------------------------------------------------------.
 export interface SuccessResult<V> {
-  success: true,
-  value: V,
+  success: true;
+  value: V;
 }
 
 export interface FailureResult<E> {
-  success: false,
-  error: E,
+  success: false;
+  error: E;
 }
 
-export type Result<a, e> = SuccessResult<a> | FailureResult<e>
+export type Result<a, e> = SuccessResult<a> | FailureResult<e>;
 
 export function success<V>(value: V): SuccessResult<V> {
-  return { success: true, value, };
+  return { success: true, value };
 }
 
 export function failure<E>(error: E): FailureResult<E> {
-  return { success: false, error, };
+  return { success: false, error };
 }

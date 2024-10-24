@@ -99,14 +99,14 @@ func NormalizePart(part string) string {
 	return strings.ToLower(part)
 }
 
-// NormalizeResourceID normalizes the resource ID to be consistent between scopes and resources.
+// ConvertScopeIDToResourceID normalizes the resource ID to be consistent between scopes and resources.
 //
 // For a resource id that identifies a resource, it is already in normalized form.
 //
 // - eg: "/planes/radius/local/resourceGroups/my-rg/providers/Applications.Core/applications/my-app" is already
 // normalized.
 // - eg: "/planes/radius/local/resourceGroups/my-rg" needs normalization.
-func NormalizeResourceID(parsed resources.ID) (resources.ID, error) {
+func ConvertScopeIDToResourceID(parsed resources.ID) (resources.ID, error) {
 	// This function normalizes the resource ID to be consistent between scopes and resources.
 	//
 	// For a resource id that identifies a resource, it is already in normalized form.
@@ -164,14 +164,14 @@ func NormalizeResourceID(parsed resources.ID) (resources.ID, error) {
 	return resources.ID{}, fmt.Errorf("invalid resource id: %s", parsed.String())
 }
 
-// NormalizeResourceType normalizes the resource type to be consistent between scopes and resources.
-// See comments on NormalizeResourceID for full context.
+// ConvertScopeTypeToResourceType normalizes the resource type to be consistent between scopes and resources.
+// See comments on ConvertScopeIDToResourceID for full context.
 //
 // For a resource type that identifies a resource, it is already in normalized form.
 //
 // - eg: "Applications.Core/applications" is already normalized.
 // - eg: "resourceGroups" needs normalization.
-func NormalizeResourceType(resourceType string) (string, error) {
+func ConvertScopeTypeToResourceType(resourceType string) (string, error) {
 	if strings.Contains(resourceType, "/") {
 		// Already normalized.
 		return resourceType, nil

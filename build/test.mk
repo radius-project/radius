@@ -64,7 +64,7 @@ test-functional-all: test-functional-ucp test-functional-kubernetes test-functio
 test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud ## Runs all functional tests that do not require cloud resources
 
 # Run all functional tests that require cloud resources
-test-functional-all-cloud: test-functional-ucp-cloud test-functional-corerp-cloud test-functional-datastoresrp-cloud
+test-functional-all-cloud: test-functional-ucp-cloud test-functional-corerp-cloud
 
 test-functional-ucp: test-functional-ucp-noncloud test-functional-ucp-cloud ## Runs all UCP functional tests (both cloud and non-cloud)
 
@@ -103,13 +103,10 @@ test-functional-daprrp: test-functional-daprrp-noncloud ## Runs all Dapr RP func
 test-functional-daprrp-noncloud: ## Runs Dapr RP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
-test-functional-datastoresrp: test-functional-datastoresrp-noncloud test-functional-datastoresrp-cloud ## Runs all Datastores RP functional tests (non-cloud and cloud)
+test-functional-datastoresrp: test-functional-datastoresrp-noncloud ## Runs all Datastores RP functional tests (non-cloud)
 
 test-functional-datastoresrp-noncloud: ## Runs Datastores RP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/datastoresrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
-
-test-functional-datastoresrp-cloud: ## Runs Datastores RP functional tests that require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/datastoresrp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
 test-functional-samples: test-functional-samples-noncloud ## Runs all Samples functional tests
 

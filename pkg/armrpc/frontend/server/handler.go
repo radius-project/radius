@@ -128,6 +128,25 @@ func HandlerForController(controller ctrl.Controller, operationType v1.Operation
 	}
 }
 
+// CreateHandler creates an http.Handler for the given resource type and operation method.
+func CreateHandler(ctx context.Context, resourceType string, operationMethod v1.OperationMethod, opts ctrl.Options, factory ControllerFactoryFunc) (http.HandlerFunc, error) {
+	storageClient, err := opts.DataProvider.GetStorageClient(ctx, resourceType)
+	if err != nil {
+		return nil, err
+	}
+
+	opts.StorageClient = storageClient
+	opts.ResourceType = resourceType
+
+	ctrl, err := factory(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	handler := HandlerForController(ctrl, v1.OperationType{Type: resourceType, Method: operationMethod})
+	return handler, nil
+}
+
 // RegisterHandler registers a handler for the given resource type and method. This function should only
 // be used for controllers that process a single resource type.
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Options) error {

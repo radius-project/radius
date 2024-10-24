@@ -46,7 +46,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "22"
       - name: Install TypeSpec compiler
         run: |
           pushd typespec
@@ -59,7 +59,7 @@ jobs:
       - name: Install mockgen
         run: go install go.uber.org/mock/mockgen@v0.4.0
       - name: Install controller-gen
-        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
+        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.0
       - name: Install helm
         uses: azure/setup-helm@v4
         with:
@@ -90,4 +90,24 @@ jobs:
         if: steps.gitdiff.outcome != 'success'
         run: |
           echo "Generated code is not up to date, run 'make generate' to update generated code."
+          exit 1
+  format-check:
+    name: Format check with Prettier
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run `make format-check`
+        id: format-check
+        run: |
+          make format-check
+      - name: Check for formatting failures
+        if: steps.format-check.outcome == 'failure'
+        run: |
+          echo "Format check failed. Please fix the formatting issues. You can run 'make format-write' to update the code."
           exit 1

@@ -1,7 +1,7 @@
 {
-    "location": "global",
-    "id": "/planes/radius/local/resourcegroups/test-rg",
-    "name": "test-rg",
-    "tags": {},
-    "type": "System.Resources/resourceGroups"
+  "location": "global",
+  "id": "/planes/radius/local/resourcegroups/test-rg",
+  "name": "test-rg",
+  "tags": {},
+  "type": "System.Resources/resourceGroups"
 }

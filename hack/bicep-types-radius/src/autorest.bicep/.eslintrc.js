@@ -18,7 +18,7 @@ module.exports = {
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: 2020,
-    sourceType: "module",
+    sourceType: "module"
   },
   plugins: ["header"],
   extends: ["eslint:recommended"],
@@ -29,31 +29,28 @@ module.exports = {
       "line",
       [
         " Copyright 2023 The Radius Authors.",
-        " # ------------------------------------------------------------
-      ],
-    ],
+        " # ------------------------------------------------------------"
+      ]
+    ]
   },
   overrides: [
     {
       files: ["*.ts"],
-      extends: [
-        "plugin:@typescript-eslint/recommended",
-        "plugin:jest/all",
-      ],
+      extends: ["plugin:@typescript-eslint/recommended", "plugin:jest/all"],
       rules: {
         "jest/no-hooks": "off",
         "jest/prefer-expect-assertions": "off",
         "jest/expect-expect": [
           "error",
           {
-            assertFunctionNames: ["expect*"],
-          },
-        ],
-      },
+            assertFunctionNames: ["expect*"]
+          }
+        ]
+      }
     },
     {
       files: ["*.js"],
-      env: { node: true },
-    },
-  ],
+      env: { node: true }
+    }
+  ]
 };

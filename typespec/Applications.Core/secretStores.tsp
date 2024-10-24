@@ -137,7 +137,7 @@ interface SecretStores {
     UCPBaseParameters<SecretStoreResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>
   >;

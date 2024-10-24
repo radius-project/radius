@@ -124,7 +124,8 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 
 	analyzer := v.specDoc.Analyzer
 	// Iterate loaded paths to find the matched route.
-	for k := range analyzer.AllPaths() {
+	paths := analyzer.AllPaths()
+	for k := range paths {
 		if strings.EqualFold(k, scopePath) {
 			// Ensure that the current API path and method are defined in the spec.
 			if _, ok := analyzer.OperationFor(req.Method, k); !ok {
