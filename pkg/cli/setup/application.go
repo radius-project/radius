@@ -52,9 +52,7 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 
 	bicepConfigTemplate = `{
 	"experimentalFeaturesEnabled": {
-		"extensibility": true,
-		"extensionRegistry": true,
-		"dynamicTypeLoading": true
+		"extensibility": true
 	},
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",

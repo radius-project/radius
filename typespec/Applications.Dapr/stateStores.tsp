@@ -74,7 +74,7 @@ interface StateStores {
     UCPBaseParameters<DaprStateStoreResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>
   >;

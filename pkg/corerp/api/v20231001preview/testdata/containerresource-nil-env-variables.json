@@ -18,9 +18,7 @@
         "disableDefaultEnvVars": true,
         "iam": {
           "kind": "azure",
-          "roles": [
-            "read"
-          ]
+          "roles": ["read"]
         }
       }
     },
@@ -36,15 +34,10 @@
         "containerPort": 8080
       },
       "env": {
-        "DB_USER": { }
+        "DB_USER": {}
       },
-      "command": [
-        "/bin/sh"
-      ],
-      "args": [
-        "-c",
-        "while true; do echo hello; sleep 10;done"
-      ],
+      "command": ["/bin/sh"],
+      "args": ["-c", "while true; do echo hello; sleep 10;done"],
       "workingDir": "/app"
     },
     "identity": {

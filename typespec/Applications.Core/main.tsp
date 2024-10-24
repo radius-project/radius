@@ -21,7 +21,7 @@ import "./environments.tsp";
 import "./applications.tsp";
 import "./containers.tsp";
 import "./gateways.tsp";
-import "./secretstores.tsp";
+import "./secretStores.tsp";
 import "./volumes.tsp";
 import "./extenders.tsp";
 

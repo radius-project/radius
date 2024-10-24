@@ -1,26 +1,26 @@
 {
-    "location": "West US",
-    "properties": {
-        "compute": {
-            "kind": "kubernetes",
-            "resourceId": "fakeid",
-            "namespace": "default"
-        },
-        "recipes": {
-            "Applications.Datastores/mongoDatabases":{
-                "mongo-azure": {
-                    "templateKind": "bicep",
-                    "templatePath": "ghcr.io/radius-project/dev/recipes/mongodatabases/azure:1.0",
-                    "parameters": {
-                        "throughput": 400
-                    }
-                }
-            }
-        },
-        "providers": {
-            "azure": {
-                "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"
-            }
+  "location": "West US",
+  "properties": {
+    "compute": {
+      "kind": "kubernetes",
+      "resourceId": "fakeid",
+      "namespace": "default"
+    },
+    "recipes": {
+      "Applications.Datastores/mongoDatabases": {
+        "mongo-azure": {
+          "templateKind": "bicep",
+          "templatePath": "ghcr.io/radius-project/dev/recipes/mongodatabases/azure:1.0",
+          "parameters": {
+            "throughput": 400
+          }
         }
+      }
+    },
+    "providers": {
+      "azure": {
+        "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"
+      }
     }
+  }
 }

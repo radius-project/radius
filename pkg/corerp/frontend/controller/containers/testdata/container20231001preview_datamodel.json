@@ -25,9 +25,7 @@
         "disableDefaultEnvVars": false,
         "iam": {
           "kind": "azure",
-          "roles": [
-            "admin"
-          ]
+          "roles": ["admin"]
         }
       }
     },

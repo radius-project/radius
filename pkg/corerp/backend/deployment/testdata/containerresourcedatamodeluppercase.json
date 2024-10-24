@@ -28,9 +28,7 @@
         "source": "inventory_route_id",
         "iam": {
           "kind": "Http",
-          "roles": [
-            "administrator"
-          ]
+          "roles": ["administrator"]
         }
       }
     },

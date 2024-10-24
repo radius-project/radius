@@ -122,7 +122,6 @@ jobs:
           # https://github.com/radius-project/radius/issues/7782
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             echo "Triggered by workflow_run."
-            echo "Head Ref: ${{ github.head_ref }}"
             echo "Ref: ${{ github.ref }}"
             echo "Head Branch Name: ${{ github.event.workflow_run.head_branch }}"
             echo "SHA Value: ${{ github.event.workflow_run.head_sha }}"
@@ -393,9 +392,7 @@ jobs:
           cat <<EOF > ./test/bicepconfig.json
           {
             "experimentalFeaturesEnabled": {
-              "extensibility": true,
-              "extensionRegistry": true,
-              "dynamicTypeLoading": true
+              "extensibility": true
             },
             "extensions": {
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
@@ -451,7 +448,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest-m]
-        name: [corerp-cloud, ucp-cloud, datastoresrp-cloud]
+        name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
@@ -697,9 +694,7 @@ jobs:
           cat <<EOF > ./test/bicepconfig.json
           {
             "experimentalFeaturesEnabled": {
-              "extensibility": true,
-              "extensionRegistry": true,
-              "dynamicTypeLoading": true
+              "extensibility": true
             },
             "extensions": {
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",

@@ -27,6 +27,7 @@ import (
 	qinmem "github.com/radius-project/radius/pkg/ucp/queue/inmemory"
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -55,6 +56,9 @@ func initAPIServer(ctx context.Context, opt QueueProviderOptions) (queue.Client,
 		return nil, err
 	}
 
+	// The client will log info the console that we don't really care about.
+	cfg.WarningHandler = rest.NoWarnings{}
+
 	// We only need to interact with UCP's store types.
 	scheme := runtime.NewScheme()
 
@@ -63,11 +67,6 @@ func initAPIServer(ctx context.Context, opt QueueProviderOptions) (queue.Client,
 
 	options := runtimeclient.Options{
 		Scheme: scheme,
-
-		// The client will log info the console that we don't really care about.
-		WarningHandler: runtimeclient.WarningHandlerOptions{
-			SuppressWarnings: true,
-		},
 	}
 
 	rc, err := runtimeclient.New(cfg, options)

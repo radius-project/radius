@@ -15,12 +15,12 @@
         "properties": {
           "provisioningState": "Succeeded",
           "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-          "routes":[
+          "routes": [
             {
               "destination": "http://frontend"
             }
-          ],    
-          "tls":{
+          ],
+          "tls": {
             "sslPassthrough": false,
             "hostname": "myapp.radapp.io",
             "minimumProtocolVersion": "1.2",

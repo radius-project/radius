@@ -103,7 +103,7 @@ func (c *Client) Get(ctx context.Context, id string, options ...store.GetOptions
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
-	normalized, err := storeutil.NormalizeResourceID(parsed)
+	converted, err := storeutil.ConvertScopeIDToResourceID(parsed)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (c *Client) Get(ctx context.Context, id string, options ...store.GetOptions
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	entry, ok := c.resources[strings.ToLower(normalized.String())]
+	entry, ok := c.resources[strings.ToLower(converted.String())]
 	if !ok {
 		return nil, &store.ErrNotFound{ID: id}
 	}
@@ -141,7 +141,7 @@ func (c *Client) Delete(ctx context.Context, id string, options ...store.DeleteO
 		return &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
-	normalized, err := storeutil.NormalizeResourceID(parsed)
+	converted, err := storeutil.ConvertScopeIDToResourceID(parsed)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (c *Client) Delete(ctx context.Context, id string, options ...store.DeleteO
 
 	config := store.NewDeleteConfig(options...)
 
-	entry, ok := c.resources[strings.ToLower(normalized.String())]
+	entry, ok := c.resources[strings.ToLower(converted.String())]
 	if !ok && config.ETag != "" {
 		return &store.ErrConcurrency{}
 	} else if !ok {
@@ -160,7 +160,7 @@ func (c *Client) Delete(ctx context.Context, id string, options ...store.DeleteO
 		return &store.ErrConcurrency{}
 	}
 
-	delete(c.resources, strings.ToLower(normalized.String()))
+	delete(c.resources, strings.ToLower(converted.String()))
 
 	return nil
 }
@@ -189,7 +189,7 @@ func (c *Client) Query(ctx context.Context, query store.Query, options ...store.
 		}
 
 		// Check resource type.
-		resourceType, err := storeutil.NormalizeResourceType(query.ResourceType)
+		resourceType, err := storeutil.ConvertScopeTypeToResourceType(query.ResourceType)
 		if err != nil {
 			return nil, err
 		}
@@ -237,7 +237,7 @@ func (c *Client) Save(ctx context.Context, obj *store.Object, options ...store.S
 		return &store.ErrInvalid{Message: "invalid argument. 'obj.ID' must be a valid resource id"}
 	}
 
-	normalized, err := storeutil.NormalizeResourceID(parsed)
+	converted, err := storeutil.ConvertScopeIDToResourceID(parsed)
 	if err != nil {
 		return err
 	}
@@ -247,16 +247,16 @@ func (c *Client) Save(ctx context.Context, obj *store.Object, options ...store.S
 
 	config := store.NewSaveConfig(options...)
 
-	entry, ok := c.resources[strings.ToLower(normalized.String())]
+	entry, ok := c.resources[strings.ToLower(converted.String())]
 	if !ok && config.ETag != "" {
 		return &store.ErrConcurrency{}
 	} else if ok && config.ETag != "" && config.ETag != entry.obj.ETag {
 		return &store.ErrConcurrency{}
 	} else if !ok {
 		// New entry, initialize it.
-		entry.rootScope = storeutil.NormalizePart(normalized.RootScope())
-		entry.resourceType = storeutil.NormalizePart(normalized.Type())
-		entry.routingScope = storeutil.NormalizePart(normalized.RoutingScope())
+		entry.rootScope = storeutil.NormalizePart(converted.RootScope())
+		entry.resourceType = storeutil.NormalizePart(converted.Type())
+		entry.routingScope = storeutil.NormalizePart(converted.RoutingScope())
 	}
 
 	raw, err := json.Marshal(obj.Data)
@@ -275,7 +275,7 @@ func (c *Client) Save(ctx context.Context, obj *store.Object, options ...store.S
 
 	entry.obj = *copy
 
-	c.resources[strings.ToLower(normalized.String())] = entry
+	c.resources[strings.ToLower(converted.String())] = entry
 
 	return nil
 }

@@ -37,6 +37,9 @@ type StorageProviderOptions struct {
 
 	// InMemory configures options for the in-memory store. Will be ignored if another store is configured.
 	InMemory InMemoryOptions `yaml:"inmemory,omitempty"`
+
+	// PostgreSQL configures options for connecting to a PostgreSQL database. Will be ignored if another store is configured.
+	PostgreSQL PostgreSQLOptions `yaml:"postgresql,omitempty"`
 }
 
 // APIServerOptions represents options for the configuring the Kubernetes APIServer store.
@@ -71,3 +74,17 @@ type ETCDOptions struct {
 
 // InMemoryOptions represents options for the in-memory store.
 type InMemoryOptions struct{}
+
+// PostgreSQLOptions represents options for the PostgreSQL store.
+type PostgreSQLOptions struct {
+	// URL is the connection information for the PostgreSQL database in URL format.
+	//
+	// The URL should be formatted according to:
+	// https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING-URIS
+	//
+	// The URL can contain secrets like passwords so it must be treated as sensitive.
+	//
+	// In place of the actual URL, you can substitute an environment variable by using the format:
+	// 	${ENV_VAR_NAME}
+	URL string `yaml:"url"`
+}

@@ -128,7 +128,7 @@ interface Gateways {
     UCPBaseParameters<GatewayResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     GatewayResource,
     UCPBaseParameters<GatewayResource>
   >;

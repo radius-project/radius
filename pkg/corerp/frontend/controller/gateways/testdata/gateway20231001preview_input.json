@@ -1,22 +1,22 @@
 {
-    "location": "West US",
-    "properties": {
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-        "hostname": {
-            "fullyQualifiedHostname": "myapp.mydomain.com",
-            "prefix": "myprefix"
-        },
-        "routes": [
-            {
-                "destination": "mydestination",
-                "path": "mypath",
-                "replacePrefix": "myreplaceprefix"
-            }
-        ],
-        "tls": {
-            "sslPassthrough": false
-        },
-        "url": "myprefix.myapp.mydomain.com",
-        "provisioningState": "Succeeded"
-    }
+  "location": "West US",
+  "properties": {
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "hostname": {
+      "fullyQualifiedHostname": "myapp.mydomain.com",
+      "prefix": "myprefix"
+    },
+    "routes": [
+      {
+        "destination": "mydestination",
+        "path": "mypath",
+        "replacePrefix": "myreplaceprefix"
+      }
+    ],
+    "tls": {
+      "sslPassthrough": false
+    },
+    "url": "myprefix.myapp.mydomain.com",
+    "provisioningState": "Succeeded"
+  }
 }

@@ -7,7 +7,7 @@ updates:
     groups:
       all:
         patterns:
-        - "*"  
+          - "*"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
@@ -15,15 +15,15 @@ updates:
     groups:
       all:
         patterns:
-        - "*"  
+          - "*"
   - package-ecosystem: "devcontainers"
-    directory: "/.devcontainer"
+    directory: "/.devcontainer/contributor"
     schedule:
       interval: weekly
     groups:
       all:
         patterns:
-        - "*"
+          - "*"
   - package-ecosystem: "gitsubmodule"
     directory: "/"
     schedule:

@@ -29,18 +29,15 @@ module.exports = {
       "line",
       [
         " Copyright 2023 The Radius Authors.",
-        " # ------------------------------------------------------------
+        " # ------------------------------------------------------------",
       ],
     ],
   },
   overrides: [
     {
       files: ["*.ts"],
-      extends: [
-        "plugin:@typescript-eslint/recommended",
-      ],
-      rules: {
-      },
+      extends: ["plugin:@typescript-eslint/recommended"],
+      rules: {},
     },
     {
       files: ["*.js"],

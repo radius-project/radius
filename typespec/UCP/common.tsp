@@ -46,6 +46,10 @@ model CredentialBaseParameters<TResource, TPlaneName = {}> {
 enum CredentialStorageKind {
   @doc("Internal credential storage")
   Internal,
+
+  // This was added because typespec doesn't generate necessary functions and other variables for single value enums.
+  // This can be deleted if we add more values to the enum.
+  string,
 }
 
 @doc("The base credential storage properties")

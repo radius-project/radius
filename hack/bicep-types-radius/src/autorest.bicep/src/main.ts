@@ -14,13 +14,22 @@
 // limitations under the License.
 // ------------------------------------------------------------.
 
-import { AutoRestExtension, AutorestExtensionHost, startSession } from "@autorest/extension-base";
+import {
+  AutoRestExtension,
+  AutorestExtensionHost,
+  startSession
+} from "@autorest/extension-base";
 import { generateTypes } from "./type-generator";
 import { CodeModel, codeModelSchema } from "@autorest/codemodel";
-import { orderBy } from 'lodash';
+import { orderBy } from "lodash";
 import { getProviderDefinitions } from "./resources";
-import { writeTypesJson, writeMarkdown, TypeBaseKind, ResourceType } from "bicep-types";
-import { writeTableMarkdown } from "./writers/markdown-table"; 
+import {
+  writeTypesJson,
+  writeMarkdown,
+  TypeBaseKind,
+  ResourceType
+} from "bicep-types";
+import { writeTableMarkdown } from "./writers/markdown-table";
 
 export async function processRequest(host: AutorestExtensionHost) {
   try {
@@ -38,16 +47,38 @@ export async function processRequest(host: AutorestExtensionHost) {
       const outFolder = `${namespace}/${apiVersion}`.toLowerCase();
 
       // write types.json
-      host.writeFile({ filename: `${outFolder}/types.json`, content: writeTypesJson(types) });
+      host.writeFile({
+        filename: `${outFolder}/types.json`,
+        content: writeTypesJson(types)
+      });
 
       // writer types.md
-      host.writeFile({ filename: `${outFolder}/types.md`, content: writeMarkdown(types, `${namespace} @ ${apiVersion}`) });
+      host.writeFile({
+        filename: `${outFolder}/types.md`,
+        content: writeMarkdown(types, `${namespace} @ ${apiVersion}`)
+      });
 
       // writer resource types
-      const resourceTypes = orderBy(types.filter(t => t.type == TypeBaseKind.ResourceType) as ResourceType[], x => x.name.split('@')[0].toLowerCase());
+      const resourceTypes = orderBy(
+        types.filter(
+          (t) => t.type == TypeBaseKind.ResourceType
+        ) as ResourceType[],
+        (x) => x.name.split("@")[0].toLowerCase()
+      );
       for (const resourceType of resourceTypes) {
-        const filename = resourceType.name.split('/')[1].split('@')[0].toLowerCase();
-        host.writeFile({ filename: `${outFolder}/docs/${filename}.md`, content: writeTableMarkdown(namespace, apiVersion, [resourceType], types) });
+        const filename = resourceType.name
+          .split("/")[1]
+          .split("@")[0]
+          .toLowerCase();
+        host.writeFile({
+          filename: `${outFolder}/docs/${filename}.md`,
+          content: writeTableMarkdown(
+            namespace,
+            apiVersion,
+            [resourceType],
+            types
+          )
+        });
       }
     }
 
