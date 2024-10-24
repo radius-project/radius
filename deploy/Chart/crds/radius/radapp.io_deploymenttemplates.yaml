@@ -50,9 +50,6 @@ spec:
                 description: Template is the ARM JSON manifest that defines the resources
                   to deploy.
                 type: string
-            required:
-            - parameters
-            - template
             type: object
           status:
             description: DeploymentTemplateStatus defines the observed state of DeploymentTemplate
@@ -80,8 +77,8 @@ spec:
                     type: string
                 type: object
               outputResources:
-                description: OutputResources is a list of the resourceIds that were
-                  created by the template.
+                description: OutputResources is a list of the resourceIDs that were
+                  created by the template on the last deployment.
                 items:
                   type: string
                 type: array
@@ -102,9 +99,6 @@ spec:
                 description: Template is the ARM JSON manifest that defines the resources
                   to deploy.
                 type: string
-            required:
-            - parameters
-            - template
             type: object
         type: object
     served: true

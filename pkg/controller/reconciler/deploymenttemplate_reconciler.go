@@ -110,7 +110,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		poller, err := r.Radius.Resources(deploymentTemplate.Status.ProviderConfig.Deployments.Value.Scope, deploymentResourceType).ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
+		scope, err := parseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
+		poller, err := r.Radius.Resources(scope, deploymentResourceType).ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue PUT operation: %w", err)
 		}
@@ -227,7 +228,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Template = deploymentTemplate.Spec.Template
 		deploymentTemplate.Status.Parameters = deploymentTemplate.Spec.Parameters
 		deploymentTemplate.Status.Resource = providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
-		deploymentTemplate.Status.ProviderConfig = providerConfig
+		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
 		return ctrl.Result{}, nil
 
 	} else if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
@@ -389,7 +390,7 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 
 		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
-		deploymentTemplate.Status.ProviderConfig = providerConfig
+		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -506,6 +507,17 @@ func (r *DeploymentTemplateReconciler) requeueDelay() time.Duration {
 	}
 
 	return delay
+}
+
+func parseDeploymentScopeFromProviderConfig(providerConfig string) (string, error) {
+	config := sdkclients.ProviderConfig{}
+	json.Unmarshal([]byte(providerConfig), &config)
+
+	if config.Deployments == nil {
+		return "", fmt.Errorf("providerConfig.Deployments is nil")
+	}
+
+	return config.Deployments.Value.Scope, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

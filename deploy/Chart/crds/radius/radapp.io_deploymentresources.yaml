@@ -43,12 +43,16 @@ spec:
               id:
                 description: ID is the resource ID.
                 type: string
-            required:
-            - id
+              providerConfig:
+                description: ProviderConfig specifies the scope for resources
+                type: string
             type: object
           status:
             description: DeploymentResourceStatus defines the observed state of DeploymentResource
             properties:
+              id:
+                description: ID is the resource ID.
+                type: string
               message:
                 description: Message is a human-readable description of the status
                   of the Deployment Resource.

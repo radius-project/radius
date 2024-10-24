@@ -27,6 +27,13 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: controller
+      initContainers:
+      - name: bicep
+        image: "{{ .Values.bicep.image }}:{{ .Values.bicep.tag | default $appversion }}"
+        command: ['sh', '-c', 'mv ./bicep /usr/local/bin/bicep']
+        volumeMounts:
+        - name: bicep
+          mountPath: /usr/local/bin
       containers:
       - name: controller
         image: "{{ .Values.controller.image }}:{{ .Values.controller.tag | default $appversion }}"
@@ -62,6 +69,8 @@ spec:
         resources:{{ toYaml .Values.controller.resources | nindent 10 }}
         {{- end }}
         volumeMounts:
+        - name: bicep
+          mountPath: /usr/local/bin
         - name: config-volume
           mountPath: /etc/config
         - name: cert
@@ -72,22 +81,8 @@ spec:
           mountPath: {{ .Values.global.rootCA.mountPath }}
           readOnly: true
         {{- end }}
-        - name: work-dir
-          mountPath: /work-dir
-      initContainers:
-        - name: bicep
-          image: "ghcr.io/willdavsmith/bicep:latest"
-          imagePullPolicy: 'Always'
-          # restartPolicy: Always
-          command:
-            - cp
-            - "/bicep"
-            - "/work-dir/bicep"
-          volumeMounts:
-          - name: work-dir
-            mountPath: "/work-dir"
       volumes:
-        - name: work-dir
+        - name: bicep
           emptyDir: {}
         - name: config-volume
           configMap:

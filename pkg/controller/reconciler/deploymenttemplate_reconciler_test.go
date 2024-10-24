@@ -105,7 +105,10 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 
 	// Deployment will be waiting for template to complete provisioning.
 	status := waitForDeploymentTemplateStateUpdating(t, client, name, nil)
-	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic", status.ProviderConfig.Deployments.Value.Scope)
+
+	scope, err := parseDeploymentScopeFromProviderConfig(status.ProviderConfig)
+	require.NoError(t, err)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic", scope)
 
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
@@ -113,7 +116,7 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 	status = waitForDeploymentTemplateStateReady(t, client, name)
 	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic/providers/Microsoft.Resources/deployments/test-DeploymentTemplate", status.Resource)
 
-	resource, err := radius.Resources(status.ProviderConfig.Deployments.Value.Scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
+	resource, err := radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
 	require.NoError(t, err)
 
 	expectedProperties := map[string]any{
@@ -164,7 +167,9 @@ func Test_DeploymentTemplateReconciler_ChangeEnvironmentAndApplication(t *testin
 
 	// Deployment will be waiting for template to complete provisioning.
 	status := waitForDeploymentTemplateStateUpdating(t, client, name, nil)
-	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-change", status.ProviderConfig.Deployments.Value.Scope)
+	scope, err := parseDeploymentScopeFromProviderConfig(status.ProviderConfig)
+	require.NoError(t, err)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic", scope)
 
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
@@ -172,7 +177,7 @@ func Test_DeploymentTemplateReconciler_ChangeEnvironmentAndApplication(t *testin
 	status = waitForDeploymentTemplateStateReady(t, client, name)
 	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-change/providers/Microsoft.Resources/deployments/test-DeploymentTemplate-change", status.Resource)
 
-	_, err = radius.Resources(status.ProviderConfig.Deployments.Value.Scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
+	_, err = radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
 	require.NoError(t, err)
 
 	createEnvironment(radius, "new-environment")
@@ -188,15 +193,19 @@ func Test_DeploymentTemplateReconciler_ChangeEnvironmentAndApplication(t *testin
 
 	// Deletion of the deployment is in progress.
 	status = waitForDeploymentTemplateStateDeleting(t, client, name, nil)
+	scope, err = parseDeploymentScopeFromProviderConfig(status.ProviderConfig)
+	require.NoError(t, err)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic", scope)
+
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
 	// Resource should be gone.
-	_, err = radius.Resources(status.ProviderConfig.Deployments.Value.Scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
+	_, err = radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
 	require.Error(t, err)
 
 	// Deployment will be waiting for extender to complete provisioning.
 	status = waitForDeploymentTemplateStateUpdating(t, client, name, nil)
-	require.Equal(t, "/planes/radius/local/resourcegroups/new-environment-new-application", status.ProviderConfig.Deployments.Value.Scope)
+	require.Equal(t, "/planes/radius/local/resourcegroups/new-environment-new-application", scope)
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
 	// Deployment will update after operation completes

@@ -2,12 +2,14 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -94,10 +96,35 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 			// for now, we assume the parameters file is the same name as the bicep file
 			// in the same directory
 			// e.g. main.bicep -> main.bicepparam
+			parameters := "{}"
 			parametersFile := strings.ReplaceAll(f.Name(), ".bicep", ".bicepparam")
 
-			parameters, err := r.runBicepBuildParams(ctx, tmpDir, parametersFile)
-			providerConfig := "providerConfig"
+			// if it exists
+			if _, err := os.Stat(path.Join(tmpDir, parametersFile)); err == nil {
+				parameters, err = r.runBicepBuildParams(ctx, tmpDir, parametersFile)
+				if err != nil {
+					log.Error(err, "failed to run bicep build-params")
+					return ctrl.Result{}, err
+				}
+			}
+
+			// TODOWILLSMITH: ???
+			var config sdkclients.ProviderConfig
+
+			config.Radius = &sdkclients.Radius{
+				Type: "Radius",
+				Value: sdkclients.Value{
+					Scope: "/planes/radius/local/resourceGroups/" + "default",
+				},
+			}
+			config.Deployments = &sdkclients.Deployments{
+				Type: "Microsoft.Resources",
+				Value: sdkclients.Value{
+					Scope: "/planes/radius/local/resourceGroups/" + "default",
+				},
+			}
+
+			providerConfig, err := json.Marshal(config)
 			if err != nil {
 				log.Error(err, "failed to run bicep build-params")
 				return ctrl.Result{}, err
@@ -112,7 +139,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 			// think ab multiple git repos scenario
 			// need to save name of git repo in deployment template?
 
-			r.createOrUpdateDeploymentTemplate(ctx, f.Name(), template, parameters, providerConfig)
+			r.createOrUpdateDeploymentTemplate(ctx, f.Name(), template, parameters, string(providerConfig))
 		}
 	}
 
@@ -120,21 +147,25 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 func (r *GitRepositoryWatcher) runBicepBuild(ctx context.Context, filepath, filename string) (armJSON string, err error) {
-	// TODOWILLSMITH: bicep build is broken
 	log := ctrl.LoggerFrom(ctx)
 
 	log.Info("Running bicep build on " + path.Join(filepath, filename))
 
-	cmd := exec.Command("/work-dir/bicep", "build", path.Join(filepath, filename), "--stdout")
+	cmd := exec.Command("bicep", "build", path.Join(filepath, filename), "--outfile", path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json")))
 	cmd.Dir = filepath
 
 	stdout, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Error(err, "failed to run bicep build", "out", string(stdout))
+		log.Error(err, "failed to run bicep build")
 		return "", err
 	}
 
-	log.Info("Bicep build output", "output", string(stdout))
+	// read the output file
+	stdout, err = os.ReadFile(path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json")))
+	if err != nil {
+		log.Error(err, "failed to read bicep build output")
+		return "", err
+	}
 
 	return string(stdout), nil
 }
@@ -144,7 +175,7 @@ func (r *GitRepositoryWatcher) runBicepBuildParams(ctx context.Context, filepath
 
 	log.Info("Running bicep build-params on " + filename)
 
-	cmd := exec.Command("/work-dir/bicep", "build-params", path.Join(filepath, filename), "--stdout")
+	cmd := exec.Command("bicep", "build-params", path.Join(filepath, filename), "--stdout")
 
 	stdout, err := cmd.Output()
 	if err != nil {

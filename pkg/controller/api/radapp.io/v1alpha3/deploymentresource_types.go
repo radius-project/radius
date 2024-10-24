@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha3
 
 import (
-	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -36,7 +35,7 @@ type DeploymentResourceStatus struct {
 	ID string `json:"id,omitempty"`
 
 	// ProviderConfig specifies the scope for resources
-	ProviderConfig sdkclients.ProviderConfig `json:"providerConfig,omitempty"`
+	ProviderConfig string `json:"providerConfig,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed for this DeploymentResource.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`

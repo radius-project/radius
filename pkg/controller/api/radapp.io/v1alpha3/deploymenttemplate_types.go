@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha3
 
 import (
-	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,7 +44,7 @@ type DeploymentTemplateStatus struct {
 	Parameters string `json:"parameters,omitempty"`
 
 	// ProviderConfig specifies the scope for resources
-	ProviderConfig sdkclients.ProviderConfig `json:"providerConfig,omitempty"`
+	ProviderConfig string `json:"providerConfig,omitempty"`
 
 	// Resource is the resource id of the deployment.
 	Resource string `json:"resource,omitempty"`

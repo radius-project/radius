@@ -112,3 +112,8 @@ dashboard:
       memory: "60Mi"
     limits:
       memory: "300Mi"
+
+bicep:
+  image: ghcr.io/radius-project/bicep
+  # Default tag uses Chart AppVersion.
+  # tag: latest
