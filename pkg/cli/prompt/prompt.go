@@ -66,7 +66,10 @@ type Impl struct{}
 // GetTextInput takes a prompt string and a set of options, and returns a string or an error if the user exits the
 // console or an unsupported model is encountered.
 func (i *Impl) GetTextInput(prompt string, options TextInputOptions) (string, error) {
-	tm := text.NewTextModel(prompt, options)
+	tm, err := text.NewTextModel(prompt, options)
+	if err != nil {
+		return "", err
+	}
 
 	// Give us some padding so we don't butt up against the user's command.
 	tm.Style = lipgloss.NewStyle().PaddingTop(1)
