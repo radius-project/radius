@@ -47,7 +47,7 @@ func Test_NewTextModel(t *testing.T) {
 		},
 	}
 
-	model, _ := NewTextModel(testPrompt, options)
+	model := NewTextModel(testPrompt, options)
 
 	validateNewTextModel(t, &model, &options)
 	require.Equal(t, textinput.EchoNormal, model.textInput.EchoMode)
@@ -63,7 +63,7 @@ func Test_NewTextModel_UpdateEchoMode(t *testing.T) {
 		EchoMode: textinput.EchoPassword,
 	}
 
-	model, _ := NewTextModel(testPrompt, options)
+	model := NewTextModel(testPrompt, options)
 
 	validateNewTextModel(t, &model, &options)
 	require.Equal(t, textinput.EchoPassword, model.textInput.EchoMode)
@@ -90,7 +90,7 @@ func Test_E2E(t *testing.T) {
 			Default:     defaultText,
 			Placeholder: testPlaceholder,
 		}
-		model, _ := NewTextModel(testPrompt, options)
+		model := NewTextModel(testPrompt, options)
 		return teatest.NewTestModel(t, model, teatest.WithInitialTermSize(18, 50))
 	}
 

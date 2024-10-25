@@ -17,14 +17,12 @@ limitations under the License.
 package text
 
 import (
-	"fmt"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"golang.org/x/term"
+	"github.com/muesli/reflow/wrap"
 )
 
 var (
@@ -61,6 +59,7 @@ type Model struct {
 	prompt       string
 	textInput    textinput.Model
 	valueEntered bool
+	width        int
 }
 
 // NewTextModel returns a new text model with prompt message.
@@ -68,7 +67,7 @@ type Model struct {
 
 // NewTextModel creates a new Model struct with a textinput field, a prompt string, and options for the textinput field
 // such as placeholder and echo mode, and sets the default style and error style for the Model.
-func NewTextModel(prompt string, options TextModelOptions) (Model, error) {
+func NewTextModel(prompt string, options TextModelOptions) Model {
 	// Note: we don't use the validation support provided by textinput due to a bug in the library.
 	//
 	// See: https://github.com/charmbracelet/bubbles/issues/244
@@ -77,12 +76,6 @@ func NewTextModel(prompt string, options TextModelOptions) (Model, error) {
 	// so it will be blocked. This means you can't type `prod-aws` which is a valid name.
 	ti := textinput.New()
 	ti.Focus()
-	width, err := getTerminalSize()
-	if err != nil {
-		return Model{}, err
-	}
-
-	ti.Width = width
 	ti.Placeholder = options.Placeholder
 	ti.EchoMode = options.EchoMode
 
@@ -92,7 +85,7 @@ func NewTextModel(prompt string, options TextModelOptions) (Model, error) {
 		options:   options,
 		prompt:    prompt,
 		textInput: ti,
-	}, nil
+	}
 }
 
 // Init returns initial tea command for text input.
@@ -109,6 +102,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
@@ -156,7 +151,7 @@ func (m Model) View() string {
 	view := &strings.Builder{}
 	view.WriteString(m.prompt)
 	view.WriteString("\n\n")
-	view.WriteString(m.textInput.View())
+	view.WriteString(wrap.String(m.textInput.View(), m.width))
 	view.WriteString("\n\n")
 	view.WriteString("(ctrl+c to quit)")
 	if m.textInput.Err != nil {
@@ -176,17 +171,4 @@ func (m Model) GetValue() string {
 	}
 
 	return value
-}
-
-func getTerminalSize() (int, error) {
-	// Get the file descriptor for standard output
-	fd := int(os.Stdout.Fd())
-
-	// Get the terminal size
-	width, _, err := term.GetSize(fd)
-	if err != nil {
-		return 0, fmt.Errorf("Error getting terminal size: %w", err)
-	}
-
-	return width, nil
 }
