@@ -9,7 +9,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/go-logr/logr"
+	"github.com/google/martian/log"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -22,6 +25,10 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 )
 
+const (
+	repositoryField = "spec.repository"
+)
+
 // GitRepositoryWatcher watches GitRepository objects for revision changes
 type GitRepositoryWatcher struct {
 	client.Client
@@ -30,6 +37,10 @@ type GitRepositoryWatcher struct {
 }
 
 func (r *GitRepositoryWatcher) SetupWithManager(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &radappiov1alpha3.DeploymentTemplate{}, repositoryField, repositoryIndexer); err != nil {
+		return err
+	}
+
 	r.artifactFetcher = fetch.New(
 		fetch.WithRetries(r.HttpRetry),
 		fetch.WithMaxDownloadSize(tar.UnlimitedUntarSize),
@@ -46,8 +57,10 @@ func (r *GitRepositoryWatcher) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories/status,verbs=get
 
 func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "GitRepositoryWatcher", "name", req.Name, "namespace", req.Namespace)
+	ctx = logr.NewContext(ctx, logger)
 
+	// Get the GitRepository object from the cluster
 	var repository sourcev1.GitRepository
 	if err := r.Get(ctx, req.NamespacedName, &repository); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -56,7 +69,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 	artifact := repository.Status.Artifact
 	log.Info("New revision detected", "revision", artifact.Revision)
 
-	// create tmp dir
+	// Create temp dir to store the fetched artifact
 	tmpDir, err := os.MkdirTemp("", repository.Name)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create temp dir, error: %w", err)
@@ -69,126 +82,182 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}(tmpDir)
 
+	// Fetch the artifact from the Source Controller
 	log.Info("fetching artifact...", "url", artifact.URL)
 	if err := r.artifactFetcher.Fetch(artifact.URL, artifact.Digest, tmpDir); err != nil {
 		log.Error(err, "unable to fetch artifact")
 		return ctrl.Result{}, err
 	}
 
-	// list artifact content
+	log.Info("fetched artifact", "url", artifact.URL)
+
 	files, err := os.ReadDir(tmpDir)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to list files, error: %w", err)
 	}
 
-	// TODOWILLSMITH: how do we decide which files to run bicep build on?
-	// for now, we'll just run it on all root files
+	// TODOWILLSMITH: Where to get ProviderConfig def?
+	var config sdkclients.ProviderConfig
+
+	config.Radius = &sdkclients.Radius{
+		Type: "Radius",
+		Value: sdkclients.Value{
+			Scope: "/planes/radius/local/resourceGroups/default",
+		},
+	}
+	config.Deployments = &sdkclients.Deployments{
+		Type: "Microsoft.Resources",
+		Value: sdkclients.Value{
+			Scope: "/planes/radius/local/resourceGroups/default",
+		},
+	}
+
+	providerConfig, err := json.Marshal(config)
+	if err != nil {
+		log.Error(err, "failed to run bicep build-params")
+		return ctrl.Result{}, err
+	}
+
+	// Run bicep build on all root bicep files
 	for _, f := range files {
 		extension := path.Ext(f.Name())
 		if extension == ".bicep" {
+			fileNameBase := strings.TrimSuffix(f.Name(), path.Ext(f.Name()))
+			deploymentTemplateName := repository.Name + "-" + fileNameBase
+
 			template, err := r.runBicepBuild(ctx, tmpDir, f.Name())
 			if err != nil {
 				log.Error(err, "failed to run bicep build")
 				return ctrl.Result{}, err
 			}
 
-			// TODOWILLSMITH: how do we decide which parameters file to use?
-			// for now, we assume the parameters file is the same name as the bicep file
-			// in the same directory
-			// e.g. main.bicep -> main.bicepparam
+			// Run bicep build-params on the bicepparams that matches the bicep file
+			// e.g. if the bicep file is main.bicep, the bicepparams file should be main.bicepparam
 			parameters := "{}"
-			parametersFile := strings.ReplaceAll(f.Name(), ".bicep", ".bicepparam")
+			parametersFileName := fileNameBase + ".bicepparam"
 
-			// if it exists
-			if _, err := os.Stat(path.Join(tmpDir, parametersFile)); err == nil {
-				parameters, err = r.runBicepBuildParams(ctx, tmpDir, parametersFile)
+			// If the bicepparams file exists, run bicep build-params. Otherwise, use the
+			// default (empty) parameters.
+			if _, err := os.Stat(path.Join(tmpDir, parametersFileName)); err == nil {
+				parameters, err = r.runBicepBuildParams(ctx, tmpDir, parametersFileName)
 				if err != nil {
 					log.Error(err, "failed to run bicep build-params")
 					return ctrl.Result{}, err
 				}
 			}
 
-			// TODOWILLSMITH: ???
-			var config sdkclients.ProviderConfig
+			// Now we should create (or update) each DeploymentTemplate for the bicep files
+			// specified in the git repository.
 
-			config.Radius = &sdkclients.Radius{
-				Type: "Radius",
-				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourceGroups/" + "default",
-				},
-			}
-			config.Deployments = &sdkclients.Deployments{
-				Type: "Microsoft.Resources",
-				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourceGroups/" + "default",
-				},
-			}
+			// Create or update the deployment template.
+			log.Info("Creating or updating Deployment Template", "name", deploymentTemplateName)
+			r.createOrUpdateDeploymentTemplate(ctx, deploymentTemplateName, template, parameters, string(providerConfig), repository.Name)
+		}
+	}
 
-			providerConfig, err := json.Marshal(config)
-			if err != nil {
-				log.Error(err, "failed to run bicep build-params")
+	// Get all DeploymentTemplates on the cluster that are associated with the git repository.
+	deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
+	err = r.Client.List(ctx, deploymentTemplates, client.MatchingFields{repositoryField: repository.Name})
+	if err != nil {
+		log.Error(err, "unable to list deployment templates")
+		return ctrl.Result{}, err
+	}
+
+	// For all of the DeploymentTemplates on the cluster, check if the bicep file
+	// that it was created from still exists in the git repository. If it does not,
+	// delete the DeploymentTemplate.
+	for _, deploymentTemplate := range deploymentTemplates.Items {
+		deploymentTemplateFilename := fmt.Sprintf(strings.TrimPrefix(deploymentTemplate.Name, repository.Name+"-"), ".bicep")
+		if _, err := os.Stat(path.Join(tmpDir, deploymentTemplateFilename)); err != nil {
+			// File does not exist in the git repository,
+			// delete the DeploymentTemplate from the cluster
+			log.Info("Deleting DeploymentTemplate", "name", deploymentTemplate.Name)
+			if err := r.Client.Delete(ctx, &deploymentTemplate); err != nil {
+				log.Error(err, "unable to delete deployment template")
 				return ctrl.Result{}, err
 			}
 
-			// TODOWILLSMITH: create/update or delete
-			// determine if this bicep file has already been deployed, if so update
-			// if not, create,
-			// if the bicep file has been deleted, delete the deployment template
-
-			// get all deployment templates on the cluster
-			// think ab multiple git repos scenario
-			// need to save name of git repo in deployment template?
-
-			r.createOrUpdateDeploymentTemplate(ctx, f.Name(), template, parameters, string(providerConfig))
+			log.Info("Deleted DeploymentTemplate", "name", deploymentTemplate.Name)
 		}
 	}
 
 	return ctrl.Result{}, nil
 }
 
+func repositoryIndexer(o client.Object) []string {
+	deploymentTemplate, ok := o.(*radappiov1alpha3.DeploymentTemplate)
+	if !ok {
+		return nil
+	}
+	return []string{deploymentTemplate.Spec.Repository}
+}
+
 func (r *GitRepositoryWatcher) runBicepBuild(ctx context.Context, filepath, filename string) (armJSON string, err error) {
-	log := ctrl.LoggerFrom(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "GitRepositoryWatcher", "name", req.Name, "namespace", req.Namespace)
+	ctx = logr.NewContext(ctx, logger)
 
 	log.Info("Running bicep build on " + path.Join(filepath, filename))
 
-	cmd := exec.Command("bicep", "build", path.Join(filepath, filename), "--outfile", path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json")))
+	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json"))
+
+	cmd := exec.Command("bicep", "build", path.Join(filepath, filename), "--outfile", outfile)
 	cmd.Dir = filepath
 
-	stdout, err := cmd.CombinedOutput()
+	// Run the bicep build command
+	err = cmd.Run()
 	if err != nil {
 		log.Error(err, "failed to run bicep build")
 		return "", err
 	}
 
-	// read the output file
-	stdout, err = os.ReadFile(path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json")))
+	// Read the contents of the generated .json file
+	contents, err := os.ReadFile(outfile)
 	if err != nil {
 		log.Error(err, "failed to read bicep build output")
 		return "", err
 	}
 
-	return string(stdout), nil
+	return string(contents), nil
 }
 
 func (r *GitRepositoryWatcher) runBicepBuildParams(ctx context.Context, filepath, filename string) (armJSON string, err error) {
-	log := ctrl.LoggerFrom(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "GitRepositoryWatcher", "name", req.Name, "namespace", req.Namespace)
+	ctx = logr.NewContext(ctx, logger)
 
 	log.Info("Running bicep build-params on " + filename)
 
-	cmd := exec.Command("bicep", "build-params", path.Join(filepath, filename), "--stdout")
+	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicepparam", ".bicepparam.json"))
 
-	stdout, err := cmd.Output()
+	cmd := exec.Command("bicep", "build-params", path.Join(filepath, filename), "--outfile", outfile)
+
+	// Run the bicep build-params command
+	err = cmd.Run()
 	if err != nil {
 		log.Error(err, "failed to run bicep build")
 		return "", err
 	}
 
-	log.Info("Bicep build output", "output", string(stdout))
+	// Read the contents of the generated .bicepparam.json file
+	contents, err := os.ReadFile(outfile)
+	if err != nil {
+		log.Error(err, "failed to read bicep build-params output")
+		return "", err
+	}
 
-	return string(stdout), nil
+	var params map[string]interface{}
+	err = json.Unmarshal(contents, &params)
+
+	if params["parameters"] == nil {
+		logger.Info("No parameters found in bicep build-params output")
+		return "{}", nil
+	}
+
+	specifiedParams, err := json.Marshal(params["parameters"])
+
+	return specifiedParams, nil
 }
 
-func (r *GitRepositoryWatcher) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, template, parameters, providerConfig string) {
+func (r *GitRepositoryWatcher) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, template, parameters, providerConfig, repository string) {
 	log := ctrl.LoggerFrom(ctx)
 
 	deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{
@@ -200,6 +269,7 @@ func (r *GitRepositoryWatcher) createOrUpdateDeploymentTemplate(ctx context.Cont
 			Template:       template,
 			Parameters:     parameters,
 			ProviderConfig: providerConfig,
+			Repository:     repository,
 		},
 	}
 

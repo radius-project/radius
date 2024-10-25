@@ -175,5 +175,3 @@ func waitForDeploymentResourceDeleted(t *testing.T, client client.Client, name t
 
 	}, DeploymentResourceTestWaitDuration, DeploymentResourceTestWaitInterval, "DeploymentResource still exists")
 }
-
-// TODOWILLSMITH: add more tests

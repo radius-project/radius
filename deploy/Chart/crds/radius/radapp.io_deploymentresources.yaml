@@ -8,13 +8,21 @@ metadata:
 spec:
   group: radapp.io
   names:
+    categories:
+    - all
+    - radius
     kind: DeploymentResource
     listKind: DeploymentResourceList
     plural: deploymentresources
     singular: deploymentresource
   scope: Namespaced
   versions:
-  - name: v1alpha3
+  - additionalPrinterColumns:
+    - description: Status of the resource
+      jsonPath: .status.phrase
+      name: Status
+      type: string
+    name: v1alpha3
     schema:
       openAPIV3Schema:
         description: DeploymentResource is the Schema for the DeploymentResources

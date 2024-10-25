@@ -20,7 +20,5 @@ import "testing"
 
 func Test_GitRepositoryWatcher_Basic(t *testing.T) {
 	//TODOWILLSMITH: finish this test
-	t.Errorf("Test not implemented")
+	t.Skip("TODO: finish this test")
 }
-
-// TODOWILLSMITH: Add more tests

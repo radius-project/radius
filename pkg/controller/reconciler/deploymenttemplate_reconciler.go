@@ -79,9 +79,28 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Our algorithm is as follows:
 	//
-	// TODOWILLSMITH: put algorithm here
+	// 1. Check if there is an in-progress operation. If so, check its status:
+	// 	1. If the operation is still in progress, then queue another reconcile operation and continue processing.
+	// 	2. If the operation completed successfully:
+	// 			1. Diff the resources in the `properties.outputResources` field returned by the Radius API with the resources in the `status.outputResources` field on the `DeploymentTemplate` resource.
+	// 			2. Depending on the diff, create or delete `DeploymentResource` resources on the cluster. In the case of create, add the `DeploymentTemplate` as the owner of the `DeploymentResource` and set the `radapp.io/deployment-resource-finalizer` finalizer on the `DeploymentResource`.
+	// 			3. Update the `status.phrase` for the `DeploymentTemplate` to `Ready`.
+	// 			4. Continue processing.
+	// 	3. If the operation failed, then update the `status.phrase` and `status.message` as `Failed` with the reason for the failure and continue processing.
+	// 2. If the `DeploymentTemplate` is being deleted, then process deletion:
+	// 	1. Remove the `radapp.io/deployment-template-finalizer` finalizer from the `DeploymentTemplate`.
+	// 	1. Since the `DeploymentResources` are owned by the `DeploymentTemplate`, the `DeploymentResource` resources will be deleted first. Once they are deleted, the `DeploymentTemplate` resource will be deleted.
+	// 4. If the `DeploymentTemplate` is not being deleted then process this as a create or update:
+	// 	1. Add the `radapp.io/deployment-template-finalizer` finalizer onto the `DeploymentTemplate` resource.
+	// 	2. Queue a PUT operation against the Radius API to deploy the ARM JSON in the `spec.template` field with the parameters in the `spec.parameters` field.
+	// 	3. Set the `status.phrase` for the `DeploymentTemplate` to `Updating` and the `status.operation` to the operation returned by the Radius API.
+	// 	4. Continue processing.
 	//
 	// We do it this way because it guarantees that we only have one operation going at a time.
+
+	if deploymentTemplate.DeletionTimestamp != nil {
+		return r.reconcileDelete(ctx, &deploymentTemplate)
+	}
 
 	if deploymentTemplate.Status.Operation != nil {
 		result, err := r.reconcileOperation(ctx, &deploymentTemplate)
@@ -98,10 +117,6 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	if deploymentTemplate.DeletionTimestamp != nil {
-		return r.reconcileDelete(ctx, &deploymentTemplate)
-	}
-
 	return r.reconcileUpdate(ctx, &deploymentTemplate)
 }
 
@@ -111,6 +126,10 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
 		scope, err := parseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to parse deployment scope: %w", err)
+		}
+
 		poller, err := r.Radius.Resources(scope, deploymentResourceType).ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue PUT operation: %w", err)
@@ -135,7 +154,6 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			deploymentTemplate.Status.Operation = nil
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
 			deploymentTemplate.Status.Message = err.Error()
-
 			err = r.Client.Status().Update(ctx, deploymentTemplate)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -146,15 +164,15 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 		logger.Info("Creating output resources.")
 
-		//TODOWILLSMITH: clean this up
+		// Get outputResources from the response
 		outputResources := make([]string, 0)
 		outputResourceList := resp.Properties["outputResources"].([]any)
 		for _, resource := range outputResourceList {
-			resource2 := resource.(map[string]any)
-			outputResources = append(outputResources, resource2["id"].(string))
+			outputResource := resource.(map[string]any)
+			outputResources = append(outputResources, outputResource["id"].(string))
 		}
 
-		// compare outputResources with existing DeploymentResources
+		// Compare outputResources with existing DeploymentResources
 		// if is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
 		// if is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
 		// if is present in both, do nothing
@@ -171,7 +189,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 		for _, outputResourceId := range outputResources {
 			if _, ok := existingOutputResources[outputResourceId]; !ok {
-				// resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
+				// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
 
 				resourceName := generateDeploymentResourceName(outputResourceId)
 				deploymentResource := &radappiov1alpha3.DeploymentResource{
@@ -180,15 +198,18 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 						Namespace: deploymentTemplate.Namespace,
 					},
 					Spec: radappiov1alpha3.DeploymentResourceSpec{
-						ID: outputResourceId,
+						ID:             outputResourceId,
+						ProviderConfig: deploymentTemplate.Spec.ProviderConfig,
 					},
 				}
 
 				if controllerutil.AddFinalizer(deploymentResource, DeploymentResourceFinalizer) {
+					// Add the DeploymentTemplate as the owner of the DeploymentResource
 					if err := controllerutil.SetControllerReference(deploymentTemplate, deploymentResource, r.Scheme); err != nil {
 						return ctrl.Result{}, err
 					}
 
+					// Create the DeploymentResource
 					err = r.Client.Create(ctx, deploymentResource)
 					if err != nil {
 						return ctrl.Result{}, err
@@ -199,7 +220,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 		for _, resource := range deploymentTemplate.Status.OutputResources {
 			if _, ok := newOutputResources[resource]; !ok {
-				// resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
+				// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
 				logger.Info("Deleting resource.", "resourceId", resource)
 				resourceName := generateDeploymentResourceName(resource)
 				err := r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
@@ -229,11 +250,23 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Parameters = deploymentTemplate.Spec.Parameters
 		deploymentTemplate.Status.Resource = providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
-		return ctrl.Result{}, nil
+		deploymentTemplate.Status.Repository = deploymentTemplate.Spec.Repository
+		err = r.Client.Status().Update(ctx, deploymentTemplate)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 
+		return ctrl.Result{}, nil
 	} else if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
+		deploymentTemplate.Status.Operation = nil
+		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
+		err := r.Client.Status().Update(ctx, deploymentTemplate)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		providerConfig := sdkclients.ProviderConfig{}
-		err := json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
+		err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
 		}
@@ -262,7 +295,6 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			deploymentTemplate.Status.Operation = nil
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
 			deploymentTemplate.Status.Message = err.Error()
-
 			err = r.Client.Status().Update(ctx, deploymentTemplate)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -276,6 +308,11 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		// NOTE: we don't need to save the status here, because we're going to continue reconciling.
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.Resource = ""
+		err = r.Client.Status().Update(ctx, deploymentTemplate)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		return ctrl.Result{}, nil
 	}
 
@@ -285,7 +322,6 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 	deploymentTemplate.Status.Operation = nil
 	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-
 	err := r.Client.Status().Update(ctx, deploymentTemplate)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -296,6 +332,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	logger.Info("Reconciling resource.")
 
 	// Ensure that our finalizer is present before we start any operations.
 	if controllerutil.AddFinalizer(deploymentTemplate, DeploymentTemplateFinalizer) {
@@ -310,8 +348,12 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
 	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
+	err := r.Client.Status().Update(ctx, deploymentTemplate)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
-	updatePoller, deletePoller, err := r.startPutOrDeleteOperationIfNeeded(ctx, deploymentTemplate)
+	updatePoller, err := r.startPutOperationIfNeeded(ctx, deploymentTemplate)
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
 		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
@@ -325,21 +367,6 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 
 		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindPut}
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseUpdating
-		err = r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
-	} else if deletePoller != nil {
-		// We've successfully started an operation. Update the status and requeue.
-		token, err := deletePoller.ResumeToken()
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
-		}
-
-		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
-		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -364,36 +391,49 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	logger.Info("Resource is being deleted.")
+
 	// Since we're going to reconcile, update the observed generation.
 	//
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
 	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
-
-	poller, err := r.startDeleteOperationIfNeeded(ctx, deploymentTemplate)
+	err := r.Client.Status().Update(ctx, deploymentTemplate)
 	if err != nil {
-		logger.Error(err, "Unable to delete resource.")
-		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
 		return ctrl.Result{}, err
-	} else if poller != nil {
-		// We've successfully started an operation. Update the status and requeue.
-		token, err := poller.ResumeToken()
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
-		}
+	}
 
-		providerConfig := sdkclients.ProviderConfig{}
-		err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
-		}
+	// List all DeploymentResource objects in the same namespace
+	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
+	err = r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace))
+	if err != nil {
+		return ctrl.Result{}, nil
+	}
 
-		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
+	// Filter the list to include only those owned by the current DeploymentTemplate
+	var ownedResources []radappiov1alpha3.DeploymentResource
+	for _, resource := range deploymentResourceList.Items {
+		if isOwnedBy(resource, deploymentTemplate) {
+			ownedResources = append(ownedResources, resource)
+		}
+	}
+
+	// If there are still owned DeploymentResources, we need to trigger deletion and wait for them
+	// to be deleted before we can delete the DeploymentTemplate.
+	if len(ownedResources) > 0 {
+		logger.Info("Owned resources still exist, waiting for deletion.")
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
-		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
+		}
+
+		// Trigger deletion of owned resources
+		for _, resource := range ownedResources {
+			err := r.Client.Delete(ctx, &resource)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 
 		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
@@ -401,67 +441,62 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 
 	logger.Info("Resource is deleted.")
 
-	// At this point we've cleaned up everything. We can remove the finalizer which will allow deletion of the
-	// DeploymentTemplate
+	// At this point we've cleaned up everything. We can remove the finalizer which will allow
+	// deletion of the DeploymentTemplate
 	if controllerutil.RemoveFinalizer(deploymentTemplate, DeploymentTemplateFinalizer) {
-		err := r.Client.Update(ctx, deploymentTemplate)
+		deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
+		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleted
+		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
+		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
+		return ctrl.Result{}, nil
 	}
 
-	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleted
-	err = r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	// If we get here, then we're in a bad state. We should have removed the finalizer, but we didn't.
+	// We should requeue and try again.
 
-	r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
-	return ctrl.Result{}, nil
+	return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 }
 
-func (r *DeploymentTemplateReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], Poller[generated.GenericResourcesClientDeleteResponse], error) {
+func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// If the resource is already created and is up-to-date, then we don't need to do anything.
-	if deploymentTemplate.Status.Template == deploymentTemplate.Spec.Template && deploymentTemplate.Status.Parameters == deploymentTemplate.Spec.Parameters {
+	if deploymentTemplate.Status.Template == deploymentTemplate.Spec.Template &&
+		deploymentTemplate.Status.Parameters == deploymentTemplate.Spec.Parameters &&
+		deploymentTemplate.Status.Repository == deploymentTemplate.Spec.Repository &&
+		deploymentTemplate.Status.ProviderConfig == deploymentTemplate.Spec.ProviderConfig {
 		logger.Info("Resource is already created and is up-to-date.")
-		return nil, nil, nil
+		return nil, nil
 	}
 
-	logger.Info("Template or parameters have changed, starting PUT operation.")
+	logger.Info("Template, parameters, repository, or providerConfig have changed, starting PUT operation.")
 
 	var template any
 	err := json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal template: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal template: %w", err)
 	}
 
 	var parameters any
 	err = json.Unmarshal([]byte(deploymentTemplate.Spec.Parameters), &parameters)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal parameters: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal parameters: %w", err)
 	}
 
-	// TODO PR: Is there a better way to check for all of this stuff?
 	providerConfig := sdkclients.ProviderConfig{}
 	err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal template: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal template: %w", err)
 	}
 	if providerConfig.Deployments == nil {
-		return nil, nil, fmt.Errorf("providerConfig.Deployments is nil")
+		return nil, fmt.Errorf("providerConfig.Deployments is nil")
 	}
 	if providerConfig.Deployments.Value.Scope == "" {
-		return nil, nil, fmt.Errorf("providerConfig.Deployments.Value.Scope is empty")
-	}
-	if providerConfig.Radius == nil {
-		return nil, nil, fmt.Errorf("providerConfig.Radius is nil")
-	}
-	if providerConfig.Radius.Value.Scope == "" {
-		return nil, nil, fmt.Errorf("providerConfig.Radius.Value.Scope is empty")
+		return nil, fmt.Errorf("providerConfig.Deployments.Value.Scope is empty")
 	}
 
 	logger.Info("Starting PUT operation.")
@@ -475,28 +510,18 @@ func (r *DeploymentTemplateReconciler) startPutOrDeleteOperationIfNeeded(ctx con
 	resourceID := providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 	poller, err := createOrUpdateResource(ctx, r.Radius, resourceID, properties)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	} else if poller != nil {
-		return poller, nil, nil
+		return poller, nil
 	}
 
 	// Update was synchronous
 	deploymentTemplate.Status.Resource = resourceID
-	return nil, nil, nil
-}
-
-func (r *DeploymentTemplateReconciler) startDeleteOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	if deploymentTemplate.Status.Resource == "" {
-		logger.Info("Resource is already deleted (or was never created).")
-		return nil, nil
+	err = r.Client.Status().Update(ctx, deploymentTemplate)
+	if err != nil {
+		return nil, err
 	}
 
-	// TODOWILLSMITH: do we need to do anything here? wait for DeploymentResources to be deleted?
-
-	// Deletion was synchronous
-
-	deploymentTemplate.Status.Resource = ""
 	return nil, nil
 }
 
@@ -518,6 +543,15 @@ func parseDeploymentScopeFromProviderConfig(providerConfig string) (string, erro
 	}
 
 	return config.Deployments.Value.Scope, nil
+}
+
+func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1alpha3.DeploymentTemplate) bool {
+	for _, ownerRef := range resource.OwnerReferences {
+		if ownerRef.Kind == "DeploymentTemplate" && ownerRef.Name == owner.Name {
+			return true
+		}
+	}
+	return false
 }
 
 // SetupWithManager sets up the controller with the Manager.

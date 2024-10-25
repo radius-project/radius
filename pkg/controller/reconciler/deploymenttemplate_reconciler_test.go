@@ -34,8 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//TODOWILLSMITH: finish this test
-
 const (
 	DeploymentTemplateTestWaitDuration            = time.Second * 10
 	DeploymentTemplateTestWaitInterval            = time.Second * 1

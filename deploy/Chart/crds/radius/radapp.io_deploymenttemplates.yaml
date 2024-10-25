@@ -8,13 +8,25 @@ metadata:
 spec:
   group: radapp.io
   names:
+    categories:
+    - all
+    - radius
     kind: DeploymentTemplate
     listKind: DeploymentTemplateList
     plural: deploymenttemplates
     singular: deploymenttemplate
   scope: Namespaced
   versions:
-  - name: v1alpha3
+  - additionalPrinterColumns:
+    - description: Status of the resource
+      jsonPath: .status.phrase
+      name: Status
+      type: string
+    - description: Repository of the resource
+      jsonPath: .status.repository
+      name: Repository
+      type: string
+    name: v1alpha3
     schema:
       openAPIV3Schema:
         description: DeploymentTemplate is the Schema for the deploymenttemplates
@@ -45,6 +57,10 @@ spec:
                 type: string
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
+                type: string
+              repository:
+                description: Repository is the name of the GitRepository that contains
+                  the Bicep file.
                 type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources
@@ -91,6 +107,10 @@ spec:
                 type: string
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
+                type: string
+              repository:
+                description: Repository is the name of the GitRepository that contains
+                  the Bicep file.
                 type: string
               resource:
                 description: Resource is the resource id of the deployment.

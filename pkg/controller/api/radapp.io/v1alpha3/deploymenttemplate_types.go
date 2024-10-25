@@ -30,6 +30,9 @@ type DeploymentTemplateSpec struct {
 
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
+
+	// Repository is the name of the GitRepository that contains the Bicep file.
+	Repository string `json:"repository,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of DeploymentTemplate
@@ -45,6 +48,9 @@ type DeploymentTemplateStatus struct {
 
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
+
+	// Repository is the name of the GitRepository that contains the Bicep file.
+	Repository string `json:"repository,omitempty"`
 
 	// Resource is the resource id of the deployment.
 	Resource string `json:"resource,omitempty"`
@@ -84,6 +90,9 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:categories={"all","radius"}
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase",description="Status of the resource"
+// +kubebuilder:printcolumn:name="Repository",type="string",JSONPath=".status.repository",description="Repository of the resource"
 
 // DeploymentTemplate is the Schema for the deploymenttemplates API
 type DeploymentTemplate struct {

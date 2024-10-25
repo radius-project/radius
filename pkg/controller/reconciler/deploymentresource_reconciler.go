@@ -74,9 +74,22 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Our algorithm is as follows:
 	//
-	// TODOWILLSMITH: put algorithm here
+	// 1. Check if there is an in-progress deletion. If so, check its status:
+	// 	1. If the deletion is still in progress, then queue another reconcile operation and continue processing.
+	// 	2. If the deletion completed successfully, then remove the `radapp.io/deployment-resource-finalizer` finalizer from the resource and continue processing.
+	// 	3. If the operation failed, then update the `status.phrase` and `status.message` as `Failed`.
+	// 2. If the `DeploymentTemplate` is being deleted, then process deletion:
+	// 	1. Send a DELETE operation to the Radius API to delete the resource specified in the `spec.resourceId` field.
+	// 	2. Continue processing.
+	// 3. If the `DeploymentTemplate` is not being deleted then process this as a create or update:
+	// 	1. Set the `status.phrase` for the `DeploymentResource` to `Ready`.
+	// 	2. Continue processing.
 	//
 	// We do it this way because it guarantees that we only have one operation going at a time.
+
+	if DeploymentResource.DeletionTimestamp != nil {
+		return r.reconcileDelete(ctx, &DeploymentResource)
+	}
 
 	if DeploymentResource.Status.Operation != nil {
 		result, err := r.reconcileOperation(ctx, &DeploymentResource)
@@ -93,10 +106,6 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	if DeploymentResource.DeletionTimestamp != nil {
-		return r.reconcileDelete(ctx, &DeploymentResource)
-	}
-
 	// Nothing to do here, continue processing
 	return ctrl.Result{}, nil
 }
@@ -106,7 +115,20 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentResource.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-		providerConfig := sdkclients.ProviderConfig{}
+		providerConfig := sdkclients.ProviderConfig{
+			Radius: &sdkclients.Radius{
+				Type: "radius",
+				Value: sdkclients.Value{
+					Scope: "/planes/radius/local/resourceGroups/default",
+				},
+			},
+			Deployments: &sdkclients.Deployments{
+				Type: "Microsoft.Resources",
+				Value: sdkclients.Value{
+					Scope: "/planes/radius/local/resourceGroups/default",
+				},
+			},
+		}
 		err := json.Unmarshal([]byte(deploymentResource.Spec.ProviderConfig), &providerConfig)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
@@ -136,7 +158,6 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 			deploymentResource.Status.Operation = nil
 			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
 			deploymentResource.Status.Message = err.Error()
-
 			err = r.Client.Status().Update(ctx, deploymentResource)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -149,6 +170,11 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 		//
 		// NOTE: we don't need to save the status here, because we're going to continue reconciling.
 		deploymentResource.Status.Operation = nil
+		err = r.Client.Status().Update(ctx, deploymentResource)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		return ctrl.Result{}, nil
 	}
 
@@ -158,7 +184,6 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 
 	deploymentResource.Status.Operation = nil
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
-
 	err := r.Client.Status().Update(ctx, deploymentResource)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -175,6 +200,10 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
 	deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
+	err := r.Client.Status().Update(ctx, deploymentResource)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	poller, err := r.startDeleteOperation(ctx, deploymentResource)
 	if err != nil {

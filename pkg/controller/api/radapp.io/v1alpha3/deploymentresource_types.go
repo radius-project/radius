@@ -69,6 +69,8 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:categories={"all","radius"}
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase",description="Status of the resource"
 
 // DeploymentResource is the Schema for the DeploymentResources API
 type DeploymentResource struct {
