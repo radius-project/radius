@@ -217,7 +217,7 @@ func makeDeploymentResource(name types.NamespacedName, id string) *radappiov1alp
 			Name:      name.Name,
 		},
 		Spec: radappiov1alpha3.DeploymentResourceSpec{
-			ID: id,
+			Id: id,
 		},
 	}
 }

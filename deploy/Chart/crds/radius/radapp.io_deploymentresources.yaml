@@ -49,17 +49,21 @@ spec:
             description: DeploymentResourceSpec defines the desired state of DeploymentResource
             properties:
               id:
-                description: ID is the resource ID.
+                description: Id is the resource Id.
                 type: string
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
+                type: string
+              repository:
+                description: Repository is the name of the GitRepository that contains
+                  the Bicep file.
                 type: string
             type: object
           status:
             description: DeploymentResourceStatus defines the observed state of DeploymentResource
             properties:
               id:
-                description: ID is the resource ID.
+                description: Id is the resource Id.
                 type: string
               message:
                 description: Message is a human-readable description of the status
@@ -89,6 +93,10 @@ spec:
                 type: string
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
+                type: string
+              repository:
+                description: Repository is the name of the GitRepository that contains
+                  the Bicep file.
                 type: string
             type: object
         type: object

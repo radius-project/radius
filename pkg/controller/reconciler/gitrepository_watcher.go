@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/google/martian/log"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +25,8 @@ import (
 )
 
 const (
-	repositoryField = "spec.repository"
+	repositoryField            = "spec.repository"
+	previousArtifactAnnotation = "previous-artifact"
 )
 
 // GitRepositoryWatcher watches GitRepository objects for revision changes
@@ -66,8 +66,14 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// Check if the Artifact field is set
 	artifact := repository.Status.Artifact
-	log.Info("New revision detected", "revision", artifact.Revision)
+	if artifact == nil {
+		logger.Info("No artifact found for GitRepository", "name", repository.Name)
+		return ctrl.Result{}, nil
+	}
+
+	logger.Info("New revision detected", "revision", artifact.Revision)
 
 	// Create temp dir to store the fetched artifact
 	tmpDir, err := os.MkdirTemp("", repository.Name)
@@ -78,18 +84,18 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 	defer func(path string) {
 		err := os.RemoveAll(path)
 		if err != nil {
-			log.Error(err, "unable to remove temp dir")
+			logger.Error(err, "unable to remove temp dir")
 		}
 	}(tmpDir)
 
 	// Fetch the artifact from the Source Controller
-	log.Info("fetching artifact...", "url", artifact.URL)
+	logger.Info("fetching artifact...", "url", artifact.URL)
 	if err := r.artifactFetcher.Fetch(artifact.URL, artifact.Digest, tmpDir); err != nil {
-		log.Error(err, "unable to fetch artifact")
+		logger.Error(err, "unable to fetch artifact")
 		return ctrl.Result{}, err
 	}
 
-	log.Info("fetched artifact", "url", artifact.URL)
+	logger.Info("fetched artifact", "url", artifact.URL)
 
 	files, err := os.ReadDir(tmpDir)
 	if err != nil {
@@ -114,7 +120,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	providerConfig, err := json.Marshal(config)
 	if err != nil {
-		log.Error(err, "failed to run bicep build-params")
+		logger.Error(err, "failed to run bicep build-params")
 		return ctrl.Result{}, err
 	}
 
@@ -127,7 +133,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 
 			template, err := r.runBicepBuild(ctx, tmpDir, f.Name())
 			if err != nil {
-				log.Error(err, "failed to run bicep build")
+				logger.Error(err, "failed to run bicep build")
 				return ctrl.Result{}, err
 			}
 
@@ -141,7 +147,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 			if _, err := os.Stat(path.Join(tmpDir, parametersFileName)); err == nil {
 				parameters, err = r.runBicepBuildParams(ctx, tmpDir, parametersFileName)
 				if err != nil {
-					log.Error(err, "failed to run bicep build-params")
+					logger.Error(err, "failed to run bicep build-params")
 					return ctrl.Result{}, err
 				}
 			}
@@ -150,7 +156,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 			// specified in the git repository.
 
 			// Create or update the deployment template.
-			log.Info("Creating or updating Deployment Template", "name", deploymentTemplateName)
+			logger.Info("Creating or updating Deployment Template", "name", deploymentTemplateName)
 			r.createOrUpdateDeploymentTemplate(ctx, deploymentTemplateName, template, parameters, string(providerConfig), repository.Name)
 		}
 	}
@@ -159,7 +165,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 	deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
 	err = r.Client.List(ctx, deploymentTemplates, client.MatchingFields{repositoryField: repository.Name})
 	if err != nil {
-		log.Error(err, "unable to list deployment templates")
+		logger.Error(err, "unable to list deployment templates")
 		return ctrl.Result{}, err
 	}
 
@@ -171,13 +177,13 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 		if _, err := os.Stat(path.Join(tmpDir, deploymentTemplateFilename)); err != nil {
 			// File does not exist in the git repository,
 			// delete the DeploymentTemplate from the cluster
-			log.Info("Deleting DeploymentTemplate", "name", deploymentTemplate.Name)
+			logger.Info("Deleting DeploymentTemplate", "name", deploymentTemplate.Name)
 			if err := r.Client.Delete(ctx, &deploymentTemplate); err != nil {
-				log.Error(err, "unable to delete deployment template")
+				logger.Error(err, "unable to delete deployment template")
 				return ctrl.Result{}, err
 			}
 
-			log.Info("Deleted DeploymentTemplate", "name", deploymentTemplate.Name)
+			logger.Info("Deleted DeploymentTemplate", "name", deploymentTemplate.Name)
 		}
 	}
 
@@ -193,10 +199,9 @@ func repositoryIndexer(o client.Object) []string {
 }
 
 func (r *GitRepositoryWatcher) runBicepBuild(ctx context.Context, filepath, filename string) (armJSON string, err error) {
-	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "GitRepositoryWatcher", "name", req.Name, "namespace", req.Namespace)
-	ctx = logr.NewContext(ctx, logger)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
-	log.Info("Running bicep build on " + path.Join(filepath, filename))
+	logger.Info("Running bicep build on " + path.Join(filepath, filename))
 
 	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json"))
 
@@ -206,14 +211,14 @@ func (r *GitRepositoryWatcher) runBicepBuild(ctx context.Context, filepath, file
 	// Run the bicep build command
 	err = cmd.Run()
 	if err != nil {
-		log.Error(err, "failed to run bicep build")
+		logger.Error(err, "failed to run bicep build")
 		return "", err
 	}
 
 	// Read the contents of the generated .json file
 	contents, err := os.ReadFile(outfile)
 	if err != nil {
-		log.Error(err, "failed to read bicep build output")
+		logger.Error(err, "failed to read bicep build output")
 		return "", err
 	}
 
@@ -221,10 +226,9 @@ func (r *GitRepositoryWatcher) runBicepBuild(ctx context.Context, filepath, file
 }
 
 func (r *GitRepositoryWatcher) runBicepBuildParams(ctx context.Context, filepath, filename string) (armJSON string, err error) {
-	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "GitRepositoryWatcher", "name", req.Name, "namespace", req.Namespace)
-	ctx = logr.NewContext(ctx, logger)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
-	log.Info("Running bicep build-params on " + filename)
+	logger.Info("Running bicep build-params on " + filename)
 
 	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicepparam", ".bicepparam.json"))
 
@@ -233,19 +237,23 @@ func (r *GitRepositoryWatcher) runBicepBuildParams(ctx context.Context, filepath
 	// Run the bicep build-params command
 	err = cmd.Run()
 	if err != nil {
-		log.Error(err, "failed to run bicep build")
+		logger.Error(err, "failed to run bicep build")
 		return "", err
 	}
 
 	// Read the contents of the generated .bicepparam.json file
 	contents, err := os.ReadFile(outfile)
 	if err != nil {
-		log.Error(err, "failed to read bicep build-params output")
+		logger.Error(err, "failed to read bicep build-params output")
 		return "", err
 	}
 
 	var params map[string]interface{}
 	err = json.Unmarshal(contents, &params)
+	if err != nil {
+		logger.Error(err, "failed to unmarshal bicep build-params output")
+		return "", err
+	}
 
 	if params["parameters"] == nil {
 		logger.Info("No parameters found in bicep build-params output")
@@ -253,12 +261,16 @@ func (r *GitRepositoryWatcher) runBicepBuildParams(ctx context.Context, filepath
 	}
 
 	specifiedParams, err := json.Marshal(params["parameters"])
+	if err != nil {
+		logger.Error(err, "failed to marshal parameters")
+		return "", err
+	}
 
-	return specifiedParams, nil
+	return string(specifiedParams), nil
 }
 
 func (r *GitRepositoryWatcher) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, template, parameters, providerConfig, repository string) {
-	log := ctrl.LoggerFrom(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{
 		ObjectMeta: metav1.ObjectMeta{
@@ -275,21 +287,21 @@ func (r *GitRepositoryWatcher) createOrUpdateDeploymentTemplate(ctx context.Cont
 
 	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(deploymentTemplate), deploymentTemplate); err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "unable to get deployment template")
+			logger.Error(err, "unable to get deployment template")
 			return
 		}
 
 		if err := r.Client.Create(ctx, deploymentTemplate); err != nil {
-			log.Error(err, "unable to create deployment template")
+			logger.Error(err, "unable to create deployment template")
 		}
 
-		log.Info("Created Deployment Template", "name", deploymentTemplate.Name)
+		logger.Info("Created Deployment Template", "name", deploymentTemplate.Name)
 		return
 	}
 
 	if err := r.Client.Update(ctx, deploymentTemplate); err != nil {
-		log.Error(err, "unable to create deployment template")
+		logger.Error(err, "unable to create deployment template")
 	}
 
-	log.Info("Updated Deployment Template", "name", deploymentTemplate.Name)
+	logger.Info("Updated Deployment Template", "name", deploymentTemplate.Name)
 }

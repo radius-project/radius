@@ -22,20 +22,26 @@ import (
 
 // DeploymentResourceSpec defines the desired state of DeploymentResource
 type DeploymentResourceSpec struct {
-	// ID is the resource ID.
-	ID string `json:"id,omitempty"`
+	// Id is the resource Id.
+	Id string `json:"id,omitempty"`
 
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
+
+	// Repository is the name of the GitRepository that contains the Bicep file.
+	Repository string `json:"repository,omitempty"`
 }
 
 // DeploymentResourceStatus defines the observed state of DeploymentResource
 type DeploymentResourceStatus struct {
-	// ID is the resource ID.
-	ID string `json:"id,omitempty"`
+	// Id is the resource Id.
+	Id string `json:"id,omitempty"`
 
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
+
+	// Repository is the name of the GitRepository that contains the Bicep file.
+	Repository string `json:"repository,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed for this DeploymentResource.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`

@@ -98,10 +98,6 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	//
 	// We do it this way because it guarantees that we only have one operation going at a time.
 
-	if deploymentTemplate.DeletionTimestamp != nil {
-		return r.reconcileDelete(ctx, &deploymentTemplate)
-	}
-
 	if deploymentTemplate.Status.Operation != nil {
 		result, err := r.reconcileOperation(ctx, &deploymentTemplate)
 		if err != nil {
@@ -115,6 +111,10 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 			logger.Info("Requeueing to continue operation.")
 			return result, nil
 		}
+	}
+
+	if deploymentTemplate.DeletionTimestamp != nil {
+		return r.reconcileDelete(ctx, &deploymentTemplate)
 	}
 
 	return r.reconcileUpdate(ctx, &deploymentTemplate)
@@ -153,7 +153,6 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 			deploymentTemplate.Status.Operation = nil
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-			deploymentTemplate.Status.Message = err.Error()
 			err = r.Client.Status().Update(ctx, deploymentTemplate)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -198,8 +197,9 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 						Namespace: deploymentTemplate.Namespace,
 					},
 					Spec: radappiov1alpha3.DeploymentResourceSpec{
-						ID:             outputResourceId,
+						Id:             outputResourceId,
 						ProviderConfig: deploymentTemplate.Spec.ProviderConfig,
+						Repository:     deploymentTemplate.Spec.Repository,
 					},
 				}
 
@@ -251,67 +251,6 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Resource = providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
 		deploymentTemplate.Status.Repository = deploymentTemplate.Spec.Repository
-		err = r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		return ctrl.Result{}, nil
-	} else if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-		deploymentTemplate.Status.Operation = nil
-		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
-		err := r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		providerConfig := sdkclients.ProviderConfig{}
-		err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
-		}
-
-		poller, err := r.Radius.Resources(providerConfig.Deployments.Value.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to continue DELETE operation: %w", err)
-		}
-
-		_, err = poller.Poll(ctx)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to poll operation status: %w", err)
-		}
-
-		if !poller.Done() {
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
-		}
-
-		// If we get here, the operation is complete.
-		_, err = poller.Result(ctx)
-		if err != nil {
-			// Operation failed, reset state and retry.
-			r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
-			logger.Error(err, "Delete failed.")
-
-			deploymentTemplate.Status.Operation = nil
-			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-			deploymentTemplate.Status.Message = err.Error()
-			err = r.Client.Status().Update(ctx, deploymentTemplate)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
-		}
-
-		// If we get here, the operation was a success. Update the status and continue.
-		//
-		// NOTE: we don't need to save the status here, because we're going to continue reconciling.
-		deploymentTemplate.Status.Operation = nil
-		deploymentTemplate.Status.Resource = ""
-		err = r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
 
 		return ctrl.Result{}, nil
 	}
@@ -348,10 +287,6 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
 	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
-	err := r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
 
 	updatePoller, err := r.startPutOperationIfNeeded(ctx, deploymentTemplate)
 	if err != nil {
@@ -391,21 +326,19 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	logger.Info("Resource is being deleted.")
+	logger.Info("Resource is being deleted.", "resourceId", deploymentTemplate.Status.Resource)
 
 	// Since we're going to reconcile, update the observed generation.
 	//
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
 	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
-	err := r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	deploymentTemplate.Status.Operation = nil
+	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
 
 	// List all DeploymentResource objects in the same namespace
 	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	err = r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace))
+	err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace))
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
@@ -422,11 +355,6 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 	// to be deleted before we can delete the DeploymentTemplate.
 	if len(ownedResources) > 0 {
 		logger.Info("Owned resources still exist, waiting for deletion.")
-		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
-		err = r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
 
 		// Trigger deletion of owned resources
 		for _, resource := range ownedResources {
@@ -434,6 +362,11 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 			if err != nil {
 				return ctrl.Result{}, err
 			}
+		}
+
+		err = r.Client.Status().Update(ctx, deploymentTemplate)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 
 		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
@@ -446,13 +379,20 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 	if controllerutil.RemoveFinalizer(deploymentTemplate, DeploymentTemplateFinalizer) {
 		deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleted
-		err = r.Client.Status().Update(ctx, deploymentTemplate)
+		err = r.Client.Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
 		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
 		return ctrl.Result{}, nil
+	}
+
+	logger.Info("Finalizer was not removed, requeueing.")
+
+	err = r.Client.Status().Update(ctx, deploymentTemplate)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// If we get here, then we're in a bad state. We should have removed the finalizer, but we didn't.

@@ -98,7 +98,7 @@ func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
 
 	// Deployment will update after operation completes
 	status := waitForDeploymentResourceStateReady(t, client, name)
-	require.Equal(t, TestDeploymentResourceID, status.ID)
+	require.Equal(t, TestDeploymentResourceID, status.Id)
 
 	err = client.Delete(ctx, deployment)
 	require.NoError(t, err)
