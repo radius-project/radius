@@ -19,9 +19,9 @@ package bicep
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
-	"os"
 	"strings"
+
+	"github.com/spf13/afero"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 )
@@ -29,20 +29,11 @@ import (
 // ParameterParser is used to parse the parameters as part of the `rad deploy` command. See the docs for `rad deploy` for examples
 // of what we need to support here.
 type ParameterParser struct {
-	FileSystem fs.FS
-}
-
-type OSFileSystem struct {
+	FileSystem afero.Fs
 }
 
 type ParameterFile struct {
 	Parameters clients.DeploymentParameters `json:"parameters"`
-}
-
-// The Open function opens the file specified by the name parameter and returns a file object and an error if the file
-// cannot be opened.
-func (OSFileSystem) Open(name string) (fs.File, error) {
-	return os.Open(name)
 }
 
 // ParseFileContents takes in a map of strings and any type and returns a DeploymentParameters object and
@@ -90,7 +81,7 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	if strings.HasPrefix(input, "@") {
 		// input is a file that declares multiple parameters
 		filePath := strings.TrimPrefix(input, "@")
-		b, err := fs.ReadFile(pp.FileSystem, filePath)
+		b, err := afero.ReadFile(pp.FileSystem, filePath)
 		if err != nil {
 			return err
 		}
@@ -111,7 +102,7 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	if strings.HasPrefix(parameterValue, "@") {
 		// input is a file that declares a single parameter
 		filePath := strings.TrimPrefix(parameterValue, "@")
-		b, err := fs.ReadFile(pp.FileSystem, filePath)
+		b, err := afero.ReadFile(pp.FileSystem, filePath)
 		if err != nil {
 			return err
 		}

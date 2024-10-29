@@ -1,0 +1,9 @@
+apiVersion: radapp.io/v1alpha3
+kind: DeploymentTemplate
+metadata:
+  name: value.yaml
+  namespace: radius-system
+spec:
+  parameters: '{"kubernetesNamespace":{"value":"test-namespace"}}'
+  providerConfig: '{"radius":{"type":"radius","value":{"scope":"/planes/radius/local/resourceGroups/test-resource-group"}},"deployments":{"type":"Microsoft.Resources","value":{"scope":"/planes/radius/local/resourceGroups/test-resource-group"}}}'
+  template: '{"parameters":{"kubernetesNamespace":{}},"resources":[{"some-key":"some-value"}]}'

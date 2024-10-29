@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2024 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,15 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package deploy
+package bicep
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/spf13/afero"
+
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -33,80 +36,40 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/spf13/afero"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+	"gopkg.in/yaml.v2"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad deploy` command.
-//
-
-// NewCommand creates a new Cobra command and a Runner to deploy a Bicep or ARM template to a specified environment, with
-// optional parameters. It also adds common flags to the command for workspace, resource group, environment name,
-// application name and parameters.
+// NewCommand creates a command for the `rad bicep generate-kubernetes-manifest` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "deploy [file]",
-		Short: "Deploy a template",
-		Long: `Deploy a Bicep or ARM template
+		Use:   "generate-kubernetes-manifest [file]",
+		Short: "Generate a DeploymentTemplate Custom Resource.",
+		Long: `Generate a DeploymentTemplate Custom Resource.
+
+	This command compiles a Bicep template with the given parameters and outputs a DeploymentTemplate Custom Resource.
+
+	You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
 	
-The deploy command compiles a Bicep or ARM template and deploys it to your default environment (unless otherwise specified).
+	- A file containing multiple parameters using the ARM JSON parameter format (see below)
+	- A file containing a single value in JSON format
+	- A key-value-pair passed in the command line
 	
-You can combine Radius types as as well as other types that are available in Bicep such as Azure resources. See
-the Radius documentation for information about describing your application and resources with Bicep.
-
-You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
-
-- A file containing multiple parameters using the ARM JSON parameter format (see below)
-- A file containing a single value in JSON format
-- A key-value-pair passed in the command line
-
-When passing multiple parameters in a single file, use the format described here:
-
-	https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
-
-You can specify parameters using multiple sources. Parameters can be overridden based on the 
-order the are provided. Parameters appearing later in the argument list will override those defined earlier.
-`,
+	When passing multiple parameters in a single file, use the format described here:
+	
+		https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
+	
+	You can specify parameters using multiple sources. Parameters can be overridden based on the 
+	order the are provided. Parameters appearing later in the argument list will override those defined earlier.
+		`,
 		Example: `
-# deploy a Bicep template
-rad deploy myapp.bicep
-
-# deploy an ARM template (json)
-rad deploy myapp.json
-
-# deploy to a specific workspace
-rad deploy myapp.bicep --workspace production
-
-# deploy using a specific environment
-rad deploy myapp.bicep --environment production
-
-# deploy using a specific environment and resource group
-rad deploy myapp.bicep --environment production --group mygroup
-
-# deploy using an environment ID and a resource group. The application will be deployed in mygroup scope, using the specified environment.
-# use this option if the environment is in a different group.
-rad deploy myapp.bicep --environment /planes/radius/local/resourcegroups/prod/providers/Applications.Core/environments/prod --group mygroup
-
-# specify a string parameter
-rad deploy myapp.bicep --parameters version=latest
-
-
-# specify a non-string parameter using a JSON file
-rad deploy myapp.bicep --parameters configuration=@myfile.json
-
-
-# specify many parameters using an ARM JSON parameter file
-rad deploy myapp.bicep --parameters @myfile.json
-
-
-# specify parameters from multiple sources
-rad deploy myapp.bicep --parameters @myfile.json --parameters version=latest
-`,
+# Generate a DeploymentTemplate Custom Resource from a Bicep file.
+rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --parameters tag=latest --outfile app.yaml
+		`,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
@@ -117,10 +80,13 @@ rad deploy myapp.bicep --parameters @myfile.json --parameters version=latest
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddParameterFlag(cmd)
 
+	cmd.Flags().String("outfile", "", "Path of the generated DeploymentTemplate yaml file.")
+	_ = cmd.MarkFlagFilename("outfile", ".yaml")
+
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad deploy` command.
+// Runner is the runner implementation for the `rad bicep generate-kubernetes` command.
 type Runner struct {
 	Bicep             bicep.Interface
 	ConfigHolder      *framework.ConfigHolder
@@ -128,12 +94,13 @@ type Runner struct {
 	Deploy            deploy.Interface
 	Output            output.Interface
 
-	ApplicationName     string
+	FileSystem          afero.Fs
 	EnvironmentNameOrID string
 	FilePath            string
 	Parameters          map[string]map[string]any
 	Workspace           *workspaces.Workspace
 	Providers           *clients.Providers
+	OutFile             string
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.
@@ -147,11 +114,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad deploy` command.
-//
-
-// Validate validates the workspace, scope, environment name, application name, and parameters from the command
-// line arguments and returns an error if any of these are invalid.
+// Validate validates the inputs of the rad bicep generate-kubernetes-manifest command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -172,12 +135,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace.Scope = scope
 
 	r.EnvironmentNameOrID, err = cli.RequireEnvironmentNameOrID(cmd, args, *workspace)
-	if err != nil {
-		return err
-	}
-
-	// This might be empty, and that's fine!
-	r.ApplicationName, err = cli.ReadApplicationName(cmd, *workspace)
 	if err != nil {
 		return err
 	}
@@ -212,10 +169,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.Workspace.Environment = r.Providers.Radius.EnvironmentID
 	}
 
-	if r.ApplicationName != "" {
-		r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
-	}
-
 	if env.Properties != nil && env.Properties.Providers != nil {
 		if env.Properties.Providers.Aws != nil {
 			r.Providers.AWS = &clients.AWSProvider{
@@ -236,7 +189,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	parser := bicep.ParameterParser{FileSystem: afero.NewOsFs()}
+	if r.FileSystem == nil {
+		r.FileSystem = afero.NewOsFs()
+	}
+
+	parser := bicep.ParameterParser{FileSystem: r.FileSystem}
 	r.Parameters, err = parser.Parse(parameterArgs...)
 	if err != nil {
 		return err
@@ -245,11 +202,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad deploy` command.
-//
-
-// Run deploys a Bicep template into an environment from a workspace, optionally creating an application if
-// specified, and displays progress and completion messages. It returns an error if any of the operations fail.
+// Run runs the rad bicep generate-kubernetes-manifest command.
 func (r *Runner) Run(ctx context.Context) error {
 	template, err := r.Bicep.PrepareTemplate(r.FilePath)
 	if err != nil {
@@ -270,60 +223,24 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Create application if specified. This supports the case where the application resource
-	// is not specified in Bicep. Creating the application automatically helps us "bootstrap" in a new environment.
-	if r.ApplicationName != "" {
-		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-		if err != nil {
-			return err
-		}
-
-		// Validate that the environment exists already
-		_, err = client.GetEnvironment(ctx, r.EnvironmentNameOrID)
-		if err != nil {
-			// If the error is not a 404, return it
-			if !clients.Is404Error(err) {
-				return err
-			}
-
-			// If the error is a 404, it means that the environment does not exist,
-			// but this is okay. We don't want to create an application though.
-		} else {
-			err = client.CreateApplicationIfNotFound(ctx, r.ApplicationName, &v20231001preview.ApplicationResource{
-				Location: to.Ptr(v1.LocationGlobal),
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: &r.Workspace.Environment,
-				},
-			})
-			if err != nil {
-				return err
-			}
-		}
+	// create a DeploymentTemplate yaml file
+	// with the basefilename from the bicepfile
+	if r.OutFile == "" {
+		r.OutFile = strings.TrimSuffix(filepath.Base(r.FilePath), filepath.Ext(r.FilePath)) + ".yaml"
 	}
 
-	progressText := ""
-	if r.ApplicationName == "" {
-		progressText = fmt.Sprintf(
-			"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress...", r.FilePath, r.EnvironmentNameOrID, r.Workspace.Name)
-	} else {
-		progressText = fmt.Sprintf(
-			"Deploying template '%v' for application '%v' and environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress... ", r.FilePath, r.ApplicationName, r.EnvironmentNameOrID, r.Workspace.Name)
-	}
-
-	_, err = r.Deploy.DeployWithProgress(ctx, deploy.Options{
-		ConnectionFactory: r.ConnectionFactory,
-		Workspace:         *r.Workspace,
-		Template:          template,
-		Parameters:        r.Parameters,
-		ProgressText:      progressText,
-		CompletionText:    "Deployment Complete",
-		Providers:         r.Providers,
-	})
+	deploymentTemplate, err := r.generateDeploymentTemplate(r.OutFile, template, r.Parameters, r.Providers)
 	if err != nil {
 		return err
 	}
+
+	err = r.createDeploymentTemplateYAMLFile(deploymentTemplate)
+	if err != nil {
+		return err
+	}
+
+	// Print the path to the file
+	r.Output.LogInfo("DeploymentTemplate file created at %s", r.OutFile)
 
 	return nil
 }
@@ -331,13 +248,6 @@ func (r *Runner) Run(ctx context.Context) error {
 func (r *Runner) injectAutomaticParameters(template map[string]any) error {
 	if r.Providers.Radius.EnvironmentID != "" {
 		err := bicep.InjectEnvironmentParam(template, r.Parameters, r.Providers.Radius.EnvironmentID)
-		if err != nil {
-			return err
-		}
-	}
-
-	if r.Providers.Radius.ApplicationID != "" {
-		err := bicep.InjectApplicationParam(template, r.Parameters, r.Providers.Radius.ApplicationID)
 		if err != nil {
 			return err
 		}
@@ -376,8 +286,6 @@ func (r *Runner) reportMissingParameters(template map[string]any) error {
 		// Special case the parameters that are automatically injected
 		if strings.EqualFold(parameter, "environment") {
 			errors[parameter] = "The template requires an environment. Use --environment to specify the environment name."
-		} else if strings.EqualFold(parameter, "application") {
-			errors[parameter] = "The template requires an application. Use --application to specify the application name."
 		} else {
 			errors[parameter] = fmt.Sprintf("The template requires a parameter %q. Use --parameters %s=<value> to specify the value.", parameter, parameter)
 		}
@@ -396,4 +304,102 @@ func (r *Runner) reportMissingParameters(template map[string]any) error {
 	}
 
 	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", r.FilePath, strings.Join(details, "\n"))
+}
+
+// generateDeploymentTemplate generates a DeploymentTemplate Custom Resource from the given template and parameters.
+func (r *Runner) generateDeploymentTemplate(fileName string, template map[string]any, parameters map[string]map[string]any, providers *clients.Providers) (map[string]any, error) {
+	marshalledTemplate, err := json.Marshal(template)
+	if err != nil {
+		return nil, err
+	}
+
+	marshalledParameters, err := json.Marshal(parameters)
+	if err != nil {
+		return nil, err
+	}
+
+	providerConfig := r.convertProvidersToProviderConfig(providers)
+
+	marshalledProviderConfig, err := json.Marshal(providerConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	deploymentTemplate := map[string]any{
+		"kind":       "DeploymentTemplate",
+		"apiVersion": "radapp.io/v1alpha3",
+		"metadata": map[string]any{
+			"name":      fileName,
+			"namespace": "radius-system",
+		},
+		"spec": map[string]any{
+			"template":       string(marshalledTemplate),
+			"parameters":     string(marshalledParameters),
+			"providerConfig": string(marshalledProviderConfig),
+		},
+	}
+
+	return deploymentTemplate, nil
+}
+
+// createDeploymentTemplateYAMLFile creates a DeploymentTemplate YAML file with the given content.
+func (r *Runner) createDeploymentTemplateYAMLFile(deploymentTemplate map[string]any) error {
+	fmt.Println("Creating DeploymentTemplate YAML file")
+	f, err := r.FileSystem.Create(r.OutFile)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	deploymentTemplateYaml, err := yaml.Marshal(deploymentTemplate)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(deploymentTemplateYaml)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// convertProvidersToProviderConfig converts the the clients.Providers to sdkclients.ProviderConfig.
+func (r *Runner) convertProvidersToProviderConfig(providers *clients.Providers) (providerConfig sdkclients.ProviderConfig) {
+	providerConfig = sdkclients.ProviderConfig{}
+	if providers != nil {
+		if providers.AWS != nil {
+			providerConfig.AWS = &sdkclients.AWS{
+				Type: "aws",
+				Value: sdkclients.Value{
+					Scope: providers.AWS.Scope,
+				},
+			}
+		}
+		if providers.Azure != nil {
+			providerConfig.Az = &sdkclients.Az{
+				Type: "azure",
+				Value: sdkclients.Value{
+					Scope: providers.Azure.Scope,
+				},
+			}
+		}
+		if providers.Radius != nil {
+			providerConfig.Radius = &sdkclients.Radius{
+				Type: "radius",
+				Value: sdkclients.Value{
+					Scope: r.Workspace.Scope,
+				},
+			}
+			providerConfig.Deployments = &sdkclients.Deployments{
+				Type: "Microsoft.Resources",
+				Value: sdkclients.Value{
+					Scope: r.Workspace.Scope,
+				},
+			}
+		}
+	}
+
+	return providerConfig
 }

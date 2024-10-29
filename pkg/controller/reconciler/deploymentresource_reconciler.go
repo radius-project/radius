@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/go-logr/logr"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
@@ -161,6 +161,12 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 		// If we get here, the operation is complete.
 		_, err = poller.Result(ctx)
 		if err != nil {
+			if clients.Is404Error(err) {
+				// The resource was not found, so we can consider it deleted.
+				logger.Info("Resource was not found.")
+				return ctrl.Result{}, nil
+			}
+
 			// Operation failed, reset state and retry.
 			r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
 			logger.Error(err, "Delete failed.")
@@ -211,53 +217,53 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	// Check other resources that depend on this resource.
 
 	// List all DeploymentResource objects in the same namespace
-	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentResource.Namespace), client.MatchingFields{repositoryField: deploymentResource.Spec.Repository})
-	if err != nil {
-		return ctrl.Result{}, nil
-	}
+	// deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
+	// err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentResource.Namespace), client.MatchingFields{repositoryField: deploymentResource.Spec.Repository})
+	// if err != nil {
+	// 	return ctrl.Result{}, nil
+	// }
 
-	appsCount := 0
-	envsCount := 0
-	otherCount := 0
-	for _, dr := range deploymentResourceList.Items {
-		if dr.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseDeleted {
-			continue
-		}
-		if strings.Contains(dr.Spec.Id, "Applications.Core/applications") {
-			appsCount++
-		} else if strings.Contains(dr.Spec.Id, "Applications.Core/environments") {
-			envsCount++
-		} else if dr.Spec.Id != "" {
-			logger.Info(fmt.Sprintf("Other: %s", dr.Spec.Id))
-			otherCount++
-		}
-	}
+	// appsCount := 0
+	// envsCount := 0
+	// otherCount := 0
+	// for _, dr := range deploymentResourceList.Items {
+	// 	if dr.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseDeleted {
+	// 		continue
+	// 	}
+	// 	if strings.Contains(dr.Spec.Id, "Applications.Core/applications") {
+	// 		appsCount++
+	// 	} else if strings.Contains(dr.Spec.Id, "Applications.Core/environments") {
+	// 		envsCount++
+	// 	} else if dr.Spec.Id != "" {
+	// 		logger.Info(fmt.Sprintf("Other: %s", dr.Spec.Id))
+	// 		otherCount++
+	// 	}
+	// }
 
-	if strings.Contains(deploymentResource.Spec.Id, "Applications.Core/applications") {
-		// dont delete app until otherCount is 0
-		if otherCount > 0 {
-			logger.Info("Resource is an application, being used by another resource.", "resourceId", deploymentResource.Spec.Id)
-			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
-			err = r.Client.Status().Update(ctx, deploymentResource)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
-		}
-	}
+	// if strings.Contains(deploymentResource.Spec.Id, "Applications.Core/applications") {
+	// 	// dont delete app until otherCount is 0
+	// 	if otherCount > 0 {
+	// 		logger.Info("Resource is an application, being used by another resource.", "resourceId", deploymentResource.Spec.Id)
+	// 		deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
+	// 		err = r.Client.Status().Update(ctx, deploymentResource)
+	// 		if err != nil {
+	// 			return ctrl.Result{}, err
+	// 		}
+	// 		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	// 	}
+	// }
 
-	if strings.Contains(deploymentResource.Spec.Id, "Applications.Core/environments") {
-		if otherCount > 0 {
-			logger.Info("Resource is an environment, being used by another resource.", "resourceId", deploymentResource.Spec.Id)
-			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
-			err = r.Client.Status().Update(ctx, deploymentResource)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
-		}
-	}
+	// if strings.Contains(deploymentResource.Spec.Id, "Applications.Core/environments") {
+	// 	if otherCount > 0 {
+	// 		logger.Info("Resource is an environment, being used by another resource.", "resourceId", deploymentResource.Spec.Id)
+	// 		deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
+	// 		err = r.Client.Status().Update(ctx, deploymentResource)
+	// 		if err != nil {
+	// 			return ctrl.Result{}, err
+	// 		}
+	// 		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	// 	}
+	// }
 
 	poller, err := r.startDeleteOperation(ctx, deploymentResource)
 	if err != nil {

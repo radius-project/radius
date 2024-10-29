@@ -1,0 +1,9 @@
+apiVersion: radapp.io/v1alpha3
+kind: DeploymentTemplate
+metadata:
+  name: azure.yaml
+  namespace: radius-system
+spec:
+  parameters: '{}'
+  providerConfig: '{"radius":{"type":"radius","value":{"scope":"/planes/radius/local/resourceGroups/test-resource-group"}},"az":{"type":"azure","value":{"scope":"/subscriptions/test-subId/resourceGroups/test-rg"}},"deployments":{"type":"Microsoft.Resources","value":{"scope":"/planes/radius/local/resourceGroups/test-resource-group"}}}'
+  template: '{}'

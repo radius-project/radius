@@ -19,6 +19,8 @@ package register
 import (
 	"context"
 
+	"github.com/spf13/afero"
+
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -148,7 +150,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
+	parser := bicep.ParameterParser{FileSystem: afero.NewOsFs()}
 	r.Parameters, err = parser.Parse(parameterArgs...)
 	if err != nil {
 		return err
