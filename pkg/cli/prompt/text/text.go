@@ -22,7 +22,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/reflow/wrap"
+	"github.com/charmbracelet/x/ansi"
 )
 
 var (
@@ -151,7 +151,7 @@ func (m Model) View() string {
 	view := &strings.Builder{}
 	view.WriteString(m.prompt)
 	view.WriteString("\n\n")
-	view.WriteString(wrap.String(m.textInput.View(), m.width))
+	view.WriteString(m.textInput.View())
 	view.WriteString("\n\n")
 	view.WriteString("(ctrl+c to quit)")
 	if m.textInput.Err != nil {
@@ -160,7 +160,7 @@ func (m Model) View() string {
 		view.WriteString(m.ErrStyle.Render(m.textInput.Err.Error()))
 	}
 
-	return m.Style.Render(view.String())
+	return m.Style.Render(ansi.Hardwrap(view.String(), m.width, true))
 }
 
 // GetValue returns the input from the user, or the default value if the user did not enter anything.
