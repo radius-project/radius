@@ -153,12 +153,3 @@ clean: ## Cleans output directory.
 .PHONY: lint
 lint: ## Runs golangci-lint
 	$(GOLANGCI_LINT) run --fix --timeout 5m
-
-define generateBicepBuildTarget
-.PHONY: build-bicep-$(1)-$(2)
-build-bicep-$(1)-$(2):
-	@echo "$(ARROW) Building bicep on $(1)/$(2)"
-endef
-
-# Generate bicep build targets for each combination of OS and ARCH
-$(foreach ARCH,$(GOARCHES),$(foreach OS,$(GOOSES),$(eval $(call generateBicepBuildTarget,$(OS),$(ARCH)))))

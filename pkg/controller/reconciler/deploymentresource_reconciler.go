@@ -39,6 +39,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	repositoryField = "spec.repository"
+)
+
 // DeploymentResourceReconciler reconciles a DeploymentResource object.
 type DeploymentResourceReconciler struct {
 	// Client is the Kubernetes client.

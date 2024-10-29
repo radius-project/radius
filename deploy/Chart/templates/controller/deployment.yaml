@@ -27,13 +27,6 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: controller
-      initContainers:
-      - name: bicep
-        image: "{{ .Values.bicep.image }}:{{ .Values.bicep.tag | default $appversion }}"
-        command: ['sh', '-c', 'mv ./bicep /usr/local/bin/bicep']
-        volumeMounts:
-        - name: bicep
-          mountPath: /usr/local/bin
       containers:
       - name: controller
         image: "{{ .Values.controller.image }}:{{ .Values.controller.tag | default $appversion }}"
@@ -69,8 +62,6 @@ spec:
         resources:{{ toYaml .Values.controller.resources | nindent 10 }}
         {{- end }}
         volumeMounts:
-        - name: bicep
-          mountPath: /usr/local/bin
         - name: config-volume
           mountPath: /etc/config
         - name: cert
@@ -82,8 +73,6 @@ spec:
           readOnly: true
         {{- end }}
       volumes:
-        - name: bicep
-          emptyDir: {}
         - name: config-volume
           configMap:
             name: controller-config
