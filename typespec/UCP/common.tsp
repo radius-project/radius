@@ -36,10 +36,10 @@ using Azure.ResourceManager.Foundations;
 using OpenAPI;
 
 @doc("The UCP HTTP request base parameters.")
-model CredentialBaseParameters<TResource, TPlaneName = {}> {
+model CredentialBaseParameters<Resource, TPlaneName = {}> {
   ...ApiVersionParameter;
   ...TPlaneName;
-  ...KeysOf<TResource>;
+  ...KeysOf<Resource>;
 }
 
 @doc("Credential store kinds supported.")

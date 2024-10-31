@@ -114,8 +114,8 @@ model AzureWorkloadIdentityProperties extends AzureCredentialProperties {
   storage: CredentialStorageProperties;
 }
 
-alias AzureCredentialBaseParameter<TResource> = CredentialBaseParameters<
-  TResource,
+alias AzureCredentialBaseParameter<Resource> = CredentialBaseParameters<
+  Resource,
   AzurePlaneNameParameter
 >;
 

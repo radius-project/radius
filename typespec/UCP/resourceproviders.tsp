@@ -174,28 +174,28 @@ model ResourceProviderSummaryResourceType {
 @doc("The configuration of a resource type API version.")
 model ResourceTypeSummaryResultApiVersion {}
 
-model ResourceProviderBaseParameters<TResource> {
+model ResourceProviderBaseParameters<Resource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
-  ...KeysOf<TResource>;
+  ...KeysOf<Resource>;
 }
 
-model ResourceTypeBaseParameters<TResource> {
+model ResourceTypeBaseParameters<Resource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
   ...KeysOf<ResourceProviderResource>;
-  ...KeysOf<TResource>;
+  ...KeysOf<Resource>;
 }
 
-model ApiVersionBaseParameters<TResource> {
+model ApiVersionBaseParameters<Resource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
   ...KeysOf<ResourceProviderResource>;
   ...KeysOf<ResourceTypeResource>;
-  ...KeysOf<TResource>;
+  ...KeysOf<Resource>;
 }
 
-model LocationBaseParameters<TResource> {
+model LocationBaseParameters<Resource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
   ...KeysOf<ResourceProviderResource>;
-  ...KeysOf<TResource>;
+  ...KeysOf<Resource>;
 }
 
 @route("/planes")

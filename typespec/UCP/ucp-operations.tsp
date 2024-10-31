@@ -20,6 +20,7 @@ import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 
+
 using TypeSpec.Http;
 using TypeSpec.Rest;
 using Azure.ResourceManager;
@@ -32,26 +33,26 @@ using OpenAPI;
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @get
 @autoRoute
-@doc("List {name}", TResource)
-@segmentOf(TResource)
-@armResourceList(TResource)
-op UcpResourceList<TResource extends Foundations.Resource, TBaseParameters>(
+@doc("List {name}", Azure.ResourceManager.CommonTypes.Resource)
+@segmentOf(Azure.ResourceManager.CommonTypes.Resource)
+@armResourceList(Azure.ResourceManager.CommonTypes.Resource)
+op UcpResourceList<Resource, TBaseParameters>(
   ...TBaseParameters,
-  ...ParentKeysOf<TResource>,
-): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
+  ...ParentKeysOf<Resource>,
+): ArmResponse<ResourceListResult<Azure.ResourceManager.CommonTypes.Resource>> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Get a {name}", TResource)
+@doc("Get a {name}", Resource)
 @get
-@armResourceRead(TResource)
-op UcpResourceRead<TResource extends Foundations.Resource, TBaseParameters>(
+@armResourceRead(Resource)
+op UcpResourceRead<Resource extends Foundations.Resource, TBaseParameters>(
   ...TBaseParameters,
-): ArmResponse<TResource> | ErrorResponse;
+): ArmResponse<Resource> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Create a {name}", TResource)
+@doc("Create a {name}", Resource)
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
@@ -59,22 +60,22 @@ op UcpResourceRead<TResource extends Foundations.Resource, TBaseParameters>(
     `final-state-via`: "azure-async-operation",
   }
 )
-@armResourceCreateOrUpdate(TResource)
+@armResourceCreateOrUpdate(Resource)
 @put
 op UcpResourceCreateOrUpdateAsync<
-  TResource extends Foundations.Resource,
+  Resource extends Foundations.Resource,
   TBaseParameters
 >(
   ...TBaseParameters,
 
   @doc("Resource create parameters.")
   @body
-  resource: TResource,
-): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedResponse<TResource> | ErrorResponse;
+  resource: Resource,
+): ArmResourceUpdatedResponse<Resource> | ArmResourceCreatedResponse<Resource> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Update a {name}", TResource)
+@doc("Update a {name}", Resource)
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
@@ -82,23 +83,23 @@ op UcpResourceCreateOrUpdateAsync<
     `final-state-via`: "location",
   }
 )
-@armResourceUpdate(TResource)
+@armResourceUpdate(Resource)
 @patch
 op UcpCustomPatchAsync<
-  TResource extends Foundations.Resource,
+  Resource extends Foundations.Resource,
   TBaseParameters,
-  TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<TResource>
+  TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<Resource>
 >(
   ...TBaseParameters,
 
   @doc("The resource properties to be updated.")
   @body
   properties: TPatchModel,
-): ArmResponse<TResource> | ArmAcceptedLroResponse<"Resource update request accepted."> | ErrorResponse;
+): ArmResponse<Resource> | ArmAcceptedLroResponse<"Resource update request accepted."> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Delete a {name}", TResource)
+@doc("Delete a {name}", Resource)
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
@@ -106,10 +107,10 @@ op UcpCustomPatchAsync<
     `final-state-via`: "location",
   }
 )
-@armResourceDelete(TResource)
+@armResourceDelete(Resource)
 @delete
 op UcpResourceDeleteAsync<
-  TResource extends Foundations.Resource,
+  Resource extends Foundations.Resource,
   TBaseParameters
 >(...TBaseParameters):
   | ArmDeletedResponse
@@ -119,44 +120,44 @@ op UcpResourceDeleteAsync<
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Create a {name}", TResource)
-@armResourceCreateOrUpdate(TResource)
+@doc("Create a {name}", Resource)
+@armResourceCreateOrUpdate(Resource)
 @put
 op UcpResourceCreateOrUpdateSync<
-  TResource extends Foundations.Resource,
+  Resource extends Foundations.Resource,
   TBaseParameters
 >(
   ...TBaseParameters,
 
   @doc("Resource create parameters.")
   @body
-  resource: TResource,
-): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedSyncResponse<TResource> | ErrorResponse;
+  resource: Resource,
+): ArmResourceUpdatedResponse<Resource> | ArmResourceCreatedSyncResponse<Resource> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Update a {name}", TResource)
-@armResourceUpdate(TResource)
+@doc("Update a {name}", Resource)
+@armResourceUpdate(Resource)
 @patch
 op UcpCustomPatchSync<
-  TResource extends Foundations.Resource,
+  Resource extends Foundations.Resource,
   TBaseParameters,
-  TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<TResource>
+  TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<Resource>
 >(
   ...TBaseParameters,
 
   @doc("The resource properties to be updated.")
   @body
   properties: TPatchModel,
-): ArmResponse<TResource> | ErrorResponse;
+): ArmResponse<Resource> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Delete a {name}", TResource)
-@armResourceDelete(TResource)
+@doc("Delete a {name}", Resource)
+@armResourceDelete(Resource)
 @delete
 op UcpResourceDeleteSync<
-  TResource extends Foundations.Resource,
+  Resource extends Foundations.Resource,
   TBaseParameters
 >(
   ...TBaseParameters,

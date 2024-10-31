@@ -108,8 +108,8 @@ model AwsIRSACredentialProperties extends AwsCredentialProperties {
   storage: CredentialStorageProperties;
 }
 
-alias AwsCredentialBaseParameter<TResource> = CredentialBaseParameters<
-  TResource,
+alias AwsCredentialBaseParameter<Resource> = CredentialBaseParameters<
+  Resource,
   AwsPlaneNameParameter
 >;
 

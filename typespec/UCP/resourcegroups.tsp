@@ -68,9 +68,9 @@ model GenericResource extends ProxyResource<ResourceProperties> {
 model ResourceProperties {}
 
 @doc("The UCP HTTP request base parameters.")
-model ResourceGroupBaseParameters<TResource> {
+model ResourceGroupBaseParameters<Resource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
-  ...KeysOf<TResource>;
+  ...KeysOf<Resource>;
 }
 
 @route("/planes")
