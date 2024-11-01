@@ -104,7 +104,7 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 	// Deployment will be waiting for template to complete provisioning.
 	status := waitForDeploymentTemplateStateUpdating(t, client, name, nil)
 
-	scope, err := parseDeploymentScopeFromProviderConfig(status.ProviderConfig)
+	scope, err := ParseDeploymentScopeFromProviderConfig(status.ProviderConfig)
 	require.NoError(t, err)
 	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic", scope)
 

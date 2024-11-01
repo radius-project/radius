@@ -125,7 +125,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		scope, err := parseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
+		scope, err := ParseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to parse deployment scope: %w", err)
 		}
@@ -474,7 +474,7 @@ func (r *DeploymentTemplateReconciler) requeueDelay() time.Duration {
 	return delay
 }
 
-func parseDeploymentScopeFromProviderConfig(providerConfig string) (string, error) {
+func ParseDeploymentScopeFromProviderConfig(providerConfig string) (string, error) {
 	config := sdkclients.ProviderConfig{}
 	json.Unmarshal([]byte(providerConfig), &config)
 
