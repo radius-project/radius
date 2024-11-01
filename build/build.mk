@@ -153,5 +153,3 @@ clean: ## Cleans output directory.
 .PHONY: lint
 lint: ## Runs golangci-lint
 	$(GOLANGCI_LINT) run --fix --timeout 5m
-
-	
