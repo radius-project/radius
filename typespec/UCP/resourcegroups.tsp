@@ -73,34 +73,38 @@ model ResourceGroupBaseParameters<Resource> {
   ...KeysOf<Resource>;
 }
 
-@route("/planes")
 @armResourceOperations
 interface ResourceGroups {
   @doc("List resource groups")
+  @route("GET /planes/radius/{planeName}/resourcegroups")
   list is UcpResourceList<
     ResourceGroupResource,
     PlaneBaseParameters<RadiusPlaneResource>
   >;
 
   @doc("Get a resource group")
+  @route("GET /planes/radius/{planeName}/resourcegroups/{resourceGroupName}")
   get is UcpResourceRead<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;
 
   @doc("Create or update a resource group")
+  @route("PUT /planes/radius/{planeName}/resourcegroups/{resourceGroupName}")
   createOrUpdate is UcpResourceCreateOrUpdateSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;
 
   @doc("Update a resource group")
+  @route("PATCH /planes/radius/{planeName}/resourcegroups/{resourceGroupName}")
   update is UcpCustomPatchSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;
 
   @doc("Delete a resource group")
+  @route("DELETE /planes/radius/{planeName}/resourcegroups/{resourceGroupName}")
   delete is UcpResourceDeleteSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>

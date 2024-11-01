@@ -198,28 +198,31 @@ model LocationBaseParameters<Resource> {
   ...KeysOf<Resource>;
 }
 
-@route("/planes")
 @armResourceOperations
 interface ResourceProviders {
   @doc("List resource providers.")
+  @route("GET /planes/radius/{planeName}/providers/System.Resources/resourceproviders")
   list is UcpResourceList<
     ResourceProviderResource,
     PlaneBaseParameters<RadiusPlaneResource>
   >;
 
   @doc("Get the specified resource provider.")
+  @route("GET /planes/{resourceProviderName}")
   get is UcpResourceRead<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
   @doc("Create or update a resource provider")
+  @route("PUT /planes/{resourceProviderName}")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
   @doc("Delete a resource provider")
+  @route("DELETE /planes/{resourceProviderName}")
   delete is UcpResourceDeleteAsync<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
@@ -242,28 +245,31 @@ interface ResourceProviders {
   ): ArmResponse<ResourceProviderSummary> | ErrorResponse;
 }
 
-@route("/planes")
 @armResourceOperations
 interface ResourceTypes {
   @doc("List resource types.")
+  @route("GET /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes")
   list is UcpResourceList<
     ResourceTypeResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
   @doc("Get the specified resource type.")
+  @route("GET /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}")
   get is UcpResourceRead<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
   @doc("Create or update a resource type")
+  @route("PUT /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
   @doc("Delete a resource type")
+  @route("DELETE /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}")
   delete is UcpResourceDeleteAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>

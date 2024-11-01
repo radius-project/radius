@@ -167,7 +167,7 @@ func (client *AzureCredentialsClient) Get(ctx context.Context, planeName string,
 
 // getCreateRequest creates the Get request.
 func (client *AzureCredentialsClient) getCreateRequest(ctx context.Context, planeName string, credentialName string, options *AzureCredentialsClientGetOptions) (*policy.Request, error) {
-	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}"
+	urlPath := "/GET /planes/azure/{planeName}/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
@@ -229,7 +229,7 @@ func (client *AzureCredentialsClient) NewListPager(planeName string, options *Az
 
 // listCreateRequest creates the List request.
 func (client *AzureCredentialsClient) listCreateRequest(ctx context.Context, planeName string, options *AzureCredentialsClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials"
+	urlPath := "/GET /planes/azure/planes/azure/{planeName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
@@ -245,7 +245,7 @@ func (client *AzureCredentialsClient) listCreateRequest(ctx context.Context, pla
 // listHandleResponse handles the List response.
 func (client *AzureCredentialsClient) listHandleResponse(resp *http.Response) (AzureCredentialsClientListResponse, error) {
 	result := AzureCredentialsClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.AzureCredentialResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
 		return AzureCredentialsClientListResponse{}, err
 	}
 	return result, nil

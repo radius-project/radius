@@ -70,8 +70,7 @@ func (client *PlanesClient) NewListPlanesPager(options *PlanesClientListPlanesOp
 
 // listPlanesCreateRequest creates the ListPlanes request.
 func (client *PlanesClient) listPlanesCreateRequest(ctx context.Context, options *PlanesClientListPlanesOptions) (*policy.Request, error) {
-	urlPath := "/planes"
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, client.internal.Endpoint())
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +84,7 @@ func (client *PlanesClient) listPlanesCreateRequest(ctx context.Context, options
 // listPlanesHandleResponse handles the ListPlanes response.
 func (client *PlanesClient) listPlanesHandleResponse(resp *http.Response) (PlanesClientListPlanesResponse, error) {
 	result := PlanesClientListPlanesResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.GenericPlaneResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
 		return PlanesClientListPlanesResponse{}, err
 	}
 	return result, nil

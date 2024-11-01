@@ -68,7 +68,7 @@ func (client *AwsCredentialsClient) CreateOrUpdate(ctx context.Context, planeNam
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *AwsCredentialsClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, credentialName string, resource AwsCredentialResource, options *AwsCredentialsClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
+	urlPath := "/PUT /planes/aws/{planeName}/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
@@ -123,7 +123,7 @@ func (client *AwsCredentialsClient) Delete(ctx context.Context, planeName string
 
 // deleteCreateRequest creates the Delete request.
 func (client *AwsCredentialsClient) deleteCreateRequest(ctx context.Context, planeName string, credentialName string, options *AwsCredentialsClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
+	urlPath := "/DELETE /planes/aws/{planeName}/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
@@ -167,7 +167,7 @@ func (client *AwsCredentialsClient) Get(ctx context.Context, planeName string, c
 
 // getCreateRequest creates the Get request.
 func (client *AwsCredentialsClient) getCreateRequest(ctx context.Context, planeName string, credentialName string, options *AwsCredentialsClientGetOptions) (*policy.Request, error) {
-	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
+	urlPath := "/GET /planes/aws/{planeName}/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
@@ -196,9 +196,8 @@ func (client *AwsCredentialsClient) getHandleResponse(resp *http.Response) (AwsC
 // NewListPager - List AWS credentials
 //
 // Generated from API version 2023-10-01-preview
-//   - planeName - The name of AWS plane
 //   - options - AwsCredentialsClientListOptions contains the optional parameters for the AwsCredentialsClient.NewListPager method.
-func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsCredentialsClientListOptions) (*runtime.Pager[AwsCredentialsClientListResponse]) {
+func (client *AwsCredentialsClient) NewListPager(options *AwsCredentialsClientListOptions) (*runtime.Pager[AwsCredentialsClientListResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[AwsCredentialsClientListResponse]{
 		More: func(page AwsCredentialsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -207,7 +206,7 @@ func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsC
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listCreateRequest(ctx, planeName, options)
+				req, err = client.listCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -227,9 +226,8 @@ func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsC
 }
 
 // listCreateRequest creates the List request.
-func (client *AwsCredentialsClient) listCreateRequest(ctx context.Context, planeName string, options *AwsCredentialsClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials"
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+func (client *AwsCredentialsClient) listCreateRequest(ctx context.Context, options *AwsCredentialsClientListOptions) (*policy.Request, error) {
+	urlPath := "/GET /planes/aws"
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -244,7 +242,7 @@ func (client *AwsCredentialsClient) listCreateRequest(ctx context.Context, plane
 // listHandleResponse handles the List response.
 func (client *AwsCredentialsClient) listHandleResponse(resp *http.Response) (AwsCredentialsClientListResponse, error) {
 	result := AwsCredentialsClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
 		return AwsCredentialsClientListResponse{}, err
 	}
 	return result, nil
@@ -278,7 +276,7 @@ func (client *AwsCredentialsClient) Update(ctx context.Context, planeName string
 
 // updateCreateRequest creates the Update request.
 func (client *AwsCredentialsClient) updateCreateRequest(ctx context.Context, planeName string, credentialName string, properties AwsCredentialResourceTagsUpdate, options *AwsCredentialsClientUpdateOptions) (*policy.Request, error) {
-	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
+	urlPath := "/PATCH /planes/aws/{planeName}/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")

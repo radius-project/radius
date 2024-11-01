@@ -297,7 +297,7 @@ func (client *APIVersionsClient) NewListPager(planeName string, resourceProvider
 
 // listCreateRequest creates the List request.
 func (client *APIVersionsClient) listCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *APIVersionsClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/apiversions"
+	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -324,7 +324,7 @@ func (client *APIVersionsClient) listCreateRequest(ctx context.Context, planeNam
 // listHandleResponse handles the List response.
 func (client *APIVersionsClient) listHandleResponse(resp *http.Response) (APIVersionsClientListResponse, error) {
 	result := APIVersionsClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.APIVersionResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
 		return APIVersionsClientListResponse{}, err
 	}
 	return result, nil

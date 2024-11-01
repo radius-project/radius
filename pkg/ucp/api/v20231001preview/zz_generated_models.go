@@ -34,15 +34,6 @@ type APIVersionResource struct {
 	Type *string
 }
 
-// APIVersionResourceListResult - The response of a ApiVersionResource list operation.
-type APIVersionResourceListResult struct {
-	// REQUIRED; The ApiVersionResource items on this page
-	Value []*APIVersionResource
-
-	// The link to the next page of items
-	NextLink *string
-}
-
 // AwsAccessKeyCredentialProperties - AWS credential properties for Access Key
 type AwsAccessKeyCredentialProperties struct {
 	// REQUIRED; Access key ID for AWS identity
@@ -104,15 +95,6 @@ type AwsCredentialResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
-}
-
-// AwsCredentialResourceListResult - The response of a AwsCredentialResource list operation.
-type AwsCredentialResourceListResult struct {
-	// REQUIRED; The AwsCredentialResource items on this page
-	Value []*AwsCredentialResource
-
-	// The link to the next page of items
-	NextLink *string
 }
 
 // AwsCredentialResourceTagsUpdate - The type used for updating tags in AwsCredentialResource resources.
@@ -223,15 +205,6 @@ type AzureCredentialResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
-}
-
-// AzureCredentialResourceListResult - The response of a AzureCredentialResource list operation.
-type AzureCredentialResourceListResult struct {
-	// REQUIRED; The AzureCredentialResource items on this page
-	Value []*AzureCredentialResource
-
-	// The link to the next page of items
-	NextLink *string
 }
 
 // AzureCredentialResourceTagsUpdate - The type used for updating tags in AzureCredentialResource resources.
@@ -429,15 +402,6 @@ type GenericPlaneResource struct {
 	Type *string
 }
 
-// GenericPlaneResourceListResult - The response of a GenericPlaneResource list operation.
-type GenericPlaneResourceListResult struct {
-	// REQUIRED; The GenericPlaneResource items on this page
-	Value []*GenericPlaneResource
-
-	// The link to the next page of items
-	NextLink *string
-}
-
 // GenericPlaneResourceProperties - The properties of the generic representation of a plane resource.
 type GenericPlaneResourceProperties struct {
 	// READ-ONLY; The status of the asynchronous operation.
@@ -460,15 +424,6 @@ type GenericResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
-}
-
-// GenericResourceListResult - The response of a GenericResource list operation.
-type GenericResourceListResult struct {
-	// REQUIRED; The GenericResource items on this page
-	Value []*GenericResource
-
-	// The link to the next page of items
-	NextLink *string
 }
 
 // InternalCredentialStorageProperties - Internal credential storage properties
@@ -516,15 +471,6 @@ type LocationResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
-}
-
-// LocationResourceListResult - The response of a LocationResource list operation.
-type LocationResourceListResult struct {
-	// REQUIRED; The LocationResource items on this page
-	Value []*LocationResource
-
-	// The link to the next page of items
-	NextLink *string
 }
 
 // LocationResourceType - The configuration for a resource type in a specific location.
@@ -657,19 +603,19 @@ type ResourceGroupResource struct {
 	Type *string
 }
 
-// ResourceGroupResourceListResult - The response of a ResourceGroupResource list operation.
-type ResourceGroupResourceListResult struct {
-	// REQUIRED; The ResourceGroupResource items on this page
-	Value []*ResourceGroupResource
-
-	// The link to the next page of items
-	NextLink *string
-}
-
 // ResourceGroupResourceTagsUpdate - The type used for updating tags in ResourceGroupResource resources.
 type ResourceGroupResourceTagsUpdate struct {
 	// Resource tags.
 	Tags map[string]*string
+}
+
+// ResourceListResult - The response of a Resource list operation.
+type ResourceListResult struct {
+	// REQUIRED; The Resource items on this page
+	Value []*Resource
+
+	// The link to the next page of items
+	NextLink *string
 }
 
 // ResourceProviderProperties - The properties of a resource provider.
@@ -700,15 +646,6 @@ type ResourceProviderResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
-}
-
-// ResourceProviderResourceListResult - The response of a ResourceProviderResource list operation.
-type ResourceProviderResourceListResult struct {
-	// REQUIRED; The ResourceProviderResource items on this page
-	Value []*ResourceProviderResource
-
-	// The link to the next page of items
-	NextLink *string
 }
 
 // ResourceProviderSummary - The summary of a resource provider configuration. This type is optimized for querying resource
@@ -758,15 +695,6 @@ type ResourceTypeResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
-}
-
-// ResourceTypeResourceListResult - The response of a ResourceTypeResource list operation.
-type ResourceTypeResourceListResult struct {
-	// REQUIRED; The ResourceTypeResource items on this page
-	Value []*ResourceTypeResource
-
-	// The link to the next page of items
-	NextLink *string
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

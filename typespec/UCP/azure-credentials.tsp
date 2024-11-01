@@ -123,6 +123,7 @@ alias AzureCredentialBaseParameter<Resource> = CredentialBaseParameters<
 @armResourceOperations
 interface AzureCredentials {
   @doc("List Azure credentials")
+  @route("GET /planes/azure")
   list is UcpResourceList<
     AzureCredentialResource,
     {
@@ -132,6 +133,7 @@ interface AzureCredentials {
   >;
 
   @doc("Get an Azure credential")
+  @route("GET /planes/azure/{planeName}")
   get is UcpResourceRead<
     AzureCredentialResource,
     AzureCredentialBaseParameter<AzureCredentialResource>

@@ -26,8 +26,8 @@ type APIVersionsClientGetResponse struct {
 
 // APIVersionsClientListResponse contains the response from method APIVersionsClient.NewListPager.
 type APIVersionsClientListResponse struct {
-	// The response of a ApiVersionResource list operation.
-	APIVersionResourceListResult
+	// The response of a Resource list operation.
+	ResourceListResult
 }
 
 // AwsCredentialsClientCreateOrUpdateResponse contains the response from method AwsCredentialsClient.CreateOrUpdate.
@@ -49,8 +49,8 @@ type AwsCredentialsClientGetResponse struct {
 
 // AwsCredentialsClientListResponse contains the response from method AwsCredentialsClient.NewListPager.
 type AwsCredentialsClientListResponse struct {
-	// The response of a AwsCredentialResource list operation.
-	AwsCredentialResourceListResult
+	// The response of a Resource list operation.
+	ResourceListResult
 }
 
 // AwsCredentialsClientUpdateResponse contains the response from method AwsCredentialsClient.Update.
@@ -107,8 +107,8 @@ type AzureCredentialsClientGetResponse struct {
 
 // AzureCredentialsClientListResponse contains the response from method AzureCredentialsClient.NewListPager.
 type AzureCredentialsClientListResponse struct {
-	// The response of a AzureCredentialResource list operation.
-	AzureCredentialResourceListResult
+	// The response of a Resource list operation.
+	ResourceListResult
 }
 
 // AzureCredentialsClientUpdateResponse contains the response from method AzureCredentialsClient.Update.
@@ -167,14 +167,14 @@ type LocationsClientGetResponse struct {
 
 // LocationsClientListResponse contains the response from method LocationsClient.NewListPager.
 type LocationsClientListResponse struct {
-	// The response of a LocationResource list operation.
-	LocationResourceListResult
+	// The response of a Resource list operation.
+	ResourceListResult
 }
 
 // PlanesClientListPlanesResponse contains the response from method PlanesClient.NewListPlanesPager.
 type PlanesClientListPlanesResponse struct {
-	// The response of a GenericPlaneResource list operation.
-	GenericPlaneResourceListResult
+	// The response of a Resource list operation.
+	ResourceListResult
 }
 
 // RadiusPlanesClientCreateOrUpdateResponse contains the response from method RadiusPlanesClient.BeginCreateOrUpdate.
@@ -225,8 +225,8 @@ type ResourceGroupsClientGetResponse struct {
 
 // ResourceGroupsClientListResponse contains the response from method ResourceGroupsClient.NewListPager.
 type ResourceGroupsClientListResponse struct {
-	// The response of a ResourceGroupResource list operation.
-	ResourceGroupResourceListResult
+	// The response of a Resource list operation.
+	ResourceListResult
 }
 
 // ResourceGroupsClientUpdateResponse contains the response from method ResourceGroupsClient.Update.
@@ -267,8 +267,8 @@ type ResourceProvidersClientListProviderSummariesResponse struct {
 
 // ResourceProvidersClientListResponse contains the response from method ResourceProvidersClient.NewListPager.
 type ResourceProvidersClientListResponse struct {
-	// The response of a ResourceProviderResource list operation.
-	ResourceProviderResourceListResult
+	// The response of a Resource list operation.
+	ResourceListResult
 }
 
 // ResourceTypesClientCreateOrUpdateResponse contains the response from method ResourceTypesClient.BeginCreateOrUpdate.
@@ -290,13 +290,13 @@ type ResourceTypesClientGetResponse struct {
 
 // ResourceTypesClientListResponse contains the response from method ResourceTypesClient.NewListPager.
 type ResourceTypesClientListResponse struct {
-	// The response of a ResourceTypeResource list operation.
-	ResourceTypeResourceListResult
+	// The response of a Resource list operation.
+	ResourceListResult
 }
 
 // ResourcesClientListResponse contains the response from method ResourcesClient.NewListPager.
 type ResourcesClientListResponse struct {
-	// The response of a GenericResource list operation.
-	GenericResourceListResult
+	// The response of a Resource list operation.
+	ResourceListResult
 }
 
