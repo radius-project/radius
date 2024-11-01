@@ -219,9 +219,13 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	// fully processed any status changes until the async operation completes.
 	deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
 
-	// Check other resources that depend on this resource.
+	// NOTE: The following is a workaround for Radius API behavior. Since deleting
+	// an application or environment can leave hanging resources, we need to make sure to
+	// delete these resources before deleting the application or environment.
 
+	// Check other resources that depend on this resource.
 	// List all DeploymentResource objects in the same namespace
+	// that have the same repository.
 	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
 	err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentResource.Namespace), client.MatchingFields{repositoryField: deploymentResource.Spec.Repository})
 	if err != nil {
@@ -240,7 +244,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		} else if strings.Contains(dr.Spec.Id, "Applications.Core/environments") {
 			envsCount++
 		} else if dr.Spec.Id != "" {
-			logger.Info(fmt.Sprintf("Other: %s", dr.Spec.Id))
+			logger.Info("Resource is being used by another resource.", "resourceId", dr.Spec.Id)
 			otherCount++
 		}
 	}

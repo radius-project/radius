@@ -77,7 +77,6 @@ rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddParameterFlag(cmd)
 
 	cmd.Flags().String("outfile", "", "Path of the generated DeploymentTemplate yaml file.")
