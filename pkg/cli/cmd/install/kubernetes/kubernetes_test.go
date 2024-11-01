@@ -73,7 +73,7 @@ func Test_Run(t *testing.T) {
 			Times(1)
 
 		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
-			Radius: helm.RadiusOptions{
+			Radius: helm.ChartOptions{
 				ChartPath: "test-chart",
 				SetArgs:   []string{"foo=bar", "bar=baz"},
 			},
@@ -143,7 +143,7 @@ func Test_Run(t *testing.T) {
 			Times(1)
 
 		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
-			Radius: helm.RadiusOptions{
+			Radius: helm.ChartOptions{
 				ChartPath: "test-chart",
 				SetArgs:   []string{"foo=bar", "bar=baz"},
 				Reinstall: true,

@@ -61,6 +61,9 @@ func NewDefaultClusterOptions() ClusterOptions {
 		Radius: ChartOptions{
 			ChartVersion: chartVersion,
 		},
+		Dapr: ChartOptions{
+			ChartVersion: "", // Use the latest version
+		},
 	}
 }
 
@@ -182,7 +185,7 @@ func queryRelease(kubeContext, namespace, releaseName string) (bool, string, err
 
 	releases, err := histClient.Run(releaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		return false, "", driver.ErrReleaseNotFound
+		return false, "", nil
 	} else if err != nil {
 		return false, "", err
 	} else if len(releases) == 0 {
@@ -237,7 +240,7 @@ type Interface interface {
 	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error)
 
 	// UninstallRadius uninstalls Radius from the cluster based on the specified Kubernetes context. Will succeed regardless of whether Radius is installed.
-	UninstallRadius(ctx context.Context, kubeContext string) error
+	UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 }
 
 type Impl struct {

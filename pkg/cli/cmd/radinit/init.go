@@ -213,7 +213,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	if r.Options.Cluster.Install {
 		cliOptions := helm.CLIClusterOptions{
-			Radius: helm.RadiusOptions{
+			Radius: helm.ChartOptions{
 				SetArgs: r.Options.SetValues,
 			},
 		}

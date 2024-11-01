@@ -24,15 +24,15 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 )
 
-func Test_AddRadiusValues(t *testing.T) {
+func Test_AddValues(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
-	options := &RadiusOptions{
+	options := &ChartOptions{
 		SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
 		SetFileArgs: []string{"global.rootCA.cert=./testdata/fake-ca-cert.crt"},
 	}
 
-	err := AddRadiusValues(&helmChart, options)
+	err := AddValues(&helmChart, options)
 	require.Equal(t, err, nil)
 
 	values := helmChart.Values
@@ -62,11 +62,11 @@ func Test_AddRadiusValues(t *testing.T) {
 func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
-	options := &RadiusOptions{
+	options := &ChartOptions{
 		SetArgs: []string{"rp.image=ghcr.io/radius-project/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
 	}
 
-	err := AddRadiusValues(&helmChart, options)
+	err := AddValues(&helmChart, options)
 	require.Equal(t, err, nil)
 
 	values := helmChart.Values

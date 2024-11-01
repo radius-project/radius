@@ -72,7 +72,14 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
-		helmMock.EXPECT().UninstallRadius(ctx, "test-context").
+		helmMock.EXPECT().UninstallRadius(ctx, helm.ClusterOptions{
+			Radius: helm.ChartOptions{
+				Namespace: "radius-system",
+			},
+			Dapr: helm.ChartOptions{
+				Namespace: "dapr-system",
+			},
+		}, "test-context").
 			Return(nil).
 			Times(1)
 
@@ -137,7 +144,14 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
-		helmMock.EXPECT().UninstallRadius(ctx, "test-context").
+		helmMock.EXPECT().UninstallRadius(ctx, helm.ClusterOptions{
+			Radius: helm.ChartOptions{
+				Namespace: "radius-system",
+			},
+			Dapr: helm.ChartOptions{
+				Namespace: "dapr-system",
+			},
+		}, "test-context").
 			Return(nil).
 			Times(1)
 
