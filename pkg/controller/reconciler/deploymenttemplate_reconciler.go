@@ -476,7 +476,10 @@ func (r *DeploymentTemplateReconciler) requeueDelay() time.Duration {
 
 func ParseDeploymentScopeFromProviderConfig(providerConfig string) (string, error) {
 	config := sdkclients.ProviderConfig{}
-	json.Unmarshal([]byte(providerConfig), &config)
+	err := json.Unmarshal([]byte(providerConfig), &config)
+	if err != nil {
+		return "", fmt.Errorf("failed to unmarshal providerConfig: %w", err)
+	}
 
 	if config.Deployments == nil {
 		return "", fmt.Errorf("providerConfig.Deployments is nil")

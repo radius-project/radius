@@ -37,9 +37,9 @@ const (
 	DeploymentResourceTestWaitInterval            = time.Second * 1
 	DeploymentResourceTestControllerDelayInterval = time.Millisecond * 100
 
-	TestDeploymentResourceNamespace           = "DeploymentResource-basic"
-	TestDeploymentResourceName                = "test-DeploymentResource"
-	TestDeploymentResourceRadiusResourceGroup = "default-DeploymentResource-basic"
+	TestDeploymentResourceNamespace           = "deploymentresource-basic"
+	TestDeploymentResourceName                = "test-deploymentresource"
+	TestDeploymentResourceRadiusResourceGroup = "default-deploymentresource-basic"
 )
 
 var (
