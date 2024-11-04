@@ -335,6 +335,7 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 			"template":       string(marshalledTemplate),
 			"parameters":     string(marshalledParameters),
 			"providerConfig": string(marshalledProviderConfig),
+			"repository":     fileName,
 		},
 	}
 
