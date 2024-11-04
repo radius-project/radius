@@ -28,3 +28,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/typespec/"
+    schedule:
+      interval: "weekly"
