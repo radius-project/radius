@@ -439,6 +439,14 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 		return nil, fmt.Errorf("providerConfig.Deployments.Value.Scope is empty")
 	}
 
+	// NOTE: using resource groups with lowercase here is a workaround for a casing bug in `rad app graph`.
+	// When https://github.com/radius-project/radius/issues/6422 is fixed we can use the more correct casing.
+	resourceGroupID := "/planes/radius/local/resourcegroups/default"
+	err = createResourceGroupIfNotExists(ctx, r.Radius, resourceGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resource group: %w", err)
+	}
+
 	logger.Info("Starting PUT operation.")
 	properties := map[string]any{
 		"mode":           "Incremental",
