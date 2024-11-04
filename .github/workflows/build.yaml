@@ -265,6 +265,7 @@ jobs:
   build-and-push-bicep-types:
     name: Publish Radius bicep types to ACR
     runs-on: ubuntu-latest
+    environment: publish-bicep
     steps: 
       - name: Check out code
         uses: actions/checkout@v4
@@ -288,7 +289,7 @@ jobs:
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
       - name: 'Login via Azure CLI'
-        if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
+        # if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
