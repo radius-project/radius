@@ -69,15 +69,22 @@ kind create cluster
 ./rad install kubernetes
 
 EXPECTED_APPCORE_RP_IMAGE="ghcr.io/radius-project/applications-rp:${EXPECTED_TAG_VERSION}"
+EXPECTED_DYNAMIC_RP_IMAGE="ghcr.io/radius-project/dynamic-rp:${EXPECTED_TAG_VERSION}"
 EXPECTED_UCP_IMAGE="ghcr.io/radius-project/ucpd:${EXPECTED_TAG_VERSION}"
 EXPECTED_DE_IMAGE="ghcr.io/radius-project/deployment-engine:${EXPECTED_TAG_VERSION}"
 
 APPCORE_RP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=applications-rp | awk '/^.*Image:/ {print $2}')
+DYNAMIC_RP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=dynamic-rp | awk '/^.*Image:/ {print $2}')
 UCP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=ucp | awk '/^.*Image:/ {print $2}')
 DE_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=bicep-de | awk '/^.*Image:/ {print $2}')
 
 if [[ "${APPCORE_RP_IMAGE}" != "${EXPECTED_APPCORE_RP_IMAGE}" ]]; then
     echo "Error: Applications RP image: ${APPCORE_RP_IMAGE} does not match the desired image: ${EXPECTED_APPCORE_RP_IMAGE}."
+    exit 1
+fi
+
+if [[ "${DYNAMIC_RP_IMAGE}" != "${EXPECTED_DYNAMIC_RP_IMAGE}" ]]; then
+    echo "Error: Dynamic RP image: ${DYNAMIC_RP_IMAGE} does not match the desired image: ${EXPECTED_DYNAMIC_RP_IMAGE}."
     exit 1
 fi
 

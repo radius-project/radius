@@ -38,6 +38,13 @@
             "env": {
                 "RADIUS_ENV": "self-hosted"
             }
+        },{
+            "name": "Launch Dynamic RP",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "preLaunchTask": "Build Radius (all)",
+            "program": "${workspaceFolder}/cmd/dynamic-rp/main.go",
         },
         {
             "name": "Launch UCP",
@@ -108,6 +115,7 @@
             "name": "Launch Control Plane (all)",
             "configurations": [
                 "Launch UCP",
+                "Launch Dynamic RP",
                 "Launch Applications RP",
                 "Launch Controller",
                 "Launch Deployment Engine",
