@@ -25,4 +25,7 @@ type SecretProviderOptions struct {
 
 	// ETCD configures options for the etcd secret store.
 	ETCD dataprovider.ETCDOptions `yaml:"etcd,omitempty"`
+
+	// InMemory configures options for the in-memory secret store.
+	InMemory struct{} `yaml:"inmemory,omitempty"`
 }

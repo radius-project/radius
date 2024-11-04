@@ -25,4 +25,7 @@ const (
 
 	// TypeKubernetesSecret represents the Kubernetes secret provider.
 	TypeKubernetesSecret SecretProviderType = "kubernetes"
+
+	// TypeInMemorySecret represents the in-memory secret provider.
+	TypeInMemorySecret SecretProviderType = "inmemory"
 )
