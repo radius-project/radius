@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubernetes
+package inmemory
 
 import (
 	"context"
@@ -22,10 +22,8 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/ucp/secret"
-	"github.com/radius-project/radius/test/k8sutil"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/kubectl/pkg/scheme"
 )
 
 const (
@@ -33,14 +31,14 @@ const (
 )
 
 func Test_Save(t *testing.T) {
-	k8sFakeClient := Client{
-		K8sClient: k8sutil.NewFakeKubeClient(scheme.Scheme),
-	}
 	ctx := context.Background()
+
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)
+
 	updatedSecretValue, err := json.Marshal("updated_secret_value")
 	require.NoError(t, err)
+
 	tests := []struct {
 		testName    string
 		secretName  string
@@ -56,35 +54,41 @@ func Test_Save(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
-			err := k8sFakeClient.Save(ctx, tt.secretName, tt.secretValue)
+			client := Client{}
+
+			err := client.Save(ctx, tt.secretName, tt.secretValue)
 			require.Equal(t, err, tt.err)
+
 			if tt.update {
-				err := k8sFakeClient.Save(ctx, tt.secretName, updatedSecretValue)
+				err := client.Save(ctx, tt.secretName, updatedSecretValue)
 				require.Equal(t, err, tt.err)
 			}
-			// if save is expected to succeed, then compare saved secret and delete after test
-			if tt.err == nil {
-				res, err := k8sFakeClient.Get(ctx, tt.secretName)
-				require.NoError(t, err)
-				if tt.update {
-					require.Equal(t, res, updatedSecretValue)
-				} else {
-					require.Equal(t, res, secretValue)
-				}
-				err = k8sFakeClient.Delete(ctx, tt.secretName)
-				require.NoError(t, err)
+
+			if tt.err != nil {
+				return
 			}
+
+			// If save is expected to succeed, then compare saved secret and delete after test
+			res, err := client.Get(ctx, tt.secretName)
+			require.NoError(t, err)
+			if tt.update {
+				require.Equal(t, res, updatedSecretValue)
+			} else {
+				require.Equal(t, res, secretValue)
+			}
+
+			err = client.Delete(ctx, tt.secretName)
+			require.NoError(t, err)
 		})
 	}
 }
 
 func Test_Get(t *testing.T) {
-	k8sFakeClient := Client{
-		K8sClient: k8sutil.NewFakeKubeClient(scheme.Scheme),
-	}
 	ctx := context.Background()
+
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)
+
 	tests := []struct {
 		testName   string
 		secretName string
@@ -98,19 +102,23 @@ func Test_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
+			client := Client{}
 			if tt.save {
-				err := k8sFakeClient.Save(ctx, tt.secretName, secretValue)
+				err := client.Save(ctx, tt.secretName, secretValue)
 				require.NoError(t, err)
 			}
-			res, err := k8sFakeClient.Get(ctx, tt.secretName)
+
+			res, err := client.Get(ctx, tt.secretName)
 			require.Equal(t, err, tt.err)
-			// if the get is successful then compare for values
+
+			// If the get is successful then compare for values
 			if tt.err == nil {
 				require.Equal(t, res, secretValue)
 			}
-			// if secret is saved, cleanup secret at the end
+
+			// If secret is saved, cleanup secret at the end
 			if tt.save {
-				err = k8sFakeClient.Delete(ctx, tt.secretName)
+				err = client.Delete(ctx, tt.secretName)
 				require.NoError(t, err)
 			}
 		})
@@ -118,12 +126,11 @@ func Test_Get(t *testing.T) {
 }
 
 func Test_Delete(t *testing.T) {
-	k8sFakeClient := Client{
-		K8sClient: k8sutil.NewFakeKubeClient(scheme.Scheme),
-	}
 	ctx := context.Background()
+
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)
+
 	tests := []struct {
 		testName   string
 		secretName string
@@ -137,11 +144,13 @@ func Test_Delete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
+			client := Client{}
 			if tt.save {
-				err := k8sFakeClient.Save(ctx, tt.secretName, secretValue)
+				err := client.Save(ctx, tt.secretName, secretValue)
 				require.NoError(t, err)
 			}
-			err = k8sFakeClient.Delete(ctx, tt.secretName)
+
+			err = client.Delete(ctx, tt.secretName)
 			require.Equal(t, err, tt.err)
 		})
 	}
