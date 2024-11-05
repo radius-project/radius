@@ -40,7 +40,7 @@ const (
 	RadiusSystemNamespace = "radius-system"
 
 	daprReleaseName     = "dapr"
-	daprHelmRepo        = "oci://ghcr.io/Dapr-project/helm-charts"
+	daprHelmRepo        = "https://dapr.github.io/helm-charts"
 	DaprSystemNamespace = "dapr-system"
 )
 

@@ -60,9 +60,15 @@ func NewDefaultClusterOptions() ClusterOptions {
 		},
 		Radius: ChartOptions{
 			ChartVersion: chartVersion,
+			Namespace:    RadiusSystemNamespace,
+			ReleaseName:  radiusReleaseName,
+			ChartRepo:    radiusHelmRepo,
 		},
 		Dapr: ChartOptions{
 			ChartVersion: "", // Use the latest version
+			Namespace:    DaprSystemNamespace,
+			ReleaseName:  daprReleaseName,
+			ChartRepo:    daprHelmRepo,
 		},
 	}
 }
