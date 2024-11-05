@@ -130,3 +130,8 @@ func AddAWSAccountFlag(cmd *cobra.Command) {
 func AddKubeContextFlagVar(cmd *cobra.Command, ref *string) {
 	cmd.Flags().StringVar(ref, "kubecontext", "", "The Kubernetes context to use, will use the default if unset")
 }
+
+// AddFromFileFlag adds a flag to the given command that allows the user to specify an input file.
+func AddFromFileFlagVar(cmd *cobra.Command, ref *string) {
+	cmd.Flags().StringVarP(ref, "from-file", "f", "", "The input file. May be an absolute path or a path relative to the current working directory")
+}

@@ -34,7 +34,7 @@ import (
 // Because these interfaces are non-exported, they MUST be defined in their own file
 // and we MUST use -source on mockgen to generate mocks for them.
 
-//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient
+//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient
 
 // genericResourceClient is an interface for mocking the generated SDK client for any resource.
 type genericResourceClient interface {
@@ -70,4 +70,19 @@ type resourceGroupClient interface {
 	Delete(ctx context.Context, planeName string, resourceGroupName string, options *ucpv20231001.ResourceGroupsClientDeleteOptions) (ucpv20231001.ResourceGroupsClientDeleteResponse, error)
 	Get(ctx context.Context, planeName string, resourceGroupName string, options *ucpv20231001.ResourceGroupsClientGetOptions) (ucpv20231001.ResourceGroupsClientGetResponse, error)
 	NewListPager(planeName string, options *ucpv20231001.ResourceGroupsClientListOptions) *runtime.Pager[ucpv20231001.ResourceGroupsClientListResponse]
+}
+
+// resourceProviderClient is an interface for mocking the generated SDK client for resource providers.
+type resourceProviderClient interface {
+	BeginCreateOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resource ucpv20231001.ResourceProviderResource, options *ucpv20231001.ResourceProvidersClientBeginCreateOrUpdateOptions) (*runtime.Poller[ucpv20231001.ResourceProvidersClientCreateOrUpdateResponse], error)
+	BeginDelete(ctx context.Context, planeName string, resourceProviderName string, options *ucpv20231001.ResourceProvidersClientBeginDeleteOptions) (*runtime.Poller[ucpv20231001.ResourceProvidersClientDeleteResponse], error)
+	Get(ctx context.Context, planeName string, resourceProviderName string, options *ucpv20231001.ResourceProvidersClientGetOptions) (ucpv20231001.ResourceProvidersClientGetResponse, error)
+	NewListPager(planeName string, options *ucpv20231001.ResourceProvidersClientListOptions) *runtime.Pager[ucpv20231001.ResourceProvidersClientListResponse]
+	GetProviderSummary(ctx context.Context, planeName string, resourceProviderName string, options *ucpv20231001.ResourceProvidersClientGetProviderSummaryOptions) (ucpv20231001.ResourceProvidersClientGetProviderSummaryResponse, error)
+	NewListProviderSummariesPager(planeName string, options *ucpv20231001.ResourceProvidersClientListProviderSummariesOptions) *runtime.Pager[ucpv20231001.ResourceProvidersClientListProviderSummariesResponse]
+}
+
+// resourceProviderClient is an interface for mocking the generated SDK client for resource types.
+type resourceTypeClient interface {
+	BeginDelete(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ucpv20231001.ResourceTypesClientBeginDeleteOptions) (*runtime.Poller[ucpv20231001.ResourceTypesClientDeleteResponse], error)
 }
