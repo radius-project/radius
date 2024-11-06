@@ -23,12 +23,13 @@ You can run cmd/ucp/main.go in vscode with the following configuration set in yo
             "env": {
                 "BASE_PATH": "/apis/api.ucp.dev/v1alpha3",
                 "PORT": "9000",
-                "UCP_CONFIG": "ucp-self-hosted-dev.yaml",
                 "AWS_REGION": "{region}",
                 "AWS_ACCESS_KEY_ID": "{aws key}",
                 "AWS_SECRET_ACCESS_KEY": "{secret key}"
             },
             "args": [
+                "--config-file",
+                "${workspaceFolder}/cmd/ucpd/ucp-dev.yaml",
             ]
         },
     ...

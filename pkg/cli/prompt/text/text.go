@@ -22,6 +22,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 var (
@@ -58,6 +59,7 @@ type Model struct {
 	prompt       string
 	textInput    textinput.Model
 	valueEntered bool
+	width        int
 }
 
 // NewTextModel returns a new text model with prompt message.
@@ -74,7 +76,6 @@ func NewTextModel(prompt string, options TextModelOptions) Model {
 	// so it will be blocked. This means you can't type `prod-aws` which is a valid name.
 	ti := textinput.New()
 	ti.Focus()
-	ti.Width = 40
 	ti.Placeholder = options.Placeholder
 	ti.EchoMode = options.EchoMode
 
@@ -101,6 +102,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
@@ -157,7 +160,7 @@ func (m Model) View() string {
 		view.WriteString(m.ErrStyle.Render(m.textInput.Err.Error()))
 	}
 
-	return m.Style.Render(view.String())
+	return m.Style.Render(ansi.Hardwrap(view.String(), m.width, true))
 }
 
 // GetValue returns the input from the user, or the default value if the user did not enter anything.

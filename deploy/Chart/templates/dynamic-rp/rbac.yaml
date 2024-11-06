@@ -1,0 +1,56 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dynamic-rp
+  labels:
+    app.kubernetes.io/name: dynamic-rp
+    app.kubernetes.io/part-of: radius
+rules:
+# Adding coordination.k8s.io api group as Terraform need to access leases resource for backend initialization for state locking: https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes.
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+
+# Integration with UCP's API.
+- apiGroups:
+  - api.ucp.dev
+  resources:
+  - '*'
+  verbs:
+  - '*'
+
+# Integration with data store and queues.
+- apiGroups:
+  - ucp.dev
+  resources:
+  - resources
+  - queuemessages
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dynamic-rp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dynamic-rp
+subjects:
+- kind: ServiceAccount
+  name: dynamic-rp
+  namespace: {{ .Release.Namespace }}

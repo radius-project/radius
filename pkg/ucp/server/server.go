@@ -72,21 +72,19 @@ type Options struct {
 const UCPProviderName = "System.Resources"
 
 // NewServerOptionsFromEnvironment creates a new Options struct from environment variables and returns it along with any errors.
-func NewServerOptionsFromEnvironment() (Options, error) {
+func NewServerOptionsFromEnvironment(configFilePath string) (Options, error) {
 	basePath, ok := os.LookupEnv("BASE_PATH")
 	if ok && len(basePath) > 0 && (!strings.HasPrefix(basePath, "/") || strings.HasSuffix(basePath, "/")) {
 		return Options{}, errors.New("env: BASE_PATH must begin with '/' and must not end with '/'")
 	}
 
 	tlsCertDir := os.Getenv("TLS_CERT_DIR")
-	ucpConfigFile := os.Getenv("UCP_CONFIG")
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		return Options{}, errors.New("UCP Port number must be set")
 	}
 
-	opts, err := hostoptions.NewHostOptionsFromEnvironment(ucpConfigFile)
+	opts, err := hostoptions.NewHostOptionsFromEnvironment(configFilePath)
 	if err != nil {
 		return Options{}, err
 	}

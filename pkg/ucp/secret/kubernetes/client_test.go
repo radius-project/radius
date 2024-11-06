@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	SecretName = "test-secret-name"
+	secretName = "test-secret-name"
 )
 
 func Test_Save(t *testing.T) {
@@ -48,10 +48,10 @@ func Test_Save(t *testing.T) {
 		update      bool
 		err         error
 	}{
-		{"save-new-secret", SecretName, secretValue, false, nil},
-		{"update-secret", SecretName, secretValue, true, nil},
+		{"save-new-secret", secretName, secretValue, false, nil},
+		{"update-secret", secretName, secretValue, true, nil},
 		{"save-with-invalid-name", "", secretValue, false, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}},
-		{"save-with-empty-secret", SecretName, nil, false, &secret.ErrInvalid{Message: "invalid argument. 'value' is required"}},
+		{"save-with-empty-secret", secretName, nil, false, &secret.ErrInvalid{Message: "invalid argument. 'value' is required"}},
 	}
 
 	for _, tt := range tests {
@@ -91,8 +91,8 @@ func Test_Get(t *testing.T) {
 		save       bool
 		err        error
 	}{
-		{"get-secret", SecretName, true, nil},
-		{"get-non-existent-secret", SecretName, false, &secret.ErrNotFound{}},
+		{"get-secret", secretName, true, nil},
+		{"get-non-existent-secret", secretName, false, &secret.ErrNotFound{}},
 		{"get-with-invalid-name", "", false, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}},
 	}
 
@@ -130,8 +130,8 @@ func Test_Delete(t *testing.T) {
 		save       bool
 		err        error
 	}{
-		{"delete-secret", SecretName, true, nil},
-		{"delete-non-existent-secret", SecretName, false, &secret.ErrNotFound{}},
+		{"delete-secret", secretName, true, nil},
+		{"delete-non-existent-secret", secretName, false, &secret.ErrNotFound{}},
 		{"delete-with-invalid-name", "", false, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}},
 	}
 

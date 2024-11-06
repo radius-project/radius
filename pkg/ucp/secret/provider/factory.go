@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/secret"
 	"github.com/radius-project/radius/pkg/ucp/secret/etcd"
+	"github.com/radius-project/radius/pkg/ucp/secret/inmemory"
 	kubernetes_client "github.com/radius-project/radius/pkg/ucp/secret/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/store/etcdstore"
 	"k8s.io/kubectl/pkg/scheme"
@@ -35,6 +36,7 @@ type secretFactoryFunc func(context.Context, SecretProviderOptions) (secret.Clie
 var secretClientFactory = map[SecretProviderType]secretFactoryFunc{
 	TypeETCDSecret:       initETCDSecretClient,
 	TypeKubernetesSecret: initKubernetesSecretClient,
+	TypeInMemorySecret:   initInMemorySecretClient,
 }
 
 func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secret.Client, error) {
@@ -69,4 +71,8 @@ func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) 
 		return nil, err
 	}
 	return &kubernetes_client.Client{K8sClient: client}, nil
+}
+
+func initInMemorySecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
+	return &inmemory.Client{}, nil
 }
