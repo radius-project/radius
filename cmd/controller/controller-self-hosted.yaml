@@ -15,7 +15,7 @@ server:
 
 # workerServer port specifies port set for Health Checks
 workerServer:
-  port: 3000
+  port: 7073
 ucp:
   kind: direct
   direct:

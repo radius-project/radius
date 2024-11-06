@@ -119,6 +119,7 @@ GOARCHES := amd64 arm arm64
 BINARIES := docgen:./cmd/docgen \
 	rad:./cmd/rad \
 	applications-rp:./cmd/applications-rp \
+	dynamic-rp:./cmd/dynamic-rp \
 	ucpd:./cmd/ucpd \
 	controller:./cmd/controller \
 	testrp:./test/testrp \
