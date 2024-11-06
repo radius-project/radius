@@ -648,7 +648,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},dynamicrp.image=${{ env.CONTAINER_REGISTRY }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }}controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }},global.azureWorkloadIdentity.enabled=true
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},dynamicrp.image=${{ env.CONTAINER_REGISTRY }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }},global.azureWorkloadIdentity.enabled=true
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
