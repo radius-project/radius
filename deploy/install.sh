@@ -125,7 +125,7 @@ downloadFile() {
             exit 1
         fi
 
-        DOWNLOAD_URL="ghcr.io/willdavsmith/mbcp/rad/${OS}-${ARCH}:latest"
+        DOWNLOAD_URL="ghcr.io/willdavsmith/flux-demo/rad/${OS}-${ARCH}:latest"
         echo "Downloading edge CLI from ${DOWNLOAD_URL}..."
         oras pull $DOWNLOAD_URL -o $RADIUS_TMP_ROOT
 
