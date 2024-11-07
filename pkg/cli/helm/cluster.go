@@ -33,7 +33,6 @@ const (
 	ContourChartDefaultVersion = "11.1.1"
 )
 
-// TODO: Revisit and reevaluate
 type CLIClusterOptions struct {
 	Radius ChartOptions
 }
@@ -173,7 +172,9 @@ func UninstallOnCluster(kubeContext string, clusterOptions ClusterOptions) error
 	return nil
 }
 
-// QueryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
+// queryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
+// If the release is found, it returns true and the version of the release. If the release is not found, it returns false.
+// If an error occurs, it returns an error.
 func queryRelease(kubeContext, namespace, releaseName string) (bool, string, error) {
 	var helmOutput strings.Builder
 
@@ -204,7 +205,6 @@ func queryRelease(kubeContext, namespace, releaseName string) (bool, string, err
 // CheckRadiusInstall checks if the Radius release is installed in the given kubeContext and returns an InstallState object
 // with the version of the release if installed, or an error if an error occurs while checking.
 func CheckRadiusInstall(kubeContext string) (InstallState, error) {
-
 	// Check if Radius is installed
 	radiusInstalled, radiusVersion, err := queryRelease(kubeContext, RadiusSystemNamespace, radiusReleaseName)
 	if err != nil {

@@ -188,7 +188,7 @@ func runHelmUpgrade(helmConf *helm.Configuration, releaseName string, helmChart 
 // RunRadiusHelmUninstall attempts to uninstall Radius from the Radius system namespace
 // using a helm configuration, and returns an error if the uninstall fails.
 func RunHelmUninstall(helmConf *helm.Configuration, options ChartOptions) error {
-	output.LogInfo("Uninstalling Radius from namespace: %s", options.Namespace)
+	output.LogInfo("Uninstalling %s from namespace: %s", options.ReleaseName, options.Namespace)
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = uninstallTimeout
 	uninstallClient.Wait = true
