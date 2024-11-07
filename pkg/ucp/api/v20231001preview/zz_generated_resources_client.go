@@ -98,7 +98,7 @@ func (client *ResourcesClient) listCreateRequest(ctx context.Context, planeName 
 // listHandleResponse handles the List response.
 func (client *ResourcesClient) listHandleResponse(resp *http.Response) (ResourcesClientListResponse, error) {
 	result := ResourcesClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.GenericResourceListResult); err != nil {
 		return ResourcesClientListResponse{}, err
 	}
 	return result, nil

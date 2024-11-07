@@ -324,7 +324,7 @@ func (client *APIVersionsClient) listCreateRequest(ctx context.Context, planeNam
 // listHandleResponse handles the List response.
 func (client *APIVersionsClient) listHandleResponse(resp *http.Response) (APIVersionsClientListResponse, error) {
 	result := APIVersionsClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.APIVersionResourceListResult); err != nil {
 		return APIVersionsClientListResponse{}, err
 	}
 	return result, nil

@@ -256,7 +256,7 @@ func (client *ResourceGroupsClient) listCreateRequest(ctx context.Context, plane
 // listHandleResponse handles the List response.
 func (client *ResourceGroupsClient) listHandleResponse(resp *http.Response) (ResourceGroupsClientListResponse, error) {
 	result := ResourceGroupsClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceGroupResourceListResult); err != nil {
 		return ResourceGroupsClientListResponse{}, err
 	}
 	return result, nil

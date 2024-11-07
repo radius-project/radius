@@ -196,8 +196,9 @@ func (client *AwsCredentialsClient) getHandleResponse(resp *http.Response) (AwsC
 // NewListPager - List AWS credentials
 //
 // Generated from API version 2023-10-01-preview
+//   - planeName - The name of AWS plane
 //   - options - AwsCredentialsClientListOptions contains the optional parameters for the AwsCredentialsClient.NewListPager method.
-func (client *AwsCredentialsClient) NewListPager(options *AwsCredentialsClientListOptions) (*runtime.Pager[AwsCredentialsClientListResponse]) {
+func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsCredentialsClientListOptions) (*runtime.Pager[AwsCredentialsClientListResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[AwsCredentialsClientListResponse]{
 		More: func(page AwsCredentialsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -206,7 +207,7 @@ func (client *AwsCredentialsClient) NewListPager(options *AwsCredentialsClientLi
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listCreateRequest(ctx, options)
+				req, err = client.listCreateRequest(ctx, planeName, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -226,8 +227,9 @@ func (client *AwsCredentialsClient) NewListPager(options *AwsCredentialsClientLi
 }
 
 // listCreateRequest creates the List request.
-func (client *AwsCredentialsClient) listCreateRequest(ctx context.Context, options *AwsCredentialsClientListOptions) (*policy.Request, error) {
-	urlPath := "/GET /planes/aws"
+func (client *AwsCredentialsClient) listCreateRequest(ctx context.Context, planeName string, options *AwsCredentialsClientListOptions) (*policy.Request, error) {
+	urlPath := "/GET /planes/aws/planes/aws/{planeName}"
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -242,7 +244,7 @@ func (client *AwsCredentialsClient) listCreateRequest(ctx context.Context, optio
 // listHandleResponse handles the List response.
 func (client *AwsCredentialsClient) listHandleResponse(resp *http.Response) (AwsCredentialsClientListResponse, error) {
 	result := AwsCredentialsClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResourceListResult); err != nil {
 		return AwsCredentialsClientListResponse{}, err
 	}
 	return result, nil

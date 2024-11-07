@@ -306,7 +306,7 @@ func (client *LocationsClient) listCreateRequest(ctx context.Context, planeName 
 // listHandleResponse handles the List response.
 func (client *LocationsClient) listHandleResponse(resp *http.Response) (LocationsClientListResponse, error) {
 	result := LocationsClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.LocationResourceListResult); err != nil {
 		return LocationsClientListResponse{}, err
 	}
 	return result, nil

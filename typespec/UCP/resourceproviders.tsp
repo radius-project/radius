@@ -255,21 +255,21 @@ interface ResourceTypes {
   >;
 
   @doc("Get the specified resource type.")
-  @route("GET /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}")
+  @route("GET /planes/{resourceTypeName}")
   get is UcpResourceRead<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
   @doc("Create or update a resource type")
-  @route("PUT /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}")
+  @route("PUT /planes/{resourceTypeName}")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
   @doc("Delete a resource type")
-  @route("DELETE /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}")
+  @route("DELETE /planes/{resourceTypeName}")
   delete is UcpResourceDeleteAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>

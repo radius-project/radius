@@ -84,7 +84,7 @@ func (client *PlanesClient) listPlanesCreateRequest(ctx context.Context, options
 // listPlanesHandleResponse handles the ListPlanes response.
 func (client *PlanesClient) listPlanesHandleResponse(resp *http.Response) (PlanesClientListPlanesResponse, error) {
 	result := PlanesClientListPlanesResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.GenericPlaneResourceListResult); err != nil {
 		return PlanesClientListPlanesResponse{}, err
 	}
 	return result, nil

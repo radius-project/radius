@@ -87,7 +87,7 @@ func (client *ResourceTypesClient) createOrUpdate(ctx context.Context, planeName
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *ResourceTypesClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource ResourceTypeResource, options *ResourceTypesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/PUT /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
+	urlPath := "/PUT /planes/{resourceTypeName}/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -161,7 +161,7 @@ func (client *ResourceTypesClient) deleteOperation(ctx context.Context, planeNam
 
 // deleteCreateRequest creates the Delete request.
 func (client *ResourceTypesClient) deleteCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ResourceTypesClientBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/DELETE /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
+	urlPath := "/DELETE /planes/{resourceTypeName}/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *ResourceTypesClient) Get(ctx context.Context, planeName string, re
 
 // getCreateRequest creates the Get request.
 func (client *ResourceTypesClient) getCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ResourceTypesClientGetOptions) (*policy.Request, error) {
-	urlPath := "/GET /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
+	urlPath := "/GET /planes/{resourceTypeName}/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -305,7 +305,7 @@ func (client *ResourceTypesClient) listCreateRequest(ctx context.Context, planeN
 // listHandleResponse handles the List response.
 func (client *ResourceTypesClient) listHandleResponse(resp *http.Response) (ResourceTypesClientListResponse, error) {
 	result := ResourceTypesClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceTypeResourceListResult); err != nil {
 		return ResourceTypesClientListResponse{}, err
 	}
 	return result, nil

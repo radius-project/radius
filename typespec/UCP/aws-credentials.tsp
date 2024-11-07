@@ -121,6 +121,7 @@ interface AwsCredentials {
     AwsCredentialResource,
     {
       ...ApiVersionParameter;
+      ...AwsPlaneNameParameter;
     }
   >;
 

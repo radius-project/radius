@@ -245,7 +245,7 @@ func (client *AzureCredentialsClient) listCreateRequest(ctx context.Context, pla
 // listHandleResponse handles the List response.
 func (client *AzureCredentialsClient) listHandleResponse(resp *http.Response) (AzureCredentialsClientListResponse, error) {
 	result := AzureCredentialsClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.AzureCredentialResourceListResult); err != nil {
 		return AzureCredentialsClientListResponse{}, err
 	}
 	return result, nil

@@ -344,7 +344,7 @@ func (client *ResourceProvidersClient) listCreateRequest(ctx context.Context, pl
 // listHandleResponse handles the List response.
 func (client *ResourceProvidersClient) listHandleResponse(resp *http.Response) (ResourceProvidersClientListResponse, error) {
 	result := ResourceProvidersClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceListResult); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceProviderResourceListResult); err != nil {
 		return ResourceProvidersClientListResponse{}, err
 	}
 	return result, nil
