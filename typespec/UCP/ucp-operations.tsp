@@ -34,7 +34,6 @@ using OpenAPI;
 @get
 @autoRoute
 @doc("List {name}", Azure.ResourceManager.CommonTypes.Resource)
-@segmentOf(Azure.ResourceManager.CommonTypes.Resource)
 @armResourceList(Azure.ResourceManager.CommonTypes.Resource)
 op UcpResourceList<
   ResourceType extends Azure.ResourceManager.CommonTypes.Resource, 
@@ -43,7 +42,7 @@ op UcpResourceList<
   ...ParentKeysOf<ResourceType>,
 ): ArmResponse<ResourceListResult<ResourceType>> | ErrorResponse;
 
-#suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
+#suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-xoutside-interface"
 @autoRoute
 @doc("Get a {name}", Resource)
 @get

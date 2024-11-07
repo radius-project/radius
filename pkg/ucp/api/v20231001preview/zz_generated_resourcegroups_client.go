@@ -68,7 +68,7 @@ func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, planeNam
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, resourceGroupName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/PUT /planes/radius/{planeName}/resourcegroups/{resourceGroupName}/radius/{planeName}/resourcegroups/{resourceGroupName}"
+	urlPath := "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}/radius/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -126,7 +126,7 @@ func (client *ResourceGroupsClient) Delete(ctx context.Context, planeName string
 
 // deleteCreateRequest creates the Delete request.
 func (client *ResourceGroupsClient) deleteCreateRequest(ctx context.Context, planeName string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/DELETE /planes/radius/{planeName}/resourcegroups/{resourceGroupName}/radius/{planeName}/resourcegroups/{resourceGroupName}"
+	urlPath := "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}/radius/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -173,7 +173,7 @@ func (client *ResourceGroupsClient) Get(ctx context.Context, planeName string, r
 
 // getCreateRequest creates the Get request.
 func (client *ResourceGroupsClient) getCreateRequest(ctx context.Context, planeName string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (*policy.Request, error) {
-	urlPath := "/GET /planes/radius/{planeName}/resourcegroups/{resourceGroupName}/radius/{planeName}/resourcegroups/{resourceGroupName}"
+	urlPath := "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}/radius/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -237,7 +237,7 @@ func (client *ResourceGroupsClient) NewListPager(planeName string, options *Reso
 
 // listCreateRequest creates the List request.
 func (client *ResourceGroupsClient) listCreateRequest(ctx context.Context, planeName string, options *ResourceGroupsClientListOptions) (*policy.Request, error) {
-	urlPath := "/GET /planes/radius/{planeName}/resourcegroups/radius/{planeName}"
+	urlPath := "/planes/radius/{planeName}/resourcegroups/radius/{planeName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -290,7 +290,7 @@ func (client *ResourceGroupsClient) Update(ctx context.Context, planeName string
 
 // updateCreateRequest creates the Update request.
 func (client *ResourceGroupsClient) updateCreateRequest(ctx context.Context, planeName string, resourceGroupName string, properties ResourceGroupResourceTagsUpdate, options *ResourceGroupsClientUpdateOptions) (*policy.Request, error) {
-	urlPath := "/PATCH /planes/radius/{planeName}/resourcegroups/{resourceGroupName}/radius/{planeName}/resourcegroups/{resourceGroupName}"
+	urlPath := "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}/radius/{planeName}/resourcegroups/{resourceGroupName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}

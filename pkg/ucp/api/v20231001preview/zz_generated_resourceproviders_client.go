@@ -86,7 +86,7 @@ func (client *ResourceProvidersClient) createOrUpdate(ctx context.Context, plane
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *ResourceProvidersClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resource ResourceProviderResource, options *ResourceProvidersClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/PUT /planes/{resourceProviderName}/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}"
+	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -155,7 +155,7 @@ func (client *ResourceProvidersClient) deleteOperation(ctx context.Context, plan
 
 // deleteCreateRequest creates the Delete request.
 func (client *ResourceProvidersClient) deleteCreateRequest(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/DELETE /planes/{resourceProviderName}/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}"
+	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -202,7 +202,7 @@ func (client *ResourceProvidersClient) Get(ctx context.Context, planeName string
 
 // getCreateRequest creates the Get request.
 func (client *ResourceProvidersClient) getCreateRequest(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientGetOptions) (*policy.Request, error) {
-	urlPath := "/GET /planes/{resourceProviderName}/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}"
+	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -260,7 +260,7 @@ func (client *ResourceProvidersClient) GetProviderSummary(ctx context.Context, p
 
 // getProviderSummaryCreateRequest creates the GetProviderSummary request.
 func (client *ResourceProvidersClient) getProviderSummaryCreateRequest(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientGetProviderSummaryOptions) (*policy.Request, error) {
-	urlPath := "/radius/{planeName}/providers/{resourceProviderName}"
+	urlPath := "/planes/radius/{planeName}/providers/{resourceProviderName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -325,7 +325,7 @@ func (client *ResourceProvidersClient) NewListPager(planeName string, options *R
 
 // listCreateRequest creates the List request.
 func (client *ResourceProvidersClient) listCreateRequest(ctx context.Context, planeName string, options *ResourceProvidersClientListOptions) (*policy.Request, error) {
-	urlPath := "/GET /planes/radius/{planeName}/providers/System.Resources/resourceproviders/radius/{planeName}"
+	urlPath := "/planes/planes/radius/{planeName}/providers/System.Resources/resourceproviders/radius/{planeName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
@@ -387,7 +387,7 @@ func (client *ResourceProvidersClient) NewListProviderSummariesPager(planeName s
 
 // listProviderSummariesCreateRequest creates the ListProviderSummaries request.
 func (client *ResourceProvidersClient) listProviderSummariesCreateRequest(ctx context.Context, planeName string, options *ResourceProvidersClientListProviderSummariesOptions) (*policy.Request, error) {
-	urlPath := "/radius/{planeName}/providers"
+	urlPath := "/planes/radius/{planeName}/providers"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
