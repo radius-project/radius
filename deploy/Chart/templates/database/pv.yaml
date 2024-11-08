@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-sts-0
+  labels:
+    control-plane: database
+    app.kubernetes.io/name: database
+    app.kubernetes.io/part-of: radius
+spec:
+  storageClassName: ""
+  persistentVolumeReclaimPolicy: Retain
+  capacity:
+    storage: 3Gi
+  accessModes:
+    - ReadWriteMany
