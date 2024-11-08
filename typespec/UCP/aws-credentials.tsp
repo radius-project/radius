@@ -108,15 +108,14 @@ model AwsIRSACredentialProperties extends AwsCredentialProperties {
   storage: CredentialStorageProperties;
 }
 
-alias AwsCredentialBaseParameter<Resource> = CredentialBaseParameters<
-  Resource,
+alias AwsCredentialBaseParameter<TResource> = CredentialBaseParameters<
+  TResource,
   AwsPlaneNameParameter
 >;
 
 @armResourceOperations
 interface AwsCredentials {
   @doc("List AWS credentials")
-  @route("planes/aws") 
   list is UcpResourceList<
     AwsCredentialResource,
     {
@@ -126,28 +125,24 @@ interface AwsCredentials {
   >;
 
   @doc("Get an AWS credential")
-  @route("planes/aws/{planeName}")
   get is UcpResourceRead<
     AwsCredentialResource,
     AwsCredentialBaseParameter<AwsCredentialResource>
   >;
 
   @doc("Create or update an AWS credential")
-  @route("planes/aws/{planeName}")
   createOrUpdate is UcpResourceCreateOrUpdateSync<
     AwsCredentialResource,
     AwsCredentialBaseParameter<AwsCredentialResource>
   >;
 
   @doc("Update an AWS credential")
-  @route("planes/aws/{planeName}")
   update is UcpCustomPatchSync<
     AwsCredentialResource,
     AwsCredentialBaseParameter<AwsCredentialResource>
   >;
 
   @doc("Delete an AWS credential")
-  @route("planes/aws/{planeName}")
   delete is UcpResourceDeleteSync<
     AwsCredentialResource,
     AwsCredentialBaseParameter<AwsCredentialResource>

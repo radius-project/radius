@@ -68,43 +68,39 @@ model GenericResource extends ProxyResource<ResourceProperties> {
 model ResourceProperties {}
 
 @doc("The UCP HTTP request base parameters.")
-model ResourceGroupBaseParameters<Resource> {
+model ResourceGroupBaseParameters<TResource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
-  ...KeysOf<Resource>;
+  ...KeysOf<TResource>;
 }
 
+@route("/planes")
 @armResourceOperations
 interface ResourceGroups {
   @doc("List resource groups")
-  @route("planes/radius/{planeName}/resourcegroups")
   list is UcpResourceList<
     ResourceGroupResource,
     PlaneBaseParameters<RadiusPlaneResource>
   >;
 
   @doc("Get a resource group")
-  @route("planes/radius/{planeName}/resourcegroups/{resourceGroupName}")
   get is UcpResourceRead<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;
 
   @doc("Create or update a resource group")
-  @route("planes/radius/{planeName}/resourcegroups/{resourceGroupName}")
   createOrUpdate is UcpResourceCreateOrUpdateSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;
 
   @doc("Update a resource group")
-  @route("planes/radius/{planeName}/resourcegroups/{resourceGroupName}")
   update is UcpCustomPatchSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;
 
   @doc("Delete a resource group")
-  @route("planes/radius/{planeName}/resourcegroups/{resourceGroupName}")
   delete is UcpResourceDeleteSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>

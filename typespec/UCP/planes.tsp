@@ -48,9 +48,9 @@ model PlaneNameParameter {
 }
 
 @doc("The UCP HTTP request base parameters.")
-model PlaneBaseParameters<Resource> {
+model PlaneBaseParameters<TResource> {
   ...ApiVersionParameter;
-  ...KeysOf<Resource>;
+  ...KeysOf<TResource>;
 }
 
 @doc("The generic representation of a plane resource")

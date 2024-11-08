@@ -35,7 +35,7 @@ model RootScopeParameter {
 }
 
 @doc("The UCP HTTP request base parameters.")
-model UCPBaseParameters<Resource extends Foundations.Resource> {
+model UCPBaseParameters<TResource extends Foundations.Resource> {
   ...ApiVersionParameter;
   ...RootScopeParameter;
 }

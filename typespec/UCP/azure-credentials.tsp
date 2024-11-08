@@ -114,8 +114,8 @@ model AzureWorkloadIdentityProperties extends AzureCredentialProperties {
   storage: CredentialStorageProperties;
 }
 
-alias AzureCredentialBaseParameter<Resource> = CredentialBaseParameters<
-  Resource,
+alias AzureCredentialBaseParameter<TResource> = CredentialBaseParameters<
+  TResource,
   AzurePlaneNameParameter
 >;
 
@@ -123,7 +123,6 @@ alias AzureCredentialBaseParameter<Resource> = CredentialBaseParameters<
 @armResourceOperations
 interface AzureCredentials {
   @doc("List Azure credentials")
-  @route("planes/azure")
   list is UcpResourceList<
     AzureCredentialResource,
     {
@@ -133,7 +132,6 @@ interface AzureCredentials {
   >;
 
   @doc("Get an Azure credential")
-  @route("planes/azure/{planeName}")
   get is UcpResourceRead<
     AzureCredentialResource,
     AzureCredentialBaseParameter<AzureCredentialResource>

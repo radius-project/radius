@@ -20,7 +20,6 @@ import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 
-
 using TypeSpec.Http;
 using TypeSpec.Rest;
 using Azure.ResourceManager;
@@ -31,30 +30,31 @@ using OpenAPI;
 // https://github.com/Azure/typespec-azure/blob/main/packages/typespec-azure-resource-manager/lib/operations.tsp
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
-@get
 @autoRoute
-@doc("List {name}", Azure.ResourceManager.CommonTypes.Resource)
-@armResourceList(Azure.ResourceManager.CommonTypes.Resource)
+@doc("List {name}", TResource)
+@segmentOf(TResource)
+@armResourceList(TResource)
+@get
 op UcpResourceList<
-  ResourceType extends Azure.ResourceManager.CommonTypes.Resource, 
+  TResource extends Foundations.Resource, 
   TBaseParameters>(
   ...TBaseParameters,
-  ...ParentKeysOf<ResourceType>,
-): ArmResponse<ResourceListResult<ResourceType>> | ErrorResponse;
-
-#suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-xoutside-interface"
-@autoRoute
-@doc("Get a {name}", Resource)
-@get
-@armResourceRead(Resource)
-op UcpResourceRead<
-  Resource extends Foundations.Resource, TBaseParameters>(
-  ...TBaseParameters,
-): ArmResponse<Resource> | ErrorResponse;
+  ...ParentKeysOf<TResource>,
+): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Create a {name}", Resource)
+@doc("Get a {name}", TResource)
+@get
+op UcpResourceRead<
+  TResource extends Foundations.Resource, 
+  TBaseParameters>(
+  ...TBaseParameters,
+): ArmResponse<TResource> | ErrorResponse;
+
+#suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
+@autoRoute
+@doc("Create a {name}", TResource)
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
@@ -62,22 +62,22 @@ op UcpResourceRead<
     `final-state-via`: "azure-async-operation",
   }
 )
-@armResourceCreateOrUpdate(Resource)
+@armResourceCreateOrUpdate(TResource)
 @put
 op UcpResourceCreateOrUpdateAsync<
-  Resource extends Foundations.Resource,
+  TResource extends Foundations.Resource,
   TBaseParameters
 >(
   ...TBaseParameters,
 
   @doc("Resource create parameters.")
   @body
-  resource: Resource,
-): ArmResourceUpdatedResponse<Resource> | ArmResourceCreatedResponse<Resource> | ErrorResponse;
+  resource: TResource,
+): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedResponse<TResource> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Update a {name}", Resource)
+@doc("Update a {name}", TResource)
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
@@ -85,23 +85,23 @@ op UcpResourceCreateOrUpdateAsync<
     `final-state-via`: "location",
   }
 )
-@armResourceUpdate(Resource)
+@armResourceUpdate(TResource)
 @patch
 op UcpCustomPatchAsync<
-  Resource extends Foundations.Resource,
+  TResource extends Foundations.Resource,
   TBaseParameters,
-  TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<Resource>
+  TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<TResource>
 >(
   ...TBaseParameters,
 
   @doc("The resource properties to be updated.")
   @body
   properties: TPatchModel,
-): ArmResponse<Resource> | ArmAcceptedLroResponse<"Resource update request accepted."> | ErrorResponse;
+): ArmResponse<TResource> | ArmAcceptedLroResponse<"Resource update request accepted."> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Delete a {name}", Resource)
+@doc("Delete a {name}", TResource)
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
@@ -109,10 +109,10 @@ op UcpCustomPatchAsync<
     `final-state-via`: "location",
   }
 )
-@armResourceDelete(Resource)
+@armResourceDelete(TResource)
 @delete
 op UcpResourceDeleteAsync<
-  Resource extends Foundations.Resource,
+  TResource extends Foundations.Resource,
   TBaseParameters
 >(...TBaseParameters):
   | ArmDeletedResponse
@@ -122,44 +122,44 @@ op UcpResourceDeleteAsync<
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Create a {name}", Resource)
-@armResourceCreateOrUpdate(Resource)
+@doc("Create a {name}", TResource)
+@armResourceCreateOrUpdate(TResource)
 @put
 op UcpResourceCreateOrUpdateSync<
-  Resource extends Foundations.Resource,
+  TResource extends Foundations.Resource,
   TBaseParameters
 >(
   ...TBaseParameters,
 
   @doc("Resource create parameters.")
   @body
-  resource: Resource,
-): ArmResourceUpdatedResponse<Resource> | ArmResourceCreatedSyncResponse<Resource> | ErrorResponse;
+  resource: TResource,
+): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedSyncResponse<TResource> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Update a {name}", Resource)
-@armResourceUpdate(Resource)
+@doc("Update a {name}", TResource)
+@armResourceUpdate(TResource)
 @patch
 op UcpCustomPatchSync<
-  Resource extends Foundations.Resource,
+  TResource extends Foundations.Resource,
   TBaseParameters,
-  TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<Resource>
+  TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<TResource>
 >(
   ...TBaseParameters,
 
   @doc("The resource properties to be updated.")
   @body
   properties: TPatchModel,
-): ArmResponse<Resource> | ErrorResponse;
+): ArmResponse<TResource> | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
-@doc("Delete a {name}", Resource)
-@armResourceDelete(Resource)
+@doc("Delete a {name}", TResource)
+@armResourceDelete(TResource)
 @delete
 op UcpResourceDeleteSync<
-  Resource extends Foundations.Resource,
+  TResource extends Foundations.Resource,
   TBaseParameters
 >(
   ...TBaseParameters,

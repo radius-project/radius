@@ -75,7 +75,7 @@ func (client *ResourcesClient) NewListPager(planeName string, resourceGroupName 
 
 // listCreateRequest creates the List request.
 func (client *ResourcesClient) listCreateRequest(ctx context.Context, planeName string, resourceGroupName string, options *ResourcesClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}"
+	urlPath := "/planes/radius/{planeName}/resourcegroups/{resourceGroupName}/resources"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}

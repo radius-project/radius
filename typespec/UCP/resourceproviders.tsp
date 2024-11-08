@@ -174,57 +174,52 @@ model ResourceProviderSummaryResourceType {
 @doc("The configuration of a resource type API version.")
 model ResourceTypeSummaryResultApiVersion {}
 
-model ResourceProviderBaseParameters<Resource> {
+model ResourceProviderBaseParameters<TResource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
-  ...KeysOf<Resource>;
+  ...KeysOf<TResource>;
 }
 
-model ResourceTypeBaseParameters<Resource> {
+model ResourceTypeBaseParameters<TResource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
   ...KeysOf<ResourceProviderResource>;
-  ...KeysOf<Resource>;
+  ...KeysOf<TResource>;
 }
 
-model ApiVersionBaseParameters<Resource> {
+model ApiVersionBaseParameters<TResource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
   ...KeysOf<ResourceProviderResource>;
   ...KeysOf<ResourceTypeResource>;
-  ...KeysOf<Resource>;
+  ...KeysOf<TResource>;
 }
 
-model LocationBaseParameters<Resource> {
+model LocationBaseParameters<TResource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
   ...KeysOf<ResourceProviderResource>;
-  ...KeysOf<Resource>;
+  ...KeysOf<TResource>;
 }
-
 
 @route("/planes")
 @armResourceOperations
 interface ResourceProviders {
   @doc("List resource providers.")
-  @route("/planes/radius/{planeName}/providers/System.Resources/resourceproviders")
   list is UcpResourceList<
     ResourceProviderResource,
     PlaneBaseParameters<RadiusPlaneResource>
   >;
 
   @doc("Get the specified resource provider.")
-  //@route("planes/{resourceProviderName}")
   get is UcpResourceRead<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
   @doc("Create or update a resource provider")
-  //@route("planes/{resourceProviderName}")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
   @doc("Delete a resource provider")
-  //@route("planes/{resourceProviderName}")
   delete is UcpResourceDeleteAsync<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
@@ -247,31 +242,28 @@ interface ResourceProviders {
   ): ArmResponse<ResourceProviderSummary> | ErrorResponse;
 }
 
+@route("/planes")
 @armResourceOperations
 interface ResourceTypes {
   @doc("List resource types.")
-  @route("planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes")
   list is UcpResourceList<
     ResourceTypeResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
   @doc("Get the specified resource type.")
-  @route("planes/{resourceTypeName}")
   get is UcpResourceRead<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
   @doc("Create or update a resource type")
-  @route("planes/{resourceTypeName}")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
   @doc("Delete a resource type")
-  @route("planes/{resourceTypeName}")
   delete is UcpResourceDeleteAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
@@ -310,7 +302,6 @@ interface ApiVersions {
 @armResourceOperations
 interface Locations {
   @doc("List available locations for the specified resource provider.")
-  @route("planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/locations")
   list is UcpResourceList<
     LocationResource,
     ResourceProviderBaseParameters<ResourceProviderResource>

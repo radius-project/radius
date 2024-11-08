@@ -297,7 +297,7 @@ func (client *APIVersionsClient) NewListPager(planeName string, resourceProvider
 
 // listCreateRequest creates the List request.
 func (client *APIVersionsClient) listCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *APIVersionsClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
+	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/apiversions"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
