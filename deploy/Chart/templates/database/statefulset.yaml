@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: database
+  name: database-sts
   namespace: "{{ .Release.Namespace }}"
   labels:
     control-plane: database
@@ -43,9 +43,10 @@ spec:
         
   volumeClaimTemplates:
   - metadata:
-      name: data
+      name: pg-pvc
     spec:
-      accessModes: ["ReadWriteOnce"]
+      accessModes: ["ReadWriteMany"]
+      storageClassName: ""
       resources:
         requests:
           storage: 2Gi
