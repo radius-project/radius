@@ -35,9 +35,7 @@ using OpenAPI;
 @segmentOf(TResource)
 @armResourceList(TResource)
 @get
-op UcpResourceList<
-  TResource extends Foundations.Resource, 
-  TBaseParameters>(
+op UcpResourceList<TResource extends Foundations.Resource, TBaseParameters>(
   ...TBaseParameters,
   ...ParentKeysOf<TResource>,
 ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
@@ -46,9 +44,7 @@ op UcpResourceList<
 @autoRoute
 @doc("Get a {name}", TResource)
 @get
-op UcpResourceRead<
-  TResource extends Foundations.Resource, 
-  TBaseParameters>(
+op UcpResourceRead<TResource extends Foundations.Resource, TBaseParameters>(
   ...TBaseParameters,
 ): ArmResponse<TResource> | ErrorResponse;
 
