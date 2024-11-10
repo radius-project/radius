@@ -23,6 +23,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 const listHeight = 14
@@ -116,6 +117,7 @@ type ListModel struct {
 	// Style configures the style applied to all rendering for the list. This can be used to apply padding and borders.
 	Style    lipgloss.Style
 	Quitting bool
+	width    int
 }
 
 // Init used for creating an initial tea command if needed.
@@ -130,7 +132,8 @@ func (m ListModel) Init() tea.Cmd {
 // the list and quit the application.
 func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "ctrl+c", "q":
@@ -159,5 +162,5 @@ func (m ListModel) View() string {
 		return ""
 	}
 
-	return m.Style.Render(m.List.View())
+	return m.Style.Render(ansi.Hardwrap(m.List.View(), m.width, true))
 }

@@ -101,6 +101,7 @@ configure-buildx:
 # Define a target for each image with name and Dockerfile location
 APPS_MAP := ucpd:./deploy/images/ucpd \
 	applications-rp:./deploy/images/applications-rp \
+	dynamic-rp:./deploy/images/dynamic-rp \
 	controller:./deploy/images/controller \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego

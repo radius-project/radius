@@ -66,3 +66,6 @@ tmp-*
 
 # Auto-generated Bicep markdown files
 hack/bicep-types-radius/generated/**/*.md
+
+# Bicep extensions
+*.tgz

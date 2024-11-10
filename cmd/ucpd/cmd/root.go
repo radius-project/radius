@@ -18,13 +18,14 @@ package cmd
 
 import (
 	"context"
-	"log"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	etcdclient "go.etcd.io/etcd/client/v3"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/server"
@@ -36,14 +37,15 @@ var rootCmd = &cobra.Command{
 	Short: "UCP server",
 	Long:  `Server process for the Universal Control Plane (UCP).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		options, err := server.NewServerOptionsFromEnvironment()
+		configFilePath := cmd.Flag("config-file").Value.String()
+		options, err := server.NewServerOptionsFromEnvironment(configFilePath)
 		if err != nil {
 			return err
 		}
 
 		logger, flush, err := ucplog.NewLogger(ucplog.LoggerName, &options.LoggingOptions)
 		if err != nil {
-			log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
+			return err
 		}
 		defer flush()
 
@@ -66,11 +68,12 @@ var rootCmd = &cobra.Command{
 		}
 
 		ctx := logr.NewContext(cmd.Context(), logger)
-
 		return hosting.RunWithInterrupts(ctx, host)
 	},
 }
 
 func Execute() {
+	// Let users override the configuration via `--config-file`.
+	rootCmd.Flags().String("config-file", fmt.Sprintf("radius-%s.yaml", hostoptions.Environment()), "The service configuration file.")
 	cobra.CheckErr(rootCmd.ExecuteContext(context.Background()))
 }

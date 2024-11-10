@@ -61,7 +61,7 @@ metricsProvider:
   prometheus:
     enabled: false
     path: "/metrics"
-    port: 9090
+    port: 9091
 
 # Logging configuration
 logging:

@@ -26,6 +26,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/prompt"
@@ -134,6 +135,7 @@ type summaryModel struct {
 	style   lipgloss.Style
 	result  summaryResult
 	options initOptions
+	width   int
 }
 
 // NewSummaryModel creates a new model for the options summary shown during 'rad init'.
@@ -163,6 +165,8 @@ func (m *summaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// This function handles messages and state transitions. We don't need to update
 	// any UI here, just return the next model and command.
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
 	case tea.KeyMsg:
 		if msg.Type == tea.KeyCtrlC {
 			// User is quitting
@@ -260,7 +264,7 @@ func (m *summaryModel) View() string {
 
 	message.WriteString(summaryFooter)
 
-	return m.style.Render(message.String())
+	return m.style.Render(ansi.Hardwrap(message.String(), m.width, true))
 }
 
 var _ tea.Model = &progressModel{}
@@ -285,6 +289,7 @@ type progressModel struct {
 
 	// suppressSpinner is used to suppress the ticking of the spinner for testing.
 	suppressSpinner bool
+	width           int
 }
 
 // Init implements the init function for tea.Model. This will be called when the model is started, before View or
@@ -307,7 +312,9 @@ func (m *progressModel) Init() tea.Cmd {
 // and returns a tea.Cmd to quit the program if the progress is complete.
 func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		return m, nil
 	// Update our internal state when we receive a progress update message.
 	case progressMsg:
 		m.progress = msg
@@ -400,7 +407,7 @@ func (m *progressModel) View() string {
 		message.WriteString(progressCompleteFooter)
 	}
 
-	return m.style.Render(message.String())
+	return m.style.Render(ansi.Hardwrap(message.String(), m.width, true))
 }
 
 func (m *progressModel) isComplete() bool {
