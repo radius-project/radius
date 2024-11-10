@@ -30,11 +30,11 @@ using OpenAPI;
 // https://github.com/Azure/typespec-azure/blob/main/packages/typespec-azure-resource-manager/lib/operations.tsp
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
+@get
 @autoRoute
 @doc("List {name}", TResource)
 @segmentOf(TResource)
 @armResourceList(TResource)
-@get
 op UcpResourceList<TResource extends Foundations.Resource, TBaseParameters>(
   ...TBaseParameters,
   ...ParentKeysOf<TResource>,
@@ -44,6 +44,7 @@ op UcpResourceList<TResource extends Foundations.Resource, TBaseParameters>(
 @autoRoute
 @doc("Get a {name}", TResource)
 @get
+@armResourceRead(TResource)
 op UcpResourceRead<TResource extends Foundations.Resource, TBaseParameters>(
   ...TBaseParameters,
 ): ArmResponse<TResource> | ErrorResponse;
