@@ -48,7 +48,7 @@ Resources are the primary entities that make up applictions.
 Input can be passed via the -f flag to specify a file name.`,
 		Example: `
 # Create a resource (from file)
-rad resource create 'Applications.Core/containers' mycontainer -d /path/to/input.json`,
+rad resource create 'Applications.Core/containers' mycontainer -f /path/to/input.json`,
 		Args: cobra.ExactArgs(2),
 		RunE: framework.RunCommand(runner),
 	}
