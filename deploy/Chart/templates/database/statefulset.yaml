@@ -46,7 +46,7 @@ spec:
       name: pg-pvc
     spec:
       accessModes: ["ReadWriteMany"]
-      storageClassName: ""
+      storageClassName: standard
       resources:
         requests:
           storage: 2Gi
