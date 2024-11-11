@@ -89,7 +89,7 @@ generate-rad-datastoresrp-client: generate-node-installed generate-autorest-inst
 .PHONY: generate-rad-messagingrp-client
 generate-rad-messagingrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/messagingrp/api/README.md --tag=messaging-2023-10-01-preview
+	autorest pkg/messagingrp/api/README.md --tag=messaging-2023-10-01-preview && rm pkg/messagingrp/api/v20231001preview/go.mod
 
 .PHONY: generate-rad-daprrp-client
 generate-rad-daprrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
