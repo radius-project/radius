@@ -284,16 +284,22 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 	return resourceType, resourceName, nil
 }
 
-// example of resource Type: Applications.Datastores/redisCaches
-//
-
 // RequireResourceType checks if the first argument provided is a valid resource type and returns it if it is. If the
 // argument is not valid, an error is returned with a list of valid resource types.
+//
+// Example of resource Type: Applications.Datastores/redisCaches
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
 		return "", errors.New("no resource type provided")
 	}
+
 	resourceTypeName := args[0]
+
+	// Allow any fully-qualified resource type.
+	if strings.Contains(resourceTypeName, "/") {
+		return resourceTypeName, nil
+	}
+
 	supportedTypes := []string{}
 	foundTypes := []string{}
 	for _, resourceType := range clients.ResourceTypesList {

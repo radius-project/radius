@@ -274,6 +274,7 @@ func Test_Run(t *testing.T) {
 				Name:  "kind-kind",
 				Scope: "/planes/radius/local/resourceGroups/test-group",
 			}
+
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
@@ -339,6 +340,61 @@ func Test_Run(t *testing.T) {
 				Name:  "kind-kind",
 				Scope: "/planes/radius/local/resourceGroups/test-group",
 			}
+
+			outputSink := &output.MockOutput{}
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         workspace,
+				ResourceType:      "Applications.Core/containers",
+				ResourceName:      "test-container",
+				Format:            "table",
+				InputPrompter:     promptMock,
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []any{
+				output.LogOutput{
+					Format: "Resource deleted",
+				},
+			}
+
+			require.Equal(t, expected, outputSink.Writes)
+		})
+
+		t.Run("Success: Prompt Confirmed (case 4: no application or environment)", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			promptMock := prompt.NewMockInterface(ctrl)
+			promptMock.EXPECT().
+				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationWithoutApplicationOrEnvironment, "test-container", "Applications.Core/containers")).
+				Return(prompt.ConfirmYes, nil).
+				Times(1)
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(generated.GenericResource{
+					Properties: map[string]interface{}{},
+				}, nil).
+				Times(1)
+
+			appManagementClient.EXPECT().
+				DeleteResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(true, nil).
+				Times(1)
+
+			workspace := &workspaces.Workspace{
+				Connection: map[string]any{
+					"kind":    "kubernetes",
+					"context": "kind-kind",
+				},
+				Name:  "kind-kind",
+				Scope: "/planes/radius/local/resourceGroups/test-group",
+			}
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
@@ -391,6 +447,7 @@ func Test_Run(t *testing.T) {
 				Name:  "kind-kind",
 				Scope: "/planes/radius/local/resourceGroups/test-group",
 			}
+
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
