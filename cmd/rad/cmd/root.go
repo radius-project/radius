@@ -57,6 +57,7 @@ import (
 	resource_delete "github.com/radius-project/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/radius-project/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/radius-project/radius/pkg/cli/cmd/resource/show"
+	resourceprovider_create "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/create"
 	resourceprovider_delete "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/delete"
 	resourceprovider_list "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/list"
 	resourceprovider_show "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/show"
@@ -237,6 +238,9 @@ func initSubCommands() {
 
 	resourceProviderListCmd, _ := resourceprovider_list.NewCommand(framework)
 	resourceProviderCmd.AddCommand(resourceProviderListCmd)
+
+	resourceProviderCreateCmd, _ := resourceprovider_create.NewCommand(framework)
+	resourceProviderCmd.AddCommand(resourceProviderCreateCmd)
 
 	resourceProviderDeleteCmd, _ := resourceprovider_delete.NewCommand(framework)
 	resourceProviderCmd.AddCommand(resourceProviderDeleteCmd)

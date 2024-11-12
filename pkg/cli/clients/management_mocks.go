@@ -34,7 +34,7 @@ import (
 // Because these interfaces are non-exported, they MUST be defined in their own file
 // and we MUST use -source on mockgen to generate mocks for them.
 
-//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient
+//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient,apiVersonClient,locationClient
 
 // genericResourceClient is an interface for mocking the generated SDK client for any resource.
 type genericResourceClient interface {
@@ -82,7 +82,18 @@ type resourceProviderClient interface {
 	NewListProviderSummariesPager(planeName string, options *ucpv20231001.ResourceProvidersClientListProviderSummariesOptions) *runtime.Pager[ucpv20231001.ResourceProvidersClientListProviderSummariesResponse]
 }
 
-// resourceProviderClient is an interface for mocking the generated SDK client for resource types.
+// resourceTypeClient is an interface for mocking the generated SDK client for resource types.
 type resourceTypeClient interface {
+	BeginCreateOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource ucpv20231001.ResourceTypeResource, options *ucpv20231001.ResourceTypesClientBeginCreateOrUpdateOptions) (*runtime.Poller[ucpv20231001.ResourceTypesClientCreateOrUpdateResponse], error)
 	BeginDelete(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ucpv20231001.ResourceTypesClientBeginDeleteOptions) (*runtime.Poller[ucpv20231001.ResourceTypesClientDeleteResponse], error)
+}
+
+// apiVersionClient is an interface for mocking the generated SDK client for API versions.
+type apiVersionClient interface {
+	BeginCreateOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource ucpv20231001.APIVersionResource, options *ucpv20231001.APIVersionsClientBeginCreateOrUpdateOptions) (*runtime.Poller[ucpv20231001.APIVersionsClientCreateOrUpdateResponse], error)
+}
+
+// locationClient is an interface for mocking the generated SDK client for locations.
+type locationClient interface {
+	BeginCreateOrUpdate(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource ucpv20231001.LocationResource, options *ucpv20231001.LocationsClientBeginCreateOrUpdateOptions) (*runtime.Poller[ucpv20231001.LocationsClientCreateOrUpdateResponse], error)
 }

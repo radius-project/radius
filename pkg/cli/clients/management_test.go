@@ -855,7 +855,7 @@ func Test_ResourceProvider(t *testing.T) {
 	testResourceProviderName := "Applications.Test"
 
 	expectedResource := ucp.ResourceProviderResource{
-		ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders" + testResourceProviderName),
+		ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName),
 		Name:     &testResourceProviderName,
 		Type:     to.Ptr("System.Resources/resourceProviders"),
 		Location: to.Ptr(v1.LocationGlobal),
@@ -1076,6 +1076,25 @@ func Test_ResourceType(t *testing.T) {
 	testResourceProviderName := "Applications.Test"
 	testResourceTypeName := "testResources"
 
+	expectedResource := ucp.ResourceTypeResource{
+		ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/resourceTypes/" + testResourceTypeName),
+		Name: &testResourceTypeName,
+		Type: to.Ptr("System.Resources/resourceProviders/resourceTypes"),
+	}
+
+	t.Run("CreateOrUpdateResourceType", func(t *testing.T) {
+		mock := NewMockresourceTypeClient(gomock.NewController(t))
+		client := createClient(mock)
+
+		mock.EXPECT().
+			BeginCreateOrUpdate(gomock.Any(), "local", testResourceProviderName, testResourceTypeName, expectedResource, gomock.Any()).
+			Return(poller(&ucp.ResourceTypesClientCreateOrUpdateResponse{ResourceTypeResource: expectedResource}), nil)
+
+		result, err := client.CreateOrUpdateResourceType(context.Background(), "local", testResourceProviderName, testResourceTypeName, &expectedResource)
+		require.NoError(t, err)
+		require.Equal(t, expectedResource, result)
+	})
+
 	t.Run("DeleteResourceType", func(t *testing.T) {
 		mock := NewMockresourceTypeClient(gomock.NewController(t))
 		client := createClient(mock)
@@ -1090,6 +1109,75 @@ func Test_ResourceType(t *testing.T) {
 		deleted, err := client.DeleteResourceType(context.Background(), "local", testResourceProviderName, testResourceTypeName)
 		require.NoError(t, err)
 		require.True(t, deleted)
+	})
+}
+
+func Test_APIVersion(t *testing.T) {
+	createClient := func(wrapped apiVersionClient) *UCPApplicationsManagementClient {
+		return &UCPApplicationsManagementClient{
+			RootScope: testScope,
+			apiVersionClientFactory: func() (apiVersionClient, error) {
+				return wrapped, nil
+			},
+			capture: testCapture,
+		}
+	}
+
+	testResourceProviderName := "Applications.Test"
+	testResourceTypeName := "testResources"
+	testAPIVersionResourceName := "2025-01-01"
+
+	expectedResource := ucp.APIVersionResource{
+		ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/resourceTypes/" + testResourceTypeName + "/apiVersions/" + testAPIVersionResourceName),
+		Name: &testAPIVersionResourceName,
+		Type: to.Ptr("System.Resources/resourceProviders/resourceTypes/apiVersions"),
+	}
+
+	t.Run("CreateOrUpdateAPIVersion", func(t *testing.T) {
+		mock := NewMockapiVersionClient(gomock.NewController(t))
+		client := createClient(mock)
+
+		mock.EXPECT().
+			BeginCreateOrUpdate(gomock.Any(), "local", testResourceProviderName, testResourceTypeName, testAPIVersionResourceName, expectedResource, gomock.Any()).
+			Return(poller(&ucp.APIVersionsClientCreateOrUpdateResponse{APIVersionResource: expectedResource}), nil)
+
+		result, err := client.CreateOrUpdateAPIVersion(context.Background(), "local", testResourceProviderName, testResourceTypeName, testAPIVersionResourceName, &expectedResource)
+		require.NoError(t, err)
+		require.Equal(t, expectedResource, result)
+	})
+}
+
+func Test_Location(t *testing.T) {
+	createClient := func(wrapped locationClient) *UCPApplicationsManagementClient {
+		return &UCPApplicationsManagementClient{
+			RootScope: testScope,
+			locationClientFactory: func() (locationClient, error) {
+				return wrapped, nil
+			},
+			capture: testCapture,
+		}
+	}
+
+	testResourceProviderName := "Applications.Test"
+	testLocationName := "east"
+
+	expectedResource := ucp.LocationResource{
+		ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/locations/" + testLocationName),
+		Name: &testLocationName,
+		Type: to.Ptr("System.Resources/resourceProviders/locations"),
+	}
+
+	t.Run("CreateOrUpdateLocation", func(t *testing.T) {
+		mock := NewMocklocationClient(gomock.NewController(t))
+		client := createClient(mock)
+
+		mock.EXPECT().
+			BeginCreateOrUpdate(gomock.Any(), "local", testResourceProviderName, testLocationName, expectedResource, gomock.Any()).
+			Return(poller(&ucp.LocationsClientCreateOrUpdateResponse{LocationResource: expectedResource}), nil)
+
+		result, err := client.CreateOrUpdateLocation(context.Background(), "local", testResourceProviderName, testLocationName, &expectedResource)
+		require.NoError(t, err)
+		require.Equal(t, expectedResource, result)
 	})
 }
 
