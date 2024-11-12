@@ -261,7 +261,8 @@ func TestApplyAsyncHandler(t *testing.T) {
 	}
 
 	for _, op := range expectedOperations {
-		jobCtrl := registry.Get(op)
+		jobCtrl, err := registry.Get(context.Background(), op)
+		require.NoError(t, err)
 		require.NotNil(t, jobCtrl)
 	}
 }
