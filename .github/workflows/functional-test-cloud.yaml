@@ -462,6 +462,7 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+      AWS_REGION : "us-west-2" # needed for aws cli
     steps:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@v2
@@ -602,15 +603,25 @@ jobs:
           
           OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/
           echo "OIDC_TEST_URL=$OIDC" >> $GITHUB_OUTPUT
+          echo "OIDC URL:------------>"
           echo $OIDC
-          echo $${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          echo ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          echo "OIDC URL END:------------>"
+
+      #echo $${{ env.AZURE_TEST_RESOURCE_GROUP }}
+      #echo ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       # todo: working on this
-      # create IAM Role with right policy and configure it with trust.
-      - name: Create IAM role for AWS IRSA
+      - name: configure aws credentials using assumed role
+        uses: aws-actions/configure-aws-credentials@v1.7.0
+        with:
+          role-to-assume: arn:aws:iam::817312594854:role/GitHubAction-AssumeRoleWithAction #change to reflect your IAM role’s ARN
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
+      # Hello from AWS: WhoAmI
+      - name: Sts GetCallerIdentity
         run: |
-          export K8S_CLUSTER_NAME=radius
+          aws sts get-caller-identity
+          echo "Hello from AWS: WhoAmI"
 
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
