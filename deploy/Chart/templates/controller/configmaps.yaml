@@ -23,7 +23,7 @@ data:
 
     queueProvider:
       provider: "apiserver"
-      name: "ucp"
+      name: "controller"
       apiserver:
         context: ""
         namespace: "radius-system"

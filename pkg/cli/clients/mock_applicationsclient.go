@@ -80,6 +80,45 @@ func (c *MockApplicationsManagementClientCreateApplicationIfNotFoundCall) DoAndR
 	return c
 }
 
+// CreateOrUpdateAPIVersion mocks base method.
+func (m *MockApplicationsManagementClient) CreateOrUpdateAPIVersion(arg0 context.Context, arg1, arg2, arg3, arg4 string, arg5 *v20231001preview0.APIVersionResource) (v20231001preview0.APIVersionResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOrUpdateAPIVersion", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret0, _ := ret[0].(v20231001preview0.APIVersionResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateOrUpdateAPIVersion indicates an expected call of CreateOrUpdateAPIVersion.
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateAPIVersion(arg0, arg1, arg2, arg3, arg4, arg5 any) *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateAPIVersion", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateAPIVersion), arg0, arg1, arg2, arg3, arg4, arg5)
+	return &MockApplicationsManagementClientCreateOrUpdateAPIVersionCall{Call: call}
+}
+
+// MockApplicationsManagementClientCreateOrUpdateAPIVersionCall wrap *gomock.Call
+type MockApplicationsManagementClientCreateOrUpdateAPIVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall) Return(arg0 v20231001preview0.APIVersionResource, arg1 error) *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall) Do(f func(context.Context, string, string, string, string, *v20231001preview0.APIVersionResource) (v20231001preview0.APIVersionResource, error)) *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall) DoAndReturn(f func(context.Context, string, string, string, string, *v20231001preview0.APIVersionResource) (v20231001preview0.APIVersionResource, error)) *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CreateOrUpdateApplication mocks base method.
 func (m *MockApplicationsManagementClient) CreateOrUpdateApplication(arg0 context.Context, arg1 string, arg2 *v20231001preview.ApplicationResource) error {
 	m.ctrl.T.Helper()
@@ -156,6 +195,84 @@ func (c *MockApplicationsManagementClientCreateOrUpdateEnvironmentCall) DoAndRet
 	return c
 }
 
+// CreateOrUpdateLocation mocks base method.
+func (m *MockApplicationsManagementClient) CreateOrUpdateLocation(arg0 context.Context, arg1, arg2, arg3 string, arg4 *v20231001preview0.LocationResource) (v20231001preview0.LocationResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOrUpdateLocation", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(v20231001preview0.LocationResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateOrUpdateLocation indicates an expected call of CreateOrUpdateLocation.
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateLocation(arg0, arg1, arg2, arg3, arg4 any) *MockApplicationsManagementClientCreateOrUpdateLocationCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateLocation", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateLocation), arg0, arg1, arg2, arg3, arg4)
+	return &MockApplicationsManagementClientCreateOrUpdateLocationCall{Call: call}
+}
+
+// MockApplicationsManagementClientCreateOrUpdateLocationCall wrap *gomock.Call
+type MockApplicationsManagementClientCreateOrUpdateLocationCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientCreateOrUpdateLocationCall) Return(arg0 v20231001preview0.LocationResource, arg1 error) *MockApplicationsManagementClientCreateOrUpdateLocationCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientCreateOrUpdateLocationCall) Do(f func(context.Context, string, string, string, *v20231001preview0.LocationResource) (v20231001preview0.LocationResource, error)) *MockApplicationsManagementClientCreateOrUpdateLocationCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientCreateOrUpdateLocationCall) DoAndReturn(f func(context.Context, string, string, string, *v20231001preview0.LocationResource) (v20231001preview0.LocationResource, error)) *MockApplicationsManagementClientCreateOrUpdateLocationCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// CreateOrUpdateResource mocks base method.
+func (m *MockApplicationsManagementClient) CreateOrUpdateResource(arg0 context.Context, arg1, arg2 string, arg3 *generated.GenericResource) (generated.GenericResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOrUpdateResource", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(generated.GenericResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateOrUpdateResource indicates an expected call of CreateOrUpdateResource.
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResource(arg0, arg1, arg2, arg3 any) *MockApplicationsManagementClientCreateOrUpdateResourceCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResource", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResource), arg0, arg1, arg2, arg3)
+	return &MockApplicationsManagementClientCreateOrUpdateResourceCall{Call: call}
+}
+
+// MockApplicationsManagementClientCreateOrUpdateResourceCall wrap *gomock.Call
+type MockApplicationsManagementClientCreateOrUpdateResourceCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientCreateOrUpdateResourceCall) Return(arg0 generated.GenericResource, arg1 error) *MockApplicationsManagementClientCreateOrUpdateResourceCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientCreateOrUpdateResourceCall) Do(f func(context.Context, string, string, *generated.GenericResource) (generated.GenericResource, error)) *MockApplicationsManagementClientCreateOrUpdateResourceCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientCreateOrUpdateResourceCall) DoAndReturn(f func(context.Context, string, string, *generated.GenericResource) (generated.GenericResource, error)) *MockApplicationsManagementClientCreateOrUpdateResourceCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CreateOrUpdateResourceGroup mocks base method.
 func (m *MockApplicationsManagementClient) CreateOrUpdateResourceGroup(arg0 context.Context, arg1, arg2 string, arg3 *v20231001preview0.ResourceGroupResource) error {
 	m.ctrl.T.Helper()
@@ -190,6 +307,84 @@ func (c *MockApplicationsManagementClientCreateOrUpdateResourceGroupCall) Do(f f
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockApplicationsManagementClientCreateOrUpdateResourceGroupCall) DoAndReturn(f func(context.Context, string, string, *v20231001preview0.ResourceGroupResource) error) *MockApplicationsManagementClientCreateOrUpdateResourceGroupCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// CreateOrUpdateResourceProvider mocks base method.
+func (m *MockApplicationsManagementClient) CreateOrUpdateResourceProvider(arg0 context.Context, arg1, arg2 string, arg3 *v20231001preview0.ResourceProviderResource) (v20231001preview0.ResourceProviderResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOrUpdateResourceProvider", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(v20231001preview0.ResourceProviderResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateOrUpdateResourceProvider indicates an expected call of CreateOrUpdateResourceProvider.
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResourceProvider(arg0, arg1, arg2, arg3 any) *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceProvider", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResourceProvider), arg0, arg1, arg2, arg3)
+	return &MockApplicationsManagementClientCreateOrUpdateResourceProviderCall{Call: call}
+}
+
+// MockApplicationsManagementClientCreateOrUpdateResourceProviderCall wrap *gomock.Call
+type MockApplicationsManagementClientCreateOrUpdateResourceProviderCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall) Return(arg0 v20231001preview0.ResourceProviderResource, arg1 error) *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall) Do(f func(context.Context, string, string, *v20231001preview0.ResourceProviderResource) (v20231001preview0.ResourceProviderResource, error)) *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall) DoAndReturn(f func(context.Context, string, string, *v20231001preview0.ResourceProviderResource) (v20231001preview0.ResourceProviderResource, error)) *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// CreateOrUpdateResourceType mocks base method.
+func (m *MockApplicationsManagementClient) CreateOrUpdateResourceType(arg0 context.Context, arg1, arg2, arg3 string, arg4 *v20231001preview0.ResourceTypeResource) (v20231001preview0.ResourceTypeResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOrUpdateResourceType", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(v20231001preview0.ResourceTypeResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateOrUpdateResourceType indicates an expected call of CreateOrUpdateResourceType.
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResourceType(arg0, arg1, arg2, arg3, arg4 any) *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResourceType), arg0, arg1, arg2, arg3, arg4)
+	return &MockApplicationsManagementClientCreateOrUpdateResourceTypeCall{Call: call}
+}
+
+// MockApplicationsManagementClientCreateOrUpdateResourceTypeCall wrap *gomock.Call
+type MockApplicationsManagementClientCreateOrUpdateResourceTypeCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall) Return(arg0 v20231001preview0.ResourceTypeResource, arg1 error) *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall) Do(f func(context.Context, string, string, string, *v20231001preview0.ResourceTypeResource) (v20231001preview0.ResourceTypeResource, error)) *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall) DoAndReturn(f func(context.Context, string, string, string, *v20231001preview0.ResourceTypeResource) (v20231001preview0.ResourceTypeResource, error)) *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -346,6 +541,84 @@ func (c *MockApplicationsManagementClientDeleteResourceGroupCall) Do(f func(cont
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockApplicationsManagementClientDeleteResourceGroupCall) DoAndReturn(f func(context.Context, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceGroupCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// DeleteResourceProvider mocks base method.
+func (m *MockApplicationsManagementClient) DeleteResourceProvider(arg0 context.Context, arg1, arg2 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteResourceProvider", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteResourceProvider indicates an expected call of DeleteResourceProvider.
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceProvider(arg0, arg1, arg2 any) *MockApplicationsManagementClientDeleteResourceProviderCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceProvider", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceProvider), arg0, arg1, arg2)
+	return &MockApplicationsManagementClientDeleteResourceProviderCall{Call: call}
+}
+
+// MockApplicationsManagementClientDeleteResourceProviderCall wrap *gomock.Call
+type MockApplicationsManagementClientDeleteResourceProviderCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientDeleteResourceProviderCall) Return(arg0 bool, arg1 error) *MockApplicationsManagementClientDeleteResourceProviderCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientDeleteResourceProviderCall) Do(f func(context.Context, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceProviderCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientDeleteResourceProviderCall) DoAndReturn(f func(context.Context, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceProviderCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// DeleteResourceType mocks base method.
+func (m *MockApplicationsManagementClient) DeleteResourceType(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteResourceType", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteResourceType indicates an expected call of DeleteResourceType.
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceType(arg0, arg1, arg2, arg3 any) *MockApplicationsManagementClientDeleteResourceTypeCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceType), arg0, arg1, arg2, arg3)
+	return &MockApplicationsManagementClientDeleteResourceTypeCall{Call: call}
+}
+
+// MockApplicationsManagementClientDeleteResourceTypeCall wrap *gomock.Call
+type MockApplicationsManagementClientDeleteResourceTypeCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientDeleteResourceTypeCall) Return(arg0 bool, arg1 error) *MockApplicationsManagementClientDeleteResourceTypeCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientDeleteResourceTypeCall) Do(f func(context.Context, string, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceTypeCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientDeleteResourceTypeCall) DoAndReturn(f func(context.Context, string, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceTypeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -584,6 +857,84 @@ func (c *MockApplicationsManagementClientGetResourceGroupCall) DoAndReturn(f fun
 	return c
 }
 
+// GetResourceProvider mocks base method.
+func (m *MockApplicationsManagementClient) GetResourceProvider(arg0 context.Context, arg1, arg2 string) (v20231001preview0.ResourceProviderResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetResourceProvider", arg0, arg1, arg2)
+	ret0, _ := ret[0].(v20231001preview0.ResourceProviderResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetResourceProvider indicates an expected call of GetResourceProvider.
+func (mr *MockApplicationsManagementClientMockRecorder) GetResourceProvider(arg0, arg1, arg2 any) *MockApplicationsManagementClientGetResourceProviderCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceProvider", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResourceProvider), arg0, arg1, arg2)
+	return &MockApplicationsManagementClientGetResourceProviderCall{Call: call}
+}
+
+// MockApplicationsManagementClientGetResourceProviderCall wrap *gomock.Call
+type MockApplicationsManagementClientGetResourceProviderCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientGetResourceProviderCall) Return(arg0 v20231001preview0.ResourceProviderResource, arg1 error) *MockApplicationsManagementClientGetResourceProviderCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientGetResourceProviderCall) Do(f func(context.Context, string, string) (v20231001preview0.ResourceProviderResource, error)) *MockApplicationsManagementClientGetResourceProviderCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientGetResourceProviderCall) DoAndReturn(f func(context.Context, string, string) (v20231001preview0.ResourceProviderResource, error)) *MockApplicationsManagementClientGetResourceProviderCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetResourceProviderSummary mocks base method.
+func (m *MockApplicationsManagementClient) GetResourceProviderSummary(arg0 context.Context, arg1, arg2 string) (v20231001preview0.ResourceProviderSummary, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetResourceProviderSummary", arg0, arg1, arg2)
+	ret0, _ := ret[0].(v20231001preview0.ResourceProviderSummary)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetResourceProviderSummary indicates an expected call of GetResourceProviderSummary.
+func (mr *MockApplicationsManagementClientMockRecorder) GetResourceProviderSummary(arg0, arg1, arg2 any) *MockApplicationsManagementClientGetResourceProviderSummaryCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceProviderSummary", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResourceProviderSummary), arg0, arg1, arg2)
+	return &MockApplicationsManagementClientGetResourceProviderSummaryCall{Call: call}
+}
+
+// MockApplicationsManagementClientGetResourceProviderSummaryCall wrap *gomock.Call
+type MockApplicationsManagementClientGetResourceProviderSummaryCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientGetResourceProviderSummaryCall) Return(arg0 v20231001preview0.ResourceProviderSummary, arg1 error) *MockApplicationsManagementClientGetResourceProviderSummaryCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientGetResourceProviderSummaryCall) Do(f func(context.Context, string, string) (v20231001preview0.ResourceProviderSummary, error)) *MockApplicationsManagementClientGetResourceProviderSummaryCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientGetResourceProviderSummaryCall) DoAndReturn(f func(context.Context, string, string) (v20231001preview0.ResourceProviderSummary, error)) *MockApplicationsManagementClientGetResourceProviderSummaryCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListApplications mocks base method.
 func (m *MockApplicationsManagementClient) ListApplications(arg0 context.Context) ([]v20231001preview.ApplicationResource, error) {
 	m.ctrl.T.Helper()
@@ -736,6 +1087,84 @@ func (c *MockApplicationsManagementClientListResourceGroupsCall) Do(f func(conte
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockApplicationsManagementClientListResourceGroupsCall) DoAndReturn(f func(context.Context, string) ([]v20231001preview0.ResourceGroupResource, error)) *MockApplicationsManagementClientListResourceGroupsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListResourceProviderSummaries mocks base method.
+func (m *MockApplicationsManagementClient) ListResourceProviderSummaries(arg0 context.Context, arg1 string) ([]v20231001preview0.ResourceProviderSummary, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListResourceProviderSummaries", arg0, arg1)
+	ret0, _ := ret[0].([]v20231001preview0.ResourceProviderSummary)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListResourceProviderSummaries indicates an expected call of ListResourceProviderSummaries.
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourceProviderSummaries(arg0, arg1 any) *MockApplicationsManagementClientListResourceProviderSummariesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceProviderSummaries", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourceProviderSummaries), arg0, arg1)
+	return &MockApplicationsManagementClientListResourceProviderSummariesCall{Call: call}
+}
+
+// MockApplicationsManagementClientListResourceProviderSummariesCall wrap *gomock.Call
+type MockApplicationsManagementClientListResourceProviderSummariesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientListResourceProviderSummariesCall) Return(arg0 []v20231001preview0.ResourceProviderSummary, arg1 error) *MockApplicationsManagementClientListResourceProviderSummariesCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientListResourceProviderSummariesCall) Do(f func(context.Context, string) ([]v20231001preview0.ResourceProviderSummary, error)) *MockApplicationsManagementClientListResourceProviderSummariesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientListResourceProviderSummariesCall) DoAndReturn(f func(context.Context, string) ([]v20231001preview0.ResourceProviderSummary, error)) *MockApplicationsManagementClientListResourceProviderSummariesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListResourceProviders mocks base method.
+func (m *MockApplicationsManagementClient) ListResourceProviders(arg0 context.Context, arg1 string) ([]v20231001preview0.ResourceProviderResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListResourceProviders", arg0, arg1)
+	ret0, _ := ret[0].([]v20231001preview0.ResourceProviderResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListResourceProviders indicates an expected call of ListResourceProviders.
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourceProviders(arg0, arg1 any) *MockApplicationsManagementClientListResourceProvidersCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceProviders", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourceProviders), arg0, arg1)
+	return &MockApplicationsManagementClientListResourceProvidersCall{Call: call}
+}
+
+// MockApplicationsManagementClientListResourceProvidersCall wrap *gomock.Call
+type MockApplicationsManagementClientListResourceProvidersCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientListResourceProvidersCall) Return(arg0 []v20231001preview0.ResourceProviderResource, arg1 error) *MockApplicationsManagementClientListResourceProvidersCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientListResourceProvidersCall) Do(f func(context.Context, string) ([]v20231001preview0.ResourceProviderResource, error)) *MockApplicationsManagementClientListResourceProvidersCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientListResourceProvidersCall) DoAndReturn(f func(context.Context, string) ([]v20231001preview0.ResourceProviderResource, error)) *MockApplicationsManagementClientListResourceProvidersCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -1,0 +1,98 @@
+{{- $appversion := include "radius.versiontag" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: dynamic-rp
+    app.kubernetes.io/name: dynamic-rp
+    app.kubernetes.io/part-of: radius
+  name: dynamic-rp
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: dynamic-rp
+  template:
+    metadata:
+      labels:
+        control-plane: dynamic-rp
+        app.kubernetes.io/name: dynamic-rp
+        app.kubernetes.io/part-of: radius
+        {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
+        azure.workload.identity/use: "true"
+        {{- end }}
+      {{- if eq .Values.global.prometheus.enabled true }}
+      annotations:
+        prometheus.io/path: "{{ .Values.global.prometheus.path }}"
+        prometheus.io/port: "{{ .Values.global.prometheus.port }}"
+        prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
+      {{- end }}
+    spec:
+      serviceAccountName: dynamic-rp
+      containers:
+      - name: dynamic-rp
+        image: "{{ .Values.dynamicrp.image }}:{{ .Values.dynamicrp.tag | default $appversion }}"
+        args:
+        - --config-file=/etc/config/radius-self-host.yaml
+        env:
+        - name: SKIP_ARM
+          value: 'false'
+        - name: ARM_AUTH_METHOD
+          value: 'UCPCredential'
+        - name: RADIUS_ENV
+          value: 'self-hosted'
+        - name: K8S_CLUSTER
+          value: 'true'
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
+          value: {{ .Values.global.rootCA.mountPath }}
+        {{- end}}
+        ports:
+        - containerPort: 5443
+          name: dynamic-rp
+          protocol: TCP
+        {{- if eq .Values.global.prometheus.enabled true }}
+        - containerPort: {{ .Values.global.prometheus.port }}
+          name: metrics
+          protocol: TCP
+        {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+        {{- if eq .Values.global.aws.irsa.enabled true }}
+        - name: aws-iam-token
+          mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
+        {{- end }}
+        - name: terraform
+          mountPath: {{ .Values.dynamicrp.terraform.path }}
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.volumeName }}
+          mountPath: {{ .Values.global.rootCA.mountPath }}
+          readOnly: true
+        {{- end }}
+        {{- if .Values.dynamicrp.resources }}
+        resources:{{ toYaml .Values.rp.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: dynamic-rp-config
+        {{- if eq .Values.global.aws.irsa.enabled true }}
+        - name: aws-iam-token
+          projected:
+            sources:
+            - serviceAccountToken:
+                path: token
+                expirationSeconds: 86400
+                audience: "sts.amazonaws.com"
+        {{- end }}
+        - name: terraform
+          emptyDir: {}
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.volumeName }}
+          secret:
+            secretName: {{ .Values.global.rootCA.secretName }}
+        {{- end }}

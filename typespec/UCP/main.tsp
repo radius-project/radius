@@ -27,6 +27,7 @@ import "./azure-credentials.tsp";
 import "./azure-plane.tsp";
 
 import "./resourcegroups.tsp";
+import "./resourceproviders.tsp";
 import "./radius-plane.tsp";
 
 using TypeSpec.Versioning;

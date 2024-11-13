@@ -1,0 +1,43 @@
+# This is an example of configuration file.
+environment:
+  name: Dev
+  roleLocation: "global"
+storageProvider:
+  provider: "apiserver"
+  apiserver:
+    context: ''
+    namespace: 'radius-testing'
+queueProvider:
+  provider: "apiserver"
+  name: dynamic-rp
+  apiserver:
+    context: ''
+    namespace: 'radius-testing'
+secretProvider:
+  provider: "kubernetes"
+profilerProvider:
+  enabled: false
+  port: 6062
+metricsProvider:
+  prometheus:
+    enabled: false
+    path: "/metrics"
+    port: 9092
+server:
+  host: "0.0.0.0"
+  port: 8082
+workerServer:
+  maxOperationConcurrency: 10
+  maxOperationRetryCount: 2
+ucp:
+  kind: direct
+  direct:
+    endpoint: "http://localhost:9000/apis/api.ucp.dev/v1alpha3"
+logging:
+  level: "info"
+  json: false
+bicep:
+  deleteRetryCount: 20
+  deleteRetryDelaySeconds: 60
+terraform:
+  path: "/terraform"

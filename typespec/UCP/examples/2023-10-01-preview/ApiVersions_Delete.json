@@ -1,0 +1,21 @@
+{
+  "operationId": "ApiVersions_Delete",
+  "title": "Delete an api version of a resource type supported by a resource provider.",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local",
+    "resourceProviderName": "Applications.Test",
+    "resourceTypeName": "testResources",
+    "apiVersionName": "2025-01-01"
+  },
+  "responses": {
+    "200": {},
+    "202": {
+      "headers": {
+        "azure-asyncoperation": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd",
+        "location": "http://example.com/planes/radius/local/providers/System.Resources/locations/global/operations/abcd"
+      }
+    },
+    "204": {}
+  }
+}

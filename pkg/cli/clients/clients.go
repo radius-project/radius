@@ -135,7 +135,13 @@ type LogStream struct {
 
 //go:generate mockgen -typed -destination=./mock_applicationsclient.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients ApplicationsManagementClient
 
-// ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
+// ApplicationsManagementClient is the client abstraction used with the CLI to interact wih the Radius API.
+//
+// Some conventions about the parameter names and values.
+//
+// - The client is constructed with a default scope. e.g: /planes/radius/local/resourceGroups/myGroup.
+// - Parameters named like applicationNameOrID are used to identify an application by its name + default scope, or it's resource id.
+// - The planeName parameter is used to specify the plane name. This is usually "local".
 type ApplicationsManagementClient interface {
 	// ListResourcesOfType lists all resources of a given type in the configured scope.
 	ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error)
@@ -154,6 +160,9 @@ type ApplicationsManagementClient interface {
 
 	// GetResource retrieves a resource by its type and name (or id).
 	GetResource(ctx context.Context, resourceType string, resourceNameOrID string) (generated.GenericResource, error)
+
+	// CreateOrUpdateResource creates or updates a resource using its type name (or id).
+	CreateOrUpdateResource(ctx context.Context, resourceType string, resourceNameOrID string, resource *generated.GenericResource) (generated.GenericResource, error)
 
 	// DeleteResource deletes a resource by its type and name (or id).
 	DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string) (bool, error)
@@ -205,6 +214,36 @@ type ApplicationsManagementClient interface {
 
 	// DeleteResourceGroup deletes a resource group by its name.
 	DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
+
+	// ListResourceProviders lists all resource providers in the configured scope.
+	ListResourceProviders(ctx context.Context, planeName string) ([]ucp_v20231001preview.ResourceProviderResource, error)
+
+	// GetResourceProvider gets the resource provider with the specified name in the configured scope.
+	GetResourceProvider(ctx context.Context, planeName string, providerNamespace string) (ucp_v20231001preview.ResourceProviderResource, error)
+
+	// CreateOrUpdateResourceProvider creates or updates a resource provider in the configured scope.
+	CreateOrUpdateResourceProvider(ctx context.Context, planeName string, providerNamespace string, resource *ucp_v20231001preview.ResourceProviderResource) (ucp_v20231001preview.ResourceProviderResource, error)
+
+	// DeleteResourceProvider deletes a resource provider in the configured scope.
+	DeleteResourceProvider(ctx context.Context, planeName string, providerNamespace string) (bool, error)
+
+	// ListResourceProviderSummaries lists the summary data of all resource providers in the configured scope.
+	ListResourceProviderSummaries(ctx context.Context, planeName string) ([]ucp_v20231001preview.ResourceProviderSummary, error)
+
+	// GetResourceProviderSummary gets the resource provider summary with the specified name in the configured scope.
+	GetResourceProviderSummary(ctx context.Context, planeName string, providerNamespace string) (ucp_v20231001preview.ResourceProviderSummary, error)
+
+	// CreateOrUpdateResourceType creates or updates a resource type in the configured scope.
+	CreateOrUpdateResourceType(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, resource *ucp_v20231001preview.ResourceTypeResource) (ucp_v20231001preview.ResourceTypeResource, error)
+
+	// DeleteResourceType deletes a resource type in the configured scope.
+	DeleteResourceType(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string) (bool, error)
+
+	// CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.
+	CreateOrUpdateAPIVersion(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, apiVersionName string, resource *ucp_v20231001preview.APIVersionResource) (ucp_v20231001preview.APIVersionResource, error)
+
+	// CreateOrUpdateLocation creates or updates a resource provider location in the configured scope.
+	CreateOrUpdateLocation(ctx context.Context, planeName string, providerNamespace string, locationName string, resource *ucp_v20231001preview.LocationResource) (ucp_v20231001preview.LocationResource, error)
 }
 
 // ShallowCopy creates a shallow copy of the DeploymentParameters object by iterating through the original object and

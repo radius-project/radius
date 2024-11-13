@@ -1,0 +1,30 @@
+{
+  "operationId": "ResourceProviders_ListProviderSummaries",
+  "title": "List resource provider summaries. The resource provider summary aggregates common information about resource types, api versions, and locations.",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "name": "Applications.Test",
+            "locations": {
+              "east": {}
+            },
+            "resourceTypes": {
+              "testResources": {
+                "defaultApiVersion": "2025-01-01",
+                "apiVersions": {
+                  "2025-01-01": {}
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

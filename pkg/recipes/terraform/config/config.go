@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -96,11 +95,8 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
-	// Remove trailing newline character from the JSON data so that file is written without any extra newline characters.
-	// This is to maintain consistency with the codebase.
-	jsonData := strings.TrimSuffix(buf.String(), "\n")
 	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getMainConfigFilePath(workingDir)))
-	if err := os.WriteFile(getMainConfigFilePath(workingDir), []byte(jsonData), modeConfigFile); err != nil {
+	if err := os.WriteFile(getMainConfigFilePath(workingDir), buf.Bytes(), modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
 

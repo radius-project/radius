@@ -15,39 +15,44 @@ limitations under the License.
 */
 
 module.exports = async ({ github, context }) => {
-    if (context.eventName === 'issue_comment' && context.payload.action === 'created') {
-        try {
-            await handleIssueCommentCreate({ github, context });
-        } catch (error) {
-            console.log(`[handleIssueCommentCreate] unexpected error: ${error}`);
-        }
+  if (
+    context.eventName === "issue_comment" &&
+    context.payload.action === "created"
+  ) {
+    try {
+      await handleIssueCommentCreate({ github, context });
+    } catch (error) {
+      console.log(`[handleIssueCommentCreate] unexpected error: ${error}`);
     }
-}
+  }
+};
 
 // Handle issue comment create event.
 async function handleIssueCommentCreate({ github, context }) {
-    const payload = context.payload;
-    const issue = context.issue;
-    const isFromPulls = !!payload.issue.pull_request;
-    const commentBody = payload.comment.body;
-    const username = context.actor;
+  const payload = context.payload;
+  const issue = context.issue;
+  const isFromPulls = !!payload.issue.pull_request;
+  const commentBody = payload.comment.body;
+  const username = context.actor;
 
-    if (!commentBody) {
-        console.log('[handleIssueCommentCreate] comment body not found, exiting.');
-        return;
-    }
+  if (!commentBody) {
+    console.log("[handleIssueCommentCreate] comment body not found, exiting.");
+    return;
+  }
 
-    const commandParts = commentBody.split(/\s+/);
-    const command = commandParts.shift();
+  const commandParts = commentBody.split(/\s+/);
+  const command = commandParts.shift();
 
-    switch (command) {
-        case '/assign':
-            await cmdAssign(github, issue, isFromPulls, username);
-            break;
-        default:
-            console.log(`[handleIssueCommentCreate] command ${command} not found, exiting.`);
-            break;
-    }
+  switch (command) {
+    case "/assign":
+      await cmdAssign(github, issue, isFromPulls, username);
+      break;
+    default:
+      console.log(
+        `[handleIssueCommentCreate] command ${command} not found, exiting.`,
+      );
+      break;
+  }
 }
 
 /**
@@ -58,18 +63,22 @@ async function handleIssueCommentCreate({ github, context }) {
  * @param {*} username is the user who trigger the command
  */
 async function cmdAssign(github, issue, isFromPulls, username) {
-    if (isFromPulls) {
-        console.log('[cmdAssign] pull requests not supported, skipping command execution.');
-        return;
-    } else if (issue.assignees && issue.assignees.length !== 0) {
-        console.log('[cmdAssign] issue already has assignees, skipping command execution.');
-        return;
-    }
+  if (isFromPulls) {
+    console.log(
+      "[cmdAssign] pull requests not supported, skipping command execution.",
+    );
+    return;
+  } else if (issue.assignees && issue.assignees.length !== 0) {
+    console.log(
+      "[cmdAssign] issue already has assignees, skipping command execution.",
+    );
+    return;
+  }
 
-    await github.rest.issues.addAssignees({
-        owner: issue.owner,
-        repo: issue.repo,
-        issue_number: issue.number,
-        assignees: [username],
-    });
+  await github.rest.issues.addAssignees({
+    owner: issue.owner,
+    repo: issue.repo,
+    issue_number: issue.number,
+    assignees: [username],
+  });
 }

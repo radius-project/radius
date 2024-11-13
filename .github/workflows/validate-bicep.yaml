@@ -52,24 +52,18 @@ jobs:
           bicep --version
       - name: Check out repo
         uses: actions/checkout@v4
-      - name: Create a secure local registry
-        id: create-local-registry
-        uses: ./.github/actions/create-local-registry
-        with:
-          secure: "true"
-          registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
-          registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
-          registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
+      - name: Create a temporary file system 
+        run:
+          mkdir tmp-radius-bicep-extension
       - name: Publish bicep types 
         run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:latest --force  
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz 
       - name: Install jq
         run: sudo apt-get install -y jq
       - name: Modify bicepconfig.json
         run: |
           # Add credential preference to the bicepconfig.json file
-          jq '.extensions.radius = "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:latest"' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
-          jq '. + {"cloud": {"credentialPrecedence": ["Environment"]}}' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
+          jq '.extensions.radius = "./tmp-radius-bicep-extension/radius.tgz"' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
       - name: Print updated bicepconfig.json
         run: cat bicepconfig.json
       - name: Verify Bicep files

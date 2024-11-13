@@ -7,6 +7,29 @@
 
 package v20231001preview
 
+// APIVersionsClientBeginCreateOrUpdateOptions contains the optional parameters for the APIVersionsClient.BeginCreateOrUpdate
+// method.
+type APIVersionsClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// APIVersionsClientBeginDeleteOptions contains the optional parameters for the APIVersionsClient.BeginDelete method.
+type APIVersionsClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// APIVersionsClientGetOptions contains the optional parameters for the APIVersionsClient.Get method.
+type APIVersionsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// APIVersionsClientListOptions contains the optional parameters for the APIVersionsClient.NewListPager method.
+type APIVersionsClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // AwsCredentialsClientCreateOrUpdateOptions contains the optional parameters for the AwsCredentialsClient.CreateOrUpdate
 // method.
 type AwsCredentialsClientCreateOrUpdateOptions struct {
@@ -117,6 +140,29 @@ type AzurePlanesClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// LocationsClientBeginCreateOrUpdateOptions contains the optional parameters for the LocationsClient.BeginCreateOrUpdate
+// method.
+type LocationsClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// LocationsClientBeginDeleteOptions contains the optional parameters for the LocationsClient.BeginDelete method.
+type LocationsClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// LocationsClientGetOptions contains the optional parameters for the LocationsClient.Get method.
+type LocationsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// LocationsClientListOptions contains the optional parameters for the LocationsClient.NewListPager method.
+type LocationsClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // PlanesClientListPlanesOptions contains the optional parameters for the PlanesClient.NewListPlanesPager method.
 type PlanesClientListPlanesOptions struct {
 	// placeholder for future optional parameters
@@ -174,6 +220,65 @@ type ResourceGroupsClientListOptions struct {
 
 // ResourceGroupsClientUpdateOptions contains the optional parameters for the ResourceGroupsClient.Update method.
 type ResourceGroupsClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ResourceProvidersClientBeginCreateOrUpdateOptions contains the optional parameters for the ResourceProvidersClient.BeginCreateOrUpdate
+// method.
+type ResourceProvidersClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ResourceProvidersClientBeginDeleteOptions contains the optional parameters for the ResourceProvidersClient.BeginDelete
+// method.
+type ResourceProvidersClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ResourceProvidersClientGetOptions contains the optional parameters for the ResourceProvidersClient.Get method.
+type ResourceProvidersClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ResourceProvidersClientGetProviderSummaryOptions contains the optional parameters for the ResourceProvidersClient.GetProviderSummary
+// method.
+type ResourceProvidersClientGetProviderSummaryOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ResourceProvidersClientListOptions contains the optional parameters for the ResourceProvidersClient.NewListPager method.
+type ResourceProvidersClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ResourceProvidersClientListProviderSummariesOptions contains the optional parameters for the ResourceProvidersClient.NewListProviderSummariesPager
+// method.
+type ResourceProvidersClientListProviderSummariesOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ResourceTypesClientBeginCreateOrUpdateOptions contains the optional parameters for the ResourceTypesClient.BeginCreateOrUpdate
+// method.
+type ResourceTypesClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ResourceTypesClientBeginDeleteOptions contains the optional parameters for the ResourceTypesClient.BeginDelete method.
+type ResourceTypesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ResourceTypesClientGetOptions contains the optional parameters for the ResourceTypesClient.Get method.
+type ResourceTypesClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ResourceTypesClientListOptions contains the optional parameters for the ResourceTypesClient.NewListPager method.
+type ResourceTypesClientListOptions struct {
 	// placeholder for future optional parameters
 }
 

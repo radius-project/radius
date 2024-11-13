@@ -17,6 +17,7 @@ limitations under the License.
 package storeutil
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -96,4 +97,96 @@ func NormalizePart(part string) string {
 	}
 
 	return strings.ToLower(part)
+}
+
+// ConvertScopeIDToResourceID normalizes the resource ID to be consistent between scopes and resources.
+//
+// For a resource id that identifies a resource, it is already in normalized form.
+//
+// - eg: "/planes/radius/local/resourceGroups/my-rg/providers/Applications.Core/applications/my-app" is already
+// normalized.
+// - eg: "/planes/radius/local/resourceGroups/my-rg" needs normalization.
+func ConvertScopeIDToResourceID(parsed resources.ID) (resources.ID, error) {
+	// This function normalizes the resource ID to be consistent between scopes and resources.
+	//
+	// For a resource id that identifies a resource, it is already in normalized form.
+	//
+	// eg: "/planes/radius/local/resourceGroups/my-rg/providers/Applications.Core/applications/my-app"
+	if parsed.IsResource() {
+		return parsed, nil
+	}
+
+	// For a resource id that identifies a scope, we truncate the last segement and make it look like a resource by
+	// adding a type.
+	//
+	// eg: "/planes/radius/local/resourceGroups/my-rg" -> "/planes/radius/local/providers/System.Resources/resourceGroups/my-rg"
+	//
+	// This means that the scope could be looked up using two different forms.
+	//
+	// - "/planes/radius/local/resourceGroups/my-rg"
+	// - "/planes/radius/local/providers/System.Resources/resourceGroups/my-rg"
+	//
+	// This important because right now the controller code uses the former, but the latter is more useful for storage.
+	// Over time we want to eliminate the former and only use the latter by pushing this change into the controllers.
+	//
+	// There's a fixed set of scopes in Radius/UCP right now but we'd like to avoid maintaining a hardcoded list
+	// of scope types.
+	//
+	// Cases we have to handle:
+	// - /planes/azure/<name>
+	// - /planes/aws/<name>
+	// - /planes/radius/<name>
+	// - /planes/radius/<name>/resourceGroups/<name>
+	scopes := parsed.ScopeSegments()
+	if len(scopes) == 0 {
+		return resources.ID{}, fmt.Errorf("invalid resource id: %s", parsed.String())
+	}
+
+	switch strings.ToLower(scopes[0].Type) {
+	case "azure":
+		if len(scopes) == 1 {
+			return resources.MustParse(fmt.Sprintf("/planes/providers/System.Azure/planes/%s", scopes[0].Name)), nil
+		}
+
+	case "aws":
+		if len(scopes) == 1 {
+			return resources.MustParse(fmt.Sprintf("/planes/providers/System.AWS/planes/%s", scopes[0].Name)), nil
+		}
+
+	case "radius":
+		if len(scopes) == 1 {
+			return resources.MustParse(fmt.Sprintf("/planes/providers/System.Radius/planes/%s", scopes[0].Name)), nil
+		} else if len(scopes) == 2 && strings.EqualFold(scopes[1].Type, "resourceGroups") {
+			return resources.MustParse(fmt.Sprintf("/planes/radius/%s/providers/System.Resources/resourceGroups/%s", scopes[0].Name, scopes[1].Name)), nil
+		}
+	}
+
+	return resources.ID{}, fmt.Errorf("invalid resource id: %s", parsed.String())
+}
+
+// ConvertScopeTypeToResourceType normalizes the resource type to be consistent between scopes and resources.
+// See comments on ConvertScopeIDToResourceID for full context.
+//
+// For a resource type that identifies a resource, it is already in normalized form.
+//
+// - eg: "Applications.Core/applications" is already normalized.
+// - eg: "resourceGroups" needs normalization.
+func ConvertScopeTypeToResourceType(resourceType string) (string, error) {
+	if strings.Contains(resourceType, "/") {
+		// Already normalized.
+		return resourceType, nil
+	}
+
+	switch strings.ToLower(resourceType) {
+	case "aws":
+		return "System.Aws/planes", nil
+	case "azure":
+		return "System.Azure/planes", nil
+	case "radius":
+		return "System.Radius/planes", nil
+	case "resourcegroups":
+		return "System.Resources/resourceGroups", nil
+	}
+
+	return "", fmt.Errorf("invalid resource type: %s", resourceType)
 }

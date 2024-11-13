@@ -290,6 +290,7 @@ jobs:
           RAD_COMMAND="rad install kubernetes \
                  --chart ${{ env.RADIUS_CHART_LOCATION }} \
                  --set rp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
+                 --set dynamicrp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }} \
                  --set controller.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller,controller.tag=${{ env.REL_VERSION }} \
                  --set ucp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
                  --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
@@ -338,16 +339,11 @@ jobs:
           cat <<EOF > ./test/bicepconfig.json
           {
             "experimentalFeaturesEnabled": {
-              "extensibility": true,
-              "extensionRegistry": true,
-              "dynamicTypeLoading": true
+              "extensibility": true
             },
             "extensions": {
               "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
-            },
-            "cloud": {
-              "credentialPrecedence": ["Environment"]
             }
           }
           EOF

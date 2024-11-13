@@ -164,3 +164,28 @@ dotnet --list-sdks
 Make sure you see a `6.0` entry in `--list-runtimes` for `Microsoft.AspNetCore.App` and a `6.0` or newer entry for `--list-sdks`.
 
 If you run into issues here, please re-read the prerequisites related to installing .NET.
+
+### I got a "InvalidTemplate" error when deploying a bicep file
+
+> sample error message:
+```json
+{
+  "code": "InvalidTemplate",
+  "message": "Deployment template validation failed: 'The template language version '2.1-experimental' is not recognized.'.",
+}
+```
+
+Pull latest of the `radius-project/deployment-engine` project.
+Run submodule update to update bicep extensibility support for extensible resources:
+
+```bash
+git submodule update --init --recursive
+```
+
+Build deployment-engine project
+
+```bash
+dotnet build
+```
+
+After building the Deployment Engine, build the radius project and redeploy bicep file by running steps from [Debugging](#debugging).

@@ -122,7 +122,6 @@ jobs:
           # https://github.com/radius-project/radius/issues/7782
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             echo "Triggered by workflow_run."
-            echo "Head Ref: ${{ github.head_ref }}"
             echo "Ref: ${{ github.ref }}"
             echo "Head Branch Name: ${{ github.event.workflow_run.head_branch }}"
             echo "SHA Value: ${{ github.event.workflow_run.head_sha }}"
@@ -276,6 +275,7 @@ jobs:
             * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY }}/test/testrecipes/test-bicep-recipes/<name>:${{ env.REL_VERSION }}`
             * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
             * applications-rp test image location: `${{ env.CONTAINER_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
+            * dynamic-rp test image location: `${{ env.CONTAINER_REGISTRY }}/dynamic-rp:${{ env.REL_VERSION }}`
             * controller test image location: `${{ env.CONTAINER_REGISTRY }}/controller:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CONTAINER_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
             * deployment-engine test image location: `${{ env.DE_IMAGE }}:${{ env.DE_TAG }}`
@@ -393,16 +393,11 @@ jobs:
           cat <<EOF > ./test/bicepconfig.json
           {
             "experimentalFeaturesEnabled": {
-              "extensibility": true,
-              "extensionRegistry": true,
-              "dynamicTypeLoading": true
+              "extensibility": true
             },
             "extensions": {
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
-            },
-            "cloud": {
-              "credentialPrecedence": ["Environment"]
             }
           }
           EOF
@@ -454,7 +449,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest-m]
-        name: [corerp-cloud, ucp-cloud, datastoresrp-cloud]
+        name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
@@ -653,7 +648,12 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }},global.azureWorkloadIdentity.enabled=true
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
+            --set dynamicrp.image=${{ env.CONTAINER_REGISTRY }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }} \
+            --set controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }} \
+            --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
+            --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
+            --set global.azureWorkloadIdentity.enabled=true
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -700,9 +700,7 @@ jobs:
           cat <<EOF > ./test/bicepconfig.json
           {
             "experimentalFeaturesEnabled": {
-              "extensibility": true,
-              "extensionRegistry": true,
-              "dynamicTypeLoading": true
+              "extensibility": true
             },
             "extensions": {
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",

@@ -112,7 +112,7 @@ interface RabbitMQQueues {
     UCPBaseParameters<RabbitMQQueueResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     RabbitMQQueueResource,
     UCPBaseParameters<RabbitMQQueueResource>
   >;

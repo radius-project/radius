@@ -13,21 +13,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------.
-import { Dictionary, filter, keys, orderBy } from 'lodash';
-import { ArrayType, BuiltInType, DiscriminatedObjectType, getBuiltInTypeKindLabel, getObjectTypePropertyFlagsLabels, ObjectTypeProperty, ObjectType, ResourceFunctionType, ResourceType, StringLiteralType, BicepType, TypeBaseKind, TypeReference, UnionType, IntegerType, StringType } from 'bicep-types';
+import { Dictionary, filter, keys, orderBy } from "lodash";
+import {
+  ArrayType,
+  BuiltInType,
+  DiscriminatedObjectType,
+  getBuiltInTypeKindLabel,
+  getObjectTypePropertyFlagsLabels,
+  ObjectTypeProperty,
+  ObjectType,
+  ResourceFunctionType,
+  ResourceType,
+  StringLiteralType,
+  BicepType,
+  TypeBaseKind,
+  TypeReference,
+  UnionType,
+  IntegerType,
+  StringType
+} from "bicep-types";
 
-export function writeTableMarkdown(provider: string, apiVersion: string, resourceTypes: ResourceType[], types: BicepType[]) {
-  let output = '';
+export function writeTableMarkdown(
+  provider: string,
+  apiVersion: string,
+  resourceTypes: ResourceType[],
+  types: BicepType[]
+) {
+  let output = "";
 
-  function getTypeName(types: BicepType[], typeReference: TypeReference): string {
+  function getTypeName(
+    types: BicepType[],
+    typeReference: TypeReference
+  ): string {
     const type = types[typeReference.index];
     switch (type.type) {
       case TypeBaseKind.BuiltInType:
-        return getBuiltInTypeKindLabel((type as BuiltInType).kind).toLowerCase();
+        return getBuiltInTypeKindLabel(
+          (type as BuiltInType).kind
+        ).toLowerCase();
       case TypeBaseKind.ObjectType:
         return generateAnchorLink((type as ObjectType).name);
       case TypeBaseKind.ArrayType:
-        return getArrayTypeName(types, (type as ArrayType));
+        return getArrayTypeName(types, type as ArrayType);
       case TypeBaseKind.ResourceType:
         return (type as ResourceType).name;
       case TypeBaseKind.ResourceFunctionType: {
@@ -35,19 +62,21 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
         return `${functionType.name} (${functionType.resourceType}@${functionType.apiVersion})`;
       }
       case TypeBaseKind.UnionType: {
-        const elements = (type as UnionType).elements.map(x => getTypeName(types, x));
-        return elements.sort().join(' | ');
+        const elements = (type as UnionType).elements.map((x) =>
+          getTypeName(types, x)
+        );
+        return elements.sort().join(" | ");
       }
       case TypeBaseKind.StringLiteralType:
         return `'${(type as StringLiteralType).value}'`;
       case TypeBaseKind.DiscriminatedObjectType:
         return generateAnchorLink((type as DiscriminatedObjectType).name);
       case TypeBaseKind.AnyType:
-        return 'any';
+        return "any";
       case TypeBaseKind.NullType:
-        return 'null';
+        return "null";
       case TypeBaseKind.BooleanType:
-        return 'bool';
+        return "bool";
       case TypeBaseKind.IntegerType:
         return `int${getIntegerModifiers(type as IntegerType)}`;
       case TypeBaseKind.StringType:
@@ -57,11 +86,9 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
     }
   }
 
-  function getArrayTypeName(types: BicepType[], type: ArrayType): string
-  {
+  function getArrayTypeName(types: BicepType[], type: ArrayType): string {
     let itemTypeName = getTypeName(types, type.itemType);
-    if (itemTypeName.indexOf(' ') != -1)
-    {
+    if (itemTypeName.indexOf(" ") != -1) {
       itemTypeName = `(${itemTypeName})`;
     }
 
@@ -69,27 +96,43 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
   }
 
   function generateAnchorLink(name: string) {
-    return `[${name}](#${name.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase()})`;
+    return `[${name}](#${name.replace(/[^a-zA-Z0-9-]/g, "").toLowerCase()})`;
   }
 
-  function writeTypeProperty(types: BicepType[], name: string, property: ObjectTypeProperty) {
-    const flagsString = property.flags ? `${getObjectTypePropertyFlagsLabels(property.flags).join(', ')}` : '';
-    const descriptionString = property.description ? property.description : '';
-    writeTableEntry(name, getTypeName(types, property.type), flagsString, descriptionString);
+  function writeTypeProperty(
+    types: BicepType[],
+    name: string,
+    property: ObjectTypeProperty
+  ) {
+    const flagsString = property.flags
+      ? `${getObjectTypePropertyFlagsLabels(property.flags).join(", ")}`
+      : "";
+    const descriptionString = property.description ? property.description : "";
+    writeTableEntry(
+      name,
+      getTypeName(types, property.type),
+      flagsString,
+      descriptionString
+    );
   }
 
-  function writeTableHeading(){
+  function writeTableHeading() {
     output += `| Property | Type | Description |\n`;
     output += `|----------|------|-------------|\n`;
   }
 
-  function writeTableEntry(name: string, type: string, flags: string, description: string){
-    const flagString = flags ? `<br />_(${flags})_ ` : '';
+  function writeTableEntry(
+    name: string,
+    type: string,
+    flags: string,
+    description: string
+  ) {
+    const flagString = flags ? `<br />_(${flags})_ ` : "";
     output += `| **${name}** | ${type} | ${description} ${flagString}|\n`;
   }
 
   function writeHeading(nesting: number, message: string) {
-    output += `${'#'.repeat(nesting)} ${message}`;
+    output += `${"#".repeat(nesting)} ${message}`;
     writeNewLine();
   }
 
@@ -102,11 +145,18 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
   }
 
   function writeNewLine() {
-    output += '\n';
+    output += "\n";
   }
 
-  function findTypesToWrite(types: BicepType[], typesToWrite: BicepType[], typeReference: TypeReference) {
-    function processTypeLinks(typeReference: TypeReference, skipParent: boolean) {
+  function findTypesToWrite(
+    types: BicepType[],
+    typesToWrite: BicepType[],
+    typeReference: TypeReference
+  ) {
+    function processTypeLinks(
+      typeReference: TypeReference,
+      skipParent: boolean
+    ) {
       // this is needed to avoid circular type references causing stack overflows
       if (typesToWrite.indexOf(types[typeReference.index]) === -1) {
         if (!skipParent) {
@@ -142,7 +192,10 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
         const discriminatedObjectType = type as DiscriminatedObjectType;
 
         for (const key of sortedKeys(discriminatedObjectType.baseProperties)) {
-          processTypeLinks(discriminatedObjectType.baseProperties[key].type, false);
+          processTypeLinks(
+            discriminatedObjectType.baseProperties[key].type,
+            false
+          );
         }
 
         for (const key of sortedKeys(discriminatedObjectType.elements)) {
@@ -157,10 +210,15 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
   }
 
   function sortedKeys<T>(dictionary: Dictionary<T>) {
-    return orderBy(keys(dictionary), k => k.toLowerCase(), 'asc');
+    return orderBy(keys(dictionary), (k) => k.toLowerCase(), "asc");
   }
 
-  function writeComplexType(types: BicepType[], type: BicepType, nesting: number, includeHeader: boolean) {
+  function writeComplexType(
+    types: BicepType[],
+    type: BicepType,
+    nesting: number,
+    includeHeader: boolean
+  ) {
     switch (type.type) {
       case TypeBaseKind.ResourceType: {
         const resourceType = type as ResourceType;
@@ -173,7 +231,10 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
       }
       case TypeBaseKind.ResourceFunctionType: {
         const resourceFunctionType = type as ResourceFunctionType;
-        writeHeading(nesting, `Function ${resourceFunctionType.name} (${resourceFunctionType.resourceType}@${resourceFunctionType.apiVersion})`);
+        writeHeading(
+          nesting,
+          `Function ${resourceFunctionType.name} (${resourceFunctionType.resourceType}@${resourceFunctionType.apiVersion})`
+        );
         writeNewLine();
         writeBullet("Resource", resourceFunctionType.resourceType);
         writeBullet("ApiVersion", resourceFunctionType.apiVersion);
@@ -198,8 +259,7 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
         if (Object.keys(objectType.properties).length === 0) {
           writeBullet("none", "");
           writeNewLine();
-        }
-        else {
+        } else {
           writeTableHeading();
           for (const key of sortedKeys(objectType.properties)) {
             writeTypeProperty(types, key, objectType.properties[key]);
@@ -209,7 +269,10 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
         if (objectType.additionalProperties) {
           writeHeading(nesting + 1, "Additional Properties");
           writeNewLine();
-          writeBullet("Additional Properties Type", getTypeName(types, objectType.additionalProperties));
+          writeBullet(
+            "Additional Properties Type",
+            getTypeName(types, objectType.additionalProperties)
+          );
         }
 
         writeNewLine();
@@ -230,16 +293,21 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
         if (Object.keys(discriminatedObjectType.baseProperties).length === 0) {
           writeBullet("none", "");
           writeNewLine();
-        }
-        else {
+        } else {
           writeTableHeading();
-          for (const propertyName of sortedKeys(discriminatedObjectType.baseProperties)) {
-            writeTypeProperty(types, propertyName, discriminatedObjectType.baseProperties[propertyName]);
+          for (const propertyName of sortedKeys(
+            discriminatedObjectType.baseProperties
+          )) {
+            writeTypeProperty(
+              types,
+              propertyName,
+              discriminatedObjectType.baseProperties[propertyName]
+            );
           }
         }
 
         writeNewLine();
-        
+
         for (const key of sortedKeys(discriminatedObjectType.elements)) {
           const element = discriminatedObjectType.elements[key];
           writeComplexType(types, types[element.index], nesting + 1, true);
@@ -251,11 +319,27 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
     }
   }
 
-  function generateMarkdown(provider: string, apiVersion: string, types: BicepType[]) {
-
-    const resourceFunctionTypes = orderBy(types.filter(t => t.type == TypeBaseKind.ResourceFunctionType) as ResourceFunctionType[], x => x.name.split('@')[0].toLowerCase());    
-    const filteredFunctionTypes = resourceFunctionTypes.filter(x => resourceTypes.some(y => x.resourceType.toLowerCase() === y.name.split('@')[0].toLowerCase()));
-    const typesToWrite: BicepType[] = [...resourceTypes, ...filteredFunctionTypes];
+  function generateMarkdown(
+    provider: string,
+    apiVersion: string,
+    types: BicepType[]
+  ) {
+    const resourceFunctionTypes = orderBy(
+      types.filter(
+        (t) => t.type == TypeBaseKind.ResourceFunctionType
+      ) as ResourceFunctionType[],
+      (x) => x.name.split("@")[0].toLowerCase()
+    );
+    const filteredFunctionTypes = resourceFunctionTypes.filter((x) =>
+      resourceTypes.some(
+        (y) =>
+          x.resourceType.toLowerCase() === y.name.split("@")[0].toLowerCase()
+      )
+    );
+    const typesToWrite: BicepType[] = [
+      ...resourceTypes,
+      ...filteredFunctionTypes
+    ];
 
     for (const resourceType of resourceTypes) {
       findTypesToWrite(types, typesToWrite, resourceType.body);
@@ -280,22 +364,25 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
   return generateMarkdown(provider, apiVersion, types);
 }
 
-function getIntegerModifiers(type: IntegerType): string
-{
-  return formatModifiers(type.minValue !== undefined ? `minValue: ${type.minValue}` : undefined,
-    type.maxValue !== undefined ? `maxValue: ${type.maxValue}` : undefined);
+function getIntegerModifiers(type: IntegerType): string {
+  return formatModifiers(
+    type.minValue !== undefined ? `minValue: ${type.minValue}` : undefined,
+    type.maxValue !== undefined ? `maxValue: ${type.maxValue}` : undefined
+  );
 }
 
-function getStringModifiers(type: StringType): string
-{
-  return formatModifiers(type.sensitive ? 'sensitive' : undefined,
+function getStringModifiers(type: StringType): string {
+  return formatModifiers(
+    type.sensitive ? "sensitive" : undefined,
     type.minLength !== undefined ? `minLength: ${type.minLength}` : undefined,
     type.maxLength !== undefined ? `maxLength: ${type.maxLength}` : undefined,
-    type.pattern !== undefined ? `pattern: "${type.pattern.replace('"', '\\"')}"` : undefined);
+    type.pattern !== undefined
+      ? `pattern: "${type.pattern.replace('"', '\\"')}"`
+      : undefined
+  );
 }
 
-function formatModifiers(...modifiers: Array<string | undefined>): string
-{
-  const modifierString = modifiers.filter(modifier => !!modifier).join(', ');
+function formatModifiers(...modifiers: Array<string | undefined>): string {
+  const modifierString = modifiers.filter((modifier) => !!modifier).join(", ");
   return modifierString.length > 0 ? ` {${modifierString}}` : modifierString;
 }

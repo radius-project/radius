@@ -102,7 +102,7 @@ interface SqlDatabases {
     UCPBaseParameters<SqlDatabaseResource>
   >;
 
-  delete is ArmResourceDeleteAsync<
+  delete is ArmResourceDeleteWithoutOkAsync<
     SqlDatabaseResource,
     UCPBaseParameters<SqlDatabaseResource>
   >;

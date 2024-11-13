@@ -20,14 +20,19 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"regexp"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	store "github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/store/apiserverstore"
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/radius-project/radius/pkg/ucp/store/cosmosdb"
 	"github.com/radius-project/radius/pkg/ucp/store/etcdstore"
+	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
+	"github.com/radius-project/radius/pkg/ucp/store/postgres"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -35,9 +40,11 @@ import (
 type storageFactoryFunc func(context.Context, StorageProviderOptions, string) (store.StorageClient, error)
 
 var storageClientFactory = map[StorageProviderType]storageFactoryFunc{
-	TypeAPIServer: initAPIServerClient,
-	TypeCosmosDB:  initCosmosDBClient,
-	TypeETCD:      InitETCDClient,
+	TypeAPIServer:  initAPIServerClient,
+	TypeCosmosDB:   initCosmosDBClient,
+	TypeETCD:       InitETCDClient,
+	TypeInMemory:   initInMemoryClient,
+	TypePostgreSQL: initPostgreSQLClient,
 }
 
 func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
@@ -54,6 +61,9 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 		return nil, err
 	}
 
+	// The client will log info the console that we don't really care about.
+	cfg.WarningHandler = rest.NoWarnings{}
+
 	// We only need to interact with UCP's store types.
 	scheme := runtime.NewScheme()
 
@@ -62,11 +72,6 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 
 	options := runtimeclient.Options{
 		Scheme: scheme,
-
-		// The client will log info the console that we don't really care about.
-		WarningHandler: runtimeclient.WarningHandlerOptions{
-			SuppressWarnings: true,
-		},
 	}
 
 	rc, err := runtimeclient.New(cfg, options)
@@ -116,4 +121,31 @@ func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (
 
 	etcdClient := etcdstore.NewETCDClient(client)
 	return etcdClient, nil
+}
+
+// initInMemoryClient creates a new in-memory store client.
+func initInMemoryClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
+	return inmemory.NewClient(), nil
+}
+
+// initPostgreSQLClient creates a new PostgreSQL store client.
+func initPostgreSQLClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
+	if opt.PostgreSQL.URL == "" {
+		return nil, errors.New("failed to initialize PostgreSQL client: URL is required")
+	}
+
+	url := opt.PostgreSQL.URL
+	regex := regexp.MustCompile(`$\{([a-zA-Z_]+)\}`)
+	matches := regex.FindSubmatch([]byte(opt.PostgreSQL.URL))
+	if len(matches) > 1 {
+		// Extract the captured expression.
+		url = string(matches[1])
+	}
+
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PostgreSQL client: %w", err)
+	}
+
+	return postgres.NewPostgresClient(pool), nil
 }

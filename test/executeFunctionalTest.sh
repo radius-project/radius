@@ -26,14 +26,10 @@ fi
 
 resourcegroup=$1
 echo $resourcegroup
-# set the username and password for msqlDB to be passed as parameters to the bicep template
-adminUser='coolUser'
-adminPassword=$(uuidgen)
-resp=$(az deployment group create --resource-group $resourcegroup --template-file createAzureTestResources.bicep --parameters 'adminUsername=$adminUser' --parameters 'adminPassword=$adminPassword')
+
+resp=$(az deployment group create --resource-group $resourcegroup --template-file createAzureTestResources.bicep)
 cat resp
-export AZURE_MSSQL_RESOURCE_ID=$(jq -r '.properties.outputs.sqlServerId.value' <<<"${resp}")
-export AZURE_MSSQL_USERNAME=$adminUser
-export AZURE_MSSQL_PASSWORD=$adminPassword
+
 export AZURE_COSMOS_MONGODB_ACCOUNT_ID=$(jq -r '.properties.outputs.cosmosMongoAccountID.value' <<<"${resp}")
 make test-functional-corerp
 make test-functional-msgrp
