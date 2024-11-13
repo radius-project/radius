@@ -48,6 +48,10 @@ type UCPApplicationsManagementClient struct {
 	applicationResourceClientFactory func(scope string) (applicationResourceClient, error)
 	environmentResourceClientFactory func(scope string) (environmentResourceClient, error)
 	resourceGroupClientFactory       func() (resourceGroupClient, error)
+	resourceProviderClientFactory    func() (resourceProviderClient, error)
+	resourceTypeClientFactory        func() (resourceTypeClient, error)
+	apiVersionClientFactory          func() (apiVersionClient, error)
+	locationClientFactory            func() (locationClient, error)
 	capture                          func(ctx context.Context, capture **http.Response) context.Context
 }
 
@@ -194,6 +198,31 @@ func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, res
 	}
 
 	return getResponse.GenericResource, nil
+}
+
+// CreateOrUpdateResource creates or updates a resource using its type name (or id).
+func (amc *UCPApplicationsManagementClient) CreateOrUpdateResource(ctx context.Context, resourceType string, resourceNameOrID string, resource *generated.GenericResource) (generated.GenericResource, error) {
+	scope, name, err := amc.extractScopeAndName(resourceNameOrID)
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
+	client, err := amc.createGenericClient(scope, resourceType)
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
+	poller, err := client.BeginCreateOrUpdate(ctx, name, *resource, &generated.GenericResourcesClientBeginCreateOrUpdateOptions{})
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
+	response, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
+	return response.GenericResource, nil
 }
 
 // DeleteResource deletes a resource by its type and name (or id).
@@ -656,6 +685,208 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Cont
 	return response.StatusCode != 204, nil
 }
 
+// ListResourceProviders lists all resource providers in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListResourceProviders(ctx context.Context, planeName string) ([]ucpv20231001.ResourceProviderResource, error) {
+	client, err := amc.createResourceProviderClient()
+	if err != nil {
+		return nil, err
+	}
+
+	results := []ucpv20231001.ResourceProviderResource{}
+	pager := client.NewListPager(planeName, &ucpv20231001.ResourceProvidersClientListOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, resourceProvider := range page.Value {
+			results = append(results, *resourceProvider)
+		}
+	}
+
+	return results, nil
+}
+
+// GetResourceProvider gets the resource provider with the specified name in the configured scope.
+func (amc *UCPApplicationsManagementClient) GetResourceProvider(ctx context.Context, planeName string, resourceProviderName string) (ucpv20231001.ResourceProviderResource, error) {
+	client, err := amc.createResourceProviderClient()
+	if err != nil {
+		return ucpv20231001.ResourceProviderResource{}, err
+	}
+
+	response, err := client.Get(ctx, planeName, resourceProviderName, &ucpv20231001.ResourceProvidersClientGetOptions{})
+	if err != nil {
+		return ucpv20231001.ResourceProviderResource{}, err
+	}
+
+	return response.ResourceProviderResource, nil
+}
+
+// CreateOrUpdateResourceProvider creates or updates a resource provider in the configured scope.
+func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceProvider(ctx context.Context, planeName string, resourceProviderName string, resource *ucpv20231001.ResourceProviderResource) (ucpv20231001.ResourceProviderResource, error) {
+	client, err := amc.createResourceProviderClient()
+	if err != nil {
+		return ucpv20231001.ResourceProviderResource{}, err
+	}
+
+	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, *resource, &ucpv20231001.ResourceProvidersClientBeginCreateOrUpdateOptions{})
+	if err != nil {
+		return ucpv20231001.ResourceProviderResource{}, err
+	}
+
+	response, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return ucpv20231001.ResourceProviderResource{}, err
+	}
+
+	return response.ResourceProviderResource, nil
+}
+
+// DeleteResourceProvider deletes a resource provider in the configured scope.
+func (amc *UCPApplicationsManagementClient) DeleteResourceProvider(ctx context.Context, planeName string, resourceProviderName string) (bool, error) {
+	client, err := amc.createResourceProviderClient()
+	if err != nil {
+		return false, err
+	}
+
+	var response *http.Response
+	ctx = amc.captureResponse(ctx, &response)
+
+	poller, err := client.BeginDelete(ctx, planeName, resourceProviderName, &ucpv20231001.ResourceProvidersClientBeginDeleteOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	_, err = poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+
+	return response.StatusCode != 204, nil
+}
+
+// ListResourceProviderSummaries lists all resource provider summaries in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListResourceProviderSummaries(ctx context.Context, planeName string) ([]ucpv20231001.ResourceProviderSummary, error) {
+	client, err := amc.createResourceProviderClient()
+	if err != nil {
+		return nil, err
+	}
+
+	results := []ucpv20231001.ResourceProviderSummary{}
+	pager := client.NewListProviderSummariesPager(planeName, &ucpv20231001.ResourceProvidersClientListProviderSummariesOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, summary := range page.Value {
+			results = append(results, *summary)
+		}
+	}
+
+	return results, nil
+}
+
+// GetResourceProvider gets the resource provider summary with the specified name in the configured scope.
+func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx context.Context, planeName string, resourceProviderName string) (ucpv20231001.ResourceProviderSummary, error) {
+	client, err := amc.createResourceProviderClient()
+	if err != nil {
+		return ucpv20231001.ResourceProviderSummary{}, err
+	}
+
+	response, err := client.GetProviderSummary(ctx, planeName, resourceProviderName, &ucpv20231001.ResourceProvidersClientGetProviderSummaryOptions{})
+	if err != nil {
+		return ucpv20231001.ResourceProviderSummary{}, err
+	}
+
+	return response.ResourceProviderSummary, nil
+}
+
+// CreateOrUpdateResourceType creates or updates a resource type in the configured scope.
+func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource *ucpv20231001.ResourceTypeResource) (ucpv20231001.ResourceTypeResource, error) {
+	client, err := amc.createResourceTypeClient()
+	if err != nil {
+		return ucpv20231001.ResourceTypeResource{}, err
+	}
+
+	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, resourceTypeName, *resource, &ucpv20231001.ResourceTypesClientBeginCreateOrUpdateOptions{})
+	if err != nil {
+		return ucpv20231001.ResourceTypeResource{}, err
+	}
+
+	response, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return ucpv20231001.ResourceTypeResource{}, err
+	}
+
+	return response.ResourceTypeResource, nil
+}
+
+// DeleteResourceType deletes a resource type in the configured scope.
+func (amc *UCPApplicationsManagementClient) DeleteResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string) (bool, error) {
+	client, err := amc.createResourceTypeClient()
+	if err != nil {
+		return false, err
+	}
+
+	var response *http.Response
+	ctx = amc.captureResponse(ctx, &response)
+
+	poller, err := client.BeginDelete(ctx, planeName, resourceProviderName, resourceTypeName, &ucpv20231001.ResourceTypesClientBeginDeleteOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	_, err = poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+
+	return response.StatusCode != 204, nil
+}
+
+// CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.
+func (amc *UCPApplicationsManagementClient) CreateOrUpdateAPIVersion(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource *ucpv20231001.APIVersionResource) (ucpv20231001.APIVersionResource, error) {
+	client, err := amc.createAPIVersionClient()
+	if err != nil {
+		return ucpv20231001.APIVersionResource{}, err
+	}
+
+	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, *resource, &ucpv20231001.APIVersionsClientBeginCreateOrUpdateOptions{})
+	if err != nil {
+		return ucpv20231001.APIVersionResource{}, err
+	}
+
+	response, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return ucpv20231001.APIVersionResource{}, err
+	}
+
+	return response.APIVersionResource, nil
+}
+
+// CreateOrUpdateLocation creates or updates a resource provider location in the configured scope.
+func (amc *UCPApplicationsManagementClient) CreateOrUpdateLocation(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource *ucpv20231001.LocationResource) (ucpv20231001.LocationResource, error) {
+	client, err := amc.createLocationClient()
+	if err != nil {
+		return ucpv20231001.LocationResource{}, err
+	}
+
+	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, locationName, *resource, &ucpv20231001.LocationsClientBeginCreateOrUpdateOptions{})
+	if err != nil {
+		return ucpv20231001.LocationResource{}, err
+	}
+
+	response, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return ucpv20231001.LocationResource{}, err
+	}
+
+	return response.LocationResource, nil
+}
+
 func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string) (applicationResourceClient, error) {
 	if amc.applicationResourceClientFactory == nil {
 		// Generated client doesn't like the leading '/' in the scope.
@@ -689,6 +920,38 @@ func (amc *UCPApplicationsManagementClient) createResourceGroupClient() (resourc
 	}
 
 	return amc.resourceGroupClientFactory()
+}
+
+func (amc *UCPApplicationsManagementClient) createResourceProviderClient() (resourceProviderClient, error) {
+	if amc.resourceProviderClientFactory == nil {
+		return ucpv20231001.NewResourceProvidersClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+
+	return amc.resourceProviderClientFactory()
+}
+
+func (amc *UCPApplicationsManagementClient) createResourceTypeClient() (resourceTypeClient, error) {
+	if amc.resourceTypeClientFactory == nil {
+		return ucpv20231001.NewResourceTypesClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+
+	return amc.resourceTypeClientFactory()
+}
+
+func (amc *UCPApplicationsManagementClient) createAPIVersionClient() (apiVersionClient, error) {
+	if amc.apiVersionClientFactory == nil {
+		return ucpv20231001.NewAPIVersionsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+
+	return amc.apiVersionClientFactory()
+}
+
+func (amc *UCPApplicationsManagementClient) createLocationClient() (locationClient, error) {
+	if amc.locationClientFactory == nil {
+		return ucpv20231001.NewLocationsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+
+	return amc.locationClientFactory()
 }
 
 func (amc *UCPApplicationsManagementClient) extractScopeAndName(nameOrID string) (string, string, error) {

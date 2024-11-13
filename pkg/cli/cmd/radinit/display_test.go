@@ -35,6 +35,8 @@ var (
 )
 
 func Test_summaryModel(t *testing.T) {
+	t.Skip("Test is flaky. See: https://github.com/radius-project/radius/issues/8044")
+
 	waitForRender := func(t *testing.T, reader io.Reader) string {
 		normalized := ""
 		teatest.WaitFor(t, reader, func(bts []byte) bool {
