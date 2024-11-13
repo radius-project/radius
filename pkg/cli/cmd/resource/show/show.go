@@ -43,19 +43,19 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Show Radius resource details",
 		Long:  "Show details of the specified Radius resource",
 		Example: `
-	sample list of resourceType: containers, gateways, daprPubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
+sample list of resourceType: containers, gateways, daprPubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 
-	# show details of a specified resource in the default environment
+# show details of a specified resource in the default environment
 
-	rad resource show containers orders
-	rad resource show gateways orders_gateways
+rad resource show containers orders
+rad resource show gateways orders_gateways
 
-	# show details of a specified resource in an application
-	rad resource show containers orders --application icecream-store
-	
-	# show details of a specified resource in an application (shorthand flag)
-	rad resource show containers orders -a icecream-store 
-	`,
+# show details of a specified resource in an application
+rad resource show containers orders --application icecream-store
+
+# show details of a specified resource in an application (shorthand flag)
+rad resource show containers orders -a icecream-store 
+`,
 		Args: cobra.ExactArgs(2),
 		RunE: framework.RunCommand(runner),
 	}
