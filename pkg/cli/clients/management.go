@@ -50,6 +50,8 @@ type UCPApplicationsManagementClient struct {
 	resourceGroupClientFactory       func() (resourceGroupClient, error)
 	resourceProviderClientFactory    func() (resourceProviderClient, error)
 	resourceTypeClientFactory        func() (resourceTypeClient, error)
+	apiVersionClientFactory          func() (apiVersionClient, error)
+	locationClientFactory            func() (locationClient, error)
 	capture                          func(ctx context.Context, capture **http.Response) context.Context
 }
 
@@ -802,6 +804,26 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 	return response.ResourceProviderSummary, nil
 }
 
+// CreateOrUpdateResourceType creates or updates a resource type in the configured scope.
+func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource *ucpv20231001.ResourceTypeResource) (ucpv20231001.ResourceTypeResource, error) {
+	client, err := amc.createResourceTypeClient()
+	if err != nil {
+		return ucpv20231001.ResourceTypeResource{}, err
+	}
+
+	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, resourceTypeName, *resource, &ucpv20231001.ResourceTypesClientBeginCreateOrUpdateOptions{})
+	if err != nil {
+		return ucpv20231001.ResourceTypeResource{}, err
+	}
+
+	response, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return ucpv20231001.ResourceTypeResource{}, err
+	}
+
+	return response.ResourceTypeResource, nil
+}
+
 // DeleteResourceType deletes a resource type in the configured scope.
 func (amc *UCPApplicationsManagementClient) DeleteResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string) (bool, error) {
 	client, err := amc.createResourceTypeClient()
@@ -823,6 +845,46 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceType(ctx context.Conte
 	}
 
 	return response.StatusCode != 204, nil
+}
+
+// CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.
+func (amc *UCPApplicationsManagementClient) CreateOrUpdateAPIVersion(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource *ucpv20231001.APIVersionResource) (ucpv20231001.APIVersionResource, error) {
+	client, err := amc.createAPIVersionClient()
+	if err != nil {
+		return ucpv20231001.APIVersionResource{}, err
+	}
+
+	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, *resource, &ucpv20231001.APIVersionsClientBeginCreateOrUpdateOptions{})
+	if err != nil {
+		return ucpv20231001.APIVersionResource{}, err
+	}
+
+	response, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return ucpv20231001.APIVersionResource{}, err
+	}
+
+	return response.APIVersionResource, nil
+}
+
+// CreateOrUpdateLocation creates or updates a resource provider location in the configured scope.
+func (amc *UCPApplicationsManagementClient) CreateOrUpdateLocation(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource *ucpv20231001.LocationResource) (ucpv20231001.LocationResource, error) {
+	client, err := amc.createLocationClient()
+	if err != nil {
+		return ucpv20231001.LocationResource{}, err
+	}
+
+	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, locationName, *resource, &ucpv20231001.LocationsClientBeginCreateOrUpdateOptions{})
+	if err != nil {
+		return ucpv20231001.LocationResource{}, err
+	}
+
+	response, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return ucpv20231001.LocationResource{}, err
+	}
+
+	return response.LocationResource, nil
 }
 
 func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string) (applicationResourceClient, error) {
@@ -874,6 +936,22 @@ func (amc *UCPApplicationsManagementClient) createResourceTypeClient() (resource
 	}
 
 	return amc.resourceTypeClientFactory()
+}
+
+func (amc *UCPApplicationsManagementClient) createAPIVersionClient() (apiVersionClient, error) {
+	if amc.apiVersionClientFactory == nil {
+		return ucpv20231001.NewAPIVersionsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+
+	return amc.apiVersionClientFactory()
+}
+
+func (amc *UCPApplicationsManagementClient) createLocationClient() (locationClient, error) {
+	if amc.locationClientFactory == nil {
+		return ucpv20231001.NewLocationsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+
+	return amc.locationClientFactory()
 }
 
 func (amc *UCPApplicationsManagementClient) extractScopeAndName(nameOrID string) (string, string, error) {
