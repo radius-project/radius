@@ -622,6 +622,9 @@ jobs:
         run: |
           aws sts get-caller-identity
           OIDC_TEST_URL=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
+          echo "JUST BEFORE AWS ROLE CREATION OIDC URL:------------>"
+          echo $OIDC_TEST_URL
+          echo "OIDC URL END:------------>"
           cat <<EOF > radius-policy.json
           {
             "Version": "2012-10-17",
@@ -647,8 +650,8 @@ jobs:
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
                         "StringEquals": {
-                            "oidc.eks.us-west-2.amazonaws.com/id/38A3BFF5CE21D3E3538BD4367E21B9F8:sub": "system:serviceaccount:radius-system:ucp",
-                            "oidc.eks.us-west-2.amazonaws.com/id/38A3BFF5CE21D3E3538BD4367E21B9F8:aud": "sts.amazonaws.com"
+                            "${OIDC_TEST_URL}:sub": "system:serviceaccount:radius-system:ucp",
+                            "${OIDC_TEST_URL}:aud": "sts.amazonaws.com"
                         }
                     }
                 },
@@ -661,14 +664,17 @@ jobs:
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
                         "StringEquals": {
-                            "oidc.eks.us-west-2.amazonaws.com/id/38A3BFF5CE21D3E3538BD4367E21B9F8:sub": "system:serviceaccount:radius-system:applications-rp",
-                            "oidc.eks.us-west-2.amazonaws.com/id/38A3BFF5CE21D3E3538BD4367E21B9F8:aud": "sts.amazonaws.com"
+                            "${OIDC_TEST_URL}:sub": "system:serviceaccount:radius-system:applications-rp",
+                            "${OIDC_TEST_URL}:aud": "sts.amazonaws.com"
                         }
                     }
                 }
             ]
           }
           EOF
+          echo "printing the json"
+          cat radius-trust-policy.json
+
           aws iam create-role --role-name radius-func-test --assume-role-policy-document radius-trust-policy.json
           aws iam put-role-policy --role-name radius-func-test --policy-name radius-policy --policy-document radius-policy.json
 
