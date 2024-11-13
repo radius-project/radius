@@ -32,3 +32,6 @@ updates:
     directory: "/typespec/"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        versions: ["<1.0.0"]  
