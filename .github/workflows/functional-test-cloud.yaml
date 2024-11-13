@@ -600,7 +600,7 @@ jobs:
           --file jwks.json \
           --name openid/v1/jwks
           
-          OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/
+          OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}
           echo "OIDC_TEST_URL=$OIDC" >> $GITHUB_OUTPUT
           echo "OIDC URL:------------>"
           echo $OIDC
