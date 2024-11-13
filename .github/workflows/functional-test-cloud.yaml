@@ -617,10 +617,60 @@ jobs:
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
       # Hello from AWS: WhoAmI
-      - name: Sts GetCallerIdentity
+      # create a IAM Role to use witn Radius install. This should use federated OIDC provider url from CReate storage account step
+      - name: create IAM Role for Radius
         run: |
           aws sts get-caller-identity
-          echo "Hello from AWS: WhoAmI"
+          OIDC_TEST_URL=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
+          cat <<EOF > radius-policy.json
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": "*",
+                    "Resource": "*"
+                }
+              ]
+            } 
+          EOF
+          echo "wow this is complicated!"
+          cat <<EOF > radius-trust-policy.json
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Federated": "${OIDC_TEST_URL}"
+                    },
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {
+                        "StringEquals": {
+                            "oidc.eks.us-west-2.amazonaws.com/id/38A3BFF5CE21D3E3538BD4367E21B9F8:sub": "system:serviceaccount:radius-system:ucp",
+                            "oidc.eks.us-west-2.amazonaws.com/id/38A3BFF5CE21D3E3538BD4367E21B9F8:aud": "sts.amazonaws.com"
+                        }
+                    }
+                },
+                {
+                    "Sid": "Statement1",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Federated": "${OIDC_TEST_URL}"
+                    },
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {
+                        "StringEquals": {
+                            "oidc.eks.us-west-2.amazonaws.com/id/38A3BFF5CE21D3E3538BD4367E21B9F8:sub": "system:serviceaccount:radius-system:applications-rp",
+                            "oidc.eks.us-west-2.amazonaws.com/id/38A3BFF5CE21D3E3538BD4367E21B9F8:aud": "sts.amazonaws.com"
+                        }
+                    }
+                }
+            ]
+          }
+          EOF
+          aws iam create-role --role-name radius-func-test --assume-role-policy-document radius-trust-policy.json
+          aws iam put-role-policy --role-name radius-func-test --policy-name radius-policy --policy-document radius-policy.json
 
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
