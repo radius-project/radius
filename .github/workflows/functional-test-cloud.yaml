@@ -76,7 +76,7 @@ env:
   # The region for AWS resources
   AWS_REGION: "us-west-2"
   # The AWS account ID
-  AWS_ACCOUNT_ID: "${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
+  AWS_ACCOUNT_ID: 817312594854 #"${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
   # The current GitHub action link
   ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
   # Server where terraform test modules are deployed
@@ -462,7 +462,6 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
-      AWS_REGION : "us-west-2" # needed for aws cli
     steps:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@v2
@@ -614,7 +613,7 @@ jobs:
       - name: configure aws credentials using assumed role
         uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
-          role-to-assume: arn:aws:iam::817312594854:role/GitHubAction-AssumeRoleWithAction #change to reflect your IAM role’s ARN
+          role-to-assume: arn:aws:iam::817312594854:role/radius_func_test #change to reflect your IAM role’s ARN
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
       # Hello from AWS: WhoAmI
