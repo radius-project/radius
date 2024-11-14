@@ -286,3 +286,13 @@ func generateDeploymentResourceName(resourceId string) string {
 
 	return resourceBaseName
 }
+
+func convertToARMJSONParameters(parameters map[string]string) map[string]map[string]string {
+	armJSONParameters := make(map[string]map[string]string, len(parameters))
+	for key, value := range parameters {
+		armJSONParameters[key] = map[string]string{
+			"value": value,
+		}
+	}
+	return armJSONParameters
+}

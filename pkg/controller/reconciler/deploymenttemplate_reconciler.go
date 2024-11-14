@@ -199,7 +199,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 					Spec: radappiov1alpha3.DeploymentResourceSpec{
 						Id:             outputResourceId,
 						ProviderConfig: deploymentTemplate.Spec.ProviderConfig,
-						Repository:     deploymentTemplate.Spec.Repository,
+						RootFileName:   deploymentTemplate.Spec.RootFileName,
 					},
 				}
 
@@ -235,6 +235,13 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 		}
 
+		parameters, err := json.Marshal(deploymentTemplate.Spec.Parameters)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to marshal parameters: %w", err)
+		}
+
+		fmt.Println("PARAMETERS: ", string(parameters))
+
 		providerConfig := sdkclients.ProviderConfig{}
 		err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
 		if err != nil {
@@ -247,10 +254,10 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.Template = deploymentTemplate.Spec.Template
-		deploymentTemplate.Status.Parameters = deploymentTemplate.Spec.Parameters
+		deploymentTemplate.Status.Parameters = string(parameters)
 		deploymentTemplate.Status.Resource = providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
-		deploymentTemplate.Status.Repository = deploymentTemplate.Spec.Repository
+		deploymentTemplate.Status.RootFileName = deploymentTemplate.Spec.RootFileName
 
 		return ctrl.Result{}, nil
 	}
@@ -404,10 +411,17 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	parameters := convertToARMJSONParameters(deploymentTemplate.Spec.Parameters)
+
+	stringifiedParameters, err := json.Marshal(parameters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal parameters: %w", err)
+	}
+
 	// If the resource is already created and is up-to-date, then we don't need to do anything.
 	if deploymentTemplate.Status.Template == deploymentTemplate.Spec.Template &&
-		deploymentTemplate.Status.Parameters == deploymentTemplate.Spec.Parameters &&
-		deploymentTemplate.Status.Repository == deploymentTemplate.Spec.Repository &&
+		deploymentTemplate.Status.Parameters == string(stringifiedParameters) &&
+		deploymentTemplate.Status.RootFileName == deploymentTemplate.Spec.RootFileName &&
 		deploymentTemplate.Status.ProviderConfig == deploymentTemplate.Spec.ProviderConfig {
 		logger.Info("Resource is already created and is up-to-date.")
 		return nil, nil
@@ -416,15 +430,9 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 	logger.Info("Template, parameters, repository, or providerConfig have changed, starting PUT operation.")
 
 	var template any
-	err := json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
+	err = json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal template: %w", err)
-	}
-
-	var parameters any
-	err = json.Unmarshal([]byte(deploymentTemplate.Spec.Parameters), &parameters)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal parameters: %w", err)
 	}
 
 	providerConfig := sdkclients.ProviderConfig{}
@@ -482,9 +490,19 @@ func (r *DeploymentTemplateReconciler) requeueDelay() time.Duration {
 	return delay
 }
 
-func ParseDeploymentScopeFromProviderConfig(providerConfig string) (string, error) {
+func ParseDeploymentScopeFromProviderConfig(providerConfig any) (string, error) {
+	var data []byte
+	switch v := providerConfig.(type) {
+	case string:
+		data = []byte(v)
+	case []byte:
+		data = v
+	default:
+		return "", fmt.Errorf("providerConfig must be a string or []byte, got %T", providerConfig)
+	}
+
 	config := sdkclients.ProviderConfig{}
-	err := json.Unmarshal([]byte(providerConfig), &config)
+	err := json.Unmarshal([]byte(data), &config)
 	if err != nil {
 		return "", fmt.Errorf("failed to unmarshal providerConfig: %w", err)
 	}

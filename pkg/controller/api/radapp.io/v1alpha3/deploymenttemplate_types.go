@@ -26,13 +26,14 @@ type DeploymentTemplateSpec struct {
 	Template string `json:"template,omitempty"`
 
 	// Parameters is the ARM JSON parameters for the template.
-	Parameters string `json:"parameters,omitempty"`
+	Parameters map[string]string `json:"parameters,omitempty"`
 
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
 
-	// Repository is the name of the GitRepository that contains the Bicep file.
-	Repository string `json:"repository,omitempty"`
+	// RootFileName is the name of the Bicep file in the repository that
+	// `bicep build` is run on.
+	RootFileName string `json:"rootFileName,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of DeploymentTemplate
@@ -49,8 +50,9 @@ type DeploymentTemplateStatus struct {
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
 
-	// Repository is the name of the GitRepository that contains the Bicep file.
-	Repository string `json:"repository,omitempty"`
+	// RootFileName is the name of the Bicep file in the repository that
+	// `bicep build` is run on.
+	RootFileName string `json:"rootFileName,omitempty"`
 
 	// Resource is the resource id of the deployment.
 	Resource string `json:"resource,omitempty"`

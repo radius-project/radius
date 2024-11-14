@@ -28,8 +28,9 @@ type DeploymentResourceSpec struct {
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
 
-	// Repository is the name of the GitRepository that contains the Bicep file.
-	Repository string `json:"repository,omitempty"`
+	// RootFileName is the name of the Bicep file in the repository that
+	// `bicep build` is run on.
+	RootFileName string `json:"rootFileName,omitempty"`
 }
 
 // DeploymentResourceStatus defines the observed state of DeploymentResource
@@ -40,8 +41,9 @@ type DeploymentResourceStatus struct {
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
 
-	// Repository is the name of the GitRepository that contains the Bicep file.
-	Repository string `json:"repository,omitempty"`
+	// RootFileName is the name of the Bicep file in the repository that
+	// `bicep build` is run on.
+	RootFileName string `json:"rootFileName,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed for this DeploymentResource.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`

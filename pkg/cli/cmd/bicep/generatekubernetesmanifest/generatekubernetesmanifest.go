@@ -21,24 +21,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/spf13/afero"
 
-	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
-	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/cli/workspaces"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v2"
 )
 
@@ -82,6 +76,10 @@ rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --
 	cmd.Flags().String("outfile", "", "Path of the generated DeploymentTemplate yaml file.")
 	_ = cmd.MarkFlagFilename("outfile", ".yaml")
 
+	cmd.Flags().String("azure-scope", "", "Scope for Azure deployment.")
+	cmd.Flags().String("aws-scope", "", "Scope for AWS deployment.")
+	cmd.Flags().String("deployment-scope", "", "Scope for the Radius deployment.")
+
 	return cmd, runner
 }
 
@@ -93,13 +91,13 @@ type Runner struct {
 	Deploy            deploy.Interface
 	Output            output.Interface
 
-	FileSystem          afero.Fs
-	EnvironmentNameOrID string
-	FilePath            string
-	Parameters          map[string]map[string]any
-	Workspace           *workspaces.Workspace
-	Providers           *clients.Providers
-	OutFile             string
+	FileSystem      afero.Fs
+	FilePath        string
+	Parameters      map[string]map[string]any
+	OutFile         string
+	DeploymentScope string
+	AzureScope      string
+	AWSScope        string
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.
@@ -115,73 +113,32 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate validates the inputs of the rad bicep generate-kubernetes-manifest command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
-	if err != nil {
-		return err
-	}
-
-	r.Workspace = workspace
-
-	// Allow --group to override the scope
-	scope, err := cli.RequireScope(cmd, *workspace)
-	if err != nil {
-		return err
-	}
-
-	// We don't need to explicitly validate the existence of the scope, because we'll validate the existence
-	// of the environment later. That will give an appropriate error message for the case where the group
-	// does not exist.
-	workspace.Scope = scope
-
-	r.EnvironmentNameOrID, err = cli.RequireEnvironmentNameOrID(cmd, args, *workspace)
-	if err != nil {
-		return err
-	}
-
-	// Validate that the environment exists.
-	// Right now we assume that every deployment uses a Radius Environment.
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
-	if err != nil {
-		return err
-	}
-	env, err := client.GetEnvironment(cmd.Context(), r.EnvironmentNameOrID)
-	if err != nil {
-		// If the error is not a 404, return it
-		if !clients.Is404Error(err) {
-			return err
-		}
-
-		// If the environment doesn't exist, but the user specified its name or resource id as
-		// a command-line option, return an error
-		if cli.DidSpecifyEnvironmentName(cmd, args) {
-			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first. You could also provide the environment ID if the environment exists in a different group.", r.EnvironmentNameOrID, r.Workspace.Scope)
-		}
-
-		// If we got here, it means that the error was a 404 and the user did not specify the environment name.
-		// This is fine, because an environment is not required.
-	}
-
-	r.Providers = &clients.Providers{}
-	r.Providers.Radius = &clients.RadiusProvider{}
-	if env.ID != nil {
-		r.Providers.Radius.EnvironmentID = *env.ID
-		r.Workspace.Environment = r.Providers.Radius.EnvironmentID
-	}
-
-	if env.Properties != nil && env.Properties.Providers != nil {
-		if env.Properties.Providers.Aws != nil {
-			r.Providers.AWS = &clients.AWSProvider{
-				Scope: *env.Properties.Providers.Aws.Scope,
-			}
-		}
-		if env.Properties.Providers.Azure != nil {
-			r.Providers.Azure = &clients.AzureProvider{
-				Scope: *env.Properties.Providers.Azure.Scope,
-			}
-		}
-	}
-
 	r.FilePath = args[0]
+
+	var err error
+	r.DeploymentScope, err = cmd.Flags().GetString("deployment-scope")
+	if err != nil {
+		return err
+	}
+
+	if r.DeploymentScope == "" {
+		r.DeploymentScope = "/planes/radius/local/resourceGroups/default"
+	}
+
+	r.AzureScope, err = cmd.Flags().GetString("azure-scope")
+	if err != nil {
+		return err
+	}
+
+	r.AWSScope, err = cmd.Flags().GetString("aws-scope")
+	if err != nil {
+		return err
+	}
+
+	r.OutFile, err = cmd.Flags().GetString("outfile")
+	if err != nil {
+		return err
+	}
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
 	if err != nil {
@@ -208,27 +165,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// This is the earliest point where we can inject parameters, we have
-	// to wait until the template is prepared.
-	err = r.injectAutomaticParameters(template)
-	if err != nil {
-		return err
-	}
-
-	// This is the earliest point where we can report missing parameters, we have
-	// to wait until the template is prepared.
-	err = r.reportMissingParameters(template)
-	if err != nil {
-		return err
-	}
-
 	// create a DeploymentTemplate yaml file
 	// with the basefilename from the bicepfile
 	if r.OutFile == "" {
 		r.OutFile = strings.TrimSuffix(filepath.Base(r.FilePath), filepath.Ext(r.FilePath)) + ".yaml"
 	}
 
-	deploymentTemplate, err := r.generateDeploymentTemplate(r.OutFile, template, r.Parameters, r.Providers)
+	deploymentTemplate, err := r.generateDeploymentTemplate(filepath.Base(r.FilePath), template, r.Parameters)
 	if err != nil {
 		return err
 	}
@@ -244,84 +187,23 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) injectAutomaticParameters(template map[string]any) error {
-	if r.Providers.Radius.EnvironmentID != "" {
-		err := bicep.InjectEnvironmentParam(template, r.Parameters, r.Providers.Radius.EnvironmentID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (r *Runner) reportMissingParameters(template map[string]any) error {
-	declaredParameters, err := bicep.ExtractParameters(template)
-	if err != nil {
-		return err
-	}
-
-	errors := map[string]string{}
-	for parameter := range declaredParameters {
-		// Case-invariant lookup on the user-provided values
-		match := false
-		for provided := range r.Parameters {
-			if strings.EqualFold(parameter, provided) {
-				match = true
-				break
-			}
-		}
-
-		if match {
-			// Has user-provided value
-			continue
-		}
-
-		if _, ok := bicep.DefaultValue(declaredParameters[parameter]); ok {
-			// Has default value
-			continue
-		}
-
-		// Special case the parameters that are automatically injected
-		if strings.EqualFold(parameter, "environment") {
-			errors[parameter] = "The template requires an environment. Use --environment to specify the environment name."
-		} else {
-			errors[parameter] = fmt.Sprintf("The template requires a parameter %q. Use --parameters %s=<value> to specify the value.", parameter, parameter)
-		}
-	}
-
-	if len(errors) == 0 {
-		return nil
-	}
-
-	keys := maps.Keys(errors)
-	sort.Strings(keys)
-
-	details := []string{}
-	for _, key := range keys {
-		details = append(details, fmt.Sprintf("  - %v", errors[key]))
-	}
-
-	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", r.FilePath, strings.Join(details, "\n"))
-}
-
 // generateDeploymentTemplate generates a DeploymentTemplate Custom Resource from the given template and parameters.
-func (r *Runner) generateDeploymentTemplate(fileName string, template map[string]any, parameters map[string]map[string]any, providers *clients.Providers) (map[string]any, error) {
-	marshalledTemplate, err := json.Marshal(template)
+func (r *Runner) generateDeploymentTemplate(fileName string, template map[string]any, parameters map[string]map[string]any) (map[string]any, error) {
+	marshalledTemplate, err := json.MarshalIndent(template, "", "  ")
 	if err != nil {
 		return nil, err
 	}
 
-	marshalledParameters, err := json.Marshal(parameters)
+	providerConfig := r.generateProviderConfig()
+
+	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
 	if err != nil {
 		return nil, err
 	}
 
-	providerConfig := r.convertProvidersToProviderConfig(providers)
-
-	marshalledProviderConfig, err := json.Marshal(providerConfig)
-	if err != nil {
-		return nil, err
+	params := make(map[string]string)
+	for k, v := range parameters {
+		params[k] = v["value"].(string)
 	}
 
 	deploymentTemplate := map[string]any{
@@ -333,9 +215,9 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 		},
 		"spec": map[string]any{
 			"template":       string(marshalledTemplate),
-			"parameters":     string(marshalledParameters),
+			"parameters":     params,
 			"providerConfig": string(marshalledProviderConfig),
-			"repository":     fileName,
+			"rootFileName":   fileName,
 		},
 	}
 
@@ -366,38 +248,36 @@ func (r *Runner) createDeploymentTemplateYAMLFile(deploymentTemplate map[string]
 }
 
 // convertProvidersToProviderConfig converts the the clients.Providers to sdkclients.ProviderConfig.
-func (r *Runner) convertProvidersToProviderConfig(providers *clients.Providers) (providerConfig sdkclients.ProviderConfig) {
+func (r *Runner) generateProviderConfig() (providerConfig sdkclients.ProviderConfig) {
 	providerConfig = sdkclients.ProviderConfig{}
-	if providers != nil {
-		if providers.AWS != nil {
-			providerConfig.AWS = &sdkclients.AWS{
-				Type: "aws",
-				Value: sdkclients.Value{
-					Scope: providers.AWS.Scope,
-				},
-			}
+	if r.AWSScope != "" {
+		providerConfig.AWS = &sdkclients.AWS{
+			Type: "aws",
+			Value: sdkclients.Value{
+				Scope: r.AWSScope,
+			},
 		}
-		if providers.Azure != nil {
-			providerConfig.Az = &sdkclients.Az{
-				Type: "azure",
-				Value: sdkclients.Value{
-					Scope: providers.Azure.Scope,
-				},
-			}
+	}
+	if r.AzureScope != "" {
+		providerConfig.Az = &sdkclients.Az{
+			Type: "azure",
+			Value: sdkclients.Value{
+				Scope: r.AzureScope,
+			},
 		}
-		if providers.Radius != nil {
-			providerConfig.Radius = &sdkclients.Radius{
-				Type: "radius",
-				Value: sdkclients.Value{
-					Scope: r.Workspace.Scope,
-				},
-			}
-			providerConfig.Deployments = &sdkclients.Deployments{
-				Type: "Microsoft.Resources",
-				Value: sdkclients.Value{
-					Scope: r.Workspace.Scope,
-				},
-			}
+	}
+	if r.DeploymentScope != "" {
+		providerConfig.Radius = &sdkclients.Radius{
+			Type: "radius",
+			Value: sdkclients.Value{
+				Scope: r.DeploymentScope,
+			},
+		}
+		providerConfig.Deployments = &sdkclients.Deployments{
+			Type: "Microsoft.Resources",
+			Value: sdkclients.Value{
+				Scope: r.DeploymentScope,
+			},
 		}
 	}
 

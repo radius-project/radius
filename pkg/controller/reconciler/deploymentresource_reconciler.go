@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	repositoryField = "spec.repository"
+	rootFileNameField = "spec.rootFileName"
 )
 
 // DeploymentResourceReconciler reconciles a DeploymentResource object.
@@ -225,9 +225,9 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 
 	// Check other resources that depend on this resource.
 	// List all DeploymentResource objects in the same namespace
-	// that have the same repository.
+	// that have the same rootFileName.
 	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentResource.Namespace), client.MatchingFields{repositoryField: deploymentResource.Spec.Repository})
+	err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentResource.Namespace), client.MatchingFields{deploymentResource.Spec.RootFileName: deploymentResource.Spec.RootFileName})
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
@@ -348,17 +348,17 @@ func (r *DeploymentResourceReconciler) requeueDelay() time.Duration {
 	return delay
 }
 
-func deploymentResourceRepositoryIndexer(o client.Object) []string {
+func deploymentResourceRootFileNameIndexer(o client.Object) []string {
 	deploymentResource, ok := o.(*radappiov1alpha3.DeploymentResource)
 	if !ok {
 		return nil
 	}
-	return []string{deploymentResource.Spec.Repository}
+	return []string{deploymentResource.Spec.RootFileName}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DeploymentResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &radappiov1alpha3.DeploymentResource{}, repositoryField, deploymentResourceRepositoryIndexer); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &radappiov1alpha3.DeploymentResource{}, rootFileNameField, deploymentResourceRootFileNameIndexer); err != nil {
 		return err
 	}
 

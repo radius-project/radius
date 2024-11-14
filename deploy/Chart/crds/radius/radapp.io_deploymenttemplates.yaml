@@ -53,14 +53,17 @@ spec:
             description: DeploymentTemplateSpec defines the desired state of DeploymentTemplate
             properties:
               parameters:
+                additionalProperties:
+                  type: string
                 description: Parameters is the ARM JSON parameters for the template.
-                type: string
+                type: object
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
                 type: string
-              repository:
-                description: Repository is the name of the GitRepository that contains
-                  the Bicep file.
+              rootFileName:
+                description: |-
+                  RootFileName is the name of the Bicep file in the repository that
+                  `bicep build` is run on.
                 type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources
@@ -108,12 +111,13 @@ spec:
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
                 type: string
-              repository:
-                description: Repository is the name of the GitRepository that contains
-                  the Bicep file.
-                type: string
               resource:
                 description: Resource is the resource id of the deployment.
+                type: string
+              rootFileName:
+                description: |-
+                  RootFileName is the name of the Bicep file in the repository that
+                  `bicep build` is run on.
                 type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources

@@ -54,9 +54,10 @@ spec:
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
                 type: string
-              repository:
-                description: Repository is the name of the GitRepository that contains
-                  the Bicep file.
+              rootFileName:
+                description: |-
+                  RootFileName is the name of the Bicep file in the repository that
+                  `bicep build` is run on.
                 type: string
             type: object
           status:
@@ -94,9 +95,10 @@ spec:
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
                 type: string
-              repository:
-                description: Repository is the name of the GitRepository that contains
-                  the Bicep file.
+              rootFileName:
+                description: |-
+                  RootFileName is the name of the Bicep file in the repository that
+                  `bicep build` is run on.
                 type: string
             type: object
         type: object
