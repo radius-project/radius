@@ -43,7 +43,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Create or update a resource",
 		Long: `Create or update a resource
 		
-Resources are the primary entities that make up applictions.
+Resources are the primary entities that make up applications.
 
 Input can be passed via the -f flag to specify a file name.`,
 		Example: `
