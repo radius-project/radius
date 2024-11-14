@@ -572,7 +572,7 @@ jobs:
           az storage container create --name ${AZURE_STORAGE_CONTAINER} --public-access blob
           cat <<EOF > openid-configuration.json
           {
-            "issuer": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}",
+            "issuer": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/",
             "jwks_uri": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/openid/v1/jwks",
             "response_types_supported": [
               "id_token"
@@ -600,7 +600,7 @@ jobs:
           --file jwks.json \
           --name openid/v1/jwks
           
-          OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}
+          OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/
           echo "OIDC_TEST_URL=$OIDC" >> $GITHUB_OUTPUT
           echo "OIDC URL:------------>"
           echo $OIDC
