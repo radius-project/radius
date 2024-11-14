@@ -572,7 +572,7 @@ jobs:
           az storage container create --name ${AZURE_STORAGE_CONTAINER} --public-access blob
           cat <<EOF > openid-configuration.json
           {
-            "issuer": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/",
+            "issuer": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}",
             "jwks_uri": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/openid/v1/jwks",
             "response_types_supported": [
               "id_token"
@@ -675,8 +675,10 @@ jobs:
           echo "printing the json"
           cat radius-trust-policy.json
 
-          aws iam create-role --role-name radius-func-test --assume-role-policy-document radius-trust-policy.json
-          aws iam put-role-policy --role-name radius-func-test --policy-name radius-policy --policy-document radius-policy.json
+          aws iam create-role --role-name radius-func-test --assume-role-policy-document file://radius-trust-policy.json
+
+          echo "craeted role"
+          aws iam put-role-policy --role-name radius-func-test --policy-name radius-policy --policy-document file://radius-policy.json
 
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
