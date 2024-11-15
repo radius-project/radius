@@ -623,14 +623,13 @@ jobs:
         run: |
           OIDC_TEST_URL=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
           AZURE_STORAGE_ACCOUNT = ${{ steps.create_storage_account.outputs.AZURE_STORAGE_ACCOUNT }}
-          THUMBPRINT=$(echo | openssl s_client -servername ${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net -showcerts -connect ${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net:443 2>/dev/null | openssl x509 -fingerprint -noout | cut -d'=' -f2 | sed 's/://g')
-          echo "THUMBPRINT:------------>"
-          echo $THUMBPRINT
-          echo "THUMBPRINT END:------------>"
+        
+          echo "Creating IDP"
+          
           aws iam create-open-id-connect-provider \
             --url ${OIDC_TEST_URL} \
             --client-id-list sts.amazonaws.com \
-            --thumbprint-list ${THUMBPRINT}
+        # --thumbprint-list ${THUMBPRINT}
           
       # Hello from AWS: WhoAmI
       # create a IAM Role to use witn Radius install. This should use federated OIDC provider url from CReate storage account step
