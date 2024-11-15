@@ -602,6 +602,8 @@ jobs:
           
           OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/
           echo "OIDC_TEST_URL=$OIDC" >> $GITHUB_OUTPUT
+          echo "AZURE_STORAGE_ACCOUNT=$AZURE_STORAGE_ACCOUNT" >> $GITHUB_OUTPUT
+          
           echo "OIDC URL:------------>"
           echo $OIDC
           echo "OIDC URL END:------------>"
@@ -619,7 +621,8 @@ jobs:
       
       - name : create AWS IDP for OIDC
         run: |
-          OIDC_TEST_URL=${{ needs.create_storage_account.outputs.OIDC_TEST_URL }}
+          OIDC_TEST_URL=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
+          AZURE_STORAGE_ACCOUNT = ${{ steps.create_storage_account.outputs.AZURE_STORAGE_ACCOUNT }}
           THUMBPRINT=$(echo | openssl s_client -servername ${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net -showcerts -connect ${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net:443 2>/dev/null | openssl x509 -fingerprint -noout | cut -d'=' -f2 | sed 's/://g')
           echo "THUMBPRINT:------------>"
           echo $THUMBPRINT
