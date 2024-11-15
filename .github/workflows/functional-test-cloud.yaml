@@ -622,7 +622,7 @@ jobs:
       - name : create AWS IDP for OIDC
         run: |
           OIDC_TEST_URL=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
-          AZURE_STORAGE_ACCOUNT = ${{ steps.create_storage_account.outputs.AZURE_STORAGE_ACCOUNT }}
+          AZURE_STORAGE_ACCOUNT=${{ steps.create_storage_account.outputs.AZURE_STORAGE_ACCOUNT }}
         
           echo "Creating IDP"
           
