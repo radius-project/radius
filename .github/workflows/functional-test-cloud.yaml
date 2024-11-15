@@ -629,17 +629,17 @@ jobs:
           aws iam create-open-id-connect-provider \
             --url ${OIDC_TEST_URL} \
             --client-id-list sts.amazonaws.com \
-        # --thumbprint-list ${THUMBPRINT}
           
-      # Hello from AWS: WhoAmI
-      # create a IAM Role to use witn Radius install. This should use federated OIDC provider url from CReate storage account step
-      - name: create IAM Role for Radius
-        run: |
-          aws sts get-caller-identity
-          OIDC_TEST_URL=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
+          PROVIDER_ARN=$(aws iam list-open-id-connect-providers --query "OpenIDConnectProviderList[?contains(Arn, '${OIDC_TEST_URL}')].Arn" --output text)
+          
+          echo "PROVIDER_ARN:------------>"
+          echo $PROVIDER_ARN
+          echo "PROVIDER_ARN END:------------>"
+
           echo "JUST BEFORE AWS ROLE CREATION OIDC URL:------------>"
           echo $OIDC_TEST_URL
           echo "OIDC URL END:------------>"
+          
           cat <<EOF > radius-policy.json
           {
             "Version": "2012-10-17",
@@ -652,7 +652,7 @@ jobs:
               ]
             } 
           EOF
-          echo "wow this is complicated!"
+          
           cat <<EOF > radius-trust-policy.json
           {
             "Version": "2012-10-17",
@@ -660,35 +660,26 @@ jobs:
                 {
                     "Effect": "Allow",
                     "Principal": {
-                        "Federated": "${OIDC_TEST_URL}"
+                        "Federated": "${PROVIDER_ARN}"
                     },
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
                         "StringEquals": {
-                            "${OIDC_TEST_URL}:sub": "system:serviceaccount:radius-system:ucp",
-                            "${OIDC_TEST_URL}:aud": "sts.amazonaws.com"
-                        }
-                    }
-                },
-                {
-                    "Sid": "Statement1",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Federated": "${OIDC_TEST_URL}"
-                    },
-                    "Action": "sts:AssumeRoleWithWebIdentity",
-                    "Condition": {
-                        "StringEquals": {
-                            "${OIDC_TEST_URL}:sub": "system:serviceaccount:radius-system:applications-rp",
-                            "${OIDC_TEST_URL}:aud": "sts.amazonaws.com"
+                            "${PROVIDER_ARN}:sub": "system:serviceaccount:radius-system:ucp",
+                            "${PROVIDER_ARN}:aud": "sts.amazonaws.com"
                         }
                     }
                 }
             ]
           }
           EOF
-          echo "printing the json"
+
+          echo "printing the trust json"
           cat radius-trust-policy.json
+          echo "printing the policy json"
+          cat radius-policy.json  
+
+          echo "creating teh role"
 
           aws iam create-role --role-name radius-func-test --assume-role-policy-document file://radius-trust-policy.json
 
