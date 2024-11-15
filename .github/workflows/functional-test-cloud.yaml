@@ -626,12 +626,11 @@ jobs:
         
           echo "Creating IDP"
           
-          aws iam create-open-id-connect-provider \
+          PROVIDER_ARN=$(aws iam create-open-id-connect-provider \
             --url ${OIDC_TEST_URL} \
             --client-id-list sts.amazonaws.com \
-          
-          PROVIDER_ARN=$(aws iam list-open-id-connect-providers --query "OpenIDConnectProviderList[?contains(Arn, '${OIDC_TEST_URL}')].Arn" --output text)
-          
+            --query 'OpenIDConnectProviderArn' \
+            --output text)  
           echo "PROVIDER_ARN:------------>"
           echo $PROVIDER_ARN
           echo "PROVIDER_ARN END:------------>"
