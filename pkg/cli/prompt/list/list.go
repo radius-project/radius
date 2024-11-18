@@ -26,10 +26,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// const listHeight = 8
-
-// const defaultWidth = 400
-
 var (
 	titleStyle        = lipgloss.NewStyle().PaddingLeft(2)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
