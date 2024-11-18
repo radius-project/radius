@@ -69,7 +69,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
-			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", DaprInstalled: true, DaprVersion: "test-version"}, nil).
 			Times(1)
 
 		helmMock.EXPECT().UninstallRadius(ctx, helm.ClusterOptions{
@@ -124,7 +124,7 @@ func Test_Run(t *testing.T) {
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
 	})
-	t.Run("Success: Installed -> Uninstalled -> Purge)", func(t *testing.T) {
+	t.Run("Success: Installed -> Uninstalled -> Purge", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		helmMock := helm.NewMockInterface(ctrl)
 		outputMock := &output.MockOutput{}
@@ -141,7 +141,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
-			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", DaprInstalled: true, DaprVersion: "test-version"}, nil).
 			Times(1)
 
 		helmMock.EXPECT().UninstallRadius(ctx, helm.ClusterOptions{
