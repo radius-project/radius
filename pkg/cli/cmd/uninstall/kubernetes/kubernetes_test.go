@@ -74,10 +74,12 @@ func Test_Run(t *testing.T) {
 
 		helmMock.EXPECT().UninstallRadius(ctx, helm.ClusterOptions{
 			Radius: helm.ChartOptions{
-				Namespace: "radius-system",
+				Namespace:   "radius-system",
+				ReleaseName: "radius",
 			},
 			Dapr: helm.ChartOptions{
-				Namespace: "dapr-system",
+				Namespace:   "dapr-system",
+				ReleaseName: "dapr",
 			},
 		}, "test-context").
 			Return(nil).
@@ -146,10 +148,12 @@ func Test_Run(t *testing.T) {
 
 		helmMock.EXPECT().UninstallRadius(ctx, helm.ClusterOptions{
 			Radius: helm.ChartOptions{
-				Namespace: "radius-system",
+				Namespace:   "radius-system",
+				ReleaseName: "radius",
 			},
 			Dapr: helm.ChartOptions{
-				Namespace: "dapr-system",
+				Namespace:   "dapr-system",
+				ReleaseName: "dapr",
 			},
 		}, "test-context").
 			Return(nil).
