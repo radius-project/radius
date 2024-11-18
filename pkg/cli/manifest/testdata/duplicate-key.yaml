@@ -1,0 +1,13 @@
+name: test-provider
+types:
+  testResources:
+    apiVersions:
+      '2025-01-01-preview':
+        schema: {}
+        capabilities: ["Recipes"]
+types:
+  testResources:
+    apiVersions:
+      '2025-01-01-preview':
+        schema: {}
+        capabilities: ["Recipes"]

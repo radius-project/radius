@@ -53,9 +53,17 @@ import (
 	recipe_register "github.com/radius-project/radius/pkg/cli/cmd/recipe/register"
 	recipe_show "github.com/radius-project/radius/pkg/cli/cmd/recipe/show"
 	recipe_unregister "github.com/radius-project/radius/pkg/cli/cmd/recipe/unregister"
+	resource_create "github.com/radius-project/radius/pkg/cli/cmd/resource/create"
 	resource_delete "github.com/radius-project/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/radius-project/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/radius-project/radius/pkg/cli/cmd/resource/show"
+	resourceprovider_create "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/create"
+	resourceprovider_delete "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/delete"
+	resourceprovider_list "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/list"
+	resourceprovider_show "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/show"
+	resourcetype_delete "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/delete"
+	resourcetype_list "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/list"
+	resourcetype_show "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/show"
 	"github.com/radius-project/radius/pkg/cli/cmd/run"
 	"github.com/radius-project/radius/pkg/cli/cmd/uninstall"
 	uninstall_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/uninstall/kubernetes"
@@ -100,6 +108,8 @@ const (
 
 var applicationCmd = NewAppCommand()
 var resourceCmd = NewResourceCommand()
+var resourceProviderCmd = NewResourceProviderCommand()
+var resourceTypeCmd = NewResourceTypeCommand()
 var recipeCmd = NewRecipeCommand()
 var envCmd = NewEnvironmentCommand()
 var workspaceCmd = NewWorkspaceCommand()
@@ -211,14 +221,38 @@ func initSubCommands() {
 	runCmd, _ := run.NewCommand(framework)
 	RootCmd.AddCommand(runCmd)
 
-	showCmd, _ := resource_show.NewCommand(framework)
-	resourceCmd.AddCommand(showCmd)
+	resourceShowCmd, _ := resource_show.NewCommand(framework)
+	resourceCmd.AddCommand(resourceShowCmd)
 
-	listCmd, _ := resource_list.NewCommand(framework)
-	resourceCmd.AddCommand(listCmd)
+	resourceListCmd, _ := resource_list.NewCommand(framework)
+	resourceCmd.AddCommand(resourceListCmd)
 
-	deleteCmd, _ := resource_delete.NewCommand(framework)
-	resourceCmd.AddCommand(deleteCmd)
+	resourceCreateCmd, _ := resource_create.NewCommand(framework)
+	resourceCmd.AddCommand(resourceCreateCmd)
+
+	resourceDeleteCmd, _ := resource_delete.NewCommand(framework)
+	resourceCmd.AddCommand(resourceDeleteCmd)
+
+	resourceProviderShowCmd, _ := resourceprovider_show.NewCommand(framework)
+	resourceProviderCmd.AddCommand(resourceProviderShowCmd)
+
+	resourceProviderListCmd, _ := resourceprovider_list.NewCommand(framework)
+	resourceProviderCmd.AddCommand(resourceProviderListCmd)
+
+	resourceProviderCreateCmd, _ := resourceprovider_create.NewCommand(framework)
+	resourceProviderCmd.AddCommand(resourceProviderCreateCmd)
+
+	resourceProviderDeleteCmd, _ := resourceprovider_delete.NewCommand(framework)
+	resourceProviderCmd.AddCommand(resourceProviderDeleteCmd)
+
+	resourceTypeShowCmd, _ := resourcetype_show.NewCommand(framework)
+	resourceTypeCmd.AddCommand(resourceTypeShowCmd)
+
+	resourceTypeListCmd, _ := resourcetype_list.NewCommand(framework)
+	resourceTypeCmd.AddCommand(resourceTypeListCmd)
+
+	resourceTypeDeleteCmd, _ := resourcetype_delete.NewCommand(framework)
+	resourceTypeCmd.AddCommand(resourceTypeDeleteCmd)
 
 	listRecipeCmd, _ := recipe_list.NewCommand(framework)
 	recipeCmd.AddCommand(listRecipeCmd)

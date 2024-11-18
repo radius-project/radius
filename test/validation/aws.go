@@ -61,14 +61,28 @@ type AWSResourceSet struct {
 
 // ValidateAWSResources checks that the expected AWS resources exist and have the expected properties.
 func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client awsclient.AWSCloudControlClient) {
+	baseWaitTime := 15 * time.Second
+	retryLimit := 5
+
 	for _, resource := range expected.Resources {
 		resourceType, err := GetResourceTypeName(ctx, &resource)
 		require.NoError(t, err)
 
-		resourceResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			Identifier: to.Ptr(resource.Identifier),
-			TypeName:   &resourceType,
-		})
+		var resourceResponse *cloudcontrol.GetResourceOutput
+		for attempt := 1; attempt <= retryLimit; attempt++ {
+			resourceResponse, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+				Identifier: to.Ptr(resource.Identifier),
+				TypeName:   &resourceType,
+			})
+			if err == nil {
+				break
+			}
+
+			t.Logf("attempt %d/%d: failed to get resource %s with error: %s", attempt, retryLimit, resource.Identifier, err)
+			waitTime := baseWaitTime * time.Duration(attempt)
+			t.Logf("waiting for %s before next attempt", waitTime)
+			time.Sleep(waitTime)
+		}
 		require.NoError(t, err)
 
 		if resource.Properties != nil {

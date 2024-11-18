@@ -33,8 +33,9 @@ import (
 )
 
 const (
-	deleteConfirmationWithoutApplication = "Are you sure you want to delete resource '%v' of type %v from environment '%v'?"
-	deleteConfirmationWithApplication    = "Are you sure you want to delete resource '%v' of type %v in application '%v' from environment '%v'?"
+	deleteConfirmationWithoutApplicationOrEnvironment = "Are you sure you want to delete resource '%v' of type %v?"
+	deleteConfirmationWithoutApplication              = "Are you sure you want to delete resource '%v' of type %v from environment '%v'?"
+	deleteConfirmationWithApplication                 = "Are you sure you want to delete resource '%v' of type %v in application '%v' from environment '%v'?"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad resource delete` command.
@@ -51,10 +52,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Delete a Radius resource",
 		Long:  "Deletes a Radius resource with the given name",
 		Example: `
-		sample list of resourceType: containers, gateways, daprPubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
-		
-		# Delete a container named orders
-		rad resource delete containers orders`,
+sample list of resourceType: containers, gateways, daprPubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
+
+# Delete a container named orders
+rad resource delete containers orders`,
 		Args: cobra.ExactArgs(2),
 		RunE: framework.RunCommand(runner),
 	}
@@ -153,7 +154,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
 		var promptMessage string
-		if applicationID.IsEmpty() {
+		if applicationID.IsEmpty() && environmentID.IsEmpty() {
+			promptMessage = fmt.Sprintf(deleteConfirmationWithoutApplicationOrEnvironment, r.ResourceName, r.ResourceType)
+		} else if applicationID.IsEmpty() {
 			promptMessage = fmt.Sprintf(deleteConfirmationWithoutApplication, r.ResourceName, r.ResourceType, environmentID.Name())
 		} else {
 			promptMessage = fmt.Sprintf(deleteConfirmationWithApplication, r.ResourceName, r.ResourceType, applicationID.Name(), environmentID.Name())
@@ -196,6 +199,7 @@ func (r *Runner) extractEnvironmentAndApplicationIDs(ctx context.Context, client
 	// 3. The resource has an application but no environment. (common case for a *core* resource like a container)
 	//		- In this case, the environment can be looked up through the application
 	//		- See: https://github.com/radius-project/radius/issues/2928
+	// 4. The resource has no environment or application. (eg: a Bicep deployment)
 	if resource.Properties["environment"] != nil {
 		environmentID, err = convertToResourceID(resource.Properties["environment"])
 		if err != nil {
@@ -210,11 +214,20 @@ func (r *Runner) extractEnvironmentAndApplicationIDs(ctx context.Context, client
 		}
 	}
 
+	// Detect case 4: (no environment or application)
+	if environmentID.IsEmpty() && applicationID.IsEmpty() {
+		return resources.ID{}, resources.ID{}, nil
+	}
+
 	// At this point we have the environment and application IDs **if** they were returned by
 	// the API. That covers case 1 & 2. Now we need to handle case 3, by doing an additional
 	// lookup.
 	if !environmentID.IsEmpty() {
 		return environmentID, applicationID, nil // Case 1 or Case 2
+	}
+
+	if applicationID.IsEmpty() {
+		return resources.ID{}, resources.ID{}, nil
 	}
 
 	application, err := client.GetApplication(ctx, applicationID.String())

@@ -454,6 +454,8 @@ func (ct RPTest) Test(t *testing.T) {
 
 					// Ensure that the resource is deleted with retries
 					notFound := false
+					baseWaitTime := 15 * time.Second
+
 					for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
 						t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
 
@@ -467,8 +469,10 @@ func (ct RPTest) Test(t *testing.T) {
 							t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
 							break
 						} else {
-							// Wait for 10 seconds
-							time.Sleep(10 * time.Second)
+							// Wait with exponential backoff
+							waitTime := baseWaitTime * time.Duration(attempt)
+							t.Logf("waiting for %s before next attempt", waitTime)
+							time.Sleep(waitTime)
 						}
 					}
 
