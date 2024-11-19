@@ -608,22 +608,19 @@ jobs:
           echo $OIDC
           echo "OIDC URL END:------------>"
 
-      #echo $${{ env.AZURE_TEST_RESOURCE_GROUP }}
-      #echo ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
-
-      # todo: working on this
+      # this step is to configure the aws credentials for github actions. 
+      # The role-to-assume is the role that the github action will assume to execute aws commands.
       - name: configure aws credentials using assumed role
         uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
-          role-to-assume: arn:aws:iam::817312594854:role/radius_func_test #change to reflect your IAM role’s ARN
+          role-to-assume: arn:aws:iam::817312594854:role/radius_func_test #TODO: change to reflect ARN of the role to assume craeted in functional test account
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
       
-      - name : create AWS IDP for OIDC
+      - name : create AWS IDP for OIDC and AWS IAM Role for Radius 
         run: |
           OIDC_TEST_URL=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
           AZURE_STORAGE_ACCOUNT=${{ steps.create_storage_account.outputs.AZURE_STORAGE_ACCOUNT }}
-        
           echo "Creating IDP"
           
           PROVIDER_ARN=$(aws iam create-open-id-connect-provider \
@@ -631,6 +628,7 @@ jobs:
             --client-id-list sts.amazonaws.com \
             --query 'OpenIDConnectProviderArn' \
             --output text)  
+        
           echo "PROVIDER_ARN:------------>"
           echo $PROVIDER_ARN
           echo "PROVIDER_ARN END:------------>"
@@ -639,6 +637,8 @@ jobs:
           echo $OIDC_TEST_URL
           echo "OIDC URL END:------------>"
           
+          #TODO: make the policy more restrictive
+
           cat <<EOF > radius-policy.json
           {
             "Version": "2012-10-17",
@@ -675,15 +675,27 @@ jobs:
 
           echo "printing the trust json"
           cat radius-trust-policy.json
+          echo "----------------------------"
           echo "printing the policy json"
           cat radius-policy.json  
+          echo "----------------------------"
 
-          echo "creating teh role"
+          
+          ROLE_NAME="radius-ft-role"
+          POLICY_DOCUMENT="file://radius-policy.json  "
+          TRUST_POLICY_DOCUMENT="file://radius-trust-policy.json"
 
-          aws iam create-role --role-name radius-func-test --assume-role-policy-document file://radius-trust-policy.json
-
-          echo "craeted role"
-          aws iam put-role-policy --role-name radius-func-test --policy-name radius-policy --policy-document file://radius-policy.json
+          aws iam get-role --role-name $ROLE_NAME > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+            echo "Role $ROLE_NAME already exists. Updating the role."
+            aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document $TRUST_POLICY_DOCUMENT
+          else
+            echo "Role $ROLE_NAME does not exist. Creating the role."
+            aws iam create-role --role-name $ROLE_NAME --assume-role-policy-document $TRUST_POLICY_DOCUMENT
+          fi
+          echo "created AWS IAM role for Radius"
+          aws iam put-role-policy --role-name $ROLE_NAME --policy-name YourPolicyName --policy-document $POLICY_DOCUMENT
+          echo "attached AWS IAM policy for Radius to the role"
 
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
