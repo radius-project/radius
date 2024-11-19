@@ -15,23 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ------------------------------------------------------------
-usage() {
-  echo -e "$0 requires <resourcegroup_name>\n"
-  exit 1
-}
+echo -e "Running Radius functional tests with non-cloud resources\n"
 
-if [ $# -lt 1 ]; then
-  usage
-fi
-
-resourcegroup=$1
-echo $resourcegroup
-
-resp=$(az deployment group create --resource-group $resourcegroup --template-file createAzureTestResources.bicep)
-cat resp
-
-export AZURE_COSMOS_MONGODB_ACCOUNT_ID=$(jq -r '.properties.outputs.cosmosMongoAccountID.value' <<<"${resp}")
-make test-functional-corerp
-make test-functional-msgrp
-make test-functional-daprrp
-make test-functional-datastoresrp
+make test-functional-all-noncloud

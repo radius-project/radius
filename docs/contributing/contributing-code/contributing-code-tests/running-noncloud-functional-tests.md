@@ -1,6 +1,6 @@
-# Running Radius functional tests
+# Running Radius Non-cloud Functional Tests
 
-You can find the functional tests under `./test/functional`. A functional test (in our terminology) is a test that interacts with real hosting environments (Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
+You can find the functional tests under `./test/functional-portable`. A functional test (in our terminology) is a test that interacts with real hosting environments (Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
 
 These tests verify whether:
 
@@ -9,7 +9,7 @@ These tests verify whether:
 
 ## Running via GitHub workflow
 
-These tests automatically run for every PR in the `functional-tests.yml` github workflow.
+These tests automatically run for every PR in the `functional-test-cloud.yml` and `functional-test-noncloud.yml` github workflows. The `functional-test-cloud.yml` workflow requires an approval from one of the maintainers or approvers of Radius.
 
 We do not run these tests for commits to `main` or tags since they might block the build if they fail.
 
@@ -23,7 +23,7 @@ For each PR we run the following set of steps:
   - Run tests
   - Delete any cloud resources that were created
 
-We have a separate scheduled job (`purge-test-resources.yaml`) that will delete cloud resources that are left behind. This can happen when the test run is cancelled or times out.
+We have two separate scheduled jobs (`purge-aws-test-resources.yaml` and `purge-azure-test-resources.yaml`) that will delete cloud resources that are left behind. This can happen when the test run is cancelled or times out.
 
 ## Configuration
 
@@ -36,39 +36,47 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 ### Prerequisites
 
 1. Place `rad` on your path
-2. Make sure `rad-bicep` is downloaded (`rad bicep download`)
-3. Make sure your [local dev environment is setup](../contributing-code-control-plane/running-controlplane-locally.md)
-4. Log into your Github account and [Generate PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
-5. Log-in to the container registry of your Github organization.
+1. Make sure `rad-bicep` is downloaded (`rad bicep download`)
+1. Make sure your [local dev environment is setup](../contributing-code-control-plane/running-controlplane-locally.md)
+1. Log into your Github account and [Generate PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+1. Log-in to the container registry of your Github organization.
 
    `export CR_PAT=<your_pat>`
 
    `echo $CR_PAT | docker login ghcr.io -u <your_username> --password-stdin`
 
-6. Publish Bicep test recipes by running `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`
-7. Publish Terraform test recipes by running `make publish-test-terraform-recipes`
-8. Change the visibility of the published packages to 'public'
+1. Publish Bicep test recipes by running `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`
+1. Publish Terraform test recipes by running `make publish-test-terraform-recipes`
+1. Change the visibility of the published packages to 'public'
 
-> ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see
-> test failures.
-
+> ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see test failures.
 > ⚠️ If you set environment variables for functional tests you may need to restart VS Code or other editors for them to take effect.
 
 ### Run
 
 1. Run:
 
-   ```sh
-       .{workspace}/radius/test/executeFunctionalTest.sh
-   ```
+```sh
+    .{workspace}/radius/test/execute_noncloud_functional_tests.sh
+```
 
-When you're running locally with this configuration, the tests will use your locally selected Radius Environment and your local copy of `rad`. The executeFunctionalTest.sh scripts creates the azure resources and exports the values to be used in the functional test and runs:
+When you're running locally with this configuration, the tests will use your locally selected Radius Environment and your local copy of `rad`. The `execute_noncloud_functional_tests.sh` script runs:
 
 ```sh
-   make test-functional-corerp
-   make test-functional-msgrp
-   make test-functional-daprrp
-   make test-functional-datastoresrp
+    make test-functional-all-noncloud
+```
+
+Which in turn runs these tests:
+
+```sh
+    make test-functional-ucp-noncloud
+    make test-functional-kubernetes-noncloud
+    make test-functional-corerp-noncloud
+    make test-functional-cli-noncloud
+    make test-functional-msgrp-noncloud
+    make test-functional-daprrp-noncloud
+    make test-functional-datastoresrp-noncloud
+    make test-functional-samples-noncloud
 ```
 
 You can also run/debug individual tests from VSCode.
