@@ -88,6 +88,7 @@ func NewListModel(choices []string, promptMsg string) ListModel {
 		items[i] = item(choice)
 	}
 
+	// setting width and height of list model to 0, that means its set to terminal width/height.
 	l := list.New(items, itemHandler{}, 0, 0)
 	l.Title = promptMsg
 	l.SetShowStatusBar(false)
@@ -130,6 +131,8 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
+		// setting the width and height of the list model as terminal dimensions changes.
+		// setting the height to 25% of the height of the terminal height.
 		m.List.SetSize(msg.Width, msg.Height-((3*msg.Height)/4))
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
