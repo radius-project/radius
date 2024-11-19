@@ -687,8 +687,7 @@ jobs:
           POLICY_DOCUMENT="file://radius-policy.json  "
           TRUST_POLICY_DOCUMENT="file://radius-trust-policy.json"
 
-          aws iam get-role --role-name $ROLE_NAME 
-          if [ $? -eq 0 ]; then
+          if aws iam get-role --role-name $ROLE_NAME > /dev/null 2>&1; then
             echo "Role $ROLE_NAME already exists. Updating the role."
             aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document $TRUST_POLICY_DOCUMENT
           else
