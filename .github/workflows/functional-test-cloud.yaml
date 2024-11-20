@@ -686,6 +686,20 @@ jobs:
                             "${OIDC_URL_NO_HTTPS}:aud": "sts.amazonaws.com"
                         }
                     }
+                },
+                {
+                   "Sid": "Statement1",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Federated": "${PROVIDER_ARN}"
+                    },
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {
+                        "StringEquals": {
+                            "${OIDC_URL_NO_HTTPS}:sub": "system:serviceaccount:radius-system:ucp",
+                            "${OIDC_URL_NO_HTTPS}:aud": "sts.amazonaws.com"
+                        }
+                    }
                 }
             ]
           }
@@ -840,6 +854,8 @@ jobs:
           rad credential register aws irsa \
             --iam-role ${{ steps.create_aws_idp_and_aws_iam_role.outputs.ROLE_ARN }}
 
+          echo "************************************"
+          echo ${{ steps.create_aws_idp_and_aws_iam_role.outputs.ROLE_ARN }}
           echo "************************************"
           kubectl describe pods -n radius-system ucp
                echo "************************************"
