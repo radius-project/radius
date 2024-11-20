@@ -616,7 +616,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/radius_func_test #TODO: change to reflect ARN of the role to assume craeted in functional test account
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
-          
+
       - name : create AWS IDP for OIDC and AWS IAM Role for Radius 
         run: |
           aws sts get-caller-identity
@@ -683,7 +683,7 @@ jobs:
           echo "----------------------------"
 
           
-          ROLE_NAME="radius-ft-role"
+          ROLE_NAME="radius-functional-testing-role"
           POLICY_DOCUMENT="file://radius-policy.json  "
           TRUST_POLICY_DOCUMENT="file://radius-trust-policy.json"
 
@@ -818,7 +818,7 @@ jobs:
           # rad credential register aws access-key \
           #  --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           rad credential register aws irsa \
-            --iam-role radius-ft-role 
+            --iam-role radius-functional-testing-role 
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
