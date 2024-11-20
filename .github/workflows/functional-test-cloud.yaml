@@ -396,9 +396,6 @@ jobs:
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
             },
-            "cloud": {
-              "credentialPrecedence": ["Environment"]
-            }
           }
           EOF
 
@@ -796,6 +793,7 @@ jobs:
             --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
             --set global.aws.irsa.enabled=true \
+            --set global.azureWorkloadIdentity.enabled=true 
         
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
