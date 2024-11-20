@@ -298,16 +298,6 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 
 	statusManager := statusmanager.New(dataProvider, queueClient, v1.LocationGlobal)
 
-	registry := worker.NewControllerRegistry(dataProvider)
-	err = backend.RegisterControllers(ctx, registry, connection, backend_ctrl.Options{DataProvider: dataProvider})
-	require.NoError(t, err)
-
-	w := worker.New(worker.Options{}, statusManager, queueClient, registry)
-	go func() {
-		err = w.Start(ctx)
-		require.NoError(t, err)
-	}()
-
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{pathBase}, "")
 	require.NoError(t, err, "failed to load OpenAPI spec")
 
@@ -327,6 +317,25 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	}
 
 	modules := configureModules(options)
+
+	// The URL for the dynamic-rp needs to be specified in configuration, however not all of our tests
+	// need to use the dynamic-rp. We can just use a placeholder value here.
+	if options.Config.Routing.DefaultDownstreamEndpoint == "" {
+		options.Config.Routing.DefaultDownstreamEndpoint = "http://localhost:65535"
+	}
+
+	defaultDownstream, err := url.Parse(options.Config.Routing.DefaultDownstreamEndpoint)
+	require.NoError(t, err)
+
+	registry := worker.NewControllerRegistry(dataProvider)
+	err = backend.RegisterControllers(ctx, registry, connection, http.DefaultTransport, backend_ctrl.Options{DataProvider: dataProvider}, defaultDownstream)
+	require.NoError(t, err)
+
+	w := worker.New(worker.Options{}, statusManager, queueClient, registry)
+	go func() {
+		err = w.Start(ctx)
+		require.NoError(t, err)
+	}()
 
 	err = api.Register(ctx, router, modules, options)
 	require.NoError(t, err)

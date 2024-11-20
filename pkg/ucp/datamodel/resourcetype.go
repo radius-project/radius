@@ -21,6 +21,9 @@ import v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 const (
 	// ResourceTypesResourceType is the resource type for a resource type.
 	ResourceTypeResourceType = "System.Resources/resourceProviders/resourceTypes"
+
+	// ResourceTypeResourceUnqualifiedResourceType is the unqualified resource type for a resource type.
+	ResourceTypeResourceUnqualifiedResourceType = "resourceTypes"
 )
 
 // ResourceType represents a resource type.

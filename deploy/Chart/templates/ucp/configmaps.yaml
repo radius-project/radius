@@ -50,6 +50,9 @@ data:
 
     ucp:
       kind: kubernetes
+    
+    routing:
+      defaultDownstreamEndpoint: "http://dynamic-rp.radius-sytem:8082"
 
     metricsProvider:
       prometheus:
