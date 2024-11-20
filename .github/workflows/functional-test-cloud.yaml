@@ -668,8 +668,8 @@ jobs:
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
                         "StringEquals": {
-                            "${PROVIDER_ARN}:sub": "system:serviceaccount:radius-system:ucp",
-                            "${PROVIDER_ARN}:aud": "sts.amazonaws.com"
+                            "${OIDC_TEST_URL}:sub": "system:serviceaccount:radius-system:ucp",
+                            "${OIDC_TEST_URL}:aud": "sts.amazonaws.com"
                         }
                     }
                 }
