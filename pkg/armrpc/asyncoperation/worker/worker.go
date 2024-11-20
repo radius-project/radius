@@ -168,7 +168,15 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
 
-			asyncCtrl := w.registry.Get(armReqCtx.OperationType)
+			asyncCtrl, err := w.registry.Get(reqCtx, armReqCtx.OperationType)
+			if err != nil {
+				opLogger.Error(err, "failed to get async controller.")
+				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
+					opLogger.Error(err, "failed to finish the message")
+				}
+				return
+			}
+
 			if asyncCtrl == nil {
 				opLogger.Error(nil, "cannot process unknown operation: "+armReqCtx.OperationType.String())
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
