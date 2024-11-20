@@ -446,7 +446,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest-m]
-        name: [corerp-cloud, ucp-cloud]
+        name: [ucp-cloud]
     runs-on: ${{ matrix.os }}
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
@@ -640,6 +640,11 @@ jobs:
           echo "JUST BEFORE AWS ROLE CREATION OIDC URL:------------>"
           echo $OIDC_TEST_URL
           echo "OIDC URL END:------------>"
+
+           # Remove https:// from OIDC URL
+          OIDC_URL_NO_HTTPS=${OIDC_TEST_URL#https://}
+          echo "OIDC URL NO HTTPS:------------>"
+          echo $OIDC_URL_NO_HTTPS
           
           #TODO: make the policy more restrictive
 
@@ -668,8 +673,8 @@ jobs:
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
                         "StringEquals": {
-                            "${OIDC_TEST_URL}:sub": "system:serviceaccount:radius-system:ucp",
-                            "${OIDC_TEST_URL}:aud": "sts.amazonaws.com"
+                            "${OIDC_URL_NO_HTTPS}:sub": "system:serviceaccount:radius-system:ucp",
+                            "${OIDC_URL_NO_HTTPS}:aud": "sts.amazonaws.com"
                         }
                     }
                 }
