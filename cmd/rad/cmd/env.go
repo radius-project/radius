@@ -28,8 +28,9 @@ func init() {
 
 func NewEnvironmentCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "env",
-		Short: "Manage Radius Environments",
+		Use:     "environment",
+		Aliases: []string{"env"},
+		Short:   "Manage Radius Environments",
 		Long: `Manage Radius Environments
 Radius Environments are prepared “landing zones” for Radius Applications. Applications deployed to an environment will inherit the container runtime, configuration, and other settings from the environment.`,
 	}

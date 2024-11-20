@@ -54,8 +54,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "init",
-		Short: "Initialize Radius",
+		Use:     "initialize",
+		Aliases: []string{"init"},
+		Short:   "Initialize Radius",
 		Long: `
 Interactively install the Radius control-plane and setup an environment.
 
