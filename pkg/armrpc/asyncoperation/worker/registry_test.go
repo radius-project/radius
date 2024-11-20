@@ -63,8 +63,60 @@ func TestRegister_Get(t *testing.T) {
 	}, ctrlOpts)
 	require.NoError(t, err)
 
-	ctrl := registry.Get(opGet)
+	ctrl, err := registry.Get(context.Background(), opGet)
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
-	ctrl = registry.Get(opPut)
+
+	ctrl, err = registry.Get(context.Background(), opPut)
+	require.NoError(t, err)
+	require.NotNil(t, ctrl)
+
+	// Getting a controller that is not registered should return nil by default.
+	ctrl, err = registry.Get(context.Background(), v1.OperationType{Type: "Applications.Core/unknown", Method: v1.OperationGet})
+	require.NoError(t, err)
+	require.Nil(t, ctrl)
+}
+
+func TestRegister_Get_WithDefault(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
+	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
+	registry := NewControllerRegistry(mockSP)
+
+	opGet := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationGet}
+
+	ctrlOpts := ctrl.Options{
+		StorageClient:          nil,
+		DataProvider:           mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor { return nil },
+	}
+
+	err := registry.Register(context.TODO(), opGet.Type, opGet.Method, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &testAsyncController{
+			BaseController: ctrl.NewBaseAsyncController(ctrlOpts),
+			fn: func(ctx context.Context) (ctrl.Result, error) {
+				return ctrl.Result{}, nil
+			},
+		}, nil
+	}, ctrlOpts)
+	require.NoError(t, err)
+
+	err = registry.RegisterDefault(context.TODO(), func(opts ctrl.Options) (ctrl.Controller, error) {
+		return &testAsyncController{
+			BaseController: ctrl.NewBaseAsyncController(ctrlOpts),
+		}, nil
+	}, ctrlOpts)
+	require.NoError(t, err)
+
+	ctrl, err := registry.Get(context.Background(), opGet)
+	require.NoError(t, err)
+	require.NotNil(t, ctrl)
+
+	// Getting a controller that is not registered should default the default
+	ctrl, err = registry.Get(context.Background(), v1.OperationType{Type: "Applications.Core/unknown", Method: v1.OperationGet})
+	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 }
