@@ -696,7 +696,7 @@ jobs:
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
                         "StringEquals": {
-                            "${OIDC_URL_NO_HTTPS}:sub": "system:serviceaccount:radius-system:ucp",
+                            "${OIDC_URL_NO_HTTPS}:sub": "system:serviceaccount:radius-system:applications-rp",
                             "${OIDC_URL_NO_HTTPS}:aud": "sts.amazonaws.com"
                         }
                     }
