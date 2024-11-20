@@ -630,10 +630,16 @@ jobs:
           curl -s "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/openid/v1/jwks"
 
           echo "Creating IDP"
-          
+
+          THUMBPRINT=$(echo | openssl s_client -servername oidcissuerc3f784c9.blob.core.windows.net -showcerts -connect oidcissuerc3f784c9.blob.core.windows.net:443 2>/dev/null | openssl x509 -fingerprint -noout | cut -d'=' -f2 | sed 's/://g')
+          echo "THUMBPRINT"
+          echo $THUMBPRINT
+
+
           PROVIDER_ARN=$(aws iam create-open-id-connect-provider \
             --url ${OIDC_TEST_URL} \
             --client-id-list sts.amazonaws.com \
+            --thumbprint-list $THUMBPRINT \
             --query 'OpenIDConnectProviderArn' \
             --output text)  
         
@@ -833,6 +839,11 @@ jobs:
           
           rad credential register aws irsa \
             --iam-role ${{ steps.create_aws_idp_and_aws_iam_role.outputs.ROLE_ARN }}
+
+          echo "************************************"
+          kubectl describe pods -n radius-system ucp
+               echo "************************************"
+
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
