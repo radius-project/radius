@@ -51,10 +51,6 @@ env:
   HELM_VER: "v3.15.3"
   # KinD cluster version
   KIND_VER: "v0.23.0"
-  # Dapr version
-  DAPR_VER: "1.12.0"
-  # Dapr dashboard version
-  DAPR_DASHBOARD_VER: "0.14.0"
   # Kubectl version
   KUBECTL_VER: "v1.30.0"
 
@@ -262,11 +258,6 @@ jobs:
           registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
-
-      # - name: Install dapr into cluster
-      #   run: |
-      #     wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
-      #     dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_VER }} --dashboard-version ${{ env.DAPR_DASHBOARD_VER }}
 
       - name: Install Radius
         run: |

@@ -31,6 +31,7 @@ import (
 
 const (
 	ContourChartDefaultVersion = "11.1.1"
+	DaprChartDefaultVersion    = "1.14.4"
 )
 
 type CLIClusterOptions struct {
@@ -64,7 +65,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 			ChartRepo:    radiusHelmRepo,
 		},
 		Dapr: ChartOptions{
-			ChartVersion: "", // Use the latest version
+			ChartVersion: DaprChartDefaultVersion,
 			Namespace:    DaprSystemNamespace,
 			ReleaseName:  daprReleaseName,
 			ChartRepo:    daprHelmRepo,

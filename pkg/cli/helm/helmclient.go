@@ -117,14 +117,14 @@ func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 	// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
-	_, err = histClient.Run(radiusReleaseName)
+	_, err = histClient.Run(options.ReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
 		err = runHelmInstall(helmConf, helmChart, options)
 		if err != nil {
 			return false, fmt.Errorf("failed to run Radius Helm install, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
 	} else if options.Reinstall {
-		err = runHelmUpgrade(helmConf, radiusReleaseName, helmChart, options)
+		err = runHelmUpgrade(helmConf, options.ReleaseName, helmChart, options)
 		if err != nil {
 			return false, fmt.Errorf("failed to run Radius Helm upgrade, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
