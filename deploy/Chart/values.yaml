@@ -116,7 +116,7 @@ dashboard:
 database:
   image: ghcr.io/radius-project/mirror/postgres
   tag: latest
-  storageClassName: "" # set to the storage class name if required
+  storageClassName: "standard" # set to the storage class name if required
   resources:
     requests:
       cpu: "2"
