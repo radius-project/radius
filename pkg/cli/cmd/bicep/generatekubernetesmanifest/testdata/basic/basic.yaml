@@ -1,0 +1,70 @@
+apiVersion: radapp.io/v1alpha3
+kind: DeploymentTemplate
+metadata:
+  name: basic.bicep
+  namespace: radius-system
+spec:
+  parameters: {}
+  providerConfig: |-
+    {
+      "radius": {
+        "type": "radius",
+        "value": {
+          "scope": "/planes/radius/local/resourceGroups/default"
+        }
+      },
+      "deployments": {
+        "type": "Microsoft.Resources",
+        "value": {
+          "scope": "/planes/radius/local/resourceGroups/default"
+        }
+      }
+    }
+  rootFileName: basic.bicep
+  template: |-
+    {
+      "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+      "contentVersion": "1.0.0.0",
+      "imports": {
+        "Radius": {
+          "provider": "Radius",
+          "version": "latest"
+        }
+      },
+      "languageVersion": "2.1-experimental",
+      "metadata": {
+        "_EXPERIMENTAL_FEATURES_ENABLED": [
+          "Extensibility"
+        ],
+        "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
+        "_generator": {
+          "name": "bicep",
+          "templateHash": "10886769892319697000",
+          "version": "0.30.23.60470"
+        }
+      },
+      "resources": {
+        "basic": {
+          "import": "Radius",
+          "properties": {
+            "name": "basic",
+            "properties": {
+              "compute": {
+                "kind": "kubernetes",
+                "namespace": "default",
+                "resourceId": "self"
+              },
+              "recipes": {
+                "Applications.Datastores/redisCaches": {
+                  "default": {
+                    "templateKind": "bicep",
+                    "templatePath": "ghcr.io/radius-project/recipes/local-dev/rediscaches:latest"
+                  }
+                }
+              }
+            }
+          },
+          "type": "Applications.Core/environments@2023-10-01-preview"
+        }
+      }
+    }

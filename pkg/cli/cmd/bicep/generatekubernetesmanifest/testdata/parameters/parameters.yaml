@@ -1,0 +1,80 @@
+apiVersion: radapp.io/v1alpha3
+kind: DeploymentTemplate
+metadata:
+  name: parameters.bicep
+  namespace: radius-system
+spec:
+  parameters: {}
+  providerConfig: |-
+    {
+      "radius": {
+        "type": "radius",
+        "value": {
+          "scope": "/planes/radius/local/resourceGroups/default"
+        }
+      },
+      "deployments": {
+        "type": "Microsoft.Resources",
+        "value": {
+          "scope": "/planes/radius/local/resourceGroups/default"
+        }
+      }
+    }
+  rootFileName: parameters.bicep
+  template: |-
+    {
+      "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+      "contentVersion": "1.0.0.0",
+      "imports": {
+        "Radius": {
+          "provider": "Radius",
+          "version": "latest"
+        }
+      },
+      "languageVersion": "2.1-experimental",
+      "metadata": {
+        "_EXPERIMENTAL_FEATURES_ENABLED": [
+          "Extensibility"
+        ],
+        "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
+        "_generator": {
+          "name": "bicep",
+          "templateHash": "289770176196104222",
+          "version": "0.30.23.60470"
+        }
+      },
+      "parameters": {
+        "kubernetesNamespace": {
+          "defaultValue": "default",
+          "type": "string"
+        },
+        "tag": {
+          "defaultValue": "latest",
+          "type": "string"
+        }
+      },
+      "resources": {
+        "parameters": {
+          "import": "Radius",
+          "properties": {
+            "name": "parameters",
+            "properties": {
+              "compute": {
+                "kind": "kubernetes",
+                "namespace": "[parameters('kubernetesNamespace')]",
+                "resourceId": "self"
+              },
+              "recipes": {
+                "Applications.Datastores/redisCaches": {
+                  "default": {
+                    "templateKind": "bicep",
+                    "templatePath": "[format('ghcr.io/radius-project/recipes/local-dev/rediscaches:{0}', parameters('tag'))]"
+                  }
+                }
+              }
+            }
+          },
+          "type": "Applications.Core/environments@2023-10-01-preview"
+        }
+      }
+    }

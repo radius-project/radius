@@ -247,7 +247,7 @@ func (r *Runner) createDeploymentTemplateYAMLFile(deploymentTemplate map[string]
 	return nil
 }
 
-// convertProvidersToProviderConfig converts the the clients.Providers to sdkclients.ProviderConfig.
+// generateProviderConfig generates a ProviderConfig object based on the given scopes.
 func (r *Runner) generateProviderConfig() (providerConfig sdkclients.ProviderConfig) {
 	providerConfig = sdkclients.ProviderConfig{}
 	if r.AWSScope != "" {

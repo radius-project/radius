@@ -1,0 +1,119 @@
+apiVersion: radapp.io/v1alpha3
+kind: DeploymentTemplate
+metadata:
+  name: module.bicep
+  namespace: radius-system
+spec:
+  parameters: {}
+  providerConfig: |-
+    {
+      "radius": {
+        "type": "radius",
+        "value": {
+          "scope": "/planes/radius/local/resourceGroups/default"
+        }
+      },
+      "deployments": {
+        "type": "Microsoft.Resources",
+        "value": {
+          "scope": "/planes/radius/local/resourceGroups/default"
+        }
+      }
+    }
+  rootFileName: module.bicep
+  template: |-
+    {
+      "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+      "contentVersion": "1.0.0.0",
+      "languageVersion": "2.1-experimental",
+      "metadata": {
+        "_EXPERIMENTAL_FEATURES_ENABLED": [
+          "Extensibility"
+        ],
+        "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
+        "_generator": {
+          "name": "bicep",
+          "templateHash": "1040374933922883026",
+          "version": "0.30.23.60470"
+        }
+      },
+      "outputs": {
+        "storageAccountId": {
+          "type": "string",
+          "value": "[reference('storageModule').outputs.storageAccountId.value]"
+        }
+      },
+      "parameters": {
+        "location": {
+          "defaultValue": "[resourceGroup().location]",
+          "type": "string"
+        },
+        "storageAccountName": {
+          "type": "string"
+        }
+      },
+      "resources": {
+        "storageModule": {
+          "apiVersion": "2022-09-01",
+          "name": "storageModule",
+          "properties": {
+            "expressionEvaluationOptions": {
+              "scope": "inner"
+            },
+            "mode": "Incremental",
+            "parameters": {
+              "location": {
+                "value": "[parameters('location')]"
+              },
+              "storageAccountName": {
+                "value": "[parameters('storageAccountName')]"
+              }
+            },
+            "template": {
+              "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+              "contentVersion": "1.0.0.0",
+              "languageVersion": "2.1-experimental",
+              "metadata": {
+                "_EXPERIMENTAL_FEATURES_ENABLED": [
+                  "Extensibility"
+                ],
+                "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
+                "_generator": {
+                  "name": "bicep",
+                  "templateHash": "17553429517046312167",
+                  "version": "0.30.23.60470"
+                }
+              },
+              "outputs": {
+                "storageAccountId": {
+                  "type": "string",
+                  "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+                }
+              },
+              "parameters": {
+                "location": {
+                  "type": "string"
+                },
+                "storageAccountName": {
+                  "type": "string"
+                }
+              },
+              "resources": {
+                "storageAccount": {
+                  "apiVersion": "2021-04-01",
+                  "kind": "StorageV2",
+                  "location": "[parameters('location')]",
+                  "name": "[parameters('storageAccountName')]",
+                  "properties": {},
+                  "sku": {
+                    "name": "Standard_LRS"
+                  },
+                  "type": "Microsoft.Storage/storageAccounts"
+                }
+              }
+            }
+          },
+          "type": "Microsoft.Resources/deployments"
+        }
+      }
+    }
