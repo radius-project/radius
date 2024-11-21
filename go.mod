@@ -30,17 +30,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.4.5
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20240408110044-525ba71bb562
 	github.com/dimchansky/utfbom v1.1.1
-<<<<<<< HEAD
 	github.com/fatih/color v1.18.0
-=======
-	github.com/fatih/color v1.17.0
-<<<<<<< HEAD
-	github.com/fluxcd/pkg/http/fetch v0.12.1
-	github.com/fluxcd/pkg/tar v0.8.1
-	github.com/fluxcd/source-controller/api v1.4.1
->>>>>>> 88eea07d2 (PR)
-=======
->>>>>>> ff7b44061 (removing fluxcontroller)
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/go-logr/logr v1.4.2
@@ -339,15 +329,9 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-<<<<<<< HEAD
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/apiserver v0.31.2 // indirect
 	k8s.io/component-base v0.31.2 // indirect
-=======
-	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/apiserver v0.31.1 // indirect
-	k8s.io/component-base v0.31.1 // indirect
->>>>>>> ff7b44061 (removing fluxcontroller)
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240903163716-9e1beecbcb38 // indirect
 	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6 // indirect
