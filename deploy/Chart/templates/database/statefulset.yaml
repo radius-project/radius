@@ -29,11 +29,11 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
+            memory: "{{ .Values.database.resources.requests.memory }}"
+            cpu: "{{ .Values.database.resources.requests.cpu }}"
           limits:
-            memory: "512Mi"
-            cpu: "200m"
+            memory: "{{ .Values.database.resources.limits.memory }}"
+            cpu: "{{ .Values.database.resources.limits.cpu }}"
         envFrom:
         - configMapRef:
             name: database-secret
@@ -49,4 +49,4 @@ spec:
       storageClassName: "{{ .Values.database.storageClassName }}"
       resources:
         requests:
-          storage: 3Gi
+          storage: {{ .Values.database.storageSize }}
