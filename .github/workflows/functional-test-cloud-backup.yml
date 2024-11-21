@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-name: Functional Tests (with Cloud Resources)
+name: BAck Up Functional Tests (with Cloud Resources)
 
 permissions:
   id-token: write # Required for requesting the JWT
