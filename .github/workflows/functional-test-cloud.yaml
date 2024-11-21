@@ -608,8 +608,8 @@ jobs:
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
                         "StringEquals": {
-                            "radiusoidc.blob.core.windows.net/kubeoidc:sub": "system:serviceaccount:radius-system:ucp",
-                            "radiusoidc.blob.core.windows.net/kubeoidc:aud": "sts.amazonaws.com"
+                            "radiusoidc.blob.core.windows.net/kubeoidc/:sub": "system:serviceaccount:radius-system:ucp",
+                            "radiusoidc.blob.core.windows.net/kubeoidc/:aud": "sts.amazonaws.com"
                         }
                     }
                 },
@@ -622,8 +622,8 @@ jobs:
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
                         "StringEquals": {
-                            "radiusoidc.blob.core.windows.net/kubeoidc:sub": "system:serviceaccount:radius-system:applications-rp",
-                            "radiusoidc.blob.core.windows.net/kubeoidc:aud": "sts.amazonaws.com"
+                            "radiusoidc.blob.core.windows.net/kubeoidc/:sub": "system:serviceaccount:radius-system:applications-rp",
+                            "radiusoidc.blob.core.windows.net/kubeoidc/:aud": "sts.amazonaws.com"
                         }
                     }
                 }
