@@ -593,6 +593,10 @@ jobs:
           echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
           echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
 
+          echo "public key"
+          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY 
+
+
           azwi jwks --public-keys sa.pub --output-file jwks.json
           az storage blob upload \
           --container-name ${AZURE_STORAGE_CONTAINER} \
@@ -758,6 +762,10 @@ jobs:
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
+
+          echo "public key for kind"
+          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY 
+
           echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
           echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
           cat <<EOF | ./kind create cluster --name radius --config=-
