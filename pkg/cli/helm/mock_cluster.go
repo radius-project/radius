@@ -118,17 +118,17 @@ func (c *MockInterfaceInstallRadiusCall) DoAndReturn(f func(context.Context, Clu
 }
 
 // UninstallRadius mocks base method.
-func (m *MockInterface) UninstallRadius(arg0 context.Context, arg1 string) error {
+func (m *MockInterface) UninstallRadius(arg0 context.Context, arg1 ClusterOptions, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UninstallRadius", arg0, arg1)
+	ret := m.ctrl.Call(m, "UninstallRadius", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UninstallRadius indicates an expected call of UninstallRadius.
-func (mr *MockInterfaceMockRecorder) UninstallRadius(arg0, arg1 any) *MockInterfaceUninstallRadiusCall {
+func (mr *MockInterfaceMockRecorder) UninstallRadius(arg0, arg1, arg2 any) *MockInterfaceUninstallRadiusCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UninstallRadius", reflect.TypeOf((*MockInterface)(nil).UninstallRadius), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UninstallRadius", reflect.TypeOf((*MockInterface)(nil).UninstallRadius), arg0, arg1, arg2)
 	return &MockInterfaceUninstallRadiusCall{Call: call}
 }
 
@@ -144,13 +144,13 @@ func (c *MockInterfaceUninstallRadiusCall) Return(arg0 error) *MockInterfaceUnin
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInterfaceUninstallRadiusCall) Do(f func(context.Context, string) error) *MockInterfaceUninstallRadiusCall {
+func (c *MockInterfaceUninstallRadiusCall) Do(f func(context.Context, ClusterOptions, string) error) *MockInterfaceUninstallRadiusCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceUninstallRadiusCall) DoAndReturn(f func(context.Context, string) error) *MockInterfaceUninstallRadiusCall {
+func (c *MockInterfaceUninstallRadiusCall) DoAndReturn(f func(context.Context, ClusterOptions, string) error) *MockInterfaceUninstallRadiusCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

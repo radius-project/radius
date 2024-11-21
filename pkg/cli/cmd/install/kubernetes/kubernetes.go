@@ -119,7 +119,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // to the cli version. It then returns any errors that occur during the installation.
 func (r *Runner) Run(ctx context.Context) error {
 	cliOptions := helm.CLIClusterOptions{
-		Radius: helm.RadiusOptions{
+		Radius: helm.ChartOptions{
 			Reinstall:   r.Reinstall,
 			ChartPath:   r.Chart,
 			SetArgs:     r.Set,
@@ -132,13 +132,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	if state.Installed && !r.Reinstall {
+	if state.RadiusInstalled && !r.Reinstall {
 		r.Output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
 		return nil
 	}
 
 	version := version.Version()
-	if state.Installed {
+	if state.RadiusInstalled {
 		r.Output.LogInfo("Reinstalling Radius version %s to namespace: %s...", version, helm.RadiusSystemNamespace)
 	} else {
 		r.Output.LogInfo("Installing Radius version %s to namespace: %s...", version, helm.RadiusSystemNamespace)

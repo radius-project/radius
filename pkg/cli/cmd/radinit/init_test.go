@@ -1064,13 +1064,13 @@ func initSelectCloudProvider(prompter *prompt.MockInterface, value string) {
 func initHelmMockRadiusInstalled(helmMock *helm.MockInterface) {
 	helmMock.EXPECT().
 		CheckRadiusInstall(gomock.Any()).
-		Return(helm.InstallState{Installed: true, Version: "test-version"}, nil).Times(1)
+		Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", DaprInstalled: true, DaprVersion: "test-version"}, nil).Times(1)
 }
 
 func initHelmMockRadiusNotInstalled(helmMock *helm.MockInterface) {
 	helmMock.EXPECT().
 		CheckRadiusInstall(gomock.Any()).
-		Return(helm.InstallState{Installed: false}, nil).Times(1)
+		Return(helm.InstallState{RadiusInstalled: false}, nil).Times(1)
 }
 
 func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClient, environments []corerp.EnvironmentResource) {

@@ -25,7 +25,7 @@ import (
 
 func Test_CanSetCLIOptions(t *testing.T) {
 	cliOptions := CLIClusterOptions{
-		Radius: RadiusOptions{
+		Radius: ChartOptions{
 			ChartPath: "chartpath",
 			Reinstall: true,
 		},

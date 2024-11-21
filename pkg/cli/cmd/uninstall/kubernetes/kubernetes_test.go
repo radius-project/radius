@@ -18,8 +18,9 @@ package kubernetes
 
 import (
 	"context"
-	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"testing"
+
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
 
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -68,10 +69,19 @@ func Test_Run(t *testing.T) {
 		}
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
-			Return(helm.InstallState{Installed: true, Version: "test-version"}, nil).
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", DaprInstalled: true, DaprVersion: "test-version"}, nil).
 			Times(1)
 
-		helmMock.EXPECT().UninstallRadius(ctx, "test-context").
+		helmMock.EXPECT().UninstallRadius(ctx, helm.ClusterOptions{
+			Radius: helm.ChartOptions{
+				Namespace:   "radius-system",
+				ReleaseName: "radius",
+			},
+			Dapr: helm.ChartOptions{
+				Namespace:   "dapr-system",
+				ReleaseName: "dapr",
+			},
+		}, "test-context").
 			Return(nil).
 			Times(1)
 
@@ -116,7 +126,7 @@ func Test_Run(t *testing.T) {
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
 	})
-	t.Run("Success: Installed -> Uninstalled -> Purge)", func(t *testing.T) {
+	t.Run("Success: Installed -> Uninstalled -> Purge", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		helmMock := helm.NewMockInterface(ctrl)
 		outputMock := &output.MockOutput{}
@@ -133,10 +143,19 @@ func Test_Run(t *testing.T) {
 		}
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
-			Return(helm.InstallState{Installed: true, Version: "test-version"}, nil).
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", DaprInstalled: true, DaprVersion: "test-version"}, nil).
 			Times(1)
 
-		helmMock.EXPECT().UninstallRadius(ctx, "test-context").
+		helmMock.EXPECT().UninstallRadius(ctx, helm.ClusterOptions{
+			Radius: helm.ChartOptions{
+				Namespace:   "radius-system",
+				ReleaseName: "radius",
+			},
+			Dapr: helm.ChartOptions{
+				Namespace:   "dapr-system",
+				ReleaseName: "dapr",
+			},
+		}, "test-context").
 			Return(nil).
 			Times(1)
 

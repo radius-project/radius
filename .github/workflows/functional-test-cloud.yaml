@@ -55,9 +55,6 @@ env:
   HELM_VER: "v3.12.0"
   # KinD cluster version
   KIND_VER: "v0.20.0"
-  # Dapr version
-  DAPR_VER: "1.12.0"
-  DAPR_DASHBOARD_VER: "0.14.0"
   # Kubectl version
   KUBECTL_VER: "v1.25.0"
   # Azure Keyvault CSI driver chart version
@@ -595,10 +592,6 @@ jobs:
                   service-account-private-key-file: /etc/kubernetes/pki/sa.key
           EOF
 
-      - name: Install dapr into cluster
-        run: |
-          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
-          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_VER }} --dashboard-version ${{ env.DAPR_DASHBOARD_VER }}
 
       - name: Install Azure Keyvault CSI driver chart
         run: |
