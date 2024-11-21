@@ -287,33 +287,6 @@ func (cli *CLI) BicepPublish(ctx context.Context, file, target string) (string, 
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) BicepGenerateKubernetesManifest(ctx context.Context, templateFilePath, outfile, environment string, parameters ...string) error {
-	// Check if the template file path exists
-	if _, err := os.Stat(templateFilePath); err != nil {
-		return fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
-	}
-
-	args := []string{
-		"bicep",
-		"generate-kubernetes-manifest",
-		templateFilePath,
-	}
-
-	if environment != "" {
-		args = append(args, "--environment", environment)
-	}
-
-	if outfile != "" {
-		args = append(args, "--outfile", outfile)
-	}
-
-	for _, parameter := range parameters {
-		args = append(args, "--parameters", parameter)
-	}
-	_, err := cli.RunCommand(ctx, args)
-	return err
-}
-
 // Version runs the version command and returns the output as a string, or an error if the command fails.
 func (cli *CLI) Version(ctx context.Context) (string, error) {
 	args := []string{
