@@ -58,7 +58,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
 	
 	You can specify parameters using multiple sources. Parameters can be overridden based on the 
-	order the are provided. Parameters appearing later in the argument list will override those defined earlier.
+	order they are provided. Parameters appearing later in the argument list will override those defined earlier.
 		`,
 		Example: `
 # Generate a DeploymentTemplate Custom Resource from a Bicep file.

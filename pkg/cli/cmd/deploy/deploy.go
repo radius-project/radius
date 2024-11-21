@@ -70,7 +70,7 @@ When passing multiple parameters in a single file, use the format described here
 	https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
 
 You can specify parameters using multiple sources. Parameters can be overridden based on the 
-order the are provided. Parameters appearing later in the argument list will override those defined earlier.
+order they are provided. Parameters appearing later in the argument list will override those defined earlier.
 `,
 		Example: `
 # deploy a Bicep template
