@@ -1,0 +1,1136 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+name: Functional Tests (with Cloud Resources)
+
+permissions:
+  id-token: write # Required for requesting the JWT
+  contents: read # Required for listing the commits
+  packages: write # Required for uploading the package
+  checks: write # Required for creating a check run
+
+on:
+  # Enable manual trigger
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run the workflow on"
+        required: true
+        default: "main"
+  schedule:
+    # Run every 4 hours on weekdays.
+    - cron: "30 0,4,8,12,16,20 * * 1-5"
+    # Run every 12 hours on weekends.
+    - cron: "30 0,12 * * 0,6"
+  # Dispatch on external events
+  repository_dispatch:
+    types: [de-functional-test]
+  workflow_run:
+    workflows: ["Approve Functional Tests"]
+    types:
+      - completed
+
+env:
+  # Go version
+  GOVER: "1.22.2"
+  GOPROXY: https://proxy.golang.org
+
+  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
+  GOTESTSUM_VER: 1.12.0
+
+  # Helm version
+  HELM_VER: "v3.12.0"
+  # KinD cluster version
+  KIND_VER: "v0.20.0"
+  # Dapr version
+  DAPR_VER: "1.12.0"
+  DAPR_DASHBOARD_VER: "0.14.0"
+  # Kubectl version
+  KUBECTL_VER: "v1.25.0"
+  # Azure Keyvault CSI driver chart version
+  AZURE_KEYVAULT_CSI_DRIVER_VER: "1.4.2"
+  # Azure workload identity webhook chart version
+  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: "1.3.0"
+  # Container registry for storing container images
+  CONTAINER_REGISTRY: ghcr.io/radius-project/dev
+  # Container registry for storing Bicep recipe artifacts
+  BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
+  # The radius functional test timeout
+  FUNCTIONALTEST_TIMEOUT: 60m
+  # The Azure Location to store test resources
+  AZURE_LOCATION: westus3
+  # The base directory for storing test logs
+  RADIUS_CONTAINER_LOG_BASE: dist/container_logs
+  # The Radius helm chart location.
+  RADIUS_CHART_LOCATION: deploy/Chart/
+  # The region for AWS resources
+  AWS_REGION: "us-west-2"
+  # The AWS account ID
+  AWS_ACCOUNT_ID: "${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
+  # The current GitHub action link
+  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  # Server where terraform test modules are deployed
+  TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
+  # The functional test GitHub app id
+  FUNCTIONAL_TEST_APP_ID: 425843
+  # Private Git repository where terraform module for testing is stored.
+  TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
+  # The number of failed tests to report.
+  ISSUE_CREATE_THRESHOLD: 2
+  # bicep-types ACR url for uploading Radius Bicep types
+  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
+
+jobs:
+  build:
+    name: Build Radius for test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'repository_dispatch' ||
+        (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+        github.event_name == 'workflow_dispatch'
+    env:
+      DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
+      DE_TAG: "latest"
+    outputs:
+      REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
+      UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
+      PR_NUMBER: ${{ steps.gen-id.outputs.PR_NUMBER }}
+      CHECKOUT_REPO: ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
+      RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
+      DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
+      DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
+    steps:
+      - name: Log Event Information
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+
+          # Additional logging is temporary for debugging purposes
+          # https://github.com/radius-project/radius/issues/7782
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "Triggered by workflow_run."
+            echo "Ref: ${{ github.ref }}"
+            echo "Head Branch Name: ${{ github.event.workflow_run.head_branch }}"
+            echo "SHA Value: ${{ github.event.workflow_run.head_sha }}"
+            echo "Github Repository: ${{ github.repository }}"
+            echo "Event Repository ID: ${{ github.event.workflow_run.repository.id }}"
+            echo "Event Repository Name: ${{ github.event.workflow_run.repository.name }}"
+            echo "Event Repository Full Name: ${{ github.event.workflow_run.repository.full_name }}"
+            echo "Workflow ID: ${{ github.event.workflow_run.workflow_id }}"
+            echo "Workflow Run ID: ${{ github.event.workflow_run.id }}"
+            echo "Workflow Name: ${{ github.event.workflow_run.name }}"
+            echo "Run Number: ${{ github.event.workflow_run.run_number }}"
+            echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+            echo "Status: ${{ github.event.workflow_run.status }}"
+            echo "Created At: ${{ github.event.workflow_run.created_at }}"
+            echo "Updated At: ${{ github.event.workflow_run.updated_at }}"
+          fi
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v2
+        id: get_installation_token
+        with:
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+
+      - name: Set up checkout target (scheduled)
+        if: github.event_name == 'schedule'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+
+      - name: Set up checkout target (repository_dispatch)
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+
+      - name: Set up checkout target (pull_request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+
+      - name: Set up checkout target (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: "Download PR data artifacts"
+        if: github.event_name == 'workflow_run'
+        uses: ./.github/actions/download-pr-data-artifact
+        id: get-pr-number
+
+      - name: "Set PR context (workflow_run)"
+        if: github.event_name == 'workflow_run'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const payload = context.payload.workflow_run;
+            let fs = require('fs');
+            // Set environment variables
+            fs.appendFileSync(process.env.GITHUB_ENV,
+              `CHECKOUT_REPO=${payload.head_repository.full_name}\n`+
+              `CHECKOUT_REF=${payload.head_sha}\n` +
+              `PR_NUMBER=${{ steps.get-pr-number.outputs.pr_number }}\n`);
+
+      - name: Set DE image and tag (repository_dispatch from de-functional-test)
+        if: github.event_name == 'repository_dispatch'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            const clientPayload = context.payload.client_payload;
+            if (clientPayload && clientPayload.event_type === `de-functional-test`) {
+              var fs = require('fs');
+              // Set environment variables
+              fs.appendFileSync(process.env.GITHUB_ENV,
+                `DE_IMAGE=${clientPayload.de_image}\n`+
+                `DE_TAG=${clientPayload.de_tag}\n`+
+                `CHECKOUT_REPO=${{ github.repository }}\n`+
+                `CHECKOUT_REF=refs/heads/main`
+              );
+            }
+
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOVER }}
+
+      - name: Generate ID for release
+        id: gen-id
+        run: |
+          BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+          if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
+            # Add run number to randomize unique id for scheduled runs.
+            BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
+          fi
+          UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
+          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
+
+          # Set output variables to be used in the other jobs
+          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
+          echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
+          echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
+          echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
+          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          hide: true
+          hide_classify: "OUTDATED"
+          message: |
+            ## Radius functional test overview
+
+            :mag: **[Go to test action run](${{ env.ACTION_LINK }})**
+
+            | Name | Value |
+            |------|-------|
+            |**Repository** | ${{ steps.gen-id.outputs.CHECKOUT_REPO }} |
+            |**Commit ref** | ${{ steps.gen-id.outputs.CHECKOUT_REF }} |
+            |**Unique ID** | ${{ steps.gen-id.outputs.UNIQUE_ID }} |
+            |**Image tag** | ${{ steps.gen-id.outputs.REL_VERSION }} |
+
+            <details>
+            <summary> Click here to see the list of tools in the current test run</summary>
+
+            * gotestsum ${{ env.GOTESTSUM_VER }}
+            * KinD: ${{ env.KIND_VER }}
+            * Dapr: ${{ env.DAPR_VER }}
+            * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
+            * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
+            * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY }}/test/testrecipes/test-bicep-recipes/<name>:${{ env.REL_VERSION }}`
+            * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
+            * applications-rp test image location: `${{ env.CONTAINER_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
+            * dynamic-rp test image location: `${{ env.CONTAINER_REGISTRY }}/dynamic-rp:${{ env.REL_VERSION }}`
+            * controller test image location: `${{ env.CONTAINER_REGISTRY }}/controller:${{ env.REL_VERSION }}`
+            * ucp test image location: `${{ env.CONTAINER_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
+            * deployment-engine test image location: `${{ env.DE_IMAGE }}:${{ env.DE_TAG }}`
+
+            </details>
+
+            ## Test Status
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :hourglass: Building Radius and pushing container images for functional tests...
+
+      - name: Build and Push container images
+        run: |
+          make build && make docker-build && make docker-push
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
+          path: |
+            ./dist/linux_amd64/release/rad
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: success() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :white_check_mark: Container images build succeeded
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: Container images build failed
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :hourglass: Publishing Bicep Recipes for functional tests...
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Generate Bicep extensibility types from OpenAPI specs
+        run: |
+          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+
+      - name: Upload Radius Bicep types artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius_bicep_types_cloud
+          path: ./hack/bicep-types-radius/generated
+          if-no-files-found: error
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
+
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
+          
+      - name: Publish bicep types 
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+
+      - name: Generate test bicepconfig.json
+        run: |
+          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+            RADIUS_VERSION="latest"
+          else
+            RADIUS_VERSION="${{ env.REL_VERSION }}"
+          fi
+          cat <<EOF > ./test/bicepconfig.json
+          {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true
+            },
+            "extensions": {
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+            }
+          }
+          EOF
+
+      - name: Publish Bicep Test Recipes
+        run: |
+          mkdir ./bin
+          cp ./dist/linux_amd64/release/rad ./bin/rad
+          chmod +x ./bin/rad
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep download
+          rad version
+          make publish-test-bicep-recipes
+        env:
+          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: success() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :white_check_mark: Recipe publishing succeeded
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: Test recipe publishing failed
+  
+  tests:
+    name: Run ${{ matrix.name }} functional tests
+    needs: [build]
+    if: github.event_name == 'repository_dispatch' ||
+        (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+        github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest-m]
+        name: [ucp-cloud]
+    runs-on: ${{ matrix.os }}
+    env:
+      UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
+      REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
+      PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
+      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
+      RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
+      BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
+      DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+    steps:
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v2
+        id: get_installation_token
+        with:
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+
+      - uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: "Functional Test Run"
+          status: in_progress
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Checkout Radius repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: Checkout Samples repository
+        uses: actions/checkout@v4
+        if: matrix.name == 'samples'
+        with:
+          repository: radius-project/samples
+          ref: refs/heads/edge
+          path: samples
+
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOVER }}
+
+      - name: Get Go Cache path
+        id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download rad CLI
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
+          path: bin
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :hourglass: Starting ${{ matrix.name }} functional tests...
+
+      - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+        run: |
+          current_time=$(date +%s)
+          az group create \
+            --location ${{ env.AZURE_LOCATION }} \
+            --name $RESOURCE_GROUP \
+            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
+            --tags creationTime=$current_time
+          while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
+        env:
+          RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VER }}
+      
+      - name: Install azwi
+        run: |
+          wget https://github.com/Azure/azure-workload-identity/releases/download/v1.3.0/azwi-v1.3.0-linux-amd64.tar.gz
+          tar -xvf azwi-v1.3.0-linux-amd64.tar.gz
+          sudo mv azwi /usr/local/bin/
+          sudo chmod +x /usr/local/bin/azwi
+
+      - name: Create storage account
+        id: create_storage_account
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          export AZURE_STORAGE_ACCOUNT="oidcissuer$(openssl rand -hex 4)"
+          export AZURE_STORAGE_CONTAINER="oidc-test"
+          echo ${AZURE_STORAGE_ACCOUNT}
+          echo ${AZURE_STORAGE_CONTAINER}
+          az storage account create --resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }} --name ${AZURE_STORAGE_ACCOUNT} --allow-blob-public-access true
+          az storage container create --name ${AZURE_STORAGE_CONTAINER} --public-access blob
+          cat <<EOF > openid-configuration.json
+          {
+            "issuer": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/",
+            "jwks_uri": "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/openid/v1/jwks",
+            "response_types_supported": [
+              "id_token"
+            ],
+            "subject_types_supported": [
+              "public"
+            ],
+            "id_token_signing_alg_values_supported": [
+              "RS256"
+            ]
+          }
+          EOF
+          az storage blob upload \
+          --container-name "${AZURE_STORAGE_CONTAINER}" \
+          --file openid-configuration.json \
+          --name .well-known/openid-configuration
+          eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
+          echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
+
+          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
+          echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
+
+          echo "public key"
+          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY 
+
+
+          azwi jwks --public-keys sa.pub --output-file jwks.json
+          az storage blob upload \
+          --container-name ${AZURE_STORAGE_CONTAINER} \
+          --file jwks.json \
+          --name openid/v1/jwks
+          
+          OIDC=https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/
+          echo "OIDC_TEST_URL=$OIDC" >> $GITHUB_OUTPUT
+          echo "AZURE_STORAGE_ACCOUNT=$AZURE_STORAGE_ACCOUNT" >> $GITHUB_OUTPUT
+          echo "AZURE_STORAGE_CONTAINER=$AZURE_STORAGE_CONTAINER" >> $GITHUB_OUTPUT
+          
+          echo "OIDC URL:------------>"
+          echo $OIDC
+          echo "OIDC URL END:------------>"
+
+      # this step is to configure the aws credentials for github actions. 
+      # The role-to-assume is the role that the github action will assume to execute aws commands.
+      - name: configure aws credentials using assumed role
+        uses: aws-actions/configure-aws-credentials@v1.7.0
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/radius_func_test #TODO: change to reflect ARN of the role to assume craeted in functional test account
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name : create AWS IDP for OIDC and AWS IAM Role for Radius 
+        id: create_aws_idp_and_aws_iam_role
+        run: |
+          aws sts get-caller-identity
+
+          OIDC_TEST_URL=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
+          AZURE_STORAGE_ACCOUNT=${{ steps.create_storage_account.outputs.AZURE_STORAGE_ACCOUNT }}
+          AZURE_STORAGE_CONTAINER=${{ steps.create_storage_account.outputs.AZURE_STORAGE_CONTAINER }}
+          
+          echo "validating the OIDC URL"
+          curl -s "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/${AZURE_STORAGE_CONTAINER}/openid/v1/jwks"
+
+          echo "Creating IDP"
+          
+          SERVER_NAME=${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net
+          THUMBPRINT=$(echo | openssl s_client -servername $SERVER_NAME -showcerts -connect $SERVER_NAME:443 2>/dev/null | openssl x509 -fingerprint -noout | cut -d'=' -f2 | sed 's/://g')
+
+          echo "THUMBPRINT"
+          echo $THUMBPRINT
+
+
+          PROVIDER_ARN=$(aws iam create-open-id-connect-provider \
+            --url ${OIDC_TEST_URL} \
+            --client-id-list sts.amazonaws.com \
+            --thumbprint-list $THUMBPRINT \
+            --query 'OpenIDConnectProviderArn' \
+            --output text)  
+        
+          echo "PROVIDER_ARN"
+          echo $PROVIDER_ARN
+
+          echo "JUST BEFORE AWS ROLE CREATION OIDC URL:------------>"
+          echo $OIDC_TEST_URL
+          echo "OIDC URL END:------------>"
+
+           # Remove https:// from OIDC URL
+          OIDC_URL_NO_HTTPS=${OIDC_TEST_URL#https://}
+          echo "OIDC URL NO HTTPS:------------>"
+          echo $OIDC_URL_NO_HTTPS
+          
+          #TODO: make the policy more restrictive
+
+          cat <<EOF > radius-policy.json
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": "*",
+                    "Resource": "*"
+                }
+              ]
+            } 
+          EOF
+          
+          cat <<EOF > radius-trust-policy.json
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Federated": "${PROVIDER_ARN}"
+                    },
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {
+                        "StringEquals": {
+                            "${OIDC_URL_NO_HTTPS}:sub": "system:serviceaccount:radius-system:ucp",
+                            "${OIDC_URL_NO_HTTPS}:aud": "sts.amazonaws.com"
+                        }
+                    }
+                },
+                {
+                   "Sid": "Statement1",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Federated": "${PROVIDER_ARN}"
+                    },
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {
+                        "StringEquals": {
+                            "${OIDC_URL_NO_HTTPS}:sub": "system:serviceaccount:radius-system:applications-rp",
+                            "${OIDC_URL_NO_HTTPS}:aud": "sts.amazonaws.com"
+                        }
+                    }
+                }
+            ]
+          }
+          EOF
+
+          echo "printing the trust json"
+          cat radius-trust-policy.json
+          echo "----------------------------"
+          echo "printing the policy json"
+          cat radius-policy.json  
+          echo "----------------------------"
+
+          
+          ROLE_NAME="radius-functional-testing-role"
+          POLICY_DOCUMENT="file://radius-policy.json"
+          TRUST_POLICY_DOCUMENT="file://radius-trust-policy.json"
+
+          if aws iam get-role --role-name $ROLE_NAME > /dev/null 2>&1; then
+            echo "Role $ROLE_NAME already exists. Updating the role."
+            aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document $TRUST_POLICY_DOCUMENT
+          else
+            echo "Role $ROLE_NAME does not exist. Creating the role."
+            aws iam create-role --role-name $ROLE_NAME --assume-role-policy-document $TRUST_POLICY_DOCUMENT
+          fi
+          echo "created AWS IAM role for Radius"
+          aws iam put-role-policy --role-name $ROLE_NAME --policy-name YourPolicyName --policy-document $POLICY_DOCUMENT
+          echo "attached AWS IAM policy for Radius to the role"
+
+          ROLE_ARN=$(aws iam get-role --role-name $ROLE_NAME --query 'Role.Arn' --output text)
+          echo "Role ARN IS: "
+          echo $ROLE_ARN
+          echo "ROLE_ARN=$ROLE_ARN" >> $GITHUB_OUTPUT
+
+      # create kind cluster with OIDC provider.
+      - name: Create KinD cluster
+        run: |
+          curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
+          chmod +x ./kind
+
+          # Populate the following environment variables for Azure workload identity from secrets.
+          # AZURE_OIDC_ISSUER_PUBLIC_KEY
+          # AZURE_OIDC_ISSUER_PRIVATE_KEY
+          eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+
+          echo "oidc issuer"
+          echo $AZURE_OIDC_ISSUER
+          echo "now setting to storage account"
+          AZURE_OIDC_ISSUER=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
+         
+          echo $AZURE_OIDC_ISSUER
+
+          
+          AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
+          echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
+
+          # Create KinD cluster with OIDC Issuer keys
+
+          echo "public key for kind"
+          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY 
+
+          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
+          echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
+          cat <<EOF | ./kind create cluster --name radius --config=-
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          nodes:
+          - role: control-plane
+            extraMounts:
+              - hostPath: ./sa.pub
+                containerPath: /etc/kubernetes/pki/sa.pub
+              - hostPath: ./sa.key
+                containerPath: /etc/kubernetes/pki/sa.key
+              - hostPath: ./ghcr_secret.json
+                containerPath: /var/lib/kubelet/config.json
+            kubeadmConfigPatches:
+            - |
+              kind: ClusterConfiguration
+              apiServer:
+                extraArgs:
+                  service-account-issuer: $AZURE_OIDC_ISSUER
+                  service-account-key-file: /etc/kubernetes/pki/sa.pub
+                  service-account-signing-key-file: /etc/kubernetes/pki/sa.key
+              controllerManager:
+                extraArgs:
+                  service-account-private-key-file: /etc/kubernetes/pki/sa.key
+          EOF
+
+      - name: Install dapr into cluster
+        run: |
+          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
+          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_VER }} --dashboard-version ${{ env.DAPR_DASHBOARD_VER }}
+
+      - name: Install Azure Keyvault CSI driver chart
+        run: |
+          helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
+          helm install csi csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --version ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
+
+      - name: Install azure workload identity webhook chart
+        run: |
+          helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
+          helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Bicep
+        run: |
+          chmod +x ./bin/rad
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep download
+          rad version
+
+      - name: Install gotestsum (test reporting tool)
+        run: |
+          go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: Test tool installation for ${{ matrix.name }} failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+      # todo: Install Radius with IRSA enabled
+      - name: Install Radius
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+
+          echo "*** Installing Radius to Kubernetes ***"
+          rad install kubernetes \
+            --chart ${{ env.RADIUS_CHART_LOCATION }} \
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
+            --set dynamicrp.image=${{ env.CONTAINER_REGISTRY }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }} \
+            --set controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }} \
+            --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
+            --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
+            --set global.aws.irsa.enabled=true \
+          
+          echo "*** Create workspace, group and environment for test ***"
+          rad workspace create kubernetes
+          rad group create kind-radius
+          rad group switch kind-radius
+
+          # The functional test is designed to use default namespace. So you must create the environment for default namespace.
+          rad env create kind-radius --namespace default
+          rad env switch kind-radius
+
+          echo "*** Configuring Azure provider ***"
+          rad env update kind-radius --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
+            --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          rad credential register azure wi \
+            --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
+            --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+
+          echo "*** Configuring AWS provider ***"
+          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          
+          rad credential register aws irsa \
+            --iam-role ${{ steps.create_aws_idp_and_aws_iam_role.outputs.ROLE_ARN }}
+
+          echo "************************************"
+          echo ${{ steps.create_aws_idp_and_aws_iam_role.outputs.ROLE_ARN }}
+          echo "************************************"
+          kubectl describe pods -n radius-system ucp
+               echo "************************************"
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+
+      - name: Publish Terraform test recipes
+        run: |
+          make publish-test-terraform-recipes
+      - name: Generate test bicepconfig.json
+        run: |
+          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+            RADIUS_VERSION="latest"
+          else
+            RADIUS_VERSION="${{ env.REL_VERSION }}"
+          fi
+          cat <<EOF > ./test/bicepconfig.json
+          {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true
+            },
+            "extensions": {
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+            },
+            "cloud": {
+              "credentialPrecedence": ["Environment"]
+            }
+          }
+          EOF
+      - name: Run functional tests
+        run: |
+          # Ensure rad cli is in path before running tests.
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          # Make directory to capture functional test results
+          mkdir -p ./dist/functional_test 
+          cd $GITHUB_WORKSPACE
+
+          which rad || { echo "cannot find rad"; exit 1; }
+
+          # Populate the following test environment variables from JSON secret.
+          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
+          # AZURE_MSSQL_RESOURCE_ID
+          # AZURE_MSSQL_USERNAME
+          # AZURE_MSSQL_PASSWORD
+          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+
+          make test-functional-${{ matrix.name }}
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
+          # Test_MongoDB_Recipe_Parameters is using the following environment variable.
+          INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
+
+      - name: Process Functional Test Results
+        uses: ./.github/actions/process-test-results
+        # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
+        if: failure() && github.repository == 'radius-project/radius'
+        with:
+          test_group_name: "Functional Tests - ${{ matrix.name }}"
+          artifact_name: "functional_test_results_${{ matrix.name }}"
+          result_directory: "dist/functional_test/"
+
+      - name: Collect Pod details
+        if: always()
+        run: |
+          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
+          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
+          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
+          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
+
+      - name: Upload container logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}_container_logs
+          path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+
+      - name: Get Terraform recipe publishing logs
+        if: always()
+        run: |
+          # Create pod-logs directory
+          mkdir -p recipes/pod-logs
+          # Get pod logs and save to file
+          namespace="radius-test-tf-module-server"
+          label="app.kubernetes.io/name=tf-module-server"
+          pod_names=($(kubectl get pods -l $label -n $namespace -o jsonpath='{.items[*].metadata.name}'))
+          for pod_name in "${pod_names[@]}"; do
+            kubectl logs $pod_name -n $namespace > recipes/pod-logs/${pod_name}.txt
+          done
+          echo "Pod logs saved to recipes/pod-logs/"
+          # Get kubernetes events and save to file
+          kubectl get events -n $namespace > recipes/pod-logs/events.txt
+
+      - name: Upload Terraform recipe publishing logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.name }}_recipes-pod-logs
+          path: recipes/pod-logs
+          if-no-files-found: error
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: success() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :white_check_mark: ${{ matrix.name }} functional tests succeeded
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: cancelled() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+
+      - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+        if: always()
+        run: |
+          # if deletion fails, purge workflow will purge the resource group and its resources later.
+          az group delete \
+            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
+            --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
+            --yes --verbose
+
+  report-test-results:
+    name: Report test results
+    needs: [build, tests]
+    runs-on: ubuntu-latest
+    if: always()
+    env:
+      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
+    steps:
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v2
+        id: get_installation_token
+        with:
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+
+      - name: Get tests job status
+        id: get_test_status
+        run: |
+          # from: https://github.com/orgs/community/discussions/26526#discussioncomment-3252209
+          ALL_JOBS_STATUS=$(curl -X GET -s -u "admin:${{ steps.get_installation_token.outputs.token }}" https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs | jq ".jobs[] | {job_status: .conclusion}")
+          echo "All jobs status: $ALL_JOBS_STATUS"
+          TEST_STATUS="success"
+          for job_status in $(echo "$ALL_JOBS_STATUS" | jq -r '.[]'); do
+            echo "Job Status: $job_status"
+            if [[ "$job_status" == "failure" ]]; then
+              echo "Found failed test. Setting test status to failure"
+              TEST_STATUS="failure"
+              break
+            elif [[ "$job_status" == "cancelled" ]]; then
+              echo "Found cancelled test. Setting test status to cancelled"
+              TEST_STATUS="cancelled"
+            fi
+          done
+          echo "Test Status: $TEST_STATUS"
+          echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
+
+      - uses: LouisBrunner/checks-action@v2.0.0
+        if: always()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: "Functional Test Run"
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          status: completed
+          conclusion: ${{ steps.get_test_status.outputs.test_status }}
+          output: |
+            {"summary":"Functional Test run completed. See links for more information.","title":"Functional Test Run"}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  report-failure:
+    name: Report test failure
+    needs: [build, tests]
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
+    steps:
+      - name: Count recently failed tests
+        id: count_failures
+        uses: actions/github-script@v7
+        with:
+          script: |
+            response = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'functional-test-cloud.yaml',
+              event: 'schedule',
+              per_page: 10
+            });
+
+            failureCount = 1;
+            for (const run of response.data.workflow_runs) {
+              if (run.conclusion === 'failure') {
+                failureCount++;
+              } else {
+                break;
+              }
+            }
+            return failureCount;
+
+      - name: Create failure issue for failing scheduled run
+        uses: actions/github-script@v7
+        # Only create an issue if there are (env.ISSUE_CREATE_THRESHOLD) failures of the recent tests.
+        if: steps.count_failures.outputs.result >= env.ISSUE_CREATE_THRESHOLD
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            github.rest.issues.create({
+              ...context.repo,
+              title: `Scheduled functional test failed - Run ID: ${context.runId}`,
+              labels: ['bug', 'test-failure'],
+              body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails at least ${process.env.ISSUE_CREATE_THRESHOLD} times in a row. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
+            })
