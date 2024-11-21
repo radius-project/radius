@@ -748,8 +748,9 @@ jobs:
 
           echo "oidc issuer"
           echo $AZURE_OIDC_ISSUER
-          AZURE_OIDC_ISSUER=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
           echo "now setting to storage account"
+          AZURE_OIDC_ISSUER=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
+         
           echo $AZURE_OIDC_ISSUER
 
           
