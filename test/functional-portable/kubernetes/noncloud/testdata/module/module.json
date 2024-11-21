@@ -1,0 +1,103 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.1-experimental",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
+    "_EXPERIMENTAL_FEATURES_ENABLED": [
+      "Extensibility"
+    ],
+    "_generator": {
+      "name": "bicep",
+      "version": "0.31.92.45157",
+      "templateHash": "17470534345050893154"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "namespace": {
+      "type": "string"
+    }
+  },
+  "resources": {
+    "module": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[parameters('name')]"
+          },
+          "namespace": {
+            "value": "[parameters('namespace')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.1-experimental",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
+            "_EXPERIMENTAL_FEATURES_ENABLED": [
+              "Extensibility"
+            ],
+            "_generator": {
+              "name": "bicep",
+              "version": "0.31.92.45157",
+              "templateHash": "13226276940735477072"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            }
+          },
+          "imports": {
+            "Radius": {
+              "provider": "Radius",
+              "version": "latest"
+            }
+          },
+          "resources": {
+            "env": {
+              "import": "Radius",
+              "type": "Applications.Core/environments@2023-10-01-preview",
+              "properties": {
+                "name": "[parameters('name')]",
+                "properties": {
+                  "compute": {
+                    "kind": "kubernetes",
+                    "resourceId": "self",
+                    "namespace": "[parameters('namespace')]"
+                  }
+                }
+              }
+            }
+          },
+          "outputs": {
+            "envId": {
+              "type": "string",
+              "value": "[reference('env').id]"
+            }
+          }
+        }
+      }
+    }
+  },
+  "outputs": {
+    "envId": {
+      "type": "string",
+      "value": "[reference('module').outputs.envId.value]"
+    }
+  }
+}

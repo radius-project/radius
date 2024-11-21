@@ -235,12 +235,11 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 		}
 
-		parameters, err := json.Marshal(deploymentTemplate.Spec.Parameters)
+		specParameters := convertToARMJSONParameters(deploymentTemplate.Spec.Parameters)
+		stringifiedSpecParameters, err := json.MarshalIndent(specParameters, "", "  ")
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to marshal parameters: %w", err)
 		}
-
-		fmt.Println("PARAMETERS: ", string(parameters))
 
 		providerConfig := sdkclients.ProviderConfig{}
 		err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
@@ -254,7 +253,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.Template = deploymentTemplate.Spec.Template
-		deploymentTemplate.Status.Parameters = string(parameters)
+		deploymentTemplate.Status.Parameters = string(stringifiedSpecParameters)
 		deploymentTemplate.Status.Resource = providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
 		deploymentTemplate.Status.RootFileName = deploymentTemplate.Spec.RootFileName
@@ -411,23 +410,22 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	parameters := convertToARMJSONParameters(deploymentTemplate.Spec.Parameters)
-
-	stringifiedParameters, err := json.Marshal(parameters)
+	specParameters := convertToARMJSONParameters(deploymentTemplate.Spec.Parameters)
+	stringifiedSpecParameters, err := json.MarshalIndent(specParameters, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal parameters: %w", err)
 	}
 
 	// If the resource is already created and is up-to-date, then we don't need to do anything.
 	if deploymentTemplate.Status.Template == deploymentTemplate.Spec.Template &&
-		deploymentTemplate.Status.Parameters == string(stringifiedParameters) &&
+		deploymentTemplate.Status.Parameters == string(stringifiedSpecParameters) &&
 		deploymentTemplate.Status.RootFileName == deploymentTemplate.Spec.RootFileName &&
 		deploymentTemplate.Status.ProviderConfig == deploymentTemplate.Spec.ProviderConfig {
 		logger.Info("Resource is already created and is up-to-date.")
 		return nil, nil
 	}
 
-	logger.Info("Template, parameters, repository, or providerConfig have changed, starting PUT operation.")
+	logger.Info("Template, parameters, rootFileName, or providerConfig have changed, starting PUT operation.")
 
 	var template any
 	err = json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
@@ -460,7 +458,7 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 		"mode":           "Incremental",
 		"providerConfig": providerConfig,
 		"template":       template,
-		"parameters":     parameters,
+		"parameters":     specParameters,
 	}
 
 	resourceID := providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name

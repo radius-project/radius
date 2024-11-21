@@ -227,7 +227,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	// List all DeploymentResource objects in the same namespace
 	// that have the same rootFileName.
 	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentResource.Namespace), client.MatchingFields{deploymentResource.Spec.RootFileName: deploymentResource.Spec.RootFileName})
+	err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentResource.Namespace), client.MatchingFields{rootFileNameField: deploymentResource.Spec.RootFileName})
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
