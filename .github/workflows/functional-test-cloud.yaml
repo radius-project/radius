@@ -617,7 +617,7 @@ jobs:
                    "Sid": "Statement1",
                     "Effect": "Allow",
                     "Principal": {
-                        "Federated": "${PROVIDER_ARN}"
+                        "Federated": "${FEDERATED_ARN}"
                     },
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
