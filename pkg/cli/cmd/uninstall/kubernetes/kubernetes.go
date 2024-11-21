@@ -18,6 +18,7 @@ package kubernetes
 
 import (
 	"context"
+
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
@@ -91,13 +92,23 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !state.Installed {
+	if !state.RadiusInstalled {
 		r.Output.LogInfo("Radius is not installed on the Kubernetes cluster")
 		return nil
 	}
 
 	r.Output.LogInfo("Uninstalling Radius...")
-	err = r.Helm.UninstallRadius(ctx, r.KubeContext)
+	err = r.Helm.UninstallRadius(ctx, helm.ClusterOptions{
+		Radius: helm.ChartOptions{
+			Namespace:   helm.RadiusSystemNamespace,
+			ReleaseName: helm.NewDefaultClusterOptions().Radius.ReleaseName,
+		},
+		Dapr: helm.ChartOptions{
+			Namespace:   helm.DaprSystemNamespace,
+			ReleaseName: helm.NewDefaultClusterOptions().Dapr.ReleaseName,
+		},
+	}, r.KubeContext)
+
 	if err != nil {
 		return err
 	}
