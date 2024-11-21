@@ -117,6 +117,7 @@ database:
   image: ghcr.io/radius-project/mirror/postgres
   tag: latest
   storageClassName: "standard" # set to the storage class name if required
+  storageSize: "1Gi"
   resources:
     requests:
       cpu: "2"
