@@ -672,11 +672,7 @@ jobs:
 
           echo "oidc issuer"
           echo $AZURE_OIDC_ISSUER
-          echo "now setting to storage account"
-          AZURE_OIDC_ISSUER=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
          
-          echo $AZURE_OIDC_ISSUER
-
           
           AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
