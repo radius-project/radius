@@ -744,9 +744,15 @@ jobs:
           # Populate the following environment variables for Azure workload identity from secrets.
           # AZURE_OIDC_ISSUER_PUBLIC_KEY
           # AZURE_OIDC_ISSUER_PRIVATE_KEY
-          # AZURE_OIDC_ISSUER
           eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
+          echo "oidc issuer"
+          echo $AZURE_OIDC_ISSUER
+          AZURE_OIDC_ISSUER=${{ steps.create_storage_account.outputs.OIDC_TEST_URL }}
+          echo "now setting to storage account"
+          echo $AZURE_OIDC_ISSUER
+
+          
           AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
