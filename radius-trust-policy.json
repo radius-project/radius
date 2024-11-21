@@ -1,0 +1,33 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+      {
+          "Effect": "Allow",
+          "Principal": {
+              "Federated": "https://oidcissuer554e99b4.blob.core.windows.net/oidc-test"
+          },
+          "Action": "sts:AssumeRoleWithWebIdentity",
+          "Condition": {
+              "StringEquals": {
+                  "https://oidcissuer554e99b4.blob.core.windows.net/oidc-test:sub": "system:serviceaccount:radius-system:ucp",
+                  "https://oidcissuer554e99b4.blob.core.windows.net/oidc-test:aud": "sts.amazonaws.com"
+              }
+          }
+      },
+      {
+          "Sid": "Statement1",
+          "Effect": "Allow",
+          "Principal": {
+              "Federated": "https://oidcissuer554e99b4.blob.core.windows.net/oidc-test"
+          },
+          "Action": "sts:AssumeRoleWithWebIdentity",
+          "Condition": {
+              "StringEquals": {
+                  "https://oidcissuer554e99b4.blob.core.windows.net/oidc-test:sub": "system:serviceaccount:radius-system:applications-rp",
+                  "https://oidcissuer554e99b4.blob.core.windows.net/oidc-test:aud": "sts.amazonaws.com"
+              }
+          }
+      }
+  ]
+}
+
