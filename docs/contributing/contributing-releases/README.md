@@ -67,11 +67,11 @@ Follow the steps below to create an RC release.
 
 1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius RC release version number being released.
 
-1. In the `radius-project/docs` repo, run the [Upmerge docs to edge](https://github.com/radius-project/docs/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
+1. In the `radius-project/docs` repo, run the [Upmerge docs to edge](https://github.com/radius-project/docs/actions/workflows/upmerge.yaml) workflow. Run the workflow from the `edge` branch.
 
    > This workflow will generate a PR which you will need to get approval and merge before proceeding.
 
-1. In the `radius-project/samples` repo, run the [Upmerge samples to edge](https://github.com/radius-project/samples/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
+1. In the `radius-project/samples` repo, run the [Upmerge samples to edge](https://github.com/radius-project/samples/actions/workflows/upmerge.yaml) workflow. Run the workflow from the `edge` branch.
 
    > This workflow will generate a PR which you will need to get approval and merge before proceeding.
 
