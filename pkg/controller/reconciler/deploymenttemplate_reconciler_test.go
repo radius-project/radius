@@ -39,9 +39,9 @@ const (
 	DeploymentTemplateTestWaitInterval            = time.Second * 1
 	DeploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
 
-	TestDeploymentTemplateNamespace           = "DeploymentTemplate-basic"
-	TestDeploymentTemplateName                = "test-DeploymentTemplate"
-	TestDeploymentTemplateRadiusResourceGroup = "default-DeploymentTemplate-basic"
+	TestDeploymentTemplateNamespace           = "basic"
+	TestDeploymentTemplateName                = "test-deploymenttemplate"
+	TestDeploymentTemplateRadiusResourceGroup = "default-basic"
 )
 
 var (
@@ -72,7 +72,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, client.Client
 	err = (&DeploymentTemplateReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("DeploymentTemplate-controller"),
+		EventRecorder: mgr.GetEventRecorderFor("controller"),
 		Radius:        radius,
 		DelayInterval: DeploymentTemplateTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
@@ -90,7 +90,7 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 	ctx := testcontext.New(t)
 	radius, client := SetupDeploymentTemplateTest(t)
 
-	name := types.NamespacedName{Namespace: "DeploymentTemplate-basic", Name: "test-DeploymentTemplate"}
+	name := types.NamespacedName{Namespace: "basic", Name: "test-deploymenttemplate"}
 	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
 	require.NoError(t, err)
 
@@ -106,13 +106,13 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 
 	scope, err := ParseDeploymentScopeFromProviderConfig(status.ProviderConfig)
 	require.NoError(t, err)
-	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic", scope)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-basic", scope)
 
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
 	// Deployment will update after operation completes
 	status = waitForDeploymentTemplateStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic/providers/Microsoft.Resources/deployments/test-DeploymentTemplate", status.Resource)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-basic/providers/Microsoft.Resources/deployments/test-deploymenttemplate", status.Resource)
 
 	resource, err := radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
 	require.NoError(t, err)
@@ -124,13 +124,13 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 			"deployments": map[string]any{
 				"type": "Microsoft.Resources",
 				"value": map[string]any{
-					"scope": "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic",
+					"scope": "/planes/radius/local/resourcegroups/default-basic",
 				},
 			},
 			"radius": map[string]any{
 				"type": "Radius",
 				"value": map[string]any{
-					"scope": "/planes/radius/local/resourcegroups/default-DeploymentTemplate-basic",
+					"scope": "/planes/radius/local/resourcegroups/default-basic",
 				},
 			},
 		}, "template": map[string]any{},
@@ -157,7 +157,7 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 	ctx := testcontext.New(t)
 	radius, client := SetupDeploymentTemplateTest(t)
 
-	name := types.NamespacedName{Namespace: "DeploymentTemplate-failure-recovery", Name: "test-DeploymentTemplate-failure-recovery"}
+	name := types.NamespacedName{Namespace: "failure-recovery", Name: "test-failure-recovery"}
 	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
 	require.NoError(t, err)
 
