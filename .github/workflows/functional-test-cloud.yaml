@@ -580,88 +580,83 @@ jobs:
           echo "oidc issuer is "
           echo $AZURE_OIDC_ISSUER
           
-          echo "is OIDC issuer accessible?"
+          
 
-          curl $AZURE_OIDC_ISSUER/.well-known/openid-configuration
-
-          curl $AZURE_OIDC_ISSUER/.well-known/jwks.json
-
-
-          FEDERATED_ARN=arn:aws:iam::179022619019:oidc-provider/radiusoidc.blob.core.windows.net/kubeoidc/
+          # FEDERATED_ARN=arn:aws:iam::179022619019:oidc-provider/radiusoidc.blob.core.windows.net/kubeoidc
 
           
-          cat <<EOF > radius-policy.json
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": "*",
-                    "Resource": "*"
-                }
-              ]
-            } 
-          EOF
+          # cat <<EOF > radius-policy.json
+          # {
+          #   "Version": "2012-10-17",
+          #   "Statement": [
+          #       {
+          #           "Effect": "Allow",
+          #           "Action": "*",
+          #           "Resource": "*"
+          #       }
+          #     ]
+          #   } 
+          # EOF
           
-          cat <<EOF > radius-trust-policy.json
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Federated": "${FEDERATED_ARN}"
-                    },
-                    "Action": "sts:AssumeRoleWithWebIdentity",
-                    "Condition": {
-                        "StringEquals": {
-                            "${FEDERATED_ARN}:sub": "system:serviceaccount:radius-system:ucp",
-                            "${FEDERATED_ARN}:aud": "sts.amazonaws.com"
-                        }
-                    }
-                },
-                {
-                   "Sid": "Statement1",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Federated": "${FEDERATED_ARN}"
-                    },
-                    "Action": "sts:AssumeRoleWithWebIdentity",
-                    "Condition": {
-                        "StringEquals": {
-                            "${FEDERATED_ARN}:sub": "system:serviceaccount:radius-system:applications-rp",
-                            "${FEDERATED_ARN}:aud": "sts.amazonaws.com"
-                        }
-                    }
-                }
-            ]
-          }
-          EOF
+          # cat <<EOF > radius-trust-policy.json
+          # {
+          #   "Version": "2012-10-17",
+          #   "Statement": [
+          #       {
+          #           "Effect": "Allow",
+          #           "Principal": {
+          #               "Federated": "${FEDERATED_ARN}"
+          #           },
+          #           "Action": "sts:AssumeRoleWithWebIdentity",
+          #           "Condition": {
+          #               "StringEquals": {
+          #                   "${FEDERATED_ARN}:sub": "system:serviceaccount:radius-system:ucp",
+          #                   "${FEDERATED_ARN}:aud": "sts.amazonaws.com"
+          #               }
+          #           }
+          #       },
+          #       {
+          #          "Sid": "Statement1",
+          #           "Effect": "Allow",
+          #           "Principal": {
+          #               "Federated": "${FEDERATED_ARN}"
+          #           },
+          #           "Action": "sts:AssumeRoleWithWebIdentity",
+          #           "Condition": {
+          #               "StringEquals": {
+          #                   "${FEDERATED_ARN}:sub": "system:serviceaccount:radius-system:applications-rp",
+          #                   "${FEDERATED_ARN}:aud": "sts.amazonaws.com"
+          #               }
+          #           }
+          #       }
+          #   ]
+          # }
+          # EOF
 
-          echo "printing the trust json"
-          cat radius-trust-policy.json
-          echo "----------------------------"
-          echo "printing the policy json"
-          cat radius-policy.json  
-          echo "----------------------------"
+          # echo "printing the trust json"
+          # cat radius-trust-policy.json
+          # echo "----------------------------"
+          # echo "printing the policy json"
+          # cat radius-policy.json  
+          # echo "----------------------------"
 
           
-          ROLE_NAME="radius-functional-testing-role"
-          POLICY_DOCUMENT="file://radius-policy.json"
-          TRUST_POLICY_DOCUMENT="file://radius-trust-policy.json"
+          # ROLE_NAME="radius-functional-testing-role"
+          # POLICY_DOCUMENT="file://radius-policy.json"
+          # TRUST_POLICY_DOCUMENT="file://radius-trust-policy.json"
 
-          if aws iam get-role --role-name $ROLE_NAME > /dev/null 2>&1; then
-            echo "Role $ROLE_NAME already exists. Updating the role."
-            aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document $TRUST_POLICY_DOCUMENT
-          else
-            echo "Role $ROLE_NAME does not exist. Creating the role."
-            aws iam create-role --role-name $ROLE_NAME --assume-role-policy-document $TRUST_POLICY_DOCUMENT
-          fi
-          echo "created AWS IAM role for Radius"
-          aws iam put-role-policy --role-name $ROLE_NAME --policy-name YourPolicyName --policy-document $POLICY_DOCUMENT
-          echo "attached AWS IAM policy for Radius to the role"
+          # if aws iam get-role --role-name $ROLE_NAME > /dev/null 2>&1; then
+          #   echo "Role $ROLE_NAME already exists. Updating the role."
+          #   aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document $TRUST_POLICY_DOCUMENT
+          # else
+          #   echo "Role $ROLE_NAME does not exist. Creating the role."
+          #   aws iam create-role --role-name $ROLE_NAME --assume-role-policy-document $TRUST_POLICY_DOCUMENT
+          # fi
+          # echo "created AWS IAM role for Radius"
+          # aws iam put-role-policy --role-name $ROLE_NAME --policy-name YourPolicyName --policy-document $POLICY_DOCUMENT
+          # echo "attached AWS IAM policy for Radius to the role"
 
-          ROLE_ARN=$(aws iam get-role --role-name $ROLE_NAME --query 'Role.Arn' --output text)
+          ROLE_ARN=arn:aws:iam::179022619019:role/new-rad-ft-role
           
           echo "Role ARN IS: "
           echo $ROLE_ARN
@@ -874,6 +869,7 @@ jobs:
           result_directory: "dist/functional_test/"
 
       - name: Collect Pod details
+
         if: always()
         run: |
           POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
