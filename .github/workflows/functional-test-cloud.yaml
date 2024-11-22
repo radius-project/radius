@@ -582,9 +582,9 @@ jobs:
           
           echo "is OIDC issuer accessible?"
 
-          curl https://$AZURE_OIDC_ISSUER/.well-known/openid-configuration
+          curl $AZURE_OIDC_ISSUER/.well-known/openid-configuration
 
-          curl https://$AZURE_OIDC_ISSUER/.well-known/jwks.json
+          curl $AZURE_OIDC_ISSUER/.well-known/jwks.json
 
 
           FEDERATED_ARN=arn:aws:iam::179022619019:oidc-provider/radiusoidc.blob.core.windows.net/kubeoidc/
