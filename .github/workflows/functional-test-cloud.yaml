@@ -574,15 +574,22 @@ jobs:
           # Populate the following environment variables for Azure workload identity from secrets.
           # AZURE_OIDC_ISSUER_PUBLIC_KEY
           # AZURE_OIDC_ISSUER_PRIVATE_KEY
+          # AZURE_OIDC_ISSUER
           eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          echo "oidc issuer"
+          echo "oidc issuer is "
           echo $AZURE_OIDC_ISSUER
-
-          FEDERATED_ARN=arn:aws:iam::179022619019:oidc-provider/radiusoidc.blob.core.windows.net/kubeoidc
           
-          #TODO: make the policy more restrictive
+          echo "is OIDC issuer accessible?"
 
+          curl https://$AZURE_OIDC_ISSUER/.well-known/openid-configuration
+
+          curl https://$AZURE_OIDC_ISSUER/.well-known/jwks.json
+
+
+          FEDERATED_ARN=arn:aws:iam::179022619019:oidc-provider/radiusoidc.blob.core.windows.net/kubeoidc/
+
+          
           cat <<EOF > radius-policy.json
           {
             "Version": "2012-10-17",
@@ -603,7 +610,7 @@ jobs:
                 {
                     "Effect": "Allow",
                     "Principal": {
-                        "Federated": "${FEDERATED_ARN}"
+                        "Federated": "radiusoidc.blob.core.windows.net/kubeoidc/"
                     },
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
@@ -617,7 +624,7 @@ jobs:
                    "Sid": "Statement1",
                     "Effect": "Allow",
                     "Principal": {
-                        "Federated": "${FEDERATED_ARN}"
+                        "Federated": "radiusoidc.blob.core.windows.net/kubeoidc/"
                     },
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
@@ -655,6 +662,7 @@ jobs:
           echo "attached AWS IAM policy for Radius to the role"
 
           ROLE_ARN=$(aws iam get-role --role-name $ROLE_NAME --query 'Role.Arn' --output text)
+          
           echo "Role ARN IS: "
           echo $ROLE_ARN
           echo "ROLE_ARN=$ROLE_ARN" >> $GITHUB_OUTPUT
@@ -670,7 +678,7 @@ jobs:
           # AZURE_OIDC_ISSUER_PRIVATE_KEY
           eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          echo "oidc issuer"
+          echo "oidc issuer for cluster"
           echo $AZURE_OIDC_ISSUER
          
           
@@ -678,10 +686,6 @@ jobs:
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
-
-          echo "public key for kind"
-          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY 
-
           echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
           echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
           cat <<EOF | ./kind create cluster --name radius --config=-
