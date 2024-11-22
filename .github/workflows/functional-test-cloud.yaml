@@ -610,7 +610,7 @@ jobs:
                 {
                     "Effect": "Allow",
                     "Principal": {
-                        "Federated": ${FEDERATED_ARN}
+                        "Federated": "${FEDERATED_ARN}"
                     },
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
@@ -624,7 +624,7 @@ jobs:
                    "Sid": "Statement1",
                     "Effect": "Allow",
                     "Principal": {
-                        "Federated": "radiusoidc.blob.core.windows.net/kubeoidc/"
+                        "Federated": "${FEDERATED_ARN}"
                     },
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
