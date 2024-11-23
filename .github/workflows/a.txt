@@ -1,0 +1,27 @@
+AZURE_OIDC_ISSUER=radiusoidc.blob.core.windows.net
+THUMBPRINT=$(echo | openssl s_client -servername $AZURE_OIDC_ISSUER -showcerts -connect $AZURE_OIDC_ISSUER:443 2>/dev/null | openssl x509 -fingerprint -noout | cut -d'=' -f2 | sed 's/://g')
+echo "Thumbprint: $THUMBPRINT"
+
+PROVIDER_ARN=$(aws iam create-open-id-connect-provider \
+  --url https://radiusoidc.blob.core.windows.net/kubeoidc/ \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list $THUMBPRINT \
+  --query 'OpenIDConnectProviderArn' \
+  --output text)
+
+
+  nithya@MacBook-Pro .aws % aws iam get-open-id-connect-provider --open-id-connect-provider-arn $PROVIDER_ARN 
+{
+    "Url": "radiusoidc.blob.core.windows.net/kubeoidc/",
+    "ClientIDList": [
+        "sts.amazonaws.com"
+    ],
+    "ThumbprintList": [
+        "b48f2d6d66948e5a80b4d4960c95dfaab8a5e152"
+    ],
+    "CreateDate": "2024-11-22T18:59:58.567000+00:00",
+    "Tags": []
+}
+
+nithya@MacBook-Pro .aws % echo $PROVIDER_ARN
+arn:aws:iam::179022619019:oidc-provider/radiusoidc.blob.core.windows.net/kubeoidc/
