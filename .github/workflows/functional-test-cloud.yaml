@@ -784,7 +784,7 @@ jobs:
           rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           
           rad credential register aws irsa \
-            --iam-role arn:aws:iam::179022619019:role/new-rad-ft-role
+            --iam-role arn:aws:iam::179022619019:role/radius-test
 
           echo "************************************"
           echo ${{ steps.create_aws_idp_and_aws_iam_role.outputs.ROLE_ARN }}
