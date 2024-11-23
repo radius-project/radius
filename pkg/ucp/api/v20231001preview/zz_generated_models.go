@@ -729,13 +729,13 @@ type ResourceProviderSummaryResourceType struct {
 	// REQUIRED; API versions supported by the resource type.
 	APIVersions map[string]map[string]any
 
-	// REQUIRED; The default api version for the resource type.
+	// The default api version for the resource type.
 	DefaultAPIVersion *string
 }
 
 // ResourceTypeProperties - The properties of a resource type.
 type ResourceTypeProperties struct {
-	// REQUIRED; The default api version for the resource type.
+	// The default api version for the resource type.
 	DefaultAPIVersion *string
 
 	// READ-ONLY; The status of the asynchronous operation.
