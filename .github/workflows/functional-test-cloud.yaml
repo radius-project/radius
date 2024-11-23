@@ -446,7 +446,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest-m]
-        name: [ucp-cloud]
+        name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
@@ -550,13 +550,6 @@ jobs:
         with:
           version: ${{ env.HELM_VER }}
       
-      - name: Install azwi
-        run: |
-          wget https://github.com/Azure/azure-workload-identity/releases/download/v1.3.0/azwi-v1.3.0-linux-amd64.tar.gz
-          tar -xvf azwi-v1.3.0-linux-amd64.tar.gz
-          sudo mv azwi /usr/local/bin/
-          sudo chmod +x /usr/local/bin/azwi
-
       # this step is to configure the aws credentials for github actions. 
       # The role-to-assume is the role that the github action will assume to execute aws commands.
       - name: configure aws credentials using assumed role
@@ -565,102 +558,6 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/radius_func_test #TODO: change to reflect ARN of the role to assume craeted in functional test account
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
-
-      - name : create AWS IDP for OIDC and AWS IAM Role for Radius 
-        id: create_aws_idp_and_aws_iam_role
-        run: |
-          aws sts get-caller-identity
-
-          # Populate the following environment variables for Azure workload identity from secrets.
-          # AZURE_OIDC_ISSUER_PUBLIC_KEY
-          # AZURE_OIDC_ISSUER_PRIVATE_KEY
-          # AZURE_OIDC_ISSUER
-          eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
-
-          echo "oidc issuer is "
-          echo $AZURE_OIDC_ISSUER
-          
-          
-
-          # FEDERATED_ARN=arn:aws:iam::179022619019:oidc-provider/radiusoidc.blob.core.windows.net/kubeoidc
-
-          
-          # cat <<EOF > radius-policy.json
-          # {
-          #   "Version": "2012-10-17",
-          #   "Statement": [
-          #       {
-          #           "Effect": "Allow",
-          #           "Action": "*",
-          #           "Resource": "*"
-          #       }
-          #     ]
-          #   } 
-          # EOF
-          
-          # cat <<EOF > radius-trust-policy.json
-          # {
-          #   "Version": "2012-10-17",
-          #   "Statement": [
-          #       {
-          #           "Effect": "Allow",
-          #           "Principal": {
-          #               "Federated": "${FEDERATED_ARN}"
-          #           },
-          #           "Action": "sts:AssumeRoleWithWebIdentity",
-          #           "Condition": {
-          #               "StringEquals": {
-          #                   "${FEDERATED_ARN}:sub": "system:serviceaccount:radius-system:ucp",
-          #                   "${FEDERATED_ARN}:aud": "sts.amazonaws.com"
-          #               }
-          #           }
-          #       },
-          #       {
-          #          "Sid": "Statement1",
-          #           "Effect": "Allow",
-          #           "Principal": {
-          #               "Federated": "${FEDERATED_ARN}"
-          #           },
-          #           "Action": "sts:AssumeRoleWithWebIdentity",
-          #           "Condition": {
-          #               "StringEquals": {
-          #                   "${FEDERATED_ARN}:sub": "system:serviceaccount:radius-system:applications-rp",
-          #                   "${FEDERATED_ARN}:aud": "sts.amazonaws.com"
-          #               }
-          #           }
-          #       }
-          #   ]
-          # }
-          # EOF
-
-          # echo "printing the trust json"
-          # cat radius-trust-policy.json
-          # echo "----------------------------"
-          # echo "printing the policy json"
-          # cat radius-policy.json  
-          # echo "----------------------------"
-
-          
-          # ROLE_NAME="radius-functional-testing-role"
-          # POLICY_DOCUMENT="file://radius-policy.json"
-          # TRUST_POLICY_DOCUMENT="file://radius-trust-policy.json"
-
-          # if aws iam get-role --role-name $ROLE_NAME > /dev/null 2>&1; then
-          #   echo "Role $ROLE_NAME already exists. Updating the role."
-          #   aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document $TRUST_POLICY_DOCUMENT
-          # else
-          #   echo "Role $ROLE_NAME does not exist. Creating the role."
-          #   aws iam create-role --role-name $ROLE_NAME --assume-role-policy-document $TRUST_POLICY_DOCUMENT
-          # fi
-          # echo "created AWS IAM role for Radius"
-          # aws iam put-role-policy --role-name $ROLE_NAME --policy-name YourPolicyName --policy-document $POLICY_DOCUMENT
-          # echo "attached AWS IAM policy for Radius to the role"
-
-          ROLE_ARN=arn:aws:iam::179022619019:role/new-rad-ft-role
-          
-          echo "Role ARN IS: "
-          echo $ROLE_ARN
-          echo "ROLE_ARN=$ROLE_ARN" >> $GITHUB_OUTPUT
 
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
@@ -762,7 +659,8 @@ jobs:
             --set controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }} \
             --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
-            --set global.aws.irsa.enabled=true \
+            --set global.azureWorkloadIdentity.enabled=true \
+            --set global.aws.irsa.enabled=true 
           
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -786,12 +684,8 @@ jobs:
           rad credential register aws irsa \
             --iam-role arn:aws:iam::179022619019:role/radius-test
 
-          echo "************************************"
-          echo ${{ steps.create_aws_idp_and_aws_iam_role.outputs.ROLE_ARN }}
-          echo "************************************"
           kubectl describe pods -n radius-system ucp
-               echo "************************************"
-
+          
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
