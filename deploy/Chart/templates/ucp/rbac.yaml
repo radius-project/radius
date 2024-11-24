@@ -7,51 +7,32 @@ metadata:
     app.kubernetes.io/part-of: radius
 rules:
 - apiGroups:
-  - ""
+    - ""
   resources:
-  - configmaps
-  - secrets
-  - services
+    - secrets
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+    - create
+    - delete
+    - get
+    - update
+
 - apiGroups:
-  - apps
+    - ucp.dev
   resources:
-  - deployments
-  - statefulsets
+    - resources
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+    - create
+    - delete
+    - get
+    - list
+    - update
+
 - apiGroups:
-  - ucp.dev
+    - ucp.dev
   resources:
-  - resources
-  - queuemessages
+    - queuemessages
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - api.ucp.dev
-  resources:
-  - '*'
-  verbs:
-  - '*'
+    - create
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
