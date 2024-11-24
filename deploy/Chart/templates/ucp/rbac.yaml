@@ -6,33 +6,38 @@ metadata:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
 rules:
-- apiGroups:
-    - ""
-  resources:
-    - secrets
-  verbs:
-    - create
-    - delete
-    - get
-    - update
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
+      - delete
+      - get
+      - update
 
-- apiGroups:
-    - ucp.dev
-  resources:
-    - resources
-  verbs:
-    - create
-    - delete
-    - get
-    - list
-    - update
+  - apiGroups:
+      - ucp.dev
+    resources:
+      - resources
+      - queuemessages
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - update
 
-- apiGroups:
-    - ucp.dev
-  resources:
-    - queuemessages
-  verbs:
-    - create
+  - apiGroups:
+      - api.ucp.dev
+    resources:
+      - "*"
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -46,6 +51,6 @@ roleRef:
   kind: ClusterRole
   name: ucp
 subjects:
-- kind: ServiceAccount
-  name: ucp
-  namespace: {{ .Release.Namespace }}
+  - kind: ServiceAccount
+    name: ucp
+    namespace: {{ .Release.Namespace }}
