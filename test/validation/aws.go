@@ -19,13 +19,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"testing"
 	"time"
 
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+
+	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/to"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
@@ -157,13 +164,53 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 }
 
 // GetResourceIdentifier retrieves the identifier of a resource from the environment variables and the context.
+// func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
+// 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+// 	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+// 	sessionToken := ""
+// 	region := os.Getenv("AWS_REGION")
+
+// 	credentialsProvider := credentials.NewStaticCredentialsProvider(accessKey, secretAccessKey, sessionToken)
+
+// 	stsClient := sts.New(sts.Options{
+// 		Region:      region,
+// 		Credentials: credentialsProvider,
+// 	})
+// 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
+// }
+
+// GetResourceIdentifier retrieves the identifier of a resource from the environment variables and the context.
 func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
-	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
-	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	sessionToken := ""
 	region := os.Getenv("AWS_REGION")
 
-	credentialsProvider := credentials.NewStaticCredentialsProvider(accessKey, secretAccessKey, sessionToken)
+	awscfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(region))
+	if err != nil {
+		return "", fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Create a credentials cache using the Web Identity Role Provider for AWS STS.
+	credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
+		sts.NewFromConfig(awscfg),
+		"arn:aws:iam::179022619019:role/radius-role",
+		stscreds.IdentityTokenFile(ucp_aws.TokenFilePath),
+		func(o *stscreds.WebIdentityRoleOptions) {
+			o.RoleSessionName = "radius-ecr-" + uuid.New().String()
+		},
+	))
+
+	// Retrieve the credentials from the cache
+	creds, err := credsCache.Retrieve(context.TODO())
+	if err != nil {
+		log.Fatalf("Failed to retrieve credentials: %v", err)
+	}
+
+	credentialsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
 
 	stsClient := sts.New(sts.Options{
 		Region:      region,
