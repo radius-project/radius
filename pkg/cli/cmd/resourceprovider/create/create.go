@@ -46,11 +46,13 @@ Resource providers are the entities that implement resource types such as 'Appli
 
 Creating a resource provider defines new resource types that can be used in applications.
 
-Input can be passed in using a JSON/YAML file as the second argument.
+Input can be passed in using a JSON or YAML file using the --from-file option.
 `,
 		Example: `
-# Create a resource provider
+# Create a resource provider from YAML input
 rad resource-provider create --from-file /path/to/input.yaml
+
+# Create a resource provider from JSON input
 rad resource-provider create --from-file /path/to/input.json
 `,
 		Args: cobra.ExactArgs(0),
