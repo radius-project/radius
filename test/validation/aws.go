@@ -186,6 +186,7 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 
 // GetResourceIdentifier retrieves the identifier of a resource from the environment variables and the context.
 func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
+	log.Println("Getting resource identifier for resourceType: ", resourceType, " and name: ", name)
 	region := os.Getenv("AWS_REGION")
 
 	awscfg, err := config.LoadDefaultConfig(ctx,
@@ -220,6 +221,7 @@ func GetResourceIdentifier(ctx context.Context, resourceType string, name string
 	if err != nil {
 		return "", err
 	}
+	log.Println("result.Arn: ", *result.Arn)
 
 	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 }
