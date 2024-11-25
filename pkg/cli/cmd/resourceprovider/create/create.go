@@ -49,10 +49,10 @@ Creating a resource provider defines new resource types that can be used in appl
 Input can be passed in using a JSON or YAML file using the --from-file option.
 `,
 		Example: `
-# Create a resource provider from YAML input
+# Create a resource provider from YAML file
 rad resource-provider create --from-file /path/to/input.yaml
 
-# Create a resource provider from JSON input
+# Create a resource provider from JSON file
 rad resource-provider create --from-file /path/to/input.json
 `,
 		Args: cobra.ExactArgs(0),
