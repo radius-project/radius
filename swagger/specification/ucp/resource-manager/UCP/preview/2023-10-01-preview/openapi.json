@@ -3975,8 +3975,7 @@
         }
       },
       "required": [
-        "apiVersions",
-        "defaultApiVersion"
+        "apiVersions"
       ]
     },
     "ResourceTypeNameString": {
@@ -3998,10 +3997,7 @@
           "$ref": "#/definitions/ApiVersionNameString",
           "description": "The default api version for the resource type."
         }
-      },
-      "required": [
-        "defaultApiVersion"
-      ]
+      }
     },
     "ResourceTypeResource": {
       "type": "object",

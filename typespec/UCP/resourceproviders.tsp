@@ -93,7 +93,7 @@ model ResourceTypeProperties {
   provisioningState?: ProvisioningState;
 
   @doc("The default api version for the resource type.")
-  defaultApiVersion: ApiVersionNameString;
+  defaultApiVersion?: ApiVersionNameString;
 }
 
 @doc("The resource type for defining an API version of a resource type supported by the containing resource provider.")
@@ -168,7 +168,7 @@ model ResourceProviderSummaryResourceType {
   apiVersions: Record<ResourceTypeSummaryResultApiVersion>;
 
   @doc("The default api version for the resource type.")
-  defaultApiVersion: string;
+  defaultApiVersion?: string;
 }
 
 @doc("The configuration of a resource type API version.")
