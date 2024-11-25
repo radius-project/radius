@@ -519,9 +519,6 @@ jobs:
 
           # Populate the following test environment variables from JSON secret.
           # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-          # AZURE_MSSQL_RESOURCE_ID
-          # AZURE_MSSQL_USERNAME
-          # AZURE_MSSQL_PASSWORD
           eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
           make test-functional-all
@@ -532,9 +529,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
-          # Test_MongoDB_Recipe_Parameters is using the following environment variable.
-          INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          FUNC_TEST_OIDC_ISSUER: ${{ env.FUNCTEST_OIDC_ISSUER }}
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}

@@ -6,7 +6,7 @@
 
 Radius consists of a few processes that get deployed inside a Kubernetes cluster.
 
- This includes:
+This includes:
 
 - Applications.Core RP / Portable Resources' Providers (applications-rp) - The resource provider that handles processing of core resources as well as recipes.
 - Universal Control Plane (ucp) - Acts as a proxy between the other services, also manages deployments of AWS resources.
@@ -32,7 +32,7 @@ If you need to manually test APIs you can reach them at the following endpoints 
 4. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
 5. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
 6. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
-  
+
 > 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
 > 💡 Radius will use your locally configured Azure or AWS credentials. If you are able to use the `az` or `aws` CLI then you don't need to do any additional setup.
 
@@ -49,7 +49,6 @@ rad init --full
 ```
 
 This will install Radius and configure an environment for you. The database that's used **will NOT** be shared with your debug setup, so it mostly doesn't matter what choices you make.
-
 
 ## Setup Step 2: Modify config.yaml to point to your local RPs
 
@@ -71,9 +70,9 @@ workspaces:
       scope: /planes/radius/local/resourceGroups/default
 ```
 
-Make a copy of the `default` workspace called `dev` and set it as the default. Then add the `overrides` section from the example below. 
+Make a copy of the `default` workspace called `dev` and set it as the default. Then add the `overrides` section from the example below.
 
- This example adds a `dev` workspace:
+This example adds a `dev` workspace:
 
 ```yaml
 workspaces:
@@ -105,7 +104,7 @@ Run this command to create the namespace that will be used to store data.
 kubectl create namespace radius-testing
 ```
 
-## Setup Step 3: Create Resource Group and Environment
+## Setup Step 4: Create Resource Group and Environment
 
 At this point Radius is working but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
 
@@ -125,6 +124,10 @@ rad env create default
 ```
 
 At this point you're done with setup! Feel free to stop the debugger.
+
+## Running Functional Tests
+
+For further instructions on running functional tests, please refer to the [Running Functional Tests](../contributing-code-tests/running-functional-tests.md) document.
 
 ## Debugging
 
@@ -168,10 +171,11 @@ If you run into issues here, please re-read the prerequisites related to install
 ### I got a "InvalidTemplate" error when deploying a bicep file
 
 > sample error message:
+
 ```json
 {
   "code": "InvalidTemplate",
-  "message": "Deployment template validation failed: 'The template language version '2.1-experimental' is not recognized.'.",
+  "message": "Deployment template validation failed: 'The template language version '2.1-experimental' is not recognized.'."
 }
 ```
 

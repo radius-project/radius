@@ -21,7 +21,7 @@ This URL is only accessible inside the cluster.
 If you need to verify the content, use:
 
 ```txt
-kubectl port-forward svc/tf-module-server 8999:80 -n radius-test-tf-module-server 
+kubectl port-forward svc/tf-module-server 8999:80 -n radius-test-tf-module-server
 ```
 
 Then you can access the recipe download at:
@@ -30,7 +30,7 @@ Then you can access the recipe download at:
 http://localhost:8999/<recipe_name>.zip
 ```
 
----- 
+---
 
 Or reference a module from Terraform:
 

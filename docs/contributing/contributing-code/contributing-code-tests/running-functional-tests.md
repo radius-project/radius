@@ -33,6 +33,8 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 
 ## Running the tests locally
 
+**Please note** that tests may be cached if you are running them a few times in a row. Please run `go clean -testcache` to make sure that the cache is invalidated before running a test.
+
 ### Prerequisites
 
 1. Place `rad` on your path
@@ -40,35 +42,63 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 3. Make sure your [local dev environment is setup](../contributing-code-control-plane/running-controlplane-locally.md)
 4. Log into your Github account and [Generate PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 5. Log-in to the container registry of your Github organization.
-
-   `export CR_PAT=<your_pat>`
-
-   `echo $CR_PAT | docker login ghcr.io -u <your_username> --password-stdin`
-
+   1. `export CR_PAT=<your_pat>`
+   2. `echo $CR_PAT | docker login ghcr.io -u <your_username> --password-stdin`
 6. Publish Bicep test recipes by running `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`
 7. Publish Terraform test recipes by running `make publish-test-terraform-recipes`
 8. Change the visibility of the published packages to 'public'
 
-> ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see
-> test failures.
-
+> ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see test failures.
 > ⚠️ If you set environment variables for functional tests you may need to restart VS Code or other editors for them to take effect.
 
-### Run
+### Run Non-Cloud Functional Tests
 
-1. Run:
+1. Required environment variables:
+   1. **TF_RECIPE_MODULE_SERVER_URL**: This is the URL for the Terraform Recipe Module Server. If you have run `make publish-test-terraform-recipes` you will see this URL at the end of that command.
+   2. **DOCKER_REGISTRY**: This is the container registry that you would be using for storing the test related images.
+   3. **BICEP_RECIPE_REGISTRY**: This is the container registry that you would be using for storing the Bicep recipes.
+   4. **RADIUS_SAMPLES_REPO_ROOT**: This should point to the root directory of the Samples repository in your local, if you want to run the functional tests for the samples.
+2. Run:
 
    ```sh
-       .{workspace}/radius/test/executeFunctionalTest.sh
+       .{workspace}/radius/test/execute-functional-tests-noncloud.sh
    ```
 
-When you're running locally with this configuration, the tests will use your locally selected Radius Environment and your local copy of `rad`. The executeFunctionalTest.sh scripts creates the azure resources and exports the values to be used in the functional test and runs:
+When you're running locally with this configuration, the script is going to create a new Radius group and environment that the functional tests need to run. The same script is also going to make sure that the necessary environment variables are set. If everything is set, the script will run the commands:
 
 ```sh
-   make test-functional-corerp
-   make test-functional-msgrp
-   make test-functional-daprrp
-   make test-functional-datastoresrp
+    make test-functional-cli-noncloud
+    make test-functional-corerp-noncloud
+    make test-functional-daprrp-noncloud
+    make test-functional-datastoresrp-noncloud
+    make test-functional-kubernetes-noncloud
+    make test-functional-msgrp-noncloud
+    make test-functional-samples-noncloud
+    make test-functional-ucp-noncloud
+```
+
+### Run Cloud Functional Tests
+
+1. Required environment variables:
+   1. **TF_RECIPE_MODULE_SERVER_URL**
+   2. **DOCKER_REGISTRY**
+   3. **BICEP_RECIPE_REGISTRY**
+   4. **AZURE_COSMOS_MONGODB_ACCOUNT_ID**
+   5. **AWS_ACCESS_KEY_ID**
+   6. **AWS_SECRET_ACCESS_KEY**
+   7. **AWS_REGION**
+2. You also need to create AWS and Azure Credentials. Please refer to: <https://docs.radapp.io/reference/cli/rad_credential_register/>.
+3. Run:
+
+   ```sh
+       .{workspace}/radius/test/execute-functional-tests-cloud.sh
+   ```
+
+When you're running locally with this configuration, the script is going to create a new Radius group and environment that the functional tests need to run. The same script is also going to make sure that the necessary environment variables are set. If everything is set, the script will run the commands:
+
+```sh
+    make test-functional-corerp-cloud
+    make test-functional-ucp-cloud
 ```
 
 You can also run/debug individual tests from VSCode.
