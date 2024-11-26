@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -179,46 +178,7 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 // GetResourceIdentifier retrieves the identifier of a resource from the environment variables and the context.
 func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
 
-	log.Println("Getting resource identifier for resourceType: ", resourceType, " and name: ", name)
 	region := os.Getenv("AWS_REGION")
-
-	/*
-
-		awscfg, err := config.LoadDefaultConfig(ctx,
-			config.WithRegion(region))
-		if err != nil {
-			return "", fmt.Errorf("failed to load configuration: %w", err)
-		}
-
-		// Create a credentials cache using the Web Identity Role Provider for AWS STS.
-		credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
-			sts.NewFromConfig(awscfg),
-			"arn:aws:iam::179022619019:role/radius-role",
-			stscreds.IdentityTokenFile(ucp_aws.TokenFilePath),
-			func(o *stscreds.WebIdentityRoleOptions) {
-				o.RoleSessionName = "radius-ecr-" + uuid.New().String()
-			},
-		))
-
-		// Retrieve the credentials from the cache
-		creds, err := credsCache.Retrieve(context.TODO())
-		if err != nil {
-			log.Fatalf("Failed to retrieve credentials: %v", err)
-		}
-
-		credentialsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
-
-		stsClient := sts.New(sts.Options{
-			Region:      region,
-			Credentials: credentialsProvider,
-		})
-		result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-		if err != nil {
-			return "", err
-		}
-		log.Println("result.Arn: ", *result.Arn)
-	*/
-
 	return "/planes/aws/aws/accounts/" + "179022619019" + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 }
 
