@@ -32,6 +32,10 @@ updates:
     directory: "/typespec/"
     schedule:
       interval: "weekly"
-    ignore:
-      - dependency-name: "*"
-        versions: ["<1.0.0"]  
+    groups:
+      angular:
+        applies-to: version-updates
+        patterns:
+        - "*"
+        update-types:
+        - "patch"
