@@ -33,9 +33,9 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      angular:
+      typespec:
         applies-to: version-updates
         patterns:
-        - "*"
+        - "*"        # Matches all dependencies
         update-types:
-        - "patch"
+        - "patch"    # Only allow patch updates for regular version updates
