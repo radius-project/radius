@@ -11,7 +11,7 @@
     "@typespec/http": "~0.60.0",
     "@typespec/openapi": "~0.60.0",
     "@typespec/rest": "~0.60.0",
-    "@typespec/versioning": "~0.60.0"
+    "@typespec/versioning": "~0.62.0"
   },
   "private": true,
   "author": "Radius Authors",
