@@ -36,6 +36,6 @@ updates:
       typespec:
         applies-to: version-updates
         patterns:
-        - "*"        # Matches all dependencies
+          - "*" # Matches all dependencies
         update-types:
-        - "patch"    # Only allow patch updates for regular version updates
+          - "patch" # Only allow patch updates for regular version updates
