@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -177,9 +178,9 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 // GetResourceIdentifier retrieves the identifier of a resource from the environment variables and the context.
 func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
 
-	//region := os.Getenv("AWS_REGION")
-	return "failing deliberately string", fmt.Errorf("failibrarteng delibratly")
-	//return "/planes/aws/aws/accounts/" + "179022619019" + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
+	region := os.Getenv("AWS_REGION")
+	//return "failing deliberately string", fmt.Errorf("failibrarteng delibratly")
+	return "/planes/aws/aws/accounts/" + "179022619019" + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 }
 
 // GetResourceTypeName retrieves the AWS resource type name from the resource identifier and context. It returns an
