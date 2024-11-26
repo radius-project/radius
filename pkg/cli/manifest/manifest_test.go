@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestReadFile(t *testing.T) {
+func TestReadFileYAML(t *testing.T) {
 	expected := &ResourceProvider{
 		Name: "MyCompany.Resources",
 		Types: map[string]*ResourceType{
@@ -49,16 +49,43 @@ func TestReadFile_InvalidYAML(t *testing.T) {
 	require.Nil(t, result)
 }
 
-func TestReadFile_DuplicateKey(t *testing.T) {
+func TestReadFile_DuplicateKeyYAML(t *testing.T) {
 	// Errors in the yaml library are non-exported, so it's hard to test the exact error.
 	result, err := ReadFile("testdata/duplicate-key.yaml")
 	require.Error(t, err)
 	require.Nil(t, result)
 }
 
-func TestReadFile_MissingRequiredField(t *testing.T) {
+func TestReadFile_MissingRequiredFieldYAML(t *testing.T) {
 	// Errors in the yaml library are non-exported, so it's hard to test the exact error.
 	result, err := ReadFile("testdata/missing-required-field.yaml")
+	require.Error(t, err)
+	require.Nil(t, result)
+}
+
+func TestReadFileJSON(t *testing.T) {
+	expected := &ResourceProvider{
+		Name: "MyCompany.Resources",
+		Types: map[string]*ResourceType{
+			"testResources": {
+				APIVersions: map[string]*ResourceTypeAPIVersion{
+					"2025-01-01-preview": {
+						Schema:       map[string]any{},
+						Capabilities: []string{"Recipes"},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := ReadFile("testdata/valid.json")
+	require.NoError(t, err)
+	require.Equal(t, expected, result)
+}
+
+func TestReadFile_MissingRequiredFieldJSON(t *testing.T) {
+	// Errors in the yaml library are non-exported, so it's hard to test the exact error.
+	result, err := ReadFile("testdata/missing-required-field.json")
 	require.Error(t, err)
 	require.Nil(t, result)
 }
