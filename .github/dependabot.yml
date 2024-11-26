@@ -32,3 +32,10 @@ updates:
     directory: "/typespec/"
     schedule:
       interval: "weekly"
+    groups:
+      typespec:
+        applies-to: version-updates
+        patterns:
+        - "*"        # Matches all dependencies
+        update-types:
+        - "patch"    # Only allow patch updates for regular version updates
