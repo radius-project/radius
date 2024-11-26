@@ -1,9 +1,2 @@
-# Documentation and examples for what this does:
-#
-#  https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners
-
-# This file is a list of rules, with the last rule being most specific
-# All of the people (and only those people) from the matching rule will be notified
-
-# Default rule: anything that doesn't match a more specific rule goes here
-* @radius-project/maintainers-radius @radius-project/approvers-radius
+# These owners are the maintainers and approvers of this repo
+*       @radius-project/maintainers-radius @radius-project/approvers-radius
