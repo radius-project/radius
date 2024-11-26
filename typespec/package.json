@@ -10,7 +10,7 @@
     "@azure-tools/typespec-providerhub": "~0.46.0",
     "@typespec/http": "~0.60.0",
     "@typespec/openapi": "~0.60.0",
-    "@typespec/rest": "~0.60.0",
+    "@typespec/rest": "~0.62.0",
     "@typespec/versioning": "~0.60.0"
   },
   "private": true,
