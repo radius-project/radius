@@ -100,5 +100,21 @@ resource sqlContainer 'Applications.Core/containers@2023-10-01-preview' = {
         }
       }
     }
+    runtimes: {
+      kubernetes: {
+        pod: {
+          resources: {
+            requests: {
+              cpu: '1200m'
+              memory: '2048Mi'
+            }
+            limits: {
+              cpu: '1500m'
+              memory: '4096Mi'
+            }
+          }
+        }
+      }
+    }
   }
 }
