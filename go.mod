@@ -44,7 +44,7 @@ require (
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.23.0
-	github.com/goccy/go-yaml v1.15.0
+	github.com/goccy/go-yaml v1.15.4
 	github.com/gofrs/flock v0.12.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
