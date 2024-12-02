@@ -43,7 +43,6 @@ func (client *PlanesClient) NewListPlanesPager(options *PlanesClientListPlanesOp
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *PlanesClientListPlanesResponse) (PlanesClientListPlanesResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "PlanesClient.NewListPlanesPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink

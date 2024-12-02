@@ -73,9 +73,7 @@ func (client *RedisCachesClient) BeginCreateOrUpdate(ctx context.Context, redisC
 // Generated from API version 2023-10-01-preview
 func (client *RedisCachesClient) createOrUpdate(ctx context.Context, redisCacheName string, resource RedisCacheResource, options *RedisCachesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "RedisCachesClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RedisCachesClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, redisCacheName, resource, options)
 	if err != nil {
@@ -144,9 +142,7 @@ func (client *RedisCachesClient) BeginDelete(ctx context.Context, redisCacheName
 // Generated from API version 2023-10-01-preview
 func (client *RedisCachesClient) deleteOperation(ctx context.Context, redisCacheName string, options *RedisCachesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "RedisCachesClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RedisCachesClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, redisCacheName, options)
 	if err != nil {
@@ -190,9 +186,7 @@ func (client *RedisCachesClient) deleteCreateRequest(ctx context.Context, redisC
 //   - options - RedisCachesClientGetOptions contains the optional parameters for the RedisCachesClient.Get method.
 func (client *RedisCachesClient) Get(ctx context.Context, redisCacheName string, options *RedisCachesClientGetOptions) (RedisCachesClientGetResponse, error) {
 	var err error
-	const operationName = "RedisCachesClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RedisCachesClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, redisCacheName, options)
 	if err != nil {
@@ -249,7 +243,6 @@ func (client *RedisCachesClient) NewListByScopePager(options *RedisCachesClientL
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *RedisCachesClientListByScopeResponse) (RedisCachesClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RedisCachesClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -299,9 +292,7 @@ func (client *RedisCachesClient) listByScopeHandleResponse(resp *http.Response) 
 //   - options - RedisCachesClientListSecretsOptions contains the optional parameters for the RedisCachesClient.ListSecrets method.
 func (client *RedisCachesClient) ListSecrets(ctx context.Context, redisCacheName string, body map[string]any, options *RedisCachesClientListSecretsOptions) (RedisCachesClientListSecretsResponse, error) {
 	var err error
-	const operationName = "RedisCachesClient.ListSecrets"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RedisCachesClient.ListSecrets", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.listSecretsCreateRequest(ctx, redisCacheName, body, options)
 	if err != nil {
@@ -381,9 +372,7 @@ func (client *RedisCachesClient) BeginUpdate(ctx context.Context, redisCacheName
 // Generated from API version 2023-10-01-preview
 func (client *RedisCachesClient) update(ctx context.Context, redisCacheName string, properties RedisCacheResourceUpdate, options *RedisCachesClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "RedisCachesClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RedisCachesClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, redisCacheName, properties, options)
 	if err != nil {

@@ -73,9 +73,7 @@ func (client *MongoDatabasesClient) BeginCreateOrUpdate(ctx context.Context, mon
 // Generated from API version 2023-10-01-preview
 func (client *MongoDatabasesClient) createOrUpdate(ctx context.Context, mongoDatabaseName string, resource MongoDatabaseResource, options *MongoDatabasesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "MongoDatabasesClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "MongoDatabasesClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, mongoDatabaseName, resource, options)
 	if err != nil {
@@ -145,9 +143,7 @@ func (client *MongoDatabasesClient) BeginDelete(ctx context.Context, mongoDataba
 // Generated from API version 2023-10-01-preview
 func (client *MongoDatabasesClient) deleteOperation(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "MongoDatabasesClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "MongoDatabasesClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, mongoDatabaseName, options)
 	if err != nil {
@@ -191,9 +187,7 @@ func (client *MongoDatabasesClient) deleteCreateRequest(ctx context.Context, mon
 //   - options - MongoDatabasesClientGetOptions contains the optional parameters for the MongoDatabasesClient.Get method.
 func (client *MongoDatabasesClient) Get(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientGetOptions) (MongoDatabasesClientGetResponse, error) {
 	var err error
-	const operationName = "MongoDatabasesClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "MongoDatabasesClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, mongoDatabaseName, options)
 	if err != nil {
@@ -250,7 +244,6 @@ func (client *MongoDatabasesClient) NewListByScopePager(options *MongoDatabasesC
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *MongoDatabasesClientListByScopeResponse) (MongoDatabasesClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "MongoDatabasesClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -301,9 +294,7 @@ func (client *MongoDatabasesClient) listByScopeHandleResponse(resp *http.Respons
 //     method.
 func (client *MongoDatabasesClient) ListSecrets(ctx context.Context, mongoDatabaseName string, body map[string]any, options *MongoDatabasesClientListSecretsOptions) (MongoDatabasesClientListSecretsResponse, error) {
 	var err error
-	const operationName = "MongoDatabasesClient.ListSecrets"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "MongoDatabasesClient.ListSecrets", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.listSecretsCreateRequest(ctx, mongoDatabaseName, body, options)
 	if err != nil {
@@ -384,9 +375,7 @@ func (client *MongoDatabasesClient) BeginUpdate(ctx context.Context, mongoDataba
 // Generated from API version 2023-10-01-preview
 func (client *MongoDatabasesClient) update(ctx context.Context, mongoDatabaseName string, properties MongoDatabaseResourceUpdate, options *MongoDatabasesClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "MongoDatabasesClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "MongoDatabasesClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, mongoDatabaseName, properties, options)
 	if err != nil {

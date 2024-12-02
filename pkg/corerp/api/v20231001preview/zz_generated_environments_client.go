@@ -51,9 +51,7 @@ func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, 
 //     method.
 func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOrUpdateOptions) (EnvironmentsClientCreateOrUpdateResponse, error) {
 	var err error
-	const operationName = "EnvironmentsClient.CreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "EnvironmentsClient.CreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, environmentName, resource, options)
 	if err != nil {
@@ -110,9 +108,7 @@ func (client *EnvironmentsClient) createOrUpdateHandleResponse(resp *http.Respon
 //   - options - EnvironmentsClientDeleteOptions contains the optional parameters for the EnvironmentsClient.Delete method.
 func (client *EnvironmentsClient) Delete(ctx context.Context, environmentName string, options *EnvironmentsClientDeleteOptions) (EnvironmentsClientDeleteResponse, error) {
 	var err error
-	const operationName = "EnvironmentsClient.Delete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "EnvironmentsClient.Delete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, environmentName, options)
 	if err != nil {
@@ -156,9 +152,7 @@ func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, envir
 //   - options - EnvironmentsClientGetOptions contains the optional parameters for the EnvironmentsClient.Get method.
 func (client *EnvironmentsClient) Get(ctx context.Context, environmentName string, options *EnvironmentsClientGetOptions) (EnvironmentsClientGetResponse, error) {
 	var err error
-	const operationName = "EnvironmentsClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "EnvironmentsClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, environmentName, options)
 	if err != nil {
@@ -214,9 +208,7 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 //     method.
 func (client *EnvironmentsClient) GetMetadata(ctx context.Context, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetMetadataOptions) (EnvironmentsClientGetMetadataResponse, error) {
 	var err error
-	const operationName = "EnvironmentsClient.GetMetadata"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "EnvironmentsClient.GetMetadata", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getMetadataCreateRequest(ctx, environmentName, body, options)
 	if err != nil {
@@ -276,7 +268,6 @@ func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClien
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *EnvironmentsClientListByScopeResponse) (EnvironmentsClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "EnvironmentsClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -326,9 +317,7 @@ func (client *EnvironmentsClient) listByScopeHandleResponse(resp *http.Response)
 //   - options - EnvironmentsClientUpdateOptions contains the optional parameters for the EnvironmentsClient.Update method.
 func (client *EnvironmentsClient) Update(ctx context.Context, environmentName string, properties EnvironmentResourceUpdate, options *EnvironmentsClientUpdateOptions) (EnvironmentsClientUpdateResponse, error) {
 	var err error
-	const operationName = "EnvironmentsClient.Update"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "EnvironmentsClient.Update", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, environmentName, properties, options)
 	if err != nil {

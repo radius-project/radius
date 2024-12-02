@@ -73,9 +73,7 @@ func (client *SQLDatabasesClient) BeginCreateOrUpdate(ctx context.Context, sqlDa
 // Generated from API version 2023-10-01-preview
 func (client *SQLDatabasesClient) createOrUpdate(ctx context.Context, sqlDatabaseName string, resource SQLDatabaseResource, options *SQLDatabasesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "SQLDatabasesClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SQLDatabasesClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, sqlDatabaseName, resource, options)
 	if err != nil {
@@ -145,9 +143,7 @@ func (client *SQLDatabasesClient) BeginDelete(ctx context.Context, sqlDatabaseNa
 // Generated from API version 2023-10-01-preview
 func (client *SQLDatabasesClient) deleteOperation(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "SQLDatabasesClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SQLDatabasesClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, sqlDatabaseName, options)
 	if err != nil {
@@ -191,9 +187,7 @@ func (client *SQLDatabasesClient) deleteCreateRequest(ctx context.Context, sqlDa
 //   - options - SQLDatabasesClientGetOptions contains the optional parameters for the SQLDatabasesClient.Get method.
 func (client *SQLDatabasesClient) Get(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientGetOptions) (SQLDatabasesClientGetResponse, error) {
 	var err error
-	const operationName = "SQLDatabasesClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SQLDatabasesClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, sqlDatabaseName, options)
 	if err != nil {
@@ -250,7 +244,6 @@ func (client *SQLDatabasesClient) NewListByScopePager(options *SQLDatabasesClien
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *SQLDatabasesClientListByScopeResponse) (SQLDatabasesClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "SQLDatabasesClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -301,9 +294,7 @@ func (client *SQLDatabasesClient) listByScopeHandleResponse(resp *http.Response)
 //     method.
 func (client *SQLDatabasesClient) ListSecrets(ctx context.Context, sqlDatabaseName string, body map[string]any, options *SQLDatabasesClientListSecretsOptions) (SQLDatabasesClientListSecretsResponse, error) {
 	var err error
-	const operationName = "SQLDatabasesClient.ListSecrets"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SQLDatabasesClient.ListSecrets", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.listSecretsCreateRequest(ctx, sqlDatabaseName, body, options)
 	if err != nil {
@@ -384,9 +375,7 @@ func (client *SQLDatabasesClient) BeginUpdate(ctx context.Context, sqlDatabaseNa
 // Generated from API version 2023-10-01-preview
 func (client *SQLDatabasesClient) update(ctx context.Context, sqlDatabaseName string, properties SQLDatabaseResourceUpdate, options *SQLDatabasesClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "SQLDatabasesClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SQLDatabasesClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, sqlDatabaseName, properties, options)
 	if err != nil {

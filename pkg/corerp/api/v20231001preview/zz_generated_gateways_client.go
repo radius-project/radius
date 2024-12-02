@@ -72,9 +72,7 @@ func (client *GatewaysClient) BeginCreate(ctx context.Context, gatewayName strin
 // Generated from API version 2023-10-01-preview
 func (client *GatewaysClient) create(ctx context.Context, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "GatewaysClient.BeginCreate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "GatewaysClient.BeginCreate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createCreateRequest(ctx, gatewayName, resource, options)
 	if err != nil {
@@ -145,9 +143,7 @@ func (client *GatewaysClient) BeginCreateOrUpdate(ctx context.Context, gatewayNa
 // Generated from API version 2023-10-01-preview
 func (client *GatewaysClient) createOrUpdate(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "GatewaysClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "GatewaysClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, gatewayName, properties, options)
 	if err != nil {
@@ -216,9 +212,7 @@ func (client *GatewaysClient) BeginDelete(ctx context.Context, gatewayName strin
 // Generated from API version 2023-10-01-preview
 func (client *GatewaysClient) deleteOperation(ctx context.Context, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "GatewaysClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "GatewaysClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, gatewayName, options)
 	if err != nil {
@@ -262,9 +256,7 @@ func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, gatewayNa
 //   - options - GatewaysClientGetOptions contains the optional parameters for the GatewaysClient.Get method.
 func (client *GatewaysClient) Get(ctx context.Context, gatewayName string, options *GatewaysClientGetOptions) (GatewaysClientGetResponse, error) {
 	var err error
-	const operationName = "GatewaysClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "GatewaysClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, gatewayName, options)
 	if err != nil {
@@ -321,7 +313,6 @@ func (client *GatewaysClient) NewListByScopePager(options *GatewaysClientListByS
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *GatewaysClientListByScopeResponse) (GatewaysClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "GatewaysClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink

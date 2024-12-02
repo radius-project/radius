@@ -71,9 +71,7 @@ func (client *APIVersionsClient) BeginCreateOrUpdate(ctx context.Context, planeN
 // Generated from API version 2023-10-01-preview
 func (client *APIVersionsClient) createOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource APIVersionResource, options *APIVersionsClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "APIVersionsClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "APIVersionsClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, resource, options)
 	if err != nil {
@@ -156,9 +154,7 @@ func (client *APIVersionsClient) BeginDelete(ctx context.Context, planeName stri
 // Generated from API version 2023-10-01-preview
 func (client *APIVersionsClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *APIVersionsClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "APIVersionsClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "APIVersionsClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, options)
 	if err != nil {
@@ -216,9 +212,7 @@ func (client *APIVersionsClient) deleteCreateRequest(ctx context.Context, planeN
 //   - options - APIVersionsClientGetOptions contains the optional parameters for the APIVersionsClient.Get method.
 func (client *APIVersionsClient) Get(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *APIVersionsClientGetOptions) (APIVersionsClientGetResponse, error) {
 	var err error
-	const operationName = "APIVersionsClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "APIVersionsClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, options)
 	if err != nil {
@@ -288,7 +282,6 @@ func (client *APIVersionsClient) NewListPager(planeName string, resourceProvider
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *APIVersionsClientListResponse) (APIVersionsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "APIVersionsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink

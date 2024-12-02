@@ -47,9 +47,7 @@ func NewAwsCredentialsClient(credential azcore.TokenCredential, options *arm.Cli
 //     method.
 func (client *AwsCredentialsClient) CreateOrUpdate(ctx context.Context, planeName string, credentialName string, resource AwsCredentialResource, options *AwsCredentialsClientCreateOrUpdateOptions) (AwsCredentialsClientCreateOrUpdateResponse, error) {
 	var err error
-	const operationName = "AwsCredentialsClient.CreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "AwsCredentialsClient.CreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, credentialName, resource, options)
 	if err != nil {
@@ -107,9 +105,7 @@ func (client *AwsCredentialsClient) createOrUpdateHandleResponse(resp *http.Resp
 //   - options - AwsCredentialsClientDeleteOptions contains the optional parameters for the AwsCredentialsClient.Delete method.
 func (client *AwsCredentialsClient) Delete(ctx context.Context, planeName string, credentialName string, options *AwsCredentialsClientDeleteOptions) (AwsCredentialsClientDeleteResponse, error) {
 	var err error
-	const operationName = "AwsCredentialsClient.Delete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "AwsCredentialsClient.Delete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, planeName, credentialName, options)
 	if err != nil {
@@ -154,9 +150,7 @@ func (client *AwsCredentialsClient) deleteCreateRequest(ctx context.Context, pla
 //   - options - AwsCredentialsClientGetOptions contains the optional parameters for the AwsCredentialsClient.Get method.
 func (client *AwsCredentialsClient) Get(ctx context.Context, planeName string, credentialName string, options *AwsCredentialsClientGetOptions) (AwsCredentialsClientGetResponse, error) {
 	var err error
-	const operationName = "AwsCredentialsClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "AwsCredentialsClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, planeName, credentialName, options)
 	if err != nil {
@@ -213,7 +207,6 @@ func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsC
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *AwsCredentialsClientListResponse) (AwsCredentialsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AwsCredentialsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -264,9 +257,7 @@ func (client *AwsCredentialsClient) listHandleResponse(resp *http.Response) (Aws
 //   - options - AwsCredentialsClientUpdateOptions contains the optional parameters for the AwsCredentialsClient.Update method.
 func (client *AwsCredentialsClient) Update(ctx context.Context, planeName string, credentialName string, properties AwsCredentialResourceTagsUpdate, options *AwsCredentialsClientUpdateOptions) (AwsCredentialsClientUpdateResponse, error) {
 	var err error
-	const operationName = "AwsCredentialsClient.Update"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "AwsCredentialsClient.Update", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, planeName, credentialName, properties, options)
 	if err != nil {

@@ -73,9 +73,7 @@ func (client *SecretStoresClient) BeginCreateOrUpdate(ctx context.Context, secre
 // Generated from API version 2023-10-01-preview
 func (client *SecretStoresClient) createOrUpdate(ctx context.Context, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "SecretStoresClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SecretStoresClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, secretStoreName, resource, options)
 	if err != nil {
@@ -145,9 +143,7 @@ func (client *SecretStoresClient) BeginDelete(ctx context.Context, secretStoreNa
 // Generated from API version 2023-10-01-preview
 func (client *SecretStoresClient) deleteOperation(ctx context.Context, secretStoreName string, options *SecretStoresClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "SecretStoresClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SecretStoresClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, secretStoreName, options)
 	if err != nil {
@@ -191,9 +187,7 @@ func (client *SecretStoresClient) deleteCreateRequest(ctx context.Context, secre
 //   - options - SecretStoresClientGetOptions contains the optional parameters for the SecretStoresClient.Get method.
 func (client *SecretStoresClient) Get(ctx context.Context, secretStoreName string, options *SecretStoresClientGetOptions) (SecretStoresClientGetResponse, error) {
 	var err error
-	const operationName = "SecretStoresClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SecretStoresClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, secretStoreName, options)
 	if err != nil {
@@ -250,7 +244,6 @@ func (client *SecretStoresClient) NewListByScopePager(options *SecretStoresClien
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *SecretStoresClientListByScopeResponse) (SecretStoresClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "SecretStoresClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -301,9 +294,7 @@ func (client *SecretStoresClient) listByScopeHandleResponse(resp *http.Response)
 //     method.
 func (client *SecretStoresClient) ListSecrets(ctx context.Context, secretStoreName string, body map[string]any, options *SecretStoresClientListSecretsOptions) (SecretStoresClientListSecretsResponse, error) {
 	var err error
-	const operationName = "SecretStoresClient.ListSecrets"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SecretStoresClient.ListSecrets", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.listSecretsCreateRequest(ctx, secretStoreName, body, options)
 	if err != nil {
@@ -384,9 +375,7 @@ func (client *SecretStoresClient) BeginUpdate(ctx context.Context, secretStoreNa
 // Generated from API version 2023-10-01-preview
 func (client *SecretStoresClient) update(ctx context.Context, secretStoreName string, properties SecretStoreResourceUpdate, options *SecretStoresClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "SecretStoresClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "SecretStoresClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, secretStoreName, properties, options)
 	if err != nil {

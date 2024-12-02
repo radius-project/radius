@@ -73,9 +73,7 @@ func (client *RabbitMqQueuesClient) BeginCreateOrUpdate(ctx context.Context, rab
 // Generated from API version 2023-10-01-preview
 func (client *RabbitMqQueuesClient) createOrUpdate(ctx context.Context, rabbitMQQueueName string, resource RabbitMQQueueResource, options *RabbitMqQueuesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "RabbitMqQueuesClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RabbitMqQueuesClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, rabbitMQQueueName, resource, options)
 	if err != nil {
@@ -145,9 +143,7 @@ func (client *RabbitMqQueuesClient) BeginDelete(ctx context.Context, rabbitMQQue
 // Generated from API version 2023-10-01-preview
 func (client *RabbitMqQueuesClient) deleteOperation(ctx context.Context, rabbitMQQueueName string, options *RabbitMqQueuesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "RabbitMqQueuesClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RabbitMqQueuesClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, rabbitMQQueueName, options)
 	if err != nil {
@@ -191,9 +187,7 @@ func (client *RabbitMqQueuesClient) deleteCreateRequest(ctx context.Context, rab
 //   - options - RabbitMqQueuesClientGetOptions contains the optional parameters for the RabbitMqQueuesClient.Get method.
 func (client *RabbitMqQueuesClient) Get(ctx context.Context, rabbitMQQueueName string, options *RabbitMqQueuesClientGetOptions) (RabbitMqQueuesClientGetResponse, error) {
 	var err error
-	const operationName = "RabbitMqQueuesClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RabbitMqQueuesClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, rabbitMQQueueName, options)
 	if err != nil {
@@ -250,7 +244,6 @@ func (client *RabbitMqQueuesClient) NewListByScopePager(options *RabbitMqQueuesC
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *RabbitMqQueuesClientListByScopeResponse) (RabbitMqQueuesClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RabbitMqQueuesClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -301,9 +294,7 @@ func (client *RabbitMqQueuesClient) listByScopeHandleResponse(resp *http.Respons
 //     method.
 func (client *RabbitMqQueuesClient) ListSecrets(ctx context.Context, rabbitMQQueueName string, body map[string]any, options *RabbitMqQueuesClientListSecretsOptions) (RabbitMqQueuesClientListSecretsResponse, error) {
 	var err error
-	const operationName = "RabbitMqQueuesClient.ListSecrets"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RabbitMqQueuesClient.ListSecrets", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.listSecretsCreateRequest(ctx, rabbitMQQueueName, body, options)
 	if err != nil {
@@ -384,9 +375,7 @@ func (client *RabbitMqQueuesClient) BeginUpdate(ctx context.Context, rabbitMQQue
 // Generated from API version 2023-10-01-preview
 func (client *RabbitMqQueuesClient) update(ctx context.Context, rabbitMQQueueName string, properties RabbitMQQueueResourceUpdate, options *RabbitMqQueuesClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "RabbitMqQueuesClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "RabbitMqQueuesClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, rabbitMQQueueName, properties, options)
 	if err != nil {

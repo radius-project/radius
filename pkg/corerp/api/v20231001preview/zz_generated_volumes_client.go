@@ -73,9 +73,7 @@ func (client *VolumesClient) BeginCreateOrUpdate(ctx context.Context, volumeName
 // Generated from API version 2023-10-01-preview
 func (client *VolumesClient) createOrUpdate(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "VolumesClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "VolumesClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, volumeName, resource, options)
 	if err != nil {
@@ -144,9 +142,7 @@ func (client *VolumesClient) BeginDelete(ctx context.Context, volumeName string,
 // Generated from API version 2023-10-01-preview
 func (client *VolumesClient) deleteOperation(ctx context.Context, volumeName string, options *VolumesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "VolumesClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "VolumesClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, volumeName, options)
 	if err != nil {
@@ -190,9 +186,7 @@ func (client *VolumesClient) deleteCreateRequest(ctx context.Context, volumeName
 //   - options - VolumesClientGetOptions contains the optional parameters for the VolumesClient.Get method.
 func (client *VolumesClient) Get(ctx context.Context, volumeName string, options *VolumesClientGetOptions) (VolumesClientGetResponse, error) {
 	var err error
-	const operationName = "VolumesClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "VolumesClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, volumeName, options)
 	if err != nil {
@@ -248,7 +242,6 @@ func (client *VolumesClient) NewListByScopePager(options *VolumesClientListBySco
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *VolumesClientListByScopeResponse) (VolumesClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "VolumesClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -320,9 +313,7 @@ func (client *VolumesClient) BeginUpdate(ctx context.Context, volumeName string,
 // Generated from API version 2023-10-01-preview
 func (client *VolumesClient) update(ctx context.Context, volumeName string, properties VolumeResourceUpdate, options *VolumesClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "VolumesClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "VolumesClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, volumeName, properties, options)
 	if err != nil {

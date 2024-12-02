@@ -47,9 +47,7 @@ func NewAzureCredentialsClient(credential azcore.TokenCredential, options *arm.C
 //     method.
 func (client *AzureCredentialsClient) CreateOrUpdate(ctx context.Context, planeName string, credentialName string, resource AzureCredentialResource, options *AzureCredentialsClientCreateOrUpdateOptions) (AzureCredentialsClientCreateOrUpdateResponse, error) {
 	var err error
-	const operationName = "AzureCredentialsClient.CreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "AzureCredentialsClient.CreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, credentialName, resource, options)
 	if err != nil {
@@ -107,9 +105,7 @@ func (client *AzureCredentialsClient) createOrUpdateHandleResponse(resp *http.Re
 //   - options - AzureCredentialsClientDeleteOptions contains the optional parameters for the AzureCredentialsClient.Delete method.
 func (client *AzureCredentialsClient) Delete(ctx context.Context, planeName string, credentialName string, options *AzureCredentialsClientDeleteOptions) (AzureCredentialsClientDeleteResponse, error) {
 	var err error
-	const operationName = "AzureCredentialsClient.Delete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "AzureCredentialsClient.Delete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, planeName, credentialName, options)
 	if err != nil {
@@ -154,9 +150,7 @@ func (client *AzureCredentialsClient) deleteCreateRequest(ctx context.Context, p
 //   - options - AzureCredentialsClientGetOptions contains the optional parameters for the AzureCredentialsClient.Get method.
 func (client *AzureCredentialsClient) Get(ctx context.Context, planeName string, credentialName string, options *AzureCredentialsClientGetOptions) (AzureCredentialsClientGetResponse, error) {
 	var err error
-	const operationName = "AzureCredentialsClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "AzureCredentialsClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, planeName, credentialName, options)
 	if err != nil {
@@ -214,7 +208,6 @@ func (client *AzureCredentialsClient) NewListPager(planeName string, options *Az
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *AzureCredentialsClientListResponse) (AzureCredentialsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AzureCredentialsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -265,9 +258,7 @@ func (client *AzureCredentialsClient) listHandleResponse(resp *http.Response) (A
 //   - options - AzureCredentialsClientUpdateOptions contains the optional parameters for the AzureCredentialsClient.Update method.
 func (client *AzureCredentialsClient) Update(ctx context.Context, planeName string, credentialName string, properties AzureCredentialResourceTagsUpdate, options *AzureCredentialsClientUpdateOptions) (AzureCredentialsClientUpdateResponse, error) {
 	var err error
-	const operationName = "AzureCredentialsClient.Update"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "AzureCredentialsClient.Update", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, planeName, credentialName, properties, options)
 	if err != nil {

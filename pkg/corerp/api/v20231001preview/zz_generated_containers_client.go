@@ -73,9 +73,7 @@ func (client *ContainersClient) BeginCreateOrUpdate(ctx context.Context, contain
 // Generated from API version 2023-10-01-preview
 func (client *ContainersClient) createOrUpdate(ctx context.Context, containerName string, resource ContainerResource, options *ContainersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "ContainersClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ContainersClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, containerName, resource, options)
 	if err != nil {
@@ -144,9 +142,7 @@ func (client *ContainersClient) BeginDelete(ctx context.Context, containerName s
 // Generated from API version 2023-10-01-preview
 func (client *ContainersClient) deleteOperation(ctx context.Context, containerName string, options *ContainersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "ContainersClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ContainersClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, containerName, options)
 	if err != nil {
@@ -190,9 +186,7 @@ func (client *ContainersClient) deleteCreateRequest(ctx context.Context, contain
 //   - options - ContainersClientGetOptions contains the optional parameters for the ContainersClient.Get method.
 func (client *ContainersClient) Get(ctx context.Context, containerName string, options *ContainersClientGetOptions) (ContainersClientGetResponse, error) {
 	var err error
-	const operationName = "ContainersClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ContainersClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, containerName, options)
 	if err != nil {
@@ -249,7 +243,6 @@ func (client *ContainersClient) NewListByScopePager(options *ContainersClientLis
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ContainersClientListByScopeResponse) (ContainersClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ContainersClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -321,9 +314,7 @@ func (client *ContainersClient) BeginUpdate(ctx context.Context, containerName s
 // Generated from API version 2023-10-01-preview
 func (client *ContainersClient) update(ctx context.Context, containerName string, properties ContainerResourceUpdate, options *ContainersClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "ContainersClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ContainersClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, containerName, properties, options)
 	if err != nil {

@@ -73,9 +73,7 @@ func (client *PubSubBrokersClient) BeginCreateOrUpdate(ctx context.Context, pubS
 // Generated from API version 2023-10-01-preview
 func (client *PubSubBrokersClient) createOrUpdate(ctx context.Context, pubSubBrokerName string, resource DaprPubSubBrokerResource, options *PubSubBrokersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "PubSubBrokersClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "PubSubBrokersClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, pubSubBrokerName, resource, options)
 	if err != nil {
@@ -145,9 +143,7 @@ func (client *PubSubBrokersClient) BeginDelete(ctx context.Context, pubSubBroker
 // Generated from API version 2023-10-01-preview
 func (client *PubSubBrokersClient) deleteOperation(ctx context.Context, pubSubBrokerName string, options *PubSubBrokersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "PubSubBrokersClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "PubSubBrokersClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, pubSubBrokerName, options)
 	if err != nil {
@@ -191,9 +187,7 @@ func (client *PubSubBrokersClient) deleteCreateRequest(ctx context.Context, pubS
 //   - options - PubSubBrokersClientGetOptions contains the optional parameters for the PubSubBrokersClient.Get method.
 func (client *PubSubBrokersClient) Get(ctx context.Context, pubSubBrokerName string, options *PubSubBrokersClientGetOptions) (PubSubBrokersClientGetResponse, error) {
 	var err error
-	const operationName = "PubSubBrokersClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "PubSubBrokersClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, pubSubBrokerName, options)
 	if err != nil {
@@ -250,7 +244,6 @@ func (client *PubSubBrokersClient) NewListByScopePager(options *PubSubBrokersCli
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *PubSubBrokersClientListByScopeResponse) (PubSubBrokersClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "PubSubBrokersClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -323,9 +316,7 @@ func (client *PubSubBrokersClient) BeginUpdate(ctx context.Context, pubSubBroker
 // Generated from API version 2023-10-01-preview
 func (client *PubSubBrokersClient) update(ctx context.Context, pubSubBrokerName string, properties DaprPubSubBrokerResourceUpdate, options *PubSubBrokersClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "PubSubBrokersClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "PubSubBrokersClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, pubSubBrokerName, properties, options)
 	if err != nil {

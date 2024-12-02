@@ -72,9 +72,7 @@ func (client *LocationsClient) BeginCreateOrUpdate(ctx context.Context, planeNam
 // Generated from API version 2023-10-01-preview
 func (client *LocationsClient) createOrUpdate(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource LocationResource, options *LocationsClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "LocationsClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "LocationsClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, resourceProviderName, locationName, resource, options)
 	if err != nil {
@@ -152,9 +150,7 @@ func (client *LocationsClient) BeginDelete(ctx context.Context, planeName string
 // Generated from API version 2023-10-01-preview
 func (client *LocationsClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, locationName string, options *LocationsClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "LocationsClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "LocationsClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceProviderName, locationName, options)
 	if err != nil {
@@ -207,9 +203,7 @@ func (client *LocationsClient) deleteCreateRequest(ctx context.Context, planeNam
 //   - options - LocationsClientGetOptions contains the optional parameters for the LocationsClient.Get method.
 func (client *LocationsClient) Get(ctx context.Context, planeName string, resourceProviderName string, locationName string, options *LocationsClientGetOptions) (LocationsClientGetResponse, error) {
 	var err error
-	const operationName = "LocationsClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "LocationsClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, planeName, resourceProviderName, locationName, options)
 	if err != nil {
@@ -274,7 +268,6 @@ func (client *LocationsClient) NewListPager(planeName string, resourceProviderNa
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *LocationsClientListResponse) (LocationsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "LocationsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink

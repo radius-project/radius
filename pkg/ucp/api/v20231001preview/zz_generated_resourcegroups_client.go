@@ -47,9 +47,7 @@ func NewResourceGroupsClient(credential azcore.TokenCredential, options *arm.Cli
 //     method.
 func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, planeName string, resourceGroupName string, resource ResourceGroupResource, options *ResourceGroupsClientCreateOrUpdateOptions) (ResourceGroupsClientCreateOrUpdateResponse, error) {
 	var err error
-	const operationName = "ResourceGroupsClient.CreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ResourceGroupsClient.CreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, resourceGroupName, resource, options)
 	if err != nil {
@@ -110,9 +108,7 @@ func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Resp
 //   - options - ResourceGroupsClientDeleteOptions contains the optional parameters for the ResourceGroupsClient.Delete method.
 func (client *ResourceGroupsClient) Delete(ctx context.Context, planeName string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (ResourceGroupsClientDeleteResponse, error) {
 	var err error
-	const operationName = "ResourceGroupsClient.Delete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ResourceGroupsClient.Delete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceGroupName, options)
 	if err != nil {
@@ -160,9 +156,7 @@ func (client *ResourceGroupsClient) deleteCreateRequest(ctx context.Context, pla
 //   - options - ResourceGroupsClientGetOptions contains the optional parameters for the ResourceGroupsClient.Get method.
 func (client *ResourceGroupsClient) Get(ctx context.Context, planeName string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (ResourceGroupsClientGetResponse, error) {
 	var err error
-	const operationName = "ResourceGroupsClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ResourceGroupsClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, planeName, resourceGroupName, options)
 	if err != nil {
@@ -222,7 +216,6 @@ func (client *ResourceGroupsClient) NewListPager(planeName string, options *Reso
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ResourceGroupsClientListResponse) (ResourceGroupsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceGroupsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -276,9 +269,7 @@ func (client *ResourceGroupsClient) listHandleResponse(resp *http.Response) (Res
 //   - options - ResourceGroupsClientUpdateOptions contains the optional parameters for the ResourceGroupsClient.Update method.
 func (client *ResourceGroupsClient) Update(ctx context.Context, planeName string, resourceGroupName string, properties ResourceGroupResourceTagsUpdate, options *ResourceGroupsClientUpdateOptions) (ResourceGroupsClientUpdateResponse, error) {
 	var err error
-	const operationName = "ResourceGroupsClient.Update"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ResourceGroupsClient.Update", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, planeName, resourceGroupName, properties, options)
 	if err != nil {

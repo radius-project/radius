@@ -73,9 +73,7 @@ func (client *StateStoresClient) BeginCreateOrUpdate(ctx context.Context, stateS
 // Generated from API version 2023-10-01-preview
 func (client *StateStoresClient) createOrUpdate(ctx context.Context, stateStoreName string, resource DaprStateStoreResource, options *StateStoresClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "StateStoresClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "StateStoresClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, stateStoreName, resource, options)
 	if err != nil {
@@ -144,9 +142,7 @@ func (client *StateStoresClient) BeginDelete(ctx context.Context, stateStoreName
 // Generated from API version 2023-10-01-preview
 func (client *StateStoresClient) deleteOperation(ctx context.Context, stateStoreName string, options *StateStoresClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "StateStoresClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "StateStoresClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, stateStoreName, options)
 	if err != nil {
@@ -190,9 +186,7 @@ func (client *StateStoresClient) deleteCreateRequest(ctx context.Context, stateS
 //   - options - StateStoresClientGetOptions contains the optional parameters for the StateStoresClient.Get method.
 func (client *StateStoresClient) Get(ctx context.Context, stateStoreName string, options *StateStoresClientGetOptions) (StateStoresClientGetResponse, error) {
 	var err error
-	const operationName = "StateStoresClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "StateStoresClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, stateStoreName, options)
 	if err != nil {
@@ -249,7 +243,6 @@ func (client *StateStoresClient) NewListByScopePager(options *StateStoresClientL
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *StateStoresClientListByScopeResponse) (StateStoresClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "StateStoresClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -321,9 +314,7 @@ func (client *StateStoresClient) BeginUpdate(ctx context.Context, stateStoreName
 // Generated from API version 2023-10-01-preview
 func (client *StateStoresClient) update(ctx context.Context, stateStoreName string, properties DaprStateStoreResourceUpdate, options *StateStoresClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "StateStoresClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "StateStoresClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, stateStoreName, properties, options)
 	if err != nil {

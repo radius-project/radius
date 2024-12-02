@@ -73,9 +73,7 @@ func (client *ExtendersClient) BeginCreateOrUpdate(ctx context.Context, extender
 // Generated from API version 2023-10-01-preview
 func (client *ExtendersClient) createOrUpdate(ctx context.Context, extenderName string, resource ExtenderResource, options *ExtendersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "ExtendersClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ExtendersClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, extenderName, resource, options)
 	if err != nil {
@@ -144,9 +142,7 @@ func (client *ExtendersClient) BeginDelete(ctx context.Context, extenderName str
 // Generated from API version 2023-10-01-preview
 func (client *ExtendersClient) deleteOperation(ctx context.Context, extenderName string, options *ExtendersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "ExtendersClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ExtendersClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, extenderName, options)
 	if err != nil {
@@ -190,9 +186,7 @@ func (client *ExtendersClient) deleteCreateRequest(ctx context.Context, extender
 //   - options - ExtendersClientGetOptions contains the optional parameters for the ExtendersClient.Get method.
 func (client *ExtendersClient) Get(ctx context.Context, extenderName string, options *ExtendersClientGetOptions) (ExtendersClientGetResponse, error) {
 	var err error
-	const operationName = "ExtendersClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ExtendersClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, extenderName, options)
 	if err != nil {
@@ -249,7 +243,6 @@ func (client *ExtendersClient) NewListByScopePager(options *ExtendersClientListB
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ExtendersClientListByScopeResponse) (ExtendersClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ExtendersClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -299,9 +292,7 @@ func (client *ExtendersClient) listByScopeHandleResponse(resp *http.Response) (E
 //   - options - ExtendersClientListSecretsOptions contains the optional parameters for the ExtendersClient.ListSecrets method.
 func (client *ExtendersClient) ListSecrets(ctx context.Context, extenderName string, body map[string]any, options *ExtendersClientListSecretsOptions) (ExtendersClientListSecretsResponse, error) {
 	var err error
-	const operationName = "ExtendersClient.ListSecrets"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ExtendersClient.ListSecrets", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.listSecretsCreateRequest(ctx, extenderName, body, options)
 	if err != nil {
@@ -381,9 +372,7 @@ func (client *ExtendersClient) BeginUpdate(ctx context.Context, extenderName str
 // Generated from API version 2023-10-01-preview
 func (client *ExtendersClient) update(ctx context.Context, extenderName string, properties ExtenderResourceUpdate, options *ExtendersClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "ExtendersClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ExtendersClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, extenderName, properties, options)
 	if err != nil {

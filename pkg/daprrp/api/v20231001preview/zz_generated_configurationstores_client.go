@@ -73,9 +73,7 @@ func (client *ConfigurationStoresClient) BeginCreateOrUpdate(ctx context.Context
 // Generated from API version 2023-10-01-preview
 func (client *ConfigurationStoresClient) createOrUpdate(ctx context.Context, configurationStoreName string, resource DaprConfigurationStoreResource, options *ConfigurationStoresClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "ConfigurationStoresClient.BeginCreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ConfigurationStoresClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, configurationStoreName, resource, options)
 	if err != nil {
@@ -145,9 +143,7 @@ func (client *ConfigurationStoresClient) BeginDelete(ctx context.Context, config
 // Generated from API version 2023-10-01-preview
 func (client *ConfigurationStoresClient) deleteOperation(ctx context.Context, configurationStoreName string, options *ConfigurationStoresClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	const operationName = "ConfigurationStoresClient.BeginDelete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ConfigurationStoresClient.BeginDelete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, configurationStoreName, options)
 	if err != nil {
@@ -191,9 +187,7 @@ func (client *ConfigurationStoresClient) deleteCreateRequest(ctx context.Context
 //   - options - ConfigurationStoresClientGetOptions contains the optional parameters for the ConfigurationStoresClient.Get method.
 func (client *ConfigurationStoresClient) Get(ctx context.Context, configurationStoreName string, options *ConfigurationStoresClientGetOptions) (ConfigurationStoresClientGetResponse, error) {
 	var err error
-	const operationName = "ConfigurationStoresClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ConfigurationStoresClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, configurationStoreName, options)
 	if err != nil {
@@ -250,7 +244,6 @@ func (client *ConfigurationStoresClient) NewListByScopePager(options *Configurat
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ConfigurationStoresClientListByScopeResponse) (ConfigurationStoresClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ConfigurationStoresClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -323,9 +316,7 @@ func (client *ConfigurationStoresClient) BeginUpdate(ctx context.Context, config
 // Generated from API version 2023-10-01-preview
 func (client *ConfigurationStoresClient) update(ctx context.Context, configurationStoreName string, properties DaprConfigurationStoreResourceUpdate, options *ConfigurationStoresClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	const operationName = "ConfigurationStoresClient.BeginUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ConfigurationStoresClient.BeginUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, configurationStoreName, properties, options)
 	if err != nil {

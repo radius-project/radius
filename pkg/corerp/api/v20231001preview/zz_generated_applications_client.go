@@ -51,9 +51,7 @@ func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, 
 //     method.
 func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOrUpdateOptions) (ApplicationsClientCreateOrUpdateResponse, error) {
 	var err error
-	const operationName = "ApplicationsClient.CreateOrUpdate"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.CreateOrUpdate", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, applicationName, resource, options)
 	if err != nil {
@@ -110,9 +108,7 @@ func (client *ApplicationsClient) createOrUpdateHandleResponse(resp *http.Respon
 //   - options - ApplicationsClientDeleteOptions contains the optional parameters for the ApplicationsClient.Delete method.
 func (client *ApplicationsClient) Delete(ctx context.Context, applicationName string, options *ApplicationsClientDeleteOptions) (ApplicationsClientDeleteResponse, error) {
 	var err error
-	const operationName = "ApplicationsClient.Delete"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.Delete", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, applicationName, options)
 	if err != nil {
@@ -156,9 +152,7 @@ func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, appli
 //   - options - ApplicationsClientGetOptions contains the optional parameters for the ApplicationsClient.Get method.
 func (client *ApplicationsClient) Get(ctx context.Context, applicationName string, options *ApplicationsClientGetOptions) (ApplicationsClientGetResponse, error) {
 	var err error
-	const operationName = "ApplicationsClient.Get"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.Get", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, applicationName, options)
 	if err != nil {
@@ -213,9 +207,7 @@ func (client *ApplicationsClient) getHandleResponse(resp *http.Response) (Applic
 //   - options - ApplicationsClientGetGraphOptions contains the optional parameters for the ApplicationsClient.GetGraph method.
 func (client *ApplicationsClient) GetGraph(ctx context.Context, applicationName string, body map[string]any, options *ApplicationsClientGetGraphOptions) (ApplicationsClientGetGraphResponse, error) {
 	var err error
-	const operationName = "ApplicationsClient.GetGraph"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.GetGraph", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getGraphCreateRequest(ctx, applicationName, body, options)
 	if err != nil {
@@ -275,7 +267,6 @@ func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClien
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ApplicationsClientListByScopeResponse) (ApplicationsClientListByScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ApplicationsClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -325,9 +316,7 @@ func (client *ApplicationsClient) listByScopeHandleResponse(resp *http.Response)
 //   - options - ApplicationsClientUpdateOptions contains the optional parameters for the ApplicationsClient.Update method.
 func (client *ApplicationsClient) Update(ctx context.Context, applicationName string, properties ApplicationResourceUpdate, options *ApplicationsClientUpdateOptions) (ApplicationsClientUpdateResponse, error) {
 	var err error
-	const operationName = "ApplicationsClient.Update"
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
-	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.Update", client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, applicationName, properties, options)
 	if err != nil {
