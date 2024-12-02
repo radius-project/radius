@@ -58,7 +58,6 @@ func Test_Validate(t *testing.T) {
 				runner := r.(*Runner)
 				// These values are used by Run()
 				require.Equal(t, "test-app", runner.ApplicationName)
-				require.Equal(t, "test-env", runner.EnvironmentName)
 			},
 		},
 		{
@@ -79,7 +78,6 @@ func Test_Validate(t *testing.T) {
 				runner := r.(*Runner)
 				// These values are used by Run()
 				require.Equal(t, "test-app", runner.ApplicationName)
-				require.Equal(t, "test-env", runner.EnvironmentName)
 			},
 		},
 		{
@@ -181,7 +179,6 @@ func Test_Run(t *testing.T) {
 
 		// Populated by Validate()
 		ApplicationName: "test-app",
-		EnvironmentName: "test-env",
 	}
 
 	err := runner.Run(context.Background())

@@ -16,7 +16,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +38,6 @@ rad app graph my-application`,
 
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
-	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 
 	return cmd, runner
@@ -52,7 +50,6 @@ type Runner struct {
 	Output            output.Interface
 
 	ApplicationName string
-	EnvironmentName string
 	Workspace       *workspaces.Workspace
 }
 
@@ -89,19 +86,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate that the application exists
-	app, err := client.GetApplication(cmd.Context(), r.ApplicationName)
+	_, err = client.GetApplication(cmd.Context(), r.ApplicationName)
 	if clients.Is404Error(err) {
 		return clierrors.Message("Application %q does not exist or has been deleted.", r.ApplicationName)
 	} else if err != nil {
 		return err
 	}
-
-	parsed, err := resources.ParseResource(*app.Properties.Environment)
-	if err != nil {
-		return err
-	}
-
-	r.EnvironmentName = parsed.Name()
 
 	return nil
 }
