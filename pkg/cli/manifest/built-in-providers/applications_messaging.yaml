@@ -1,0 +1,7 @@
+name: Applications.Messaging
+types:
+  rabbitMQQueues:
+    apiVersions:
+      "2025-01-01-preview":
+        schema: {}
+        capabilities: ["Recipes"]
