@@ -454,6 +454,31 @@ func ReadResourceGroupNameArgs(cmd *cobra.Command, args []string) (string, error
 	return name, err
 }
 
+// RequireResourceTypeNameArgs is used by commands that require specifying a type name using positional args.
+//
+
+// RequireResourceTypeNameArgs reads the resource type name from the command line arguments and returns an error if the name
+// is not provided or is empty. It also handles any errors that may occur while reading the resource type name.
+func RequireResourceTypeNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	resourceType, err := ReadResourceTypeNameArgs(cmd, args)
+	if err != nil {
+		return "", err
+	}
+	if resourceType == "" {
+		return "", fmt.Errorf("resource type name is not provided or is empty ")
+	}
+
+	return resourceType, nil
+}
+
+// ReadResourceTypeNameArgs is used to get the resource type name that is supplied as the first argument
+func ReadResourceTypeNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	if len(args) < 1 {
+		return "", errors.New("no resource type name provided")
+	}
+	return args[0], nil
+}
+
 // RequireWorkspaceArgs is used by commands that require an existing workspace either set as the default,
 // or specified as a positional arg, or specified using the 'workspace' flag.
 //
