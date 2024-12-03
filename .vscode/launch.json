@@ -9,10 +9,12 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+      //"preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/rad/main.go",
       "cwd": "${workspaceFolder}",
-      "args": []
+      "args": [
+         "resource-provider","create","--from-file","/Users/nithya/radius/radius/pkg/cli/manifest/built-in-providers/applications_dapr.yaml"
+      ]
     },
     {
       "name": "Debug rad CLI (prompt for args)",
