@@ -23,7 +23,7 @@ import (
 )
 
 func Test_InMemoryClient(t *testing.T) {
-	client := NewClient()
+	client := NewClient("test")
 
 	clear := func(t *testing.T) {
 		client.Clear()

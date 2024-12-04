@@ -46,8 +46,22 @@ type ListPlanesByType[P interface {
 // an error occurs, it returns an error.
 func (e *ListPlanesByType[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(e.Options().PathBase, req.URL.Path)
-	// The path is /planes/{planeType}
-	planeType := strings.Split(path, resources.SegmentSeparator)[2]
+	// The path is /planes/{planeShortType}
+	planeShortType := strings.Split(path, resources.SegmentSeparator)[2]
+
+	// Map that onto the known plane fully-qualified types, so we can do the database
+	// lookup.
+	knownPlaneTypes := map[string]string{
+		"aws":    "System.AWS/planes",
+		"azure":  "System.Azure/planes",
+		"radius": "System.Radius/planes",
+	}
+
+	planeType, ok := knownPlaneTypes[planeShortType]
+	if !ok {
+		return armrpc_rest.NewBadRequestResponse(fmt.Sprintf("Unknown plane type %s", planeShortType)), nil
+	}
+
 	query := store.Query{
 		RootScope:    resources.SegmentSeparator + resources.PlanesSegment,
 		IsScopeQuery: true,
@@ -55,16 +69,23 @@ func (e *ListPlanesByType[P, T]) Run(ctx context.Context, w http.ResponseWriter,
 	}
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Listing planes in scope %s/%s", query.RootScope, planeType))
-	result, err := e.StorageClient().Query(ctx, query)
+
+	client, err := e.DataProvider().GetStorageClient(ctx, planeType)
 	if err != nil {
 		return nil, err
 	}
+
+	result, err := client.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
 	listOfPlanes, err := e.createResponse(ctx, result)
 	if err != nil {
 		return nil, err
 	}
-	var ok = armrpc_rest.NewOKResponse(listOfPlanes)
-	return ok, nil
+
+	return armrpc_rest.NewOKResponse(listOfPlanes), nil
 }
 
 func (p *ListPlanesByType[P, T]) createResponse(ctx context.Context, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {

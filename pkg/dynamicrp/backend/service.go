@@ -18,56 +18,57 @@ package backend
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
-	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/dynamicrp"
+	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 )
 
 // Service runs the backend for the dynamic-rp.
 type Service struct {
 	worker.Service
 	options *dynamicrp.Options
+	recipes *controllerconfig.RecipeControllerConfig
 }
 
 // NewService creates a new service to run the dynamic-rp backend.
 func NewService(options *dynamicrp.Options) *Service {
+	workerOptions := worker.Options{}
+	if options.Config.Worker.MaxOperationConcurrency != nil {
+		workerOptions.MaxOperationConcurrency = *options.Config.Worker.MaxOperationConcurrency
+	}
+	if options.Config.Worker.MaxOperationRetryCount != nil {
+		workerOptions.MaxOperationRetryCount = *options.Config.Worker.MaxOperationRetryCount
+	}
+
 	return &Service{
 		options: options,
 		Service: worker.Service{
-			ProviderName: "dynamic-rp",
-			Options: hostoptions.HostOptions{
-				Config: &hostoptions.ProviderConfig{
-					Env:             options.Config.Environment,
-					StorageProvider: options.Config.Storage,
-					SecretProvider:  options.Config.Secrets,
-					QueueProvider:   options.Config.Queue,
-				},
-			},
+			OperationStatusManager: options.StatusManager,
+			Options:                workerOptions,
+			QueueProvider:          options.QueueProvider,
+			StorageProvider:        options.StorageProvider,
 		},
+		recipes: options.Recipes,
 	}
 }
 
 // Name returns the name of the service used for logging.
 func (w *Service) Name() string {
-	return fmt.Sprintf("%s async worker", w.Service.ProviderName)
+	return "dynamic-rp async worker"
 }
 
 // Run runs the service.
 func (w *Service) Run(ctx context.Context) error {
-	err := w.Init(ctx)
+	err := w.registerControllers(ctx)
 	if err != nil {
 		return err
 	}
 
-	workerOptions := worker.Options{}
-	if w.options.Config.Worker.MaxOperationConcurrency != nil {
-		workerOptions.MaxOperationConcurrency = *w.options.Config.Worker.MaxOperationConcurrency
-	}
-	if w.options.Config.Worker.MaxOperationRetryCount != nil {
-		workerOptions.MaxOperationRetryCount = *w.options.Config.Worker.MaxOperationRetryCount
-	}
+	return w.Start(ctx)
+}
 
-	return w.Start(ctx, workerOptions)
+func (w *Service) registerControllers(ctx context.Context) error {
+	// No controllers yet.
+	return nil
 }

@@ -29,7 +29,7 @@ var (
 	messageLockDuration   = 5 * time.Minute
 	messageExpireDuration = 24 * time.Hour
 
-	defaultQueue = NewInMemQueue(messageLockDuration)
+	defaultQueue = NewInMemQueue("shared", messageLockDuration)
 )
 
 type element struct {
@@ -40,14 +40,16 @@ type element struct {
 
 // InmemQueue implements in-memory queue for dev/test
 type InmemQueue struct {
-	v   *list.List
-	vMu sync.Mutex
+	v    *list.List
+	vMu  sync.Mutex
+	name string
 
 	lockDuration time.Duration
 }
 
-func NewInMemQueue(lockDuration time.Duration) *InmemQueue {
+func NewInMemQueue(name string, lockDuration time.Duration) *InmemQueue {
 	return &InmemQueue{
+		name:         name,
 		v:            &list.List{},
 		lockDuration: lockDuration,
 	}

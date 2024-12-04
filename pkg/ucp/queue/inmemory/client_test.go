@@ -44,7 +44,7 @@ func TestNamedQueue(t *testing.T) {
 }
 
 func TestClient(t *testing.T) {
-	inmem := NewInMemQueue(sharedtest.TestMessageLockTime)
+	inmem := NewInMemQueue("test", sharedtest.TestMessageLockTime)
 	cli := New(inmem)
 
 	clean := func(t *testing.T) {

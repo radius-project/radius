@@ -68,7 +68,13 @@ func (r *ListResourceProviderSummaries) Run(ctx context.Context, w http.Response
 	}
 
 	// First check if the plane exists.
-	_, err = r.StorageClient().Get(ctx, scope.String())
+	planeResourceType := datamodel.RadiusPlaneResourceType
+	client, err := r.DataProvider().GetStorageClient(ctx, planeResourceType)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = client.Get(ctx, scope.String())
 	if errors.Is(err, &store.ErrNotFound{}) {
 		return armrpc_rest.NewNotFoundResponse(scope), nil
 	} else if err != nil {

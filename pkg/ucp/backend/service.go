@@ -19,83 +19,70 @@ package backend
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
-	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourceproviders"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	ucpoptions "github.com/radius-project/radius/pkg/ucp/hostoptions"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-)
-
-const (
-	UCPProviderName = "System.Resources"
 )
 
 // Service is a service to run AsyncReqeustProcessWorker.
 type Service struct {
 	worker.Service
-
-	config ucpoptions.UCPConfig
+	options *ucp.Options
 }
 
-// NewService creates new service instance to run AsyncRequestProcessWorker.
-func NewService(options hostoptions.HostOptions, config ucpoptions.UCPConfig) *Service {
+// NewService creates new backend service instance to run the async worker.
+func NewService(options *ucp.Options) *Service {
+	workerOptions := worker.Options{}
+	if options.Config.Worker.MaxOperationConcurrency != nil {
+		workerOptions.MaxOperationConcurrency = *options.Config.Worker.MaxOperationConcurrency
+	}
+	if options.Config.Worker.MaxOperationRetryCount != nil {
+		workerOptions.MaxOperationRetryCount = *options.Config.Worker.MaxOperationRetryCount
+	}
 	return &Service{
+		options: options,
 		Service: worker.Service{
-			ProviderName: UCPProviderName,
-			Options:      options,
+			OperationStatusManager: options.StatusManager,
+			Options:                workerOptions,
+			QueueProvider:          options.QueueProvider,
+			StorageProvider:        options.StorageProvider,
 		},
-		config: config,
 	}
 }
 
-// Name returns a string containing the UCPProviderName and the text "async worker".
+// Name returns the service name.
 func (w *Service) Name() string {
-	return fmt.Sprintf("%s async worker", UCPProviderName)
+	return "ucp async worker"
 }
 
-// Run starts the service and worker. It initializes the service and sets the worker options based on the configuration,
-// then starts the service with the given worker options. It returns an error if the initialization fails.
+// Run starts the background worker.
 func (w *Service) Run(ctx context.Context) error {
-	if err := w.Init(ctx); err != nil {
-		return err
-	}
-
-	workerOpts := worker.Options{}
-	if w.Options.Config.WorkerServer != nil {
-		if w.Options.Config.WorkerServer.MaxOperationConcurrency != nil {
-			workerOpts.MaxOperationConcurrency = *w.Options.Config.WorkerServer.MaxOperationConcurrency
-		}
-		if w.Options.Config.WorkerServer.MaxOperationRetryCount != nil {
-			workerOpts.MaxOperationRetryCount = *w.Options.Config.WorkerServer.MaxOperationRetryCount
-		}
-	}
-
 	opts := ctrl.Options{
 		DataProvider: w.StorageProvider,
 	}
 
-	defaultDownstream, err := url.Parse(w.config.Routing.DefaultDownstreamEndpoint)
+	defaultDownstream, err := url.Parse(w.options.Config.Routing.DefaultDownstreamEndpoint)
 	if err != nil {
 		return err
 	}
 
 	transport := otelhttp.NewTransport(http.DefaultTransport)
-	err = RegisterControllers(ctx, w.Controllers, w.Options.UCPConnection, transport, opts, defaultDownstream)
+	err = RegisterControllers(ctx, w.Controllers(), w.options.UCP, transport, opts, defaultDownstream)
 	if err != nil {
 		return err
 	}
 
-	return w.Start(ctx, workerOpts)
+	return w.Start(ctx)
 }
 
 // RegisterControllers registers the controllers for the UCP backend.
