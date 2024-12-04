@@ -19,6 +19,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/server"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -38,12 +40,23 @@ var rootCmd = &cobra.Command{
 	Long:  `Server process for the Universal Control Plane (UCP).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configFilePath := cmd.Flag("config-file").Value.String()
-		options, err := server.NewServerOptionsFromEnvironment(configFilePath)
+
+		bs, err := os.ReadFile(configFilePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read configuration file: %w", err)
 		}
 
-		logger, flush, err := ucplog.NewLogger(ucplog.LoggerName, &options.LoggingOptions)
+		config, err := ucp.LoadConfig(bs)
+		if err != nil {
+			return fmt.Errorf("failed to parse configuration file: %w", err)
+		}
+
+		options, err := ucp.NewOptions(cmd.Context(), config)
+		if err != nil {
+			return fmt.Errorf("failed to create server options: %w", err)
+		}
+
+		logger, flush, err := ucplog.NewLogger(ucplog.LoggerName, &options.Config.Logging)
 		if err != nil {
 			return err
 		}
@@ -52,17 +65,17 @@ var rootCmd = &cobra.Command{
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
 
-		if options.DatabaseProviderOptions.Provider == databaseprovider.TypeETCD &&
-			options.DatabaseProviderOptions.ETCD.InMemory {
+		if options.Config.Database.Provider == databaseprovider.TypeETCD &&
+			options.Config.Database.ETCD.InMemory {
 			// For in-memory etcd we need to register another service to manage its lifecycle.
 			//
 			// The client will be initialized asynchronously.
 			clientconfigSource := hosting.NewAsyncValue[etcdclient.Client]()
-			options.DatabaseProviderOptions.ETCD.Client = clientconfigSource
-			options.SecretProviderOptions.ETCD.Client = clientconfigSource
+			options.Config.Database.ETCD.Client = clientconfigSource
+			options.Config.Secrets.ETCD.Client = clientconfigSource
 		}
 
-		host, err := server.NewServer(&options)
+		host, err := server.NewServer(options)
 		if err != nil {
 			return err
 		}

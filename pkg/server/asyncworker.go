@@ -21,9 +21,12 @@ import (
 	"fmt"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
 	"github.com/radius-project/radius/pkg/corerp/model"
 	"github.com/radius-project/radius/pkg/kubeutil"
@@ -33,17 +36,18 @@ import (
 type AsyncWorker struct {
 	worker.Service
 
+	options        hostoptions.HostOptions
 	handlerBuilder []builder.Builder
 }
 
 // NewAsyncWorker creates new service instance to run AsyncRequestProcessWorker.
 func NewAsyncWorker(options hostoptions.HostOptions, builder []builder.Builder) *AsyncWorker {
 	return &AsyncWorker{
-		Service: worker.Service{
-			ProviderName: "radius",
-			Options:      options,
-		},
+		options:        options,
 		handlerBuilder: builder,
+		Service:        worker.Service{
+			// Will be initialized later
+		},
 	}
 }
 
@@ -52,51 +56,73 @@ func (w *AsyncWorker) Name() string {
 	return "radiusasyncworker"
 }
 
-// Run starts the service and worker.
-func (w *AsyncWorker) Run(ctx context.Context) error {
-	if err := w.Init(ctx); err != nil {
+func (w *AsyncWorker) init(ctx context.Context) error {
+	workerOptions := worker.Options{}
+	if w.options.Config.WorkerServer != nil {
+		if w.options.Config.WorkerServer.MaxOperationConcurrency != nil {
+			workerOptions.MaxOperationConcurrency = *w.options.Config.WorkerServer.MaxOperationConcurrency
+		}
+		if w.options.Config.WorkerServer.MaxOperationRetryCount != nil {
+			workerOptions.MaxOperationRetryCount = *w.options.Config.WorkerServer.MaxOperationRetryCount
+		}
+	}
+
+	queueProvider := queueprovider.New(w.options.Config.QueueProvider)
+	databaseProvider := databaseprovider.FromOptions(w.options.Config.DatabaseProvider)
+
+	databaseClient, err := databaseProvider.GetClient(ctx)
+	if err != nil {
 		return err
 	}
 
-	k8s, err := kubeutil.NewClients(w.Options.K8sConfig)
+	queueClient, err := queueProvider.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	statusManager := statusmanager.New(databaseClient, queueClient, w.options.Config.Env.RoleLocation)
+
+	w.Service = worker.Service{
+		DatabaseClient:         databaseClient,
+		OperationStatusManager: statusManager,
+		Options:                workerOptions,
+		QueueClient:            queueClient,
+	}
+
+	return nil
+}
+
+// Run starts the service and worker.
+func (w *AsyncWorker) Run(ctx context.Context) error {
+	k8s, err := kubeutil.NewClients(w.options.K8sConfig)
 	if err != nil {
 		return fmt.Errorf("failed to initialize kubernetes clients: %w", err)
 	}
 
-	appModel, err := model.NewApplicationModel(w.Options.Arm, k8s.RuntimeClient, k8s.ClientSet, k8s.DiscoveryClient, k8s.DynamicClient)
+	appModel, err := model.NewApplicationModel(w.options.Arm, k8s.RuntimeClient, k8s.ClientSet, k8s.DiscoveryClient, k8s.DynamicClient)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
-	databaseClient, err := w.DatabaseProvider.GetClient(ctx)
+	err = w.init(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to initialize async worker: %w", err)
 	}
 
 	for _, b := range w.handlerBuilder {
 		opts := ctrl.Options{
-			DatabaseClient: databaseClient,
+			DatabaseClient: w.DatabaseClient,
 			KubeClient:     k8s.RuntimeClient,
 			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return deployment.NewDeploymentProcessor(appModel, databaseClient, k8s.RuntimeClient, k8s.ClientSet)
+				return deployment.NewDeploymentProcessor(appModel, w.DatabaseClient, k8s.RuntimeClient, k8s.ClientSet)
 			},
 		}
 
-		err := b.ApplyAsyncHandler(ctx, w.Controllers, opts)
+		err := b.ApplyAsyncHandler(ctx, w.Controllers(), opts)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	workerOpts := worker.Options{}
-	if w.Options.Config.WorkerServer != nil {
-		if w.Options.Config.WorkerServer.MaxOperationConcurrency != nil {
-			workerOpts.MaxOperationConcurrency = *w.Options.Config.WorkerServer.MaxOperationConcurrency
-		}
-		if w.Options.Config.WorkerServer.MaxOperationRetryCount != nil {
-			workerOpts.MaxOperationRetryCount = *w.Options.Config.WorkerServer.MaxOperationRetryCount
-		}
-	}
-
-	return w.Start(ctx, workerOpts)
+	return w.Start(ctx)
 }

@@ -107,138 +107,138 @@ func Test_ValidateDownstream(t *testing.T) {
 			},
 		}
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
 
 	t.Run("success (non resource group)", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, idWithoutResourceGroup, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, idWithoutResourceGroup, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
 
 	// The deployment engine models its operation status resources as child resources of the deployment resource.
 	t.Run("success (operationstatuses as child resource)", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		operationStatusID := resources.MustParse("/planes/radius/local/providers/System.TestRP/deployments/xzy/operationStatuses/abcd")
 
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, operationStatusID, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, operationStatusID, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
 
 	// All of the Radius RPs include a location in the operation status child resource.
 	t.Run("success (operationstatuses with location)", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		operationStatusID := resources.MustParse("/planes/radius/local/providers/System.TestRP/locations/east/operationStatuses/abcd")
 
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, operationStatusID, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, operationStatusID, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
 
 	// The deployment engine models its operation result resources as child resources of the deployment resource.
 	t.Run("success (operationresults as child resource)", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		operationResultID := resources.MustParse("/planes/radius/local/providers/System.TestRP/deployments/xzy/operationResults/abcd")
 
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, operationResultID, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, operationResultID, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
 
 	// All of the Radius RPs include a location in the operation result child resource.
 	t.Run("success (operationresults with location)", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		operationResultID := resources.MustParse("/planes/radius/local/providers/System.TestRP/locations/east/operationResults/abcd")
 
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, operationResultID, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, operationResultID, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
 
 	t.Run("plane not found", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, &database.ErrNotFound{}).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &NotFoundError{Message: "plane \"/planes/radius/local\" not found"}, err)
 		require.Nil(t, downstreamURL)
 	})
 
 	t.Run("plane retreival failure", func(t *testing.T) {
-		mock := setup(t)
+		databaseClient := setup(t)
 
 		expected := fmt.Errorf("failed to fetch plane \"/planes/radius/local\": %w", errors.New("test error"))
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, errors.New("test error")).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, expected, err)
 		require.Nil(t, downstreamURL)
 	})
 
 	t.Run("resource group not found", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, &database.ErrNotFound{}).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &NotFoundError{Message: "resource group \"/planes/radius/local/resourceGroups/test-group\" not found"}, err)
 		require.Nil(t, downstreamURL)
 	})
 
 	t.Run("resource group err", func(t *testing.T) {
-		mock := setup(t)
+		databaseClient := setup(t)
 
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, errors.New("test error")).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, "failed to fetch resource group \"/planes/radius/local/resourceGroups/test-group\": test error", err.Error())
 		require.Nil(t, downstreamURL)
@@ -255,12 +255,12 @@ func Test_ValidateDownstream(t *testing.T) {
 
 		expected := fmt.Errorf("failed to fetch resource type %q: %w", "System.TestRP/testResources", errors.New("test error"))
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(nil, errors.New("test error")).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, expected, err)
 		require.Nil(t, downstreamURL)
@@ -277,13 +277,13 @@ func Test_ValidateDownstream(t *testing.T) {
 
 		expected := fmt.Errorf("failed to fetch location %q: %w", locationResource.ID, errors.New("test error"))
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(nil, errors.New("test error")).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, expected, err)
 		require.Nil(t, downstreamURL)
@@ -317,13 +317,13 @@ func Test_ValidateDownstream(t *testing.T) {
 			},
 		}
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "resource type \"System.TestRP/testResources\" not supported by location \"east\""}, err)
 		require.Nil(t, downstreamURL)
@@ -357,13 +357,13 @@ func Test_ValidateDownstream(t *testing.T) {
 			},
 		}
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "api version \"2025-01-01\" is not supported for resource type \"System.TestRP/testResources\" by location \"east\""}, err)
 		require.Nil(t, downstreamURL)
@@ -397,13 +397,13 @@ func Test_ValidateDownstream(t *testing.T) {
 			},
 		}
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "failed to parse location address: parse \"\\ninvalid\": net/url: invalid control character in URL"}, err)
 		require.Nil(t, downstreamURL)
@@ -451,72 +451,72 @@ func Test_ValidateDownstream_Legacy(t *testing.T) {
 			},
 		}
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
 
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
 
 	t.Run("success (non resource group)", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
 
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, idWithoutResourceGroup, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, idWithoutResourceGroup, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
 
 	t.Run("plane not found", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, &database.ErrNotFound{}).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &NotFoundError{Message: "plane \"/planes/radius/local\" not found"}, err)
 		require.Nil(t, downstreamURL)
 	})
 
 	t.Run("plane retrieval failure", func(t *testing.T) {
-		mock := setup(t)
+		databaseClient := setup(t)
 
 		expected := fmt.Errorf("failed to fetch plane \"/planes/radius/local\": %w", errors.New("test error"))
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, errors.New("test error")).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, expected, err)
 		require.Nil(t, downstreamURL)
 	})
 
 	t.Run("resource group not found", func(t *testing.T) {
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, &database.ErrNotFound{}).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &NotFoundError{Message: "resource group \"/planes/radius/local/resourceGroups/test-group\" not found"}, err)
 		require.Nil(t, downstreamURL)
 	})
 
 	t.Run("resource group err", func(t *testing.T) {
-		mock := setup(t)
+		databaseClient := setup(t)
 
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, errors.New("test error")).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, "failed to fetch resource group \"/planes/radius/local/resourceGroups/test-group\": test error", err.Error())
 		require.Nil(t, downstreamURL)
@@ -542,12 +542,12 @@ func Test_ValidateDownstream_Legacy(t *testing.T) {
 			},
 		}
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "resource provider System.TestRP not configured"}, err)
 		require.Nil(t, downstreamURL)
@@ -573,12 +573,12 @@ func Test_ValidateDownstream_Legacy(t *testing.T) {
 			},
 		}
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "resource provider System.TestRP not configured"}, err)
 		require.Nil(t, downstreamURL)
@@ -606,12 +606,12 @@ func Test_ValidateDownstream_Legacy(t *testing.T) {
 			},
 		}
 
-		mock := setup(t)
-		mock.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-		mock.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), mock, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "failed to parse downstream URL: parse \"\\ninvalid\": net/url: invalid control character in URL"}, err)
 		require.Nil(t, downstreamURL)
