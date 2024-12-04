@@ -33,7 +33,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the `rad resourceprovider create` command and runner.
+// NewCommand creates an instance of the `rad resource-provider create` command and runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -68,7 +68,7 @@ rad resource-provider create --from-file /path/to/input.json
 	return cmd, runner
 }
 
-// Runner is the Runner implementation for the `rad resourceprovider create` command.
+// Runner is the Runner implementation for the `rad resource-provider create` command.
 type Runner struct {
 	ConnectionFactory connections.Factory
 	ConfigHolder      *framework.ConfigHolder
@@ -80,7 +80,7 @@ type Runner struct {
 	ResourceProvider                 *manifest.ResourceProvider
 }
 
-// NewRunner creates an instance of the runner for the `rad resourceprovider create` command.
+// NewRunner creates an instance of the runner for the `rad resource-provider create` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
@@ -89,7 +89,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad resourceprovider create` command.
+// Validate runs validation for the `rad resource-provider create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -112,7 +112,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad resourceprovider create` command.
+// Run runs the `rad resource-provider create` command.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {

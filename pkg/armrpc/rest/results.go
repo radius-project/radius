@@ -537,6 +537,19 @@ func NewNotFoundResponse(id resources.ID) Response {
 	}
 }
 
+// NewNotFoundResponse creates a NotFoundResponse with resource id and an additional message.
+func NewNotFoundResponseWithCause(id resources.ID, cause string) Response {
+	return &NotFoundResponse{
+		Body: v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeNotFound,
+				Message: fmt.Sprintf("the resource with id '%s' was not found: %s", id.String(), cause),
+				Target:  id.String(),
+			},
+		},
+	}
+}
+
 // NewNotFoundAPIVersionResponse creates Response for unsupported api version. (message is consistent with ARM).
 func NewNotFoundAPIVersionResponse(resourceType string, namespace string, apiVersion string) Response {
 	return &NotFoundResponse{

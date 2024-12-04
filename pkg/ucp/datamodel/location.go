@@ -21,6 +21,9 @@ import v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 const (
 	// LocationResourceType is the resource type for a resource provider location
 	LocationResourceType = "System.Resources/resourceProviders/locations"
+
+	// LocationUnqualifiedResourceType is the unqualified resource type for a resource provider location.
+	LocationUnqualifiedResourceType = "locations"
 )
 
 // Location represents a location.

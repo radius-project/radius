@@ -41,6 +41,7 @@ type UCPConfig struct {
 	Identity         Identity                                 `yaml:"identity,omitempty"`
 	UCP              config.UCPOptions                        `yaml:"ucp"`
 	Location         string                                   `yaml:"location"`
+	Routing          RoutingConfig                            `yaml:"routing"`
 }
 
 const (
@@ -54,4 +55,11 @@ const (
 type Identity struct {
 	// AuthMethod represents the method of authentication for authenticating with external systems like Azure and AWS.
 	AuthMethod string `yaml:"authMethod"`
+}
+
+// RoutingConfig provides configuration for UCP routing.
+type RoutingConfig struct {
+	// DefaultDownstreamEndpoint is the default destination when a resource provider does not provide a downstream endpoint.
+	// In practice, this points to the URL of dynamic-rp.
+	DefaultDownstreamEndpoint string `yaml:"defaultDownstreamEndpoint"`
 }

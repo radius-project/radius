@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
@@ -30,6 +32,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourceproviders"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	ucpoptions "github.com/radius-project/radius/pkg/ucp/hostoptions"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
@@ -39,15 +43,18 @@ const (
 // Service is a service to run AsyncReqeustProcessWorker.
 type Service struct {
 	worker.Service
+
+	config ucpoptions.UCPConfig
 }
 
 // NewService creates new service instance to run AsyncRequestProcessWorker.
-func NewService(options hostoptions.HostOptions) *Service {
+func NewService(options hostoptions.HostOptions, config ucpoptions.UCPConfig) *Service {
 	return &Service{
-		worker.Service{
+		Service: worker.Service{
 			ProviderName: UCPProviderName,
 			Options:      options,
 		},
+		config: config,
 	}
 }
 
@@ -77,7 +84,13 @@ func (w *Service) Run(ctx context.Context) error {
 		DataProvider: w.StorageProvider,
 	}
 
-	err := RegisterControllers(ctx, w.Controllers, w.Options.UCPConnection, opts)
+	defaultDownstream, err := url.Parse(w.config.Routing.DefaultDownstreamEndpoint)
+	if err != nil {
+		return err
+	}
+
+	transport := otelhttp.NewTransport(http.DefaultTransport)
+	err = RegisterControllers(ctx, w.Controllers, w.Options.UCPConnection, transport, opts, defaultDownstream)
 	if err != nil {
 		return err
 	}
@@ -86,9 +99,11 @@ func (w *Service) Run(ctx context.Context) error {
 }
 
 // RegisterControllers registers the controllers for the UCP backend.
-func RegisterControllers(ctx context.Context, registry *worker.ControllerRegistry, connection sdk.Connection, opts ctrl.Options) error {
+func RegisterControllers(ctx context.Context, registry *worker.ControllerRegistry, connection sdk.Connection, transport http.RoundTripper, opts ctrl.Options, defaultDownstream *url.URL) error {
 	// Tracked resources
-	err := errors.Join(nil, registry.Register(ctx, v20231001preview.ResourceType, v1.OperationMethod(datamodel.OperationProcess), resourcegroups.NewTrackedResourceProcessController, opts))
+	err := errors.Join(nil, registry.Register(ctx, v20231001preview.ResourceType, v1.OperationMethod(datamodel.OperationProcess), func(opts ctrl.Options) (ctrl.Controller, error) {
+		return resourcegroups.NewTrackedResourceProcessController(opts, transport, defaultDownstream)
+	}, opts))
 
 	// Resource providers and related types
 	err = errors.Join(err, registry.Register(ctx, datamodel.ResourceProviderResourceType, v1.OperationPut, func(opts ctrl.Options) (ctrl.Controller, error) {

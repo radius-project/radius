@@ -28,15 +28,16 @@ func NewModule(options modules.Options) *Module {
 	router.NotFound(validator.APINotFoundHandler())
 	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
-	return &Module{options: options, router: router}
+	return &Module{options: options, router: router, defaultDownstream: options.Config.Routing.DefaultDownstreamEndpoint}
 }
 
 var _ modules.Initializer = &Module{}
 
 // Module defines the module for Radius functionality.
 type Module struct {
-	options modules.Options
-	router  chi.Router
+	options           modules.Options
+	router            chi.Router
+	defaultDownstream string
 }
 
 // PlaneType returns the type of plane this module is for.
