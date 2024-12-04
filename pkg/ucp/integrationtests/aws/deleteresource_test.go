@@ -34,7 +34,7 @@ import (
 )
 
 func Test_DeleteAWSResource(t *testing.T) {
-	ucp, _, _, cloudcontrolClient, _ := initializeAWSTest(t)
+	ucp, cloudcontrolClient, _ := initializeAWSTest(t)
 
 	cloudcontrolClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.DeleteResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.DeleteResourceOutput, error) {
 		output := cloudcontrol.DeleteResourceOutput{
@@ -46,7 +46,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	deleteRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodDelete, ucp.BaseURL+testProxyRequestAWSPath, nil)
+	deleteRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodDelete, ucp.BaseURL()+testProxyRequestAWSPath, nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(deleteRequest)

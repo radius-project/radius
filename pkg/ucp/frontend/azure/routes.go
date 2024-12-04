@@ -49,7 +49,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return nil, err
 	}
 
-	baseRouter := server.NewSubrouter(m.router, m.options.PathBase)
+	baseRouter := server.NewSubrouter(m.router, m.options.Config.Server.PathBase+"/")
 
 	apiValidator := validator.APIValidator(validator.Options{
 		SpecLoader:         m.options.SpecLoader,
@@ -73,8 +73,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			// This is a scope query so we can't use the default operation.
 			ParentRouter:  planeCollectionRouter,
 			Method:        v1.OperationList,
-			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationList},
 			ResourceType:  datamodel.AzurePlaneResourceType,
+			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationList},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return &planes_ctrl.ListPlanesByType[*datamodel.AzurePlane, datamodel.AzurePlane]{
 					Operation: controller.NewOperation(opts, planeResourceOptions),
@@ -84,8 +84,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationGet,
-			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationGet},
 			ResourceType:  datamodel.AzurePlaneResourceType,
+			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationGet},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewGetResource(opts, planeResourceOptions)
 			},
@@ -93,8 +93,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationPut,
-			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationPut},
 			ResourceType:  datamodel.AzurePlaneResourceType,
+			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationPut},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewDefaultSyncPut(opts, planeResourceOptions)
 			},
@@ -102,8 +102,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationDelete,
-			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationDelete},
 			ResourceType:  datamodel.AzurePlaneResourceType,
+			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationDelete},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewDefaultSyncDelete(opts, planeResourceOptions)
 			},
@@ -171,10 +171,13 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	}
 
 	ctrlOpts := controller.Options{
-		Address:        m.options.Address,
-		PathBase:       m.options.PathBase,
+		Address:        m.options.Config.Server.Address(),
 		DatabaseClient: databaseClient,
+		PathBase:       m.options.Config.Server.PathBase,
 		StatusManager:  m.options.StatusManager,
+
+		KubeClient:   nil, // Unused by Azure module
+		ResourceType: "",  // Set dynamically
 	}
 
 	for _, h := range handlerOptions {

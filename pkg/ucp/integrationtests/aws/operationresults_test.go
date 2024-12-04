@@ -35,7 +35,7 @@ import (
 )
 
 func Test_GetOperationResults(t *testing.T) {
-	ucp, _, _, cloudcontrolClient, _ := initializeAWSTest(t)
+	ucp, cloudcontrolClient, _ := initializeAWSTest(t)
 
 	cloudcontrolClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
 		output := cloudcontrol.GetResourceRequestStatusOutput{
@@ -46,7 +46,7 @@ func Test_GetOperationResults(t *testing.T) {
 		return &output, nil
 	})
 
-	operationResultsRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
+	operationResultsRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL()+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(operationResultsRequest)

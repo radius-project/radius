@@ -76,6 +76,14 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 		return nil, err
 	}
 
+	if options.Config.Bicep.DeleteRetryCount == "" {
+		options.Config.Bicep.DeleteRetryCount = "3"
+	}
+
+	if options.Config.Bicep.DeleteRetryDelaySeconds == "" {
+		options.Config.Bicep.DeleteRetryDelaySeconds = "10"
+	}
+
 	bicepDeleteRetryCount, err := strconv.Atoi(options.Config.Bicep.DeleteRetryCount)
 	if err != nil {
 		return nil, err

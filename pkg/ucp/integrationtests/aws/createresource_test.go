@@ -35,7 +35,7 @@ import (
 )
 
 func Test_CreateAWSResource(t *testing.T) {
-	ucp, _, _, cloudcontrolClient, _ := initializeAWSTest(t)
+	ucp, cloudcontrolClient, _ := initializeAWSTest(t)
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		notfound := types.ResourceNotFoundException{
@@ -63,7 +63,7 @@ func Test_CreateAWSResource(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	createRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPut, ucp.BaseURL+testProxyRequestAWSPath, body)
+	createRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPut, ucp.BaseURL()+testProxyRequestAWSPath, body)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(createRequest)

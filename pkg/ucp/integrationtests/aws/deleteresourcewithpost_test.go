@@ -37,7 +37,7 @@ import (
 )
 
 func Test_DeleteAWSResourceWithPost(t *testing.T) {
-	ucp, _, _, cloudcontrolClient, cloudformationClient := initializeAWSTest(t)
+	ucp, cloudcontrolClient, cloudformationClient := initializeAWSTest(t)
 
 	primaryIdentifiers := map[string]any{
 		"primaryIdentifier": []any{
@@ -73,7 +73,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	deleteRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPost, ucp.BaseURL+testProxyRequestAWSCollectionPath+"/:delete", body)
+	deleteRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPost, ucp.BaseURL()+testProxyRequestAWSCollectionPath+"/:delete", body)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(deleteRequest)
