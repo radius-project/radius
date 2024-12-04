@@ -20,8 +20,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/ucp/frontend/api"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,7 +30,7 @@ const (
 )
 
 func Test_ResourceType_Lifecycle(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -64,7 +63,7 @@ func Test_ResourceType_Lifecycle(t *testing.T) {
 }
 
 func Test_ResourceType_CascadingDelete(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)

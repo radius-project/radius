@@ -17,6 +17,7 @@ package planes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	http "net/http"
 	"net/url"
@@ -28,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/proxy"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -76,14 +78,35 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 		return nil, err
 	}
 
+	// The only supported proxy-plane type is Azure.
+	knownPlaneResourceTypes := map[string]string{
+		"azure": "System.Azure/planes",
+	}
+
+	resourceType, ok := knownPlaneResourceTypes[planeType]
+	if !ok {
+		return armrpc_rest.NewBadRequestResponse(fmt.Sprintf("unknown plane type %q", planeType)), nil
+	}
+
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	plane, _, err := p.GetResource(ctx, planeID)
+
+	client, err := p.DataProvider().GetStorageClient(ctx, resourceType)
 	if err != nil {
 		return nil, err
 	}
-	if plane == nil {
+
+	obj, err := client.Get(ctx, planeID.String())
+	if errors.Is(err, &store.ErrNotFound{}) {
 		restResponse := armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID)
 		return restResponse, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	plane := &datamodel.AzurePlane{}
+	err = obj.As(plane)
+	if err != nil {
+		return nil, err
 	}
 
 	// Get the resource provider

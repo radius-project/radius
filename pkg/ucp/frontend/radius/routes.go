@@ -65,14 +65,18 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	}
 
 	ctrlOptions := controller.Options{
-		Address:       m.options.Address,
-		PathBase:      m.options.PathBase,
-		DataProvider:  m.options.DataProvider,
+		Address:       m.options.Config.Server.Address(),
+		PathBase:      m.options.Config.Server.PathBase,
+		DataProvider:  m.options.StorageProvider,
 		StatusManager: m.options.StatusManager,
+
+		KubeClient:    nil, // Unused by Radius module
+		StorageClient: nil, // Set dynamically
+		ResourceType:  "",  // Set dynamically
 	}
 
 	// NOTE: we're careful where we use the `apiValidator` middleware. It's not used for the proxy routes.
-	m.router.Route(m.options.PathBase+"/planes/radius", func(r chi.Router) {
+	m.router.Route(m.options.Config.Server.PathBase+"/planes/radius", func(r chi.Router) {
 		r.With(apiValidator).Get("/", capture(radiusPlaneListHandler(ctx, ctrlOptions)))
 		r.Route("/{planeName}", func(r chi.Router) {
 			r.With(apiValidator).Get("/", capture(radiusPlaneGetHandler(ctx, ctrlOptions)))

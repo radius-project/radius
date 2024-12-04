@@ -124,8 +124,8 @@ func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (
 }
 
 // initInMemoryClient creates a new in-memory store client.
-func initInMemoryClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
-	return inmemory.NewClient(), nil
+func initInMemoryClient(ctx context.Context, opt StorageProviderOptions, name string) (store.StorageClient, error) {
+	return inmemory.NewClient(name), nil
 }
 
 // initPostgreSQLClient creates a new PostgreSQL store client.

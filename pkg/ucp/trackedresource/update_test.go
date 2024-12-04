@@ -28,7 +28,9 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -49,8 +51,11 @@ func setupUpdater(t *testing.T) (*Updater, *store.MockStorageClient, *mockRoundT
 	ctrl := gomock.NewController(t)
 
 	storeClient := store.NewMockStorageClient(ctrl)
+	storageProvider := dataprovider.NewMockDataStorageProvider(ctrl)
+	storageProvider.EXPECT().GetStorageClient(gomock.Any(), v20231001preview.ResourceType).Return(storeClient, nil).AnyTimes()
+
 	roundTripper := &mockRoundTripper{}
-	updater := NewUpdater(storeClient, &http.Client{Transport: roundTripper})
+	updater := NewUpdater(storageProvider, &http.Client{Transport: roundTripper})
 
 	// Optimize these values for testability. We don't want to wait for retries or timeouts unless
 	// the test is specifically testing that behavior.

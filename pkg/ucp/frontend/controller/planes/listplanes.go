@@ -56,9 +56,9 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	// The plane objects are all stored separately (by plane type). We need to query each type separately.
 	planeTypes := []string{
-		"aws",
-		"azure",
-		"radius",
+		"System.AWS/planes",
+		"System.Azure/planes",
+		"System.Radius/planes",
 	}
 
 	objs := []store.Object{}
@@ -70,7 +70,12 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		}
 
 		logger.Info(fmt.Sprintf("Listing planes of type %s in scope %s", query.ResourceType, query.RootScope))
-		result, err := e.StorageClient().Query(ctx, query)
+		client, err := e.DataProvider().GetStorageClient(ctx, planeType)
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := client.Query(ctx, query)
 		if err != nil {
 			return nil, err
 		}

@@ -24,6 +24,7 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -64,12 +65,17 @@ func resourceProviderSummaryIDFromRequest(request *ctrl.Request) (resources.ID, 
 }
 
 // updateResourceProviderSummaryWithETag updates the summary with the provided function and saves it to the storage client.
-func updateResourceProviderSummaryWithETag(ctx context.Context, client store.StorageClient, summaryID resources.ID, policy summaryNotFoundPolicy, update func(summary *datamodel.ResourceProviderSummary) error) error {
+func updateResourceProviderSummaryWithETag(ctx context.Context, storageProvider dataprovider.DataStorageProvider, summaryID resources.ID, policy summaryNotFoundPolicy, update func(summary *datamodel.ResourceProviderSummary) error) error {
 	// There are a few cases here:
 	// 1. The summary does not exist and we are allowed to create it (in the resource provider).
 	// 2. The summary does not exist and we are not allowed to create it (in the child-types of resource provider).
 	// 3. Any other error case.
 	summary := &datamodel.ResourceProviderSummary{}
+
+	client, err := storageProvider.GetStorageClient(ctx, datamodel.ResourceProviderSummaryResourceType)
+	if err != nil {
+		return err
+	}
 
 	obj, err := client.Get(ctx, summaryID.String())
 	if errors.Is(err, &store.ErrNotFound{}) && policy == summaryNotFoundCreate {

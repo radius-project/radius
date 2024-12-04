@@ -28,13 +28,13 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
 // SyncResource creates an HTTP handler that can be used to test synchronous resource lifecycle operations.
-func SyncResource(t *testing.T, ts *testserver.TestServer, rootScope string) func(w http.ResponseWriter, r *http.Request) {
+func SyncResource(t *testing.T, ts *testhost.TestHost, rootScope string) func(w http.ResponseWriter, r *http.Request) {
 	rootScope = strings.ToLower(rootScope)
 
 	ctx := testcontext.New(t)
@@ -42,7 +42,7 @@ func SyncResource(t *testing.T, ts *testserver.TestServer, rootScope string) fun
 	r.Use(servicecontext.ARMRequestCtx("", v1.LocationGlobal), middleware.LowercaseURLPath)
 
 	ctrlOpts := frontend_ctrl.Options{
-		DataProvider: ts.Clients.StorageProvider,
+		DataProvider: ts.Options().StorageProvider,
 	}
 
 	err := server.ConfigureDefaultHandlers(ctx, r, rootScope, false, "System.Test", nil, ctrlOpts)
