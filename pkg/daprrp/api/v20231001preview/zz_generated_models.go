@@ -25,6 +25,97 @@ type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
 	Type *string
 }
 
+// DaprBindingProperties - Dapr binding portable resource properties
+type DaprBindingProperties struct {
+// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string
+
+// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string
+
+// The name of the Dapr component to be used as a secret store
+	Auth *DaprResourceAuth
+
+// The metadata for Dapr resource which must match the values specified in Dapr component spec
+	Metadata map[string]*MetadataValue
+
+// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *Recipe
+
+// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning
+
+// A collection of references to resources associated with the binding
+	Resources []*ResourceReference
+
+// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	Type *string
+
+// Dapr component version
+	Version *string
+
+// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string
+
+// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+
+// READ-ONLY; Status of a resource.
+	Status *ResourceStatus
+}
+
+// DaprBindingResource - Dapr binding portable resource
+type DaprBindingResource struct {
+// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+// REQUIRED; The resource-specific properties for this resource.
+	Properties *DaprBindingProperties
+
+// Resource tags.
+	Tags map[string]*string
+
+// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+// READ-ONLY; The name of the resource
+	Name *string
+
+// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// DaprBindingResourceListResult - The response of a DaprBindingResource list operation.
+type DaprBindingResourceListResult struct {
+// REQUIRED; The DaprBindingResource items on this page
+	Value []*DaprBindingResource
+
+// The link to the next page of items
+	NextLink *string
+}
+
+// DaprBindingResourceUpdate - Dapr binding portable resource
+type DaprBindingResourceUpdate struct {
+// Resource tags.
+	Tags map[string]*string
+
+// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+// READ-ONLY; The name of the resource
+	Name *string
+
+// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
 // DaprConfigurationStoreProperties - Dapr configuration store portable resource properties
 type DaprConfigurationStoreProperties struct {
 // REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to

@@ -6,19 +6,19 @@ package v20231001preview
 
 // BindingsClientBeginCreateOrUpdateOptions contains the optional parameters for the BindingsClient.BeginCreateOrUpdate method.
 type BindingsClientBeginCreateOrUpdateOptions struct {
-	// Resumes the LRO from the provided token.
+// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // BindingsClientBeginDeleteOptions contains the optional parameters for the BindingsClient.BeginDelete method.
 type BindingsClientBeginDeleteOptions struct {
-	// Resumes the LRO from the provided token.
+// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // BindingsClientBeginUpdateOptions contains the optional parameters for the BindingsClient.BeginUpdate method.
 type BindingsClientBeginUpdateOptions struct {
-	// Resumes the LRO from the provided token.
+// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
