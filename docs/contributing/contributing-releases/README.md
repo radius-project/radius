@@ -49,7 +49,7 @@ Follow the steps below to create an RC release.
    git checkout -b <USERNAME>/release-<MAJOR>.<MINOR>.0-rc1
    ```
 
-1. In your local branch, update the `versions.yaml` file to to add the new release candidate as a supported version that we would like to release. The `versions.yaml` file is a declarative version tracking file that the Radius community maintains ([Example](https://github.com/radius-project/radius/pull/6077/files)).
+1. In your local branch, update the `versions.yaml` file to add the new release candidate as a supported version that we would like to release. The `versions.yaml` file is a declarative version tracking file that the Radius community maintains ([Example](https://github.com/radius-project/radius/pull/6077/files)).
 
    Example:
    ```yaml
