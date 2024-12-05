@@ -29,10 +29,14 @@ import (
 
 	awsgo "github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
+
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
 	test "github.com/radius-project/radius/test/ucp"
 	"github.com/radius-project/radius/test/validation"
@@ -148,7 +152,14 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	// Test setup - Create AWS resource using AWS APIs
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
-	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
+	//var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
+
+	stsClient := sts.NewFromConfig(cfg)
+	roleARN := "arn:aws:iam::179022619019:role/radius_func_test"
+	creds := stscreds.NewAssumeRoleProvider(stsClient, roleARN)
+	cfg.Credentials = awsgo.NewCredentialsCache(creds)
+	var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
+
 	desiredState := map[string]any{
 		"BucketName":    resourceName,
 		"AccessControl": "Private",
@@ -188,7 +199,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	// End of test setup
 }
 
-func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudControlClient, requestToken *string) {
+func waitForSuccess(t *testing.T, ctx context.Context, awsClient ucp_aws.AWSCloudControlClient, requestToken *string) {
 	// Wait till the create is complete
 	maxWaitTime := 300 * time.Second
 	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(awsClient)
