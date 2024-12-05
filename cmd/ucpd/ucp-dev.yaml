@@ -54,6 +54,10 @@ ucp:
   direct:
     endpoint: "http://localhost:9000/apis/api.ucp.dev/v1alpha3"
 
+routing:
+  # This is the default downstream (dynamic-rp) for UDT implementations.
+  defaultDownstreamEndpoint: "http://localhost:8082"
+
 # Metrics configuration
 # port is not the same as metrics configuration in radius-self-hosted.yaml
 # so that we can run both services in debug mode.

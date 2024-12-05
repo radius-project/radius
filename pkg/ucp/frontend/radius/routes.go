@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -34,11 +35,15 @@ import (
 	resourcegroups_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/resourcegroups"
 	resourceproviders_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/resourceproviders"
 	"github.com/radius-project/radius/pkg/validator"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
 	// OperationTypeUCPRadiusProxy is the operation type for proxying Radius API calls.
 	OperationTypeUCPRadiusProxy = "UCPRADIUSPROXY"
+
+	// operationRetryAfter tells clients to poll in 1 second intervals. Our operations are fast.
+	operationRetryAfter = time.Second * 1
 )
 
 func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
@@ -46,6 +51,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		SpecLoader:         m.options.SpecLoader,
 		ResourceTypeGetter: validator.UCPResourceTypeGetter,
 	})
+
+	transport := otelhttp.NewTransport(http.DefaultTransport)
 
 	// More convienent way to capture errors
 	var err error
@@ -124,7 +131,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 				// Proxy to plane-scoped ResourceProvider APIs
 				//
 				// NOTE: DO NOT validate schema for proxy routes.
-				r.Handle("/*", capture(planeScopedProxyHandler(ctx, ctrlOptions)))
+				r.Handle("/*", capture(planeScopedProxyHandler(ctx, ctrlOptions, transport, m.defaultDownstream)))
 			})
 
 			r.Route("/resourcegroups", func(r chi.Router) {
@@ -141,7 +148,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 						// Proxy to resource-group-scoped ResourceProvider APIs
 						//
 						// NOTE: DO NOT validate schema for proxy routes.
-						r.Handle("/*", capture(resourceGroupScopedProxyHandler(ctx, ctrlOptions)))
+						r.Handle("/*", capture(resourceGroupScopedProxyHandler(ctx, ctrlOptions, transport, m.defaultDownstream)))
 					})
 				})
 
@@ -153,8 +160,9 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 }
 
 var planeResourceOptions = controller.ResourceOptions[datamodel.RadiusPlane]{
-	RequestConverter:  converter.RadiusPlaneDataModelFromVersioned,
-	ResponseConverter: converter.RadiusPlaneDataModelToVersioned,
+	RequestConverter:         converter.RadiusPlaneDataModelFromVersioned,
+	ResponseConverter:        converter.RadiusPlaneDataModelToVersioned,
+	AsyncOperationRetryAfter: operationRetryAfter,
 }
 
 var planeResourceType = "System.Radius/planes"
@@ -231,8 +239,9 @@ func resourceProviderSummaryGetHandler(ctx context.Context, ctrlOptions controll
 }
 
 var resourceProviderResourceOptions = controller.ResourceOptions[datamodel.ResourceProvider]{
-	RequestConverter:  converter.ResourceProviderDataModelFromVersioned,
-	ResponseConverter: converter.ResourceProviderDataModelToVersioned,
+	RequestConverter:         converter.ResourceProviderDataModelFromVersioned,
+	ResponseConverter:        converter.ResourceProviderDataModelToVersioned,
+	AsyncOperationRetryAfter: operationRetryAfter,
 }
 
 func resourceProviderListHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
@@ -260,8 +269,9 @@ func resourceProviderDeleteHandler(ctx context.Context, ctrlOptions controller.O
 }
 
 var resourceTypeResourceOptions = controller.ResourceOptions[datamodel.ResourceType]{
-	RequestConverter:  converter.ResourceTypeDataModelFromVersioned,
-	ResponseConverter: converter.ResourceTypeDataModelToVersioned,
+	RequestConverter:         converter.ResourceTypeDataModelFromVersioned,
+	ResponseConverter:        converter.ResourceTypeDataModelToVersioned,
+	AsyncOperationRetryAfter: operationRetryAfter,
 }
 
 func resourceTypeListHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
@@ -289,8 +299,9 @@ func resourceTypeDeleteHandler(ctx context.Context, ctrlOptions controller.Optio
 }
 
 var apiVersionResourceOptions = controller.ResourceOptions[datamodel.APIVersion]{
-	RequestConverter:  converter.APIVersionDataModelFromVersioned,
-	ResponseConverter: converter.APIVersionDataModelToVersioned,
+	RequestConverter:         converter.APIVersionDataModelFromVersioned,
+	ResponseConverter:        converter.APIVersionDataModelToVersioned,
+	AsyncOperationRetryAfter: operationRetryAfter,
 }
 
 func apiVersionListHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
@@ -318,8 +329,9 @@ func apiVersionDeleteHandler(ctx context.Context, ctrlOptions controller.Options
 }
 
 var locationResourceOptions = controller.ResourceOptions[datamodel.Location]{
-	RequestConverter:  converter.LocationDataModelFromVersioned,
-	ResponseConverter: converter.LocationDataModelToVersioned,
+	RequestConverter:         converter.LocationDataModelFromVersioned,
+	ResponseConverter:        converter.LocationDataModelToVersioned,
+	AsyncOperationRetryAfter: operationRetryAfter,
 }
 
 func locationListHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
@@ -346,12 +358,16 @@ func locationDeleteHandler(ctx context.Context, ctrlOptions controller.Options) 
 	})
 }
 
-func planeScopedProxyHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
-	return server.CreateHandler(ctx, OperationTypeUCPRadiusProxy, v1.OperationProxy, ctrlOptions, radius_ctrl.NewProxyController)
+func planeScopedProxyHandler(ctx context.Context, ctrlOptions controller.Options, transport http.RoundTripper, defaultDownstream string) (http.HandlerFunc, error) {
+	return server.CreateHandler(ctx, OperationTypeUCPRadiusProxy, v1.OperationProxy, ctrlOptions, func(o controller.Options) (controller.Controller, error) {
+		return radius_ctrl.NewProxyController(o, transport, defaultDownstream)
+	})
 }
 
-func resourceGroupScopedProxyHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
-	return server.CreateHandler(ctx, OperationTypeUCPRadiusProxy, v1.OperationProxy, ctrlOptions, radius_ctrl.NewProxyController)
+func resourceGroupScopedProxyHandler(ctx context.Context, ctrlOptions controller.Options, transport http.RoundTripper, defaultDownstream string) (http.HandlerFunc, error) {
+	return server.CreateHandler(ctx, OperationTypeUCPRadiusProxy, v1.OperationProxy, ctrlOptions, func(o controller.Options) (controller.Controller, error) {
+		return radius_ctrl.NewProxyController(o, transport, defaultDownstream)
+	})
 }
 
 func operationStatusGetHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
