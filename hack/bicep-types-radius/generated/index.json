@@ -21,17 +21,20 @@
     "Applications.Core/volumes@2023-10-01-preview": {
       "$ref": "applications/applications.core/2023-10-01-preview/types.json#/284"
     },
-    "Applications.Dapr/configurationStores@2023-10-01-preview": {
+    "Applications.Dapr/bindings@2023-10-01-preview": {
       "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/49"
     },
-    "Applications.Dapr/pubSubBrokers@2023-10-01-preview": {
+    "Applications.Dapr/configurationStores@2023-10-01-preview": {
       "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/69"
     },
+    "Applications.Dapr/pubSubBrokers@2023-10-01-preview": {
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/89"
+    },
     "Applications.Dapr/secretStores@2023-10-01-preview": {
-      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/88"
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/108"
     },
     "Applications.Dapr/stateStores@2023-10-01-preview": {
-      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/108"
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/128"
     },
     "Applications.Datastores/mongoDatabases@2023-10-01-preview": {
       "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/49"

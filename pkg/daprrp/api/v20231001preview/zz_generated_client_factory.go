@@ -34,6 +34,14 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 	}, nil
 }
 
+// NewBindingsClient creates a new instance of BindingsClient.
+func (c *ClientFactory) NewBindingsClient() *BindingsClient {
+	return &BindingsClient{
+		rootScope: c.rootScope,
+		internal: c.internal,
+	}
+}
+
 // NewConfigurationStoresClient creates a new instance of ConfigurationStoresClient.
 func (c *ClientFactory) NewConfigurationStoresClient() *ConfigurationStoresClient {
 	return &ConfigurationStoresClient{
