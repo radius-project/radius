@@ -46,7 +46,7 @@ Follow the steps below to create an RC release.
 
    ```bash
    git checkout main
-   git checkout -b <USERNAME>/<BRANCHNAME>
+   git checkout -b release/<MAJOR.MINOR>
    ```
 
 1. In your local branch, update the `versions.yaml` file to to reflect the new release candidate version that we would like to release. The `versions.yaml` file is a declarative version tracking file that the Radius community maintains ([Example](https://github.com/radius-project/radius/pull/6077/files)).
