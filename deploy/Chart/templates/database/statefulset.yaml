@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: database
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: database
+    app.kubernetes.io/name: database
+    app.kubernetes.io/part-of: radius
+spec:
+  serviceName: "database"
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: database
+  template:
+    metadata:
+      labels:
+        control-plane: database
+        app.kubernetes.io/name: database
+        app.kubernetes.io/part-of: radius
+    spec:
+      serviceAccountName: database
+      containers:
+      - name: database
+        securityContext:
+          allowPrivilegeEscalation: false
+        image: "{{ .Values.database.image }}:{{ .Values.database.tag }}"
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            memory: "{{ .Values.database.resources.requests.memory }}"
+            cpu: "{{ .Values.database.resources.requests.cpu }}"
+          limits:
+            memory: "{{ .Values.database.resources.limits.memory }}"
+            cpu: "{{ .Values.database.resources.limits.cpu }}"
+        envFrom:
+        - configMapRef:
+            name: database-secret
+        ports:
+        - containerPort: 5432
+          name: postgres
+        
+  volumeClaimTemplates:
+  - metadata:
+      name: database
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "{{ .Values.database.storageClassName }}"
+      resources:
+        requests:
+          storage: {{ .Values.database.storageSize }}
