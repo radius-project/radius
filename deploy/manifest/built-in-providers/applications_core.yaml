@@ -4,7 +4,7 @@ types:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: ["Recipes"]
+        capabilities: []
   applications:
     apiVersions:
       "2025-01-01-preview":
@@ -29,7 +29,7 @@ types:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: []
+        capabilities: ["Recipes"]
   volumes:
     apiVersions:
       "2025-01-01-preview":
