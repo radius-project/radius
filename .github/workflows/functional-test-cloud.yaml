@@ -560,6 +560,7 @@ jobs:
       #     aws-region: ${{ env.AWS_REGION }}
 
       # create kind cluster with OIDC provider.
+      
       - name: Create KinD cluster
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
