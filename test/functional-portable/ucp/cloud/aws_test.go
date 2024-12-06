@@ -33,7 +33,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
-
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
 	test "github.com/radius-project/radius/test/ucp"
 	"github.com/radius-project/radius/test/validation"
@@ -149,9 +148,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	// Test setup - Create AWS resource using AWS APIs
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
-
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
-
 	desiredState := map[string]any{
 		"BucketName":    resourceName,
 		"AccessControl": "Private",
