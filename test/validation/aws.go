@@ -25,9 +25,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/to"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
@@ -158,23 +156,12 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 
 // GetResourceIdentifier retrieves the identifier of a resource from the environment variables and the context.
 func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
-	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
-	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	sessionToken := ""
+	accountID := os.Getenv("AWS_ACCOUNT_ID")
 	region := os.Getenv("AWS_REGION")
-
-	credentialsProvider := credentials.NewStaticCredentialsProvider(accessKey, secretAccessKey, sessionToken)
-
-	stsClient := sts.New(sts.Options{
-		Region:      region,
-		Credentials: credentialsProvider,
-	})
-	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	if err != nil {
-		return "", err
+	if region == "" || accountID == "" {
+		return "", fmt.Errorf("AWS_REGION or AWS_ACCOUNT_ID is not set")
 	}
-
-	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
+	return "/planes/aws/aws/accounts/" + accountID + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 }
 
 // GetResourceTypeName retrieves the AWS resource type name from the resource identifier and context. It returns an
