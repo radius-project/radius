@@ -112,10 +112,12 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return r.reconcileDelete(ctx, &deploymentResource)
 	}
 
-	// If we get here then it means we can process the result of the operation.
 	logger.Info("Resource is in desired state.", "resourceId", deploymentResource.Spec.Id)
 
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseReady
+	deploymentResource.Status.ProviderConfig = deploymentResource.Spec.ProviderConfig
+	deploymentResource.Status.RootFileName = deploymentResource.Spec.RootFileName
+	deploymentResource.Status.Id = deploymentResource.Spec.Id
 	err = r.Client.Status().Update(ctx, &deploymentResource)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -130,23 +132,10 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentResource.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-		providerConfig := sdkclients.ProviderConfig{
-			Radius: &sdkclients.Radius{
-				Type: "radius",
-				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourceGroups/default",
-				},
-			},
-			Deployments: &sdkclients.Deployments{
-				Type: "Microsoft.Resources",
-				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourceGroups/default",
-				},
-			},
-		}
+		providerConfig := sdkclients.ProviderConfig{}
 		err := json.Unmarshal([]byte(deploymentResource.Spec.ProviderConfig), &providerConfig)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
+			return ctrl.Result{}, fmt.Errorf("failed to unmarshal providerConfig: %w", err)
 		}
 
 		poller, err := r.Radius.Resources(providerConfig.Deployments.Value.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
@@ -169,6 +158,17 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 			if clients.Is404Error(err) {
 				// The resource was not found, so we can consider it deleted.
 				logger.Info("Resource was not found.")
+
+				// At this point we've cleaned up everything. We can remove the finalizer which will allow deletion of the
+				// DeploymentResource
+				if controllerutil.RemoveFinalizer(deploymentResource, DeploymentResourceFinalizer) {
+					deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
+					deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
+					err = r.Client.Update(ctx, deploymentResource)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+				}
 				return ctrl.Result{}, nil
 			}
 
@@ -187,9 +187,25 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 		}
 
 		// If we get here, the operation was a success. Update the status and continue.
-		//
-		// NOTE: we don't need to save the status here, because we're going to continue reconciling.
 		deploymentResource.Status.Operation = nil
+		deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
+		err = r.Client.Status().Update(ctx, deploymentResource)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("Resource is deleted.")
+
+		// At this point we've cleaned up everything. We can remove the finalizer which will allow deletion of the
+		// DeploymentResource
+		if controllerutil.RemoveFinalizer(deploymentResource, DeploymentResourceFinalizer) {
+			deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
+			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
+			err = r.Client.Update(ctx, deploymentResource)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 
 		return ctrl.Result{}, nil
 	}
@@ -253,11 +269,6 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		// dont delete app until otherCount is 0
 		if otherCount > 0 {
 			logger.Info("Resource is an application, being used by another resource.", "resourceId", deploymentResource.Spec.Id)
-			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
-			err = r.Client.Status().Update(ctx, deploymentResource)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
 			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 		}
 	}
@@ -265,11 +276,6 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	if strings.Contains(deploymentResource.Spec.Id, "Applications.Core/environments") {
 		if otherCount > 0 {
 			logger.Info("Resource is an environment, being used by another resource.", "resourceId", deploymentResource.Spec.Id)
-			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
-			err = r.Client.Status().Update(ctx, deploymentResource)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
 			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 		}
 	}

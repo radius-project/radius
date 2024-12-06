@@ -17,7 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -44,14 +43,21 @@ const (
 	recipeTestControllerDelayInterval = time.Millisecond * 100
 )
 
-func createEnvironment(radius *mockRadiusClient, name string) {
-	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", name, name)
+func createEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
+	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", resourceGroup, name)
 	radius.Update(func() {
 		radius.environments[id] = v20231001preview.EnvironmentResource{
 			ID:       to.Ptr(id),
 			Name:     to.Ptr(name),
 			Location: to.Ptr(v1.LocationGlobal),
 		}
+	})
+}
+
+func deleteEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
+	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", resourceGroup, name)
+	radius.Delete(func() {
+		delete(radius.environments, id)
 	})
 }
 
@@ -193,19 +199,17 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
-func makeDeploymentTemplate(name types.NamespacedName, template map[string]any) *radappiov1alpha3.DeploymentTemplate {
-	b, err := json.Marshal(template)
-	if err != nil {
-		panic(err)
-	}
-
+func makeDeploymentTemplate(name types.NamespacedName, template string, providerConfig string, rootFileName string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
 	return &radappiov1alpha3.DeploymentTemplate{
 		ObjectMeta: ctrl.ObjectMeta{
 			Namespace: name.Namespace,
 			Name:      name.Name,
 		},
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template: string(b),
+			Template:       template,
+			ProviderConfig: providerConfig,
+			RootFileName:   rootFileName,
+			Parameters:     parameters,
 		},
 	}
 }
@@ -220,4 +224,23 @@ func makeDeploymentResource(name types.NamespacedName, id string) *radappiov1alp
 			Id: id,
 		},
 	}
+}
+
+func generateDefaultProviderConfig() string {
+	return `
+		{
+			"deployments": {
+				"type": "Microsoft.Resources",
+				"value": {
+					"scope": "/planes/radius/local/resourcegroups/default"
+				}
+			},
+			"radius": {
+				"type": "Radius",
+				"value": {
+					"scope": "/planes/radius/local/resourcegroups/default"
+				}
+			}
+		}
+	`
 }

@@ -17,13 +17,16 @@ limitations under the License.
 package reconciler
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
+	"os"
+	"path"
 	"testing"
 	"time"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,18 +38,9 @@ import (
 )
 
 const (
-	DeploymentTemplateTestWaitDuration            = time.Second * 10
-	DeploymentTemplateTestWaitInterval            = time.Second * 1
-	DeploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
-
-	TestDeploymentTemplateNamespace           = "basic"
-	TestDeploymentTemplateName                = "test-deploymenttemplate"
-	TestDeploymentTemplateRadiusResourceGroup = "default-basic"
-)
-
-var (
-	TestDeploymentTemplateScope = fmt.Sprintf("/planes/radius/local/resourcegroups/%s", TestDeploymentTemplateRadiusResourceGroup)
-	TestDeploymentTemplateID    = fmt.Sprintf("%s/providers/Microsoft.Resources/deployments/%s", TestDeploymentTemplateScope, TestDeploymentTemplateName)
+	deploymentTemplateTestWaitDuration            = time.Second * 10
+	deploymentTemplateTestWaitInterval            = time.Second * 1
+	deploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
 )
 
 func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, client.Client) {
@@ -69,12 +63,24 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, client.Client
 	require.NoError(t, err)
 
 	radius := NewMockRadiusClient()
+
+	// Set up DeploymentTemplateReconciler.
 	err = (&DeploymentTemplateReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("controller"),
+		EventRecorder: mgr.GetEventRecorderFor("deploymenttemplate-controller"),
 		Radius:        radius,
-		DelayInterval: DeploymentTemplateTestControllerDelayInterval,
+		DelayInterval: deploymentTemplateTestControllerDelayInterval,
+	}).SetupWithManager(mgr)
+	require.NoError(t, err)
+
+	// Set up DeploymentResourceReconciler.
+	err = (&DeploymentResourceReconciler{
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		EventRecorder: mgr.GetEventRecorderFor("deploymentresource-controller"),
+		Radius:        radius,
+		DelayInterval: DeploymentResourceTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
@@ -90,62 +96,64 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 	ctx := testcontext.New(t)
 	radius, client := SetupDeploymentTemplateTest(t)
 
-	name := types.NamespacedName{Namespace: "basic", Name: "test-deploymenttemplate"}
+	name := types.NamespacedName{Namespace: "deploymenttemplate-basic", Name: "test-deploymenttemplate-basic"}
 	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
 	require.NoError(t, err)
 
-	deployment := makeDeploymentTemplate(name, map[string]any{})
-	err = client.Create(ctx, deployment)
+	deploymentTemplate := makeDeploymentTemplate(name, "{}", generateDefaultProviderConfig(), "deploymenttemplate-basic.bicep", map[string]string{})
+	err = client.Create(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
-	// Deployment will be waiting for environment to be created.
-	createEnvironment(radius, "default")
-
-	// Deployment will be waiting for template to complete provisioning.
+	// Wait for the DeploymentTemplate to enter the updating state.
 	status := waitForDeploymentTemplateStateUpdating(t, client, name, nil)
 
+	// Verify the provider config is parsed correctly.
 	scope, err := ParseDeploymentScopeFromProviderConfig(status.ProviderConfig)
 	require.NoError(t, err)
-	require.Equal(t, "/planes/radius/local/resourcegroups/default-basic", scope)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default", scope)
 
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
-	// Deployment will update after operation completes
+	// DeploymentTemplate should be ready after the operation completes.
 	status = waitForDeploymentTemplateStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourcegroups/default-basic/providers/Microsoft.Resources/deployments/test-deploymenttemplate", status.Resource)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default/providers/Microsoft.Resources/deployments/test-deploymenttemplate-basic", status.Resource)
 
-	resource, err := radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
-	require.NoError(t, err)
-
+	// Verify that the Radius deployment contains the expected properties.
 	expectedProperties := map[string]any{
 		"mode":       "Incremental",
-		"parameters": map[string]map[string]any{},
-		"providerConfig": map[string]any{
-			"deployments": map[string]any{
-				"type": "Microsoft.Resources",
-				"value": map[string]any{
-					"scope": "/planes/radius/local/resourcegroups/default-basic",
+		"template":   map[string]any{},
+		"parameters": map[string]map[string]string{},
+		"providerConfig": sdkclients.ProviderConfig{
+			Radius: &sdkclients.Radius{
+				Type: "Radius",
+				Value: sdkclients.Value{
+					Scope: "/planes/radius/local/resourcegroups/default",
 				},
 			},
-			"radius": map[string]any{
-				"type": "Radius",
-				"value": map[string]any{
-					"scope": "/planes/radius/local/resourcegroups/default-basic",
+			Deployments: &sdkclients.Deployments{
+				Type: "Microsoft.Resources",
+				Value: sdkclients.Value{
+					Scope: "/planes/radius/local/resourcegroups/default",
 				},
 			},
-		}, "template": map[string]any{},
+		},
 	}
+	resource, err := radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
+	require.NoError(t, err)
 	require.Equal(t, expectedProperties, resource.Properties)
 
-	err = client.Delete(ctx, deployment)
+	// Verify that the DeploymentTemplate contains the expected properties.
+	require.Equal(t, "{}", status.Template)
+	require.Equal(t, "{}", status.Parameters)
+	require.Equal(t, string(generateDefaultProviderConfig()), status.ProviderConfig)
+	require.Equal(t, "deploymenttemplate-basic.bicep", status.RootFileName)
+
+	// Delete the DeploymentTemplate
+	err = client.Delete(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
-	// Deletion of the DeploymentTemplate is in progress.
-	status = waitForDeploymentTemplateStateDeleting(t, client, name, nil)
-	radius.CompleteOperation(status.Operation.ResumeToken, nil)
-
-	// Now deleting of the DeploymentTemplate object can complete.
-	waitForDeploymentTemplateDeleted(t, client, name)
+	// Wait for the DeploymentTemplate to be deleted.
+	waitForDeploymentTemplateStateDeleted(t, client, name)
 }
 
 func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
@@ -157,24 +165,21 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 	ctx := testcontext.New(t)
 	radius, client := SetupDeploymentTemplateTest(t)
 
-	name := types.NamespacedName{Namespace: "failure-recovery", Name: "test-failure-recovery"}
+	name := types.NamespacedName{Namespace: "deploymenttemplate-failurerecovery", Name: "test-deploymenttemplate-failurerecovery"}
 	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
 	require.NoError(t, err)
 
-	deployment := makeDeploymentTemplate(name, map[string]any{})
-	err = client.Create(ctx, deployment)
+	deploymentTemplate := makeDeploymentTemplate(name, "{}", generateDefaultProviderConfig(), "deploymenttemplate-failurerecovery.bicep", map[string]string{})
+	err = client.Create(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
-	// Deployment will be waiting for environment to be created.
-	createEnvironment(radius, "default")
-
-	// Deployment will be waiting for template to complete provisioning.
+	// Wait for the DeploymentTemplate to enter the updating state.
 	status := waitForDeploymentTemplateStateUpdating(t, client, name, nil)
 
 	// Complete the operation, but make it fail.
 	operation := status.Operation
 	radius.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		state.err = errors.New("oops")
+		state.err = errors.New("failure")
 
 		resource, ok := radius.resources[state.resourceID]
 		require.True(t, ok, "failed to find resource")
@@ -183,38 +188,115 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 		state.value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
 	})
 
-	// Deployment should (eventually) start a new provisioning operation
+	// DeploymentTemplate should (eventually) start a new provisioning operation
 	status = waitForDeploymentTemplateStateUpdating(t, client, name, operation)
 
 	// Complete the operation, successfully this time.
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 	_ = waitForDeploymentTemplateStateReady(t, client, name)
 
-	err = client.Delete(ctx, deployment)
+	err = client.Delete(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
-	// Deletion of the deployment is in progress.
-	status = waitForDeploymentTemplateStateDeleting(t, client, name, nil)
+	waitForDeploymentTemplateStateDeleted(t, client, name)
+}
 
-	// Complete the operation, but make it fail.
-	operation = status.Operation
+func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
+	ctx := testcontext.New(t)
+	radius, client := SetupDeploymentTemplateTest(t)
+
+	name := types.NamespacedName{Namespace: "deploymenttemplate-withresources", Name: "test-deploymenttemplate-withresources"}
+	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	require.NoError(t, err)
+
+	fileContent, err := os.ReadFile(path.Join("testdata", "deploymenttemplate-withresources.json"))
+	require.NoError(t, err)
+	templateMap := map[string]any{}
+	err = json.Unmarshal(fileContent, &templateMap)
+	require.NoError(t, err)
+	template, err := json.MarshalIndent(templateMap, "", "  ")
+	require.NoError(t, err)
+
+	deploymentTemplate := makeDeploymentTemplate(name, string(template), generateDefaultProviderConfig(), "deploymenttemplate-withresources.bicep", map[string]string{})
+	err = client.Create(ctx, deploymentTemplate)
+	require.NoError(t, err)
+
+	status := waitForDeploymentTemplateStateUpdating(t, client, name, nil)
+
+	// Verify the provider config is parsed correctly.
+	scope, err := ParseDeploymentScopeFromProviderConfig(status.ProviderConfig)
+	require.NoError(t, err)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default", scope)
+
 	radius.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		state.err = errors.New("oops")
-
 		resource, ok := radius.resources[state.resourceID]
 		require.True(t, ok, "failed to find resource")
 
-		resource.Properties["provisioningState"] = "Failed"
+		resource.Properties["outputResources"] = []any{
+			map[string]any{"id": "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/env"},
+		}
+		state.value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
 	})
 
-	// Deployment should (eventually) start a new deletion operation
-	status = waitForDeploymentTemplateStateDeleting(t, client, name, operation)
+	// DeploymentTemplate should be ready after the operation completes.
+	status = waitForDeploymentTemplateStateReady(t, client, name)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default/providers/Microsoft.Resources/deployments/test-deploymenttemplate-withresources", status.Resource)
 
-	// Complete the operation, successfully this time.
-	radius.CompleteOperation(status.Operation.ResumeToken, nil)
+	// DeploymentTemplate will be waiting for environment to be created.
+	createEnvironment(radius, "default", "env")
 
-	// Now deleting of the deployment object can complete.
-	waitForDeploymentTemplateDeleted(t, client, name)
+	dependencyName := types.NamespacedName{Namespace: name.Namespace, Name: "env"}
+	dependencyStatus := waitForDeploymentResourceStateReady(t, client, dependencyName)
+	require.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/env", dependencyStatus.Id)
+
+	// Verify that the Radius deployment contains the expected properties.
+	resource, err := radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
+	require.NoError(t, err)
+	expectedProperties := map[string]any{
+		"mode":       "Incremental",
+		"template":   templateMap,
+		"parameters": map[string]map[string]string{},
+		"providerConfig": sdkclients.ProviderConfig{
+			Radius: &sdkclients.Radius{
+				Type: "Radius",
+				Value: sdkclients.Value{
+					Scope: "/planes/radius/local/resourcegroups/default",
+				},
+			},
+			Deployments: &sdkclients.Deployments{
+				Type: "Microsoft.Resources",
+				Value: sdkclients.Value{
+					Scope: "/planes/radius/local/resourcegroups/default",
+				},
+			},
+		},
+		"outputResources": []any{
+			map[string]any{"id": "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/env"},
+		},
+	}
+	require.Equal(t, expectedProperties, resource.Properties)
+
+	// Verify that the DeploymentTemplate contains the expected properties.
+	require.Equal(t, string(template), status.Template)
+	require.Equal(t, "{}", status.Parameters)
+	require.Equal(t, string(generateDefaultProviderConfig()), status.ProviderConfig)
+	require.Equal(t, "deploymenttemplate-withresources.bicep", status.RootFileName)
+
+	err = client.Delete(ctx, deploymentTemplate)
+	require.NoError(t, err)
+
+	waitForDeploymentTemplateStateDeleting(t, client, name, nil)
+
+	dependencyStatus = waitForDeploymentResourceStateDeleting(t, client, dependencyName, nil)
+
+	// Delete the environment.
+	deleteEnvironment(radius, "default", "env")
+
+	// Complete the delete operation on the DeploymentResource.
+	radius.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
+
+	waitForDeploymentResourceDeleted(t, client, dependencyName)
+	waitForDeploymentTemplateStateDeleted(t, client, name)
 }
 
 func waitForDeploymentTemplateStateUpdating(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentTemplateStatus {
@@ -224,7 +306,11 @@ func waitForDeploymentTemplateStateUpdating(t *testing.T, client client.Client, 
 	status := &radappiov1alpha3.DeploymentTemplateStatus{}
 	require.EventuallyWithT(t, func(t *assert.CollectT) {
 		logger.Logf("Fetching DeploymentTemplate: %+v", name)
-		current := &radappiov1alpha3.DeploymentTemplate{}
+		current := &radappiov1alpha3.DeploymentTemplate{
+			Status: radappiov1alpha3.DeploymentTemplateStatus{
+				Phrase: radappiov1alpha3.DeploymentTemplatePhrase(radappiov1alpha3.DeploymentResourcePhraseDeleting),
+			},
+		}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
 
@@ -237,7 +323,7 @@ func waitForDeploymentTemplateStateUpdating(t *testing.T, client client.Client, 
 			assert.NotEqual(t, oldOperation, current.Status.Operation)
 		}
 
-	}, DeploymentTemplateTestWaitDuration, DeploymentTemplateTestWaitInterval, "failed to enter updating state")
+	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter updating state")
 
 	return status
 }
@@ -260,7 +346,7 @@ func waitForDeploymentTemplateStateReady(t *testing.T, client client.Client, nam
 		if assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReady, current.Status.Phrase) {
 			assert.Empty(t, current.Status.Operation)
 		}
-	}, DeploymentTemplateTestWaitDuration, DeploymentTemplateTestWaitInterval, "failed to enter updating state")
+	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter ready state")
 
 	return status
 }
@@ -280,16 +366,13 @@ func waitForDeploymentTemplateStateDeleting(t *testing.T, client client.Client, 
 		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
 		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
 
-		if assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseDeleting, current.Status.Phrase) {
-			assert.NotEmpty(t, current.Status.Operation)
-			assert.NotEqual(t, oldOperation, current.Status.Operation)
-		}
-	}, DeploymentTemplateTestWaitDuration, DeploymentTemplateTestWaitInterval, "failed to enter deleting state")
+		assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseDeleting, current.Status.Phrase)
+	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter deleting state")
 
 	return status
 }
 
-func waitForDeploymentTemplateDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
+func waitForDeploymentTemplateStateDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
 	ctx := testcontext.New(t)
 
 	logger := t
@@ -304,5 +387,5 @@ func waitForDeploymentTemplateDeleted(t *testing.T, client client.Client, name t
 		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
 		return false
 
-	}, DeploymentTemplateTestWaitDuration, DeploymentTemplateTestWaitInterval, "DeploymentTemplate still exists")
+	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "DeploymentTemplate still exists")
 }

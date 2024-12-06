@@ -125,7 +125,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		scope, err := ParseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
+		scope, err := ParseDeploymentScopeFromProviderConfig(deploymentTemplate.Status.ProviderConfig)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to parse deployment scope: %w", err)
 		}
@@ -153,6 +153,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 			deploymentTemplate.Status.Operation = nil
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+			deploymentTemplate.Status.Message = err.Error()
 			err = r.Client.Status().Update(ctx, deploymentTemplate)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -165,72 +166,74 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 		// Get outputResources from the response
 		outputResources := make([]string, 0)
-		outputResourceList := resp.Properties["outputResources"].([]any)
-		for _, resource := range outputResourceList {
-			outputResource := resource.(map[string]any)
-			outputResources = append(outputResources, outputResource["id"].(string))
-		}
+		if resp.Properties["outputResources"] != nil {
+			outputResourceList := resp.Properties["outputResources"].([]any)
+			for _, resource := range outputResourceList {
+				outputResource := resource.(map[string]any)
+				outputResources = append(outputResources, outputResource["id"].(string))
+			}
 
-		// Compare outputResources with existing DeploymentResources
-		// if is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
-		// if is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
-		// if is present in both, do nothing
+			// Compare outputResources with existing DeploymentResources
+			// if is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
+			// if is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
+			// if is present in both, do nothing
 
-		existingOutputResources := make(map[string]bool)
-		for _, resource := range deploymentTemplate.Status.OutputResources {
-			existingOutputResources[resource] = true
-		}
+			existingOutputResources := make(map[string]bool)
+			for _, resource := range deploymentTemplate.Status.OutputResources {
+				existingOutputResources[resource] = true
+			}
 
-		newOutputResources := make(map[string]bool)
-		for _, resource := range outputResources {
-			newOutputResources[resource] = true
-		}
+			newOutputResources := make(map[string]bool)
+			for _, resource := range outputResources {
+				newOutputResources[resource] = true
+			}
 
-		for _, outputResourceId := range outputResources {
-			if _, ok := existingOutputResources[outputResourceId]; !ok {
-				// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
+			for _, outputResourceId := range outputResources {
+				if _, ok := existingOutputResources[outputResourceId]; !ok {
+					// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
 
-				resourceName := generateDeploymentResourceName(outputResourceId)
-				deploymentResource := &radappiov1alpha3.DeploymentResource{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: deploymentTemplate.Namespace,
-					},
-					Spec: radappiov1alpha3.DeploymentResourceSpec{
-						Id:             outputResourceId,
-						ProviderConfig: deploymentTemplate.Spec.ProviderConfig,
-						RootFileName:   deploymentTemplate.Spec.RootFileName,
-					},
-				}
-
-				if controllerutil.AddFinalizer(deploymentResource, DeploymentResourceFinalizer) {
-					// Add the DeploymentTemplate as the owner of the DeploymentResource
-					if err := controllerutil.SetControllerReference(deploymentTemplate, deploymentResource, r.Scheme); err != nil {
-						return ctrl.Result{}, err
+					resourceName := generateDeploymentResourceName(outputResourceId)
+					deploymentResource := &radappiov1alpha3.DeploymentResource{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      resourceName,
+							Namespace: deploymentTemplate.Namespace,
+						},
+						Spec: radappiov1alpha3.DeploymentResourceSpec{
+							Id:             outputResourceId,
+							ProviderConfig: deploymentTemplate.Spec.ProviderConfig,
+							RootFileName:   deploymentTemplate.Spec.RootFileName,
+						},
 					}
 
-					// Create the DeploymentResource
-					err = r.Client.Create(ctx, deploymentResource)
-					if err != nil {
-						return ctrl.Result{}, err
+					if controllerutil.AddFinalizer(deploymentResource, DeploymentResourceFinalizer) {
+						// Add the DeploymentTemplate as the owner of the DeploymentResource
+						if err := controllerutil.SetControllerReference(deploymentTemplate, deploymentResource, r.Scheme); err != nil {
+							return ctrl.Result{}, err
+						}
+
+						// Create the DeploymentResource
+						err = r.Client.Create(ctx, deploymentResource)
+						if err != nil {
+							return ctrl.Result{}, err
+						}
 					}
 				}
 			}
-		}
 
-		for _, resource := range deploymentTemplate.Status.OutputResources {
-			if _, ok := newOutputResources[resource]; !ok {
-				// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
-				logger.Info("Deleting resource.", "resourceId", resource)
-				resourceName := generateDeploymentResourceName(resource)
-				err := r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: deploymentTemplate.Namespace,
-					},
-				})
-				if err != nil {
-					return ctrl.Result{}, err
+			for _, resource := range deploymentTemplate.Status.OutputResources {
+				if _, ok := newOutputResources[resource]; !ok {
+					// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
+					logger.Info("Deleting resource.", "resourceId", resource)
+					resourceName := generateDeploymentResourceName(resource)
+					err := r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      resourceName,
+							Namespace: deploymentTemplate.Namespace,
+						},
+					})
+					if err != nil {
+						return ctrl.Result{}, err
+					}
 				}
 			}
 		}
@@ -244,7 +247,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		providerConfig := sdkclients.ProviderConfig{}
 		err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to unmarshal template: %w", err)
+			return ctrl.Result{}, fmt.Errorf("failed to unmarshal providerConfig: %w", err)
 		}
 
 		// If we get here, the operation was a success. Update the status and continue.
@@ -255,18 +258,18 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Template = deploymentTemplate.Spec.Template
 		deploymentTemplate.Status.Parameters = string(stringifiedSpecParameters)
 		deploymentTemplate.Status.Resource = providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
-		deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
-		deploymentTemplate.Status.RootFileName = deploymentTemplate.Spec.RootFileName
 
 		return ctrl.Result{}, nil
 	}
 
 	// If we get here, this was an unknown operation kind. This is a bug in our code, or someone
 	// tampered with the status of the object. Just reset the state and move on.
-	logger.Error(fmt.Errorf("unknown operation kind: %s", deploymentTemplate.Status.Operation.OperationKind), "Unknown operation kind.")
+	errorMessage := fmt.Errorf("unknown operation kind: %s", deploymentTemplate.Status.Operation.OperationKind)
+	logger.Error(errorMessage, "Unknown operation kind.")
 
 	deploymentTemplate.Status.Operation = nil
 	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+	deploymentTemplate.Status.Message = errorMessage.Error()
 	err := r.Client.Status().Update(ctx, deploymentTemplate)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -294,10 +297,20 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	// fully processed any status changes until the async operation completes.
 	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
 
+	deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
+	deploymentTemplate.Status.RootFileName = deploymentTemplate.Spec.RootFileName
+
 	updatePoller, err := r.startPutOperationIfNeeded(ctx, deploymentTemplate)
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
 		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
+		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+		deploymentTemplate.Status.Message = err.Error()
+		err = r.Client.Status().Update(ctx, deploymentTemplate)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		return ctrl.Result{}, err
 	} else if updatePoller != nil {
 		// We've successfully started an operation. Update the status and requeue.
@@ -339,12 +352,15 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
 	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
-	deploymentTemplate.Status.Operation = nil
 	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
+	err := r.Client.Status().Update(ctx, deploymentTemplate)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// List all DeploymentResource objects in the same namespace
 	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace))
+	err = r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace))
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
@@ -425,7 +441,7 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 		return nil, nil
 	}
 
-	logger.Info("Template, parameters, rootFileName, or providerConfig have changed, starting PUT operation.")
+	logger.Info("Template, Parameters, RootFileName, or ProviderConfig have changed, starting PUT operation.")
 
 	var template any
 	err = json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
@@ -436,7 +452,7 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 	providerConfig := sdkclients.ProviderConfig{}
 	err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal template: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal providerConfig: %w", err)
 	}
 	if providerConfig.Deployments == nil {
 		return nil, fmt.Errorf("providerConfig.Deployments is nil")

@@ -70,7 +70,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, client.Client
 	err = (&DeploymentResourceReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("DeploymentResource-controller"),
+		EventRecorder: mgr.GetEventRecorderFor("deploymentresource-controller"),
 		Radius:        radius,
 		DelayInterval: DeploymentResourceTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
@@ -86,7 +86,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, client.Client
 
 func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
 	ctx := testcontext.New(t)
-	radius, client := SetupDeploymentResourceTest(t)
+	_, client := SetupDeploymentResourceTest(t)
 
 	name := types.NamespacedName{Namespace: TestDeploymentResourceNamespace, Name: TestDeploymentResourceName}
 	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
@@ -102,10 +102,6 @@ func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
 
 	err = client.Delete(ctx, deployment)
 	require.NoError(t, err)
-
-	// Deletion of the DeploymentResource is in progress.
-	status = waitForDeploymentResourceStateDeleting(t, client, name, nil)
-	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
 	// Now deleting of the DeploymentResource object can complete.
 	waitForDeploymentResourceDeleted(t, client, name)
@@ -124,12 +120,10 @@ func waitForDeploymentResourceStateReady(t *testing.T, client client.Client, nam
 
 		status = &current.Status
 		logger.Logf("DeploymentResource.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
 		if assert.Equal(t, radappiov1alpha3.DeploymentResourcePhraseReady, current.Status.Phrase) {
 			assert.Empty(t, current.Status.Operation)
 		}
-	}, DeploymentResourceTestWaitDuration, DeploymentResourceTestWaitInterval, "failed to enter updating state")
+	}, DeploymentResourceTestWaitDuration, DeploymentResourceTestWaitInterval, "failed to enter ready state")
 
 	return status
 }
