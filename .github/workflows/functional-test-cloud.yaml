@@ -661,7 +661,7 @@ jobs:
             --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
             --set global.azureWorkloadIdentity.enabled=true \
-            --set global.aws.irsa.enabled=true 
+          # --set global.aws.irsa.enabled=true 
           
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
