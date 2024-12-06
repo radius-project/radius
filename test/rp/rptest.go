@@ -25,10 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -188,12 +185,12 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
-	//var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
+	/*var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 
 	stsClient := sts.NewFromConfig(cfg)
 	roleARN := "arn:aws:iam::179022619019:role/radius_func_test"
 	creds := stscreds.NewAssumeRoleProvider(stsClient, roleARN)
-	cfg.Credentials = aws.NewCredentialsCache(creds)
+	cfg.Credentials = aws.NewCredentialsCache(creds)*/
 	var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 
 	return RPTestOptions{

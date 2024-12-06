@@ -29,9 +29,7 @@ import (
 
 	awsgo "github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
@@ -152,12 +150,12 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	// Test setup - Create AWS resource using AWS APIs
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
-	//var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
+	/* var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 
 	stsClient := sts.NewFromConfig(cfg)
 	roleARN := "arn:aws:iam::179022619019:role/radius_func_test"
 	creds := stscreds.NewAssumeRoleProvider(stsClient, roleARN)
-	cfg.Credentials = awsgo.NewCredentialsCache(creds)
+	cfg.Credentials = awsgo.NewCredentialsCache(creds)*/
 	var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 
 	desiredState := map[string]any{

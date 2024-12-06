@@ -550,14 +550,14 @@ jobs:
         with:
           version: ${{ env.HELM_VER }}
       
-      # this step is to configure the aws credentials for github actions. 
-      # The role-to-assume is the role that the github action will assume to execute aws commands.
-      # - name: configure aws credentials using assumed role
-      #   uses: aws-actions/configure-aws-credentials@v1.7.0
-      #   with:
-      #     role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/radius_func_test #TODO: change to reflect ARN of the role to assume craeted in functional test account
-      #     role-session-name: GitHub_to_AWS_via_FederatedOIDC
-      #     aws-region: ${{ env.AWS_REGION }}
+      #this step is to configure the aws credentials for github actions. 
+      #The role-to-assume is the role that the github action will assume to execute aws commands.
+      - name: configure aws credentials using assumed role
+        uses: aws-actions/configure-aws-credentials@v1.7.0
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/radius_func_test #TODO: change to reflect ARN of the role to assume craeted in functional test account
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
 
       # create kind cluster with OIDC provider.
       
