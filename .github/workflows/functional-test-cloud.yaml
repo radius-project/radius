@@ -555,7 +555,7 @@ jobs:
       - name: configure aws credentials using assumed role
         uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
-          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/radius_func_test
+          role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
 
