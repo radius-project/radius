@@ -35,6 +35,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 const (
@@ -59,6 +61,14 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, client.Client
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
+		Controller: crconfig.Controller{
+			SkipNameValidation: boolPtr(true),
+		},
+
+		// Suppress metrics in tests to avoid conflicts.
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
 	})
 	require.NoError(t, err)
 

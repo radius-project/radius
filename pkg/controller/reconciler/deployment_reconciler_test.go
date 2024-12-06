@@ -167,7 +167,7 @@ func Test_DeploymentReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 	annotations = waitForStateReady(t, client, name)
 	require.Equal(t, "/planes/radius/local/resourcegroups/default-deployment-change-envapp/providers/Applications.Core/containers/test-deployment-change-envapp", annotations.Status.Container)
 
-	createEnvironment(radius, "new-environment", "default")
+	createEnvironment(radius, "new-environment", "new-environment")
 
 	// Now update the deployment to change the environment and application.
 	err = client.Get(ctx, name, deployment)
