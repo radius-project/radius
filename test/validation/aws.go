@@ -161,7 +161,6 @@ func GetResourceIdentifier(ctx context.Context, resourceType string, name string
 	if region == "" || accountID == "" {
 		return "", fmt.Errorf("AWS_REGION or AWS_ACCOUNT_ID is not set")
 	}
-	//return "/planes/aws/aws/accounts/" + "179022619019" + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 	return "/planes/aws/aws/accounts/" + accountID + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 }
 

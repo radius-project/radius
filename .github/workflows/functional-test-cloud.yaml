@@ -550,17 +550,16 @@ jobs:
         with:
           version: ${{ env.HELM_VER }}
       
-      #this step is to configure the aws credentials for github actions. 
-      #The role-to-assume is the role that the github action will assume to execute aws commands.
+      # The role-to-assume is the role that the github action will assume to execute aws commands and 
+      # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
         uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
-          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/radius_func_test #TODO: change to reflect ARN of the role to assume craeted in functional test account
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/radius_func_test
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
 
-      # create kind cluster with OIDC provider.
-      
+      # create kind cluster with OIDC provider.      
       - name: Create KinD cluster
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
@@ -571,10 +570,6 @@ jobs:
           # AZURE_OIDC_ISSUER_PRIVATE_KEY
           eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          echo "oidc issuer for cluster"
-          echo $AZURE_OIDC_ISSUER
-         
-          
           AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
@@ -722,13 +717,6 @@ jobs:
             }
           }
           EOF
-
-      # - name: configure aws credentials using assumed role
-      #   uses: aws-actions/configure-aws-credentials@v1.7.0
-      #   with: 
-      #     role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/radius_func_test #TODO: change to reflect ARN of the role to assume craeted in functional test account
-      #     role-session-name: GitHub_to_AWS_via_FederatedOIDC
-      #     aws-region: ${{ env.AWS_REGION }}
 
       - name: Run functional tests
         run: |
