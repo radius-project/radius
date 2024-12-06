@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -105,7 +105,7 @@ type RPTestOptions struct {
 
 	CustomAction     *clientv2.CustomActionClient
 	ManagementClient clients.ApplicationsManagementClient
-	AWSClient        ucp_aws.AWSCloudControlClient
+	AWSClient        aws.AWSCloudControlClient
 
 	// Connection gets access to the Radius connection which can be used to create API clients.
 	Connection sdk.Connection
@@ -185,13 +185,8 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
-	/*var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 
-	stsClient := sts.NewFromConfig(cfg)
-	roleARN := "arn:aws:iam::179022619019:role/radius_func_test"
-	creds := stscreds.NewAssumeRoleProvider(stsClient, roleARN)
-	cfg.Credentials = aws.NewCredentialsCache(creds)*/
-	var awsClient ucp_aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
+	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 
 	return RPTestOptions{
 		TestOptions:      test.NewTestOptions(t),
