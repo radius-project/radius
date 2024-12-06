@@ -48,4 +48,11 @@ const (
 	AsyncCreateOrUpdateDaprConfigurationStoreTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprConfigurationStoreTimeout is the timeout for async delete dapr configuration store
 	AsyncDeleteDaprConfigurationStoreTimeout = time.Duration(60) * time.Minute
+
+	// DaprBindingsResourceType represents the resource type for Dapr configuration store.
+	DaprBindingsResourceType = "Applications.Dapr/bindings"
+	// AsyncCreateOrUpdateDaprBindingTimeout is the timeout for async create or update Dapr Configuration Store
+	AsyncCreateOrUpdateDaprBindingTimeout = time.Duration(60) * time.Minute
+	// AsyncDeleteDaprBindingTimeout is the timeout for async delete dapr configuration store
+	AsyncDeleteDaprBindingTimeout = time.Duration(60) * time.Minute
 )
