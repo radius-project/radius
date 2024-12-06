@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -44,6 +43,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/step"
@@ -185,7 +185,6 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
-
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 
 	return RPTestOptions{
