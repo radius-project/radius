@@ -35,8 +35,6 @@ var (
 )
 
 func Test_summaryModel(t *testing.T) {
-	t.Skip("Test is flaky. See: https://github.com/radius-project/radius/issues/8044")
-
 	waitForRender := func(t *testing.T, reader io.Reader) string {
 		normalized := ""
 		teatest.WaitFor(t, reader, func(bts []byte) bool {
@@ -50,6 +48,11 @@ func Test_summaryModel(t *testing.T) {
 	waitForEmpty := func(t *testing.T, reader io.Reader) string {
 		normalized := ""
 		teatest.WaitFor(t, reader, func(bts []byte) bool {
+			if bts == nil {
+				t.Log("Received nil bytes; continuing to wait")
+				return false
+			}
+
 			normalized = stripansi.Strip(strings.ReplaceAll(string(bts), "\r\n", "\n"))
 			return !strings.Contains(normalized, strings.Trim(summaryFooter, "\n"))
 		}, teatest.WithDuration(waitTimeout))

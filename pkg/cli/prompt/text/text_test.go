@@ -122,35 +122,52 @@ func Test_E2E(t *testing.T) {
 	})
 
 	t.Run("confirm default", func(t *testing.T) {
-		t.Skip("This test is intermittently failing in linux_amd64: https://github.com/radius-project/radius/issues/7670")
 		tm := setup(t)
-
 		tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+		tm.WaitFinished(t, teatest.WithFinalTimeout(waitTimeout))
 
-		require.True(t, tm.FinalModel(t).(Model).valueEntered)
-		require.False(t, tm.FinalModel(t).(Model).Quitting)
-		require.Equal(t, defaultText, tm.FinalModel(t).(Model).GetValue())
+		finalModel := tm.FinalModel(t)
+		require.NotNil(t, finalModel, "Final model should not be nil")
+
+		model, ok := finalModel.(Model)
+		require.True(t, ok, "Final model should be of type Model")
+
+		require.True(t, model.valueEntered)
+		require.False(t, model.Quitting)
+		require.Equal(t, defaultText, model.GetValue())
 	})
 
 	t.Run("confirm value", func(t *testing.T) {
 		const userInputText = "abcd"
 		tm := setup(t)
-
 		tm.Type(userInputText)
 		tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+		tm.WaitFinished(t, teatest.WithFinalTimeout(waitTimeout))
 
-		require.True(t, tm.FinalModel(t).(Model).valueEntered)
-		require.False(t, tm.FinalModel(t).(Model).Quitting)
-		require.Equal(t, userInputText, tm.FinalModel(t).(Model).GetValue())
+		finalModel := tm.FinalModel(t)
+		require.NotNil(t, finalModel, "Final model should not be nil")
+
+		model, ok := finalModel.(Model)
+		require.True(t, ok, "Final model should be of type Model")
+
+		require.True(t, model.valueEntered)
+		require.False(t, model.Quitting)
+		require.Equal(t, userInputText, model.GetValue())
 	})
 
 	t.Run("cancel", func(t *testing.T) {
 		tm := setup(t)
-
 		tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC})
+		tm.WaitFinished(t, teatest.WithFinalTimeout(waitTimeout))
 
-		require.False(t, tm.FinalModel(t).(Model).valueEntered)
-		require.True(t, tm.FinalModel(t).(Model).Quitting)
-		require.Equal(t, defaultText, tm.FinalModel(t).(Model).GetValue())
+		finalModel := tm.FinalModel(t)
+		require.NotNil(t, finalModel, "Final model should not be nil")
+
+		model, ok := finalModel.(Model)
+		require.True(t, ok, "Final model should be of type Model")
+
+		require.False(t, model.valueEntered)
+		require.True(t, model.Quitting)
+		require.Equal(t, defaultText, model.GetValue())
 	})
 }
