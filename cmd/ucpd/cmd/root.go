@@ -29,8 +29,8 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
-	"github.com/radius-project/radius/pkg/ucp/registermanifests"
 	"github.com/radius-project/radius/pkg/ucp/server"
+	"github.com/radius-project/radius/pkg/ucp/ucpclient"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -75,10 +75,16 @@ var rootCmd = &cobra.Command{
 			}
 		*/
 
+		// Discuss if there is a better way to check if the server is listening..
 		// Start RegisterManifests in a goroutine after 15 seconds
 		go func() {
 			time.Sleep(15 * time.Second)
-			if err := registermanifests.RegisterManifests(cmd.Context(), &options); err != nil {
+			// Register manifests
+			ucpclient, err := ucpclient.NewUCPClient(&options)
+			if err != nil {
+				logger.Error(err, "Failed to create UCP client")
+			}
+			if err := ucpclient.RegisterManifests(cmd.Context()); err != nil {
 				logger.Error(err, "Failed to register manifests")
 			}
 		}()

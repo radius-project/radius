@@ -1,0 +1,12 @@
+name: Applications.Dapr
+types:
+  configurationStores:
+    apiVersions:
+      "2025-01-01-preview":
+        schema: {}
+        capabilities: ["Recipes"]
+  pubSubBrokers:
+    apiVersions:
+      "2025-01-01-preview":
+        schema: {}
+        capabilities: ["Recipes"]
