@@ -70,7 +70,9 @@ func (client *ResourceTypesClient) BeginCreateOrUpdate(ctx context.Context, plan
 // Generated from API version 2023-10-01-preview
 func (client *ResourceTypesClient) createOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource ResourceTypeResource, options *ResourceTypesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ResourceTypesClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
+	const operationName = "ResourceTypesClient.BeginCreateOrUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, resourceProviderName, resourceTypeName, resource, options)
 	if err != nil {
@@ -149,7 +151,9 @@ func (client *ResourceTypesClient) BeginDelete(ctx context.Context, planeName st
 // Generated from API version 2023-10-01-preview
 func (client *ResourceTypesClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ResourceTypesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ResourceTypesClient.BeginDelete", client.internal.Tracer(), nil)
+	const operationName = "ResourceTypesClient.BeginDelete"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceProviderName, resourceTypeName, options)
 	if err != nil {
@@ -202,7 +206,9 @@ func (client *ResourceTypesClient) deleteCreateRequest(ctx context.Context, plan
 //   - options - ResourceTypesClientGetOptions contains the optional parameters for the ResourceTypesClient.Get method.
 func (client *ResourceTypesClient) Get(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ResourceTypesClientGetOptions) (ResourceTypesClientGetResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ResourceTypesClient.Get", client.internal.Tracer(), nil)
+	const operationName = "ResourceTypesClient.Get"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, planeName, resourceProviderName, resourceTypeName, options)
 	if err != nil {
@@ -267,6 +273,7 @@ func (client *ResourceTypesClient) NewListPager(planeName string, resourceProvid
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ResourceTypesClientListResponse) (ResourceTypesClientListResponse, error) {
+		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceTypesClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
