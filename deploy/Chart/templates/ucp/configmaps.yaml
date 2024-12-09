@@ -60,6 +60,9 @@ data:
     routing:
       defaultDownstreamEndpoint: "http://dynamic-rp.radius-sytem:8082"
 
+    manifests:
+      manifestDirectory: "deploy/manifest/built-in-providers"
+
     metricsProvider:
       enabled: true
       serviceName: "ucp"
