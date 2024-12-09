@@ -1,0 +1,12 @@
+name: Applications.Core
+types:
+  containers:
+    apiVersions:
+      "2025-01-01-preview":
+        schema: {}
+        capabilities: []
+  applications:
+    apiVersions:
+      "2025-01-01-preview":
+        schema: {}
+        capabilities: []
