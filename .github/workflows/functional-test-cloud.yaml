@@ -74,7 +74,7 @@ env:
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources
-  AWS_REGION: "us-west-2"
+  AWS_REGION: "us-west-1"
   # The AWS account ID
   AWS_ACCOUNT_ID: "${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
   # The current GitHub action link
