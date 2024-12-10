@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -35,11 +36,15 @@ import (
 func Test_ListPlanesByType(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
+
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+
+	mockStorageProvider := dataprovider.NewMockDataStorageProvider(mockCtrl)
+	mockStorageProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(mockStorageClient, nil).AnyTimes()
 
 	ctrl := &ListPlanesByType[*datamodel.RadiusPlane, datamodel.RadiusPlane]{
 		Operation: armrpc_controller.NewOperation[*datamodel.RadiusPlane, datamodel.RadiusPlane](
-			armrpc_controller.Options{StorageClient: mockStorageClient},
+			armrpc_controller.Options{DataProvider: mockStorageProvider},
 			armrpc_controller.ResourceOptions[datamodel.RadiusPlane]{
 				ResponseConverter: converter.RadiusPlaneDataModelToVersioned,
 			}),
@@ -50,7 +55,7 @@ func Test_ListPlanesByType(t *testing.T) {
 	query := store.Query{
 		RootScope:    "/planes",
 		IsScopeQuery: true,
-		ResourceType: "radius",
+		ResourceType: "System.Radius/planes",
 	}
 
 	testPlaneId := "/planes/radius/local"

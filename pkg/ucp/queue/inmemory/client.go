@@ -44,10 +44,15 @@ func New(queue *InmemQueue) *Client {
 
 // New creates the named in-memory queue Client instance.
 func NewNamedQueue(name string) *Client {
-	inmemq, _ := namedQueue.LoadOrStore(name, NewInMemQueue(messageLockDuration))
+	inmemq, _ := namedQueue.LoadOrStore(name, NewInMemQueue(name, messageLockDuration))
 	return &Client{
 		queue: inmemq.(*InmemQueue),
 	}
+}
+
+// String returns the name of the queue for diagnostics purposes.
+func (c *Client) String() string {
+	return c.queue.name
 }
 
 // Enqueue enqueues message to the in-memory queue.

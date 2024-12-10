@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -34,9 +35,13 @@ import (
 func Test_ListPlanes(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
+
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
-	planesCtrl, err := NewListPlanes(armrpc_controller.Options{StorageClient: mockStorageClient})
+	mockStorageProvider := dataprovider.NewMockDataStorageProvider(mockCtrl)
+	mockStorageProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(mockStorageClient, nil).AnyTimes()
+
+	planesCtrl, err := NewListPlanes(armrpc_controller.Options{DataProvider: mockStorageProvider})
 	require.NoError(t, err)
 
 	url := "/planes?api-version=2023-10-01-preview"
@@ -59,7 +64,7 @@ func Test_ListPlanes(t *testing.T) {
 
 	mockStorageClient.EXPECT().Query(gomock.Any(), store.Query{
 		RootScope:    "/planes",
-		ResourceType: "aws",
+		ResourceType: "System.AWS/planes",
 		IsScopeQuery: true,
 	}).Return(&store.ObjectQueryResult{
 		Items: []store.Object{
@@ -72,13 +77,13 @@ func Test_ListPlanes(t *testing.T) {
 
 	mockStorageClient.EXPECT().Query(gomock.Any(), store.Query{
 		RootScope:    "/planes",
-		ResourceType: "azure",
+		ResourceType: "System.Azure/planes",
 		IsScopeQuery: true,
 	}).Return(&store.ObjectQueryResult{}, nil)
 
 	mockStorageClient.EXPECT().Query(gomock.Any(), store.Query{
 		RootScope:    "/planes",
-		ResourceType: "radius",
+		ResourceType: "System.Radius/planes",
 		IsScopeQuery: true,
 	}).Return(&store.ObjectQueryResult{}, nil)
 

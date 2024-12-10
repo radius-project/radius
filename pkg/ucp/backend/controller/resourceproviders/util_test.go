@@ -22,6 +22,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
@@ -151,7 +152,9 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
+			storageProvider := dataprovider.NewMockDataStorageProvider(ctrl)
 			client := store.NewMockStorageClient(ctrl)
+			storageProvider.EXPECT().GetStorageClient(gomock.Any(), datamodel.ResourceProviderSummaryResourceType).Return(client, nil)
 
 			expectedETag := ""
 			if tt.existing == nil {
@@ -192,7 +195,7 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 				})
 			}
 
-			err := updateResourceProviderSummaryWithETag(context.Background(), client, tt.summaryID, tt.policy, tt.updateFunc)
+			err := updateResourceProviderSummaryWithETag(context.Background(), storageProvider, tt.summaryID, tt.policy, tt.updateFunc)
 			if tt.expectedErr {
 				assert.Error(t, err)
 			} else {

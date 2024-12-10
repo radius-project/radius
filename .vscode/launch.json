@@ -58,12 +58,7 @@
       "args": [
         "--config-file",
         "${workspaceFolder}/cmd/ucpd/ucp-dev.yaml"
-      ],
-      "env": {
-        "BASE_PATH": "/apis/api.ucp.dev/v1alpha3",
-        "PORT": "9000",
-        "UCP_CONFIG": "${workspaceFolder}/cmd/ucpd/ucp-self-hosted-dev.yaml"
-      }
+      ]
     },
     {
       "name": "Launch Controller",

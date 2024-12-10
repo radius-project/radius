@@ -25,6 +25,7 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/store"
@@ -222,7 +223,12 @@ func (c *ResourceProviderDeleteController) deleteSummary(ctx context.Context, re
 		return err
 	}
 
-	err = c.StorageClient().Delete(ctx, summaryID.String())
+	client, err := c.DataProvider().GetStorageClient(ctx, datamodel.ResourceProviderSummaryResourceType)
+	if err != nil {
+		return err
+	}
+
+	err = client.Delete(ctx, summaryID.String())
 	if errors.Is(err, &store.ErrNotFound{}) {
 		// It's OK if the summary was already deleted.
 		return nil

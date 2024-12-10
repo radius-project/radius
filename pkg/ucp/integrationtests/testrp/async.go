@@ -32,8 +32,8 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
 	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +50,7 @@ func (b *BackendFuncController) Run(ctx context.Context, request *backend_ctrl.R
 }
 
 // AsyncResource creates an HTTP handler that can be used to test asynchronous resource lifecycle operations.
-func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, put BackendFunc, delete BackendFunc) func(w http.ResponseWriter, r *http.Request) {
+func AsyncResource(t *testing.T, ts *testhost.TestHost, rootScope string, put BackendFunc, delete BackendFunc) func(w http.ResponseWriter, r *http.Request) {
 	rootScope = strings.ToLower(rootScope)
 
 	ctx := testcontext.New(t)
@@ -60,7 +60,7 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	resourceType := "System.Test/testResources"
 
 	// We can share the storage provider with the test server.
-	_, err := ts.Clients.StorageProvider.GetStorageClient(ctx, "System.Test/operationStatuses")
+	_, err := ts.Options().StorageProvider.GetStorageClient(ctx, "System.Test/operationStatuses")
 	require.NoError(t, err)
 
 	// Do not share the queue.
@@ -73,13 +73,13 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	queueClient, err := queueProvider.GetClient(ctx)
 	require.NoError(t, err)
 
-	statusManager := statusmanager.New(ts.Clients.StorageProvider, queueClient, v1.LocationGlobal)
+	statusManager := statusmanager.New(ts.Options().StorageProvider, queueClient, v1.LocationGlobal)
 
 	backendOpts := backend_ctrl.Options{
-		DataProvider: ts.Clients.StorageProvider,
+		DataProvider: ts.Options().StorageProvider,
 	}
 
-	registry := worker.NewControllerRegistry(ts.Clients.StorageProvider)
+	registry := worker.NewControllerRegistry(ts.Options().StorageProvider)
 	err = registry.Register(ctx, resourceType, v1.OperationPut, func(opts backend_ctrl.Options) (backend_ctrl.Controller, error) {
 		return &BackendFuncController{BaseController: backend_ctrl.NewBaseAsyncController(opts), Func: put}, nil
 	}, backendOpts)
@@ -100,7 +100,7 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	}()
 
 	frontendOpts := frontend_ctrl.Options{
-		DataProvider:  ts.Clients.StorageProvider,
+		DataProvider:  ts.Options().StorageProvider,
 		StatusManager: statusManager,
 	}
 

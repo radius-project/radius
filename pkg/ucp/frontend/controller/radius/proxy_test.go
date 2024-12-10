@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
@@ -46,13 +47,16 @@ const (
 
 func createController(t *testing.T) (*ProxyController, *store.MockStorageClient, *mockUpdater, *mockRoundTripper, *statusmanager.MockStatusManager) {
 	ctrl := gomock.NewController(t)
+	storageProvider := dataprovider.NewMockDataStorageProvider(ctrl)
 	storageClient := store.NewMockStorageClient(ctrl)
+	storageProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(storageClient, nil).AnyTimes()
+
 	statusManager := statusmanager.NewMockStatusManager(ctrl)
 
 	roundTripper := mockRoundTripper{}
 
 	p, err := NewProxyController(
-		controller.Options{StorageClient: storageClient, StatusManager: statusManager},
+		controller.Options{DataProvider: storageProvider, StorageClient: storageClient, StatusManager: statusManager},
 		&roundTripper,
 		"http://localhost:1234")
 	require.NoError(t, err)

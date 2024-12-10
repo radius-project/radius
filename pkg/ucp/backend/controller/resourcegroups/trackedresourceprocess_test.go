@@ -24,6 +24,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
@@ -35,9 +36,12 @@ import (
 func Test_Run(t *testing.T) {
 	setup := func(t *testing.T) (*TrackedResourceProcessController, *mockUpdater, *store.MockStorageClient) {
 		ctrl := gomock.NewController(t)
-		storageClient := store.NewMockStorageClient(ctrl)
 
-		pc, err := NewTrackedResourceProcessController(controller.Options{StorageClient: storageClient}, nil, nil)
+		storageProvider := dataprovider.NewMockDataStorageProvider(ctrl)
+		storageClient := store.NewMockStorageClient(ctrl)
+		storageProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(storageClient, nil).AnyTimes()
+
+		pc, err := NewTrackedResourceProcessController(controller.Options{DataProvider: storageProvider, StorageClient: storageClient}, nil, nil)
 		require.NoError(t, err)
 
 		updater := mockUpdater{}
