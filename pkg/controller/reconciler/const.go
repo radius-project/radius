@@ -47,4 +47,13 @@ const (
 
 	// RecipeFinalizer is the name of the finalizer added to Recipes.
 	RecipeFinalizer = "radapp.io/recipe-finalizer"
+
+	// DeploymentTemplateFinalizer is the name of the finalizer added to DeploymentTemplates.
+	DeploymentTemplateFinalizer = "radapp.io/deployment-template-finalizer"
+
+	// DeploymentResourceFinalizer is the name of the finalizer added to DeploymentResources.
+	DeploymentResourceFinalizer = "radapp.io/deployment-resource-finalizer"
+
+	// RadiusSystemNamespace is the name of the system namespace where Radius resources are stored.
+	RadiusSystemNamespace = "radius-system"
 )

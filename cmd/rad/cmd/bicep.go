@@ -22,8 +22,8 @@ import (
 
 var bicepCmd = &cobra.Command{
 	Use:   "bicep",
-	Short: "Manage bicep compiler",
-	Long:  `Manage bicep compiler used by Radius`,
+	Short: "Handle bicep-specific tasks for Radius",
+	Long:  `Handle bicep-specific tasks for Radius`,
 }
 
 func init() {
