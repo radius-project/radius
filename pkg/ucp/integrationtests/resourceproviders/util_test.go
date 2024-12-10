@@ -16,7 +16,9 @@ limitations under the License.
 
 package resourceproviders
 
-import "github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+import (
+	"github.com/radius-project/radius/pkg/ucp/testhost"
+)
 
 const (
 	radiusAPIVersion           = "?api-version=2023-10-01-preview"
@@ -56,7 +58,7 @@ const (
 	resourceProviderSummaryURL           = "/planes/radius/local/providers/" + resourceProviderNamespace + radiusAPIVersion
 )
 
-func createRadiusPlane(server *testserver.TestServer) {
+func createRadiusPlane(server *testhost.TestHost) {
 	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)
 	response.WaitForOperationComplete(nil)
 
@@ -64,7 +66,7 @@ func createRadiusPlane(server *testserver.TestServer) {
 	response.EqualsFixture(200, radiusPlaneResponseFixture)
 }
 
-func createResourceProvider(server *testserver.TestServer) {
+func createResourceProvider(server *testhost.TestHost) {
 	response := server.MakeFixtureRequest("PUT", resourceProviderURL, resourceProviderRequestFixture)
 	response.WaitForOperationComplete(nil)
 
@@ -72,7 +74,7 @@ func createResourceProvider(server *testserver.TestServer) {
 	response.EqualsFixture(200, resourceProviderResponseFixture)
 }
 
-func deleteResourceProvider(server *testserver.TestServer) {
+func deleteResourceProvider(server *testhost.TestHost) {
 	response := server.MakeRequest("DELETE", resourceProviderURL, nil)
 	response.WaitForOperationComplete(nil)
 
@@ -80,7 +82,7 @@ func deleteResourceProvider(server *testserver.TestServer) {
 	response.EqualsStatusCode(404)
 }
 
-func createResourceType(server *testserver.TestServer) {
+func createResourceType(server *testhost.TestHost) {
 	response := server.MakeFixtureRequest("PUT", resourceTypeURL, resourceTypeRequestFixture)
 	response.WaitForOperationComplete(nil)
 
@@ -88,7 +90,7 @@ func createResourceType(server *testserver.TestServer) {
 	response.EqualsFixture(200, resourceTypeResponseFixture)
 }
 
-func deleteResourceType(server *testserver.TestServer) {
+func deleteResourceType(server *testhost.TestHost) {
 	response := server.MakeRequest("DELETE", resourceTypeURL, nil)
 	response.WaitForOperationComplete(nil)
 
@@ -96,7 +98,7 @@ func deleteResourceType(server *testserver.TestServer) {
 	response.EqualsStatusCode(404)
 }
 
-func createAPIVersion(server *testserver.TestServer) {
+func createAPIVersion(server *testhost.TestHost) {
 	response := server.MakeFixtureRequest("PUT", apiVersionURL, apiVersionRequestFixture)
 	response.WaitForOperationComplete(nil)
 
@@ -104,7 +106,7 @@ func createAPIVersion(server *testserver.TestServer) {
 	response.EqualsFixture(200, apiVersionResponseFixture)
 }
 
-func deleteAPIVersion(server *testserver.TestServer) {
+func deleteAPIVersion(server *testhost.TestHost) {
 	response := server.MakeRequest("DELETE", apiVersionURL, nil)
 	response.WaitForOperationComplete(nil)
 
@@ -112,7 +114,7 @@ func deleteAPIVersion(server *testserver.TestServer) {
 	response.EqualsStatusCode(404)
 }
 
-func createLocation(server *testserver.TestServer) {
+func createLocation(server *testhost.TestHost) {
 	response := server.MakeFixtureRequest("PUT", locationURL, locationRequestFixture)
 	response.WaitForOperationComplete(nil)
 
@@ -120,7 +122,7 @@ func createLocation(server *testserver.TestServer) {
 	response.EqualsFixture(200, locationResponseFixture)
 }
 
-func deleteLocation(server *testserver.TestServer) {
+func deleteLocation(server *testhost.TestHost) {
 	response := server.MakeRequest("DELETE", locationURL, nil)
 	response.WaitForOperationComplete(nil)
 

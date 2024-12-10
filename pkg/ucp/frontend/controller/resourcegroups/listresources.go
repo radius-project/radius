@@ -62,7 +62,12 @@ func (r *ListResources) Run(ctx context.Context, w http.ResponseWriter, req *htt
 	resourceGroupID := id.Truncate()
 
 	// First check if the resource group exists.
-	_, err = r.StorageClient().Get(ctx, resourceGroupID.String())
+	client, err := r.DataProvider().GetStorageClient(ctx, v20231001preview.ResourceGroupType)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = client.Get(ctx, resourceGroupID.String())
 	if errors.Is(err, &store.ErrNotFound{}) {
 		return armrpc_rest.NewNotFoundResponse(id), nil
 	} else if err != nil {

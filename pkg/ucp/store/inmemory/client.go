@@ -34,6 +34,8 @@ var _ store.StorageClient = (*Client)(nil)
 
 // Client is an in-memory implementation of store.StorageClient.
 type Client struct {
+	name string
+
 	// mutex is used to synchronize access to the resources map.
 	mutex sync.Mutex
 
@@ -80,11 +82,17 @@ type entry struct {
 }
 
 // NewClient creates a new in-memory store client.
-func NewClient() *Client {
+func NewClient(name string) *Client {
 	return &Client{
+		name:      name,
 		mutex:     sync.Mutex{},
 		resources: map[string]entry{},
 	}
+}
+
+// String returns the name of the client.
+func (c *Client) String() string {
+	return c.name
 }
 
 // Get implements store.StorageClient.

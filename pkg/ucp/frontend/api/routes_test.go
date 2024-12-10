@@ -23,7 +23,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/test/testcontext"
@@ -82,10 +84,15 @@ func Test_Routes(t *testing.T) {
 	dataProvider := dataprovider.NewMockDataStorageProvider(ctrl)
 	dataProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
-	options := modules.Options{
-		Address:      "localhost",
-		PathBase:     pathBase,
-		DataProvider: dataProvider,
+	options := &ucp.Options{
+		Config: &ucp.Config{
+			Server: hostoptions.ServerOptions{
+				Host:     "localhost",
+				Port:     8080,
+				PathBase: pathBase,
+			},
+		},
+		StorageProvider: dataProvider,
 	}
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
@@ -101,10 +108,15 @@ func Test_Route_ToModule(t *testing.T) {
 	dataProvider := dataprovider.NewMockDataStorageProvider(ctrl)
 	dataProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
-	options := modules.Options{
-		Address:      "localhost",
-		PathBase:     pathBase,
-		DataProvider: dataProvider,
+	options := &ucp.Options{
+		Config: &ucp.Config{
+			Server: hostoptions.ServerOptions{
+				Host:     "localhost",
+				Port:     8080,
+				PathBase: pathBase,
+			},
+		},
+		StorageProvider: dataProvider,
 	}
 
 	r := chi.NewRouter()

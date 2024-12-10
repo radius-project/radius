@@ -43,7 +43,7 @@ func (c *ResourceTypePutController) Run(ctx context.Context, request *ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	err = updateResourceProviderSummaryWithETag(ctx, c.StorageClient(), summaryID, summaryNotFoundFail, c.updateSummary(id, resourceType))
+	err = updateResourceProviderSummaryWithETag(ctx, c.DataProvider(), summaryID, summaryNotFoundFail, c.updateSummary(id, resourceType))
 	if err != nil {
 		return ctrl.Result{}, err
 	}

@@ -25,12 +25,12 @@ import (
 	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
-	"github.com/radius-project/radius/pkg/ucp/hostoptions"
 	"github.com/radius-project/radius/pkg/ucp/secret"
 	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 )
@@ -118,12 +118,16 @@ func Test_Routes(t *testing.T) {
 	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
 	secretProvider.SetClient(secretClient)
 
-	options := modules.Options{
-		Address:        "localhost",
-		PathBase:       pathBase,
-		Config:         &hostoptions.UCPConfig{},
-		DataProvider:   dataProvider,
-		SecretProvider: secretProvider,
+	options := &ucp.Options{
+		Config: &ucp.Config{
+			Server: hostoptions.ServerOptions{
+				Host:     "localhost",
+				Port:     8080,
+				PathBase: pathBase,
+			},
+		},
+		SecretProvider:  secretProvider,
+		StorageProvider: dataProvider,
 	}
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {

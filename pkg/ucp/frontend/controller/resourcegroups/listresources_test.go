@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
@@ -136,8 +137,10 @@ func Test_ListResources(t *testing.T) {
 func setupListResources(t *testing.T) (*store.MockStorageClient, *ListResources) {
 	ctrl := gomock.NewController(t)
 	storage := store.NewMockStorageClient(ctrl)
+	storageProvider := dataprovider.NewMockDataStorageProvider(ctrl)
+	storageProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(storage, nil).AnyTimes()
 
-	c, err := NewListResources(armrpc_controller.Options{StorageClient: storage, PathBase: "/" + uuid.New().String()})
+	c, err := NewListResources(armrpc_controller.Options{DataProvider: storageProvider, StorageClient: storage, PathBase: "/" + uuid.New().String()})
 	require.NoError(t, err)
 
 	return storage, c.(*ListResources)
