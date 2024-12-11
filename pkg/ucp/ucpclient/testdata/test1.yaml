@@ -1,11 +1,11 @@
-name: Applications.Core
+name: MyCompany.CompanyName
 types:
-  containers:
+  testResource1:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
         capabilities: []
-  applications:
+  testResource2:
     apiVersions:
       "2025-01-01-preview":
         schema: {}

@@ -108,7 +108,7 @@ func TestResourceTypesServer(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	planeName := "local"
+	planeName := planeName
 	resourceProviderName := "testResourceProvider"
 	resourceTypeName := "testResourceType"
 	resource := v20231001preview.ResourceTypeResource{
