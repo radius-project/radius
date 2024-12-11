@@ -156,7 +156,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	desiredStateBytes, err := json.Marshal(desiredState)
 	require.NoError(t, err)
 
-	cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-2")}
+	cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-1")}
 
 	response, err := awsClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 		TypeName:     &awsS3BucketResourceType,
