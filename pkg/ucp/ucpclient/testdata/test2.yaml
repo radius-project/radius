@@ -1,11 +1,11 @@
-name: Applications.Dapr
+name: MyCompany2.CompanyName2
 types:
-  configurationStores:
+  testResource3:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
         capabilities: ["Recipes"]
-  pubSubBrokers:
+  testResource4:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
