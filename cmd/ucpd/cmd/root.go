@@ -19,8 +19,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
@@ -32,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/server"
-	"github.com/radius-project/radius/pkg/ucp/ucpclient"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -81,32 +78,33 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		/*
+			// Discuss if there is a better way to check if the server is listening..
+			// Start RegisterManifests in a goroutine after 15 seconds
+			go func() {
+				time.Sleep(15 * time.Second)
+				// Register manifests
+				manifestDir := options.Config.Manifests.ManifestDirectory
+				if _, err := os.Stat(manifestDir); os.IsNotExist(err) {
+					logger.Error(err, "Manifest directory does not exist", "directory", manifestDir)
+					return
+				} else if err != nil {
+					logger.Error(err, "Error checking manifest directory", "directory", manifestDir)
+					return
+				}
 
-		// Discuss if there is a better way to check if the server is listening..
-		// Start RegisterManifests in a goroutine after 15 seconds
-		go func() {
-			time.Sleep(15 * time.Second)
-			// Register manifests
-			manifestDir := options.Config.Manifests.ManifestDirectory
-			if _, err := os.Stat(manifestDir); os.IsNotExist(err) {
-				logger.Error(err, "Manifest directory does not exist", "directory", manifestDir)
-				return
-			} else if err != nil {
-				logger.Error(err, "Error checking manifest directory", "directory", manifestDir)
-				return
-			}
+				ucpclient, err := ucpclient.NewUCPClient(options.UCPConnection)
+				if err != nil {
+					logger.Error(err, "Failed to create UCP client")
+				}
 
-			ucpclient, err := ucpclient.NewUCPClient(options.UCPConnection)
-			if err != nil {
-				logger.Error(err, "Failed to create UCP client")
-			}
-
-			if err := ucpclient.RegisterManifests(cmd.Context(), manifestDir); err != nil {
-				logger.Error(err, "Failed to register manifests")
-			} else {
-				logger.Info("Successfully registered manifests", "directory", manifestDir)
-			}
-		}()
+				if err := ucpclient.RegisterManifests(cmd.Context(), manifestDir); err != nil {
+					logger.Error(err, "Failed to register manifests")
+				} else {
+					logger.Info("Successfully registered manifests", "directory", manifestDir)
+				}
+			}()
+		*/
 
 		ctx := logr.NewContext(cmd.Context(), logger)
 		return hosting.RunWithInterrupts(ctx, host)
