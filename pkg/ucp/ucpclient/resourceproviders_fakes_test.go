@@ -114,7 +114,7 @@ func TestResourceProvidersServer(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	planeName := "local"
+	planeName := planeName
 	resourceProviderName := "testResourceProvider"
 	resource := v20231001preview.ResourceProviderResource{
 		Name: to.Ptr(resourceProviderName),

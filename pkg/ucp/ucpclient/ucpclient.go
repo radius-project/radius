@@ -15,10 +15,10 @@ import (
 	"context"
 	"fmt"
 
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
+/*
 // UCPClient is a client for interacting with the UCP API.
 type UCPClient interface {
 	// CreateOrUpdateResourceProvider creates or updates a resource provider in the configured scope.
@@ -40,15 +40,28 @@ type UCPClient interface {
 
 	// ... Add other methods as needed ...
 }
+*/
+
+const planeName = "local"
+
+// UCPClient holds instances of each specific client.
+type UCPClient struct {
+	ResourceProvidersClient *ucpv20231001.ResourceProvidersClient
+	ResourceTypesClient     *ucpv20231001.ResourceTypesClient
+	APIVersionsClient       *ucpv20231001.APIVersionsClient
+	LocationsClient         *ucpv20231001.LocationsClient
+	// Add other clients as needed
+}
+
+//var _ UCPClient = (*UCPClientFactory)(nil)
 
 // CreateOrUpdateResourceProvider creates or updates a resource provider in the configured scope.
-func (u *UCPClientImpl) CreateOrUpdateResourceProvider(ctx context.Context, planeName string, resourceProviderName string, resource *ucpv20231001.ResourceProviderResource) (ucpv20231001.ResourceProviderResource, error) {
-	client, err := ucpv20231001.NewResourceProvidersClient(&aztoken.AnonymousCredential{}, u.Options)
-	if err != nil {
-		return ucpv20231001.ResourceProviderResource{}, fmt.Errorf("failed to create ResourceProvidersClient: %w", err)
+func (u *UCPClient) CreateOrUpdateResourceProvider(ctx context.Context, planeName string, resourceProviderName string, resource *ucpv20231001.ResourceProviderResource) (ucpv20231001.ResourceProviderResource, error) {
+	if u.ResourceProvidersClient == nil {
+		return ucpv20231001.ResourceProviderResource{}, fmt.Errorf("ResourceProvidersClient is nil")
 	}
 
-	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, *resource, &ucpv20231001.ResourceProvidersClientBeginCreateOrUpdateOptions{})
+	poller, err := u.ResourceProvidersClient.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, *resource, &ucpv20231001.ResourceProvidersClientBeginCreateOrUpdateOptions{})
 	if err != nil {
 		return ucpv20231001.ResourceProviderResource{}, fmt.Errorf("begin create or update failed: %w", err)
 	}
@@ -62,13 +75,12 @@ func (u *UCPClientImpl) CreateOrUpdateResourceProvider(ctx context.Context, plan
 }
 
 // CreateOrUpdateResourceType creates or updates a resource type in the configured scope.
-func (u *UCPClientImpl) CreateOrUpdateResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource *ucpv20231001.ResourceTypeResource) (ucpv20231001.ResourceTypeResource, error) {
-	client, err := ucpv20231001.NewResourceTypesClient(&aztoken.AnonymousCredential{}, u.Options)
-	if err != nil {
-		return ucpv20231001.ResourceTypeResource{}, fmt.Errorf("failed to create ResourceTypeResource: %w", err)
+func (u *UCPClient) CreateOrUpdateResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource *ucpv20231001.ResourceTypeResource) (ucpv20231001.ResourceTypeResource, error) {
+	if u.ResourceTypesClient == nil {
+		return ucpv20231001.ResourceTypeResource{}, fmt.Errorf("ResourceTypeResource is nil")
 	}
 
-	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, resourceTypeName, *resource, &ucpv20231001.ResourceTypesClientBeginCreateOrUpdateOptions{})
+	poller, err := u.ResourceTypesClient.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, resourceTypeName, *resource, &ucpv20231001.ResourceTypesClientBeginCreateOrUpdateOptions{})
 	if err != nil {
 		return ucpv20231001.ResourceTypeResource{}, err
 	}
@@ -82,13 +94,12 @@ func (u *UCPClientImpl) CreateOrUpdateResourceType(ctx context.Context, planeNam
 }
 
 // CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.
-func (u *UCPClientImpl) CreateOrUpdateAPIVersion(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource *ucpv20231001.APIVersionResource) (ucpv20231001.APIVersionResource, error) {
-	client, err := ucpv20231001.NewAPIVersionsClient(&aztoken.AnonymousCredential{}, u.Options)
-	if err != nil {
-		return ucpv20231001.APIVersionResource{}, fmt.Errorf("failed to create APIVersionResource: %w", err)
+func (u *UCPClient) CreateOrUpdateAPIVersion(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource *ucpv20231001.APIVersionResource) (ucpv20231001.APIVersionResource, error) {
+	if u.APIVersionsClient == nil {
+		return ucpv20231001.APIVersionResource{}, fmt.Errorf("APIVersionResource is nil")
 	}
 
-	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, *resource, &ucpv20231001.APIVersionsClientBeginCreateOrUpdateOptions{})
+	poller, err := u.APIVersionsClient.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, *resource, &ucpv20231001.APIVersionsClientBeginCreateOrUpdateOptions{})
 	if err != nil {
 		return ucpv20231001.APIVersionResource{}, err
 	}
@@ -102,13 +113,12 @@ func (u *UCPClientImpl) CreateOrUpdateAPIVersion(ctx context.Context, planeName 
 }
 
 // CreateOrUpdateLocation creates or updates a resource provider location in the configured scope.
-func (u *UCPClientImpl) CreateOrUpdateLocation(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource *ucpv20231001.LocationResource) (ucpv20231001.LocationResource, error) {
-	client, err := ucpv20231001.NewLocationsClient(&aztoken.AnonymousCredential{}, u.Options)
-	if err != nil {
-		return ucpv20231001.LocationResource{}, fmt.Errorf("failed to create LocationResource: %w", err)
+func (u *UCPClient) CreateOrUpdateLocation(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource *ucpv20231001.LocationResource) (ucpv20231001.LocationResource, error) {
+	if u.LocationsClient == nil {
+		return ucpv20231001.LocationResource{}, fmt.Errorf("LocationResource is nil")
 	}
 
-	poller, err := client.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, locationName, *resource, &ucpv20231001.LocationsClientBeginCreateOrUpdateOptions{})
+	poller, err := u.LocationsClient.BeginCreateOrUpdate(ctx, planeName, resourceProviderName, locationName, *resource, &ucpv20231001.LocationsClientBeginCreateOrUpdateOptions{})
 	if err != nil {
 		return ucpv20231001.LocationResource{}, err
 	}
@@ -122,13 +132,12 @@ func (u *UCPClientImpl) CreateOrUpdateLocation(ctx context.Context, planeName st
 }
 
 // GetResourceProvider gets the resource provider with the specified name in the configured scope.
-func (u *UCPClientImpl) GetResourceProvider(ctx context.Context, planeName string, resourceProviderName string) (ucpv20231001.ResourceProviderResource, error) {
-	client, err := ucpv20231001.NewResourceProvidersClient(&aztoken.AnonymousCredential{}, u.Options)
-	if err != nil {
-		return ucpv20231001.ResourceProviderResource{}, fmt.Errorf("failed to create ResourceProvidersClient: %w", err)
+func (u *UCPClient) GetResourceProvider(ctx context.Context, planeName string, resourceProviderName string) (ucpv20231001.ResourceProviderResource, error) {
+	if u.ResourceProvidersClient == nil {
+		return ucpv20231001.ResourceProviderResource{}, fmt.Errorf("ResourceProvidersClient is nil")
 	}
 
-	response, err := client.Get(ctx, planeName, resourceProviderName, &ucpv20231001.ResourceProvidersClientGetOptions{})
+	response, err := u.ResourceProvidersClient.Get(ctx, planeName, resourceProviderName, &ucpv20231001.ResourceProvidersClientGetOptions{})
 	if err != nil {
 		return ucpv20231001.ResourceProviderResource{}, err
 	}
