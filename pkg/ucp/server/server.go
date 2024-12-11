@@ -17,36 +17,42 @@ limitations under the License.
 package server
 
 import (
-	"github.com/radius-project/radius/pkg/components/hosting"
-	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
-	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
-	"github.com/radius-project/radius/pkg/components/trace/traceservice"
+	metricsservice "github.com/radius-project/radius/pkg/metrics/service"
+	profilerservice "github.com/radius-project/radius/pkg/profiler/service"
+	"github.com/radius-project/radius/pkg/trace"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/backend"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
+	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/ucp/initializer"
 )
 
 // NewServer initializes a host for UCP based on the provided options.
 func NewServer(options *ucp.Options) (*hosting.Host, error) {
-	services := []hosting.Service{
+	hostingServices := []hosting.Service{
 		api.NewService(options),
 		backend.NewService(options),
 	}
 
-	if options.Config.Metrics.Enabled {
-		services = append(services, &metricsservice.Service{Options: &options.Config.Metrics})
+	if options.Config.Metrics.Prometheus.Enabled {
+		metricOptions := metricsservice.HostOptions{
+			Config: &options.Config.Metrics,
+		}
+		hostingServices = append(hostingServices, metricsservice.NewService(metricOptions))
 	}
 
 	if options.Config.Profiler.Enabled {
-		services = append(services, &profilerservice.Service{Options: &options.Config.Profiler})
+		profilerOptions := profilerservice.HostOptions{
+			Config: &options.Config.Profiler,
+		}
+		hostingServices = append(hostingServices, profilerservice.NewService(profilerOptions))
 	}
 
-	if options.Config.Tracing.Enabled {
-		services = append(services, &traceservice.Service{Options: &options.Config.Tracing})
-	}
+	hostingServices = append(hostingServices, &trace.Service{Options: options.Config.Tracing})
 
-	//hostingServices = append(hostingServices, &manifestservice.Service{Options: options.LoggingOptions})
+	hostingServices = append(hostingServices, initializer.NewService(options))
+
 	return &hosting.Host{
-		Services: services,
+		Services: hostingServices,
 	}, nil
 }
