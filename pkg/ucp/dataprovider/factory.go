@@ -27,7 +27,6 @@ import (
 	store "github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/store/apiserverstore"
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
-	"github.com/radius-project/radius/pkg/ucp/store/cosmosdb"
 	"github.com/radius-project/radius/pkg/ucp/store/etcdstore"
 	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
 	"github.com/radius-project/radius/pkg/ucp/store/postgres"
@@ -41,7 +40,6 @@ type storageFactoryFunc func(context.Context, StorageProviderOptions, string) (s
 
 var storageClientFactory = map[StorageProviderType]storageFactoryFunc{
 	TypeAPIServer:  initAPIServerClient,
-	TypeCosmosDB:   initCosmosDBClient,
 	TypeETCD:       InitETCDClient,
 	TypeInMemory:   initInMemoryClient,
 	TypePostgreSQL: initPostgreSQLClient,
@@ -81,26 +79,6 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 
 	client := apiserverstore.NewAPIServerClient(rc, opt.APIServer.Namespace)
 	return client, nil
-}
-
-func initCosmosDBClient(ctx context.Context, opt StorageProviderOptions, collectionName string) (store.StorageClient, error) {
-	sopt := &cosmosdb.ConnectionOptions{
-		Url:                  opt.CosmosDB.Url,
-		DatabaseName:         opt.CosmosDB.Database,
-		CollectionName:       collectionName,
-		MasterKey:            opt.CosmosDB.MasterKey,
-		CollectionThroughput: opt.CosmosDB.CollectionThroughput,
-	}
-	dbclient, err := cosmosdb.NewCosmosDBStorageClient(sopt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create CosmosDB client - configuration may be invalid: %w", err)
-	}
-
-	if err = dbclient.Init(ctx); err != nil {
-		return nil, fmt.Errorf("failed to initialize CosmosDB client - configuration may be invalid: %w", err)
-	}
-
-	return dbclient, nil
 }
 
 // InitETCDClient checks if the ETCD client is in memory and if the client is not nil, then it initializes the storage

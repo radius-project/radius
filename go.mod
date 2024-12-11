@@ -61,13 +61,11 @@ require (
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/projectcontour/contour v1.30.1
 	github.com/prometheus/client_golang v1.20.5
-	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
 	github.com/stern/stern v1.31.0
 	github.com/stretchr/testify v1.10.0
-	github.com/vippsas/go-cosmosdb v0.0.0-20230118095602-f4e4b9f1c352
 	github.com/wI2L/jsondiff v0.6.1
 	go.etcd.io/etcd/client/v3 v3.5.17
 	go.etcd.io/etcd/server/v3 v3.5.17
