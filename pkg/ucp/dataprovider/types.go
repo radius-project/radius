@@ -29,9 +29,6 @@ const (
 	// TypeAPIServer represents the Kubernetes APIServer provider.
 	TypeAPIServer StorageProviderType = "apiserver"
 
-	// TypeCosmosDB represents CosmosDB provider.
-	TypeCosmosDB StorageProviderType = "cosmosdb"
-
 	// TypeETCD represents the etcd provider.
 	TypeETCD StorageProviderType = "etcd"
 

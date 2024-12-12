@@ -65,8 +65,7 @@ The following are properties that can be specified for UCP:
 | Key | Description | Example |
 |-----|-------------|---------|
 | provider | The type of storage provider | `apiServer` | 
-| apiServer | Object containing properties for Kubernetes APIServer store | [**See below**](#apiserver) | 
-| cosmosdb | Object containing properties for CosmosDB | [**See below**](#cosmosdb) | 
+| apiServer | Object containing properties for Kubernetes APIServer store | [**See below**](#apiserver) |
 | etcd | Object containing properties for ETCD store | [**See below**](#etcd)|
 
 ### queueProvider
@@ -158,14 +157,6 @@ ucp:
 | Key | Description | Example |
 |-----|-------------|---------|
 | inMemory | Configures the etcd store to run in-memory with the resource provider (must be `true`/`false`) | `true` |
-
-### cosmosdb
-| Key | Description | Example |
-|-----|-------------|---------|
-| url | URL of CosmosDB account | `https://radius-eastus-test.documents.azure.com:443/` |
-| database | Name of the database in account | `applicationscore` |
-| masterKey | All access key token for database resources | `your-master-key` |
-| CollectionThroughput | Throughput of database | `400` |
 
 ## Plane properties
 
