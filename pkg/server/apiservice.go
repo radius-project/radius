@@ -57,6 +57,11 @@ func (s *APIService) Run(ctx context.Context) error {
 		return err
 	}
 
+	storageClient, err := s.StorageProvider.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	return s.Start(ctx, server.Options{
 		Location: s.Options.Config.Env.RoleLocation,
@@ -65,8 +70,9 @@ func (s *APIService) Run(ctx context.Context) error {
 		Configure: func(r chi.Router) error {
 			for _, b := range s.handlerBuilder {
 				opts := apictrl.Options{
+					Address:       address,
 					PathBase:      s.Options.Config.Server.PathBase,
-					DataProvider:  s.StorageProvider,
+					StorageClient: storageClient,
 					KubeClient:    s.KubeClient,
 					StatusManager: s.OperationStatusManager,
 				}

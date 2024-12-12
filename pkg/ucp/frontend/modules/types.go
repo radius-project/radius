@@ -61,7 +61,7 @@ type Options struct {
 	Location string
 
 	// DataProvider is the data storage provider.
-	DataProvider dataprovider.DataStorageProvider
+	DataProvider *dataprovider.DataStorageProvider
 
 	// QeueueProvider provides access to the queue for async operations.
 	QueueProvider *queueprovider.QueueProvider

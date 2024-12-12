@@ -130,13 +130,12 @@ func HandlerForController(controller ctrl.Controller, operationType v1.Operation
 
 // CreateHandler creates an http.Handler for the given resource type and operation method.
 func CreateHandler(ctx context.Context, resourceType string, operationMethod v1.OperationMethod, opts ctrl.Options, factory ControllerFactoryFunc) (http.HandlerFunc, error) {
-	storageClient, err := opts.DataProvider.GetStorageClient(ctx, resourceType)
-	if err != nil {
-		return nil, err
-	}
-
-	opts.StorageClient = storageClient
 	opts.ResourceType = resourceType
+
+	err := opts.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("invalid controller options: %w", err)
+	}
 
 	ctrl, err := factory(opts)
 	if err != nil {
@@ -155,13 +154,12 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 		return ErrInvalidOperationTypeOption
 	}
 
-	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.ResourceType)
-	if err != nil {
-		return err
-	}
-
-	ctrlOpts.StorageClient = storageClient
 	ctrlOpts.ResourceType = opts.ResourceType
+
+	err := ctrlOpts.Validate()
+	if err != nil {
+		return fmt.Errorf("invalid controller options: %w", err)
+	}
 
 	ctrl, err := opts.ControllerFactory(ctrlOpts)
 	if err != nil {

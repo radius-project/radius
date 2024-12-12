@@ -26,7 +26,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
@@ -62,11 +61,6 @@ func (b *Operation[P, T]) Options() *Options {
 // StorageClient gets storage client for this controller.
 func (b *Operation[P, T]) StorageClient() store.StorageClient {
 	return b.options.StorageClient
-}
-
-// DataProvider gets the DataStorageProvider.
-func (b *Operation[P, T]) DataProvider() dataprovider.DataStorageProvider {
-	return b.options.DataProvider
 }
 
 // ResourceType gets the resource type for this controller.

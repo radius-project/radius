@@ -27,7 +27,6 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/trace"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
@@ -37,7 +36,7 @@ import (
 
 // statusManager includes the necessary functions to manage asynchronous operations.
 type statusManager struct {
-	storeProvider dataprovider.DataStorageProvider
+	storageClient store.StorageClient
 	queue         queue.Client
 	location      string
 }
@@ -65,9 +64,9 @@ type StatusManager interface {
 }
 
 // New creates statusManager instance.
-func New(dataProvider dataprovider.DataStorageProvider, q queue.Client, location string) StatusManager {
+func New(storageClient store.StorageClient, q queue.Client, location string) StatusManager {
 	return &statusManager{
-		storeProvider: dataProvider,
+		storageClient: storageClient,
 		queue:         q,
 		location:      location,
 	}
@@ -76,10 +75,6 @@ func New(dataProvider dataprovider.DataStorageProvider, q queue.Client, location
 // operationStatusResourceID function is to build the operationStatus resourceID.
 func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID uuid.UUID) string {
 	return fmt.Sprintf("%s/providers/%s/locations/%s/operationstatuses/%s", id.PlaneScope(), strings.ToLower(id.ProviderNamespace()), aom.location, operationID)
-}
-
-func (aom *statusManager) getClient(ctx context.Context, id resources.ID) (store.StorageClient, error) {
-	return aom.storeProvider.GetStorageClient(ctx, id.ProviderNamespace()+"/operationstatuses")
 }
 
 // QueueAsyncOperation creates and saves a new status resource with the given parameters in datastore, and queues
@@ -111,12 +106,7 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 		ClientObjectID:   sCtx.ClientObjectID,
 	}
 
-	storeClient, err := aom.getClient(ctx, sCtx.ResourceID)
-	if err != nil {
-		return err
-	}
-
-	err = storeClient.Save(ctx, &store.Object{
+	err := aom.storageClient.Save(ctx, &store.Object{
 		Metadata: store.Metadata{ID: opID},
 		Data:     aos,
 	})
@@ -126,7 +116,7 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 	}
 
 	if err = aom.queueRequestMessage(ctx, sCtx, aos, options.OperationTimeout); err != nil {
-		delErr := storeClient.Delete(ctx, opID)
+		delErr := aom.storageClient.Delete(ctx, opID)
 		if delErr != nil {
 			return delErr
 		}
@@ -140,12 +130,7 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 
 // Get gets a status object from the datastore or an error if the retrieval fails.
 func (aom *statusManager) Get(ctx context.Context, id resources.ID, operationID uuid.UUID) (*Status, error) {
-	storeClient, err := aom.getClient(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	obj, err := storeClient.Get(ctx, aom.operationStatusResourceID(id, operationID))
+	obj, err := aom.storageClient.Get(ctx, aom.operationStatusResourceID(id, operationID))
 	if err != nil {
 		return nil, err
 	}
@@ -162,12 +147,7 @@ func (aom *statusManager) Get(ctx context.Context, id resources.ID, operationID 
 // given parameters, and saves it back to the store.
 func (aom *statusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error {
 	opID := aom.operationStatusResourceID(id, operationID)
-	storeClient, err := aom.getClient(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	obj, err := storeClient.Get(ctx, opID)
+	obj, err := aom.storageClient.Get(ctx, opID)
 	if err != nil {
 		return err
 	}
@@ -190,17 +170,13 @@ func (aom *statusManager) Update(ctx context.Context, id resources.ID, operation
 
 	obj.Data = s
 
-	return storeClient.Save(ctx, obj, store.WithETag(obj.ETag))
+	return aom.storageClient.Save(ctx, obj, store.WithETag(obj.ETag))
 }
 
 // Delete deletes the operation status resource associated with the given ID and
 // operationID, and returns an error if unsuccessful.
 func (aom *statusManager) Delete(ctx context.Context, id resources.ID, operationID uuid.UUID) error {
-	storeClient, err := aom.getClient(ctx, id)
-	if err != nil {
-		return err
-	}
-	return storeClient.Delete(ctx, aom.operationStatusResourceID(id, operationID))
+	return aom.storageClient.Delete(ctx, aom.operationStatusResourceID(id, operationID))
 }
 
 // queueRequestMessage function is to put the async operation message to the queue to be worked on.

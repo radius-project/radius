@@ -25,13 +25,13 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	cdm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 // FindNamespaceByEnvID finds the environment-scope Kubernetes namespace. If the environment ID is invalid or the environment is not a Kubernetes
 // environment, an error is returned.
-func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvider, envID string) (namespace string, err error) {
+func FindNamespaceByEnvID(ctx context.Context, storageClient store.StorageClient, envID string) (namespace string, err error) {
 	id, err := resources.ParseResource(envID)
 	if err != nil {
 		return
@@ -43,12 +43,7 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 	}
 
 	env := &cdm.Environment{}
-	client, err := sp.GetStorageClient(ctx, id.Type())
-	if err != nil {
-		return
-	}
-
-	res, err := client.Get(ctx, id.String())
+	res, err := storageClient.Get(ctx, id.String())
 	if err != nil {
 		return
 	}

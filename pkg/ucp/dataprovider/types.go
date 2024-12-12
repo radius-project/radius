@@ -16,12 +16,6 @@ limitations under the License.
 
 package dataprovider
 
-import (
-	"context"
-
-	"github.com/radius-project/radius/pkg/ucp/store"
-)
-
 // StorageProviderType represents types of storage provider.
 type StorageProviderType string
 
@@ -38,11 +32,3 @@ const (
 	// TypePostgreSQL represents the PostgreSQL provider.
 	TypePostgreSQL StorageProviderType = "postgresql"
 )
-
-//go:generate mockgen -typed -destination=./mock_datastorage_provider.go -package=dataprovider -self_package github.com/radius-project/radius/pkg/ucp/dataprovider github.com/radius-project/radius/pkg/ucp/dataprovider DataStorageProvider
-
-// DataStorageProvider is an interfae to provide storage client.
-type DataStorageProvider interface {
-	// GetStorageClient creates or gets storage client.
-	GetStorageClient(context.Context, string) (store.StorageClient, error)
-}

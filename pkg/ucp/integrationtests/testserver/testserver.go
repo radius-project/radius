@@ -105,7 +105,7 @@ type TestServerClients struct {
 	SecretProvider *secretprovider.SecretProvider
 
 	// StorageProvider is the storage client provider.
-	StorageProvider dataprovider.DataStorageProvider
+	StorageProvider *dataprovider.DataStorageProvider
 }
 
 // TestServerMocks provides access to mock instances created by the TestServer.
@@ -150,11 +150,7 @@ func StartWithMocks(t *testing.T, configureModules func(options modules.Options)
 
 	ctrl := gomock.NewController(t)
 	dataClient := store.NewMockStorageClient(ctrl)
-	dataProvider := dataprovider.NewMockDataStorageProvider(ctrl)
-	dataProvider.EXPECT().
-		GetStorageClient(gomock.Any(), gomock.Any()).
-		Return(dataClient, nil).
-		AnyTimes()
+	dataProvider := dataprovider.DataStorageProviderFromClient(dataClient)
 
 	queueClient := queue.NewMockClient(ctrl)
 	queueProvider := queueprovider.New(queueprovider.QueueProviderOptions{Name: "System.Resources"})
@@ -180,7 +176,7 @@ func StartWithMocks(t *testing.T, configureModules func(options modules.Options)
 	require.NoError(t, err, "failed to load OpenAPI spec")
 
 	options := modules.Options{
-		Address:        server.URL,
+		Address:        "localhost:9999", // Will be dynamically populated when server is started
 		PathBase:       pathBase,
 		Config:         &hostoptions.UCPConfig{},
 		DataProvider:   dataProvider,
@@ -275,7 +271,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 
 	// Generate a random base path to ensure we're handling it correctly.
 	pathBase := "/" + uuid.New().String()
-	dataProvider := dataprovider.NewStorageProvider(storageOptions)
+	dataProvider := dataprovider.DataStorageProviderFromOptions(storageOptions)
 	secretProvider := secretprovider.NewSecretProvider(secretOptions)
 	queueProvider := queueprovider.New(queueOptions)
 
@@ -296,7 +292,10 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	connection, err := sdk.NewDirectConnection(address + pathBase)
 	require.NoError(t, err)
 
-	statusManager := statusmanager.New(dataProvider, queueClient, v1.LocationGlobal)
+	storageClient, err := dataProvider.GetClient(ctx)
+	require.NoError(t, err)
+
+	statusManager := statusmanager.New(storageClient, queueClient, v1.LocationGlobal)
 
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{pathBase}, "")
 	require.NoError(t, err, "failed to load OpenAPI spec")
@@ -327,8 +326,8 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	defaultDownstream, err := url.Parse(options.Config.Routing.DefaultDownstreamEndpoint)
 	require.NoError(t, err)
 
-	registry := worker.NewControllerRegistry(dataProvider)
-	err = backend.RegisterControllers(ctx, registry, connection, http.DefaultTransport, backend_ctrl.Options{DataProvider: dataProvider}, defaultDownstream)
+	registry := worker.NewControllerRegistry()
+	err = backend.RegisterControllers(registry, connection, http.DefaultTransport, backend_ctrl.Options{StorageClient: storageClient}, defaultDownstream)
 	require.NoError(t, err)
 
 	w := worker.New(worker.Options{}, statusManager, queueClient, registry)

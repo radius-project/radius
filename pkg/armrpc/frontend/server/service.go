@@ -40,7 +40,7 @@ type Service struct {
 	Options hostoptions.HostOptions
 
 	// StorageProvider is the provider of storage client.
-	StorageProvider dataprovider.DataStorageProvider
+	StorageProvider *dataprovider.DataStorageProvider
 
 	// OperationStatusManager is the manager of the operation status.
 	OperationStatusManager manager.StatusManager
@@ -57,13 +57,19 @@ type Service struct {
 func (s *Service) Init(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
+	s.StorageProvider = dataprovider.DataStorageProviderFromOptions(s.Options.Config.StorageProvider)
 	qp := qprovider.New(s.Options.Config.QueueProvider)
+
+	storageClient, err := s.StorageProvider.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+
 	reqQueueClient, err := qp.GetClient(ctx)
 	if err != nil {
 		return err
 	}
-	s.OperationStatusManager = manager.New(s.StorageProvider, reqQueueClient, s.Options.Config.Env.RoleLocation)
+	s.OperationStatusManager = manager.New(storageClient, reqQueueClient, s.Options.Config.Env.RoleLocation)
 	s.KubeClient, err = kubeutil.NewRuntimeClient(s.Options.K8sConfig)
 	if err != nil {
 		return err

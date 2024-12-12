@@ -29,11 +29,11 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
 	"github.com/radius-project/radius/pkg/ucp/queue/inmemory"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
+	inmemorystore "github.com/radius-project/radius/pkg/ucp/store/inmemory"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
@@ -77,7 +77,6 @@ type testContext struct {
 	ctx    context.Context
 	mockSC *store.MockStorageClient
 	mockSM *manager.MockStatusManager
-	mockSP *dataprovider.MockDataStorageProvider
 
 	testQueue *inmemory.Client
 	internalQ *inmemory.InmemQueue
@@ -115,11 +114,11 @@ func (c *testContext) cancellable(timeout time.Duration) (context.Context, conte
 func newTestContext(t *testing.T, lockTime time.Duration) (*testContext, *gomock.Controller) {
 	mctrl := gomock.NewController(t)
 	inmemQ := inmemory.NewInMemQueue(lockTime)
+	storageClient := store.NewMockStorageClient(mctrl)
 	return &testContext{
 		ctx:       context.Background(),
-		mockSC:    store.NewMockStorageClient(mctrl),
+		mockSC:    storageClient,
 		mockSM:    manager.NewMockStatusManager(mctrl),
-		mockSP:    dataprovider.NewMockDataStorageProvider(mctrl),
 		internalQ: inmemQ,
 		testQueue: inmemory.New(inmemQ),
 	}, mctrl
@@ -147,17 +146,11 @@ func TestStart_UnknownOperation(t *testing.T) {
 	tCtx, mctrl := newTestContext(t, defaultTestLockTime)
 	defer mctrl.Finish()
 
-	registry := NewControllerRegistry(tCtx.mockSP)
+	registry := NewControllerRegistry()
 	worker := New(Options{DequeueIntervalDuration: defaultTestDequeueInterval}, nil, tCtx.testQueue, registry)
-
-	tCtx.mockSP.EXPECT().
-		GetStorageClient(gomock.Any(), gomock.Any()).
-		Return(tCtx.mockSC, nil).
-		Times(1)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -174,7 +167,6 @@ func TestStart_UnknownOperation(t *testing.T) {
 
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
-		ctx,
 		testResourceType, "UNDEFINED",
 		func(opts ctrl.Options) (ctrl.Controller, error) {
 			return testCtrl, nil
@@ -215,16 +207,14 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Eq(v1.ProvisioningStateFailed), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).Times(1)
 
 	expectedDequeueCount := 2
 
-	registry := NewControllerRegistry(tCtx.mockSP)
+	registry := NewControllerRegistry()
 	worker := New(Options{MaxOperationRetryCount: expectedDequeueCount, DequeueIntervalDuration: defaultTestDequeueInterval}, tCtx.mockSM, tCtx.testQueue, registry)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
 	}
 
 	testCtrl := &testAsyncController{
@@ -236,12 +226,11 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 
 	ctx, cancel := tCtx.cancellable(0)
 	err := registry.Register(
-		ctx,
 		testResourceType, v1.OperationPut,
 		func(opts ctrl.Options) (ctrl.Controller, error) {
 			return testCtrl, nil
 		}, ctrl.Options{
-			DataProvider: tCtx.mockSP,
+			StorageClient: tCtx.mockSC,
 		})
 	require.NoError(t, err)
 
@@ -279,14 +268,12 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
-	registry := NewControllerRegistry(tCtx.mockSP)
+	registry := NewControllerRegistry()
 	worker := New(Options{DequeueIntervalDuration: defaultTestDequeueInterval}, tCtx.mockSM, tCtx.testQueue, registry)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -309,7 +296,6 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	}
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
-		ctx,
 		testResourceType,
 		v1.OperationPut,
 		func(opts ctrl.Options) (ctrl.Controller, error) {
@@ -358,14 +344,12 @@ func TestStart_RunOperation(t *testing.T) {
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
-	registry := NewControllerRegistry(tCtx.mockSP)
+	registry := NewControllerRegistry()
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -385,7 +369,6 @@ func TestStart_RunOperation(t *testing.T) {
 
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
-		ctx,
 		testResourceType, v1.OperationPut,
 		func(opts ctrl.Options) (ctrl.Controller, error) {
 			return testCtrl, nil
@@ -437,7 +420,6 @@ func TestRunOperation_Successfully(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -477,7 +459,6 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -513,9 +494,13 @@ func TestRunOperation_CancelContext(t *testing.T) {
 
 	worker := New(Options{}, nil, tCtx.testQueue, nil)
 
+	// This test has a race condition with the worker loop trying to make an operation status
+	// as failed. We can't use a mock because that might happen after the mock is destroyed (on test completion).
+	//
+	// Instead we use the in-memory store.
+
 	opts := ctrl.Options{
-		StorageClient: nil,
-		DataProvider:  tCtx.mockSP,
+		StorageClient: inmemorystore.NewClient(),
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return nil
 		},
@@ -571,7 +556,6 @@ func TestRunOperation_Timeout(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -606,7 +590,6 @@ func TestRunOperation_PanicController(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return nil
 		},

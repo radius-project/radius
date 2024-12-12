@@ -168,7 +168,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
 
-			asyncCtrl, err := w.registry.Get(reqCtx, armReqCtx.OperationType)
+			asyncCtrl, err := w.registry.Get(armReqCtx.OperationType)
 			if err != nil {
 				opLogger.Error(err, "failed to get async controller.")
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {

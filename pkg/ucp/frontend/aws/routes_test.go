@@ -25,6 +25,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -111,8 +112,6 @@ func Test_Routes(t *testing.T) {
 	}
 
 	ctrl := gomock.NewController(t)
-	dataProvider := dataprovider.NewMockDataStorageProvider(ctrl)
-	dataProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	secretClient := secret.NewMockClient(ctrl)
 	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
@@ -122,13 +121,18 @@ func Test_Routes(t *testing.T) {
 		Address:        "localhost",
 		PathBase:       pathBase,
 		Config:         &hostoptions.UCPConfig{},
-		DataProvider:   dataProvider,
+		DataProvider:   dataprovider.DataStorageProviderFromMemory(),
 		SecretProvider: secretProvider,
+		StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
 	}
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
 		module := NewModule(options)
 		handler, err := module.Initialize(ctx)
-		return handler.(chi.Router), err
+		if err != nil {
+			return nil, err
+		}
+
+		return handler.(chi.Router), nil
 	})
 }

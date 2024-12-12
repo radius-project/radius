@@ -36,7 +36,7 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type storageFactoryFunc func(context.Context, StorageProviderOptions, string) (store.StorageClient, error)
+type storageFactoryFunc func(ctx context.Context, options StorageProviderOptions) (store.StorageClient, error)
 
 var storageClientFactory = map[StorageProviderType]storageFactoryFunc{
 	TypeAPIServer:  initAPIServerClient,
@@ -45,7 +45,7 @@ var storageClientFactory = map[StorageProviderType]storageFactoryFunc{
 	TypePostgreSQL: initPostgreSQLClient,
 }
 
-func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
+func initAPIServerClient(ctx context.Context, opt StorageProviderOptions) (store.StorageClient, error) {
 	if opt.APIServer.Namespace == "" {
 		return nil, errors.New("failed to initialize APIServer client: namespace is required")
 	}
@@ -83,7 +83,7 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 
 // InitETCDClient checks if the ETCD client is in memory and if the client is not nil, then it initializes the storage
 // client and returns an ETCDClient. If either of these conditions are not met, an error is returned.
-func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
+func InitETCDClient(ctx context.Context, opt StorageProviderOptions) (store.StorageClient, error) {
 	if !opt.ETCD.InMemory {
 		return nil, errors.New("failed to initialize etcd client: inmemory is the only supported mode for now")
 	}
@@ -102,12 +102,12 @@ func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (
 }
 
 // initInMemoryClient creates a new in-memory store client.
-func initInMemoryClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
+func initInMemoryClient(ctx context.Context, opt StorageProviderOptions) (store.StorageClient, error) {
 	return inmemory.NewClient(), nil
 }
 
 // initPostgreSQLClient creates a new PostgreSQL store client.
-func initPostgreSQLClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {
+func initPostgreSQLClient(ctx context.Context, opt StorageProviderOptions) (store.StorageClient, error) {
 	if opt.PostgreSQL.URL == "" {
 		return nil, errors.New("failed to initialize PostgreSQL client: URL is required")
 	}

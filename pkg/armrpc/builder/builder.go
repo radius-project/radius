@@ -172,7 +172,7 @@ func (b *Builder) ApplyAsyncHandler(ctx context.Context, registry *worker.Contro
 		}
 
 		if h.AsyncController != nil {
-			err := registry.Register(ctx, h.ResourceType, h.Method, h.AsyncController, ctrlOpts)
+			err := registry.Register(h.ResourceType, h.Method, h.AsyncController, ctrlOpts)
 			if err != nil {
 				return err
 			}

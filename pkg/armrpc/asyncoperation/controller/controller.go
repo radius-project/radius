@@ -18,9 +18,9 @@ package controller
 
 import (
 	"context"
+	"errors"
 
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,9 +31,6 @@ type Options struct {
 	// StorageClient is the data storage client.
 	StorageClient store.StorageClient
 
-	// DataProvider is the data storage provider.
-	DataProvider dataprovider.DataStorageProvider
-
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
 
@@ -42,6 +39,22 @@ type Options struct {
 
 	// GetDeploymentProcessor is the factory function to create core rp DeploymentProcessor instance.
 	GetDeploymentProcessor func() deployment.DeploymentProcessor
+}
+
+// Validate validates that required fields are set on the options.
+func (o Options) Validate() error {
+	var err error
+	if o.StorageClient == nil {
+		err = errors.Join(err, errors.New("StorageClient is required"))
+	}
+	if o.ResourceType == "" {
+		err = errors.Join(err, errors.New("ResourceType is required"))
+	}
+
+	// KubeClient and GetDeploymentProcessor are not used by the majority of the code, so they
+	// are not validated here.
+
+	return err
 }
 
 // Controller is an interface to implement async operation controller.
@@ -66,11 +79,6 @@ func NewBaseAsyncController(options Options) BaseController {
 // StorageClient gets storage client for this controller.
 func (b *BaseController) StorageClient() store.StorageClient {
 	return b.options.StorageClient
-}
-
-// DataProvider gets data storage provider for this controller.
-func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
-	return b.options.DataProvider
 }
 
 // KubeClient gets Kubernetes client for this controller.

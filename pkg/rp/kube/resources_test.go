@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -87,12 +86,10 @@ func TestFindNamespaceByEnvID(t *testing.T) {
 				},
 			}
 
-			mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
 			mockSC := store.NewMockStorageClient(mctrl)
-
-			mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).Times(1)
 			mockSC.EXPECT().Get(gomock.Any(), tc.id, gomock.Any()).Return(fakeStoreObject(envdm), nil).Times(1)
-			ns, err := FindNamespaceByEnvID(context.Background(), mockSP, testEnvID)
+
+			ns, err := FindNamespaceByEnvID(context.Background(), mockSC, testEnvID)
 			require.NoError(t, err)
 			require.Equal(t, tc.out, ns)
 		})

@@ -60,7 +60,7 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	resourceType := "System.Test/testResources"
 
 	// We can share the storage provider with the test server.
-	_, err := ts.Clients.StorageProvider.GetStorageClient(ctx, "System.Test/operationStatuses")
+	storageClient, err := ts.Clients.StorageProvider.GetClient(ctx)
 	require.NoError(t, err)
 
 	// Do not share the queue.
@@ -73,19 +73,19 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	queueClient, err := queueProvider.GetClient(ctx)
 	require.NoError(t, err)
 
-	statusManager := statusmanager.New(ts.Clients.StorageProvider, queueClient, v1.LocationGlobal)
+	statusManager := statusmanager.New(storageClient, queueClient, v1.LocationGlobal)
 
 	backendOpts := backend_ctrl.Options{
-		DataProvider: ts.Clients.StorageProvider,
+		StorageClient: storageClient,
 	}
 
-	registry := worker.NewControllerRegistry(ts.Clients.StorageProvider)
-	err = registry.Register(ctx, resourceType, v1.OperationPut, func(opts backend_ctrl.Options) (backend_ctrl.Controller, error) {
+	registry := worker.NewControllerRegistry()
+	err = registry.Register(resourceType, v1.OperationPut, func(opts backend_ctrl.Options) (backend_ctrl.Controller, error) {
 		return &BackendFuncController{BaseController: backend_ctrl.NewBaseAsyncController(opts), Func: put}, nil
 	}, backendOpts)
 	require.NoError(t, err)
 
-	err = registry.Register(ctx, resourceType, v1.OperationDelete, func(opts backend_ctrl.Options) (backend_ctrl.Controller, error) {
+	err = registry.Register(resourceType, v1.OperationDelete, func(opts backend_ctrl.Options) (backend_ctrl.Controller, error) {
 		return &BackendFuncController{BaseController: backend_ctrl.NewBaseAsyncController(opts), Func: delete}, nil
 	}, backendOpts)
 	require.NoError(t, err)
@@ -100,7 +100,8 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	}()
 
 	frontendOpts := frontend_ctrl.Options{
-		DataProvider:  ts.Clients.StorageProvider,
+		Address:       "localhost:8080",
+		StorageClient: storageClient,
 		StatusManager: statusManager,
 	}
 

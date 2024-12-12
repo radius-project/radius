@@ -64,10 +64,15 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return handler
 	}
 
+	storageClient, err := m.options.DataProvider.GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ctrlOptions := controller.Options{
 		Address:       m.options.Address,
 		PathBase:      m.options.PathBase,
-		DataProvider:  m.options.DataProvider,
+		StorageClient: storageClient,
 		StatusManager: m.options.StatusManager,
 	}
 

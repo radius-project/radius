@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -96,6 +98,78 @@ func TestUpdateSystemData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual := UpdateSystemData(tc.old, tc.new)
 			require.Equal(t, tc.expected, actual)
+		})
+	}
+}
+
+func TestOptionsValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		options Options
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid options",
+			options: Options{
+				Address:       "localhost:8080",
+				StorageClient: &store.MockStorageClient{},
+				ResourceType:  "testResource",
+				StatusManager: &statusmanager.MockStatusManager{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing address",
+			options: Options{
+				StorageClient: &store.MockStorageClient{},
+				ResourceType:  "testResource",
+				StatusManager: &statusmanager.MockStatusManager{},
+			},
+			wantErr: true,
+			errMsg:  ".Address is required",
+		},
+		{
+			name: "missing storage client",
+			options: Options{
+				Address:       "localhost:8080",
+				ResourceType:  "testResource",
+				StatusManager: &statusmanager.MockStatusManager{},
+			},
+			wantErr: true,
+			errMsg:  ".StorageClient is required",
+		},
+		{
+			name: "missing resource type",
+			options: Options{
+				Address:       "localhost:8080",
+				StorageClient: &store.MockStorageClient{},
+				StatusManager: &statusmanager.MockStatusManager{},
+			},
+			wantErr: true,
+			errMsg:  ".ResourceType is required",
+		},
+		{
+			name: "missing status manager",
+			options: Options{
+				Address:       "localhost:8080",
+				StorageClient: &store.MockStorageClient{},
+				ResourceType:  "testResource",
+			},
+			wantErr: true,
+			errMsg:  ".StatusManager is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.options.Validate()
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

@@ -28,7 +28,6 @@ import (
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
@@ -51,21 +50,14 @@ func TestGetOperationResultRun(t *testing.T) {
 	t.Run("get non-existing resource", func(t *testing.T) {
 		mctrl := gomock.NewController(t)
 
-		operationResultStoreClient := store.NewMockStorageClient(mctrl)
-		operationStatusStoreClient := store.NewMockStorageClient(mctrl)
-
-		dataProvider := dataprovider.NewMockDataStorageProvider(mctrl)
-		dataProvider.EXPECT().
-			GetStorageClient(gomock.Any(), "Applications.Core/operationstatuses").
-			Return(operationStatusStoreClient, nil).
-			Times(1)
+		storageClient := store.NewMockStorageClient(mctrl)
 
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(testcontext.New(t), http.MethodGet, operationStatusTestHeaderFile, nil)
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		operationStatusStoreClient.
+		storageClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -73,8 +65,7 @@ func TestGetOperationResultRun(t *testing.T) {
 			})
 
 		ctl, err := NewGetOperationResult(ctrl.Options{
-			DataProvider:  dataProvider,
-			StorageClient: operationResultStoreClient, // Will not be used.
+			StorageClient: storageClient,
 		})
 
 		require.NoError(t, err)
@@ -125,14 +116,7 @@ func TestGetOperationResultRun(t *testing.T) {
 	for _, tt := range opResTestCases {
 		t.Run(tt.desc, func(t *testing.T) {
 			mctrl := gomock.NewController(t)
-			operationResultStoreClient := store.NewMockStorageClient(mctrl)
-			operationStatusStoreClient := store.NewMockStorageClient(mctrl)
-
-			dataProvider := dataprovider.NewMockDataStorageProvider(mctrl)
-			dataProvider.EXPECT().
-				GetStorageClient(gomock.Any(), "Applications.Core/operationstatuses").
-				Return(operationStatusStoreClient, nil).
-				Times(1)
+			storageClient := store.NewMockStorageClient(mctrl)
 
 			w := httptest.NewRecorder()
 			req, err := rpctest.NewHTTPRequestFromJSON(testcontext.New(t), http.MethodGet, operationStatusTestHeaderFile, nil)
@@ -142,7 +126,7 @@ func TestGetOperationResultRun(t *testing.T) {
 			osDataModel.Status = tt.provisioningState
 			osDataModel.RetryAfter = time.Second * 5
 
-			operationStatusStoreClient.
+			storageClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -153,8 +137,7 @@ func TestGetOperationResultRun(t *testing.T) {
 				})
 
 			ctl, err := NewGetOperationResult(ctrl.Options{
-				DataProvider:  dataProvider,
-				StorageClient: operationResultStoreClient, // Will not be used.
+				StorageClient: storageClient,
 			})
 
 			require.NoError(t, err)
