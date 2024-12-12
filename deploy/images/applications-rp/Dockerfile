@@ -1,6 +1,6 @@
 # Use Alpine image to enable Git installation for Terraform module downloads.
 # Switch to distroless when Terraform execution is moved to a separate container.
-FROM alpine:3.20
+FROM alpine:3.21.0
 
 ARG TARGETARCH
 
