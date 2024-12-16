@@ -44,7 +44,7 @@ func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secr
 	// data provider already creates an etcd process which can be re-used instead of a new process for secret.
 	client, err := dataprovider.InitETCDClient(ctx, dataprovider.StorageProviderOptions{
 		ETCD: opts.ETCD,
-	}, "")
+	})
 	if err != nil {
 		return nil, err
 	}

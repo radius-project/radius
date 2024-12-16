@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -25,7 +26,6 @@ import (
 	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,9 +55,6 @@ type Options struct {
 	// StorageClient is the data storage client.
 	StorageClient store.StorageClient
 
-	// DataProvider is the data storage provider.
-	DataProvider dataprovider.DataStorageProvider
-
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
 
@@ -67,6 +64,28 @@ type Options struct {
 
 	// StatusManager is the async operation status manager.
 	StatusManager sm.StatusManager
+}
+
+func (o Options) Validate() error {
+	var err error
+	if o.Address == "" {
+		err = errors.Join(err, errors.New(".Address is required"))
+	}
+	if o.StorageClient == nil {
+		err = errors.Join(err, errors.New(".StorageClient is required"))
+	}
+	if o.ResourceType == "" {
+		err = errors.Join(err, errors.New(".ResourceType is required"))
+	}
+	if o.StatusManager == nil {
+		err = errors.Join(err, errors.New(".StatusManager is required"))
+	}
+
+	// PathBase is usually empty, so it is not validated here.
+	//
+	// KubeClient is not used by the majority of the code, so it is not validated here.
+
+	return err
 }
 
 // ResourceOptions represents the options and filters for resource.
@@ -120,11 +139,6 @@ func NewBaseController(options Options) BaseController {
 // StorageClient gets storage client for this controller.
 func (b *BaseController) StorageClient() store.StorageClient {
 	return b.options.StorageClient
-}
-
-// DataProvider gets data storage provider for this controller.
-func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
-	return b.options.DataProvider
 }
 
 // KubeClient gets Kubernetes client for this controller.

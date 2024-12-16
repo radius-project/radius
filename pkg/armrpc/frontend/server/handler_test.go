@@ -28,11 +28,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -73,18 +74,17 @@ func Test_NewSubrouter(t *testing.T) {
 }
 
 func Test_RegisterHandler_DeplicatedRoutes(t *testing.T) {
-	mctrl := gomock.NewController(t)
-
-	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
-	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	ctrlOpts := ctrl.Options{
-		DataProvider: mockSP,
+		Address:       "localhost:8080",
+		ResourceType:  "Applications.Test/testResources",
+		StorageClient: inmemory.NewClient(),
+		StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
 	}
 
 	p := chi.NewRouter()
 	opts := HandlerOptions{
 		ParentRouter:      p,
-		ResourceType:      "Applications.Test",
+		ResourceType:      "Applications.Test/testResources",
 		Method:            http.MethodGet,
 		ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
 		Middlewares:       chi.Middlewares{middleware.NormalizePath},
@@ -112,7 +112,7 @@ func Test_RegisterHandler(t *testing.T) {
 			name: "valid route with resource type and method",
 			opts: HandlerOptions{
 				ParentRouter:      p,
-				ResourceType:      "Applications.Test",
+				ResourceType:      "Applications.Test/testResources",
 				Method:            http.MethodGet,
 				ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
 				Middlewares:       chi.Middlewares{middleware.NormalizePath},
@@ -124,7 +124,7 @@ func Test_RegisterHandler(t *testing.T) {
 			opts: HandlerOptions{
 				ParentRouter:      p,
 				Path:              "/test",
-				ResourceType:      "Applications.Test",
+				ResourceType:      "Applications.Test/testResources",
 				Method:            http.MethodGet,
 				ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
 				Middlewares:       chi.Middlewares{middleware.NormalizePath},
@@ -136,7 +136,8 @@ func Test_RegisterHandler(t *testing.T) {
 			name: "valid route with operation type",
 			opts: HandlerOptions{
 				ParentRouter:      p,
-				OperationType:     &v1.OperationType{Type: "Applications.Test", Method: "GET"},
+				ResourceType:      "Applications.Test/testResources",
+				OperationType:     &v1.OperationType{Type: "Applications.Test/testResources", Method: "GET"},
 				ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
 				Middlewares:       chi.Middlewares{middleware.NormalizePath},
 			},
@@ -148,7 +149,8 @@ func Test_RegisterHandler(t *testing.T) {
 			opts: HandlerOptions{
 				ParentRouter:      p,
 				Path:              "/*",
-				OperationType:     &v1.OperationType{Type: "Applications.Test", Method: "PROXY"},
+				ResourceType:      "Applications.Test/testResources",
+				OperationType:     &v1.OperationType{Type: "Applications.Test/testResources", Method: "PROXY"},
 				ControllerFactory: func(ctrl.Options) (ctrl.Controller, error) { return nil, nil },
 			},
 			validMethod: []string{http.MethodGet, http.MethodPost},
@@ -166,12 +168,10 @@ func Test_RegisterHandler(t *testing.T) {
 		},
 	}
 
-	mctrl := gomock.NewController(t)
-
-	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
-	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	ctrlOpts := ctrl.Options{
-		DataProvider: mockSP,
+		Address:       "localhost:8080",
+		StorageClient: inmemory.NewClient(),
+		StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
 	}
 
 	for _, tc := range tests {

@@ -34,7 +34,7 @@ type Service struct {
 	// Options is the server hosting options.
 	Options hostoptions.HostOptions
 	// StorageProvider is the provider of storage client.
-	StorageProvider dataprovider.DataStorageProvider
+	StorageProvider *dataprovider.DataStorageProvider
 	// OperationStatusManager is the manager of the operation status.
 	OperationStatusManager manager.StatusManager
 	// Controllers is the registry of the async operation controllers.
@@ -46,15 +46,22 @@ type Service struct {
 // Init initializes worker service - it initializes the StorageProvider, RequestQueue, OperationStatusManager, Controllers, KubeClient and
 // returns an error if any of these operations fail.
 func (s *Service) Init(ctx context.Context) error {
-	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
+	s.StorageProvider = dataprovider.DataStorageProviderFromOptions(s.Options.Config.StorageProvider)
 	qp := qprovider.New(s.Options.Config.QueueProvider)
+
 	var err error
+	storageClient, err := s.StorageProvider.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+
 	s.RequestQueue, err = qp.GetClient(ctx)
 	if err != nil {
 		return err
 	}
-	s.OperationStatusManager = manager.New(s.StorageProvider, s.RequestQueue, s.Options.Config.Env.RoleLocation)
-	s.Controllers = NewControllerRegistry(s.StorageProvider)
+
+	s.OperationStatusManager = manager.New(storageClient, s.RequestQueue, s.Options.Config.Env.RoleLocation)
+	s.Controllers = NewControllerRegistry()
 	return nil
 }
 

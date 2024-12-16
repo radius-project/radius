@@ -18,71 +18,119 @@ package dataprovider
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/radius-project/radius/pkg/ucp/store"
-	"github.com/radius-project/radius/pkg/ucp/util"
 )
 
-var (
-	ErrUnsupportedStorageProvider = errors.New("unsupported storage provider")
-	ErrStorageNotFound            = errors.New("storage provider not found")
-)
+// DataStorageProvider acts as a factory for storage clients.
+//
+// Do not use construct this directly:
+//
+// - Use DataStorageProviderFromOptions instead for production use.
+// - Use DataStorageProviderFromMemory or DataStorageProviderFromClient for testing.
+type DataStorageProvider struct {
+	// options configures the settings of the storage provider.
+	options StorageProviderOptions
 
-var _ DataStorageProvider = (*storageProvider)(nil)
+	// factory is factory function to create a new storage client. Can be overridden for testing.
+	factory storageFactoryFunc
 
-type storageProvider struct {
-	clients   map[string]store.StorageClient
-	clientsMu sync.RWMutex
-	options   StorageProviderOptions
+	// init is used to guarantee single-initialization of the storage provider.
+	init sync.RWMutex
+
+	// result is result of invoking the factory (cached).
+	result result
 }
 
-// NewStorageProvider creates a new instance of the "storageProvider" struct with the given
-// "StorageProviderOptions" and returns it.
-func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
-	return &storageProvider{
-		clients: map[string]store.StorageClient{},
-		options: opts,
-	}
+type result struct {
+	client store.StorageClient
+	err    error
 }
 
-// GetStorageClient checks if a StorageClient for the given resourceType already exists in the map, and
-// if so, returns it. If not, it creates a new StorageClient using the storageClientFactory and adds it to the map,
-// returning it. If an error occurs, it returns an error.
-func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType string) (store.StorageClient, error) {
-	cn := util.NormalizeStringToLower(resourceType)
+// DataStorageProviderFromOptions creates a new instance of the DataStorageProvider struct with the given options.
+//
+// This will used the known factory functions to instantiate the storage client.
+func DataStorageProviderFromOptions(options StorageProviderOptions) *DataStorageProvider {
+	return &DataStorageProvider{options: options}
+}
 
-	p.clientsMu.RLock()
-	c, ok := p.clients[cn]
-	p.clientsMu.RUnlock()
-	if ok {
-		return c, nil
+// DataStorageProviderFromMemory creates a new instance of the DataStorageProvider struct using the in-memory client.
+//
+// This will use the ephemeral in-memory storage client.
+func DataStorageProviderFromMemory() *DataStorageProvider {
+	return &DataStorageProvider{options: StorageProviderOptions{Provider: TypeInMemory}}
+}
+
+// DataStorageProviderFromClient creates a new instance of the DataStorageProvider struct with the given client.
+//
+// This will always return the given client and will not attempt to create a new one. This can be used for testing
+// with mocks.
+func DataStorageProviderFromClient(client store.StorageClient) *DataStorageProvider {
+	return &DataStorageProvider{result: result{client: client}}
+}
+
+// GetStorageClient returns a storage client for the given resource type.
+func (p *DataStorageProvider) GetClient(ctx context.Context) (store.StorageClient, error) {
+	// Guarantee single initialization.
+	p.init.RLock()
+	result := p.result
+	p.init.RUnlock()
+
+	if result.client == nil && result.err == nil {
+		result = p.initialize(ctx)
 	}
 
-	var err error
-	if fn, ok := storageClientFactory[p.options.Provider]; ok {
-		// This write lock ensure that storage init function executes one by one and write client
-		// to map safely.
-		// CosmosDBStorageClient Init() calls database and collection creation control plane APIs.
-		// Ideally, such control plane APIs must be idempotent, but we could see unexpected failures
-		// by calling control plane API concurrently. Even if such issue rarely happens during release
-		// time, it could make the short-term downtime of the service.
-		// We expect that GetStorageClient() will be called during the start time. Thus, having a lock won't
-		// hurt any runtime performance.
-		p.clientsMu.Lock()
-		defer p.clientsMu.Unlock()
-
-		if c, ok := p.clients[cn]; ok {
-			return c, nil
-		}
-
-		if c, err = fn(ctx, p.options, cn); err == nil {
-			p.clients[cn] = c
-		}
-	} else {
-		err = ErrUnsupportedStorageProvider
+	// Invariant, either result.err is set or result.client is set.
+	if result.err != nil {
+		return nil, result.err
 	}
 
-	return c, err
+	if result.client == nil {
+		panic("invariant violated: p.result.client is nil")
+	}
+
+	return result.client, nil
+}
+
+func (p *DataStorageProvider) initialize(ctx context.Context) result {
+	p.init.Lock()
+	defer p.init.Unlock()
+
+	// Invariant: p.result is set when this function exits.
+	// Invariant: p.result.client is nil or p.result.err is nil when this function exits.
+	// Invariant: p.result is returned to the caller, so they don't need to retake the lock.
+
+	// Note: this is a double-checked locking pattern.
+	//
+	// It's possible that result was set by another goroutine before we acquired the lock.
+	if p.result.client != nil || p.result.err != nil {
+		return p.result
+	}
+
+	// If we get here we have the exclusive lock and need to initialize the storage client.
+
+	factory := p.factory
+	if factory == nil {
+		fn, ok := storageClientFactory[p.options.Provider]
+		if !ok {
+			p.result = result{nil, fmt.Errorf("unsupported storage provider: %s", p.options.Provider)}
+			return p.result
+		}
+
+		factory = fn
+	}
+
+	client, err := factory(ctx, p.options)
+	if err != nil {
+		p.result = result{nil, fmt.Errorf("failed to initialize storage client: %w", err)}
+		return p.result
+	} else if client == nil {
+		p.result = result{nil, fmt.Errorf("failed to initialize storage client: provider returned nil")}
+		return p.result
+	}
+
+	p.result = result{client, nil}
+	return p.result
 }

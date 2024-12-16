@@ -45,7 +45,6 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
-		DataProvider:  tCtx.MockSP,
 		KubeClient:    k8sutil.NewFakeKubeClient(nil),
 	}
 
@@ -111,8 +110,6 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 				}, nil
 			}).Times(2)
 
-		tCtx.MockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(tCtx.MockSC, nil).Times(1)
-
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
 				Compute: rpv1.EnvironmentCompute{
@@ -155,15 +152,12 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.MockSC,
-		DataProvider:  tCtx.MockSP,
 		KubeClient:    k8sutil.NewFakeKubeClient(nil),
 	}
 
 	t.Run("generated namespace is invalid", func(t *testing.T) {
 		longAppID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/this-is-a-very-long-application-name-that-is-invalid"
 		longEnvID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/this-is-a-very-long-environment-name-that-is-invalid"
-
-		tCtx.MockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(tCtx.MockSC, nil).Times(1)
 
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{

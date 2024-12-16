@@ -84,7 +84,7 @@ type ServiceOptions struct {
 // Service implements the hosting.Service interface for the UCP frontend API.
 type Service struct {
 	options         ServiceOptions
-	storageProvider dataprovider.DataStorageProvider
+	storageProvider *dataprovider.DataStorageProvider
 	queueProvider   *queueprovider.QueueProvider
 	secretProvider  *secretprovider.SecretProvider
 }
@@ -118,11 +118,16 @@ func (s *Service) Name() string {
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := chi.NewRouter()
 
-	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
+	s.storageProvider = dataprovider.DataStorageProviderFromOptions(s.options.StorageProviderOptions)
 	s.queueProvider = queueprovider.New(s.options.QueueProviderOptions)
 	s.secretProvider = secretprovider.NewSecretProvider(s.options.SecretProviderOptions)
 
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{s.options.PathBase}, "")
+	if err != nil {
+		return nil, err
+	}
+
+	storageClient, err := s.storageProvider.GetClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +137,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		return nil, err
 	}
 
-	statusManager := statusmanager.New(s.storageProvider, queueClient, s.options.Location)
+	statusManager := statusmanager.New(storageClient, queueClient, s.options.Location)
 
 	moduleOptions := modules.Options{
 		Address:        s.options.Address,
@@ -217,7 +222,7 @@ func (s *Service) createPlane(ctx context.Context, plane rest.Plane) error {
 		return fmt.Errorf("invalid plane ID: %s", plane.ID)
 	}
 
-	db, err := s.storageProvider.GetStorageClient(ctx, "ucp")
+	db, err := s.storageProvider.GetClient(ctx)
 	if err != nil {
 		return err
 	}

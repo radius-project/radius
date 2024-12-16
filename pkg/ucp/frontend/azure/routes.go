@@ -74,6 +74,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter:  planeCollectionRouter,
 			Method:        v1.OperationList,
 			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationList},
+			ResourceType:  datamodel.AzurePlaneResourceType,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return &planes_ctrl.ListPlanesByType[*datamodel.AzurePlane, datamodel.AzurePlane]{
 					Operation: controller.NewOperation(opts, planeResourceOptions),
@@ -84,6 +85,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationGet,
 			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationGet},
+			ResourceType:  datamodel.AzurePlaneResourceType,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewGetResource(opts, planeResourceOptions)
 			},
@@ -92,6 +94,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationPut,
 			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationPut},
+			ResourceType:  datamodel.AzurePlaneResourceType,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewDefaultSyncPut(opts, planeResourceOptions)
 			},
@@ -100,6 +103,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter:  planeResourceRouter,
 			Method:        v1.OperationDelete,
 			OperationType: &v1.OperationType{Type: datamodel.AzurePlaneResourceType, Method: v1.OperationDelete},
+			ResourceType:  datamodel.AzurePlaneResourceType,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewDefaultSyncDelete(opts, planeResourceOptions)
 			},
@@ -156,14 +160,21 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter:      planeResourceRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPAzureProxy, Method: v1.OperationProxy},
+			ResourceType:      OperationTypeUCPAzureProxy,
 			ControllerFactory: planes_ctrl.NewProxyController,
 		},
 	}
 
+	storageClient, err := m.options.DataProvider.GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ctrlOpts := controller.Options{
-		Address:      m.options.Address,
-		PathBase:     m.options.PathBase,
-		DataProvider: m.options.DataProvider,
+		Address:       m.options.Address,
+		PathBase:      m.options.PathBase,
+		StorageClient: storageClient,
+		StatusManager: m.options.StatusManager,
 	}
 
 	for _, h := range handlerOptions {

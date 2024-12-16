@@ -26,7 +26,6 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
@@ -35,10 +34,9 @@ import (
 )
 
 type asyncOperationsManagerTest struct {
-	manager       StatusManager
-	storeProvider *dataprovider.MockDataStorageProvider
-	storeClient   *store.MockStorageClient
-	queue         *queue.MockClient
+	manager     StatusManager
+	storeClient *store.MockStorageClient
+	queue       *queue.MockClient
 }
 
 const (
@@ -54,12 +52,10 @@ const (
 
 func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 	ctrl := gomock.NewController(tb)
-	dp := dataprovider.NewMockDataStorageProvider(ctrl)
 	sc := store.NewMockStorageClient(ctrl)
-	dp.EXPECT().GetStorageClient(gomock.Any(), "Applications.Core/operationstatuses").Return(sc, nil)
 	enq := queue.NewMockClient(ctrl)
-	aom := New(dp, enq, "test-location")
-	return asyncOperationsManagerTest{manager: aom, storeProvider: dp, storeClient: sc, queue: enq}, ctrl
+	aom := New(sc, enq, "test-location")
+	return asyncOperationsManagerTest{manager: aom, storeClient: sc, queue: enq}, ctrl
 }
 
 var reqCtx = &v1.ARMRequestContext{

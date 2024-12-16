@@ -50,7 +50,7 @@ type Options struct {
 	StatusManager statusmanager.StatusManager
 
 	// StorageProvider provides access to the data storage system.
-	StorageProvider dataprovider.DataStorageProvider
+	StorageProvider *dataprovider.DataStorageProvider
 
 	// UCP is the connection to UCP
 	UCP sdk.Connection
@@ -65,14 +65,19 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 
 	options.QueueProvider = queueprovider.New(config.Queue)
 	options.SecretProvider = secretprovider.NewSecretProvider(config.Secrets)
-	options.StorageProvider = dataprovider.NewStorageProvider(config.Storage)
+	options.StorageProvider = dataprovider.DataStorageProviderFromOptions(config.Storage)
+
+	storageClient, err := options.StorageProvider.GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	queueClient, err := options.QueueProvider.GetClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	options.StatusManager = statusmanager.New(options.StorageProvider, queueClient, config.Environment.RoleLocation)
+	options.StatusManager = statusmanager.New(storageClient, queueClient, config.Environment.RoleLocation)
 
 	var cfg *kube_rest.Config
 	cfg, err = kubeutil.NewClientConfig(&kubeutil.ConfigOptions{

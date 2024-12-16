@@ -97,6 +97,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 				ParentRouter:      router,
 				Path:              "/openapi/v2",
 				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesOpenAPIV2Doc, Method: v1.OperationGet},
+				ResourceType:      OperationTypeKubernetesOpenAPIV2Doc,
 				Method:            v1.OperationGet,
 				ControllerFactory: kubernetes_ctrl.NewOpenAPIv2Doc,
 			},
@@ -104,6 +105,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 				ParentRouter:      router,
 				Path:              "/openapi/v3",
 				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesOpenAPIV3Doc, Method: v1.OperationGet},
+				ResourceType:      OperationTypeKubernetesOpenAPIV3Doc,
 				Method:            v1.OperationGet,
 				ControllerFactory: kubernetes_ctrl.NewOpenAPIv3Doc,
 			},
@@ -111,6 +113,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 				ParentRouter:      router,
 				Path:              options.PathBase,
 				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesDiscoveryDoc, Method: v1.OperationGet},
+				ResourceType:      OperationTypeKubernetesDiscoveryDoc,
 				Method:            v1.OperationGet,
 				ControllerFactory: kubernetes_ctrl.NewDiscoveryDoc,
 			},
@@ -134,14 +137,21 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 			ParentRouter:      planeCollectionRouter,
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanes, Method: v1.OperationList},
+			ResourceType:      OperationTypePlanes,
 			ControllerFactory: planes_ctrl.NewListPlanes,
 		},
 	}...)
 
+	storageClient, err := options.DataProvider.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+
 	ctrlOptions := controller.Options{
-		Address:      options.Address,
-		PathBase:     options.PathBase,
-		DataProvider: options.DataProvider,
+		Address:       options.Address,
+		PathBase:      options.PathBase,
+		StorageClient: storageClient,
+		StatusManager: options.StatusManager,
 	}
 
 	for _, h := range handlerOptions {

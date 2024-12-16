@@ -56,14 +56,7 @@ func (e *GetOperationResult) Run(ctx context.Context, w http.ResponseWriter, req
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	// Avoid using GetResource or e.StorageClient since they will use a different
-	// storage client than the one we want.
-	storageClient, err := e.DataProvider().GetStorageClient(ctx, id.ProviderNamespace()+"/operationstatuses")
-	if err != nil {
-		return nil, err
-	}
-
-	obj, err := storageClient.Get(ctx, id.String())
+	obj, err := e.StorageClient().Get(ctx, id.String())
 	if errors.Is(&store.ErrNotFound{ID: id.String()}, err) {
 		return rest.NewNotFoundResponse(id), nil
 	}

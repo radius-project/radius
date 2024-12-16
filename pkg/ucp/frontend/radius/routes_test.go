@@ -185,8 +185,7 @@ func Test_Routes(t *testing.T) {
 	}
 
 	ctrl := gomock.NewController(t)
-	dataProvider := dataprovider.NewMockDataStorageProvider(ctrl)
-	dataProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	dataProvider := dataprovider.DataStorageProviderFromMemory()
 
 	secretClient := secret.NewMockClient(ctrl)
 	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
@@ -203,6 +202,10 @@ func Test_Routes(t *testing.T) {
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
 		module := NewModule(options)
 		handler, err := module.Initialize(ctx)
-		return handler.(chi.Router), err
+		if err != nil {
+			return nil, err
+		}
+
+		return handler.(chi.Router), nil
 	})
 }
