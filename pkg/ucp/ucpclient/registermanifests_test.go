@@ -9,52 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package ucpclient
-
-/*
-import (
-	"context"
-	"testing"
-
-	"github.com/radius-project/radius/pkg/ucp/hostoptions"
-	"github.com/radius-project/radius/pkg/ucp/server"
-	"github.com/stretchr/testify/require"
-)
-
-func TestRegisterManifests(t *testing.T) {
-	ctx := context.Background()
-
-	// Setup temporary manifest directory and files
-	manifestDir := "testdata"
-
-	// Create sample manifest files in manifestDir
-	// ...
-	options := &server.Options{
-		Config: &hostoptions.UCPConfig{
-			Manifests: hostoptions.ManifestConfig{
-				ManifestDirectory: manifestDir,
-			},
-		},
-	}
-
-	// Setup fake UCP client with fake servers
-	fakeUCPClient, err := NewFakeUCPClient()
-	require.NoError(t, err)
-
-
-}
-*/
-/*
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 
 import (
 	"context"
@@ -78,20 +34,6 @@ type FakeUCPServer struct {
 	APIVersionsServer       *ucpfake.APIVersionsServer
 	LocationsServer         *ucpfake.LocationsServer
 }
-
-/*
-type MultiTransport struct {
-	transports map[string]http.RoundTripper
-}
-
-func (mt *MultiTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	for prefix, transport := range mt.transports {
-		if strings.HasPrefix(req.URL.Path, prefix) {
-			return transport.RoundTrip(req)
-		}
-	}
-	return nil, fmt.Errorf("no transport found for request path: %s", req.URL.Path)
-}*/
 
 func NewFakeUCPServer() (*FakeUCPServer, error) {
 
@@ -228,42 +170,6 @@ func NewTestUCPClient(server *FakeUCPServer) (*UCPClient, error) {
 	resourceTypesTransport := ucpfake.NewResourceTypesServerTransport(server.ResourceTypesServer)
 	apiVersionsTransport := ucpfake.NewAPIVersionsServerTransport(server.APIVersionsServer)
 	locationsTransport := ucpfake.NewLocationsServerTransport(server.LocationsServer)
-
-	/*
-	   // Create the ServerFactory
-	   serverFactory := &ucpfake.ServerFactory{}
-
-	   // Register your fake servers with the ServerFactory
-	   serverFactory.ResourceProvidersServer = *resourceProvidersServer
-	   serverFactory.ResourceTypesServer = *resourceTypesServer
-	   serverFactory.APIVersionsServer = *apiVersionsServer
-	   serverFactory.LocationsServer = *locationsServer
-	   //locTransporter := ucpfake.ServerFactoryTransport(locationsServer)
-
-	   serverFactoryTransport := ucpfake.NewServerFactoryTransport(serverFactory)
-	*/
-
-	//clientOptions := &policy.ClientOptions{Transport: serverFactoryTransport}
-
-	// Assuming you have a UCPConnection or can use a fake one for testing
-	//ucpConnection, err := sdk.NewDirectConnection("") // Replace with a valid implementation
-	/*
-	   // Create the server.Options instance
-	   serverOptions := &server.Options{
-	   	UCPConnection: ucpConnection,
-	   }
-
-	   httpClient:= http.Client{
-	   	Transport: serverFactoryTransport,
-	   }
-
-	   ucpConnection.Client() = httpClient
-	*/
-	// Instantiate UCPClientImpl with the unified ClientOptions
-	//ucpClient, err := NewUCPClient(ucpConnection)
-	/*if err != nil {
-		return nil, fmt.Errorf("failed to create UCP client: %w", err)
-	}*/
 
 	// Configure client options with respective transports
 	resourceProvidersOptions := &armpolicy.ClientOptions{

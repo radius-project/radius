@@ -21,14 +21,14 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	ucpoptions "github.com/radius-project/radius/pkg/ucp/hostoptions"
-	"github.com/radius-project/radius/pkg/ucp/ucpclient"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -80,12 +80,6 @@ func waitForServer(ctx context.Context, host, port string, retryInterval time.Du
 func (w *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Set up signal handling for graceful shutdown
-	stopChan := make(chan os.Signal, 1)
-	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Start the manifest registration in a goroutine
-	//go func() {
 	// Define connection parameters
 	hostName := "localhost" //w.ucpConnection.Endpoint()/split to get host? // Replace with actual method
 	port := "9000"          // extract from endpoint Replace with actual method
@@ -99,28 +93,32 @@ func (w *Service) Run(ctx context.Context) error {
 
 	// Server is up, proceed to register manifests
 	manifestDir := w.options.Manifests.ManifestDirectory
-	if _, err := os.Stat(manifestDir); os.IsNotExist(err) {
-		logger.Error(err, "Manifest directory does not exist", "directory", manifestDir)
-		return nil
-	} else if err != nil {
-		logger.Error(err, "Error checking manifest directory", "directory", manifestDir)
+	if manifestDir == "" {
+		logger.Info("No manifest directory specified")
 		return nil
 	}
 
-	ucpclient, err := ucpclient.NewUCPClient(w.ucpConnection)
+	if _, err := os.Stat(manifestDir); os.IsNotExist(err) {
+		return fmt.Errorf("manifest directory does not exist: %w", err)
+	} else if err != nil {
+		return fmt.Errorf("error checking manifest directory: %w", err)
+	}
+
+	clientOptions := sdk.NewClientOptions(w.ucpConnection)
+
+	clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
-		logger.Error(err, "Failed to create UCP client")
+		logger.Error(err, "Failed to create client factory")
 		return nil
 	}
 
 	// Proceed with registering manifests
-	if err := ucpclient.RegisterManifests(ctx, manifestDir); err != nil {
+	if err := manifest.RegisterDirectory(ctx, *clientFactory, "local", manifestDir, nil); err != nil {
 		logger.Error(err, "Failed to register manifests")
 		return nil
 	}
 
 	logger.Info("Successfully registered manifests", "directory", manifestDir)
-	//}()
 
 	return nil
 }

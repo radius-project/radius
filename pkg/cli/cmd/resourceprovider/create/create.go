@@ -19,8 +19,8 @@ package create
 import (
 	"context"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -28,8 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/ucpclient"
 	"github.com/spf13/cobra"
 )
 
@@ -114,65 +113,23 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad resource-provider create` command.
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+
+	connection, err := cmd.GetConnection(ctx, r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	r.Output.LogInfo("Creating resource provider %s", r.ResourceProvider.Name)
-	_, err = client.CreateOrUpdateResourceProvider(ctx, "local", r.ResourceProvider.Name, &v20231001preview.ResourceProviderResource{
-		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: &v20231001preview.ResourceProviderProperties{},
-	})
+	ucpclient, err := ucpclient.NewUCPClient(connection)
 	if err != nil {
 		return err
 	}
 
-	// The location resource contains references to all of the resource types and API versions that the resource provider supports.
-	// We're instantiating the struct here so we can update it as we loop.
-	locationResource := v20231001preview.LocationResource{
-		Properties: &v20231001preview.LocationProperties{
-			ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
-		},
+	// Proceed with registering manifests
+	if err := ucpclient.RegisterManifests(ctx, r.ResourceProviderManifestFilePath); err != nil {
+		return nil
 	}
 
-	for resourceTypeName, resourceType := range r.ResourceProvider.Types {
-		r.Output.LogInfo("Creating resource type %s/%s", r.ResourceProvider.Name, resourceTypeName)
-		_, err := client.CreateOrUpdateResourceType(ctx, "local", r.ResourceProvider.Name, resourceTypeName, &v20231001preview.ResourceTypeResource{
-			Properties: &v20231001preview.ResourceTypeProperties{
-				DefaultAPIVersion: resourceType.DefaultAPIVersion,
-			},
-		})
-		if err != nil {
-			return err
-		}
-
-		locationResourceType := &v20231001preview.LocationResourceType{
-			APIVersions: map[string]map[string]any{},
-		}
-
-		for apiVersionName := range resourceType.APIVersions {
-			r.Output.LogInfo("Creating API Version %s/%s@%s", r.ResourceProvider.Name, resourceTypeName, apiVersionName)
-			_, err := client.CreateOrUpdateAPIVersion(ctx, "local", r.ResourceProvider.Name, resourceTypeName, apiVersionName, &v20231001preview.APIVersionResource{
-				Properties: &v20231001preview.APIVersionProperties{},
-			})
-			if err != nil {
-				return err
-			}
-
-			locationResourceType.APIVersions[apiVersionName] = map[string]any{}
-		}
-
-		locationResource.Properties.ResourceTypes[resourceTypeName] = locationResourceType
-	}
-
-	r.Output.LogInfo("Creating location %s/%s", r.ResourceProvider.Name, v1.LocationGlobal)
-	_, err = client.CreateOrUpdateLocation(ctx, "local", r.ResourceProvider.Name, v1.LocationGlobal, &locationResource)
-	if err != nil {
-		return err
-	}
-
-	response, err := client.GetResourceProvider(ctx, "local", r.ResourceProvider.Name)
+	response, err := ucpclient.GetResourceProvider(ctx, "local", r.ResourceProvider.Name)
 	if err != nil {
 		return err
 	}
