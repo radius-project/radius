@@ -18,30 +18,6 @@ import (
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
-/*
-// UCPClient is a client for interacting with the UCP API.
-type UCPClient interface {
-	// CreateOrUpdateResourceProvider creates or updates a resource provider in the configured scope.
-	CreateOrUpdateResourceProvider(ctx context.Context, planeName string, providerNamespace string, resource *ucpv20231001.ResourceProviderResource) (ucpv20231001.ResourceProviderResource, error)
-
-	// CreateOrUpdateResourceType creates or updates a resource type in the configured scope.
-	GetResourceProvider(ctx context.Context, planeName string, resourceProviderName string) (ucpv20231001.ResourceProviderResource, error)
-
-	// CreateOrUpdateResourceType creates or updates a resource type in the configured scope.
-	CreateOrUpdateResourceType(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, resource *ucpv20231001.ResourceTypeResource) (ucpv20231001.ResourceTypeResource, error)
-
-	// CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.
-	CreateOrUpdateAPIVersion(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource *ucpv20231001.APIVersionResource) (ucpv20231001.APIVersionResource, error)
-
-	// CreateOrUpdateLocation creates or updates a resource provider location in the configured scope.
-	CreateOrUpdateLocation(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource *ucpv20231001.LocationResource) (ucpv20231001.LocationResource, error)
-
-	RegisterManifests(ctx context.Context) error
-
-	// ... Add other methods as needed ...
-}
-*/
-
 const planeName = "local"
 
 // UCPClient holds instances of each specific client.
@@ -52,8 +28,6 @@ type UCPClient struct {
 	LocationsClient         *ucpv20231001.LocationsClient
 	// Add other clients as needed
 }
-
-//var _ UCPClient = (*UCPClientFactory)(nil)
 
 // CreateOrUpdateResourceProvider creates or updates a resource provider in the configured scope.
 func (u *UCPClient) CreateOrUpdateResourceProvider(ctx context.Context, planeName string, resourceProviderName string, resource *ucpv20231001.ResourceProviderResource) (ucpv20231001.ResourceProviderResource, error) {

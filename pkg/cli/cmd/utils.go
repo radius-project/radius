@@ -18,13 +18,16 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 )
 
@@ -93,4 +96,21 @@ func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagem
 	}
 
 	return envResource, recipeProperties, nil
+}
+
+// GetConnection from Workspace.
+func GetConnection(ctx context.Context, workspace *workspaces.Workspace) (sdk.Connection, error) {
+	connection, err := workspace.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	err = sdk.TestConnection(ctx, connection)
+	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
+		return nil, clierrors.MessageWithCause(err, "Could not connect to Radius.")
+	} else if err != nil {
+		return nil, err
+	}
+
+	return connection, nil
 }

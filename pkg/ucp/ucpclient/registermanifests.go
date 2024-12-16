@@ -83,9 +83,10 @@ func (u *UCPClient) RegisterManifests(ctx context.Context, manifestDirectory str
 	// Iterate over each file in the directory
 	for _, fileInfo := range files {
 		if fileInfo.IsDir() {
-			continue // Skip directories - check if want to include subdirectories
+			continue // Skip directories - TBD: check if want to include subdirectories
 		}
 		filePath := filepath.Join(manifestDirectory, fileInfo.Name())
+
 		// Read the manifest file
 		resourceProvider, err := manifest.ReadFile(filePath)
 		if err != nil {
