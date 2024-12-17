@@ -48,7 +48,7 @@ func (s *Service) Name() string {
 	return "dynamic-rp api"
 }
 
-// Initialize sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
+// Initialize sets up the router, database provider, secret provider, status manager, AWS config, AWS clients,
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) initialize(ctx context.Context) (*http.Server, error) {

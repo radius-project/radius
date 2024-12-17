@@ -30,8 +30,8 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
 	"github.com/radius-project/radius/pkg/corerp/renderers/volume"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateResource)(nil)
@@ -63,18 +63,18 @@ func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
 // Run checks if the resource exists, renders the resource, deploys the resource, applies the
 // deployment output to the resource, deletes any resources that are no longer needed, and saves the resource.
 func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
-	if err != nil && !errors.Is(&store.ErrNotFound{ID: request.ResourceID}, err) {
+	obj, err := c.DatabaseClient().Get(ctx, request.ResourceID)
+	if err != nil && !errors.Is(&database.ErrNotFound{ID: request.ResourceID}, err) {
 		return ctrl.Result{}, err
 	}
 
 	isNewResource := false
-	if errors.Is(&store.ErrNotFound{ID: request.ResourceID}, err) {
+	if errors.Is(&database.ErrNotFound{ID: request.ResourceID}, err) {
 		isNewResource = true
 	}
 
 	opType, _ := v1.ParseOperationType(request.OperationType)
-	if opType.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{ID: request.ResourceID}, err) {
+	if opType.Method == http.MethodPatch && errors.Is(&database.ErrNotFound{ID: request.ResourceID}, err) {
 		return ctrl.Result{}, err
 	}
 
@@ -122,13 +122,13 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		}
 	}
 
-	nr := &store.Object{
-		Metadata: store.Metadata{
+	nr := &database.Object{
+		Metadata: database.Metadata{
 			ID: request.ResourceID,
 		},
 		Data: deploymentDataModel,
 	}
-	err = c.StorageClient().Save(ctx, nr, store.WithETag(obj.ETag))
+	err = c.DatabaseClient().Save(ctx, nr, database.WithETag(obj.ETag))
 	if err != nil {
 		return ctrl.Result{}, err
 	}

@@ -26,17 +26,17 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 type asyncOperationsManagerTest struct {
-	manager     StatusManager
-	storeClient *store.MockStorageClient
-	queue       *queue.MockClient
+	manager        StatusManager
+	databaseClient *database.MockClient
+	queueClient    *queue.MockClient
 }
 
 const (
@@ -52,10 +52,10 @@ const (
 
 func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 	ctrl := gomock.NewController(tb)
-	sc := store.NewMockStorageClient(ctrl)
+	sc := database.NewMockClient(ctrl)
 	enq := queue.NewMockClient(ctrl)
 	aom := New(sc, enq, "test-location")
-	return asyncOperationsManagerTest{manager: aom, storeClient: sc, queue: enq}, ctrl
+	return asyncOperationsManagerTest{manager: aom, databaseClient: sc, queueClient: enq}, ctrl
 }
 
 var reqCtx = &v1.ARMRequestContext{
@@ -151,16 +151,16 @@ func TestCreateAsyncOperationStatus(t *testing.T) {
 			aomTest, mctrl := setup(t)
 			defer mctrl.Finish()
 
-			aomTest.storeClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.SaveErr)
+			aomTest.databaseClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.SaveErr)
 
 			// We can't expect an async operation to be queued if it is not saved to the DB.
 			if tt.SaveErr == nil {
-				aomTest.queue.EXPECT().Enqueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.EnqueueErr)
+				aomTest.queueClient.EXPECT().Enqueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.EnqueueErr)
 			}
 
 			// If there is an error when enqueuing the message, the async operation should be deleted.
 			if tt.EnqueueErr != nil {
-				aomTest.storeClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
+				aomTest.databaseClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
 			}
 
 			options := QueueOperationOptions{
@@ -208,7 +208,7 @@ func TestDeleteAsyncOperationStatus(t *testing.T) {
 			aomTest, mctrl := setup(t)
 			defer mctrl.Finish()
 
-			aomTest.storeClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
+			aomTest.databaseClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
 			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
 			err = aomTest.manager.Delete(context.TODO(), rid, uuid.New())
@@ -226,13 +226,13 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 	getCases := []struct {
 		Desc   string
 		GetErr error
-		Obj    *store.Object
+		Obj    *database.Object
 	}{
 		{
 			Desc:   "get_success",
 			GetErr: nil,
-			Obj: &store.Object{
-				Metadata: store.Metadata{ID: opID.String(), ETag: "etag"},
+			Obj: &database.Object{
+				Metadata: database.Metadata{ID: opID.String(), ETag: "etag"},
 				Data:     testAos,
 			},
 		},
@@ -248,7 +248,7 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 			aomTest, mctrl := setup(t)
 			defer mctrl.Finish()
 
-			aomTest.storeClient.
+			aomTest.databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(tt.Obj, tt.GetErr)
@@ -275,14 +275,14 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 	updateCases := []struct {
 		Desc    string
 		GetErr  error
-		Obj     *store.Object
+		Obj     *database.Object
 		SaveErr error
 	}{
 		{
 			Desc:   "update_success",
 			GetErr: nil,
-			Obj: &store.Object{
-				Metadata: store.Metadata{ID: opID.String(), ETag: "etag"},
+			Obj: &database.Object{
+				Metadata: database.Metadata{ID: opID.String(), ETag: "etag"},
 				Data:     testAos,
 			},
 			SaveErr: nil,
@@ -294,13 +294,13 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			aomTest, mctrl := setup(t)
 			defer mctrl.Finish()
 
-			aomTest.storeClient.
+			aomTest.databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(tt.Obj, tt.GetErr)
 
 			if tt.GetErr == nil {
-				aomTest.storeClient.
+				aomTest.databaseClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.SaveErr)

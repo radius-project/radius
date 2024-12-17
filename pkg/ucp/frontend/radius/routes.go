@@ -64,16 +64,16 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return handler
 	}
 
-	storageClient, err := m.options.DataProvider.GetClient(ctx)
+	databaseClient, err := m.options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	ctrlOptions := controller.Options{
-		Address:       m.options.Address,
-		PathBase:      m.options.PathBase,
-		StorageClient: storageClient,
-		StatusManager: m.options.StatusManager,
+		Address:        m.options.Address,
+		PathBase:       m.options.PathBase,
+		DatabaseClient: databaseClient,
+		StatusManager:  m.options.StatusManager,
 	}
 
 	// NOTE: we're careful where we use the `apiValidator` middleware. It's not used for the proxy routes.
@@ -380,6 +380,6 @@ func operationStatusGetHandler(ctx context.Context, ctrlOptions controller.Optio
 }
 
 func operationResultGetHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
-	// NOTE: The resource type below is CORRECT. operation status and operation result use the same resource for storage.
+	// NOTE: The resource type below is CORRECT. operation status and operation result use the same resource type in the database.
 	return server.CreateHandler(ctx, "System.Resources/operationstatuses", v1.OperationGet, ctrlOptions, defaultoperation.NewGetOperationResult)
 }

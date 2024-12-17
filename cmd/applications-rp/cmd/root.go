@@ -34,7 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/trace"
 
 	"github.com/radius-project/radius/pkg/ucp/data"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
@@ -79,14 +79,14 @@ var rootCmd = &cobra.Command{
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
 
-		if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
-			options.Config.StorageProvider.ETCD.InMemory {
+		if options.Config.DatabaseProvider.Provider == databaseprovider.TypeETCD &&
+			options.Config.DatabaseProvider.ETCD.InMemory {
 			// For in-memory etcd we need to register another service to manage its lifecycle.
 			//
 			// The client will be initialized asynchronously.
 			logger.Info("Enabled in-memory etcd")
 			client := hosting.NewAsyncValue[etcdclient.Client]()
-			options.Config.StorageProvider.ETCD.Client = client
+			options.Config.DatabaseProvider.ETCD.Client = client
 			options.Config.SecretProvider.ETCD.Client = client
 
 			hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))

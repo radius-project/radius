@@ -21,9 +21,9 @@ import (
 
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
-	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -33,8 +33,8 @@ type Service struct {
 	ProviderName string
 	// Options is the server hosting options.
 	Options hostoptions.HostOptions
-	// StorageProvider is the provider of storage client.
-	StorageProvider *dataprovider.DataStorageProvider
+	// DatabaseProvider is the provider of the database client.
+	DatabaseProvider *databaseprovider.DatabaseProvider
 	// OperationStatusManager is the manager of the operation status.
 	OperationStatusManager manager.StatusManager
 	// Controllers is the registry of the async operation controllers.
@@ -46,11 +46,11 @@ type Service struct {
 // Init initializes worker service - it initializes the StorageProvider, RequestQueue, OperationStatusManager, Controllers, KubeClient and
 // returns an error if any of these operations fail.
 func (s *Service) Init(ctx context.Context) error {
-	s.StorageProvider = dataprovider.DataStorageProviderFromOptions(s.Options.Config.StorageProvider)
-	qp := qprovider.New(s.Options.Config.QueueProvider)
+	s.DatabaseProvider = databaseprovider.FromOptions(s.Options.Config.DatabaseProvider)
+	qp := queueprovider.New(s.Options.Config.QueueProvider)
 
 	var err error
-	storageClient, err := s.StorageProvider.GetClient(ctx)
+	storageClient, err := s.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return err
 	}

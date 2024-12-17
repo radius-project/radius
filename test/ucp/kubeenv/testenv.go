@@ -23,7 +23,7 @@ import (
 	"os"
 	"os/exec"
 
-	ucpv1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
+	ucpv1alpha1 "github.com/radius-project/radius/pkg/ucp/database/apiserverstore/api/ucp.dev/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

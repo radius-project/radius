@@ -25,7 +25,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -80,10 +80,10 @@ func Test_Routes(t *testing.T) {
 	}
 
 	options := modules.Options{
-		Address:       "localhost",
-		PathBase:      pathBase,
-		DataProvider:  dataprovider.DataStorageProviderFromMemory(),
-		StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
+		Address:          "localhost",
+		PathBase:         pathBase,
+		DatabaseProvider: databaseprovider.FromMemory(),
+		StatusManager:    statusmanager.NewMockStatusManager(gomock.NewController(t)),
 	}
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
@@ -96,10 +96,10 @@ func Test_Route_ToModule(t *testing.T) {
 	pathBase := "/some-path-base"
 
 	options := modules.Options{
-		Address:       "localhost",
-		PathBase:      pathBase,
-		DataProvider:  dataprovider.DataStorageProviderFromMemory(),
-		StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
+		Address:          "localhost",
+		PathBase:         pathBase,
+		DatabaseProvider: databaseprovider.FromMemory(),
+		StatusManager:    statusmanager.NewMockStatusManager(gomock.NewController(t)),
 	}
 
 	r := chi.NewRouter()

@@ -22,11 +22,11 @@ import (
 	"testing"
 
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	ucp_aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
 	"github.com/radius-project/radius/pkg/ucp/secret"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"go.uber.org/mock/gomock"
 )
 
@@ -38,7 +38,7 @@ const (
 	testAWSRequestToken               = "79B9F0DA-4882-4DC8-A367-6FD3BC122DED" // Random UUID
 )
 
-func initializeAWSTest(t *testing.T) (*testserver.TestServer, *store.MockStorageClient, *secret.MockClient, *ucp_aws.MockAWSCloudControlClient, *ucp_aws.MockAWSCloudFormationClient) {
+func initializeAWSTest(t *testing.T) (*testserver.TestServer, *database.MockClient, *secret.MockClient, *ucp_aws.MockAWSCloudControlClient, *ucp_aws.MockAWSCloudFormationClient) {
 	ctrl := gomock.NewController(t)
 	cloudControlClient := ucp_aws.NewMockAWSCloudControlClient(ctrl)
 	cloudFormationClient := ucp_aws.NewMockAWSCloudFormationClient(ctrl)
@@ -50,5 +50,5 @@ func initializeAWSTest(t *testing.T) (*testserver.TestServer, *store.MockStorage
 		return []modules.Initializer{module}
 	})
 
-	return ucp, ucp.Mocks.Storage, ucp.Mocks.Secrets, cloudControlClient, cloudFormationClient
+	return ucp, ucp.Mocks.Database, ucp.Mocks.Secrets, cloudControlClient, cloudFormationClient
 }

@@ -142,16 +142,16 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 		},
 	}...)
 
-	storageClient, err := options.DataProvider.GetClient(ctx)
+	databaseClient, err := options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return err
 	}
 
 	ctrlOptions := controller.Options{
-		Address:       options.Address,
-		PathBase:      options.PathBase,
-		StorageClient: storageClient,
-		StatusManager: options.StatusManager,
+		Address:        options.Address,
+		PathBase:       options.PathBase,
+		DatabaseClient: databaseClient,
+		StatusManager:  options.StatusManager,
 	}
 
 	for _, h := range handlerOptions {

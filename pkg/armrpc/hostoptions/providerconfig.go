@@ -21,9 +21,9 @@ import (
 	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
 	"github.com/radius-project/radius/pkg/trace"
 	"github.com/radius-project/radius/pkg/ucp/config"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
-	sprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
+	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -31,9 +31,9 @@ import (
 type ProviderConfig struct {
 	Env              EnvironmentOptions                       `yaml:"environment"`
 	Identity         IdentityOptions                          `yaml:"identity"`
-	StorageProvider  dataprovider.StorageProviderOptions      `yaml:"storageProvider"`
-	SecretProvider   sprovider.SecretProviderOptions          `yaml:"secretProvider"`
-	QueueProvider    qprovider.QueueProviderOptions           `yaml:"queueProvider"`
+	DatabaseProvider databaseprovider.Options                 `yaml:"storageProvider"`
+	SecretProvider   secretprovider.SecretProviderOptions     `yaml:"secretProvider"`
+	QueueProvider    queueprovider.QueueProviderOptions       `yaml:"queueProvider"`
 	Server           *ServerOptions                           `yaml:"server,omitempty"`
 	WorkerServer     *WorkerServerOptions                     `yaml:"workerServer,omitempty"`
 	MetricsProvider  metricsprovider.MetricsProviderOptions   `yaml:"metricsProvider"`

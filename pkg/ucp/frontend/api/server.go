@@ -32,9 +32,9 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
 	azure_frontend "github.com/radius-project/radius/pkg/ucp/frontend/azure"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
@@ -42,10 +42,10 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/frontend/versions"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/rest"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/validator"
 	"github.com/radius-project/radius/swagger"
@@ -69,7 +69,7 @@ type ServiceOptions struct {
 	Configure               func(chi.Router)
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
-	StorageProviderOptions  dataprovider.StorageProviderOptions
+	DatabaseProviderOptions databaseprovider.Options
 	SecretProviderOptions   secretprovider.SecretProviderOptions
 	QueueProviderOptions    queueprovider.QueueProviderOptions
 	InitialPlanes           []rest.Plane
@@ -83,10 +83,10 @@ type ServiceOptions struct {
 
 // Service implements the hosting.Service interface for the UCP frontend API.
 type Service struct {
-	options         ServiceOptions
-	storageProvider *dataprovider.DataStorageProvider
-	queueProvider   *queueprovider.QueueProvider
-	secretProvider  *secretprovider.SecretProvider
+	options          ServiceOptions
+	databaseProvider *databaseprovider.DatabaseProvider
+	queueProvider    *queueprovider.QueueProvider
+	secretProvider   *secretprovider.SecretProvider
 }
 
 // DefaultModules returns a list of default modules that will be registered with the router.
@@ -112,13 +112,13 @@ func (s *Service) Name() string {
 	return "api"
 }
 
-// Initialize sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
+// Initialize sets up the router, database provider, secret provider, status manager, AWS config, AWS clients,
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := chi.NewRouter()
 
-	s.storageProvider = dataprovider.DataStorageProviderFromOptions(s.options.StorageProviderOptions)
+	s.databaseProvider = databaseprovider.FromOptions(s.options.DatabaseProviderOptions)
 	s.queueProvider = queueprovider.New(s.options.QueueProviderOptions)
 	s.secretProvider = secretprovider.NewSecretProvider(s.options.SecretProviderOptions)
 
@@ -127,7 +127,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		return nil, err
 	}
 
-	storageClient, err := s.storageProvider.GetClient(ctx)
+	databaseClient, err := s.databaseProvider.GetClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -137,19 +137,19 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		return nil, err
 	}
 
-	statusManager := statusmanager.New(storageClient, queueClient, s.options.Location)
+	statusManager := statusmanager.New(databaseClient, queueClient, s.options.Location)
 
 	moduleOptions := modules.Options{
-		Address:        s.options.Address,
-		PathBase:       s.options.PathBase,
-		Config:         s.options.Config,
-		Location:       s.options.Location,
-		DataProvider:   s.storageProvider,
-		QueueProvider:  s.queueProvider,
-		SecretProvider: s.secretProvider,
-		SpecLoader:     specLoader,
-		StatusManager:  statusManager,
-		UCPConnection:  s.options.UCPConnection,
+		Address:          s.options.Address,
+		PathBase:         s.options.PathBase,
+		Config:           s.options.Config,
+		Location:         s.options.Location,
+		DatabaseProvider: s.databaseProvider,
+		QueueProvider:    s.queueProvider,
+		SecretProvider:   s.secretProvider,
+		SpecLoader:       specLoader,
+		StatusManager:    statusManager,
+		UCPConnection:    s.options.UCPConnection,
 	}
 
 	modules := DefaultModules(moduleOptions)
@@ -222,13 +222,13 @@ func (s *Service) createPlane(ctx context.Context, plane rest.Plane) error {
 		return fmt.Errorf("invalid plane ID: %s", plane.ID)
 	}
 
-	db, err := s.storageProvider.GetClient(ctx)
+	db, err := s.databaseProvider.GetClient(ctx)
 	if err != nil {
 		return err
 	}
 
 	opts := armrpc_controller.Options{
-		StorageClient: db,
+		DatabaseClient: db,
 	}
 
 	var ctrl armrpc_controller.Controller

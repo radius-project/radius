@@ -30,7 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	"github.com/radius-project/radius/pkg/ucp/secret"
-	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 

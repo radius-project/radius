@@ -21,15 +21,15 @@ import (
 	"errors"
 
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Options represents controller options.
 type Options struct {
-	// StorageClient is the data storage client.
-	StorageClient store.StorageClient
+	// DatabaseClient is the database client.
+	DatabaseClient database.Client
 
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
@@ -44,11 +44,11 @@ type Options struct {
 // Validate validates that required fields are set on the options.
 func (o Options) Validate() error {
 	var err error
-	if o.StorageClient == nil {
-		err = errors.Join(err, errors.New("StorageClient is required"))
+	if o.DatabaseClient == nil {
+		err = errors.Join(err, errors.New(".DatabaseClient is required"))
 	}
 	if o.ResourceType == "" {
-		err = errors.Join(err, errors.New("ResourceType is required"))
+		err = errors.Join(err, errors.New(".ResourceType is required"))
 	}
 
 	// KubeClient and GetDeploymentProcessor are not used by the majority of the code, so they
@@ -62,8 +62,8 @@ type Controller interface {
 	// Run runs async request operation.
 	Run(ctx context.Context, request *Request) (Result, error)
 
-	// StorageClient gets the storage client for resource type.
-	StorageClient() store.StorageClient
+	// DatabaseClient gets the database client for resource type.
+	DatabaseClient() database.Client
 }
 
 // BaseController is the base struct of async operation controller.
@@ -76,9 +76,9 @@ func NewBaseAsyncController(options Options) BaseController {
 	return BaseController{options}
 }
 
-// StorageClient gets storage client for this controller.
-func (b *BaseController) StorageClient() store.StorageClient {
-	return b.options.StorageClient
+// DatabaseClient gets database client for this controller.
+func (b *BaseController) DatabaseClient() database.Client {
+	return b.options.DatabaseClient
 }
 
 // KubeClient gets Kubernetes client for this controller.

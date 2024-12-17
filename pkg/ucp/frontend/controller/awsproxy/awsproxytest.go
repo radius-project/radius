@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"go.uber.org/mock/gomock"
 
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
@@ -43,19 +43,19 @@ const (
 type TestOptions struct {
 	AWSCloudControlClient   *awsclient.MockAWSCloudControlClient
 	AWSCloudFormationClient *awsclient.MockAWSCloudFormationClient
-	StorageClient           *store.MockStorageClient
+	DatabaseClient          *database.MockClient
 }
 
-// setupTest returns a TestOptions struct with mocked AWS and Storage clients
+// setupTest returns a TestOptions struct with mocked AWS and database clients
 func setupTest(t *testing.T) TestOptions {
 	mockCtrl := gomock.NewController(t)
 	mockCloudControlClient := awsclient.NewMockAWSCloudControlClient(mockCtrl)
 	mockCloudFormationClient := awsclient.NewMockAWSCloudFormationClient(mockCtrl)
-	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+	mockDatabaseClient := database.NewMockClient(mockCtrl)
 	return TestOptions{
 		AWSCloudControlClient:   mockCloudControlClient,
 		AWSCloudFormationClient: mockCloudFormationClient,
-		StorageClient:           mockStorageClient,
+		DatabaseClient:          mockDatabaseClient,
 	}
 }
 

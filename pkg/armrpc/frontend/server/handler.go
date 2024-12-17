@@ -55,11 +55,6 @@ type ControllerFactoryFunc func(ctrl.Options) (ctrl.Controller, error)
 // multiple types of resources (e.g. PUT on any type of AWS resource):
 // - Set ResourceType for operations that are scoped to a resource type.
 // - Set OperationType for general operations.
-//
-// In the controller options passed to the controller factory:
-//
-// - When ResourceType is set, the StorageClient will be configured to use the resource type.
-// - When OperationType is set, the StorageClient will be generic and not filtered to a specific resource type.
 type HandlerOptions struct {
 	// ParentRouter is the router to register the handler with.
 	ParentRouter chi.Router
@@ -68,8 +63,6 @@ type HandlerOptions struct {
 	Path string
 
 	// ResourceType is the resource type of the operation. May be blank if Operation is specified.
-	//
-	// If specified the ResourceType will be used to filter the StorageClient.
 	ResourceType string
 
 	// Method is the method of the operation. May be blank if Operation is specified.

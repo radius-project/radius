@@ -27,7 +27,7 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -38,7 +38,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+	databaseClient := database.NewMockClient(mctrl)
 	ctx := context.Background()
 
 	createNewResourceCases := []struct {
@@ -64,20 +64,20 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			req.Header.Set(tt.headerKey, tt.headerValue)
 			ctx := rpctest.NewARMRequestContext(req)
 
-			mStorageClient.
+			databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return nil, &store.ErrNotFound{ID: id}
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return nil, &database.ErrNotFound{ID: id}
 				})
 
 			if !tt.shouldFail {
-				mStorageClient.
+				databaseClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-						return &store.ObjectQueryResult{
-							Items: []store.Object{},
+					DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+						return &database.ObjectQueryResult{
+							Items: []database.Object{},
 						}, nil
 					})
 			}
@@ -87,10 +87,10 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
 
 			if !tt.shouldFail {
-				mStorageClient.
+				databaseClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+					DoAndReturn(func(ctx context.Context, obj *database.Object, opts ...database.SaveOptions) error {
 						obj.ETag = "new-resource-etag"
 						obj.Data = envDataModel
 						return nil
@@ -98,7 +98,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
+				DatabaseClient: databaseClient,
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -142,32 +142,32 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			req.Header.Set(tt.headerKey, tt.headerValue)
 			ctx := rpctest.NewARMRequestContext(req)
 
-			mStorageClient.
+			databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: tt.resourceETag},
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return &database.Object{
+						Metadata: database.Metadata{ID: id, ETag: tt.resourceETag},
 						Data:     envDataModel,
 					}, nil
 				})
 
 			if !tt.shouldFail {
-				mStorageClient.
+				databaseClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-						return &store.ObjectQueryResult{
-							Items: []store.Object{},
+					DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+						return &database.ObjectQueryResult{
+							Items: []database.Object{},
 						}, nil
 					})
 			}
 
 			if !tt.shouldFail {
-				mStorageClient.
+				databaseClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+					DoAndReturn(func(ctx context.Context, obj *database.Object, opts ...database.SaveOptions) error {
 						obj.ETag = "updated-resource-etag"
 						obj.Data = envDataModel
 						return nil
@@ -175,7 +175,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
+				DatabaseClient: databaseClient,
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -219,26 +219,26 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			req.Header.Set(tt.headerKey, tt.headerValue)
 			ctx := rpctest.NewARMRequestContext(req)
 
-			mStorageClient.
+			databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return nil, &store.ErrNotFound{ID: id}
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return nil, &database.ErrNotFound{ID: id}
 				})
 
 			if !tt.shouldFail {
-				mStorageClient.
+				databaseClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-						return &store.ObjectQueryResult{
-							Items: []store.Object{},
+					DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+						return &database.ObjectQueryResult{
+							Items: []database.Object{},
 						}, nil
 					})
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
+				DatabaseClient: databaseClient,
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -273,33 +273,33 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			req.Header.Set(tt.headerKey, tt.headerValue)
 			ctx := rpctest.NewARMRequestContext(req)
 
-			mStorageClient.
+			databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: tt.resourceEtag},
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return &database.Object{
+						Metadata: database.Metadata{ID: id, ETag: tt.resourceEtag},
 						Data:     envDataModel,
 					}, nil
 				})
 
 			if !tt.shouldFail {
-				mStorageClient.
+				databaseClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-						return &store.ObjectQueryResult{
-							Items: []store.Object{},
+					DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+						return &database.ObjectQueryResult{
+							Items: []database.Object{},
 						}, nil
 					})
 			}
 
 			if !tt.shouldFail {
-				mStorageClient.
+				databaseClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-						cfg := store.NewSaveConfig(opts...)
+					DoAndReturn(func(ctx context.Context, obj *database.Object, opts ...database.SaveOptions) error {
+						cfg := database.NewSaveConfig(opts...)
 						obj.ETag = cfg.ETag
 						obj.Data = envDataModel
 						return nil
@@ -307,7 +307,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
+				DatabaseClient: databaseClient,
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -352,43 +352,43 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			req.Header.Set(tt.headerKey, tt.headerValue)
 			ctx := rpctest.NewARMRequestContext(req)
 
-			mStorageClient.
+			databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: tt.resourceEtag},
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return &database.Object{
+						Metadata: database.Metadata{ID: id, ETag: tt.resourceEtag},
 						Data:     envDataModel,
 					}, nil
 				})
 
 			paginationToken := "nextLink"
 
-			items := []store.Object{
+			items := []database.Object{
 				{
-					Metadata: store.Metadata{
+					Metadata: database.Metadata{
 						ID: uuid.New().String(),
 					},
 					Data: conflictDataModel,
 				},
 			}
 
-			mStorageClient.
+			databaseClient.
 				EXPECT().
 				Query(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-					return &store.ObjectQueryResult{
+				DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+					return &database.ObjectQueryResult{
 						Items:           items,
 						PaginationToken: paginationToken,
 					}, nil
 				})
 
 			if !tt.shouldFail {
-				mStorageClient.
+				databaseClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-						cfg := store.NewSaveConfig(opts...)
+					DoAndReturn(func(ctx context.Context, obj *database.Object, opts ...database.SaveOptions) error {
+						cfg := database.NewSaveConfig(opts...)
 						obj.ETag = cfg.ETag
 						obj.Data = envDataModel
 						return nil
@@ -396,7 +396,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
+				DatabaseClient: databaseClient,
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)

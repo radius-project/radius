@@ -28,7 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
+	"github.com/radius-project/radius/pkg/ucp/database/inmemory"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -173,10 +173,10 @@ func TestApplyAPIHandlers(t *testing.T) {
 			r := chi.NewRouter()
 
 			options := apictrl.Options{
-				Address:       "localhost:8080",
-				PathBase:      "/api.ucp.dev",
-				StorageClient: inmemory.NewClient(),
-				StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
+				Address:        "localhost:8080",
+				PathBase:       "/api.ucp.dev",
+				DatabaseClient: inmemory.NewClient(),
+				StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
 			}
 
 			return r, b.ApplyAPIHandlers(ctx, r, options)
@@ -228,10 +228,10 @@ func TestApplyAPIHandlers_AvailableOperations(t *testing.T) {
 	rpctest.AssertRequests(t, handlerTests, "/api.ucp.dev", "/planes/radius/local", func(ctx context.Context) (chi.Router, error) {
 		r := chi.NewRouter()
 		options := apictrl.Options{
-			Address:       "localhost:8080",
-			PathBase:      "/api.ucp.dev",
-			StorageClient: inmemory.NewClient(),
-			StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
+			Address:        "localhost:8080",
+			PathBase:       "/api.ucp.dev",
+			DatabaseClient: inmemory.NewClient(),
+			StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
 		}
 		return r, builder.ApplyAPIHandlers(ctx, r, options)
 	})
@@ -244,7 +244,7 @@ func TestApplyAsyncHandler(t *testing.T) {
 	ctx := testcontext.New(t)
 
 	options := backendctrl.Options{
-		StorageClient: inmemory.NewClient(),
+		DatabaseClient: inmemory.NewClient(),
 	}
 
 	err := builder.ApplyAsyncHandler(ctx, registry, options)

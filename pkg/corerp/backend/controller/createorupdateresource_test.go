@@ -34,16 +34,16 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
-	setupTest := func() (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor) {
+	setupTest := func() (func(tb testing.TB), *database.MockClient, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)
 
-		msc := store.NewMockStorageClient(mctrl)
+		msc := database.NewMockClient(mctrl)
 		mdp := deployment.NewMockDeploymentProcessor(mctrl)
 
 		return func(tb testing.TB) {
@@ -80,7 +80,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
-			&store.ErrNotFound{},
+			&database.ErrNotFound{},
 			false,
 			nil,
 			nil,
@@ -116,7 +116,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
-			&store.ErrNotFound{},
+			&database.ErrNotFound{},
 			false,
 			nil,
 			nil,
@@ -156,7 +156,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
 			getCall := msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				Return(&store.Object{
+				Return(&database.Object{
 					Data: map[string]any{
 						"name": "env0",
 						"properties": map[string]any{
@@ -166,7 +166,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 				}, tt.getErr).
 				Times(1)
 
-			if (tt.getErr == nil || errors.Is(&store.ErrNotFound{ID: tt.rId}, tt.getErr)) && !tt.convErr {
+			if (tt.getErr == nil || errors.Is(&database.ErrNotFound{ID: tt.rId}, tt.getErr)) && !tt.convErr {
 				renderCall := mdp.EXPECT().
 					Render(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(renderers.RendererOutput{}, tt.renderErr).
@@ -180,7 +180,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 						After(renderCall).
 						Times(1)
 
-					if !errors.Is(&store.ErrNotFound{}, tt.getErr) {
+					if !errors.Is(&database.ErrNotFound{}, tt.getErr) {
 						mdp.EXPECT().
 							Delete(gomock.Any(), gomock.Any(), gomock.Any()).
 							Return(nil).
@@ -199,7 +199,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: msc,
+				DatabaseClient: msc,
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mdp
 				},
@@ -253,12 +253,12 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PATCH",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
-			&store.ErrNotFound{},
+			&database.ErrNotFound{},
 			false,
 			nil,
 			nil,
 			nil,
-			&store.ErrNotFound{},
+			&database.ErrNotFound{},
 		},
 		{
 			"container-patch-get-err",
@@ -289,12 +289,12 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PATCH",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
-			&store.ErrNotFound{},
+			&database.ErrNotFound{},
 			false,
 			nil,
 			nil,
 			nil,
-			&store.ErrNotFound{},
+			&database.ErrNotFound{},
 		},
 		{
 			"unsupported-type-patch",
@@ -329,7 +329,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
 			getCall := msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				Return(&store.Object{
+				Return(&database.Object{
 					Data: map[string]any{
 						"name": "env0",
 						"properties": map[string]any{
@@ -371,7 +371,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: msc,
+				DatabaseClient: msc,
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mdp
 				},

@@ -34,13 +34,13 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/backend"
 	"github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/data"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
-	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/ucp/rest"
-	"github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	kube_rest "k8s.io/client-go/rest"
@@ -54,10 +54,10 @@ const (
 type Options struct {
 	Config                  *hostoptions.UCPConfig
 	Port                    string
-	StorageProviderOptions  dataprovider.StorageProviderOptions
+	DatabaseProviderOptions databaseprovider.Options
 	LoggingOptions          ucplog.LoggingOptions
-	SecretProviderOptions   provider.SecretProviderOptions
-	QueueProviderOptions    qprovider.QueueProviderOptions
+	SecretProviderOptions   secretprovider.SecretProviderOptions
+	QueueProviderOptions    queueprovider.QueueProviderOptions
 	MetricsProviderOptions  metricsprovider.MetricsProviderOptions
 	ProfilerProviderOptions profilerprovider.ProfilerProviderOptions
 	TracerProviderOptions   trace.Options
@@ -89,7 +89,7 @@ func NewServerOptionsFromEnvironment(configFilePath string) (Options, error) {
 		return Options{}, err
 	}
 
-	storeOpts := opts.Config.StorageProvider
+	storeOpts := opts.Config.DatabaseProvider
 	planes := opts.Config.Planes
 	secretOpts := opts.Config.SecretProvider
 	qproviderOpts := opts.Config.QueueProvider
@@ -131,7 +131,7 @@ func NewServerOptionsFromEnvironment(configFilePath string) (Options, error) {
 		Port:                    port,
 		TLSCertDir:              tlsCertDir,
 		PathBase:                basePath,
-		StorageProviderOptions:  storeOpts,
+		DatabaseProviderOptions: storeOpts,
 		SecretProviderOptions:   secretOpts,
 		QueueProviderOptions:    qproviderOpts,
 		MetricsProviderOptions:  metricsOpts,
@@ -150,24 +150,24 @@ func NewServerOptionsFromEnvironment(configFilePath string) (Options, error) {
 func NewServer(options *Options) (*hosting.Host, error) {
 	hostingServices := []hosting.Service{
 		api.NewService(api.ServiceOptions{
-			ProviderName:           UCPProviderName,
-			Address:                ":" + options.Port,
-			PathBase:               options.PathBase,
-			Config:                 options.Config,
-			Location:               options.Location,
-			TLSCertDir:             options.TLSCertDir,
-			StorageProviderOptions: options.StorageProviderOptions,
-			SecretProviderOptions:  options.SecretProviderOptions,
-			QueueProviderOptions:   options.QueueProviderOptions,
-			InitialPlanes:          options.InitialPlanes,
-			Identity:               options.Identity,
-			UCPConnection:          options.UCPConnection,
+			ProviderName:            UCPProviderName,
+			Address:                 ":" + options.Port,
+			PathBase:                options.PathBase,
+			Config:                  options.Config,
+			Location:                options.Location,
+			TLSCertDir:              options.TLSCertDir,
+			DatabaseProviderOptions: options.DatabaseProviderOptions,
+			SecretProviderOptions:   options.SecretProviderOptions,
+			QueueProviderOptions:    options.QueueProviderOptions,
+			InitialPlanes:           options.InitialPlanes,
+			Identity:                options.Identity,
+			UCPConnection:           options.UCPConnection,
 		}),
 	}
 
-	if options.StorageProviderOptions.Provider == dataprovider.TypeETCD &&
-		options.StorageProviderOptions.ETCD.InMemory {
-		hostingServices = append(hostingServices, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: options.StorageProviderOptions.ETCD.Client}))
+	if options.DatabaseProviderOptions.Provider == databaseprovider.TypeETCD &&
+		options.DatabaseProviderOptions.ETCD.InMemory {
+		hostingServices = append(hostingServices, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: options.DatabaseProviderOptions.ETCD.Client}))
 	}
 
 	options.MetricsProviderOptions.ServiceName = ServiceName
@@ -191,7 +191,7 @@ func NewServer(options *Options) (*hosting.Host, error) {
 			Env: hostopts.EnvironmentOptions{
 				RoleLocation: options.Config.Location,
 			},
-			StorageProvider:  options.StorageProviderOptions,
+			DatabaseProvider: options.DatabaseProviderOptions,
 			SecretProvider:   options.SecretProviderOptions,
 			QueueProvider:    options.QueueProviderOptions,
 			MetricsProvider:  options.MetricsProviderOptions,

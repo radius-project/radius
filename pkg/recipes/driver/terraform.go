@@ -38,7 +38,7 @@ import (
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
 	awsresources "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	kubernetesresources "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
-	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util"
 

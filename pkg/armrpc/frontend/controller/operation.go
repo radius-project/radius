@@ -26,8 +26,8 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 const (
@@ -58,9 +58,9 @@ func (b *Operation[P, T]) Options() *Options {
 	return &b.options
 }
 
-// StorageClient gets storage client for this controller.
-func (b *Operation[P, T]) StorageClient() store.StorageClient {
-	return b.options.StorageClient
+// DatabaseClient gets database client for this controller.
+func (b *Operation[P, T]) DatabaseClient() database.Client {
+	return b.options.DatabaseClient
 }
 
 // ResourceType gets the resource type for this controller.
@@ -89,12 +89,12 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 	return dm, nil
 }
 
-// GetResource is the helper to get the resource via storage client.
+// GetResource is the helper to get the resource via database client.
 func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out *T, etag string, err error) {
 	etag = ""
 	out = new(T)
-	var res *store.Object
-	if res, err = c.StorageClient().Get(ctx, id.String()); err == nil {
+	var res *database.Object
+	if res, err = c.DatabaseClient().Get(ctx, id.String()); err == nil {
 		if err = res.As(out); err == nil {
 			etag = res.ETag
 			return
@@ -102,21 +102,21 @@ func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out
 	}
 
 	out = nil
-	if errors.Is(&store.ErrNotFound{ID: id.String()}, err) {
+	if errors.Is(&database.ErrNotFound{ID: id.String()}, err) {
 		err = nil
 	}
 	return
 }
 
-// SaveResource is the helper to save the resource via storage client.
+// SaveResource is the helper to save the resource via database client.
 func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, etag string) (string, error) {
-	nr := &store.Object{
-		Metadata: store.Metadata{
+	nr := &database.Object{
+		Metadata: database.Metadata{
 			ID: id,
 		},
 		Data: in,
 	}
-	err := c.StorageClient().Save(ctx, nr, store.WithETag(etag))
+	err := c.DatabaseClient().Save(ctx, nr, database.WithETag(etag))
 	if err != nil {
 		return "", err
 	}

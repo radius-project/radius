@@ -25,10 +25,10 @@ import (
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var _ armrpc_controller.Controller = (*ListResources)(nil)
@@ -62,19 +62,19 @@ func (r *ListResources) Run(ctx context.Context, w http.ResponseWriter, req *htt
 	resourceGroupID := id.Truncate()
 
 	// First check if the resource group exists.
-	_, err = r.StorageClient().Get(ctx, resourceGroupID.String())
-	if errors.Is(err, &store.ErrNotFound{}) {
+	_, err = r.DatabaseClient().Get(ctx, resourceGroupID.String())
+	if errors.Is(err, &database.ErrNotFound{}) {
 		return armrpc_rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	query := store.Query{
+	query := database.Query{
 		RootScope:    resourceGroupID.String(),
 		ResourceType: v20231001preview.ResourceType,
 	}
 
-	result, err := r.StorageClient().Query(ctx, query)
+	result, err := r.DatabaseClient().Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (r *ListResources) Run(ctx context.Context, w http.ResponseWriter, req *htt
 	return armrpc_rest.NewOKResponse(response), nil
 }
 
-func (r *ListResources) createResponse(ctx context.Context, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+func (r *ListResources) createResponse(ctx context.Context, result *database.ObjectQueryResult) (*v1.PaginatedList, error) {
 	items := v1.PaginatedList{}
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

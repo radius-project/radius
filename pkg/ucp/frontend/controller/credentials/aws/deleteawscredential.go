@@ -24,11 +24,11 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpcrest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/credentials"
 	"github.com/radius-project/radius/pkg/ucp/secret"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -82,8 +82,8 @@ func (c *DeleteAWSCredential) Run(ctx context.Context, w http.ResponseWriter, re
 		return r, err
 	}
 
-	if err := c.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
-		if errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
+	if err := c.DatabaseClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
+		if errors.Is(&database.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 			return armrpcrest.NewNoContentResponse(), nil
 		}
 		return nil, err

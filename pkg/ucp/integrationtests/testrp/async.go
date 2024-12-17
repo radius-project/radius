@@ -33,7 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -59,8 +59,8 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 
 	resourceType := "System.Test/testResources"
 
-	// We can share the storage provider with the test server.
-	storageClient, err := ts.Clients.StorageProvider.GetClient(ctx)
+	// We can share the database provider with the test server.
+	databaseClient, err := ts.Clients.DatabaseProvider.GetClient(ctx)
 	require.NoError(t, err)
 
 	// Do not share the queue.
@@ -73,10 +73,10 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	queueClient, err := queueProvider.GetClient(ctx)
 	require.NoError(t, err)
 
-	statusManager := statusmanager.New(storageClient, queueClient, v1.LocationGlobal)
+	statusManager := statusmanager.New(databaseClient, queueClient, v1.LocationGlobal)
 
 	backendOpts := backend_ctrl.Options{
-		StorageClient: storageClient,
+		DatabaseClient: databaseClient,
 	}
 
 	registry := worker.NewControllerRegistry()
@@ -100,9 +100,9 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	}()
 
 	frontendOpts := frontend_ctrl.Options{
-		Address:       "localhost:8080",
-		StorageClient: storageClient,
-		StatusManager: statusManager,
+		Address:        "localhost:8080",
+		DatabaseClient: databaseClient,
+		StatusManager:  statusManager,
 	}
 
 	err = server.ConfigureDefaultHandlers(ctx, r, rootScope, false, "System.Test", nil, frontendOpts)

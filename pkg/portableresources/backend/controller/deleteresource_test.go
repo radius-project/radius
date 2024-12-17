@@ -30,8 +30,8 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -44,9 +44,9 @@ var outputResource = rpv1.OutputResource{
 
 func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 	resourceID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"
-	setupTest := func() (func(tb testing.TB), *store.MockStorageClient, *ctrl.Request, *engine.MockEngine, *configloader.MockConfigurationLoader) {
+	setupTest := func() (func(tb testing.TB), *database.MockClient, *ctrl.Request, *engine.MockEngine, *configloader.MockConfigurationLoader) {
 		mctrl := gomock.NewController(t)
-		msc := store.NewMockStorageClient(mctrl)
+		msc := database.NewMockClient(mctrl)
 		eng := engine.NewMockEngine(mctrl)
 		cfg := configloader.NewMockConfigurationLoader(mctrl)
 
@@ -72,7 +72,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 		scDelErr  error
 	}{
 		{"delete-existing-resource", nil, nil, nil},
-		{"delete-non-existing-resource", &store.ErrNotFound{ID: resourceID}, nil, nil},
+		{"delete-non-existing-resource", &database.ErrNotFound{ID: resourceID}, nil, nil},
 		{"delete-resource-engine-delete-error", nil, errors.New("engine delete error"), nil},
 		{"delete-resource-delete-from-db-error", nil, nil, errors.New("delete from db error")},
 	}
@@ -117,7 +117,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 
 			msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				Return(&store.Object{Data: data}, tt.getErr).
+				Return(&database.Object{Data: data}, tt.getErr).
 				Times(1)
 
 			if tt.getErr == nil {
@@ -153,7 +153,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 				}
 			}
 			opts := ctrl.Options{
-				StorageClient: msc,
+				DatabaseClient: msc,
 			}
 
 			ctrl, err := NewDeleteResource(opts, successProcessorReference, eng, configLoader)

@@ -26,7 +26,7 @@ import (
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +45,7 @@ func (c *testAsyncController) Run(ctx context.Context, request *asyncctrl.Reques
 	return asyncctrl.Result{}, nil
 }
 
-func (c *testAsyncController) StorageClient() store.StorageClient {
+func (c *testAsyncController) DatabaseClient() database.Client {
 	return nil
 }
 

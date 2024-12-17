@@ -26,9 +26,9 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -42,20 +42,20 @@ type ListPlanesByType[P interface {
 	armrpc_controller.Operation[P, T]
 }
 
-// ListPlanesByType takes in a request object and returns a list of planes of a given type from the storage client. If
+// ListPlanesByType takes in a request object and returns a list of planes of a given type from the database client. If
 // an error occurs, it returns an error.
 func (e *ListPlanesByType[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(e.Options().PathBase, req.URL.Path)
 	// The path is /planes/{planeType}
 	planeType := strings.Split(path, resources.SegmentSeparator)[2]
-	query := store.Query{
+	query := database.Query{
 		RootScope:    resources.SegmentSeparator + resources.PlanesSegment,
 		IsScopeQuery: true,
 		ResourceType: planeType,
 	}
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Listing planes in scope %s/%s", query.RootScope, planeType))
-	result, err := e.StorageClient().Query(ctx, query)
+	result, err := e.DatabaseClient().Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (e *ListPlanesByType[P, T]) Run(ctx context.Context, w http.ResponseWriter,
 	return ok, nil
 }
 
-func (p *ListPlanesByType[P, T]) createResponse(ctx context.Context, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+func (p *ListPlanesByType[P, T]) createResponse(ctx context.Context, result *database.ObjectQueryResult) (*v1.PaginatedList, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	items := v1.PaginatedList{}
 

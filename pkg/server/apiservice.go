@@ -57,7 +57,7 @@ func (s *APIService) Run(ctx context.Context) error {
 		return err
 	}
 
-	storageClient, err := s.StorageProvider.GetClient(ctx)
+	databaseClient, err := s.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -70,11 +70,11 @@ func (s *APIService) Run(ctx context.Context) error {
 		Configure: func(r chi.Router) error {
 			for _, b := range s.handlerBuilder {
 				opts := apictrl.Options{
-					Address:       address,
-					PathBase:      s.Options.Config.Server.PathBase,
-					StorageClient: storageClient,
-					KubeClient:    s.KubeClient,
-					StatusManager: s.OperationStatusManager,
+					Address:        address,
+					PathBase:       s.Options.Config.Server.PathBase,
+					DatabaseClient: databaseClient,
+					KubeClient:     s.KubeClient,
+					StatusManager:  s.OperationStatusManager,
 				}
 
 				validator, err := builder.NewOpenAPIValidator(ctx, opts.PathBase, b.Namespace())

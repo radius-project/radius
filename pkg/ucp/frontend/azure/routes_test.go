@@ -28,12 +28,12 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
 	"github.com/radius-project/radius/pkg/ucp/secret"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 )
 
 const pathBase = "/some-path-base"
@@ -92,12 +92,12 @@ func Test_Routes(t *testing.T) {
 	secretProvider.SetClient(secretClient)
 
 	options := modules.Options{
-		Address:        "localhost",
-		PathBase:       pathBase,
-		Config:         &hostoptions.UCPConfig{},
-		DataProvider:   dataprovider.DataStorageProviderFromMemory(),
-		SecretProvider: secretProvider,
-		StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
+		Address:          "localhost",
+		PathBase:         pathBase,
+		Config:           &hostoptions.UCPConfig{},
+		DatabaseProvider: databaseprovider.FromMemory(),
+		SecretProvider:   secretProvider,
+		StatusManager:    statusmanager.NewMockStatusManager(gomock.NewController(t)),
 	}
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {

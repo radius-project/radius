@@ -29,21 +29,21 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 func Test_ListResourceGroups(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+	mockDatabaseClient := database.NewMockClient(mockCtrl)
 
-	rgCtrl, err := NewListResourceGroups(armrpc_controller.Options{StorageClient: mockStorageClient})
+	rgCtrl, err := NewListResourceGroups(armrpc_controller.Options{DatabaseClient: mockDatabaseClient})
 	require.NoError(t, err)
 
 	url := "/planes/radius/local/resourceGroups?api-version=2023-10-01-preview"
 
-	query := store.Query{
+	query := database.Query{
 		RootScope:    "/planes/radius/local",
 		IsScopeQuery: true,
 		ResourceType: "resourcegroups",
@@ -63,11 +63,11 @@ func Test_ListResourceGroups(t *testing.T) {
 		},
 	}
 
-	mockStorageClient.EXPECT().Query(gomock.Any(), query).DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-		return &store.ObjectQueryResult{
-			Items: []store.Object{
+	mockDatabaseClient.EXPECT().Query(gomock.Any(), query).DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+		return &database.ObjectQueryResult{
+			Items: []database.Object{
 				{
-					Metadata: store.Metadata{},
+					Metadata: database.Metadata{},
 					Data:     &rg,
 				},
 			},

@@ -38,12 +38,12 @@ func (c *APIVersionDeleteController) Run(ctx context.Context, request *ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	err = updateResourceProviderSummaryWithETag(ctx, c.StorageClient(), summaryID, summaryNotFoundIgnore, c.updateSummary(id))
+	err = updateResourceProviderSummaryWithETag(ctx, c.DatabaseClient(), summaryID, summaryNotFoundIgnore, c.updateSummary(id))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	err = c.StorageClient().Delete(ctx, request.ResourceID)
+	err = c.DatabaseClient().Delete(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

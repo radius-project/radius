@@ -31,11 +31,11 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/ucp/proxy"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -82,7 +82,7 @@ func NewProxyController(opts armrpc_controller.Options, transport http.RoundTrip
 		return nil, fmt.Errorf("failed to parse default downstream URL: %w", err)
 	}
 
-	updater := trackedresource.NewUpdater(opts.StorageClient, &http.Client{Transport: transport})
+	updater := trackedresource.NewUpdater(opts.DatabaseClient, &http.Client{Transport: transport})
 	return &ProxyController{
 		Operation:         armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.RadiusPlane]{}),
 		transport:         transport,
@@ -113,7 +113,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 		return armrpc_rest.NewBadRequestARMResponse(response), nil
 	}
 
-	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, p.StorageClient(), id, v1.LocationGlobal, apiVersion)
+	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, p.DatabaseClient(), id, v1.LocationGlobal, apiVersion)
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
 		return armrpc_rest.NewNotFoundResponseWithCause(id, err.Error()), nil
 	} else if errors.Is(err, &resourcegroups.InvalidError{}) {
@@ -279,8 +279,8 @@ func (p *ProxyController) EnqueueTrackedResourceUpdate(ctx context.Context, id r
 	queueOperation := false
 retry:
 	for retryCount := 1; retryCount <= EnqueueOperationRetryCount; retryCount++ {
-		obj, err := p.StorageClient().Get(ctx, trackingID.String())
-		if errors.Is(err, &store.ErrNotFound{}) {
+		obj, err := p.DatabaseClient().Get(ctx, trackingID.String())
+		if errors.Is(err, &database.ErrNotFound{}) {
 			// Safe to ignore. This means that the resource has not been tracked yet.
 		} else if err != nil {
 			return err
@@ -302,8 +302,8 @@ retry:
 		}
 
 		logger.V(ucplog.LevelDebug).Info("enqueuing tracked resource update")
-		err = p.StorageClient().Save(ctx, &store.Object{Metadata: store.Metadata{ID: trackingID.String()}, Data: entry}, store.WithETag(etag))
-		if errors.Is(err, &store.ErrConcurrency{}) {
+		err = p.DatabaseClient().Save(ctx, &database.Object{Metadata: database.Metadata{ID: trackingID.String()}, Data: entry}, database.WithETag(etag))
+		if errors.Is(err, &database.ErrConcurrency{}) {
 			// This means we hit a concurrency error saving the tracked resource entry. This means that the resource
 			// was updated in the background. We should retry.
 			logger.V(ucplog.LevelDebug).Info("enqueue tracked resource update failed due to concurrency error", "retryCount", retryCount)

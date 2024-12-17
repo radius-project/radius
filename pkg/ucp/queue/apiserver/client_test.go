@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
+	v1alpha1 "github.com/radius-project/radius/pkg/ucp/database/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/radius-project/radius/pkg/ucp/queue/client"
-	v1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/ucp/kubeenv"
 	sharedtest "github.com/radius-project/radius/test/ucp/queuetest"

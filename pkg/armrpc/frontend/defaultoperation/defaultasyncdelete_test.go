@@ -29,7 +29,7 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -46,7 +46,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 		rejectedByFilter bool
 		code             int
 	}{
-		{"async-delete-non-existing-resource-no-etag", "", v1.ProvisioningStateNone, &store.ErrNotFound{}, nil, nil, false, http.StatusNoContent},
+		{"async-delete-non-existing-resource-no-etag", "", v1.ProvisioningStateNone, &database.ErrNotFound{}, nil, nil, false, http.StatusNoContent},
 		{"async-delete-existing-resource-blocked-by-filter", "", v1.ProvisioningStateSucceeded, nil, nil, nil, true, http.StatusConflict},
 		{"async-delete-existing-resource-not-in-terminal-state", "", v1.ProvisioningStateUpdating, nil, nil, nil, false, http.StatusConflict},
 		{"async-delete-existing-resource-success", "", v1.ProvisioningStateSucceeded, nil, nil, nil, false, http.StatusAccepted},
@@ -75,8 +75,8 @@ func TestDefaultAsyncDelete(t *testing.T) {
 
 			mds.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				Return(&store.Object{
-					Metadata: store.Metadata{ID: appDataModel.ID},
+				Return(&database.Object{
+					Metadata: database.Metadata{ID: appDataModel.ID},
 					Data:     appDataModel,
 				}, tt.getErr).
 				Times(1)
@@ -96,8 +96,8 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
+				DatabaseClient: mds,
+				StatusManager:  msm,
 			}
 
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{

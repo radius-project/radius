@@ -28,7 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -41,7 +41,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
 		context.Background(),
 		v1.OperationPost.HTTPMethod(),
@@ -49,13 +49,13 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("not found the resource", func(t *testing.T) {
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			Return(nil, &store.ErrNotFound{})
+			Return(nil, &database.ErrNotFound{})
 		ctx := rpctest.NewARMRequestContext(req)
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctl, err := NewListSecrets(opts)
@@ -71,12 +71,12 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 
 	t.Run("return secrets successfully", func(t *testing.T) {
 		secretdm := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id, ETag: "etag"},
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return &database.Object{
+					Metadata: database.Metadata{ID: id, ETag: "etag"},
 					Data:     secretdm,
 				}, nil
 			})
@@ -92,8 +92,8 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			},
 		}
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
-			KubeClient:    k8sutil.NewFakeKubeClient(nil, ksecret),
+			DatabaseClient: databaseClient,
+			KubeClient:     k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
 		ctl, err := NewListSecrets(opts)
@@ -115,7 +115,7 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
 		context.Background(),
 		v1.OperationPost.HTTPMethod(),
@@ -172,19 +172,19 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 
 	for _, tc := range kubeSecretTests {
 		t.Run(tc.name, func(t *testing.T) {
-			mStorageClient.
+			databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: "etag"},
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return &database.Object{
+						Metadata: database.Metadata{ID: id, ETag: "etag"},
 						Data:     secretdm,
 					}, nil
 				})
 			ctx := rpctest.NewARMRequestContext(req)
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				KubeClient:    k8sutil.NewFakeKubeClient(nil, tc.in),
+				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, tc.in),
 			}
 
 			ctl, err := NewListSecrets(opts)

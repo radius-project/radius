@@ -68,17 +68,17 @@ func (w *AsyncWorker) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
-	storageClient, err := w.StorageProvider.GetClient(ctx)
+	databaseClient, err := w.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return err
 	}
 
 	for _, b := range w.handlerBuilder {
 		opts := ctrl.Options{
-			StorageClient: storageClient,
-			KubeClient:    k8s.RuntimeClient,
+			DatabaseClient: databaseClient,
+			KubeClient:     k8s.RuntimeClient,
 			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return deployment.NewDeploymentProcessor(appModel, storageClient, k8s.RuntimeClient, k8s.ClientSet)
+				return deployment.NewDeploymentProcessor(appModel, databaseClient, k8s.RuntimeClient, k8s.ClientSet)
 			},
 		}
 
