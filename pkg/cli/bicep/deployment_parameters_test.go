@@ -21,7 +21,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"testing/fstest"
+
+	"github.com/spf13/afero"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/stretchr/testify/require"
@@ -36,7 +37,7 @@ func Test_Parameters_Invalid(t *testing.T) {
 	}
 
 	parser := ParameterParser{
-		FileSystem: fstest.MapFS{},
+		FileSystem: afero.NewMemMapFs(),
 	}
 
 	for _, input := range inputs {
@@ -56,15 +57,24 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 		"key3=value3",
 	}
 
+	// Initialize the in-memory filesystem
+	fs := afero.NewMemMapFs()
+
+	// Create the "many.json" file with the specified content
+	err := afero.WriteFile(fs, "many.json", []byte(`{ "parameters": { "key1": { "value": { "someValue": true } }, "key2": { "value": "overridden-value" } } }`), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create many.json: %v", err)
+	}
+
+	// Create the "single.json" file with the specified content
+	err = afero.WriteFile(fs, "single.json", []byte(`{ "someValue": "another-value" }`), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create single.json: %v", err)
+	}
+
+	// Initialize the ParameterParser with the in-memory filesystem
 	parser := ParameterParser{
-		FileSystem: fstest.MapFS{
-			"many.json": {
-				Data: []byte(`{ "parameters": { "key1": { "value": { "someValue": true } }, "key2": { "value": "overridden-value" } } }`),
-			},
-			"single.json": {
-				Data: []byte(`{ "someValue": "another-value" }`),
-			},
-		},
+		FileSystem: fs,
 	}
 
 	parameters, err := parser.Parse(inputs...)
@@ -91,7 +101,7 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 
 func Test_ParseParameters_File(t *testing.T) {
 	parser := ParameterParser{
-		FileSystem: fstest.MapFS{},
+		FileSystem: afero.NewMemMapFs(),
 	}
 
 	input, err := os.ReadFile(filepath.Join("testdata", "test-parameters.json"))

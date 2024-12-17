@@ -75,6 +75,13 @@ func (rc *mockRadiusClient) Update(exec func()) {
 	exec()
 }
 
+func (rc *mockRadiusClient) Delete(exec func()) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
+	exec()
+}
+
 func (rc *mockRadiusClient) Applications(scope string) ApplicationClient {
 	return &mockApplicationClient{mock: rc, scope: scope}
 }
