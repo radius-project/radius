@@ -32,7 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
-	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
+	"github.com/radius-project/radius/pkg/ucp/database/inmemory"
 )
 
 var handlerTests = []rpctest.HandlerTestSpec{
@@ -147,10 +147,10 @@ func TestRouter(t *testing.T) {
 		require.NoError(t, err)
 
 		options := apictrl.Options{
-			Address:       "localhost:9000",
-			PathBase:      "/api.ucp.dev",
-			StorageClient: inmemory.NewClient(),
-			StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
+			Address:        "localhost:9000",
+			PathBase:       "/api.ucp.dev",
+			DatabaseClient: inmemory.NewClient(),
+			StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
 		}
 
 		return r, nsBuilder.ApplyAPIHandlers(ctx, r, options, validator)

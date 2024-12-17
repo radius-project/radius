@@ -32,7 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/config"
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
-	sprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	sprovider "github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"

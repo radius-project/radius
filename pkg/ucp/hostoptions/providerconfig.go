@@ -21,21 +21,21 @@ import (
 	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
 	"github.com/radius-project/radius/pkg/trace"
 	"github.com/radius-project/radius/pkg/ucp/config"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/ucp/rest"
-	"github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // UCPConfig includes the resource provider configuration.
 type UCPConfig struct {
-	StorageProvider  dataprovider.StorageProviderOptions      `yaml:"storageProvider"`
+	DatabaseProvider databaseprovider.Options                 `yaml:"storageProvider"`
 	Planes           []rest.Plane                             `yaml:"planes"`
-	SecretProvider   provider.SecretProviderOptions           `yaml:"secretProvider"`
+	SecretProvider   secretprovider.SecretProviderOptions     `yaml:"secretProvider"`
 	MetricsProvider  metricsprovider.MetricsProviderOptions   `yaml:"metricsProvider"`
 	ProfilerProvider profilerprovider.ProfilerProviderOptions `yaml:"profilerProvider"`
-	QueueProvider    qprovider.QueueProviderOptions           `yaml:"queueProvider"`
+	QueueProvider    queueprovider.QueueProviderOptions       `yaml:"queueProvider"`
 	TracerProvider   trace.Options                            `yaml:"tracerProvider"`
 	Logging          ucplog.LoggingOptions                    `yaml:"logging"`
 	Identity         Identity                                 `yaml:"identity,omitempty"`

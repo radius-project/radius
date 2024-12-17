@@ -80,13 +80,13 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 	}
 
-	storageClient, err := w.StorageProvider.GetClient(ctx)
+	databaseClient, err := w.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return err
 	}
 
 	opts := ctrl.Options{
-		StorageClient: storageClient,
+		DatabaseClient: databaseClient,
 	}
 
 	defaultDownstream, err := url.Parse(w.config.Routing.DefaultDownstreamEndpoint)

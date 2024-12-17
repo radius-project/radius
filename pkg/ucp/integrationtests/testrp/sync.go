@@ -30,7 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -43,8 +43,8 @@ func SyncResource(t *testing.T, ts *testserver.TestServer, rootScope string) fun
 	r := chi.NewRouter()
 	r.Use(servicecontext.ARMRequestCtx("", v1.LocationGlobal), middleware.LowercaseURLPath)
 
-	// We can share the storage provider with the test server.
-	storageClient, err := ts.Clients.StorageProvider.GetClient(ctx)
+	// We can share the database provider with the test server.
+	databaseClient, err := ts.Clients.DatabaseProvider.GetClient(ctx)
 	require.NoError(t, err)
 
 	// Do not share the queue.
@@ -57,12 +57,12 @@ func SyncResource(t *testing.T, ts *testserver.TestServer, rootScope string) fun
 	queueClient, err := queueProvider.GetClient(ctx)
 	require.NoError(t, err)
 
-	statusManager := statusmanager.New(storageClient, queueClient, v1.LocationGlobal)
+	statusManager := statusmanager.New(databaseClient, queueClient, v1.LocationGlobal)
 
 	ctrlOpts := frontend_ctrl.Options{
-		Address:       "localhost:8080",
-		StatusManager: statusManager,
-		StorageClient: storageClient,
+		Address:        "localhost:8080",
+		StatusManager:  statusManager,
+		DatabaseClient: databaseClient,
 	}
 
 	err = server.ConfigureDefaultHandlers(ctx, r, rootScope, false, "System.Test", nil, ctrlOpts)

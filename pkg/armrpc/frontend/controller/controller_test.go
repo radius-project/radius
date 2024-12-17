@@ -21,7 +21,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/stretchr/testify/require"
 )
 
@@ -112,39 +112,39 @@ func TestOptionsValidate(t *testing.T) {
 		{
 			name: "valid options",
 			options: Options{
-				Address:       "localhost:8080",
-				StorageClient: &store.MockStorageClient{},
-				ResourceType:  "testResource",
-				StatusManager: &statusmanager.MockStatusManager{},
+				Address:        "localhost:8080",
+				DatabaseClient: &database.MockClient{},
+				ResourceType:   "testResource",
+				StatusManager:  &statusmanager.MockStatusManager{},
 			},
 			wantErr: false,
 		},
 		{
 			name: "missing address",
 			options: Options{
-				StorageClient: &store.MockStorageClient{},
-				ResourceType:  "testResource",
-				StatusManager: &statusmanager.MockStatusManager{},
+				DatabaseClient: &database.MockClient{},
+				ResourceType:   "testResource",
+				StatusManager:  &statusmanager.MockStatusManager{},
 			},
 			wantErr: true,
 			errMsg:  ".Address is required",
 		},
 		{
-			name: "missing storage client",
+			name: "missing database client",
 			options: Options{
 				Address:       "localhost:8080",
 				ResourceType:  "testResource",
 				StatusManager: &statusmanager.MockStatusManager{},
 			},
 			wantErr: true,
-			errMsg:  ".StorageClient is required",
+			errMsg:  ".DatabaseClient is required",
 		},
 		{
 			name: "missing resource type",
 			options: Options{
-				Address:       "localhost:8080",
-				StorageClient: &store.MockStorageClient{},
-				StatusManager: &statusmanager.MockStatusManager{},
+				Address:        "localhost:8080",
+				DatabaseClient: &database.MockClient{},
+				StatusManager:  &statusmanager.MockStatusManager{},
 			},
 			wantErr: true,
 			errMsg:  ".ResourceType is required",
@@ -152,9 +152,9 @@ func TestOptionsValidate(t *testing.T) {
 		{
 			name: "missing status manager",
 			options: Options{
-				Address:       "localhost:8080",
-				StorageClient: &store.MockStorageClient{},
-				ResourceType:  "testResource",
+				Address:        "localhost:8080",
+				DatabaseClient: &database.MockClient{},
+				ResourceType:   "testResource",
 			},
 			wantErr: true,
 			errMsg:  ".StatusManager is required",

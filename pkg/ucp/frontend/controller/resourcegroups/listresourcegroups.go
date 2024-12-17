@@ -23,10 +23,10 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -49,7 +49,7 @@ func NewListResourceGroups(opts armrpc_controller.Options) (armrpc_controller.Co
 	}, nil
 }
 
-// Run() function extracts the plane type and name from the request URL, queries the storage client for resource groups in the
+// Run() function extracts the plane type and name from the request URL, queries the database client for resource groups in the
 // scope of the plane, creates a response with the list of resource groups and returns an OK response with the list of resource groups.
 func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -60,13 +60,13 @@ func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req
 		return nil, err
 	}
 
-	var query store.Query
+	var query database.Query
 	query.RootScope = resources.SegmentSeparator + resources.PlanesSegment + resources.SegmentSeparator + planeType + resources.SegmentSeparator + planeName
 	query.IsScopeQuery = true
 	query.ResourceType = "resourcegroups"
 	logger.Info(fmt.Sprintf("Listing resource groups in scope %s", query.RootScope))
 
-	result, err := r.StorageClient().Query(ctx, query)
+	result, err := r.DatabaseClient().Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req
 	return ok, nil
 }
 
-func (e *ListResourceGroups) createResponse(ctx context.Context, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+func (e *ListResourceGroups) createResponse(ctx context.Context, result *database.ObjectQueryResult) (*v1.PaginatedList, error) {
 	items := v1.PaginatedList{}
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

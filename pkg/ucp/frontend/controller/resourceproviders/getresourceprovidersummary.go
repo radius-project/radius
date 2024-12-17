@@ -26,10 +26,10 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var _ armrpc_controller.Controller = (*GetResourceProviderSummary)(nil)
@@ -61,8 +61,8 @@ func (r *GetResourceProviderSummary) Run(ctx context.Context, w http.ResponseWri
 	}
 
 	// First check if the plane exists.
-	_, err = r.StorageClient().Get(ctx, scope.String())
-	if errors.Is(err, &store.ErrNotFound{}) {
+	_, err = r.DatabaseClient().Get(ctx, scope.String())
+	if errors.Is(err, &database.ErrNotFound{}) {
 		return armrpc_rest.NewNotFoundResponse(scope), nil
 	} else if err != nil {
 		return nil, err
@@ -74,8 +74,8 @@ func (r *GetResourceProviderSummary) Run(ctx context.Context, w http.ResponseWri
 		return nil, err
 	}
 
-	result, err := r.StorageClient().Get(ctx, id.String())
-	if errors.Is(err, &store.ErrNotFound{}) {
+	result, err := r.DatabaseClient().Get(ctx, id.String())
+	if errors.Is(err, &database.ErrNotFound{}) {
 		// If we fail to find the summary, then use the relative path as the target.
 		message := fmt.Sprintf("the resource provider with name '%s' was not found", name)
 		return armrpc_rest.NewNotFoundMessageResponse(message), nil
@@ -117,7 +117,7 @@ func (r *GetResourceProviderSummary) extractScopeAndName(relativePath string) (r
 	return scope, name, nil
 }
 
-func (r *GetResourceProviderSummary) createResponse(ctx context.Context, result *store.Object) (any, error) {
+func (r *GetResourceProviderSummary) createResponse(ctx context.Context, result *database.Object) (any, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	summary := datamodel.ResourceProviderSummary{}

@@ -26,7 +26,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -90,7 +90,7 @@ func TestGetResourceRun(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+	databaseClient := database.NewMockClient(mctrl)
 	ctx := context.Background()
 
 	testResourceDataModel := &testDataModel{
@@ -106,15 +106,15 @@ func TestGetResourceRun(t *testing.T) {
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{ID: id}
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return nil, &database.ErrNotFound{ID: id}
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctrlOpts := ctrl.ResourceOptions[testDataModel]{
@@ -136,18 +136,18 @@ func TestGetResourceRun(t *testing.T) {
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id},
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return &database.Object{
+					Metadata: database.Metadata{ID: id},
 					Data:     testResourceDataModel,
 				}, nil
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctrlOpts := ctrl.ResourceOptions[testDataModel]{

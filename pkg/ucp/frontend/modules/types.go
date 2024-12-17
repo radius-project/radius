@@ -22,10 +22,10 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
+	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/validator"
 )
 
@@ -60,8 +60,8 @@ type Options struct {
 	// Location is the location of the server hosting UCP.
 	Location string
 
-	// DataProvider is the data storage provider.
-	DataProvider *dataprovider.DataStorageProvider
+	// DatabaseProvider is the database provider.
+	DatabaseProvider *databaseprovider.DatabaseProvider
 
 	// QeueueProvider provides access to the queue for async operations.
 	QueueProvider *queueprovider.QueueProvider

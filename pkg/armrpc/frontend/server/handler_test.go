@@ -33,7 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
+	"github.com/radius-project/radius/pkg/ucp/database/inmemory"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -75,10 +75,10 @@ func Test_NewSubrouter(t *testing.T) {
 
 func Test_RegisterHandler_DeplicatedRoutes(t *testing.T) {
 	ctrlOpts := ctrl.Options{
-		Address:       "localhost:8080",
-		ResourceType:  "Applications.Test/testResources",
-		StorageClient: inmemory.NewClient(),
-		StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
+		Address:        "localhost:8080",
+		ResourceType:   "Applications.Test/testResources",
+		DatabaseClient: inmemory.NewClient(),
+		StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
 	}
 
 	p := chi.NewRouter()
@@ -169,9 +169,9 @@ func Test_RegisterHandler(t *testing.T) {
 	}
 
 	ctrlOpts := ctrl.Options{
-		Address:       "localhost:8080",
-		StorageClient: inmemory.NewClient(),
-		StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
+		Address:        "localhost:8080",
+		DatabaseClient: inmemory.NewClient(),
+		StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
 	}
 
 	for _, tc := range tests {

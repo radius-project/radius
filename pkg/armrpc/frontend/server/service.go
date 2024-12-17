@@ -25,8 +25,8 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/authentication"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/kubeutil"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -39,8 +39,8 @@ type Service struct {
 	// Options is the server hosting options.
 	Options hostoptions.HostOptions
 
-	// StorageProvider is the provider of storage client.
-	StorageProvider *dataprovider.DataStorageProvider
+	// DatabaseProvider is the provider of database client.
+	DatabaseProvider *databaseprovider.DatabaseProvider
 
 	// OperationStatusManager is the manager of the operation status.
 	OperationStatusManager manager.StatusManager
@@ -52,15 +52,15 @@ type Service struct {
 	KubeClient controller_runtime.Client
 }
 
-// Init initializes web service - it initializes the StorageProvider, QueueProvider, OperationStatusManager, KubeClient and ARMCertManager
+// Init initializes web service - it initializes the DatabaseProvider, QueueProvider, OperationStatusManager, KubeClient and ARMCertManager
 // with the given context and returns an error if any of the initialization fails.
 func (s *Service) Init(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	s.StorageProvider = dataprovider.DataStorageProviderFromOptions(s.Options.Config.StorageProvider)
-	qp := qprovider.New(s.Options.Config.QueueProvider)
+	s.DatabaseProvider = databaseprovider.FromOptions(s.Options.Config.DatabaseProvider)
+	qp := queueprovider.New(s.Options.Config.QueueProvider)
 
-	storageClient, err := s.StorageProvider.GetClient(ctx)
+	databaseClient, err := s.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (s *Service) Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	s.OperationStatusManager = manager.New(storageClient, reqQueueClient, s.Options.Config.Env.RoleLocation)
+	s.OperationStatusManager = manager.New(databaseClient, reqQueueClient, s.Options.Config.Env.RoleLocation)
 	s.KubeClient, err = kubeutil.NewRuntimeClient(s.Options.K8sConfig)
 	if err != nil {
 		return err

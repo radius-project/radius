@@ -55,10 +55,10 @@ func NewDeleteResource[P interface {
 	}, nil
 }
 
-// Run retrieves a resource from storage, parses the resource ID, gets the data model, deletes the output
-// resources, and deletes the resource from storage. It returns an error if any of these steps fail.
+// Run retrieves a resource from the database, parses the resource ID, gets the data model, deletes the output
+// resources, and deletes the resource from the database. It returns an error if any of these steps fail.
 func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
+	obj, err := c.DatabaseClient().Get(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 	}
@@ -114,7 +114,7 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	err = c.StorageClient().Delete(ctx, request.ResourceID)
+	err = c.DatabaseClient().Delete(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

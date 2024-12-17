@@ -26,20 +26,20 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	ucpapi "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/secret"
-	"github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 )
 
 var _ CredentialProvider[AWSCredential] = (*AWSCredentialProvider)(nil)
 
 // AWSCredentialProvider is UCP credential provider for Azure.
 type AWSCredentialProvider struct {
-	secretProvider *provider.SecretProvider
+	secretProvider *secretprovider.SecretProvider
 	client         *ucpapi.AwsCredentialsClient
 }
 
 // NewAWSCredentialProvider creates a new AWSCredentialProvider struct using the given SecretProvider, UCP connection and
 // TokenCredential, and returns it or an error if one occurs.
-func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AWSCredentialProvider, error) {
+func NewAWSCredentialProvider(provider *secretprovider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AWSCredentialProvider, error) {
 	cli, err := ucpapi.NewAwsCredentialsClient(credential, sdk.NewClientOptions(ucpConn))
 	if err != nil {
 		return nil, err

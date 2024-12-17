@@ -76,8 +76,8 @@ func (h *ControllerRegistry) RegisterDefault(factoryFn ControllerFactoryFunc, op
 	defer h.ctrlMapMu.Unlock()
 
 	// Note: we can't call opts.Validate() here because we don't know the resource type yet.
-	if opts.StorageClient == nil {
-		return fmt.Errorf("invalid controller options: .StorageClient is required")
+	if opts.DatabaseClient == nil {
+		return fmt.Errorf("invalid controller options: .DatabaseClient is required")
 	}
 
 	h.defaultFactory = factoryFn

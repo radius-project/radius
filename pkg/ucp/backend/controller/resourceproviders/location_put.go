@@ -38,7 +38,7 @@ func (c *LocationPutController) Run(ctx context.Context, request *ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
-	err = updateResourceProviderSummaryWithETag(ctx, c.StorageClient(), summaryID, summaryNotFoundFail, c.updateSummary(id))
+	err = updateResourceProviderSummaryWithETag(ctx, c.DatabaseClient(), summaryID, summaryNotFoundFail, c.updateSummary(id))
 	if err != nil {
 		return ctrl.Result{}, err
 	}

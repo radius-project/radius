@@ -26,7 +26,7 @@ import (
 	profilerservice "github.com/radius-project/radius/pkg/profiler/service"
 	"github.com/radius-project/radius/pkg/trace"
 	"github.com/radius-project/radius/pkg/ucp/data"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 )
 
@@ -43,9 +43,9 @@ func NewServer(options *dynamicrp.Options) (*hosting.Host, error) {
 	services := []hosting.Service{}
 
 	// In-memory ETCD requires a service running in the process.
-	if options.Config.Storage.Provider == dataprovider.TypeETCD &&
-		options.Config.Storage.ETCD.InMemory {
-		services = append(services, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: options.Config.Storage.ETCD.Client}))
+	if options.Config.Database.Provider == databaseprovider.TypeETCD &&
+		options.Config.Database.ETCD.InMemory {
+		services = append(services, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: options.Config.Database.ETCD.Client}))
 	}
 
 	// Metrics is provided via a service.

@@ -27,7 +27,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -43,7 +43,7 @@ func TestListResourcesRun(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+	databaseClient := database.NewMockClient(mctrl)
 	ctx := context.Background()
 
 	testResourceDataModel := &testDataModel{
@@ -59,17 +59,17 @@ func TestListResourcesRun(t *testing.T) {
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Query(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-				return &store.ObjectQueryResult{
-					Items: []store.Object{},
+			DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+				return &database.ObjectQueryResult{
+					Items: []database.Object{},
 				}, nil
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctrlOpts := ctrl.ResourceOptions[testDataModel]{
@@ -123,10 +123,10 @@ func TestListResourcesRun(t *testing.T) {
 				paginationToken = "nextLink"
 			}
 
-			items := []store.Object{}
+			items := []database.Object{}
 			for i := 0; i < tt.batchCount; i++ {
-				item := store.Object{
-					Metadata: store.Metadata{
+				item := database.Object{
+					Metadata: database.Metadata{
 						ID: uuid.New().String(),
 					},
 					Data: testResourceDataModel,
@@ -134,7 +134,7 @@ func TestListResourcesRun(t *testing.T) {
 				items = append(items, item)
 			}
 
-			expectedQuery := store.Query{
+			expectedQuery := database.Query{
 				RootScope:    serviceCtx.ResourceID.RootScope(),
 				ResourceType: serviceCtx.ResourceID.Type(),
 
@@ -144,18 +144,18 @@ func TestListResourcesRun(t *testing.T) {
 				ScopeRecursive: tt.planeScope,
 			}
 
-			mStorageClient.
+			databaseClient.
 				EXPECT().
 				Query(gomock.Any(), expectedQuery, gomock.Any()).
-				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-					return &store.ObjectQueryResult{
+				DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+					return &database.ObjectQueryResult{
 						Items:           items,
 						PaginationToken: paginationToken,
 					}, nil
 				})
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
+				DatabaseClient: databaseClient,
 			}
 
 			ctrlOpts := ctrl.ResourceOptions[testDataModel]{

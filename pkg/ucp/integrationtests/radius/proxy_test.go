@@ -176,7 +176,7 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 			return result, nil
 		}
 
-		client, err := ucp.Clients.StorageProvider.GetClient(ctx)
+		client, err := ucp.Clients.DatabaseProvider.GetClient(ctx)
 		require.NoError(t, err)
 		err = client.Delete(ctx, testResourceID)
 		require.NoError(t, err)

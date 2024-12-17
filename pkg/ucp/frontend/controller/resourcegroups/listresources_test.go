@@ -29,9 +29,9 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 func Test_ListResources(t *testing.T) {
@@ -62,17 +62,17 @@ func Test_ListResources(t *testing.T) {
 	id := resourceGroupID + "/resources"
 
 	t.Run("success", func(t *testing.T) {
-		storage, ctrl := setupListResources(t)
+		databaseClient, ctrl := setupListResources(t)
 
-		storage.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), resourceGroupID).
-			Return(&store.Object{Data: resourceGroupDatamodel}, nil).
+			Return(&database.Object{Data: resourceGroupDatamodel}, nil).
 			Times(1)
 
-		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.ResourceType}
-		storage.EXPECT().
+		expectedQuery := database.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.ResourceType}
+		databaseClient.EXPECT().
 			Query(gomock.Any(), expectedQuery).
-			Return(&store.ObjectQueryResult{Items: []store.Object{{Data: entryDatamodel}}}, nil).
+			Return(&database.ObjectQueryResult{Items: []database.Object{{Data: entryDatamodel}}}, nil).
 			Times(1)
 
 		expected := armrpc_rest.NewOKResponse(&v1.PaginatedList{
@@ -88,17 +88,17 @@ func Test_ListResources(t *testing.T) {
 	})
 
 	t.Run("success - empty", func(t *testing.T) {
-		storage, ctrl := setupListResources(t)
+		databaseClient, ctrl := setupListResources(t)
 
-		storage.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), resourceGroupID).
-			Return(&store.Object{Data: resourceGroupDatamodel}, nil).
+			Return(&database.Object{Data: resourceGroupDatamodel}, nil).
 			Times(1)
 
-		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.ResourceType}
-		storage.EXPECT().
+		expectedQuery := database.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.ResourceType}
+		databaseClient.EXPECT().
 			Query(gomock.Any(), expectedQuery).
-			Return(&store.ObjectQueryResult{Items: []store.Object{}}, nil).
+			Return(&database.ObjectQueryResult{Items: []database.Object{}}, nil).
 			Times(1)
 
 		expected := armrpc_rest.NewOKResponse(&v1.PaginatedList{})
@@ -112,11 +112,11 @@ func Test_ListResources(t *testing.T) {
 	})
 
 	t.Run("resource group not found", func(t *testing.T) {
-		storage, ctrl := setupListResources(t)
+		databaseClient, ctrl := setupListResources(t)
 
-		storage.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), resourceGroupID).
-			Return(nil, &store.ErrNotFound{ID: resourceGroupID}).
+			Return(nil, &database.ErrNotFound{ID: resourceGroupID}).
 			Times(1)
 
 		parsed, err := resources.Parse(id)
@@ -133,12 +133,12 @@ func Test_ListResources(t *testing.T) {
 	})
 }
 
-func setupListResources(t *testing.T) (*store.MockStorageClient, *ListResources) {
+func setupListResources(t *testing.T) (*database.MockClient, *ListResources) {
 	ctrl := gomock.NewController(t)
-	storage := store.NewMockStorageClient(ctrl)
+	databaseClient := database.NewMockClient(ctrl)
 
-	c, err := NewListResources(armrpc_controller.Options{StorageClient: storage, PathBase: "/" + uuid.New().String()})
+	c, err := NewListResources(armrpc_controller.Options{DatabaseClient: databaseClient, PathBase: "/" + uuid.New().String()})
 	require.NoError(t, err)
 
-	return storage, c.(*ListResources)
+	return databaseClient, c.(*ListResources)
 }

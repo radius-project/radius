@@ -24,7 +24,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 )
 
 // DefaultSyncDelete is the controller implementation to delete resource synchronously.
@@ -68,8 +68,8 @@ func (e *DefaultSyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter
 		}
 	}
 
-	if err := e.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
-		if errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
+	if err := e.DatabaseClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
+		if errors.Is(&database.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 			return rest.NewNoContentResponse(), nil
 		}
 		return nil, err

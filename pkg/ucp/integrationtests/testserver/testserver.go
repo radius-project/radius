@@ -48,17 +48,17 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/backend"
 	"github.com/radius-project/radius/pkg/ucp/data"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/database"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
 	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/ucp/secret"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp/server"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/validator"
 	"github.com/radius-project/radius/swagger"
 	"github.com/radius-project/radius/test/testcontext"
@@ -104,8 +104,8 @@ type TestServerClients struct {
 	// SecretProvider is the secret client provider.
 	SecretProvider *secretprovider.SecretProvider
 
-	// StorageProvider is the storage client provider.
-	StorageProvider *dataprovider.DataStorageProvider
+	// DatabaseProvider is the database client provider.
+	DatabaseProvider *databaseprovider.DatabaseProvider
 }
 
 // TestServerMocks provides access to mock instances created by the TestServer.
@@ -113,8 +113,8 @@ type TestServerMocks struct {
 	// Secrets is the mock secret client.
 	Secrets *secret.MockClient
 
-	// Storage is the mock storage client.
-	Storage *store.MockStorageClient
+	// Database is the mock database client.
+	Database *database.MockClient
 }
 
 // Client provides access to an http.Client that can be used to send requests. Most tests should use the functionality
@@ -149,8 +149,8 @@ func StartWithMocks(t *testing.T, configureModules func(options modules.Options)
 	pathBase := "/" + uuid.New().String()
 
 	ctrl := gomock.NewController(t)
-	dataClient := store.NewMockStorageClient(ctrl)
-	dataProvider := dataprovider.DataStorageProviderFromClient(dataClient)
+	databaseClient := database.NewMockClient(ctrl)
+	databaseProvider := databaseprovider.FromClient(databaseClient)
 
 	queueClient := queue.NewMockClient(ctrl)
 	queueProvider := queueprovider.New(queueprovider.QueueProviderOptions{Name: "System.Resources"})
@@ -176,13 +176,13 @@ func StartWithMocks(t *testing.T, configureModules func(options modules.Options)
 	require.NoError(t, err, "failed to load OpenAPI spec")
 
 	options := modules.Options{
-		Address:        "localhost:9999", // Will be dynamically populated when server is started
-		PathBase:       pathBase,
-		Config:         &hostoptions.UCPConfig{},
-		DataProvider:   dataProvider,
-		SecretProvider: secretProvider,
-		SpecLoader:     specLoader,
-		StatusManager:  statusManager,
+		Address:          "localhost:9999", // Will be dynamically populated when server is started
+		PathBase:         pathBase,
+		Config:           &hostoptions.UCPConfig{},
+		DatabaseProvider: databaseProvider,
+		SecretProvider:   secretProvider,
+		SpecLoader:       specLoader,
+		StatusManager:    statusManager,
 	}
 
 	if configureModules == nil {
@@ -202,13 +202,13 @@ func StartWithMocks(t *testing.T, configureModules func(options modules.Options)
 	ucp := &TestServer{
 		BaseURL: server.URL + pathBase,
 		Clients: &TestServerClients{
-			QueueProvider:   queueProvider,
-			SecretProvider:  secretProvider,
-			StorageProvider: dataProvider,
+			QueueProvider:    queueProvider,
+			SecretProvider:   secretProvider,
+			DatabaseProvider: databaseProvider,
 		},
 		Mocks: &TestServerMocks{
-			Secrets: secretClient,
-			Storage: dataClient,
+			Secrets:  secretClient,
+			Database: databaseClient,
 		},
 		Server: server,
 		cancel: cancel,
@@ -252,16 +252,16 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 		}
 	}()
 
-	storageOptions := dataprovider.StorageProviderOptions{
-		Provider: dataprovider.TypeETCD,
-		ETCD: dataprovider.ETCDOptions{
+	databaseOptions := databaseprovider.Options{
+		Provider: databaseprovider.TypeETCD,
+		ETCD: databaseprovider.ETCDOptions{
 			InMemory: true,
 			Client:   config,
 		},
 	}
 	secretOptions := secretprovider.SecretProviderOptions{
 		Provider: secretprovider.TypeETCDSecret,
-		ETCD:     storageOptions.ETCD,
+		ETCD:     databaseOptions.ETCD,
 	}
 	queueOptions := queueprovider.QueueProviderOptions{
 		Name:     server.UCPProviderName,
@@ -271,7 +271,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 
 	// Generate a random base path to ensure we're handling it correctly.
 	pathBase := "/" + uuid.New().String()
-	dataProvider := dataprovider.DataStorageProviderFromOptions(storageOptions)
+	databaseProvider := databaseprovider.FromOptions(databaseOptions)
 	secretProvider := secretprovider.NewSecretProvider(secretOptions)
 	queueProvider := queueprovider.New(queueOptions)
 
@@ -292,23 +292,23 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	connection, err := sdk.NewDirectConnection(address + pathBase)
 	require.NoError(t, err)
 
-	storageClient, err := dataProvider.GetClient(ctx)
+	databaseClient, err := databaseProvider.GetClient(ctx)
 	require.NoError(t, err)
 
-	statusManager := statusmanager.New(storageClient, queueClient, v1.LocationGlobal)
+	statusManager := statusmanager.New(databaseClient, queueClient, v1.LocationGlobal)
 
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{pathBase}, "")
 	require.NoError(t, err, "failed to load OpenAPI spec")
 
 	options := modules.Options{
-		Address:        address,
-		PathBase:       pathBase,
-		Config:         &hostoptions.UCPConfig{},
-		DataProvider:   dataProvider,
-		SecretProvider: secretProvider,
-		SpecLoader:     specLoader,
-		QueueProvider:  queueProvider,
-		StatusManager:  statusManager,
+		Address:          address,
+		PathBase:         pathBase,
+		Config:           &hostoptions.UCPConfig{},
+		DatabaseProvider: databaseProvider,
+		SecretProvider:   secretProvider,
+		SpecLoader:       specLoader,
+		QueueProvider:    queueProvider,
+		StatusManager:    statusManager,
 	}
 
 	if configureModules == nil {
@@ -327,7 +327,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	require.NoError(t, err)
 
 	registry := worker.NewControllerRegistry()
-	err = backend.RegisterControllers(registry, connection, http.DefaultTransport, backend_ctrl.Options{StorageClient: storageClient}, defaultDownstream)
+	err = backend.RegisterControllers(registry, connection, http.DefaultTransport, backend_ctrl.Options{DatabaseClient: databaseClient}, defaultDownstream)
 	require.NoError(t, err)
 
 	w := worker.New(worker.Options{}, statusManager, queueClient, registry)
@@ -356,9 +356,9 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	ucp := &TestServer{
 		BaseURL: server.URL + pathBase,
 		Clients: &TestServerClients{
-			QueueProvider:   queueProvider,
-			SecretProvider:  secretProvider,
-			StorageProvider: dataProvider,
+			QueueProvider:    queueProvider,
+			SecretProvider:   secretProvider,
+			DatabaseProvider: databaseProvider,
 		},
 		Server:      server,
 		cancel:      cancel,

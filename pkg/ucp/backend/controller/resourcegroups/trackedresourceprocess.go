@@ -25,10 +25,10 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -54,15 +54,15 @@ type TrackedResourceProcessController struct {
 func NewTrackedResourceProcessController(opts ctrl.Options, transport http.RoundTripper, defaultDownstream *url.URL) (ctrl.Controller, error) {
 	return &TrackedResourceProcessController{
 		BaseController:    ctrl.NewBaseAsyncController(opts),
-		updater:           trackedresource.NewUpdater(opts.StorageClient, &http.Client{Transport: transport}),
+		updater:           trackedresource.NewUpdater(opts.DatabaseClient, &http.Client{Transport: transport}),
 		defaultDownstream: defaultDownstream,
 	}, nil
 }
 
-// Run retrieves a resource from storage, parses the resource ID, and updates our tracked resource entry in the background.
+// Run retrieves a resource from the database, parses the resource ID, and updates our tracked resource entry in the background.
 func (c *TrackedResourceProcessController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	resource, err := store.GetResource[datamodel.GenericResource](ctx, c.StorageClient(), request.ResourceID)
-	if errors.Is(err, &store.ErrNotFound{}) {
+	resource, err := database.GetResource[datamodel.GenericResource](ctx, c.DatabaseClient(), request.ResourceID)
+	if errors.Is(err, &database.ErrNotFound{}) {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Code: v1.CodeNotFound, Message: fmt.Sprintf("resource %q not found", request.ResourceID), Target: request.ResourceID}), nil
 	} else if err != nil {
 		return ctrl.Result{}, err
@@ -73,7 +73,7 @@ func (c *TrackedResourceProcessController) Run(ctx context.Context, request *ctr
 		return ctrl.Result{}, err
 	}
 
-	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, c.StorageClient(), originalID, v1.LocationGlobal, resource.Properties.APIVersion)
+	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, c.DatabaseClient(), originalID, v1.LocationGlobal, resource.Properties.APIVersion)
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Code: v1.CodeNotFound, Message: err.Error(), Target: request.ResourceID}), nil
 	} else if errors.Is(err, &resourcegroups.InvalidError{}) {

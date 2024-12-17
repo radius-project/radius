@@ -29,9 +29,9 @@ import (
 
 	"github.com/go-logr/logr"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -42,9 +42,9 @@ const (
 )
 
 // NewUpdater creates a new Updater.
-func NewUpdater(storeClient store.StorageClient, httpClient *http.Client) *Updater {
+func NewUpdater(databaseClient database.Client, httpClient *http.Client) *Updater {
 	return &Updater{
-		Store:          storeClient,
+		DatabaseClient: databaseClient,
 		Client:         httpClient,
 		AttemptCount:   retryCount,
 		RetryDelay:     retryDelay,
@@ -54,8 +54,8 @@ func NewUpdater(storeClient store.StorageClient, httpClient *http.Client) *Updat
 
 // Updater is a utility struct that can perform updates on tracked resources.
 type Updater struct {
-	// Store is the storage client used to access the database.
-	Store store.StorageClient
+	// DatabaseClient is the database client used to access the database.
+	DatabaseClient database.Client
 
 	// Client is the HTTP client used to make requests to the downstream API.
 	Client *http.Client
@@ -153,8 +153,8 @@ func (u *Updater) Update(ctx context.Context, downstream string, id resources.ID
 
 func (u *Updater) run(ctx context.Context, id resources.ID, trackingID resources.ID, destination *url.URL, apiVersion string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	obj, err := u.Store.Get(ctx, trackingID.String())
-	if errors.Is(err, &store.ErrNotFound{}) {
+	obj, err := u.DatabaseClient.Get(ctx, trackingID.String())
+	if errors.Is(err, &database.ErrNotFound{}) {
 		// This is fine. It might be a new resource.
 	} else if err != nil {
 		return err
@@ -179,8 +179,8 @@ func (u *Updater) run(ctx context.Context, id resources.ID, trackingID resources
 	if data == nil {
 		// Resource was not found. We can delete the tracked resource entry.
 		logger.V(ucplog.LevelDebug).Info("deleting tracked resource entry")
-		err = u.Store.Delete(ctx, trackingID.String(), store.WithETag(etag))
-		if errors.Is(err, &store.ErrNotFound{}) {
+		err = u.DatabaseClient.Delete(ctx, trackingID.String(), database.WithETag(etag))
+		if errors.Is(err, &database.ErrNotFound{}) {
 			return nil
 		} else if err != nil {
 			return err
@@ -201,15 +201,15 @@ func (u *Updater) run(ctx context.Context, id resources.ID, trackingID resources
 		entry.AsyncProvisioningState = *data.Properties.ProvisioningState
 	}
 
-	obj = &store.Object{
-		Metadata: store.Metadata{
+	obj = &database.Object{
+		Metadata: database.Metadata{
 			ID: trackingID.String(),
 		},
 		Data: entry,
 	}
 	logger.V(ucplog.LevelDebug).Info("updating tracked resource entry")
-	err = u.Store.Save(ctx, obj, store.WithETag(etag))
-	if errors.Is(err, &store.ErrConcurrency{}) {
+	err = u.DatabaseClient.Save(ctx, obj, database.WithETag(etag))
+	if errors.Is(err, &database.ErrConcurrency{}) {
 		logger.V(ucplog.LevelDebug).Info("tracked resource was updated concurrently")
 		return &InProgressErr{}
 	} else if err != nil {

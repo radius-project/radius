@@ -23,7 +23,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
-	"github.com/radius-project/radius/pkg/ucp/store/inmemory"
+	"github.com/radius-project/radius/pkg/ucp/database/inmemory"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -38,7 +38,7 @@ func TestRegister_Get(t *testing.T) {
 	opPut := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationPut}
 
 	ctrlOpts := ctrl.Options{
-		StorageClient:          inmemory.NewClient(),
+		DatabaseClient:         inmemory.NewClient(),
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor { return nil },
 	}
 
@@ -79,7 +79,7 @@ func TestRegister_Get_WithDefault(t *testing.T) {
 	opGet := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationGet}
 
 	ctrlOpts := ctrl.Options{
-		StorageClient:          inmemory.NewClient(),
+		DatabaseClient:         inmemory.NewClient(),
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor { return nil },
 	}
 

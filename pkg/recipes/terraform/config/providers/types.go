@@ -23,7 +23,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
-	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 )
 
 //go:generate mockgen -typed -destination=./mock_provider.go -package=providers -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/providers github.com/radius-project/radius/pkg/recipes/terraform/config/providers Provider

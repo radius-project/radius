@@ -27,16 +27,16 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func TestListSecrets_20231001Preview(t *testing.T) {
-	setupTest := func() (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+	setupTest := func() (func(tb testing.TB), *database.MockClient, *statusmanager.MockStatusManager) {
 		mctrl := gomock.NewController(t)
-		mds := store.NewMockStorageClient(mctrl)
+		mds := database.NewMockClient(mctrl)
 		msm := statusmanager.NewMockStatusManager(mctrl)
 
 		return func(tb testing.TB) {
@@ -62,13 +62,13 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 		mds.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{ID: id}
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return nil, &database.ErrNotFound{ID: id}
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mds,
-			StatusManager: msm,
+			DatabaseClient: mds,
+			StatusManager:  msm,
 		}
 
 		ctl, err := NewListSecretsExtender(opts)
@@ -91,16 +91,16 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 		mds.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id},
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return &database.Object{
+					Metadata: database.Metadata{ID: id},
 					Data:     extenderDataModel,
 				}, nil
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mds,
-			StatusManager: msm,
+			DatabaseClient: mds,
+			StatusManager:  msm,
 		}
 
 		ctl, err := NewListSecretsExtender(opts)
@@ -129,13 +129,13 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 		mds.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mds,
-			StatusManager: msm,
+			DatabaseClient: mds,
+			StatusManager:  msm,
 		}
 
 		ctl, err := NewListSecretsExtender(opts)

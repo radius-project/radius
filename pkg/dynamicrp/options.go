@@ -26,9 +26,9 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/sdk"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
+	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
+	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	kube_rest "k8s.io/client-go/rest"
 )
 
@@ -36,6 +36,9 @@ import (
 type Options struct {
 	// Config is the configuration for the server.
 	Config *Config
+
+	// DatabaseProvider provides access to the database.
+	DatabaseProvider *databaseprovider.DatabaseProvider
 
 	// QueueProvider provides access to the message queue client.
 	QueueProvider *queueprovider.QueueProvider
@@ -48,9 +51,6 @@ type Options struct {
 
 	// StatusManager implements operations on async operation statuses.
 	StatusManager statusmanager.StatusManager
-
-	// StorageProvider provides access to the data storage system.
-	StorageProvider *dataprovider.DataStorageProvider
 
 	// UCP is the connection to UCP
 	UCP sdk.Connection
@@ -65,9 +65,9 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 
 	options.QueueProvider = queueprovider.New(config.Queue)
 	options.SecretProvider = secretprovider.NewSecretProvider(config.Secrets)
-	options.StorageProvider = dataprovider.DataStorageProviderFromOptions(config.Storage)
+	options.DatabaseProvider = databaseprovider.FromOptions(config.Database)
 
-	storageClient, err := options.StorageProvider.GetClient(ctx)
+	databaseClient, err := options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 		return nil, err
 	}
 
-	options.StatusManager = statusmanager.New(storageClient, queueClient, config.Environment.RoleLocation)
+	options.StatusManager = statusmanager.New(databaseClient, queueClient, config.Environment.RoleLocation)
 
 	var cfg *kube_rest.Config
 	cfg, err = kubeutil.NewClientConfig(&kubeutil.ConfigOptions{

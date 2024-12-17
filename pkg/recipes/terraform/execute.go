@@ -33,7 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/radius-project/radius/pkg/sdk"
-	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

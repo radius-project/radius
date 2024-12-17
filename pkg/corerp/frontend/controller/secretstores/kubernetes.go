@@ -30,9 +30,9 @@ import (
 	"github.com/radius-project/radius/pkg/kubeutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -141,7 +141,7 @@ func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.Secret
 func getNamespace(ctx context.Context, res *datamodel.SecretStore, options *controller.Options) (string, error) {
 	prop := res.Properties
 	if prop.Application != "" {
-		app, err := store.GetResource[datamodel.Application](ctx, options.StorageClient, prop.Application)
+		app, err := database.GetResource[datamodel.Application](ctx, options.DatabaseClient, prop.Application)
 		if err != nil {
 			return "", err
 		}
@@ -152,7 +152,7 @@ func getNamespace(ctx context.Context, res *datamodel.SecretStore, options *cont
 	}
 
 	if prop.Environment != "" {
-		env, err := store.GetResource[datamodel.Environment](ctx, options.StorageClient, prop.Environment)
+		env, err := database.GetResource[datamodel.Environment](ctx, options.DatabaseClient, prop.Environment)
 		if err != nil {
 			return "", err
 		}

@@ -28,7 +28,7 @@ import (
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
@@ -50,22 +50,22 @@ func TestGetOperationResultRun(t *testing.T) {
 	t.Run("get non-existing resource", func(t *testing.T) {
 		mctrl := gomock.NewController(t)
 
-		storageClient := store.NewMockStorageClient(mctrl)
+		databaseClient := database.NewMockClient(mctrl)
 
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(testcontext.New(t), http.MethodGet, operationStatusTestHeaderFile, nil)
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		storageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{ID: id}
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return nil, &database.ErrNotFound{ID: id}
 			})
 
 		ctl, err := NewGetOperationResult(ctrl.Options{
-			StorageClient: storageClient,
+			DatabaseClient: databaseClient,
 		})
 
 		require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestGetOperationResultRun(t *testing.T) {
 	for _, tt := range opResTestCases {
 		t.Run(tt.desc, func(t *testing.T) {
 			mctrl := gomock.NewController(t)
-			storageClient := store.NewMockStorageClient(mctrl)
+			databaseClient := database.NewMockClient(mctrl)
 
 			w := httptest.NewRecorder()
 			req, err := rpctest.NewHTTPRequestFromJSON(testcontext.New(t), http.MethodGet, operationStatusTestHeaderFile, nil)
@@ -126,18 +126,18 @@ func TestGetOperationResultRun(t *testing.T) {
 			osDataModel.Status = tt.provisioningState
 			osDataModel.RetryAfter = time.Second * 5
 
-			storageClient.
+			databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id},
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return &database.Object{
+						Metadata: database.Metadata{ID: id},
 						Data:     osDataModel,
 					}, nil
 				})
 
 			ctl, err := NewGetOperationResult(ctrl.Options{
-				StorageClient: storageClient,
+				DatabaseClient: databaseClient,
 			})
 
 			require.NoError(t, err)

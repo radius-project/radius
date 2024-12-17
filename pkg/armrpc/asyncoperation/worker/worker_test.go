@@ -23,7 +23,7 @@ import (
 	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -84,30 +84,30 @@ func TestUpdateResourceState(t *testing.T) {
 			mctrl := gomock.NewController(t)
 			defer mctrl.Finish()
 
-			mStorageClient := store.NewMockStorageClient(mctrl)
+			databaseClient := database.NewMockClient(mctrl)
 			ctx := context.Background()
 
-			mStorageClient.
+			databaseClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
+				DoAndReturn(func(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
+					return &database.Object{
 						Data: tt.in,
 					}, nil
 				})
 
 			if tt.callSave {
-				mStorageClient.
+				databaseClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
+					DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 						k := obj.Data.(map[string]any)
 						require.Equal(t, k["provisioningState"].(string), string(tt.updateState))
 						return nil
 					})
 			}
 
-			err := updateResourceState(ctx, mStorageClient, "fakeid", tt.updateState)
+			err := updateResourceState(ctx, databaseClient, "fakeid", tt.updateState)
 			require.ErrorIs(t, err, tt.outErr)
 		})
 	}

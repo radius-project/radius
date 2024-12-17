@@ -292,16 +292,16 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 	}...)
 
-	storageClient, err := m.options.DataProvider.GetClient(ctx)
+	databaseClient, err := m.options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	ctrlOpts := controller.Options{
-		Address:       m.options.Address,
-		PathBase:      m.options.PathBase,
-		StorageClient: storageClient,
-		StatusManager: m.options.StatusManager,
+		Address:        m.options.Address,
+		PathBase:       m.options.PathBase,
+		DatabaseClient: databaseClient,
+		StatusManager:  m.options.StatusManager,
 	}
 
 	for _, h := range handlerOptions {

@@ -62,7 +62,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/queue/client"
 
-	v1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
+	v1alpha1 "github.com/radius-project/radius/pkg/ucp/database/apiserverstore/api/ucp.dev/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"

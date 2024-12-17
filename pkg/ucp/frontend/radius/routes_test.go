@@ -25,12 +25,12 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
 	"github.com/radius-project/radius/pkg/ucp/secret"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"go.uber.org/mock/gomock"
 )
 
@@ -185,18 +185,18 @@ func Test_Routes(t *testing.T) {
 	}
 
 	ctrl := gomock.NewController(t)
-	dataProvider := dataprovider.DataStorageProviderFromMemory()
+	databaseProvider := databaseprovider.FromMemory()
 
 	secretClient := secret.NewMockClient(ctrl)
 	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
 	secretProvider.SetClient(secretClient)
 
 	options := modules.Options{
-		Address:        "localhost",
-		PathBase:       pathBase,
-		Config:         &hostoptions.UCPConfig{},
-		DataProvider:   dataProvider,
-		SecretProvider: secretProvider,
+		Address:          "localhost",
+		PathBase:         pathBase,
+		Config:           &hostoptions.UCPConfig{},
+		DatabaseProvider: databaseProvider,
+		SecretProvider:   secretProvider,
 	}
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {

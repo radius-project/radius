@@ -63,7 +63,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		kubeNamespace = ext.KubernetesNamespace.Namespace
 	} else {
 		// Construct namespace using the namespace specified by environment resource.
-		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, opt.StorageClient, newResource.Properties.Environment)
+		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, opt.DatabaseClient, newResource.Properties.Environment)
 		if err != nil {
 			return rest.NewBadRequestResponse(fmt.Sprintf("Environment %s could not be constructed: %s",
 				newResource.Properties.Environment, err.Error())), nil
@@ -84,7 +84,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		return rest.NewBadRequestResponse(fmt.Sprintf("Environment %s for application %s could not be found", envID.Name(), serviceCtx.ResourceID.Name())), nil
 	}
 
-	result, err := util.FindResources(ctx, envID.RootScope(), envID.Type(), envNamespaceQuery, kubeNamespace, opt.StorageClient)
+	result, err := util.FindResources(ctx, envID.RootScope(), envID.Type(), envNamespaceQuery, kubeNamespace, opt.DatabaseClient)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 	}
 
 	// Check if another application resource is using namespace
-	result, err = util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), appNamespaceQuery, kubeNamespace, opt.StorageClient)
+	result, err = util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), appNamespaceQuery, kubeNamespace, opt.DatabaseClient)
 	if err != nil {
 		return nil, err
 	}
