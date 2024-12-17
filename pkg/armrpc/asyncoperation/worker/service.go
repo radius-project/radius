@@ -21,9 +21,9 @@ import (
 
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
-	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
-	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/queue"
+	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 

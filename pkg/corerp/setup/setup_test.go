@@ -30,9 +30,9 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/pkg/ucp/database/inmemory"
 
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"

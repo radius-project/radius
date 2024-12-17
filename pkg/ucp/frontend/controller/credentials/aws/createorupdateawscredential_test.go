@@ -25,10 +25,10 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/secret"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/ucp/database"
-	"github.com/radius-project/radius/pkg/ucp/secret"
 	"github.com/radius-project/radius/test/testutil"
 
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"

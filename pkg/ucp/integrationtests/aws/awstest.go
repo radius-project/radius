@@ -21,12 +21,12 @@ package aws
 import (
 	"testing"
 
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/secret"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
-	"github.com/radius-project/radius/pkg/ucp/database"
 	ucp_aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
-	"github.com/radius-project/radius/pkg/ucp/secret"
 	"go.uber.org/mock/gomock"
 )
 

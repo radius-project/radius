@@ -26,9 +26,9 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/messagingrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/portableresources/renderers"
-	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )

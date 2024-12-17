@@ -19,6 +19,7 @@ package server
 import (
 	"time"
 
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend"
 	"github.com/radius-project/radius/pkg/dynamicrp/frontend"
@@ -26,7 +27,6 @@ import (
 	profilerservice "github.com/radius-project/radius/pkg/profiler/service"
 	"github.com/radius-project/radius/pkg/trace"
 	"github.com/radius-project/radius/pkg/ucp/data"
-	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 )
 

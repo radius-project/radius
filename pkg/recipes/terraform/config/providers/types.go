@@ -20,10 +20,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
-	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 )
 
 //go:generate mockgen -typed -destination=./mock_provider.go -package=providers -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/providers github.com/radius-project/radius/pkg/recipes/terraform/config/providers Provider
@@ -39,7 +39,7 @@ type Provider interface {
 // GetUCPConfiguredTerraformProviders returns a map of Terraform provider names to provider config builder.
 // These providers represent Terraform providers for which Radius generates custom provider configurations based on credentials stored with UCP
 // and providers configured on the Radius environment. For example, the Azure subscription id is added to Azure provider config using Radius Environment's Azure provider scope.
-func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) map[string]Provider {
+func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider) map[string]Provider {
 	return map[string]Provider{
 		AWSProviderName:        NewAWSProvider(ucpConn, secretProvider),
 		AzureProviderName:      NewAzureProvider(ucpConn, secretProvider),

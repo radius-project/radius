@@ -24,8 +24,8 @@ import (
 
 	"github.com/google/uuid"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	deployment "github.com/radius-project/radius/pkg/corerp/backend/deployment"
-	"github.com/radius-project/radius/pkg/ucp/database"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )

@@ -20,8 +20,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
-	"github.com/radius-project/radius/pkg/ucp/database"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )

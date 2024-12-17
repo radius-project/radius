@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/ucp/database"
+	"github.com/radius-project/radius/pkg/components/database"
 	"go.uber.org/mock/gomock"
 
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"

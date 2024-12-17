@@ -22,13 +22,13 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/sdk"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
-	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
-	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
-	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	kube_rest "k8s.io/client-go/rest"
 )
 
