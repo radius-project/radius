@@ -551,7 +551,7 @@ jobs:
       # The role-to-assume is the role that the github action will assume to execute aws commands and 
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
-        uses: aws-actions/configure-aws-credentials@v1.7.0
+        uses: aws-actions/configure-aws-credentials@v4.0.2
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
