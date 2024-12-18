@@ -2,7 +2,7 @@
 environment:
   name: Dev
   roleLocation: "global"
-storageProvider:
+databaseProvider:
   provider: "apiserver"
   apiserver:
     context: ''

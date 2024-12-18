@@ -36,8 +36,6 @@ spec:
         args:
         - --config-file=/etc/config/ucp-config.yaml
         env:
-        - name: BASE_PATH
-          value: '/apis/api.ucp.dev/v1alpha3' # listen for APIService URLs
         - name: TLS_CERT_DIR
           value: '/var/tls/cert'
         - name: PORT

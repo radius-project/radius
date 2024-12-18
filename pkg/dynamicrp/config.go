@@ -32,12 +32,14 @@ import (
 )
 
 // Config defines the configuration for the DynamicRP server.
+//
+// For testability, all fields on this struct MUST be parsable from YAML without any further initialization required.
 type Config struct {
 	// Bicep configures properties for the Bicep recipe driver.
 	Bicep hostoptions.BicepOptions `yaml:"bicep"`
 
 	// Database is the configuration for the database.
-	Database databaseprovider.Options `yaml:"storageProvider"`
+	Database databaseprovider.Options `yaml:"databaseProvider"`
 
 	// Environment is the configuration for the hosting environment.
 	Environment hostoptions.EnvironmentOptions `yaml:"environment"`
