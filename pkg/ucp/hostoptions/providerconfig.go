@@ -42,6 +42,7 @@ type UCPConfig struct {
 	UCP              config.UCPOptions                        `yaml:"ucp"`
 	Location         string                                   `yaml:"location"`
 	Routing          RoutingConfig                            `yaml:"routing"`
+	Initialization   InitializationConfig                     `yaml:"initialization"`
 }
 
 const (
@@ -62,4 +63,12 @@ type RoutingConfig struct {
 	// DefaultDownstreamEndpoint is the default destination when a resource provider does not provide a downstream endpoint.
 	// In practice, this points to the URL of dynamic-rp.
 	DefaultDownstreamEndpoint string `yaml:"defaultDownstreamEndpoint"`
+}
+
+// InitializeConfig defines the configuration for initializing the UCP server.
+//
+// This includes resources that are added to UCP's data on startup.
+type InitializationConfig struct {
+	// ManifestDirectory is the directory where UCP manifests are stored.
+	ManifestDirectory string `yaml:"manifestDirectory"`
 }

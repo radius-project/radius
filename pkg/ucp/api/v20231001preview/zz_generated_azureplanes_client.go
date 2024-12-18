@@ -68,7 +68,9 @@ func (client *AzurePlanesClient) BeginCreateOrUpdate(ctx context.Context, planeN
 // Generated from API version 2023-10-01-preview
 func (client *AzurePlanesClient) createOrUpdate(ctx context.Context, planeName string, resource AzurePlaneResource, options *AzurePlanesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "AzurePlanesClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
+	const operationName = "AzurePlanesClient.BeginCreateOrUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, resource, options)
 	if err != nil {
@@ -136,7 +138,9 @@ func (client *AzurePlanesClient) BeginDelete(ctx context.Context, planeName stri
 // Generated from API version 2023-10-01-preview
 func (client *AzurePlanesClient) deleteOperation(ctx context.Context, planeName string, options *AzurePlanesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "AzurePlanesClient.BeginDelete", client.internal.Tracer(), nil)
+	const operationName = "AzurePlanesClient.BeginDelete"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, planeName, options)
 	if err != nil {
@@ -179,7 +183,9 @@ func (client *AzurePlanesClient) deleteCreateRequest(ctx context.Context, planeN
 //   - options - AzurePlanesClientGetOptions contains the optional parameters for the AzurePlanesClient.Get method.
 func (client *AzurePlanesClient) Get(ctx context.Context, planeName string, options *AzurePlanesClientGetOptions) (AzurePlanesClientGetResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "AzurePlanesClient.Get", client.internal.Tracer(), nil)
+	const operationName = "AzurePlanesClient.Get"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, planeName, options)
 	if err != nil {
@@ -234,6 +240,7 @@ func (client *AzurePlanesClient) NewListPager(options *AzurePlanesClientListOpti
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *AzurePlanesClientListResponse) (AzurePlanesClientListResponse, error) {
+		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AzurePlanesClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -304,7 +311,9 @@ func (client *AzurePlanesClient) BeginUpdate(ctx context.Context, planeName stri
 // Generated from API version 2023-10-01-preview
 func (client *AzurePlanesClient) update(ctx context.Context, planeName string, properties AzurePlaneResourceTagsUpdate, options *AzurePlanesClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "AzurePlanesClient.BeginUpdate", client.internal.Tracer(), nil)
+	const operationName = "AzurePlanesClient.BeginUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, planeName, properties, options)
 	if err != nil {
