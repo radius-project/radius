@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifestservice
+package initializer
 
 import (
 	"context"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"time"
 
@@ -50,7 +51,7 @@ func NewService(connection sdk.Connection, options ucpoptions.UCPConfig) *Servic
 
 // Name gets this service name.
 func (s *Service) Name() string {
-	return "manifestservice"
+	return "initializer"
 }
 
 func waitForServer(ctx context.Context, host, port string, retryInterval time.Duration, timeout time.Duration) error {
@@ -80,19 +81,31 @@ func waitForServer(ctx context.Context, host, port string, retryInterval time.Du
 func (w *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Define connection parameters
-	hostName := "localhost" //w.ucpConnection.Endpoint()/split to get host? // Replace with actual method
-	port := "9000"          // extract from endpoint Replace with actual method
+	if w.ucpConnection == nil || w.ucpConnection.Endpoint() == "" {
+		return fmt.Errorf("connection to UCP is not set")
+	}
+
+	// Parse the endpoint URL and extract host and port
+	parsedURL, err := url.Parse(w.ucpConnection.Endpoint())
+	if err != nil {
+		return fmt.Errorf("failed to parse endpoint URL: %w", err)
+	}
+
+	hostName, port, err := net.SplitHostPort(parsedURL.Host)
+	if err != nil {
+		return fmt.Errorf("failed to split host and port: %w", err)
+	}
+	logger.Info("Parsed Host and Port", "host", hostName, "port", port)
 
 	// Attempt to connect to the server
-	err := waitForServer(ctx, hostName, port, 500*time.Millisecond, 5*time.Second)
+	err = waitForServer(ctx, hostName, port, 500*time.Millisecond, 5*time.Second)
 	if err != nil {
 		logger.Error(err, "Server is not available for manifest registration")
 		return nil
 	}
 
 	// Server is up, proceed to register manifests
-	manifestDir := w.options.Manifests.ManifestDirectory
+	manifestDir := w.options.Initialization.ManifestDirectory
 	if manifestDir == "" {
 		logger.Info("No manifest directory specified")
 		return nil
@@ -113,9 +126,8 @@ func (w *Service) Run(ctx context.Context) error {
 	}
 
 	// Proceed with registering manifests
-	if err := manifest.RegisterDirectory(ctx, *clientFactory, "local", manifestDir, nil); err != nil {
-		logger.Error(err, "Failed to register manifests")
-		return nil
+	if err := manifest.RegisterDirectory(ctx, clientFactory, "local", manifestDir, nil); err != nil {
+		return fmt.Errorf("error registering manifests : %w", err)
 	}
 
 	logger.Info("Successfully registered manifests", "directory", manifestDir)
