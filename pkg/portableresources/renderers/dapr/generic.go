@@ -108,5 +108,6 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, namespace string, componentNa
 			"secretStore": daprGeneric.Auth.SecretStore,
 		}
 	}
+
 	return item, nil
 }
