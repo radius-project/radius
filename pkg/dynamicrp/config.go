@@ -20,13 +20,13 @@ import (
 	"bytes"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	metricsprovider "github.com/radius-project/radius/pkg/metrics/provider"
 	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
 	"github.com/radius-project/radius/pkg/trace"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
-	"github.com/radius-project/radius/pkg/ucp/databaseprovider"
-	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
-	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"gopkg.in/yaml.v3"
 )

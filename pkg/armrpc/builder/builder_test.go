@@ -28,7 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/database/inmemory"
+	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

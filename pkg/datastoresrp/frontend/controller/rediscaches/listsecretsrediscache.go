@@ -24,10 +24,10 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/portableresources/renderers"
-	"github.com/radius-project/radius/pkg/ucp/database"
 )
 
 var _ ctrl.Controller = (*ListSecretsRedisCache)(nil)

@@ -26,7 +26,7 @@ import (
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/database"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/stretchr/testify/require"
 )
 

@@ -27,9 +27,9 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
-	"github.com/radius-project/radius/pkg/ucp/database/inmemory"
 )
 
 var handlerTests = []rpctest.HandlerTestSpec{

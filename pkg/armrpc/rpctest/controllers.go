@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/ucp/database"
+	"github.com/radius-project/radius/pkg/components/database"
 	"go.uber.org/mock/gomock"
 )
 

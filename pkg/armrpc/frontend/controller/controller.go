@@ -26,7 +26,7 @@ import (
 	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/ucp/database"
+	"github.com/radius-project/radius/pkg/components/database"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )

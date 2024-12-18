@@ -28,11 +28,11 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	sprovider "github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/config"
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
-	sprovider "github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
 
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
