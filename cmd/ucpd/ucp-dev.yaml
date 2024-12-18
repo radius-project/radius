@@ -52,6 +52,8 @@ initialization:
           Applications.Datastores: "http://localhost:8080"
           Microsoft.Resources: "http://localhost:5017"
         kind: "UCPNative"
+  # This is the directory location which contains manifests to be registered.
+  manifestDirectory: ""      
 
 identity:
   authMethod: default
@@ -64,10 +66,6 @@ ucp:
 routing:
   # This is the default downstream (dynamic-rp) for UDT implementations.
   defaultDownstreamEndpoint: "http://localhost:8082"
-
-initialization:
-  # This is the directory location which contains manifests to be registered.
-  manifestDirectory: "deploy/manifest/built-in-providers"
 
 # Metrics configuration
 # port is not the same as metrics configuration in radius-self-hosted.yaml

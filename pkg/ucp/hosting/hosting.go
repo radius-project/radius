@@ -145,16 +145,6 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 
 	logger.Info("Started all services", "count", len(host.Services))
 
-	/*
-		// Start RegisterManifests in a goroutine after 5 seconds
-		go func() {
-			time.Sleep(15 * time.Second)
-			if err := RegisterManifests(ctx); err != nil {
-				logger.Error(err, "Failed to register manifests")
-			}
-		}()
-	*/
-
 	// Now that all services are running we just need to wait for all services to stop, or for a timeout
 	// to occur
 	for len(running) > 0 {

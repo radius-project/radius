@@ -89,7 +89,6 @@ func Test_Validate(t *testing.T) {
 		_ = cmd.MarkFlagFilename("from-file", "yaml", "json")
 		return cmd, runner
 	}, testcases)
-
 }
 
 func Test_Run(t *testing.T) {

@@ -27,25 +27,25 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
-	ucpoptions "github.com/radius-project/radius/pkg/ucp/hostoptions"
+
+	//ucpoptions "github.com/radius-project/radius/pkg/ucp/hostoptions"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // Service implements the hosting.Service interface for registering manifests.
 type Service struct {
-	ucpConnection sdk.Connection
-	options       ucpoptions.UCPConfig
+	options *ucp.Options
 }
 
 var _ hosting.Service = (*Service)(nil)
 
 // NewService creates a server to register manifests.
-func NewService(connection sdk.Connection, options ucpoptions.UCPConfig) *Service {
+func NewService(options *ucp.Options) *Service {
 	return &Service{
-		ucpConnection: connection,
-		options:       options,
+		options: options,
 	}
 }
 
@@ -54,7 +54,7 @@ func (s *Service) Name() string {
 	return "initializer"
 }
 
-func waitForServer(ctx context.Context, host, port string, retryInterval time.Duration, timeout time.Duration) error {
+func waitForServer(ctx context.Context, host, port string, retryInterval time.Duration, connectionTimeout time.Duration, timeout time.Duration) error {
 	address := net.JoinHostPort(host, port)
 	deadline := time.Now().Add(timeout)
 
@@ -63,7 +63,7 @@ func waitForServer(ctx context.Context, host, port string, retryInterval time.Du
 		case <-ctx.Done():
 			return fmt.Errorf("connection attempts canceled or timed out: %w", ctx.Err())
 		default:
-			conn, err := net.DialTimeout("tcp", address, retryInterval)
+			conn, err := net.DialTimeout("tcp", address, connectionTimeout)
 			if err == nil {
 				conn.Close()
 				return nil
@@ -81,12 +81,12 @@ func waitForServer(ctx context.Context, host, port string, retryInterval time.Du
 func (w *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	if w.ucpConnection == nil || w.ucpConnection.Endpoint() == "" {
+	if w.options.UCP == nil || w.options.UCP.Endpoint() == "" {
 		return fmt.Errorf("connection to UCP is not set")
 	}
 
 	// Parse the endpoint URL and extract host and port
-	parsedURL, err := url.Parse(w.ucpConnection.Endpoint())
+	parsedURL, err := url.Parse(w.options.UCP.Endpoint())
 	if err != nil {
 		return fmt.Errorf("failed to parse endpoint URL: %w", err)
 	}
@@ -98,14 +98,14 @@ func (w *Service) Run(ctx context.Context) error {
 	logger.Info("Parsed Host and Port", "host", hostName, "port", port)
 
 	// Attempt to connect to the server
-	err = waitForServer(ctx, hostName, port, 500*time.Millisecond, 5*time.Second)
+	err = waitForServer(ctx, hostName, port, 500*time.Millisecond, 500*time.Millisecond, 5*time.Second)
 	if err != nil {
 		logger.Error(err, "Server is not available for manifest registration")
 		return nil
 	}
 
 	// Server is up, proceed to register manifests
-	manifestDir := w.options.Initialization.ManifestDirectory
+	manifestDir := w.options.Config.Initialization.ManifestDirectory
 	if manifestDir == "" {
 		logger.Info("No manifest directory specified")
 		return nil
@@ -117,12 +117,11 @@ func (w *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("error checking manifest directory: %w", err)
 	}
 
-	clientOptions := sdk.NewClientOptions(w.ucpConnection)
+	clientOptions := sdk.NewClientOptions(w.options.UCP)
 
 	clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
-		logger.Error(err, "Failed to create client factory")
-		return nil
+		return fmt.Errorf("error creating client factory: %w", err)
 	}
 
 	// Proceed with registering manifests

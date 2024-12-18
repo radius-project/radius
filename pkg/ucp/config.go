@@ -107,7 +107,8 @@ type RoutingConfig struct {
 // handles planes, and we need to support other kinds of resources.
 type InitializationConfig struct {
 	// Planes is a list of planes to create at startup.
-	Planes []Plane `yaml:"planes,omitempty"`
+	Planes            []Plane `yaml:"planes,omitempty"`
+	ManifestDirectory string  `yaml:"manifestDirectory"`
 }
 
 // Plane is a configuration entry for a plane resource. This is used to create a plane resource at startup.
