@@ -102,13 +102,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	if r.UCPClientFactory == nil {
-		err = r.setClientFactory(cmd.Context(), workspace)
-		if err != nil {
-			return err
-		}
-	}
-
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
@@ -125,6 +118,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad resource-provider create` command.
 func (r *Runner) Run(ctx context.Context) error {
+	// Initialize the client factory
+	if r.UCPClientFactory == nil {
+		err := r.initializeClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Proceed with registering manifests
 	if err := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
@@ -147,7 +147,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) setClientFactory(ctx context.Context, workspace *workspaces.Workspace) error {
+func (r *Runner) initializeClientFactory(ctx context.Context, workspace *workspaces.Workspace) error {
 	connection, err := cmd.GetConnection(ctx, workspace)
 	if err != nil {
 		return err

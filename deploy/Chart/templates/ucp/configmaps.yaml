@@ -50,6 +50,7 @@ data:
         - id: "/planes/aws/aws"
           properties:
             kind: "AWS"
+      manifestDirectory: ""      
 
     identity:
       authMethod: UCPCredential
@@ -59,9 +60,6 @@ data:
     
     routing:
       defaultDownstreamEndpoint: "http://dynamic-rp.radius-sytem:8082"
-
-    initialization:
-      manifestDirectory: "deploy/manifest/built-in-providers"
 
     metricsProvider:
       enabled: true

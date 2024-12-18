@@ -22,14 +22,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	frmwk "github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/test/radcli"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,51 +42,29 @@ func Test_Validate(t *testing.T) {
 			Name:          "Valid",
 			Input:         []string{"--from-file", "testdata/valid.yaml"},
 			ExpectedValid: true,
-			ConfigHolder:  frmwk.ConfigHolder{Config: config},
+			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
 			Name:          "Invalid: Error in manifest",
 			Input:         []string{"--from-file", "testdata/missing-required-field.yaml"},
 			ExpectedValid: false,
-			ConfigHolder:  frmwk.ConfigHolder{Config: config},
+			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
 			Name:          "Invalid: missing arguments",
 			Input:         []string{},
 			ExpectedValid: false,
-			ConfigHolder:  frmwk.ConfigHolder{Config: config},
+			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
 			Name:          "Invalid: too many arguments",
 			Input:         []string{"abcd", "--from-file", "testdata/valid.yaml"},
 			ExpectedValid: false,
-			ConfigHolder:  frmwk.ConfigHolder{Config: config},
+			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 	}
 
-	radcli.SharedValidateValidation(t, func(framework frmwk.Factory) (*cobra.Command, framework.Runner) {
-		runner := NewRunner(framework)
-		clientFactory, err := manifest.NewTestClientFactory()
-		require.NoError(t, err)
-
-		runner.UCPClientFactory = clientFactory
-		runner.Output = &output.MockOutput{}
-		runner.ResourceProviderManifestFilePath = "testdata/valid.yaml"
-
-		cmd := &cobra.Command{
-			Use:   "test",
-			Short: "Test command",
-			Args:  cobra.ExactArgs(0),
-			RunE:  frmwk.RunCommand(runner),
-		}
-		commonflags.AddOutputFlag(cmd)
-		commonflags.AddWorkspaceFlag(cmd)
-		commonflags.AddFromFileFlagVar(cmd, &runner.ResourceProviderManifestFilePath)
-		_ = cmd.MarkFlagRequired("from-file")
-		_ = cmd.MarkFlagFilename("from-file", "yaml", "json")
-		return cmd, runner
-	}, testcases)
-
+	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
 func Test_Run(t *testing.T) {
