@@ -37,7 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
-	"github.com/radius-project/radius/pkg/ucp/manifestservice"
+	"github.com/radius-project/radius/pkg/ucp/initializer"
 	"github.com/radius-project/radius/pkg/ucp/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/ucp/rest"
 	"github.com/radius-project/radius/pkg/ucp/secret/secretprovider"
@@ -174,7 +174,7 @@ func NewServer(options *ucp.Options) (*hosting.Host, error) {
 
 	hostingServices = append(hostingServices, &trace.Service{Options: options.Config.Tracing})
 
-	hostingServices = append(hostingServices, manifestservice.NewService(options.UCPConnection, *options.Config))
+	hostingServices = append(hostingServices, initializer.NewService(options.UCPConnection, *options.Config))
 
 	return &hosting.Host{
 		Services: hostingServices,

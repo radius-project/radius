@@ -42,7 +42,7 @@ type UCPConfig struct {
 	UCP              config.UCPOptions                        `yaml:"ucp"`
 	Location         string                                   `yaml:"location"`
 	Routing          RoutingConfig                            `yaml:"routing"`
-	Manifests        ManifestConfig                           `yaml:"manifests"`
+	Initialization   InitializationConfig                     `yaml:"initialization"`
 }
 
 const (
@@ -65,8 +65,10 @@ type RoutingConfig struct {
 	DefaultDownstreamEndpoint string `yaml:"defaultDownstreamEndpoint"`
 }
 
-// ManifestConfig  provides configuration for UCP manifests.
-type ManifestConfig struct {
+// InitializeConfig defines the configuration for initializing the UCP server.
+//
+// This includes resources that are added to UCP's data on startup.
+type InitializationConfig struct {
 	// ManifestDirectory is the directory where UCP manifests are stored.
 	ManifestDirectory string `yaml:"manifestDirectory"`
 }

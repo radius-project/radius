@@ -19,16 +19,17 @@ package create
 import (
 	"context"
 
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/common"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/ucp/ucpclient"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
 )
 
@@ -69,22 +70,26 @@ rad resource-provider create --from-file /path/to/input.json
 
 // Runner is the Runner implementation for the `rad resource-provider create` command.
 type Runner struct {
-	ConnectionFactory connections.Factory
-	ConfigHolder      *framework.ConfigHolder
-	Output            output.Interface
-	Format            string
-	Workspace         *workspaces.Workspace
+	UCPClientFactory *v20231001preview.ClientFactory
+	ConfigHolder     *framework.ConfigHolder
+	Output           output.Interface
+	Format           string
+	Workspace        *workspaces.Workspace
 
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
+	Logger                           func(format string, args ...any)
 }
 
 // NewRunner creates an instance of the runner for the `rad resource-provider create` command.
 func NewRunner(factory framework.Factory) *Runner {
+	output := factory.GetOutput()
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       output,
+		Logger: func(format string, args ...any) {
+			output.LogInfo(format, args...)
+		},
 	}
 }
 
@@ -96,6 +101,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.Workspace = workspace
+
+	if r.UCPClientFactory == nil {
+		err = r.setClientFactory(cmd.Context(), workspace)
+		if err != nil {
+			return err
+		}
+	}
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -114,22 +126,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad resource-provider create` command.
 func (r *Runner) Run(ctx context.Context) error {
 
-	connection, err := cmd.GetConnection(ctx, r.Workspace)
-	if err != nil {
-		return err
-	}
-
-	ucpclient, err := ucpclient.NewUCPClient(connection)
-	if err != nil {
-		return err
-	}
-
 	// Proceed with registering manifests
-	if err := ucpclient.RegisterManifests(ctx, r.ResourceProviderManifestFilePath); err != nil {
-		return nil
+	if err := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
+		return err
 	}
 
-	response, err := ucpclient.GetResourceProvider(ctx, "local", r.ResourceProvider.Name)
+	response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
 	if err != nil {
 		return err
 	}
@@ -142,5 +144,22 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	return nil
+}
+
+func (r *Runner) setClientFactory(ctx context.Context, workspace *workspaces.Workspace) error {
+	connection, err := cmd.GetConnection(ctx, workspace)
+	if err != nil {
+		return err
+	}
+
+	clientOptions := sdk.NewClientOptions(connection)
+
+	clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return err
+	}
+
+	r.UCPClientFactory = clientFactory
 	return nil
 }

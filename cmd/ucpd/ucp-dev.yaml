@@ -65,7 +65,7 @@ routing:
   # This is the default downstream (dynamic-rp) for UDT implementations.
   defaultDownstreamEndpoint: "http://localhost:8082"
 
-manifests:
+initialization:
   # This is the directory location which contains manifests to be registered.
   manifestDirectory: "deploy/manifest/built-in-providers"
 

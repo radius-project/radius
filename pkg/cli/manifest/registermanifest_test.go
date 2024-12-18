@@ -13,159 +13,20 @@ limitations under the License.
 package manifest
 
 import (
+	"bytes"
 	"context"
-	"net/http"
+	"fmt"
 	"testing"
 
 	// armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
-	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
-	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	ucpfake "github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/stretchr/testify/require"
 )
-
-func NewTestClientFactory() (*v20231001preview.ClientFactory, error) {
-
-	// Create fake servers for each client
-	resourceProvidersServer := ucpfake.ResourceProvidersServer{
-		BeginCreateOrUpdate: func(
-			ctx context.Context,
-			planeName string,
-			resourceProviderName string,
-			resource v20231001preview.ResourceProviderResource,
-			options *v20231001preview.ResourceProvidersClientBeginCreateOrUpdateOptions,
-		) (resp azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
-			// Simulate successful creation
-			result := v20231001preview.ResourceProvidersClientCreateOrUpdateResponse{
-				ResourceProviderResource: resource,
-			}
-			resp.AddNonTerminalResponse(http.StatusCreated, nil)
-			resp.SetTerminalResponse(http.StatusOK, result, nil)
-
-			return
-		},
-		Get: func(
-			ctx context.Context,
-			planeName string,
-			resourceProviderName string,
-			options *v20231001preview.ResourceProvidersClientGetOptions,
-		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
-			response := v20231001preview.ResourceProvidersClientGetResponse{
-				ResourceProviderResource: v20231001preview.ResourceProviderResource{
-					Name: to.Ptr(resourceProviderName),
-				},
-			}
-			resp.SetResponse(http.StatusOK, response, nil)
-			return
-		},
-	}
-
-	// Create other fake servers similarly
-	resourceTypesServer := ucpfake.ResourceTypesServer{
-		BeginCreateOrUpdate: func(
-			ctx context.Context,
-			planeName string,
-			resourceProviderName string,
-			resourceTypeName string,
-			resource v20231001preview.ResourceTypeResource,
-			options *v20231001preview.ResourceTypesClientBeginCreateOrUpdateOptions,
-		) (resp azfake.PollerResponder[v20231001preview.ResourceTypesClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
-			result := v20231001preview.ResourceTypesClientCreateOrUpdateResponse{
-				ResourceTypeResource: resource,
-			}
-
-			resp.AddNonTerminalResponse(http.StatusCreated, nil)
-			resp.SetTerminalResponse(http.StatusOK, result, nil)
-
-			return
-		},
-		Get: func(
-			ctx context.Context,
-			planeName string,
-			resourceProviderName string,
-			resourceTypeName string,
-			options *v20231001preview.ResourceTypesClientGetOptions,
-		) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
-			response := v20231001preview.ResourceTypesClientGetResponse{
-				ResourceTypeResource: v20231001preview.ResourceTypeResource{
-					Name: to.Ptr(resourceTypeName),
-				},
-			}
-			resp.SetResponse(http.StatusOK, response, nil)
-			return
-		},
-	}
-
-	apiVersionsServer := ucpfake.APIVersionsServer{
-		BeginCreateOrUpdate: func(
-			ctx context.Context,
-			planeName string,
-			resourceProviderName string,
-			resourceTypeName string,
-			apiVersionName string, // Added missing parameter
-			resource v20231001preview.APIVersionResource,
-			options *v20231001preview.APIVersionsClientBeginCreateOrUpdateOptions,
-		) (resp azfake.PollerResponder[v20231001preview.APIVersionsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
-			// Simulate successful creation
-			result := v20231001preview.APIVersionsClientCreateOrUpdateResponse{
-				APIVersionResource: resource,
-			}
-			resp.AddNonTerminalResponse(http.StatusCreated, nil)
-			resp.SetTerminalResponse(http.StatusOK, result, nil)
-			return
-		},
-	}
-
-	locationsServer := ucpfake.LocationsServer{
-		BeginCreateOrUpdate: func(
-			ctx context.Context,
-			planeName string,
-			resourceProviderName string,
-			locationName string,
-			resource v20231001preview.LocationResource,
-			options *v20231001preview.LocationsClientBeginCreateOrUpdateOptions,
-		) (resp azfake.PollerResponder[v20231001preview.LocationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
-			// Simulate successful creation
-			result := v20231001preview.LocationsClientCreateOrUpdateResponse{
-				LocationResource: resource,
-			}
-			resp.AddNonTerminalResponse(http.StatusCreated, nil)
-			resp.SetTerminalResponse(http.StatusOK, result, nil)
-
-			return
-		},
-	}
-
-	serverFactory := ucpfake.ServerFactory{
-		ResourceProvidersServer: resourceProvidersServer,
-		ResourceTypesServer:     resourceTypesServer,
-		APIVersionsServer:       apiVersionsServer,
-		LocationsServer:         locationsServer,
-	}
-
-	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
-
-	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
-	}
-
-	clientFactory, err := v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	return clientFactory, err
-}
 
 func TestRegisterDirectory(t *testing.T) {
 	tests := []struct {
 		name                     string
-		clientFactory            func() (*v20231001preview.ClientFactory, error)
 		planeName                string
 		directoryPath            string
 		expectError              bool
@@ -173,21 +34,15 @@ func TestRegisterDirectory(t *testing.T) {
 		expectedResourceProvider string
 	}{
 		{
-			name: "Success",
-			clientFactory: func() (*v20231001preview.ClientFactory, error) {
-				return NewTestClientFactory()
-			},
+			name:                     "Success",
 			planeName:                "local",
-			directoryPath:            "testdata2",
+			directoryPath:            "registerdirectory_testdata",
 			expectError:              false,
 			expectedErrorMessage:     "",
 			expectedResourceProvider: "MyCompany2.CompanyName2",
 		},
 		{
-			name: "EmptyDirectoryPath",
-			clientFactory: func() (*v20231001preview.ClientFactory, error) {
-				return NewTestClientFactory()
-			},
+			name:                     "EmptyDirectoryPath",
 			planeName:                "local",
 			directoryPath:            "",
 			expectError:              true,
@@ -195,10 +50,7 @@ func TestRegisterDirectory(t *testing.T) {
 			expectedResourceProvider: "",
 		},
 		{
-			name: "InvalidDirectoryPath",
-			clientFactory: func() (*v20231001preview.ClientFactory, error) {
-				return NewTestClientFactory()
-			},
+			name:                     "InvalidDirectoryPath",
 			planeName:                "local",
 			directoryPath:            "#^$/invalid",
 			expectError:              true,
@@ -206,36 +58,32 @@ func TestRegisterDirectory(t *testing.T) {
 			expectedResourceProvider: "",
 		},
 		{
-			name: "FilePathInsteadOfDirectory",
-			clientFactory: func() (*v20231001preview.ClientFactory, error) {
-				return NewTestClientFactory()
-			},
+			name:                     "FilePathInsteadOfDirectory",
 			planeName:                "local",
 			directoryPath:            "testdata/valid.yaml",
 			expectError:              true,
-			expectedErrorMessage:     "manifest path testdata/valid.yaml is not a directory path",
+			expectedErrorMessage:     "manifest path testdata/valid.yaml is not a directory",
 			expectedResourceProvider: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clientFactory, err := tt.clientFactory()
-			require.NoError(t, err, "Failed to create client factory")
-			logger := func(message string) {}
+			clientFactory, err := NewTestClientFactory()
+			require.NoError(t, err)
 
-			err = RegisterDirectory(context.Background(), *clientFactory, tt.planeName, tt.directoryPath, logger)
+			err = RegisterDirectory(context.Background(), clientFactory, tt.planeName, tt.directoryPath, nil)
 			if tt.expectError {
-				require.Error(t, err, "Expected an error but got none")
-				require.Contains(t, err.Error(), tt.expectedErrorMessage, "Error message does not match")
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedErrorMessage)
 			} else {
-				require.NoError(t, err, "Did not expect an error but got one")
+				require.NoError(t, err)
 
 				// Verify the expected resource provider exists
 				if tt.expectedResourceProvider != "" {
 					rp, err := clientFactory.NewResourceProvidersClient().Get(context.Background(), tt.planeName, tt.expectedResourceProvider, nil)
 					require.NoError(t, err, "Failed to retrieve the expected resource provider")
-					require.Equal(t, to.Ptr(tt.expectedResourceProvider), rp.Name, "Resource provider name does not match")
+					require.Equal(t, to.Ptr(tt.expectedResourceProvider), rp.Name)
 				}
 			}
 		})
@@ -245,77 +93,62 @@ func TestRegisterDirectory(t *testing.T) {
 func TestRegisterFile(t *testing.T) {
 	tests := []struct {
 		name                     string
-		clientFactory            func() (*v20231001preview.ClientFactory, error)
 		planeName                string
 		filePath                 string
 		expectError              bool
 		expectedErrorMessage     string
 		expectedResourceProvider string
+		expectedResourceTypeName string
+		expectedAPIVersion       string
 	}{
 		{
-			name: "Success",
-			clientFactory: func() (*v20231001preview.ClientFactory, error) {
-				return NewTestClientFactory()
-			},
+			name:                     "Success",
 			planeName:                "local",
-			filePath:                 "testdata2",
+			filePath:                 "registerdirectory_testdata/resourceprovider-valid2.yaml",
 			expectError:              false,
 			expectedErrorMessage:     "",
 			expectedResourceProvider: "MyCompany2.CompanyName2",
+			expectedResourceTypeName: "testResource3",
+			expectedAPIVersion:       "2025-01-01-preview",
 		},
 		{
-			name: "EmptyDirectoryPath",
-			clientFactory: func() (*v20231001preview.ClientFactory, error) {
-				return NewTestClientFactory()
-			},
+			name:                     "EmptyDirectoryPath",
 			planeName:                "local",
 			filePath:                 "",
 			expectError:              true,
-			expectedErrorMessage:     "invalid manifest directory",
+			expectedErrorMessage:     "invalid manifest file path",
 			expectedResourceProvider: "",
-		},
-		{
-			name: "InvalidDirectoryPath",
-			clientFactory: func() (*v20231001preview.ClientFactory, error) {
-				return NewTestClientFactory()
-			},
-			planeName:                "local",
-			filePath:                 "#^$/invalid",
-			expectError:              true,
-			expectedErrorMessage:     "failed to access manifest path #^$/invalid: stat #^$/invalid: no such file or directory",
-			expectedResourceProvider: "",
-		},
-		{
-			name: "FilePathInsteadOfDirectory",
-			clientFactory: func() (*v20231001preview.ClientFactory, error) {
-				return NewTestClientFactory()
-			},
-			planeName:                "local",
-			filePath:                 "testdata/valid.yaml",
-			expectError:              true,
-			expectedErrorMessage:     "manifest path testdata/valid.yaml is not a directory path",
-			expectedResourceProvider: "",
+			expectedResourceTypeName: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clientFactory, err := tt.clientFactory()
-			require.NoError(t, err, "Failed to create client factory")
-			logger := func(message string) {}
 
-			err = RegisterDirectory(context.Background(), *clientFactory, tt.planeName, tt.filePath, logger)
+			clientFactory, err := NewTestClientFactory()
+			require.NoError(t, err, "Failed to create client factory")
+
+			var logBuffer bytes.Buffer
+			logger := func(format string, args ...interface{}) {
+				fmt.Fprintf(&logBuffer, format+"\n", args...)
+			}
+
+			err = RegisterFile(context.Background(), clientFactory, tt.planeName, tt.filePath, logger)
 			if tt.expectError {
-				require.Error(t, err, "Expected an error but got none")
-				require.Contains(t, err.Error(), tt.expectedErrorMessage, "Error message does not match")
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedErrorMessage)
 			} else {
-				require.NoError(t, err, "Did not expect an error but got one")
+				require.NoError(t, err)
 
 				// Verify the expected resource provider exists
 				if tt.expectedResourceProvider != "" {
 					rp, err := clientFactory.NewResourceProvidersClient().Get(context.Background(), tt.planeName, tt.expectedResourceProvider, nil)
 					require.NoError(t, err, "Failed to retrieve the expected resource provider")
-					require.Equal(t, to.Ptr(tt.expectedResourceProvider), rp.Name, "Resource provider name does not match")
+					require.Equal(t, to.Ptr(tt.expectedResourceProvider), rp.Name)
+
+					logOutput := logBuffer.String()
+					require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", tt.expectedResourceProvider, tt.expectedResourceTypeName))
+					require.Contains(t, logOutput, fmt.Sprintf("Creating API Version %s/%s@%s", tt.expectedResourceProvider, tt.expectedResourceTypeName, tt.expectedAPIVersion))
 				}
 			}
 		})
