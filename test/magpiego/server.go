@@ -31,6 +31,7 @@ var Providers = map[string]bindings.BindingProvider{
 	"DAPRHTTP":               bindings.DaprHttpBinding,
 	"STORAGE":                bindings.StorageBinding,
 	"DAPRCONFIGURATIONSTORE": bindings.DaprConfigurationStoreBinding,
+	"DAPRBINDING":            bindings.DaprBindingBinding,
 }
 
 func startHTTPServer() error {
