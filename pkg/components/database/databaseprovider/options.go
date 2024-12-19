@@ -16,11 +16,6 @@ limitations under the License.
 
 package databaseprovider
 
-import (
-	"github.com/radius-project/radius/pkg/ucp/hosting"
-	etcdclient "go.etcd.io/etcd/client/v3"
-)
-
 // Options represents the database provider options.
 type Options struct {
 	// Provider configures the database provider.
@@ -28,9 +23,6 @@ type Options struct {
 
 	// APIServer configures options for the Kubernetes APIServer store. Will be ignored if another store is configured.
 	APIServer APIServerOptions `yaml:"apiserver,omitempty"`
-
-	// ETCD configures options for the etcd store. Will be ignored if another store is configured.
-	ETCD ETCDOptions `yaml:"etcd,omitempty"`
 
 	// InMemory configures options for the in-memory store. Will be ignored if another store is configured.
 	InMemory InMemoryOptions `yaml:"inmemory,omitempty"`
@@ -47,18 +39,6 @@ type APIServerOptions struct {
 
 	// Namespace configures the Kubernetes namespace used for data-storage. The namespace must already exist.
 	Namespace string `yaml:"namespace"`
-}
-
-// ETCDOptions represents options for the configuring the etcd store.
-type ETCDOptions struct {
-	// InMemory configures the etcd store to run in-memory with the resource provider. This is not suitable for production use.
-	InMemory bool `yaml:"inmemory"`
-
-	// Client is used to access the etcd client when running in memory.
-	//
-	// NOTE: when we run etcd in memory it will be registered as its own hosting.Service with its own startup/shutdown lifecyle.
-	// We need a way to share state between the etcd service and the things that want to consume it. This is that.
-	Client *hosting.AsyncValue[etcdclient.Client] `yaml:"-"`
 }
 
 // InMemoryOptions represents options for the in-memory store.

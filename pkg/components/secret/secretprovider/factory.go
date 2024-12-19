@@ -18,12 +18,8 @@ package secretprovider
 
 import (
 	"context"
-	"errors"
 
-	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
-	"github.com/radius-project/radius/pkg/components/database/etcdstore"
 	"github.com/radius-project/radius/pkg/components/secret"
-	"github.com/radius-project/radius/pkg/components/secret/etcd"
 	"github.com/radius-project/radius/pkg/components/secret/inmemory"
 	kubernetes_client "github.com/radius-project/radius/pkg/components/secret/kubernetes"
 	"github.com/radius-project/radius/pkg/kubeutil"
@@ -34,25 +30,8 @@ import (
 type secretFactoryFunc func(context.Context, SecretProviderOptions) (secret.Client, error)
 
 var secretClientFactory = map[SecretProviderType]secretFactoryFunc{
-	TypeETCDSecret:       initETCDSecretClient,
 	TypeKubernetesSecret: initKubernetesSecretClient,
 	TypeInMemorySecret:   initInMemorySecretClient,
-}
-
-func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secret.Client, error) {
-	// etcd is a separate process run for development storage.
-	// data provider already creates an etcd process which can be re-used instead of a new process for secret.
-	client, err := databaseprovider.InitETCDClient(ctx, databaseprovider.Options{
-		ETCD: opts.ETCD,
-	})
-	if err != nil {
-		return nil, err
-	}
-	secretClient, ok := client.(*etcdstore.ETCDClient)
-	if !ok {
-		return nil, errors.New("no etcd Client detected")
-	}
-	return &etcd.Client{ETCDClient: secretClient.Client()}, nil
 }
 
 func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
