@@ -155,7 +155,10 @@ func ValidateResourceType(ctx context.Context, client database.Client, id resour
 	// Resource types are case-insensitive so we have to iterate.
 	var locationResourceType *datamodel.LocationResourceTypeConfiguration
 
-	// We special-case two pseudo-resource types: "locations/operationstatuses" and "locations/operationresults".
+	// We special-case two pseudo-resource types: "operationstatuses" and "operationresults".
+	//
+	// These are implemented by all resource providers, and don't require the resource provider to register them.
+	//
 	// If the resource type is one of these, we can return the downstream URL directly.
 	if isOperationResourceType(id) {
 		locationResourceType = &datamodel.LocationResourceTypeConfiguration{
@@ -215,10 +218,11 @@ func isOperationResourceType(id resources.ID) bool {
 		return true
 	}
 
-	// An older pattern is to use a child resource
+	// An older pattern is to use a child resource, it might also use the name "operations"
 	typeSegments := id.TypeSegments()
 	if len(typeSegments) >= 2 && (strings.EqualFold(typeSegments[len(typeSegments)-1].Type, "operationstatuses") ||
-		strings.EqualFold(typeSegments[len(typeSegments)-1].Type, "operationresults")) {
+		strings.EqualFold(typeSegments[len(typeSegments)-1].Type, "operationresults") ||
+		strings.EqualFold(typeSegments[len(typeSegments)-1].Type, "operations")) {
 		return true
 	}
 

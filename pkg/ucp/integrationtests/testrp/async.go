@@ -33,7 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +50,7 @@ func (b *BackendFuncController) Run(ctx context.Context, request *backend_ctrl.R
 }
 
 // AsyncResource creates an HTTP handler that can be used to test asynchronous resource lifecycle operations.
-func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, put BackendFunc, delete BackendFunc) func(w http.ResponseWriter, r *http.Request) {
+func AsyncResource(t *testing.T, ts *testhost.TestHost, rootScope string, put BackendFunc, delete BackendFunc) func(w http.ResponseWriter, r *http.Request) {
 	rootScope = strings.ToLower(rootScope)
 
 	ctx := testcontext.New(t)
@@ -60,7 +60,7 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	resourceType := "System.Test/testResources"
 
 	// We can share the database provider with the test server.
-	databaseClient, err := ts.Clients.DatabaseProvider.GetClient(ctx)
+	databaseClient, err := ts.Options().DatabaseProvider.GetClient(ctx)
 	require.NoError(t, err)
 
 	// Do not share the queue.

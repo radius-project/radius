@@ -30,13 +30,13 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
 // SyncResource creates an HTTP handler that can be used to test synchronous resource lifecycle operations.
-func SyncResource(t *testing.T, ts *testserver.TestServer, rootScope string) func(w http.ResponseWriter, r *http.Request) {
+func SyncResource(t *testing.T, ts *testhost.TestHost, rootScope string) func(w http.ResponseWriter, r *http.Request) {
 	rootScope = strings.ToLower(rootScope)
 
 	ctx := testcontext.New(t)
@@ -44,7 +44,7 @@ func SyncResource(t *testing.T, ts *testserver.TestServer, rootScope string) fun
 	r.Use(servicecontext.ARMRequestCtx("", v1.LocationGlobal), middleware.LowercaseURLPath)
 
 	// We can share the database provider with the test server.
-	databaseClient, err := ts.Clients.DatabaseProvider.GetClient(ctx)
+	databaseClient, err := ts.Options().DatabaseProvider.GetClient(ctx)
 	require.NoError(t, err)
 
 	// Do not share the queue.

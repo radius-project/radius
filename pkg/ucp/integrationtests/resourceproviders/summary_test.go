@@ -23,13 +23,12 @@ import (
 
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/ucp/frontend/api"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)

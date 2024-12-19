@@ -35,7 +35,7 @@ import (
 )
 
 func Test_GetAWSResource(t *testing.T) {
-	ucp, _, _, cloudcontrolClient, _ := initializeAWSTest(t)
+	ucp, cloudcontrolClient, _ := initializeAWSTest(t)
 
 	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
@@ -54,7 +54,7 @@ func Test_GetAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	getRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSPath, nil)
+	getRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL()+testProxyRequestAWSPath, nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(getRequest)

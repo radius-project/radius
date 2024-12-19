@@ -8,9 +8,9 @@
 # - Disables metrics and profiler
 #
 environment:
-  name: Dev
+  name: self-hosted
   roleLocation: "global"
-storageProvider:
+databaseProvider:
   provider: "apiserver"
   apiserver:
     context: ''

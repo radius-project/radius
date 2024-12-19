@@ -17,9 +17,12 @@ limitations under the License.
 package hostoptions
 
 import (
+	"fmt"
+
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+
 	metricsprovider "github.com/radius-project/radius/pkg/metrics/provider"
 	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
 	"github.com/radius-project/radius/pkg/trace"
@@ -31,7 +34,7 @@ import (
 type ProviderConfig struct {
 	Env              EnvironmentOptions                       `yaml:"environment"`
 	Identity         IdentityOptions                          `yaml:"identity"`
-	DatabaseProvider databaseprovider.Options                 `yaml:"storageProvider"`
+	DatabaseProvider databaseprovider.Options                 `yaml:"databaseProvider"`
 	SecretProvider   secretprovider.SecretProviderOptions     `yaml:"secretProvider"`
 	QueueProvider    queueprovider.QueueProviderOptions       `yaml:"queueProvider"`
 	Server           *ServerOptions                           `yaml:"server,omitempty"`
@@ -59,6 +62,18 @@ type ServerOptions struct {
 	ArmMetadataEndpoint string `yaml:"armMetadataEndpoint,omitempty"`
 	// EnableAuth when set the arm client authetication will be performed
 	EnableArmAuth bool `yaml:"enableArmAuth,omitempty"`
+
+	// TLSCertificateDirectory is the directory where the TLS certificates are stored.
+	//
+	// The server code will expect to find the following files in this directory:
+	// - tls.crt: The server's certificate.
+	// - tls.key: The server's private key.
+	TLSCertificateDirectory string `yaml:"tlsCertificateDirectory,omitempty"`
+}
+
+// Address returns the address of the server in host:port format.
+func (s ServerOptions) Address() string {
+	return s.Host + ":" + fmt.Sprint(s.Port)
 }
 
 // WorkerServerOptions includes the worker server options.

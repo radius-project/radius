@@ -111,7 +111,12 @@ var rootCmd = &cobra.Command{
 			Services: hostingSvc,
 		}
 
+		// Make the logger available to the services.
 		ctx := logr.NewContext(context.Background(), logger)
+
+		// Make the hosting configuration available to the services.
+		ctx = hostoptions.WithContext(ctx, options.Config)
+
 		return hosting.RunWithInterrupts(ctx, host)
 	},
 }

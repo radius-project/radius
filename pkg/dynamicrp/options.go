@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
@@ -32,7 +31,10 @@ import (
 	kube_rest "k8s.io/client-go/rest"
 )
 
-// Options holds the configuration options and shared services for the server.
+// Options holds the configuration options and shared services for the DyanmicRP server.
+//
+// For testability, all fields on this struct MUST be constructed from the NewOptions function without any
+// additional initialization required.
 type Options struct {
 	// Config is the configuration for the server.
 	Config *Config
@@ -80,14 +82,16 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 	options.StatusManager = statusmanager.New(databaseClient, queueClient, config.Environment.RoleLocation)
 
 	var cfg *kube_rest.Config
-	cfg, err = kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-		// TODO: Allow to use custom context via configuration. - https://github.com/radius-project/radius/issues/5433
-		ContextName: "",
-		QPS:         kubeutil.DefaultServerQPS,
-		Burst:       kubeutil.DefaultServerBurst,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
+	if config.UCP.Kind == ucpconfig.UCPConnectionKindKubernetes {
+		cfg, err = kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
+			// TODO: Allow to use custom context via configuration. - https://github.com/radius-project/radius/issues/5433
+			ContextName: "",
+			QPS:         kubeutil.DefaultServerQPS,
+			Burst:       kubeutil.DefaultServerBurst,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
+		}
 	}
 
 	options.UCP, err = ucpconfig.NewConnectionFromUCPConfig(&config.UCP, cfg)
@@ -95,22 +99,28 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 		return nil, err
 	}
 
+	// TODO: This is the right place to initialize the recipe infrastructure. Unfortunately this
+	// has a dependency on Kubernetes right now, which isn't available for integration tests.
+	//
+	// We have a future work item to untangle this dependency and then this code can be uncommented.
+	// For now this is a placeholder/reminder of the code we need, and where to put it.
+	//
 	// The recipe infrastructure is tied to corerp's dependencies, so we need to create it here.
-	recipes, err := controllerconfig.New(hostoptions.HostOptions{
-		Config: &hostoptions.ProviderConfig{
-			Bicep:     config.Bicep,
-			Env:       config.Environment,
-			Terraform: config.Terraform,
-			UCP:       config.UCP,
-		},
-		K8sConfig:     cfg,
-		UCPConnection: options.UCP,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	options.Recipes = recipes
+	// recipes, err := controllerconfig.New(hostoptions.HostOptions{
+	// 	Config: &hostoptions.ProviderConfig{
+	// 		Bicep:     config.Bicep,
+	// 		Env:       config.Environment,
+	// 		Terraform: config.Terraform,
+	// 		UCP:       config.UCP,
+	// 	},
+	// 	K8sConfig:     cfg,
+	// 	UCPConnection: options.UCP,
+	// })
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// options.Recipes = recipes
 
 	return &options, nil
 }

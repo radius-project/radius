@@ -20,8 +20,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/ucp/frontend/api"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 )
 
 const (
@@ -40,13 +39,13 @@ const (
 	resourceGroupInvalidResponseFixture = "testdata/resourcegroup_invalid_v20231001preview_responsebody.json"
 )
 
-func createRadiusPlane(server *testserver.TestServer) {
+func createRadiusPlane(server *testhost.TestHost) {
 	response := server.MakeFixtureRequest("PUT", radiusPlaneResourceURL, radiusPlaneRequestFixture)
 	response.EqualsFixture(200, radiusPlaneResponseFixture)
 }
 
 func Test_ResourceGroup_PUT_Create(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -56,7 +55,7 @@ func Test_ResourceGroup_PUT_Create(t *testing.T) {
 }
 
 func Test_ResourceGroup_PUT_Update(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -69,7 +68,7 @@ func Test_ResourceGroup_PUT_Update(t *testing.T) {
 }
 
 func Test_ResourceGroup_PUT_APIValidation(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -79,7 +78,7 @@ func Test_ResourceGroup_PUT_APIValidation(t *testing.T) {
 }
 
 func Test_ResourceGroup_GET_Empty(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -89,7 +88,7 @@ func Test_ResourceGroup_GET_Empty(t *testing.T) {
 }
 
 func Test_ResourceGroup_GET_Found(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -102,7 +101,7 @@ func Test_ResourceGroup_GET_Found(t *testing.T) {
 }
 
 func Test_ResourceGroup_LIST(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)

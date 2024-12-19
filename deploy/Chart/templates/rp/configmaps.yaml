@@ -13,7 +13,7 @@ data:
     environment:
       name: self-hosted
       roleLocation: "global"
-    storageProvider:
+    databaseProvider:
       provider: "apiserver"
       apiserver:
         context: ""
