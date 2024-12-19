@@ -69,7 +69,9 @@ func (client *ResourceProvidersClient) BeginCreateOrUpdate(ctx context.Context, 
 // Generated from API version 2023-10-01-preview
 func (client *ResourceProvidersClient) createOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resource ResourceProviderResource, options *ResourceProvidersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ResourceProvidersClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
+	const operationName = "ResourceProvidersClient.BeginCreateOrUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, resourceProviderName, resource, options)
 	if err != nil {
@@ -143,7 +145,9 @@ func (client *ResourceProvidersClient) BeginDelete(ctx context.Context, planeNam
 // Generated from API version 2023-10-01-preview
 func (client *ResourceProvidersClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ResourceProvidersClient.BeginDelete", client.internal.Tracer(), nil)
+	const operationName = "ResourceProvidersClient.BeginDelete"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceProviderName, options)
 	if err != nil {
@@ -191,7 +195,9 @@ func (client *ResourceProvidersClient) deleteCreateRequest(ctx context.Context, 
 //   - options - ResourceProvidersClientGetOptions contains the optional parameters for the ResourceProvidersClient.Get method.
 func (client *ResourceProvidersClient) Get(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientGetOptions) (ResourceProvidersClientGetResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ResourceProvidersClient.Get", client.internal.Tracer(), nil)
+	const operationName = "ResourceProvidersClient.Get"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, planeName, resourceProviderName, options)
 	if err != nil {
@@ -251,7 +257,9 @@ func (client *ResourceProvidersClient) getHandleResponse(resp *http.Response) (R
 //     method.
 func (client *ResourceProvidersClient) GetProviderSummary(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientGetProviderSummaryOptions) (ResourceProvidersClientGetProviderSummaryResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ResourceProvidersClient.GetProviderSummary", client.internal.Tracer(), nil)
+	const operationName = "ResourceProvidersClient.GetProviderSummary"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getProviderSummaryCreateRequest(ctx, planeName, resourceProviderName, options)
 	if err != nil {
@@ -312,6 +320,7 @@ func (client *ResourceProvidersClient) NewListPager(planeName string, options *R
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ResourceProvidersClientListResponse) (ResourceProvidersClientListResponse, error) {
+		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceProvidersClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -368,6 +377,7 @@ func (client *ResourceProvidersClient) NewListProviderSummariesPager(planeName s
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ResourceProvidersClientListProviderSummariesResponse) (ResourceProvidersClientListProviderSummariesResponse, error) {
+		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceProvidersClient.NewListProviderSummariesPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink

@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/data"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/ucp/initializer"
 )
 
 // NewServer creates a new hosting.Host instance with services for API, EmbeddedETCD, Metrics, Profiler and Backend (if
@@ -56,6 +57,8 @@ func NewServer(options *ucp.Options) (*hosting.Host, error) {
 	}
 
 	hostingServices = append(hostingServices, &trace.Service{Options: options.Config.Tracing})
+
+	hostingServices = append(hostingServices, initializer.NewService(options))
 
 	return &hosting.Host{
 		Services: hostingServices,
