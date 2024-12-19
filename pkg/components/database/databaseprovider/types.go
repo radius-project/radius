@@ -23,9 +23,6 @@ const (
 	// TypeAPIServer represents the Kubernetes APIServer provider.
 	TypeAPIServer DatabaseProviderType = "apiserver"
 
-	// TypeETCD represents the etcd provider.
-	TypeETCD DatabaseProviderType = "etcd"
-
 	// TypeInMemory represents the in-memory provider.
 	TypeInMemory DatabaseProviderType = "inmemory"
 

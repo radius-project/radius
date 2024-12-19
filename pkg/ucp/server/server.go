@@ -17,28 +17,20 @@ limitations under the License.
 package server
 
 import (
-	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	metricsservice "github.com/radius-project/radius/pkg/metrics/service"
 	profilerservice "github.com/radius-project/radius/pkg/profiler/service"
 	"github.com/radius-project/radius/pkg/trace"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/backend"
-	"github.com/radius-project/radius/pkg/ucp/data"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 )
 
-// NewServer creates a new hosting.Host instance with services for API, EmbeddedETCD, Metrics, Profiler and Backend (if
-// enabled) based on the given Options.
+// NewServer initializes a host for UCP based on the provided options.
 func NewServer(options *ucp.Options) (*hosting.Host, error) {
 	hostingServices := []hosting.Service{
 		api.NewService(options),
 		backend.NewService(options),
-	}
-
-	if options.Config.Database.Provider == databaseprovider.TypeETCD &&
-		options.Config.Database.ETCD.InMemory {
-		hostingServices = append(hostingServices, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: options.Config.Database.ETCD.Client}))
 	}
 
 	if options.Config.Metrics.Prometheus.Enabled {

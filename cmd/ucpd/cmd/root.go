@@ -23,11 +23,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	etcdclient "go.etcd.io/etcd/client/v3"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/server"
@@ -64,16 +62,6 @@ var rootCmd = &cobra.Command{
 
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
-
-		if options.Config.Database.Provider == databaseprovider.TypeETCD &&
-			options.Config.Database.ETCD.InMemory {
-			// For in-memory etcd we need to register another service to manage its lifecycle.
-			//
-			// The client will be initialized asynchronously.
-			clientconfigSource := hosting.NewAsyncValue[etcdclient.Client]()
-			options.Config.Database.ETCD.Client = clientconfigSource
-			options.Config.Secrets.ETCD.Client = clientconfigSource
-		}
 
 		host, err := server.NewServer(options)
 		if err != nil {

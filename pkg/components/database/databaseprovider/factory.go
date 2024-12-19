@@ -26,7 +26,6 @@ import (
 	store "github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/apiserverstore"
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
-	"github.com/radius-project/radius/pkg/components/database/etcdstore"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/components/database/postgres"
 	"github.com/radius-project/radius/pkg/kubeutil"
@@ -40,7 +39,6 @@ type databaseClientFactoryFunc func(ctx context.Context, options Options) (store
 
 var databaseClientFactory = map[DatabaseProviderType]databaseClientFactoryFunc{
 	TypeAPIServer:  initAPIServerClient,
-	TypeETCD:       InitETCDClient,
 	TypeInMemory:   initInMemoryClient,
 	TypePostgreSQL: initPostgreSQLClient,
 }
@@ -79,26 +77,6 @@ func initAPIServerClient(ctx context.Context, opt Options) (store.Client, error)
 
 	client := apiserverstore.NewAPIServerClient(rc, opt.APIServer.Namespace)
 	return client, nil
-}
-
-// InitETCDClient checks if the ETCD client is in memory and if the client is not nil, then it initializes the database
-// client and returns an ETCDClient. If either of these conditions are not met, an error is returned.
-func InitETCDClient(ctx context.Context, opt Options) (store.Client, error) {
-	if !opt.ETCD.InMemory {
-		return nil, errors.New("failed to initialize etcd client: inmemory is the only supported mode for now")
-	}
-	if opt.ETCD.Client == nil {
-		return nil, errors.New("failed to initialize etcd client: ETCDOptions.Client is nil, this is a bug")
-	}
-
-	// Initialize the database client once the etcd service has started
-	client, err := opt.ETCD.Client.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize etcd client: %w", err)
-	}
-
-	etcdClient := etcdstore.NewETCDClient(client)
-	return etcdClient, nil
 }
 
 // initInMemoryClient creates a new in-memory store client.
