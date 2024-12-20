@@ -267,7 +267,12 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			result.SetFailed(armErr, false)
 		}
 
-		logger.Info("Operation returned", "success", result.Error == nil, "provisioningState", result.ProvisioningState(), "err", result.Error)
+		// We need the if/else here to prevent a panic inside the logger.
+		if result.Error == nil {
+			logger.Info("Operation returned", "success", "true", "provisioningState", result.ProvisioningState())
+		} else {
+			logger.Info("Operation returned", "success", "false", "provisioningState", result.ProvisioningState(), "err", result.Error)
+		}
 
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186

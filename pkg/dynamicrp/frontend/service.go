@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/middleware"
@@ -54,7 +55,22 @@ func (s *Service) Name() string {
 func (s *Service) initialize(ctx context.Context) (*http.Server, error) {
 	r := chi.NewRouter()
 
-	err := s.registerRoutes(r)
+	databaseClient, err := s.options.DatabaseProvider.GetClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database client: %w", err)
+	}
+
+	controllerOptions := controller.Options{
+		Address:        s.options.Config.Server.Address(),
+		PathBase:       s.options.Config.Server.PathBase,
+		DatabaseClient: databaseClient,
+		StatusManager:  s.options.StatusManager,
+
+		KubeClient:   nil, // Unused by DynamicRP
+		ResourceType: "",  // Set dynamically
+	}
+
+	err = s.registerRoutes(r, controllerOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register routes: %w", err)
 	}
