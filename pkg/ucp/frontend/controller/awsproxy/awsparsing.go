@@ -119,7 +119,7 @@ func readRegionFromRequest(path string, pathBase string) (string, armrpc_rest.Re
 	resourceID, err := resources.Parse(path)
 	if err != nil {
 		errResponse := v1.ErrorResponse{
-			Error: v1.ErrorDetails{
+			Error: &v1.ErrorDetails{
 				Code:    v1.CodeInvalid,
 				Message: "failed to read region from request path: invalid path",
 			},
@@ -131,7 +131,7 @@ func readRegionFromRequest(path string, pathBase string) (string, armrpc_rest.Re
 	region := resourceID.FindScope(resources_aws.ScopeRegions)
 	if region == "" {
 		errResponse := v1.ErrorResponse{
-			Error: v1.ErrorDetails{
+			Error: &v1.ErrorDetails{
 				Code:    v1.CodeInvalid,
 				Message: "failed to read region from request path: 'regions' not found",
 			},

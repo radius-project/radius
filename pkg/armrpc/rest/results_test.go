@@ -90,7 +90,7 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			expctedResp := &BadRequestResponse{
 				Body: v1.ErrorResponse{
-					Error: v1.ErrorDetails{
+					Error: &v1.ErrorDetails{
 						Code:    v1.CodeInvalid,
 						Message: tt.msg,
 						Target:  resource.String(),
