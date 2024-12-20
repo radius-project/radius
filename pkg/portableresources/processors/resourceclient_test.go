@@ -60,7 +60,7 @@ func Test_Delete_ARM(t *testing.T) {
 	t.Run("failure - delete fails", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(ARMResourceID, handleJSONResponse(t, v1.ErrorResponse{
-			Error: v1.ErrorDetails{
+			Error: &v1.ErrorDetails{
 				Code: v1.CodeConflict,
 			},
 		}, 409))
@@ -328,7 +328,7 @@ func Test_Delete_UCP(t *testing.T) {
 	t.Run("failure - delete fails", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(AWSResourceID, handleJSONResponse(t, v1.ErrorResponse{
-			Error: v1.ErrorDetails{
+			Error: &v1.ErrorDetails{
 				Code: v1.CodeConflict,
 			},
 		}, 409))
@@ -400,7 +400,7 @@ func handleJSONResponse(t *testing.T, response any, statusCode int) func(w http.
 
 func handleNotFound(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
 	return handleJSONResponse(t, v1.ErrorResponse{
-		Error: v1.ErrorDetails{
+		Error: &v1.ErrorDetails{
 			Code: v1.CodeNotFound,
 		},
 	}, 404)

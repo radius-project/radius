@@ -45,7 +45,7 @@ func NewRecipeError(code string, message string, deploymentStatus util.RecipeDep
 	err.DeploymentStatus = deploymentStatus
 	for _, val := range details {
 		if val != nil {
-			err.ErrorDetails.Details = append(err.ErrorDetails.Details, *val)
+			err.ErrorDetails.Details = append(err.ErrorDetails.Details, val)
 		}
 	}
 

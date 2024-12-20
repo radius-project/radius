@@ -46,7 +46,7 @@ func HandleAWSError(err error) (armrpc_rest.Response, error) {
 	}
 
 	e := armrpc_v1.ErrorResponse{
-		Error: armrpc_v1.ErrorDetails{
+		Error: &armrpc_v1.ErrorDetails{
 			Code:    apiErr.ErrorCode(),
 			Message: apiErr.ErrorMessage(),
 		},
