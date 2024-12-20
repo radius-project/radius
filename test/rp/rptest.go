@@ -174,7 +174,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(ctx, *workspace)
 	require.NoError(t, err, "failed to create ApplicationsManagementClient")
 
-	connection, err := workspace.Connect()
+	connection, err := workspace.Connect(ctx)
 	require.NoError(t, err, "failed to connect to workspace")
 
 	customAction, err := clientv2.NewCustomActionClient("", &clientv2.Options{

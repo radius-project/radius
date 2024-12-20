@@ -21,7 +21,6 @@ import (
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli"
-	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -148,7 +147,7 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func (r *Runner) initializeClientFactory(ctx context.Context, workspace *workspaces.Workspace) error {
-	connection, err := cmd.GetConnection(ctx, workspace)
+	connection, err := workspace.Connect(ctx)
 	if err != nil {
 		return err
 	}

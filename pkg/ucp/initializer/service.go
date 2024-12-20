@@ -81,6 +81,18 @@ func waitForServer(ctx context.Context, host, port string, retryInterval time.Du
 func (w *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	manifestDir := w.options.Config.Initialization.ManifestDirectory
+	if manifestDir == "" {
+		logger.Info("No manifest directory specified, initialization is complete")
+		return nil
+	}
+
+	if _, err := os.Stat(manifestDir); os.IsNotExist(err) {
+		return fmt.Errorf("manifest directory does not exist: %w", err)
+	} else if err != nil {
+		return fmt.Errorf("error checking manifest directory: %w", err)
+	}
+
 	if w.options.UCP == nil || w.options.UCP.Endpoint() == "" {
 		return fmt.Errorf("connection to UCP is not set")
 	}
@@ -95,28 +107,14 @@ func (w *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to split host and port: %w", err)
 	}
-	logger.Info("Parsed Host and Port", "host", hostName, "port", port)
 
 	// Attempt to connect to the server
 	err = waitForServer(ctx, hostName, port, 500*time.Millisecond, 500*time.Millisecond, 5*time.Second)
 	if err != nil {
-		logger.Error(err, "Server is not available for manifest registration")
-		return nil
+		return fmt.Errorf("failed to connect to server : %w", err)
 	}
 
 	// Server is up, proceed to register manifests
-	manifestDir := w.options.Config.Initialization.ManifestDirectory
-	if manifestDir == "" {
-		logger.Info("No manifest directory specified")
-		return nil
-	}
-
-	if _, err := os.Stat(manifestDir); os.IsNotExist(err) {
-		return fmt.Errorf("manifest directory does not exist: %w", err)
-	} else if err != nil {
-		return fmt.Errorf("error checking manifest directory: %w", err)
-	}
-
 	clientOptions := sdk.NewClientOptions(w.options.UCP)
 
 	clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, clientOptions)
@@ -124,8 +122,11 @@ func (w *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("error creating client factory: %w", err)
 	}
 
-	// Proceed with registering manifests
-	if err := manifest.RegisterDirectory(ctx, clientFactory, "local", manifestDir, nil); err != nil {
+	loggerFunc := func(format string, args ...any) {
+		logger.Info(fmt.Sprintf(format, args...))
+	}
+
+	if err := manifest.RegisterDirectory(ctx, clientFactory, "local", manifestDir, loggerFunc); err != nil {
 		return fmt.Errorf("error registering manifests : %w", err)
 	}
 
