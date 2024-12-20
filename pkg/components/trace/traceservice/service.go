@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-	http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,7 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package trace
+
+package traceservice
 
 import (
 	"context"
@@ -28,7 +29,7 @@ import (
 
 // Service implements the hosting.Service interface for the tracer.
 type Service struct {
-	Options Options
+	Options *Options
 }
 
 // Name gets the service name.
@@ -38,7 +39,7 @@ func (s *Service) Name() string {
 
 // Run runs the tracer service.
 func (s *Service) Run(ctx context.Context) error {
-	shutdown, err := InitTracer(s.Options)
+	shutdown, err := initTracer(s.Options)
 	if err != nil {
 		return err
 	}
@@ -47,9 +48,8 @@ func (s *Service) Run(ctx context.Context) error {
 	return shutdown(ctx)
 }
 
-// InitTracer sets up a tracer provider with a sampler and resource attributes, and optionally registers a Zipkin exporter
-// and batcher. It returns a shutdown function and an error if one occurs.
-func InitTracer(opts Options) (func(context.Context) error, error) {
+// initTracer configures a tracer provider with the given options.
+func initTracer(opts *Options) (func(context.Context) error, error) {
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithResource(resource.NewWithAttributes(
@@ -62,10 +62,12 @@ func InitTracer(opts Options) (func(context.Context) error, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		batcher := sdktrace.NewBatchSpanProcessor(exporter)
 		tp.RegisterSpanProcessor(batcher)
 
 	}
+
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}))
 	return tp.Shutdown, nil

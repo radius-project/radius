@@ -29,6 +29,7 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -38,7 +39,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	radius_frontend "github.com/radius-project/radius/pkg/ucp/frontend/radius"
 	"github.com/radius-project/radius/pkg/ucp/frontend/versions"
-	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package provider
+package metricsservice
 
 import (
 	"net/http"
@@ -38,7 +38,7 @@ type PrometheusExporter struct {
 
 // NewPrometheusExporter creates a PrometheusExporter instance with a MeterProvider and a Handler,
 // and returns it along with any errors.
-func NewPrometheusExporter(options *MetricsProviderOptions) (*PrometheusExporter, error) {
+func NewPrometheusExporter(options *Options) (*PrometheusExporter, error) {
 	exporter, err := prometheus.New()
 	if err != nil {
 		return nil, err

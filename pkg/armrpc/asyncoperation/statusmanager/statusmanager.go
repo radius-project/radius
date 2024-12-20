@@ -26,9 +26,9 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/queue"
-	"github.com/radius-project/radius/pkg/metrics"
-	"github.com/radius-project/radius/pkg/trace"
+	"github.com/radius-project/radius/pkg/components/trace"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
 	"github.com/google/uuid"
