@@ -117,7 +117,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad resource-provider create` command.
 func (r *Runner) Run(ctx context.Context) error {
-	// Initialize the client factory
+	// Initialize the client factory if it hasn't been set externally.
+	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
 	if r.UCPClientFactory == nil {
 		err := r.initializeClientFactory(ctx, r.Workspace)
 		if err != nil {

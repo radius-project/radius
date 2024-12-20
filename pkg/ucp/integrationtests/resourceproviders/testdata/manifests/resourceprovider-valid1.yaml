@@ -1,0 +1,7 @@
+name: TestProvider.TestCompany
+types:
+  testResourcesAbc:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+        capabilities: []

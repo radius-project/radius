@@ -1,4 +1,8 @@
 /*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
 	http://www.apache.org/licenses/LICENSE-2.0
@@ -36,7 +40,7 @@ func TestRegisterDirectory(t *testing.T) {
 		{
 			name:                     "Success",
 			planeName:                "local",
-			directoryPath:            "registerdirectory_testdata",
+			directoryPath:            "testdata/registerdirectory",
 			expectError:              false,
 			expectedErrorMessage:     "",
 			expectedResourceProvider: "MyCompany2.CompanyName2",
@@ -104,7 +108,7 @@ func TestRegisterFile(t *testing.T) {
 		{
 			name:                     "Success",
 			planeName:                "local",
-			filePath:                 "registerdirectory_testdata/resourceprovider-valid2.yaml",
+			filePath:                 "testdata/registerdirectory/resourceprovider-valid2.yaml",
 			expectError:              false,
 			expectedErrorMessage:     "",
 			expectedResourceProvider: "MyCompany2.CompanyName2",
