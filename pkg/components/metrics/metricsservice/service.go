@@ -24,21 +24,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/radius-project/radius/pkg/metrics"
-	"github.com/radius-project/radius/pkg/metrics/provider"
+	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
 
+// Service implements the metrics service.
 type Service struct {
-	Options HostOptions
-}
-
-// NewService creates a new Service instance with the given HostOptions.
-func NewService(options HostOptions) *Service {
-	return &Service{
-		Options: options,
-	}
+	Options *Options
 }
 
 // Name returns the name of the metrics service.
@@ -52,7 +45,7 @@ func (s *Service) Name() string {
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	pme, err := provider.NewPrometheusExporter(s.Options.Config)
+	pme, err := NewPrometheusExporter(s.Options)
 	if err != nil {
 		return err
 	}
@@ -68,8 +61,8 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc(s.Options.Config.Prometheus.Path, pme.Handler.ServeHTTP)
-	metricsPort := strconv.Itoa(s.Options.Config.Prometheus.Port)
+	mux.HandleFunc(s.Options.Prometheus.Path, pme.Handler.ServeHTTP)
+	metricsPort := strconv.Itoa(s.Options.Prometheus.Port)
 	server := &http.Server{
 		Addr:    ":" + metricsPort,
 		Handler: mux,

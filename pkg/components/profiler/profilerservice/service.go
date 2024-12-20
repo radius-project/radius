@@ -26,15 +26,18 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-type Service struct {
-	Options HostOptions
+// Options represents the options for enabling pprof profiler.
+type Options struct {
+	// Enabled is a flag to enable the profiler.
+	Enabled bool `yaml:"enabled,omitempty"`
+
+	// Port is the port on which the profiler server listens.
+	Port int `yaml:"port,omitempty"`
 }
 
-// NewService of profiler package returns a new Service with the configs needed
-func NewService(options HostOptions) *Service {
-	return &Service{
-		Options: options,
-	}
+// Service is the profiler service.
+type Service struct {
+	Options *Options
 }
 
 // Name returns the name of the profiler service.
@@ -47,7 +50,7 @@ func (s *Service) Name() string {
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	profilerPort := strconv.Itoa(s.Options.Config.Port)
+	profilerPort := strconv.Itoa(s.Options.Port)
 	server := &http.Server{
 		Addr: ":" + profilerPort,
 		BaseContext: func(ln net.Listener) context.Context {

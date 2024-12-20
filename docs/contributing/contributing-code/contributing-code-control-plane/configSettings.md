@@ -174,68 +174,7 @@ ucp:
 
 ## Example configuration files 
 
-Below are completed examples of possible configurations: 
-
-### Applications.Core and Portable Resources' Providers
-```yaml
-environment:
-  name: self-hosted
-  roleLocation: "global"
-databaseProvider:
-  provider: "apiserver"
-  apiserver:
-    context: ""
-    namespace: "radius-system"
-queueProvider:
-  provider: "apiserver"
-  name: "radius"
-  apiserver:
-    context: ""
-    namespace: "radius-system"
-metricsProvider:
-  prometheus:
-    enabled: true
-    path: "/metrics"
-    port: 9090
-server:
-  host: "0.0.0.0"
-  port: 5443
-workerServer:
-  maxOperationConcurrency: 10
-  maxOperationRetryCount: 2
-ucp:
-  kind: kubernetes
-```
-
-### UCP 
-```yaml
-location: 'global'
-databaseProvider:
-  provider: "apiserver"
-  apiserver:
-    context: ""
-    namespace: "radius-system"
-secretProvider:
-  provider: "kubernetes"
-planes:
-  - id: "/planes/radius/local"
-    properties:
-      resourceProviders:
-        Applications.Core: "http://applications-rp.radius-system:5443"
-        Applications.Dapr: "http://applications-rp.radius-system:5443"
-        Applications.Datastores: "http://applications-rp.radius-system:5443"
-        Applications.Messaging: "http://applications-rp.radius-system:5443"
-        Microsoft.Resources: "http://bicep-de.radius-system:6443"
-      kind: "UCPNative"
-  - id: "/planes/aws/aws"
-    properties:
-      kind: "AWS"
-metricsProvider:
-  prometheus:
-    enabled: true
-    path: "/metrics"
-    port: 9090
-```
+See the configuration files in `cmd/<service>/*.yaml` for examples of configuration files. 
 
 ## Environment Variables
 

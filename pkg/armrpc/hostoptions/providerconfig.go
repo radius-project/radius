@@ -20,32 +20,32 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
+	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 
-	metricsprovider "github.com/radius-project/radius/pkg/metrics/provider"
-	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
-	"github.com/radius-project/radius/pkg/trace"
 	"github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // ProviderConfig includes the resource provider configuration.
 type ProviderConfig struct {
-	Env              EnvironmentOptions                       `yaml:"environment"`
-	Identity         IdentityOptions                          `yaml:"identity"`
-	DatabaseProvider databaseprovider.Options                 `yaml:"databaseProvider"`
-	SecretProvider   secretprovider.SecretProviderOptions     `yaml:"secretProvider"`
-	QueueProvider    queueprovider.QueueProviderOptions       `yaml:"queueProvider"`
-	Server           *ServerOptions                           `yaml:"server,omitempty"`
-	WorkerServer     *WorkerServerOptions                     `yaml:"workerServer,omitempty"`
-	MetricsProvider  metricsprovider.MetricsProviderOptions   `yaml:"metricsProvider"`
-	TracerProvider   trace.Options                            `yaml:"tracerProvider"`
-	ProfilerProvider profilerprovider.ProfilerProviderOptions `yaml:"profilerProvider"`
-	UCP              config.UCPOptions                        `yaml:"ucp"`
-	Logging          ucplog.LoggingOptions                    `yaml:"logging"`
-	Bicep            BicepOptions                             `yaml:"bicep,omitempty"`
-	Terraform        TerraformOptions                         `yaml:"terraform,omitempty"`
+	Env              EnvironmentOptions                   `yaml:"environment"`
+	Identity         IdentityOptions                      `yaml:"identity"`
+	DatabaseProvider databaseprovider.Options             `yaml:"databaseProvider"`
+	SecretProvider   secretprovider.SecretProviderOptions `yaml:"secretProvider"`
+	QueueProvider    queueprovider.QueueProviderOptions   `yaml:"queueProvider"`
+	Server           *ServerOptions                       `yaml:"server,omitempty"`
+	WorkerServer     *WorkerServerOptions                 `yaml:"workerServer,omitempty"`
+	MetricsProvider  metricsservice.Options               `yaml:"metricsProvider"`
+	TracerProvider   traceservice.Options                 `yaml:"tracerProvider"`
+	ProfilerProvider profilerservice.Options              `yaml:"profilerProvider"`
+	UCP              config.UCPOptions                    `yaml:"ucp"`
+	Logging          ucplog.LoggingOptions                `yaml:"logging"`
+	Bicep            BicepOptions                         `yaml:"bicep,omitempty"`
+	Terraform        TerraformOptions                     `yaml:"terraform,omitempty"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`

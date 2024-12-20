@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/radius-project/radius/pkg/metrics"
+	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"

@@ -11,7 +11,7 @@ data:
     # Radius configuration file.
     # See https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
     environment:
-      name: Dev
+      name: self-hosted
       roleLocation: "global"
     server:
       port: 9443
@@ -61,8 +61,9 @@ data:
       defaultDownstreamEndpoint: "http://dynamic-rp.radius-sytem:8082"
 
     metricsProvider:
+      enabled: true
+      serviceName: "ucp"
       prometheus:
-        enabled: true
         path: "/metrics"
         port: 9090
 
@@ -72,6 +73,7 @@ data:
 
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
+      enabled: true
       serviceName: "ucp"
       zipkin: 
         url: {{ .Values.global.zipkin.url }}

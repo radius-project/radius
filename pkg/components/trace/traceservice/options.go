@@ -14,10 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package provider
+package traceservice
 
-// ProfilerProviderOptions represents the options for enabling pprof profiler.
-type ProfilerProviderOptions struct {
-	Enabled bool `yaml:"enabled,omitempty"`
-	Port    int  `yaml:"port,omitempty"`
+// Options represents the trace options.
+type Options struct {
+	// Enabled configures whether tracing is enabled.
+	Enabled bool `yaml:"enabled"`
+	// ServiceName represents the name of service.
+	ServiceName string `yaml:"serviceName,omitempty"`
+	// Zipkin represents zipkin options.
+	Zipkin *ZipkinOptions `yaml:"zipkin,omitempty"`
+}
+
+// ZipkinOptions represents zipkin trace provider options.
+type ZipkinOptions struct {
+	// URL represents the url of zipkin endpoint.
+	URL string `yaml:"url"`
 }
