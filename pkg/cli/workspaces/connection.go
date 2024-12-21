@@ -17,6 +17,8 @@ limitations under the License.
 package workspaces
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -92,11 +94,23 @@ func (ws Workspace) ConnectionConfig() (ConnectionConfig, error) {
 	}
 }
 
-// Connect attempts to create a connection to the workspace using the connection configuration and returns the
+// Connect attempts to create and test a connection to the workspace using the connection configuration and returns the
 // connection and an error if one occurs.
-func (ws Workspace) Connect() (sdk.Connection, error) {
+func (ws Workspace) Connect(ctx context.Context) (sdk.Connection, error) {
 	connectionConfig, err := ws.ConnectionConfig()
 	if err != nil {
+		return nil, err
+	}
+
+	connection, err := connectionConfig.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	err = sdk.TestConnection(ctx, connection)
+	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
+		return nil, fmt.Errorf("could not connect to radius: %w", err)
+	} else if err != nil {
 		return nil, err
 	}
 

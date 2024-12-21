@@ -50,6 +50,7 @@ data:
         - id: "/planes/aws/aws"
           properties:
             kind: "AWS"
+      manifestDirectory: ""      
 
     identity:
       authMethod: UCPCredential

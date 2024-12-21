@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/backend"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/ucp/initializer"
 )
 
 // NewServer initializes a host for UCP based on the provided options.
@@ -48,6 +49,8 @@ func NewServer(options *ucp.Options) (*hosting.Host, error) {
 	}
 
 	hostingServices = append(hostingServices, &trace.Service{Options: options.Config.Tracing})
+
+	hostingServices = append(hostingServices, initializer.NewService(options))
 
 	return &hosting.Host{
 		Services: hostingServices,

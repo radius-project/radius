@@ -108,6 +108,9 @@ type RoutingConfig struct {
 type InitializationConfig struct {
 	// Planes is a list of planes to create at startup.
 	Planes []Plane `yaml:"planes,omitempty"`
+
+	// ManifestDirectory is the directory which contains manifests.
+	ManifestDirectory string `yaml:"manifestDirectory"`
 }
 
 // Plane is a configuration entry for a plane resource. This is used to create a plane resource at startup.
@@ -125,6 +128,7 @@ type Plane struct {
 	Properties PlaneProperties `json:"properties" yaml:"properties"`
 }
 
+// PlaneProperties represents the properties of a plane resource.
 type PlaneProperties struct {
 	// ResourceProviders is a map of resource provider namespaces to their respective addresses.
 	//

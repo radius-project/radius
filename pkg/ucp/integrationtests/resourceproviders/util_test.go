@@ -54,6 +54,18 @@ const (
 
 	resourceProviderSummaryCollectionURL = "/planes/radius/local/providers" + radiusAPIVersion
 	resourceProviderSummaryURL           = "/planes/radius/local/providers/" + resourceProviderNamespace + radiusAPIVersion
+
+	manifestNamespace                     = "TestProvider.TestCompany"
+	manifestResourceProviderID            = "/planes/radius/local/providers/System.Resources/resourceproviders/" + manifestNamespace
+	manifestResourceProviderCollectionURL = "/planes/radius/local/providers/System.Resources/resourceproviders" + radiusAPIVersion
+	manifestResourceProviderURL           = manifestResourceProviderID + radiusAPIVersion
+
+	manifestResourceTypeName1           = "testResourcesAbc"
+	manifestResourceTypeID              = manifestResourceProviderID + "/resourcetypes/" + manifestResourceTypeName1
+	manifestResourceTypeCollectionURL   = manifestResourceProviderID + "/resourcetypes" + radiusAPIVersion
+	manifestResourceTypeURL             = manifestResourceTypeID + radiusAPIVersion
+	manifestResourceTypeRequestFixture  = "testdata/resourcetype_manifest_requestbody.json"
+	manifestResourceTypeResponseFixture = "testdata/resourcetype_manifest_responsebody.json"
 )
 
 func createRadiusPlane(server *testhost.TestHost) {
@@ -77,6 +89,14 @@ func deleteResourceProvider(server *testhost.TestHost) {
 	response.WaitForOperationComplete(nil)
 
 	response = server.MakeRequest("GET", resourceProviderURL, nil)
+	response.EqualsStatusCode(404)
+}
+
+func deleteManifestResourceProvider(server *testhost.TestHost) {
+	response := server.MakeRequest("DELETE", manifestResourceProviderURL, nil)
+	response.WaitForOperationComplete(nil)
+
+	response = server.MakeRequest("GET", manifestResourceProviderURL, nil)
 	response.EqualsStatusCode(404)
 }
 
