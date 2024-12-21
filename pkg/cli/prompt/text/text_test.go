@@ -78,7 +78,6 @@ func validateNewTextModel(t *testing.T, model *Model, options *TextModelOptions)
 }
 
 func Test_E2E(t *testing.T) {
-
 	const expectedPrompt = "\r" + testPrompt + "\n" +
 		"\n" +
 		"> " + testPlaceholder + "\n" +
@@ -122,35 +121,67 @@ func Test_E2E(t *testing.T) {
 	})
 
 	t.Run("confirm default", func(t *testing.T) {
-		t.Skip("This test is intermittently failing in linux_amd64: https://github.com/radius-project/radius/issues/7670")
 		tm := setup(t)
+		tm.Send(tea.KeyMsg{
+			Type: tea.KeyEnter,
+		})
 
-		tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+		if err := tm.Quit(); err != nil {
+			t.Fatal(err)
+		}
 
-		require.True(t, tm.FinalModel(t).(Model).valueEntered)
-		require.False(t, tm.FinalModel(t).(Model).Quitting)
-		require.Equal(t, defaultText, tm.FinalModel(t).(Model).GetValue())
+		// FinalModel only returns once the program has finished running or when it times out.
+		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
+		// That is why we call tm.Quit() before tm.FinalModel().
+		model, ok := tm.FinalModel(t).(Model)
+		require.True(t, ok, "Final model should be of type Model")
+
+		require.True(t, model.valueEntered)
+		require.False(t, model.Quitting)
+		require.Equal(t, defaultText, model.GetValue())
 	})
 
 	t.Run("confirm value", func(t *testing.T) {
 		const userInputText = "abcd"
 		tm := setup(t)
-
 		tm.Type(userInputText)
-		tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+		tm.Send(tea.KeyMsg{
+			Type: tea.KeyEnter,
+		})
 
-		require.True(t, tm.FinalModel(t).(Model).valueEntered)
-		require.False(t, tm.FinalModel(t).(Model).Quitting)
-		require.Equal(t, userInputText, tm.FinalModel(t).(Model).GetValue())
+		if err := tm.Quit(); err != nil {
+			t.Fatal(err)
+		}
+
+		// FinalModel only returns once the program has finished running or when it times out.
+		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
+		// That is why we call tm.Quit() before tm.FinalModel().
+		model, ok := tm.FinalModel(t).(Model)
+		require.True(t, ok, "Final model should be of type Model")
+
+		require.True(t, model.valueEntered)
+		require.False(t, model.Quitting)
+		require.Equal(t, userInputText, model.GetValue())
 	})
 
 	t.Run("cancel", func(t *testing.T) {
 		tm := setup(t)
+		tm.Send(tea.KeyMsg{
+			Type: tea.KeyCtrlC,
+		})
 
-		tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC})
+		if err := tm.Quit(); err != nil {
+			t.Fatal(err)
+		}
 
-		require.False(t, tm.FinalModel(t).(Model).valueEntered)
-		require.True(t, tm.FinalModel(t).(Model).Quitting)
-		require.Equal(t, defaultText, tm.FinalModel(t).(Model).GetValue())
+		// FinalModel only returns once the program has finished running or when it times out.
+		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
+		// That is why we call tm.Quit() before tm.FinalModel().
+		model, ok := tm.FinalModel(t).(Model)
+		require.True(t, ok, "Final model should be of type Model")
+
+		require.False(t, model.valueEntered)
+		require.True(t, model.Quitting)
+		require.Equal(t, defaultText, model.GetValue())
 	})
 }
