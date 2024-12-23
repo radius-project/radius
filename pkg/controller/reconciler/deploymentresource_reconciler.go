@@ -24,6 +24,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -235,49 +237,21 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	// fully processed any status changes until the async operation completes.
 	deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
 
-	// NOTE: The following is a workaround for Radius API behavior. Since deleting
-	// an application or environment can leave hanging resources, we need to make sure to
-	// delete these resources before deleting the application or environment.
-
-	// Check other resources that depend on this resource.
-	// List all DeploymentResource objects in the same namespace
-	// that have the same rootFileName.
-	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentResource.Namespace), client.MatchingFields{rootFileNameField: deploymentResource.Spec.RootFileName})
+	// Check if the resource is being used by another resource
+	deploymentResourceList, err := listResourcesWithSameOwner(ctx, r.Client, deploymentResource.Namespace, deploymentResource.OwnerReferences[0])
 	if err != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
-	appsCount := 0
-	envsCount := 0
-	otherCount := 0
-	for _, dr := range deploymentResourceList.Items {
-		if dr.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseDeleted {
-			continue
-		}
-		if strings.Contains(dr.Spec.Id, "Applications.Core/applications") {
-			appsCount++
-		} else if strings.Contains(dr.Spec.Id, "Applications.Core/environments") {
-			envsCount++
-		} else if dr.Spec.Id != "" {
-			logger.Info("Resource is being used by another resource.", "resourceId", dr.Spec.Id)
-			otherCount++
-		}
+	// Check if the resource is being used by another resource
+	dependentResource, err := checkForDeploymentResourceDependencies(deploymentResource, deploymentResourceList)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
-	if strings.Contains(deploymentResource.Spec.Id, "Applications.Core/applications") {
-		// dont delete app until otherCount is 0
-		if otherCount > 0 {
-			logger.Info("Resource is an application, being used by another resource.", "resourceId", deploymentResource.Spec.Id)
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
-		}
-	}
-
-	if strings.Contains(deploymentResource.Spec.Id, "Applications.Core/environments") {
-		if otherCount > 0 {
-			logger.Info("Resource is an environment, being used by another resource.", "resourceId", deploymentResource.Spec.Id)
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
-		}
+	if dependentResource != "" {
+		logger.Info("Resource is an application or environment, being used by another resource.", "resourceId", deploymentResource.Spec.Id, "dependentResource", dependentResource)
+		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 	}
 
 	poller, err := r.startDeleteOperation(ctx, deploymentResource)
@@ -354,21 +328,75 @@ func (r *DeploymentResourceReconciler) requeueDelay() time.Duration {
 	return delay
 }
 
-func deploymentResourceRootFileNameIndexer(o client.Object) []string {
-	deploymentResource, ok := o.(*radappiov1alpha3.DeploymentResource)
-	if !ok {
-		return nil
-	}
-	return []string{deploymentResource.Spec.RootFileName}
-}
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *DeploymentResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &radappiov1alpha3.DeploymentResource{}, rootFileNameField, deploymentResourceRootFileNameIndexer); err != nil {
-		return err
-	}
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&radappiov1alpha3.DeploymentResource{}).
 		Complete(r)
+}
+
+func listResourcesWithSameOwner(ctx context.Context, c client.Client, namespace string, ownerRef metav1.OwnerReference) ([]radappiov1alpha3.DeploymentResource, error) {
+	// List all DeploymentResource objects in the same namespace
+	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
+	err := c.List(ctx, deploymentResourceList, client.InNamespace(namespace))
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter resources based on OwnerReference
+	var filteredResources []radappiov1alpha3.DeploymentResource
+	for _, dr := range deploymentResourceList.Items {
+		for _, or := range dr.OwnerReferences {
+			if or.UID == ownerRef.UID {
+				filteredResources = append(filteredResources, dr)
+				break
+			}
+		}
+	}
+
+	return filteredResources, nil
+}
+
+// checkForDeploymentResourceDependencies checks if the deploymentResource is an application or environment.
+// If it is, it checks if other (non-application or environment) resources exist.
+// If other resources exist, it returns the ID of one of the dependent resources.
+// NOTE: This is a workaround for Radius API behavior. Since deleting
+// an application or environment can leave hanging resources, we need to make sure to
+// delete these resources before deleting the application or environment.
+// https://github.com/radius-project/radius/issues/8164
+func checkForDeploymentResourceDependencies(deploymentResource *radappiov1alpha3.DeploymentResource, deploymentResourceList []radappiov1alpha3.DeploymentResource) (string, error) {
+	deploymentResourceID, err := resources.ParseResource(deploymentResource.Spec.Id)
+	if err != nil {
+		return "", err
+	}
+
+	if strings.EqualFold(deploymentResourceID.Type(), "Applications.Core/applications") {
+		return "", nil
+	}
+
+	if strings.EqualFold(deploymentResourceID.Type(), "Applications.Core/environments") {
+		return "", nil
+	}
+
+	resourceCount := 0
+	dependentResource := ""
+	for _, dr := range deploymentResourceList {
+		// shouldn't need this...
+		// if dr.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseDeleted {
+		// 	continue
+		// }
+
+		id, err := resources.ParseResource(dr.Spec.Id)
+		if err != nil {
+			return "", err
+		}
+
+		// don't count applications or environments
+		if !strings.EqualFold(id.Type(), "Applications.Core/applications") && !strings.EqualFold(id.Type(), "Applications.Core/environments") {
+			resourceCount++
+			dependentResource = dr.Spec.Id
+		}
+	}
+
+	return dependentResource, nil
 }

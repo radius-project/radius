@@ -192,7 +192,11 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				if _, ok := existingOutputResources[outputResourceId]; !ok {
 					// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
 
-					resourceName := generateDeploymentResourceName(outputResourceId)
+					resourceName, err := generateDeploymentResourceName(outputResourceId)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+
 					deploymentResource := &radappiov1alpha3.DeploymentResource{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      resourceName,
@@ -224,8 +228,12 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				if _, ok := newOutputResources[resource]; !ok {
 					// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
 					logger.Info("Deleting resource.", "resourceId", resource)
-					resourceName := generateDeploymentResourceName(resource)
-					err := r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
+					resourceName, err := generateDeploymentResourceName(resource)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+
+					err = r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      resourceName,
 							Namespace: deploymentTemplate.Namespace,

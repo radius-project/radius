@@ -1,13 +1,23 @@
+extension radius
+
 param name string
 param namespace string
+
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
+  name: '${name}-env'
+  properties: {
+    compute: {
+      kind: 'kubernetes'
+      resourceId: 'self'
+      namespace: namespace
+    }
+  }
+}
 
 module module 'module-dependency.bicep' = {
   name: 'module'
   params: {
     name: name
-    namespace: namespace
+    envId: env.id
   }
 }
-
-// Output the storage account ID
-output envId string = module.outputs.envId

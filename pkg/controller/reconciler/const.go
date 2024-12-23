@@ -53,7 +53,4 @@ const (
 
 	// DeploymentResourceFinalizer is the name of the finalizer added to DeploymentResources.
 	DeploymentResourceFinalizer = "radapp.io/deployment-resource-finalizer"
-
-	// RadiusSystemNamespace is the name of the system namespace where Radius resources are stored.
-	RadiusSystemNamespace = "radius-system"
 )

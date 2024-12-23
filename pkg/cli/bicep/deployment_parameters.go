@@ -21,15 +21,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/spf13/afero"
-
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 )
 
 // ParameterParser is used to parse the parameters as part of the `rad deploy` command. See the docs for `rad deploy` for examples
 // of what we need to support here.
 type ParameterParser struct {
-	FileSystem afero.Fs
+	FileSystem filesystem.FileSystem
 }
 
 type ParameterFile struct {
@@ -81,7 +80,7 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	if strings.HasPrefix(input, "@") {
 		// input is a file that declares multiple parameters
 		filePath := strings.TrimPrefix(input, "@")
-		b, err := afero.ReadFile(pp.FileSystem, filePath)
+		b, err := pp.FileSystem.ReadFile(filePath)
 		if err != nil {
 			return err
 		}
@@ -102,7 +101,7 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	if strings.HasPrefix(parameterValue, "@") {
 		// input is a file that declares a single parameter
 		filePath := strings.TrimPrefix(parameterValue, "@")
-		b, err := afero.ReadFile(pp.FileSystem, filePath)
+		b, err := pp.FileSystem.ReadFile(filePath)
 		if err != nil {
 			return err
 		}

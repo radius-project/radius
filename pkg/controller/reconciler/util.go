@@ -281,10 +281,13 @@ func createOrUpdateContainer(ctx context.Context, radius RadiusClient, container
 	return nil, nil
 }
 
-func generateDeploymentResourceName(resourceId string) string {
-	resourceBaseName := strings.Split(resourceId, "/")[len(strings.Split(resourceId, "/"))-1]
+func generateDeploymentResourceName(resourceId string) (string, error) {
+	id, err := resources.ParseResource(resourceId)
+	if err != nil {
+		return "", err
+	}
 
-	return resourceBaseName
+	return id.Name(), nil
 }
 
 func convertToARMJSONParameters(parameters map[string]string) map[string]map[string]string {

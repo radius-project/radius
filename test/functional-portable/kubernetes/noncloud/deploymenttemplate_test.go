@@ -19,7 +19,10 @@ package kubernetes_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,7 +34,8 @@ import (
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testcontext"
-	"github.com/spf13/afero"
+	"github.com/radius-project/radius/test/testutil"
+
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -45,102 +49,210 @@ import (
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func Test_DeploymentTemplate(t *testing.T) {
-	defaultProviderConfig, err := generateDefaultProviderConfig()
+func Test_DeploymentTemplate_Basic(t *testing.T) {
+	ctx := testcontext.New(t)
+	opts := rp.NewRPTestOptions(t)
+
+	name := "dt-env"
+	namespace := "dt-env-ns"
+	fileName := "env.bicep"
+	templateFilePath := path.Join("testdata", "env", "env.json")
+	parameters := []string{
+		fmt.Sprintf("name=%s", name),
+		fmt.Sprintf("namespace=%s", namespace),
+	}
+
+	providerConfig, err := generateDefaultProviderConfig()
 	require.NoError(t, err)
 
-	testcases := []struct {
-		name             string
-		namespace        string
-		fileName         string
-		templateFilePath string
-		providerConfig   string
-		parameters       map[string]string
-	}{
-		{
-			name:             "dt-env",
-			namespace:        "dt-ns-env",
-			fileName:         "env.bicep",
-			templateFilePath: path.Join("testdata", "env", "env.json"),
-			providerConfig:   defaultProviderConfig,
-			parameters: map[string]string{
-				"name":      "dt-env",
-				"namespace": "dt-ns-env",
-			},
-		},
-		{
-			name:             "dt-module",
-			namespace:        "dt-ns-module",
-			fileName:         "module.bicep",
-			templateFilePath: path.Join("testdata", "module", "module.json"),
-			providerConfig:   defaultProviderConfig,
-			parameters: map[string]string{
-				"name":      "dt-module",
-				"namespace": "dt-ns-module",
-			},
-		},
+	parametersMap := createParametersMap(parameters)
+
+	template, err := os.ReadFile(templateFilePath)
+	require.NoError(t, err)
+
+	// Create the namespace, if it already exists we can ignore the error.
+	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
+
+	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, fileName, parametersMap)
+
+	t.Run("Create DeploymentTemplate", func(t *testing.T) {
+		t.Log("Creating DeploymentTemplate")
+		err = opts.Client.Create(ctx, deploymentTemplate)
+		require.NoError(t, err)
+	})
+
+	t.Run("Check DeploymentTemplate status", func(t *testing.T) {
+		ctx, cancel := testcontext.NewWithCancel(t)
+		defer cancel()
+
+		// Get resource version
+		err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
+		require.NoError(t, err)
+
+		t.Log("Waiting for DeploymentTemplate ready")
+		deploymentTemplate, err := waitForDeploymentTemplateReady(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
+		require.NoError(t, err)
+
+		scope, err := reconciler.ParseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
+		require.NoError(t, err)
+
+		expectedResources := [][]string{
+			{"Applications.Core/environments", fmt.Sprintf("%s-env", name)},
+		}
+
+		assertExpectedResourcesExist(t, ctx, scope, expectedResources, opts.Connection)
+	})
+
+	t.Run("Delete DeploymentTemplate", func(t *testing.T) {
+		t.Log("Deleting DeploymentTemplate")
+		err = opts.Client.Delete(ctx, deploymentTemplate)
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
+			return apierrors.IsNotFound(err)
+		}, time.Second*60, time.Second*5, "waiting for deploymentTemplate to be deleted")
+	})
+}
+
+func Test_DeploymentTemplate_Module(t *testing.T) {
+	ctx := testcontext.New(t)
+	opts := rp.NewRPTestOptions(t)
+
+	name := "dt-module"
+	namespace := "dt-module-ns"
+	fileName := "module.bicep"
+	templateFilePath := path.Join("testdata", "module", "module.json")
+	parameters := []string{
+		"name=dt-module",
+		"namespace=dt-ns-module",
 	}
 
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := testcontext.New(t)
-			opts := rp.NewRPTestOptions(t)
+	providerConfig, err := generateDefaultProviderConfig()
+	require.NoError(t, err)
 
-			name := tc.name
-			namespace := tc.namespace
+	parametersMap := createParametersMap(parameters)
 
-			template, err := afero.ReadFile(afero.NewOsFs(), tc.templateFilePath)
-			require.NoError(t, err)
+	template, err := os.ReadFile(templateFilePath)
+	require.NoError(t, err)
 
-			// Create the namespace, if it already exists we can ignore the error.
-			_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
-			require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
+	// Create the namespace, if it already exists we can ignore the error.
+	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
-			deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), tc.providerConfig, tc.fileName, tc.parameters)
+	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, fileName, parametersMap)
 
-			t.Run("Deploy", func(t *testing.T) {
-				t.Log("Creating DeploymentTemplate")
-				err = opts.Client.Create(ctx, deploymentTemplate)
-				require.NoError(t, err)
-			})
+	t.Run("Create DeploymentTemplate", func(t *testing.T) {
+		t.Log("Creating DeploymentTemplate")
+		err = opts.Client.Create(ctx, deploymentTemplate)
+		require.NoError(t, err)
+	})
 
-			t.Run("Check status", func(t *testing.T) {
-				ctx, cancel := testcontext.NewWithCancel(t)
-				defer cancel()
+	t.Run("Check DeploymentTemplate status", func(t *testing.T) {
+		ctx, cancel := testcontext.NewWithCancel(t)
+		defer cancel()
 
-				// Get resource version
-				err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
-				require.NoError(t, err)
+		// Get resource version
+		err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
+		require.NoError(t, err)
 
-				t.Log("Waiting for DeploymentTemplate ready")
-				deploymentTemplate, err := waitForDeploymentTemplateReady(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
-				require.NoError(t, err)
+		t.Log("Waiting for DeploymentTemplate ready")
+		deploymentTemplate, err := waitForDeploymentTemplateReady(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
+		require.NoError(t, err)
 
-				// Doing a basic check that the deploymentTemplate has a resource provisioned.
-				require.NotEmpty(t, deploymentTemplate.Status.Resource)
+		scope, err := reconciler.ParseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
+		require.NoError(t, err)
 
-				scope, err := reconciler.ParseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
-				require.NoError(t, err)
+		expectedResources := [][]string{
+			{"Applications.Core/environments", fmt.Sprintf("%s-env", name)},
+			{"Applications.Core/applications", fmt.Sprintf("%s-app", name)},
+		}
 
-				client, err := generated.NewGenericResourcesClient(scope, "Applications.Core/environments", &aztoken.AnonymousCredential{}, sdk.NewClientOptions(opts.Connection))
-				require.NoError(t, err)
+		assertExpectedResourcesExist(t, ctx, scope, expectedResources, opts.Connection)
+	})
 
-				_, err = client.Get(ctx, deploymentTemplate.Name, nil)
-				require.NoError(t, err)
-			})
+	t.Run("Delete DeploymentTemplate", func(t *testing.T) {
+		t.Log("Deleting DeploymentTemplate")
+		err = opts.Client.Delete(ctx, deploymentTemplate)
+		require.NoError(t, err)
 
-			t.Run("Delete", func(t *testing.T) {
-				t.Log("Deleting DeploymentTemplate")
-				err = opts.Client.Delete(ctx, deploymentTemplate)
-				require.NoError(t, err)
+		require.Eventually(t, func() bool {
+			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
+			return apierrors.IsNotFound(err)
+		}, time.Second*60, time.Second*5, "waiting for deploymentTemplate to be deleted")
+	})
+}
 
-				require.Eventually(t, func() bool {
-					err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
-					return apierrors.IsNotFound(err)
-				}, time.Second*60, time.Second*5, "waiting for deploymentTemplate to be deleted")
-			})
-		})
+func Test_DeploymentTemplate_Recipe(t *testing.T) {
+	ctx := testcontext.New(t)
+	opts := rp.NewRPTestOptions(t)
+
+	name := "dt-recipe"
+	namespace := "dt-recipe-ns"
+	fileName := "recipe.bicep"
+	templateFilePath := path.Join("testdata", "recipe", "recipe.json")
+	parameters := []string{
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
+		"name=dt-recipe",
+		"namespace=dt-ns-recipe",
 	}
+
+	providerConfig, err := generateDefaultProviderConfig()
+	require.NoError(t, err)
+
+	parametersMap := createParametersMap(parameters)
+
+	template, err := os.ReadFile(templateFilePath)
+	require.NoError(t, err)
+
+	// Create the namespace, if it already exists we can ignore the error.
+	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
+
+	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, fileName, parametersMap)
+
+	t.Run("Create DeploymentTemplate", func(t *testing.T) {
+		t.Log("Creating DeploymentTemplate")
+		err = opts.Client.Create(ctx, deploymentTemplate)
+		require.NoError(t, err)
+	})
+
+	t.Run("Check DeploymentTemplate status", func(t *testing.T) {
+		ctx, cancel := testcontext.NewWithCancel(t)
+		defer cancel()
+
+		// Get resource version
+		err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
+		require.NoError(t, err)
+
+		t.Log("Waiting for DeploymentTemplate ready")
+		deploymentTemplate, err := waitForDeploymentTemplateReady(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
+		require.NoError(t, err)
+
+		scope, err := reconciler.ParseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
+		require.NoError(t, err)
+
+		expectedResources := [][]string{
+			{"Applications.Core/environments", fmt.Sprintf("%s-env", name)},
+			{"Applications.Core/applications", fmt.Sprintf("%s-app", name)},
+			{"Applications.Datastores/redisCaches", fmt.Sprintf("%s-recipe", name)},
+		}
+
+		assertExpectedResourcesExist(t, ctx, scope, expectedResources, opts.Connection)
+	})
+
+	t.Run("Delete DeploymentTemplate", func(t *testing.T) {
+		t.Log("Deleting DeploymentTemplate")
+		err = opts.Client.Delete(ctx, deploymentTemplate)
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
+			return apierrors.IsNotFound(err)
+		}, time.Second*60, time.Second*5, "waiting for deploymentTemplate to be deleted")
+	})
 }
 
 func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig, rootFileName string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
@@ -220,4 +332,31 @@ func generateDefaultProviderConfig() (string, error) {
 		return "", err
 	}
 	return string(marshalledProviderConfig), nil
+}
+
+func createParametersMap(parameters []string) map[string]string {
+	parametersMap := make(map[string]string)
+	for _, param := range parameters {
+		kv := strings.Split(param, "=")
+		key := kv[0]
+		value := kv[1]
+		parametersMap[key] = value
+	}
+
+	return parametersMap
+}
+
+// assertExpectedResourcesExist asserts that the expected resources exist
+// in Radius for the given scope.
+func assertExpectedResourcesExist(t *testing.T, ctx context.Context, scope string, expectedResources [][]string, connection sdk.Connection) {
+	for _, resource := range expectedResources {
+		resourceType := resource[0]
+		resourceName := resource[1]
+
+		client, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
+		require.NoError(t, err)
+
+		_, err = client.Get(ctx, resourceName, nil)
+		require.NoError(t, err)
+	}
 }

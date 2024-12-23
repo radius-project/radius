@@ -4,11 +4,13 @@
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-    "_EXPERIMENTAL_FEATURES_ENABLED": ["Extensibility"],
+    "_EXPERIMENTAL_FEATURES_ENABLED": [
+      "Extensibility"
+    ],
     "_generator": {
       "name": "bicep",
-      "version": "0.31.92.45157",
-      "templateHash": "17470534345050893154"
+      "version": "0.32.4.45862",
+      "templateHash": "18123004600558185514"
     }
   },
   "parameters": {
@@ -19,7 +21,27 @@
       "type": "string"
     }
   },
+  "imports": {
+    "Radius": {
+      "provider": "Radius",
+      "version": "latest"
+    }
+  },
   "resources": {
+    "env": {
+      "import": "Radius",
+      "type": "Applications.Core/environments@2023-10-01-preview",
+      "properties": {
+        "name": "[format('{0}-env', parameters('name'))]",
+        "properties": {
+          "compute": {
+            "kind": "kubernetes",
+            "resourceId": "self",
+            "namespace": "[parameters('namespace')]"
+          }
+        }
+      }
+    },
     "module": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
@@ -33,8 +55,8 @@
           "name": {
             "value": "[parameters('name')]"
           },
-          "namespace": {
-            "value": "[parameters('namespace')]"
+          "envId": {
+            "value": "[reference('env').id]"
           }
         },
         "template": {
@@ -43,18 +65,20 @@
           "contentVersion": "1.0.0.0",
           "metadata": {
             "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-            "_EXPERIMENTAL_FEATURES_ENABLED": ["Extensibility"],
+            "_EXPERIMENTAL_FEATURES_ENABLED": [
+              "Extensibility"
+            ],
             "_generator": {
               "name": "bicep",
-              "version": "0.31.92.45157",
-              "templateHash": "13226276940735477072"
+              "version": "0.32.4.45862",
+              "templateHash": "6618993452395382629"
             }
           },
           "parameters": {
             "name": {
               "type": "string"
             },
-            "namespace": {
+            "envId": {
               "type": "string"
             }
           },
@@ -65,35 +89,28 @@
             }
           },
           "resources": {
-            "env": {
+            "app": {
               "import": "Radius",
-              "type": "Applications.Core/environments@2023-10-01-preview",
+              "type": "Applications.Core/applications@2023-10-01-preview",
               "properties": {
-                "name": "[parameters('name')]",
+                "name": "[format('{0}-app', parameters('name'))]",
                 "properties": {
-                  "compute": {
-                    "kind": "kubernetes",
-                    "resourceId": "self",
-                    "namespace": "[parameters('namespace')]"
-                  }
+                  "environment": "[parameters('envId')]"
                 }
               }
             }
           },
           "outputs": {
-            "envId": {
+            "appId": {
               "type": "string",
-              "value": "[reference('env').id]"
+              "value": "[reference('app').id]"
             }
           }
         }
-      }
-    }
-  },
-  "outputs": {
-    "envId": {
-      "type": "string",
-      "value": "[reference('module').outputs.envId.value]"
+      },
+      "dependsOn": [
+        "env"
+      ]
     }
   }
 }

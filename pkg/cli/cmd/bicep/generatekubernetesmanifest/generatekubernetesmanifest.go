@@ -23,17 +23,21 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/afero"
-
 	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
+)
+
+const (
+	resourceGroupRequiredMessage = "ResourceGroup is required. Please provide a value for the --resource-group flag."
 )
 
 // NewCommand creates a command for the `rad bicep generate-kubernetes-manifest` command.
@@ -62,23 +66,20 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		`,
 		Example: `
 # Generate a DeploymentTemplate Custom Resource from a Bicep file.
-rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --parameters tag=latest --outfile app.yaml
+rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --parameters tag=latest --destination-file app.yaml --resource-group default
 		`,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
-	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
-	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddParameterFlag(cmd)
 
-	cmd.Flags().String("outfile", "", "Path of the generated DeploymentTemplate yaml file.")
-	_ = cmd.MarkFlagFilename("outfile", ".yaml")
+	cmd.Flags().StringP("destination-file", "d", "", "Path of the generated DeploymentTemplate yaml file.")
+	_ = cmd.MarkFlagFilename("destination-file", ".yaml")
 
 	cmd.Flags().String("azure-scope", "", "Scope for Azure deployment.")
 	cmd.Flags().String("aws-scope", "", "Scope for AWS deployment.")
-	cmd.Flags().String("deployment-scope", "", "Scope for the Radius deployment.")
 
 	return cmd, runner
 }
@@ -91,11 +92,11 @@ type Runner struct {
 	Deploy            deploy.Interface
 	Output            output.Interface
 
-	FileSystem      afero.Fs
+	FileSystem      filesystem.FileSystem
+	Group           string
 	FilePath        string
 	Parameters      map[string]map[string]any
-	OutFile         string
-	DeploymentScope string
+	DestinationFile string
 	AzureScope      string
 	AWSScope        string
 }
@@ -116,13 +117,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.FilePath = args[0]
 
 	var err error
-	r.DeploymentScope, err = cmd.Flags().GetString("deployment-scope")
+	r.Group, err = cmd.Flags().GetString("group")
 	if err != nil {
 		return err
 	}
 
-	if r.DeploymentScope == "" {
-		r.DeploymentScope = "/planes/radius/local/resourceGroups/default"
+	if r.Group == "" {
+		return clierrors.Message(resourceGroupRequiredMessage)
 	}
 
 	r.AzureScope, err = cmd.Flags().GetString("azure-scope")
@@ -135,9 +136,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.OutFile, err = cmd.Flags().GetString("outfile")
+	r.DestinationFile, err = cmd.Flags().GetString("destination-file")
 	if err != nil {
 		return err
+	}
+
+	// If the destination file is not provided, use the base name of the file with a .yaml extension
+	if r.DestinationFile == "" {
+		r.DestinationFile = strings.TrimSuffix(filepath.Base(r.FilePath), filepath.Ext(r.FilePath)) + ".yaml"
+	}
+
+	if filepath.Ext(r.DestinationFile) != ".yaml" {
+		return clierrors.Message("Destination file must have a .yaml extension")
 	}
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
@@ -146,7 +156,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if r.FileSystem == nil {
-		r.FileSystem = afero.NewOsFs()
+		r.FileSystem = filesystem.NewOSFS()
 	}
 
 	parser := bicep.ParameterParser{FileSystem: r.FileSystem}
@@ -165,12 +175,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// create a DeploymentTemplate yaml file
-	// with the basefilename from the bicepfile
-	if r.OutFile == "" {
-		r.OutFile = strings.TrimSuffix(filepath.Base(r.FilePath), filepath.Ext(r.FilePath)) + ".yaml"
-	}
-
 	deploymentTemplate, err := r.generateDeploymentTemplate(filepath.Base(r.FilePath), template, r.Parameters)
 	if err != nil {
 		return err
@@ -182,7 +186,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// Print the path to the file
-	r.Output.LogInfo("DeploymentTemplate file created at %s", r.OutFile)
+	r.Output.LogInfo("DeploymentTemplate file created at %s", r.DestinationFile)
 
 	return nil
 }
@@ -210,8 +214,7 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 		"kind":       "DeploymentTemplate",
 		"apiVersion": "radapp.io/v1alpha3",
 		"metadata": map[string]any{
-			"name":      fileName,
-			"namespace": "radius-system",
+			"name": fileName,
 		},
 		"spec": map[string]any{
 			"template":       string(marshalledTemplate),
@@ -226,25 +229,12 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 
 // createDeploymentTemplateYAMLFile creates a DeploymentTemplate YAML file with the given content.
 func (r *Runner) createDeploymentTemplateYAMLFile(deploymentTemplate map[string]any) error {
-	fmt.Println("Creating DeploymentTemplate YAML file")
-	f, err := r.FileSystem.Create(r.OutFile)
-	if err != nil {
-		return err
-	}
-
-	defer f.Close()
-
 	deploymentTemplateYaml, err := yaml.Marshal(deploymentTemplate)
 	if err != nil {
 		return err
 	}
 
-	_, err = f.Write(deploymentTemplateYaml)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.FileSystem.WriteFile(r.DestinationFile, deploymentTemplateYaml, 0644)
 }
 
 // generateProviderConfig generates a ProviderConfig object based on the given scopes.
@@ -266,20 +256,24 @@ func (r *Runner) generateProviderConfig() (providerConfig sdkclients.ProviderCon
 			},
 		}
 	}
-	if r.DeploymentScope != "" {
+	if r.Group != "" {
 		providerConfig.Radius = &sdkclients.Radius{
 			Type: "radius",
 			Value: sdkclients.Value{
-				Scope: r.DeploymentScope,
+				Scope: constructRadiusDeploymentScope(r.Group),
 			},
 		}
 		providerConfig.Deployments = &sdkclients.Deployments{
 			Type: "Microsoft.Resources",
 			Value: sdkclients.Value{
-				Scope: r.DeploymentScope,
+				Scope: constructRadiusDeploymentScope(r.Group),
 			},
 		}
 	}
 
 	return providerConfig
+}
+
+func constructRadiusDeploymentScope(group string) string {
+	return fmt.Sprintf("/planes/radius/local/resourceGroups/%s", group)
 }

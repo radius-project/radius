@@ -10,7 +10,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.32.4.45862",
-      "templateHash": "17296380169561690776"
+      "templateHash": "11546695473811123326"
     }
   },
   "parameters": {
@@ -18,6 +18,12 @@
       "type": "string"
     },
     "namespace": {
+      "type": "string"
+    },
+    "registry": {
+      "type": "string"
+    },
+    "version": {
       "type": "string"
     }
   },
@@ -38,9 +44,45 @@
             "kind": "kubernetes",
             "resourceId": "self",
             "namespace": "[parameters('namespace')]"
+          },
+          "recipes": {
+            "Applications.Datastores/redisCaches": {
+              "default": {
+                "templateKind": "bicep",
+                "templatePath": "[format('{0}/test/testrecipes/test-bicep-recipes/redis-recipe-value-backed:{1}', parameters('registry'), parameters('version'))]"
+              }
+            }
           }
         }
       }
+    },
+    "app": {
+      "import": "Radius",
+      "type": "Applications.Core/applications@2023-10-01-preview",
+      "properties": {
+        "name": "[format('{0}-app', parameters('name'))]",
+        "properties": {
+          "environment": "[reference('env').id]"
+        }
+      },
+      "dependsOn": [
+        "env"
+      ]
+    },
+    "recipe": {
+      "import": "Radius",
+      "type": "Applications.Datastores/redisCaches@2023-10-01-preview",
+      "properties": {
+        "name": "[format('{0}-recipe', parameters('name'))]",
+        "properties": {
+          "application": "[reference('app').id]",
+          "environment": "[reference('env').id]"
+        }
+      },
+      "dependsOn": [
+        "app",
+        "env"
+      ]
     }
   }
 }

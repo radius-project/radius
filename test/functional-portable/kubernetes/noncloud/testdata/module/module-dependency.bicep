@@ -1,17 +1,13 @@
 extension radius
 
 param name string
-param namespace string
+param envId string
 
-resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: name
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
+  name: '${name}-app'
   properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: namespace
-    }
+    environment: envId
   }
 }
 
-output envId string = env.id
+output appId string = app.id
