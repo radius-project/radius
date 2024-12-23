@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -29,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -64,8 +64,8 @@ func NewCreateOrUpdateResource[P interface {
 // processes the resource, cleans up any obsolete output resources, and saves the updated resource.
 func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	obj, err := c.StorageClient().Get(ctx, req.ResourceID)
-	if errors.Is(&store.ErrNotFound{ID: req.ResourceID}, err) {
+	obj, err := c.DatabaseClient().Get(ctx, req.ResourceID)
+	if errors.Is(&database.ErrNotFound{ID: req.ResourceID}, err) {
 		return ctrl.Result{}, err
 	} else if err != nil {
 		return ctrl.Result{}, err
@@ -100,14 +100,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
 			// Set the deployment status to the recipe error code.
 			recipeDataModel.Recipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
-			update := &store.Object{
-				Metadata: store.Metadata{
+			update := &database.Object{
+				Metadata: database.Metadata{
 					ID: req.ResourceID,
 				},
 				Data: recipeDataModel.(rpv1.RadiusResourceModel),
 			}
 			// Save portable resource with updated deployment status to track errors during deletion.
-			err = c.StorageClient().Save(ctx, update, store.WithETag(obj.ETag))
+			err = c.DatabaseClient().Save(ctx, update, database.WithETag(obj.ETag))
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -129,13 +129,13 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		recipeDataModel.Recipe().DeploymentStatus = util.Success
 	}
 
-	update := &store.Object{
-		Metadata: store.Metadata{
+	update := &database.Object{
+		Metadata: database.Metadata{
 			ID: req.ResourceID,
 		},
 		Data: recipeDataModel.(rpv1.RadiusResourceModel),
 	}
-	err = c.StorageClient().Save(ctx, update, store.WithETag(obj.ETag))
+	err = c.DatabaseClient().Save(ctx, update, database.WithETag(obj.ETag))
 	if err != nil {
 		return ctrl.Result{}, err
 	}

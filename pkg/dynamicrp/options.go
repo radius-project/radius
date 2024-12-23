@@ -21,21 +21,26 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/sdk"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	kube_rest "k8s.io/client-go/rest"
 )
 
-// Options holds the configuration options and shared services for the server.
+// Options holds the configuration options and shared services for the DyanmicRP server.
+//
+// For testability, all fields on this struct MUST be constructed from the NewOptions function without any
+// additional initialization required.
 type Options struct {
 	// Config is the configuration for the server.
 	Config *Config
+
+	// DatabaseProvider provides access to the database.
+	DatabaseProvider *databaseprovider.DatabaseProvider
 
 	// QueueProvider provides access to the message queue client.
 	QueueProvider *queueprovider.QueueProvider
@@ -48,9 +53,6 @@ type Options struct {
 
 	// StatusManager implements operations on async operation statuses.
 	StatusManager statusmanager.StatusManager
-
-	// StorageProvider provides access to the data storage system.
-	StorageProvider dataprovider.DataStorageProvider
 
 	// UCP is the connection to UCP
 	UCP sdk.Connection
@@ -65,24 +67,31 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 
 	options.QueueProvider = queueprovider.New(config.Queue)
 	options.SecretProvider = secretprovider.NewSecretProvider(config.Secrets)
-	options.StorageProvider = dataprovider.NewStorageProvider(config.Storage)
+	options.DatabaseProvider = databaseprovider.FromOptions(config.Database)
+
+	databaseClient, err := options.DatabaseProvider.GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	queueClient, err := options.QueueProvider.GetClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	options.StatusManager = statusmanager.New(options.StorageProvider, queueClient, config.Environment.RoleLocation)
+	options.StatusManager = statusmanager.New(databaseClient, queueClient, config.Environment.RoleLocation)
 
 	var cfg *kube_rest.Config
-	cfg, err = kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-		// TODO: Allow to use custom context via configuration. - https://github.com/radius-project/radius/issues/5433
-		ContextName: "",
-		QPS:         kubeutil.DefaultServerQPS,
-		Burst:       kubeutil.DefaultServerBurst,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
+	if config.UCP.Kind == ucpconfig.UCPConnectionKindKubernetes {
+		cfg, err = kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
+			// TODO: Allow to use custom context via configuration. - https://github.com/radius-project/radius/issues/5433
+			ContextName: "",
+			QPS:         kubeutil.DefaultServerQPS,
+			Burst:       kubeutil.DefaultServerBurst,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
+		}
 	}
 
 	options.UCP, err = ucpconfig.NewConnectionFromUCPConfig(&config.UCP, cfg)
@@ -90,22 +99,28 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 		return nil, err
 	}
 
+	// TODO: This is the right place to initialize the recipe infrastructure. Unfortunately this
+	// has a dependency on Kubernetes right now, which isn't available for integration tests.
+	//
+	// We have a future work item to untangle this dependency and then this code can be uncommented.
+	// For now this is a placeholder/reminder of the code we need, and where to put it.
+	//
 	// The recipe infrastructure is tied to corerp's dependencies, so we need to create it here.
-	recipes, err := controllerconfig.New(hostoptions.HostOptions{
-		Config: &hostoptions.ProviderConfig{
-			Bicep:     config.Bicep,
-			Env:       config.Environment,
-			Terraform: config.Terraform,
-			UCP:       config.UCP,
-		},
-		K8sConfig:     cfg,
-		UCPConnection: options.UCP,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	options.Recipes = recipes
+	// recipes, err := controllerconfig.New(hostoptions.HostOptions{
+	// 	Config: &hostoptions.ProviderConfig{
+	// 		Bicep:     config.Bicep,
+	// 		Env:       config.Environment,
+	// 		Terraform: config.Terraform,
+	// 		UCP:       config.UCP,
+	// 	},
+	// 	K8sConfig:     cfg,
+	// 	UCPConnection: options.UCP,
+	// })
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// options.Recipes = recipes
 
 	return &options, nil
 }

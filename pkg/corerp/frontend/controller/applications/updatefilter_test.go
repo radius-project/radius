@@ -24,10 +24,10 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/k8sutil"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -44,9 +44,8 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 	tCtx := rpctest.NewControllerContext(t)
 
 	opts := ctrl.Options{
-		StorageClient: tCtx.MockSC,
-		DataProvider:  tCtx.MockSP,
-		KubeClient:    k8sutil.NewFakeKubeClient(nil),
+		DatabaseClient: tCtx.MockSC,
+		KubeClient:     k8sutil.NewFakeKubeClient(nil),
 	}
 
 	t.Run("override namespace", func(t *testing.T) {
@@ -69,9 +68,9 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 		tCtx.MockSC.
 			EXPECT().
 			Query(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-				return &store.ObjectQueryResult{
-					Items: []store.Object{},
+			DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+				return &database.ObjectQueryResult{
+					Items: []database.Object{},
 				}, nil
 			}).Times(2)
 
@@ -105,13 +104,11 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 		tCtx.MockSC.
 			EXPECT().
 			Query(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-				return &store.ObjectQueryResult{
-					Items: []store.Object{},
+			DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+				return &database.ObjectQueryResult{
+					Items: []database.Object{},
 				}, nil
 			}).Times(2)
-
-		tCtx.MockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(tCtx.MockSC, nil).Times(1)
 
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
@@ -154,16 +151,13 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 	tCtx := rpctest.NewControllerContext(t)
 
 	opts := ctrl.Options{
-		StorageClient: tCtx.MockSC,
-		DataProvider:  tCtx.MockSP,
-		KubeClient:    k8sutil.NewFakeKubeClient(nil),
+		DatabaseClient: tCtx.MockSC,
+		KubeClient:     k8sutil.NewFakeKubeClient(nil),
 	}
 
 	t.Run("generated namespace is invalid", func(t *testing.T) {
 		longAppID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/this-is-a-very-long-application-name-that-is-invalid"
 		longEnvID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/this-is-a-very-long-environment-name-that-is-invalid"
-
-		tCtx.MockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(tCtx.MockSC, nil).Times(1)
 
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
@@ -201,9 +195,9 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 	t.Run("invalid namespace", func(t *testing.T) {
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-				return &store.ObjectQueryResult{
-					Items: []store.Object{},
+			DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+				return &database.ObjectQueryResult{
+					Items: []database.Object{},
 				}, nil
 			}).Times(2)
 
@@ -246,9 +240,9 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-				return &store.ObjectQueryResult{
-					Items: []store.Object{*rpctest.FakeStoreObject(envdm)},
+			DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+				return &database.ObjectQueryResult{
+					Items: []database.Object{*rpctest.FakeStoreObject(envdm)},
 				}, nil
 			}).Times(1)
 
@@ -299,10 +293,10 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
-			Return(&store.ObjectQueryResult{}, nil).Times(1)
+			Return(&database.ObjectQueryResult{}, nil).Times(1)
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
-			Return(&store.ObjectQueryResult{Items: []store.Object{*rpctest.FakeStoreObject(newResource)}}, nil).Times(1)
+			Return(&database.ObjectQueryResult{Items: []database.Object{*rpctest.FakeStoreObject(newResource)}}, nil).Times(1)
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)
@@ -353,7 +347,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
-			Return(&store.ObjectQueryResult{}, nil).Times(2)
+			Return(&database.ObjectQueryResult{}, nil).Times(2)
 
 		id, err := resources.ParseResource(testAppID)
 		require.NoError(t, err)

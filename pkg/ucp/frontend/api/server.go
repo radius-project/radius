@@ -26,71 +26,34 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
 	azure_frontend "github.com/radius-project/radius/pkg/ucp/frontend/azure"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	radius_frontend "github.com/radius-project/radius/pkg/ucp/frontend/radius"
 	"github.com/radius-project/radius/pkg/ucp/frontend/versions"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
-	"github.com/radius-project/radius/pkg/ucp/hostoptions"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/rest"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	"github.com/radius-project/radius/pkg/validator"
-	"github.com/radius-project/radius/swagger"
 
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
 
-const (
-	DefaultPlanesConfig = "DEFAULT_PLANES_CONFIG"
-)
-
-type ServiceOptions struct {
-	// Config is the bootstrap configuration loaded from config file.
-	Config *hostoptions.UCPConfig
-
-	ProviderName            string
-	Address                 string
-	PathBase                string
-	Configure               func(chi.Router)
-	TLSCertDir              string
-	DefaultPlanesConfigFile string
-	StorageProviderOptions  dataprovider.StorageProviderOptions
-	SecretProviderOptions   secretprovider.SecretProviderOptions
-	QueueProviderOptions    queueprovider.QueueProviderOptions
-	InitialPlanes           []rest.Plane
-	Identity                hostoptions.Identity
-	UCPConnection           sdk.Connection
-	Location                string
-
-	// Modules is a list of modules that will be registered with the router.
-	Modules []modules.Initializer
-}
-
 // Service implements the hosting.Service interface for the UCP frontend API.
 type Service struct {
-	options         ServiceOptions
-	storageProvider dataprovider.DataStorageProvider
-	queueProvider   *queueprovider.QueueProvider
-	secretProvider  *secretprovider.SecretProvider
+	options *ucp.Options
 }
 
 // DefaultModules returns a list of default modules that will be registered with the router.
-func DefaultModules(options modules.Options) []modules.Initializer {
+func DefaultModules(options *ucp.Options) []modules.Initializer {
 	return []modules.Initializer{
 		aws_frontend.NewModule(options),
 		azure_frontend.NewModule(options),
@@ -101,7 +64,7 @@ func DefaultModules(options modules.Options) []modules.Initializer {
 var _ hosting.Service = (*Service)(nil)
 
 // NewService creates a server to serve UCP API requests.
-func NewService(options ServiceOptions) *Service {
+func NewService(options *ucp.Options) *Service {
 	return &Service{
 		options: options,
 	}
@@ -112,49 +75,22 @@ func (s *Service) Name() string {
 	return "api"
 }
 
-// Initialize sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
+// Initialize sets up the router, database provider, secret provider, status manager, AWS config, AWS clients,
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := chi.NewRouter()
 
-	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
-	s.queueProvider = queueprovider.New(s.options.QueueProviderOptions)
-	s.secretProvider = secretprovider.NewSecretProvider(s.options.SecretProviderOptions)
+	// Allow tests to override the default modules.
+	modules := s.options.Modules
+	if modules == nil {
+		// If unset, use the default modules.
+		modules = DefaultModules(s.options)
+	}
 
-	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{s.options.PathBase}, "")
+	err := Register(ctx, r, modules, s.options)
 	if err != nil {
 		return nil, err
-	}
-
-	queueClient, err := s.queueProvider.GetClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	statusManager := statusmanager.New(s.storageProvider, queueClient, s.options.Location)
-
-	moduleOptions := modules.Options{
-		Address:        s.options.Address,
-		PathBase:       s.options.PathBase,
-		Config:         s.options.Config,
-		Location:       s.options.Location,
-		DataProvider:   s.storageProvider,
-		QueueProvider:  s.queueProvider,
-		SecretProvider: s.secretProvider,
-		SpecLoader:     specLoader,
-		StatusManager:  statusManager,
-		UCPConnection:  s.options.UCPConnection,
-	}
-
-	modules := DefaultModules(moduleOptions)
-	err = Register(ctx, r, modules, moduleOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	if s.options.Configure != nil {
-		s.options.Configure(r)
 	}
 
 	err = s.configureDefaultPlanes(ctx)
@@ -163,7 +99,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	app := http.Handler(r)
-	app = servicecontext.ARMRequestCtx(s.options.PathBase, "global")(app)
+	app = servicecontext.ARMRequestCtx(s.options.Config.Server.PathBase, s.options.Config.Environment.RoleLocation)(app)
 	app = middleware.WithLogger(app)
 
 	app = otelhttp.NewHandler(
@@ -177,7 +113,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app = middleware.RemoveRemoteAddr(app)
 
 	server := &http.Server{
-		Addr: s.options.Address,
+		Addr: s.options.Config.Server.Address(),
 		// Need to be able to respond to requests with planes and resourcegroups segments with any casing e.g.: /Planes, /resourceGroups
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
@@ -192,7 +128,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 // configureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
 func (s *Service) configureDefaultPlanes(ctx context.Context) error {
-	for _, plane := range s.options.InitialPlanes {
+	for _, plane := range s.options.Config.Initialization.Planes {
 		err := s.createPlane(ctx, plane)
 		if err != nil {
 			return err
@@ -202,7 +138,7 @@ func (s *Service) configureDefaultPlanes(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) createPlane(ctx context.Context, plane rest.Plane) error {
+func (s *Service) createPlane(ctx context.Context, plane ucp.Plane) error {
 	body, err := json.Marshal(plane)
 	if err != nil {
 		return err
@@ -217,13 +153,13 @@ func (s *Service) createPlane(ctx context.Context, plane rest.Plane) error {
 		return fmt.Errorf("invalid plane ID: %s", plane.ID)
 	}
 
-	db, err := s.storageProvider.GetStorageClient(ctx, "ucp")
+	db, err := s.options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return err
 	}
 
 	opts := armrpc_controller.Options{
-		StorageClient: db,
+		DatabaseClient: db,
 	}
 
 	var ctrl armrpc_controller.Controller
@@ -266,7 +202,7 @@ func (s *Service) createPlane(ctx context.Context, plane rest.Plane) error {
 
 	// Wrap the request in an ARM RPC context because this call will bypass the middleware
 	// that normally does this for us.
-	rpcContext, err := v1.FromARMRequest(request, s.options.PathBase, s.options.Location)
+	rpcContext, err := v1.FromARMRequest(request, s.options.Config.Server.PathBase, s.options.Config.Environment.RoleLocation)
 	if err != nil {
 		return err
 	}
@@ -296,11 +232,11 @@ func (s *Service) Run(ctx context.Context) error {
 		_ = service.Shutdown(ctx)
 	}()
 
-	logger.Info(fmt.Sprintf("listening on: '%s'...", s.options.Address))
-	if s.options.TLSCertDir == "" {
+	logger.Info(fmt.Sprintf("listening on: '%s'...", s.options.Config.Server.Address()))
+	if s.options.Config.Server.TLSCertificateDirectory == "" {
 		err = service.ListenAndServe()
 	} else {
-		err = service.ListenAndServeTLS(s.options.TLSCertDir+"/tls.crt", s.options.TLSCertDir+"/tls.key")
+		err = service.ListenAndServeTLS(s.options.Config.Server.TLSCertificateDirectory+"/tls.crt", s.options.Config.Server.TLSCertificateDirectory+"/tls.key")
 	}
 
 	if err == http.ErrServerClosed {

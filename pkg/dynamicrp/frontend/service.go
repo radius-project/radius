@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/middleware"
@@ -48,13 +49,28 @@ func (s *Service) Name() string {
 	return "dynamic-rp api"
 }
 
-// Initialize sets up the router, storage provider, secret provider, status manager, AWS config, AWS clients,
+// Initialize sets up the router, database provider, secret provider, status manager, AWS config, AWS clients,
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) initialize(ctx context.Context) (*http.Server, error) {
 	r := chi.NewRouter()
 
-	err := s.registerRoutes(r)
+	databaseClient, err := s.options.DatabaseProvider.GetClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database client: %w", err)
+	}
+
+	controllerOptions := controller.Options{
+		Address:        s.options.Config.Server.Address(),
+		PathBase:       s.options.Config.Server.PathBase,
+		DatabaseClient: databaseClient,
+		StatusManager:  s.options.StatusManager,
+
+		KubeClient:   nil, // Unused by DynamicRP
+		ResourceType: "",  // Set dynamically
+	}
+
+	err = s.registerRoutes(r, controllerOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register routes: %w", err)
 	}

@@ -57,6 +57,11 @@ func (s *APIService) Run(ctx context.Context) error {
 		return err
 	}
 
+	databaseClient, err := s.DatabaseProvider.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	return s.Start(ctx, server.Options{
 		Location: s.Options.Config.Env.RoleLocation,
@@ -65,10 +70,11 @@ func (s *APIService) Run(ctx context.Context) error {
 		Configure: func(r chi.Router) error {
 			for _, b := range s.handlerBuilder {
 				opts := apictrl.Options{
-					PathBase:      s.Options.Config.Server.PathBase,
-					DataProvider:  s.StorageProvider,
-					KubeClient:    s.KubeClient,
-					StatusManager: s.OperationStatusManager,
+					Address:        address,
+					PathBase:       s.Options.Config.Server.PathBase,
+					DatabaseClient: databaseClient,
+					KubeClient:     s.KubeClient,
+					StatusManager:  s.OperationStatusManager,
 				}
 
 				validator, err := builder.NewOpenAPIValidator(ctx, opts.PathBase, b.Namespace())

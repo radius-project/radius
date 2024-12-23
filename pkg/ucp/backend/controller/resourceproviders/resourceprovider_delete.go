@@ -23,11 +23,11 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -53,7 +53,7 @@ func (c *ResourceProviderDeleteController) Run(ctx context.Context, request *ctr
 		return ctrl.Result{}, fmt.Errorf("failed to delete resource provider summary: %w", err)
 	}
 
-	err = c.StorageClient().Delete(ctx, request.ResourceID)
+	err = c.DatabaseClient().Delete(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -222,8 +222,8 @@ func (c *ResourceProviderDeleteController) deleteSummary(ctx context.Context, re
 		return err
 	}
 
-	err = c.StorageClient().Delete(ctx, summaryID.String())
-	if errors.Is(err, &store.ErrNotFound{}) {
+	err = c.DatabaseClient().Delete(ctx, summaryID.String())
+	if errors.Is(err, &database.ErrNotFound{}) {
 		// It's OK if the summary was already deleted.
 		return nil
 	} else if err != nil {

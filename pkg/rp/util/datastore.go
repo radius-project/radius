@@ -23,14 +23,13 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/components/database"
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 // FetchScopeResource checks if the given scopeID is a valid resource ID for the given resource type, fetches the resource
-// from the storage client and returns an error if the resource does not exist.
-func FetchScopeResource(ctx context.Context, sp dataprovider.DataStorageProvider, scopeID string, resource v1.DataModelInterface) error {
+// from the database client and returns an error if the resource does not exist.
+func FetchScopeResource(ctx context.Context, databaseClient database.Client, scopeID string, resource v1.DataModelInterface) error {
 	id, err := resources.ParseResource(scopeID)
 	if err != nil {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("%s is not a valid resource id for %s.", scopeID, resource.ResourceTypeName()))
@@ -39,13 +38,9 @@ func FetchScopeResource(ctx context.Context, sp dataprovider.DataStorageProvider
 	if !strings.EqualFold(id.Type(), resource.ResourceTypeName()) {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("linked %q has invalid %s resource type.", scopeID, resource.ResourceTypeName()))
 	}
-	sc, err := sp.GetStorageClient(ctx, id.Type())
-	if err != nil {
-		return err
-	}
 
-	res, err := sc.Get(ctx, id.String())
-	if errors.Is(&store.ErrNotFound{ID: id.String()}, err) {
+	res, err := databaseClient.Get(ctx, id.String())
+	if errors.Is(&database.ErrNotFound{ID: id.String()}, err) {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("linked resource %s does not exist", scopeID))
 	}
 	if err != nil {

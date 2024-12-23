@@ -37,7 +37,7 @@ import (
 const testProxyRequestAWSListPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream"
 
 func Test_ListAWSResources(t *testing.T) {
-	ucp, _, _, cloudcontrolClient, _ := initializeAWSTest(t)
+	ucp, cloudcontrolClient, _ := initializeAWSTest(t)
 
 	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
@@ -58,7 +58,7 @@ func Test_ListAWSResources(t *testing.T) {
 		return &output, nil
 	})
 
-	listRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSListPath, nil)
+	listRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL()+testProxyRequestAWSListPath, nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(listRequest)

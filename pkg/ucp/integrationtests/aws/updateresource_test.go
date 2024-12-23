@@ -39,7 +39,7 @@ import (
 const ZeroAWSRequestToken = "00000000-0000-0000-0000-000000000000"
 
 func Test_UpdateAWSResource(t *testing.T) {
-	ucp, _, _, cloudcontrolClient, cloudFormationClient := initializeAWSTest(t)
+	ucp, cloudcontrolClient, cloudFormationClient := initializeAWSTest(t)
 
 	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
@@ -94,7 +94,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	updateRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPut, ucp.BaseURL+testProxyRequestAWSPath, body)
+	updateRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPut, ucp.BaseURL()+testProxyRequestAWSPath, body)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(updateRequest)

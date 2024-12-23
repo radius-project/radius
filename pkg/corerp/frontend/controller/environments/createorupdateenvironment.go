@@ -71,7 +71,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
-	result, err := util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.compute.kubernetes.namespace", namespace, e.StorageClient())
+	result, err := util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.compute.kubernetes.namespace", namespace, e.DatabaseClient())
 	if err != nil {
 		return nil, err
 	}

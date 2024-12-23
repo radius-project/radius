@@ -22,6 +22,8 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/components/secret"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
@@ -29,8 +31,6 @@ import (
 	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
-	"github.com/radius-project/radius/pkg/ucp/secret"
-	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -59,11 +59,11 @@ var _ Provider = (*azureProvider)(nil)
 
 type azureProvider struct {
 	ucpConn        sdk.Connection
-	secretProvider *ucp_provider.SecretProvider
+	secretProvider *secretprovider.SecretProvider
 }
 
 // NewAzureProvider creates a new AzureProvider instance.
-func NewAzureProvider(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) Provider {
+func NewAzureProvider(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider) Provider {
 	return &azureProvider{ucpConn: ucpConn, secretProvider: secretProvider}
 }
 

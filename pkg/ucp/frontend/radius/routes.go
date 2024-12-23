@@ -64,15 +64,23 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return handler
 	}
 
+	databaseClient, err := m.options.DatabaseProvider.GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ctrlOptions := controller.Options{
-		Address:       m.options.Address,
-		PathBase:      m.options.PathBase,
-		DataProvider:  m.options.DataProvider,
-		StatusManager: m.options.StatusManager,
+		Address:        m.options.Config.Server.Address(),
+		DatabaseClient: databaseClient,
+		PathBase:       m.options.Config.Server.PathBase,
+		StatusManager:  m.options.StatusManager,
+
+		KubeClient:   nil, // Unused by Radius module
+		ResourceType: "",  // Set dynamically
 	}
 
 	// NOTE: we're careful where we use the `apiValidator` middleware. It's not used for the proxy routes.
-	m.router.Route(m.options.PathBase+"/planes/radius", func(r chi.Router) {
+	m.router.Route(m.options.Config.Server.PathBase+"/planes/radius", func(r chi.Router) {
 		r.With(apiValidator).Get("/", capture(radiusPlaneListHandler(ctx, ctrlOptions)))
 		r.Route("/{planeName}", func(r chi.Router) {
 			r.With(apiValidator).Get("/", capture(radiusPlaneGetHandler(ctx, ctrlOptions)))
@@ -375,6 +383,6 @@ func operationStatusGetHandler(ctx context.Context, ctrlOptions controller.Optio
 }
 
 func operationResultGetHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
-	// NOTE: The resource type below is CORRECT. operation status and operation result use the same resource for storage.
+	// NOTE: The resource type below is CORRECT. operation status and operation result use the same resource type in the database.
 	return server.CreateHandler(ctx, "System.Resources/operationstatuses", v1.OperationGet, ctrlOptions, defaultoperation.NewGetOperationResult)
 }

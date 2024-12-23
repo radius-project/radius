@@ -22,8 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database"
 	"go.uber.org/mock/gomock"
 )
 
@@ -31,23 +30,22 @@ import (
 type ControllerContext struct {
 	Ctx    context.Context
 	MCtrl  *gomock.Controller
-	MockSC *store.MockStorageClient
-	MockSP *dataprovider.MockDataStorageProvider
+	MockSC *database.MockClient
 }
 
 // NewControllerContext creates a new ControllerContext for testing.
 func NewControllerContext(t *testing.T) *ControllerContext {
 	mctrl := gomock.NewController(t)
+
 	return &ControllerContext{
 		Ctx:    context.Background(),
 		MCtrl:  mctrl,
-		MockSC: store.NewMockStorageClient(mctrl),
-		MockSP: dataprovider.NewMockDataStorageProvider(mctrl),
+		MockSC: database.NewMockClient(mctrl),
 	}
 }
 
 // FakeStoreObject creates store.Object for datamodel.
-func FakeStoreObject(dm v1.DataModelInterface) *store.Object {
+func FakeStoreObject(dm v1.DataModelInterface) *database.Object {
 	b, err := json.Marshal(dm)
 	if err != nil {
 		panic(err)
@@ -57,5 +55,5 @@ func FakeStoreObject(dm v1.DataModelInterface) *store.Object {
 	if err != nil {
 		panic(err)
 	}
-	return &store.Object{Data: r}
+	return &database.Object{Data: r}
 }

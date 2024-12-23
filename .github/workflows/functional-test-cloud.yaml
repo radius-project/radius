@@ -85,8 +85,6 @@ env:
   FUNCTIONAL_TEST_APP_ID: 425843
   # Private Git repository where terraform module for testing is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
-  # The number of failed tests to report.
-  ISSUE_CREATE_THRESHOLD: 2
   # bicep-types ACR url for uploading Radius Bicep types
   BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
 
@@ -549,7 +547,17 @@ jobs:
       - uses: azure/setup-helm@v4
         with:
           version: ${{ env.HELM_VER }}
+      
+      # The role-to-assume is the role that the github action will assume to execute aws commands and 
+      # construct cloud control client in test code.
+      - name: configure aws credentials using assumed role
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
 
+      # create kind cluster with OIDC provider.      
       - name: Create KinD cluster
         run: |
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
@@ -632,7 +640,6 @@ jobs:
           append: true
           message: |
             :x: Test tool installation for ${{ matrix.name }} failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-
       - name: Install Radius
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -646,8 +653,9 @@ jobs:
             --set controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }} \
             --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
-            --set global.azureWorkloadIdentity.enabled=true
-
+            --set global.azureWorkloadIdentity.enabled=true \
+            --set global.aws.irsa.enabled=true 
+          
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
           rad group create kind-radius
@@ -666,9 +674,10 @@ jobs:
 
           echo "*** Configuring AWS provider ***"
           rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-          rad credential register aws access-key \
-            --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
-
+          
+          rad credential register aws irsa \
+            --iam-role ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
+          
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -726,9 +735,8 @@ jobs:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
+          AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
@@ -884,33 +892,8 @@ jobs:
     runs-on: ubuntu-latest
     if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
     steps:
-      - name: Count recently failed tests
-        id: count_failures
-        uses: actions/github-script@v7
-        with:
-          script: |
-            response = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'functional-test-cloud.yaml',
-              event: 'schedule',
-              per_page: 10
-            });
-
-            failureCount = 1;
-            for (const run of response.data.workflow_runs) {
-              if (run.conclusion === 'failure') {
-                failureCount++;
-              } else {
-                break;
-              }
-            }
-            return failureCount;
-
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v7
-        # Only create an issue if there are (env.ISSUE_CREATE_THRESHOLD) failures of the recent tests.
-        if: steps.count_failures.outputs.result >= env.ISSUE_CREATE_THRESHOLD
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
@@ -918,5 +901,5 @@ jobs:
               ...context.repo,
               title: `Scheduled functional test failed - Run ID: ${context.runId}`,
               labels: ['bug', 'test-failure'],
-              body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails at least ${process.env.ISSUE_CREATE_THRESHOLD} times in a row. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
+              body: `## Bug information \n\nThis issue is automatically generated if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })

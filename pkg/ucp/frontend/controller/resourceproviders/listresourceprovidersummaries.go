@@ -24,11 +24,11 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var _ armrpc_controller.Controller = (*ListResourceProviderSummaries)(nil)
@@ -68,20 +68,20 @@ func (r *ListResourceProviderSummaries) Run(ctx context.Context, w http.Response
 	}
 
 	// First check if the plane exists.
-	_, err = r.StorageClient().Get(ctx, scope.String())
-	if errors.Is(err, &store.ErrNotFound{}) {
+	_, err = r.DatabaseClient().Get(ctx, scope.String())
+	if errors.Is(err, &database.ErrNotFound{}) {
 		return armrpc_rest.NewNotFoundResponse(scope), nil
 	} else if err != nil {
 		return nil, err
 	}
 
 	// Now query for resource provider summaries
-	query := store.Query{
+	query := database.Query{
 		RootScope:    scope.String(),
 		ResourceType: datamodel.ResourceProviderSummaryResourceType,
 	}
 
-	result, err := r.StorageClient().Query(ctx, query)
+	result, err := r.DatabaseClient().Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (r *ListResourceProviderSummaries) Run(ctx context.Context, w http.Response
 	return armrpc_rest.NewOKResponse(response), nil
 }
 
-func (r *ListResourceProviderSummaries) createResponse(ctx context.Context, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+func (r *ListResourceProviderSummaries) createResponse(ctx context.Context, result *database.ObjectQueryResult) (*v1.PaginatedList, error) {
 	items := v1.PaginatedList{
 		Value: []any{}, // Initialize to empty list for testability
 	}

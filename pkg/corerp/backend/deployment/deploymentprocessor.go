@@ -29,6 +29,7 @@ import (
 	rp_util "github.com/radius-project/radius/pkg/rp/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
+	"github.com/radius-project/radius/pkg/components/database"
 	corerp_dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/model"
@@ -40,9 +41,7 @@ import (
 	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
 	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"github.com/go-openapi/jsonpointer"
@@ -60,15 +59,15 @@ type DeploymentProcessor interface {
 }
 
 // NewDeploymentProcessor creates a new instance of the DeploymentProcessor struct with the given parameters.
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, sp: sp, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
+func NewDeploymentProcessor(appmodel model.ApplicationModel, databaseClient database.Client, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel, databaseClient: databaseClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
 }
 
 var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 
 type deploymentProcessor struct {
-	appmodel model.ApplicationModel
-	sp       dataprovider.DataStorageProvider
+	appmodel       model.ApplicationModel
+	databaseClient database.Client
 	// k8sClient is the Kubernetes controller runtime client.
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
@@ -226,14 +225,14 @@ func (dp *deploymentProcessor) getApplicationAndEnvironmentForResourceID(ctx con
 
 	// 2. fetch the application properties from the DB
 	app := &corerp_dm.Application{}
-	err = rp_util.FetchScopeResource(ctx, dp.sp, res.AppID.String(), app)
+	err = rp_util.FetchScopeResource(ctx, dp.databaseClient, res.AppID.String(), app)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// 3. fetch the environment resource from the db to get the Namespace
 	env := &corerp_dm.Environment{}
-	err = rp_util.FetchScopeResource(ctx, dp.sp, app.Properties.Environment, env)
+	err = rp_util.FetchScopeResource(ctx, dp.databaseClient, app.Properties.Environment, env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -481,14 +480,9 @@ func (dp *deploymentProcessor) getAppOptions(appProp *corerp_dm.ApplicationPrope
 // getResourceDataByID fetches resource for the provided id from the data store
 func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resourceID resources.ID) (ResourceData, error) {
 	errMsg := "failed to fetch the resource %q. Err: %w"
-	sc, err := dp.sp.GetStorageClient(ctx, resourceID.Type())
+	resource, err := dp.databaseClient.Get(ctx, resourceID.String())
 	if err != nil {
-		return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-	}
-
-	resource, err := sc.Get(ctx, resourceID.String())
-	if err != nil {
-		if errors.Is(&store.ErrNotFound{ID: resourceID.String()}, err) {
+		if errors.Is(&database.ErrNotFound{ID: resourceID.String()}, err) {
 			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource %q does not exist", resourceID.String()))
 		}
 		return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)

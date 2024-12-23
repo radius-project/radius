@@ -20,8 +20,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/ucp/frontend/api"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 )
 
 const (
@@ -35,7 +34,7 @@ const (
 )
 
 func Test_AzurePlane_PUT_Create(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", azurePlaneResourceURL, azurePlaneRequestFixture)
@@ -43,7 +42,7 @@ func Test_AzurePlane_PUT_Create(t *testing.T) {
 }
 
 func Test_AzurePlane_PUT_Update(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", azurePlaneResourceURL, azurePlaneRequestFixture)
@@ -54,7 +53,7 @@ func Test_AzurePlane_PUT_Update(t *testing.T) {
 }
 
 func Test_AzurePlane_GET_Empty(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	response := server.MakeRequest("GET", azurePlaneResourceURL, nil)
@@ -62,7 +61,7 @@ func Test_AzurePlane_GET_Empty(t *testing.T) {
 }
 
 func Test_AzurePlane_GET_Found(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", azurePlaneResourceURL, azurePlaneRequestFixture)
@@ -73,7 +72,7 @@ func Test_AzurePlane_GET_Found(t *testing.T) {
 }
 
 func Test_AzurePlane_LIST(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	// Add a azure plane
@@ -86,7 +85,7 @@ func Test_AzurePlane_LIST(t *testing.T) {
 }
 
 func Test_AzurePlane_DELETE_DoesNotExist(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	response := server.MakeRequest("DELETE", azurePlaneResourceURL, nil)
@@ -94,7 +93,7 @@ func Test_AzurePlane_DELETE_DoesNotExist(t *testing.T) {
 }
 
 func Test_AzurePlane_DELETE_Found(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	response := server.MakeFixtureRequest("PUT", azurePlaneResourceURL, azurePlaneRequestFixture)

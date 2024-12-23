@@ -24,7 +24,6 @@ ok  	github.com/radius-project/radius/pkg/cli	0.250s
 ?   	github.com/radius-project/radius/pkg/azure/radclient	[no test files]
 ?   	github.com/radius-project/radius/pkg/renderers	[no test files]
 ok  	github.com/radius-project/radius/pkg/renderers/containerv1alpha3
-ok   	github.com/radius-project/radius/pkg/renderers/cosmosdbmongov1alpha3
 ok   	github.com/radius-project/radius/pkg/renderers/dapr
 ok   	github.com/radius-project/radius/pkg/renderers/daprpubsubv1alpha3
 ok   	github.com/radius-project/radius/pkg/renderers/daprstatestorev1alpha3

@@ -43,7 +43,7 @@ func (c *ResourceTypePutController) Run(ctx context.Context, request *ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	err = updateResourceProviderSummaryWithETag(ctx, c.StorageClient(), summaryID, summaryNotFoundFail, c.updateSummary(id, resourceType))
+	err = updateResourceProviderSummaryWithETag(ctx, c.DatabaseClient(), summaryID, summaryNotFoundFail, c.updateSummary(id, resourceType))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -52,7 +52,7 @@ func (c *ResourceTypePutController) Run(ctx context.Context, request *ctrl.Reque
 }
 
 func (c *ResourceTypePutController) fetchResourceType(ctx context.Context, id resources.ID) (*datamodel.ResourceType, error) {
-	obj, err := c.StorageClient().Get(ctx, id.String())
+	obj, err := c.DatabaseClient().Get(ctx, id.String())
 	if err != nil {
 		return nil, err
 	}

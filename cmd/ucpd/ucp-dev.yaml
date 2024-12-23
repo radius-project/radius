@@ -9,8 +9,14 @@
 # - Talk to Portable Resources' Providers on port 8081
 # - Disables metrics and profiler
 #
-location: 'global'
-storageProvider:
+environment:
+  name: Dev
+  roleLocation: "global"
+server:
+  port: 9000
+  pathBase: /apis/api.ucp.dev/v1alpha3
+
+databaseProvider:
   provider: "apiserver"
   apiserver:
     context: ''
@@ -32,19 +38,20 @@ profilerProvider:
 
 #Default planes configuration with which ucp starts
 # TODO: Remove azure and aws planes once rad provider commands are supported
-planes:
-  - id: "/planes/aws/aws"
-    properties:
-      kind: "AWS"
-  - id: "/planes/radius/local"
-    properties:
-      resourceProviders:
-        Applications.Core: "http://localhost:8080"
-        Applications.Messaging: "http://localhost:8080"
-        Applications.Dapr: "http://localhost:8080"
-        Applications.Datastores: "http://localhost:8080"
-        Microsoft.Resources: "http://localhost:5017"
-      kind: "UCPNative"
+initialization:
+  planes:
+    - id: "/planes/aws/aws"
+      properties:
+        kind: "AWS"
+    - id: "/planes/radius/local"
+      properties:
+        resourceProviders:
+          Applications.Core: "http://localhost:8080"
+          Applications.Messaging: "http://localhost:8080"
+          Applications.Dapr: "http://localhost:8080"
+          Applications.Datastores: "http://localhost:8080"
+          Microsoft.Resources: "http://localhost:5017"
+        kind: "UCPNative"
 
 identity:
   authMethod: default

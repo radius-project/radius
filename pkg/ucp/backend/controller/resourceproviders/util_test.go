@@ -21,9 +21,9 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -151,11 +151,11 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-			client := store.NewMockStorageClient(ctrl)
+			client := database.NewMockClient(ctrl)
 
 			expectedETag := ""
 			if tt.existing == nil {
-				client.EXPECT().Get(gomock.Any(), tt.summaryID.String()).Return(nil, &store.ErrNotFound{})
+				client.EXPECT().Get(gomock.Any(), tt.summaryID.String()).Return(nil, &database.ErrNotFound{})
 			} else {
 				bs, err := json.Marshal(tt.existing)
 				require.NoError(t, err)
@@ -165,8 +165,8 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 				require.NoError(t, err)
 
 				expectedETag = etag.New(bs)
-				obj := store.Object{
-					Metadata: store.Metadata{
+				obj := database.Object{
+					Metadata: database.Metadata{
 						ID:   tt.summaryID.String(),
 						ETag: expectedETag,
 					},
@@ -176,9 +176,9 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 			}
 
 			if tt.expectedSave {
-				client.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, o *store.Object, so ...store.SaveOptions) error {
+				client.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, o *database.Object, so ...database.SaveOptions) error {
 
-					config := store.NewSaveConfig(so...)
+					config := database.NewSaveConfig(so...)
 					require.Equal(t, expectedETag, config.ETag)
 
 					expectedResourceTypes := map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{

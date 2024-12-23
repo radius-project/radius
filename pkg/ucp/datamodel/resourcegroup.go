@@ -18,6 +18,11 @@ package datamodel
 
 import v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 
+const (
+	// ResourceGroupResourceType is the type of a resource group.
+	ResourceGroupResourceType = "System.Resources/resourceGroups"
+)
+
 // ResourceGroup represents UCP ResourceGroup.
 type ResourceGroup struct {
 	v1.BaseResource
@@ -25,5 +30,5 @@ type ResourceGroup struct {
 
 // ResourceTypeName returns a string representing the resource type name of the ResourceGroup object.
 func (p ResourceGroup) ResourceTypeName() string {
-	return "System.Resources/resourceGroups"
+	return ResourceGroupResourceType
 }

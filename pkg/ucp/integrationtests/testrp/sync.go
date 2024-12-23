@@ -23,29 +23,49 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	frontend_ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
 // SyncResource creates an HTTP handler that can be used to test synchronous resource lifecycle operations.
-func SyncResource(t *testing.T, ts *testserver.TestServer, rootScope string) func(w http.ResponseWriter, r *http.Request) {
+func SyncResource(t *testing.T, ts *testhost.TestHost, rootScope string) func(w http.ResponseWriter, r *http.Request) {
 	rootScope = strings.ToLower(rootScope)
 
 	ctx := testcontext.New(t)
 	r := chi.NewRouter()
 	r.Use(servicecontext.ARMRequestCtx("", v1.LocationGlobal), middleware.LowercaseURLPath)
 
+	// We can share the database provider with the test server.
+	databaseClient, err := ts.Options().DatabaseProvider.GetClient(ctx)
+	require.NoError(t, err)
+
+	// Do not share the queue.
+	queueOptions := queueprovider.QueueProviderOptions{
+		Provider: queueprovider.TypeInmemory,
+		InMemory: &queueprovider.InMemoryQueueOptions{},
+		Name:     "System.Test",
+	}
+	queueProvider := queueprovider.New(queueOptions)
+	queueClient, err := queueProvider.GetClient(ctx)
+	require.NoError(t, err)
+
+	statusManager := statusmanager.New(databaseClient, queueClient, v1.LocationGlobal)
+
 	ctrlOpts := frontend_ctrl.Options{
-		DataProvider: ts.Clients.StorageProvider,
+		Address:        "localhost:8080",
+		StatusManager:  statusManager,
+		DatabaseClient: databaseClient,
 	}
 
-	err := server.ConfigureDefaultHandlers(ctx, r, rootScope, false, "System.Test", nil, ctrlOpts)
+	err = server.ConfigureDefaultHandlers(ctx, r, rootScope, false, "System.Test", nil, ctrlOpts)
 	require.NoError(t, err)
 
 	resourceType := "System.Test/testResources"

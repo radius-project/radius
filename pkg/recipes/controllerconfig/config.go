@@ -21,6 +21,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -29,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/sdk/clients"
-	"github.com/radius-project/radius/pkg/ucp/secret/provider"
 )
 
 // RecipeControllerConfig is the configuration for the controllers which uses recipe.
@@ -76,6 +76,14 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 		return nil, err
 	}
 
+	if options.Config.Bicep.DeleteRetryCount == "" {
+		options.Config.Bicep.DeleteRetryCount = "3"
+	}
+
+	if options.Config.Bicep.DeleteRetryDelaySeconds == "" {
+		options.Config.Bicep.DeleteRetryDelaySeconds = "10"
+	}
+
 	bicepDeleteRetryCount, err := strconv.Atoi(options.Config.Bicep.DeleteRetryCount)
 	if err != nil {
 		return nil, err
@@ -100,7 +108,7 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 					DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,
 				},
 			),
-			recipes.TemplateKindTerraform: driver.NewTerraformDriver(options.UCPConnection, provider.NewSecretProvider(options.Config.SecretProvider),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(options.UCPConnection, secretprovider.NewSecretProvider(options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: options.Config.Terraform.Path,
 				}, cfg.K8sClients.ClientSet),

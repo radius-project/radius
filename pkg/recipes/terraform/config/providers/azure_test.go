@@ -21,11 +21,11 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/components/secret"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
 	ucp_credentials "github.com/radius-project/radius/pkg/ucp/credentials"
-	"github.com/radius-project/radius/pkg/ucp/secret"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )

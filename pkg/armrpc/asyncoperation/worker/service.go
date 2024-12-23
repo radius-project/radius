@@ -18,57 +18,56 @@ package worker
 
 import (
 	"context"
+	"sync"
 
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
-	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/queue"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // Service is the base worker service implementation to initialize and start worker.
+// All exported fields should be initialized by the caller.
 type Service struct {
-	// ProviderName is the name of provider namespace.
-	ProviderName string
-	// Options is the server hosting options.
-	Options hostoptions.HostOptions
-	// StorageProvider is the provider of storage client.
-	StorageProvider dataprovider.DataStorageProvider
+	// DatabaseClient is database client.
+	DatabaseClient database.Client
+
 	// OperationStatusManager is the manager of the operation status.
 	OperationStatusManager manager.StatusManager
-	// Controllers is the registry of the async operation controllers.
-	Controllers *ControllerRegistry
-	// RequestQueue is the queue client for async operation request message.
-	RequestQueue queue.Client
+
+	// Options configures options for the async worker.
+	Options Options
+
+	// QueueProvider is the queue client.
+	QueueClient queue.Client
+
+	// controllers is the registry of the async operation controllers.
+	controllers *ControllerRegistry
+
+	// controllersInit is used to ensure single initialization of controllers.
+	controllersInit sync.Once
 }
 
-// Init initializes worker service - it initializes the StorageProvider, RequestQueue, OperationStatusManager, Controllers, KubeClient and
-// returns an error if any of these operations fail.
-func (s *Service) Init(ctx context.Context) error {
-	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
-	qp := qprovider.New(s.Options.Config.QueueProvider)
-	var err error
-	s.RequestQueue, err = qp.GetClient(ctx)
-	if err != nil {
-		return err
-	}
-	s.OperationStatusManager = manager.New(s.StorageProvider, s.RequestQueue, s.Options.Config.Env.RoleLocation)
-	s.Controllers = NewControllerRegistry(s.StorageProvider)
-	return nil
+// Controllers returns the controller registry for the worker service.
+func (s *Service) Controllers() *ControllerRegistry {
+	s.controllersInit.Do(func() {
+		s.controllers = NewControllerRegistry()
+	})
+
+	return s.controllers
 }
 
 // Start creates and starts a worker, and logs any errors that occur while starting the worker.
-func (s *Service) Start(ctx context.Context, opt Options) error {
+func (s *Service) Start(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	// Create and start worker.
-	worker := New(opt, s.OperationStatusManager, s.RequestQueue, s.Controllers)
+	worker := New(s.Options, s.OperationStatusManager, s.QueueClient, s.Controllers())
 
 	logger.Info("Start Worker...")
 	if err := worker.Start(ctx); err != nil {
 		logger.Error(err, "failed to start worker...")
+		return err
 	}
 
 	logger.Info("Worker stopped...")

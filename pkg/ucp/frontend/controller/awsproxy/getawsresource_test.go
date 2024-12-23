@@ -61,7 +61,7 @@ func Test_GetAWSResource(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
@@ -97,7 +97,7 @@ func Test_GetAWSResource_NotFound(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
@@ -124,7 +124,7 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
@@ -155,7 +155,7 @@ func Test_GetAWSResource_SmithyError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)

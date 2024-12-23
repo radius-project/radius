@@ -22,7 +22,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	etcdclient "go.etcd.io/etcd/client/v3"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/radius-project/radius/pkg/armrpc/builder"
@@ -33,8 +32,6 @@ import (
 	"github.com/radius-project/radius/pkg/server"
 	"github.com/radius-project/radius/pkg/trace"
 
-	"github.com/radius-project/radius/pkg/ucp/data"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
@@ -79,19 +76,6 @@ var rootCmd = &cobra.Command{
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
 
-		if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
-			options.Config.StorageProvider.ETCD.InMemory {
-			// For in-memory etcd we need to register another service to manage its lifecycle.
-			//
-			// The client will be initialized asynchronously.
-			logger.Info("Enabled in-memory etcd")
-			client := hosting.NewAsyncValue[etcdclient.Client]()
-			options.Config.StorageProvider.ETCD.Client = client
-			options.Config.SecretProvider.ETCD.Client = client
-
-			hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
-		}
-
 		builders, err := builders(options)
 		if err != nil {
 			return err
@@ -111,7 +95,12 @@ var rootCmd = &cobra.Command{
 			Services: hostingSvc,
 		}
 
+		// Make the logger available to the services.
 		ctx := logr.NewContext(context.Background(), logger)
+
+		// Make the hosting configuration available to the services.
+		ctx = hostoptions.WithContext(ctx, options.Config)
+
 		return hosting.RunWithInterrupts(ctx, host)
 	},
 }

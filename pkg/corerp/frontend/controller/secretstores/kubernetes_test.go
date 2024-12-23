@@ -24,11 +24,11 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -60,10 +60,10 @@ const (
 
 func TestGetNamespace(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	sc := store.NewMockStorageClient(ctrl)
+	sc := database.NewMockClient(ctrl)
 
 	opt := &controller.Options{
-		StorageClient: sc,
+		DatabaseClient: sc,
 	}
 
 	t.Run("application-scoped", func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestGetNamespace(t *testing.T) {
 		secret.Properties.Application = testAppID
 		appData := testutil.MustGetTestData[any]("app_datamodel.json")
 
-		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&store.Object{
+		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&database.Object{
 			Data: *appData,
 		}, nil)
 
@@ -88,7 +88,7 @@ func TestGetNamespace(t *testing.T) {
 
 		envData := testutil.MustGetTestData[any]("env_datamodel.json")
 
-		sc.EXPECT().Get(gomock.Any(), testEnvID, gomock.Any()).Return(&store.Object{
+		sc.EXPECT().Get(gomock.Any(), testEnvID, gomock.Any()).Return(&database.Object{
 			Data: *envData,
 		}, nil)
 
@@ -103,7 +103,7 @@ func TestGetNamespace(t *testing.T) {
 		secret.Properties.Environment = testEnvID
 		envData := testutil.MustGetTestData[any]("env_nonk8s_datamodel.json")
 
-		sc.EXPECT().Get(gomock.Any(), testEnvID, gomock.Any()).Return(&store.Object{
+		sc.EXPECT().Get(gomock.Any(), testEnvID, gomock.Any()).Return(&database.Object{
 			Data: *envData,
 		}, nil)
 
@@ -429,11 +429,11 @@ func TestUpsertSecret(t *testing.T) {
 
 	t.Run("create new generic resource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		sc := store.NewMockStorageClient(ctrl)
+		sc := database.NewMockClient(ctrl)
 
 		appData := testutil.MustGetTestData[any]("app_datamodel.json")
 
-		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&store.Object{
+		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&database.Object{
 			Data: *appData,
 		}, nil)
 
@@ -441,8 +441,8 @@ func TestUpsertSecret(t *testing.T) {
 		newResource.Properties.Resource = ""
 
 		opt := &controller.Options{
-			StorageClient: sc,
-			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+			DatabaseClient: sc,
+			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
 		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
@@ -473,11 +473,11 @@ func TestUpsertSecret(t *testing.T) {
 
 	t.Run("create new resource when namespace is missing", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		sc := store.NewMockStorageClient(ctrl)
+		sc := database.NewMockClient(ctrl)
 
 		appData := testutil.MustGetTestData[any]("app_datamodel.json")
 
-		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&store.Object{
+		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&database.Object{
 			Data: *appData,
 		}, nil)
 
@@ -487,8 +487,8 @@ func TestUpsertSecret(t *testing.T) {
 		newResource.Properties.Resource = "secret0"
 
 		opt := &controller.Options{
-			StorageClient: sc,
-			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+			DatabaseClient: sc,
+			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
 		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
@@ -502,11 +502,11 @@ func TestUpsertSecret(t *testing.T) {
 
 	t.Run("unmatched resource when namespace is missing in new resource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		sc := store.NewMockStorageClient(ctrl)
+		sc := database.NewMockClient(ctrl)
 
 		appData := testutil.MustGetTestData[any]("app_datamodel.json")
 
-		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&store.Object{
+		sc.EXPECT().Get(gomock.Any(), testAppID, gomock.Any()).Return(&database.Object{
 			Data: *appData,
 		}, nil)
 
@@ -516,8 +516,8 @@ func TestUpsertSecret(t *testing.T) {
 		newResource.Properties.Resource = "secret1"
 
 		opt := &controller.Options{
-			StorageClient: sc,
-			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+			DatabaseClient: sc,
+			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
 		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
@@ -532,13 +532,13 @@ func TestUpsertSecret(t *testing.T) {
 
 	t.Run("create a new secret resource with global scope", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		sc := store.NewMockStorageClient(ctrl)
+		sc := database.NewMockClient(ctrl)
 
 		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValueGlobalScope)
 
 		opt := &controller.Options{
-			StorageClient: sc,
-			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+			DatabaseClient: sc,
+			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
 		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
@@ -569,13 +569,13 @@ func TestUpsertSecret(t *testing.T) {
 
 	t.Run("create a new secret resource with invalid resource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		sc := store.NewMockStorageClient(ctrl)
+		sc := database.NewMockClient(ctrl)
 
 		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValueInvalidResource)
 
 		opt := &controller.Options{
-			StorageClient: sc,
-			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+			DatabaseClient: sc,
+			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
 		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
@@ -587,13 +587,13 @@ func TestUpsertSecret(t *testing.T) {
 
 	t.Run("create a new secret resource with empty resource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		sc := store.NewMockStorageClient(ctrl)
+		sc := database.NewMockClient(ctrl)
 
 		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValueEmptyResource)
 
 		opt := &controller.Options{
-			StorageClient: sc,
-			KubeClient:    k8sutil.NewFakeKubeClient(nil),
+			DatabaseClient: sc,
+			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
 		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)

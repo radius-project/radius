@@ -59,6 +59,9 @@ func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config) (sdk
 			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
 		}
 		return sdk.NewDirectConnection(option.Direct.Endpoint)
+	} else if option.Kind == UCPConnectionKindKubernetes {
+		return sdk.NewKubernetesConnectionFromConfig(k8sConfig)
 	}
-	return sdk.NewKubernetesConnectionFromConfig(k8sConfig)
+
+	return nil, errors.New("invalid connection kind: " + option.Kind)
 }

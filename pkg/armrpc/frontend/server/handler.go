@@ -55,11 +55,6 @@ type ControllerFactoryFunc func(ctrl.Options) (ctrl.Controller, error)
 // multiple types of resources (e.g. PUT on any type of AWS resource):
 // - Set ResourceType for operations that are scoped to a resource type.
 // - Set OperationType for general operations.
-//
-// In the controller options passed to the controller factory:
-//
-// - When ResourceType is set, the StorageClient will be configured to use the resource type.
-// - When OperationType is set, the StorageClient will be generic and not filtered to a specific resource type.
 type HandlerOptions struct {
 	// ParentRouter is the router to register the handler with.
 	ParentRouter chi.Router
@@ -68,8 +63,6 @@ type HandlerOptions struct {
 	Path string
 
 	// ResourceType is the resource type of the operation. May be blank if Operation is specified.
-	//
-	// If specified the ResourceType will be used to filter the StorageClient.
 	ResourceType string
 
 	// Method is the method of the operation. May be blank if Operation is specified.
@@ -130,13 +123,12 @@ func HandlerForController(controller ctrl.Controller, operationType v1.Operation
 
 // CreateHandler creates an http.Handler for the given resource type and operation method.
 func CreateHandler(ctx context.Context, resourceType string, operationMethod v1.OperationMethod, opts ctrl.Options, factory ControllerFactoryFunc) (http.HandlerFunc, error) {
-	storageClient, err := opts.DataProvider.GetStorageClient(ctx, resourceType)
-	if err != nil {
-		return nil, err
-	}
-
-	opts.StorageClient = storageClient
 	opts.ResourceType = resourceType
+
+	err := opts.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("invalid controller options: %w", err)
+	}
 
 	ctrl, err := factory(opts)
 	if err != nil {
@@ -155,13 +147,12 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 		return ErrInvalidOperationTypeOption
 	}
 
-	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.ResourceType)
-	if err != nil {
-		return err
-	}
-
-	ctrlOpts.StorageClient = storageClient
 	ctrlOpts.ResourceType = opts.ResourceType
+
+	err := ctrlOpts.Validate()
+	if err != nil {
+		return fmt.Errorf("invalid controller options: %w", err)
+	}
 
 	ctrl, err := opts.ControllerFactory(ctrlOpts)
 	if err != nil {

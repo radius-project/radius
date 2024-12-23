@@ -25,10 +25,10 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/secret"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/ucp/secret"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/testutil"
 
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -39,10 +39,10 @@ import (
 func Test_AWS_Credential(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+	mockDatabaseClient := database.NewMockClient(mockCtrl)
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
-	credentialCtrl, err := NewCreateOrUpdateAWSCredential(armrpc_controller.Options{StorageClient: mockStorageClient}, mockSecretClient)
+	credentialCtrl, err := NewCreateOrUpdateAWSCredential(armrpc_controller.Options{DatabaseClient: mockDatabaseClient}, mockSecretClient)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -51,7 +51,7 @@ func Test_AWS_Credential(t *testing.T) {
 		headerfile string
 		url        string
 		expected   armrpc_rest.Response
-		fn         func(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient)
+		fn         func(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient)
 		err        error
 	}{
 		{
@@ -121,7 +121,7 @@ func Test_AWS_Credential(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.fn(*mockStorageClient, *mockSecretClient)
+			tt.fn(*mockDatabaseClient, *mockSecretClient)
 
 			credentialVersionedInput := &v20231001preview.AwsCredentialResource{}
 			credentialInput := testutil.ReadFixture(tt.filename)
@@ -165,44 +165,44 @@ func getAwsResponse() armrpc_rest.Response {
 	}, map[string]string{"ETag": ""})
 }
 
-func setupCredentialSuccessMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-		return nil, &store.ErrNotFound{ID: id}
+func setupCredentialSuccessMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+		return nil, &database.ErrNotFound{ID: id}
 	})
 	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	mockStorageClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	mockDatabaseClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 }
 
-func setupEmptyMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+func setupEmptyMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
 }
 
-func setupCredentialNotFoundMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-			return nil, &store.ErrNotFound{ID: id}
+func setupCredentialNotFoundMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
+			return nil, &database.ErrNotFound{ID: id}
 		}).Times(1)
 	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	mockStorageClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	mockDatabaseClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 }
 
-func setupCredentialNotFoundErrorMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+func setupCredentialNotFoundErrorMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
 			return nil, errors.New("Error")
 		}).Times(1)
 }
 
-func setupCredentialGetFailMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+func setupCredentialGetFailMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
 			return nil, errors.New("Failed Get")
 		}).Times(1)
 }
 
-func setupCredentialSecretSaveFailMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).
-		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-			return nil, &store.ErrNotFound{ID: id}
+func setupCredentialSecretSaveFailMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).
+		DoAndReturn(func(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
+			return nil, &database.ErrNotFound{ID: id}
 		}).Times(1)
 	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Secret Save Failure")).Times(1)
 }

@@ -28,11 +28,11 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	sprovider "github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/config"
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
-	sprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
@@ -122,16 +122,6 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 	err = decoder.Decode(conf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load yaml: %w", err)
-	}
-
-	cosmosdbUrl := os.Getenv("RADIUS_STORAGEPROVIDER_COSMOSDB_URL")
-	if cosmosdbUrl != "" {
-		conf.StorageProvider.CosmosDB.Url = cosmosdbUrl
-	}
-
-	cosmosDBKey := os.Getenv("RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY")
-	if cosmosDBKey != "" {
-		conf.StorageProvider.CosmosDB.MasterKey = cosmosDBKey
 	}
 
 	return conf, nil

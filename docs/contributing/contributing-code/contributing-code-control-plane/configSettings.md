@@ -20,7 +20,7 @@ The following properties can be specified in configuration for all services:
 |-----|-------------|---------|
 | environment | Environment name and its role location | [**See below**](#environment) |
 | identity | AAD APP authentication for the resource provider | [**See below**](#identity) |
-| storageProvider | Configuration options for the data storage provider | [**See below**](#storageprovider) |
+| databaseProvider | Configuration options for the database provider | [**See below**](#databaseprovider) |
 | queueProvider | Configuration options for the provider to create and manage the queue client | [**See below**](#queueprovider) |
 | secretProvider | Configuration options for the provider to manage credential | [**See below**](#secretprovider) |
 | server | Configuration options for the HTTP server bootstrap | [**See below**](#server) |
@@ -61,19 +61,18 @@ The following are properties that can be specified for UCP:
 | audience | The recipient of the certificate | `https://management.core.windows.net` |
 | pemCertPath | Path to certificate file | `/var/certs/rp-aad-app.pem` |
 
-### storageProvider
+### databaseProvider
 | Key | Description | Example |
 |-----|-------------|---------|
-| provider | The type of storage provider | `apiServer` | 
-| apiServer | Object containing properties for Kubernetes APIServer store | [**See below**](#apiserver) | 
-| cosmosdb | Object containing properties for CosmosDB | [**See below**](#cosmosdb) | 
-| etcd | Object containing properties for ETCD store | [**See below**](#etcd)|
+| provider | The type of database provider | `apiServer` | 
+| apiServer | Object containing properties for Kubernetes APIServer database | [**See below**](#apiserver) |
+| etcd | Object containing properties for ETCD database | [**See below**](#etcd)|
 
 ### queueProvider
 | Key | Description | Example |
 |-----|-------------|---------|
 | provider | The type of queue provider | `apiServer` | 
-| apiServer |  Object containing properties for Kubernetes APIServer store | [**See below**](#apiserver) |
+| apiServer |  Object containing properties for Kubernetes APIServer queue | [**See below**](#apiserver) |
 | inMemoryQueue | Object containing properties for InMemory Queue client | |
 
 ### secretProvider
@@ -159,14 +158,6 @@ ucp:
 |-----|-------------|---------|
 | inMemory | Configures the etcd store to run in-memory with the resource provider (must be `true`/`false`) | `true` |
 
-### cosmosdb
-| Key | Description | Example |
-|-----|-------------|---------|
-| url | URL of CosmosDB account | `https://radius-eastus-test.documents.azure.com:443/` |
-| database | Name of the database in account | `applicationscore` |
-| masterKey | All access key token for database resources | `your-master-key` |
-| CollectionThroughput | Throughput of database | `400` |
-
 ## Plane properties
 
 | Key | Description | Example |
@@ -190,7 +181,7 @@ Below are completed examples of possible configurations:
 environment:
   name: self-hosted
   roleLocation: "global"
-storageProvider:
+databaseProvider:
   provider: "apiserver"
   apiserver:
     context: ""
@@ -219,7 +210,7 @@ ucp:
 ### UCP 
 ```yaml
 location: 'global'
-storageProvider:
+databaseProvider:
   provider: "apiserver"
   apiserver:
     context: ""

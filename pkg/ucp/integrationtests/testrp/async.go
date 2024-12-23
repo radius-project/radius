@@ -31,9 +31,9 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +50,7 @@ func (b *BackendFuncController) Run(ctx context.Context, request *backend_ctrl.R
 }
 
 // AsyncResource creates an HTTP handler that can be used to test asynchronous resource lifecycle operations.
-func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, put BackendFunc, delete BackendFunc) func(w http.ResponseWriter, r *http.Request) {
+func AsyncResource(t *testing.T, ts *testhost.TestHost, rootScope string, put BackendFunc, delete BackendFunc) func(w http.ResponseWriter, r *http.Request) {
 	rootScope = strings.ToLower(rootScope)
 
 	ctx := testcontext.New(t)
@@ -59,8 +59,8 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 
 	resourceType := "System.Test/testResources"
 
-	// We can share the storage provider with the test server.
-	_, err := ts.Clients.StorageProvider.GetStorageClient(ctx, "System.Test/operationStatuses")
+	// We can share the database provider with the test server.
+	databaseClient, err := ts.Options().DatabaseProvider.GetClient(ctx)
 	require.NoError(t, err)
 
 	// Do not share the queue.
@@ -73,19 +73,19 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	queueClient, err := queueProvider.GetClient(ctx)
 	require.NoError(t, err)
 
-	statusManager := statusmanager.New(ts.Clients.StorageProvider, queueClient, v1.LocationGlobal)
+	statusManager := statusmanager.New(databaseClient, queueClient, v1.LocationGlobal)
 
 	backendOpts := backend_ctrl.Options{
-		DataProvider: ts.Clients.StorageProvider,
+		DatabaseClient: databaseClient,
 	}
 
-	registry := worker.NewControllerRegistry(ts.Clients.StorageProvider)
-	err = registry.Register(ctx, resourceType, v1.OperationPut, func(opts backend_ctrl.Options) (backend_ctrl.Controller, error) {
+	registry := worker.NewControllerRegistry()
+	err = registry.Register(resourceType, v1.OperationPut, func(opts backend_ctrl.Options) (backend_ctrl.Controller, error) {
 		return &BackendFuncController{BaseController: backend_ctrl.NewBaseAsyncController(opts), Func: put}, nil
 	}, backendOpts)
 	require.NoError(t, err)
 
-	err = registry.Register(ctx, resourceType, v1.OperationDelete, func(opts backend_ctrl.Options) (backend_ctrl.Controller, error) {
+	err = registry.Register(resourceType, v1.OperationDelete, func(opts backend_ctrl.Options) (backend_ctrl.Controller, error) {
 		return &BackendFuncController{BaseController: backend_ctrl.NewBaseAsyncController(opts), Func: delete}, nil
 	}, backendOpts)
 	require.NoError(t, err)
@@ -100,8 +100,9 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 	}()
 
 	frontendOpts := frontend_ctrl.Options{
-		DataProvider:  ts.Clients.StorageProvider,
-		StatusManager: statusManager,
+		Address:        "localhost:8080",
+		DatabaseClient: databaseClient,
+		StatusManager:  statusManager,
 	}
 
 	err = server.ConfigureDefaultHandlers(ctx, r, rootScope, false, "System.Test", nil, frontendOpts)

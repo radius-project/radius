@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -48,7 +48,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 	}{
 		{
 			"async-create-new-resource-success",
-			&store.ErrNotFound{},
+			&database.ErrNotFound{},
 			nil,
 			nil,
 			nil,
@@ -57,16 +57,16 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 		},
 		{
 			"async-create-new-resource-concurrency-error",
-			&store.ErrConcurrency{},
+			&database.ErrConcurrency{},
 			nil,
 			nil,
 			nil,
 			http.StatusCreated,
-			&store.ErrConcurrency{},
+			&database.ErrConcurrency{},
 		},
 		{
 			"async-create-new-resource-enqueue-error",
-			&store.ErrNotFound{},
+			&database.ErrNotFound{},
 			nil,
 			errors.New("enqueuer client is unset"),
 			nil,
@@ -95,10 +95,10 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			var asyncOperationRetryAfter = 2*time.Second + 2*time.Millisecond
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
-				Return(&store.Object{}, tt.getErr).
+				Return(&database.Object{}, tt.getErr).
 				Times(1)
 
-			if tt.getErr == nil || errors.Is(&store.ErrNotFound{}, tt.getErr) {
+			if tt.getErr == nil || errors.Is(&database.ErrNotFound{}, tt.getErr) {
 				mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.saveErr).
 					Times(1)
@@ -121,8 +121,8 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
+				DatabaseClient: mds,
+				StatusManager:  msm,
 			}
 
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{
@@ -211,11 +211,11 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			"resource-datamodel.json",
 			nil,
 			false,
-			&store.ErrConcurrency{},
+			&database.ErrConcurrency{},
 			nil,
 			nil,
 			http.StatusInternalServerError,
-			&store.ErrConcurrency{},
+			&database.ErrConcurrency{},
 		},
 		{
 			"async-update-existing-resource-save-error",
@@ -224,11 +224,11 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			"resource-datamodel.json",
 			nil,
 			false,
-			&store.ErrInvalid{Message: "testing initial save err"},
+			&database.ErrInvalid{Message: "testing initial save err"},
 			nil,
 			nil,
 			http.StatusInternalServerError,
-			&store.ErrInvalid{Message: "testing initial save err"},
+			&database.ErrInvalid{Message: "testing initial save err"},
 		},
 		{
 			"async-update-existing-resource-enqueue-error",
@@ -238,10 +238,10 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			nil,
 			false,
 			nil,
-			&store.ErrInvalid{Message: "testing initial save err"},
+			&database.ErrInvalid{Message: "testing initial save err"},
 			nil,
 			http.StatusInternalServerError,
-			&store.ErrInvalid{Message: "testing initial save err"},
+			&database.ErrInvalid{Message: "testing initial save err"},
 		},
 	}
 
@@ -265,8 +265,8 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			ctx := rpctest.NewARMRequestContext(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
-			so := &store.Object{
-				Metadata: store.Metadata{ID: sCtx.ResourceID.String()},
+			so := &database.Object{
+				Metadata: database.Metadata{ID: sCtx.ResourceID.String()},
 				Data:     reqDataModel,
 			}
 
@@ -293,8 +293,8 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
+				DatabaseClient: mds,
+				StatusManager:  msm,
 			}
 
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{

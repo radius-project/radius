@@ -62,8 +62,8 @@ generate-controller-gen-installed:
 .PHONY: generate-ucp-crd
 generate-ucp-crd: generate-controller-gen-installed ## Generates the CRDs for UCP APIServer store.
 	@echo "$(ARROW) Generating CRDs for ucp.dev..."
-	controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/...
-	controller-gen crd paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
+	controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/...
+	controller-gen crd paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
 
 .PHONY: generate-controller
 generate-controller: generate-controller-gen-installed ## Generates the CRDs for the Radius controller.

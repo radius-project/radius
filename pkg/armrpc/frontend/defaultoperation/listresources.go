@@ -23,7 +23,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database"
 )
 
 // ListResources is the controller implementation to get the list of resources in resource group.
@@ -48,13 +48,13 @@ func NewListResources[P interface {
 func (e *ListResources[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	query := store.Query{
+	query := database.Query{
 		RootScope:      serviceCtx.ResourceID.RootScope(),
 		ResourceType:   serviceCtx.ResourceID.Type(),
 		ScopeRecursive: e.listRecursiveQuery,
 	}
 
-	result, err := e.StorageClient().Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
+	result, err := e.DatabaseClient().Query(ctx, query, database.WithPaginationToken(serviceCtx.SkipToken), database.WithMaxQueryItemCount(serviceCtx.Top))
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (e *ListResources[P, T]) Run(ctx context.Context, w http.ResponseWriter, re
 	return rest.NewOKResponse(pagination), err
 }
 
-func (e *ListResources[P, T]) createPaginationResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+func (e *ListResources[P, T]) createPaginationResponse(ctx context.Context, req *http.Request, result *database.ObjectQueryResult) (*v1.PaginatedList, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	items := []any{}

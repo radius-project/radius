@@ -23,8 +23,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/ucp/frontend/api"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +32,7 @@ const (
 )
 
 func Test_Planes_GET_BadAPIVersion(t *testing.T) {
-	ucp := testserver.StartWithMocks(t, api.DefaultModules)
+	ucp := testhost.Start(t)
 
 	response := ucp.MakeRequest(http.MethodGet, "/planes?api-version=unsupported-version", nil)
 	response.EqualsErrorCode(http.StatusBadRequest, v1.CodeInvalidApiVersionParameter)
@@ -41,7 +40,7 @@ func Test_Planes_GET_BadAPIVersion(t *testing.T) {
 }
 
 func Test_Planes_PUT_BadAPIVersion(t *testing.T) {
-	ucp := testserver.StartWithMocks(t, api.DefaultModules)
+	ucp := testhost.Start(t)
 
 	requestBody := v20231001preview.RadiusPlaneResource{
 		Location:   to.Ptr(v1.LocationGlobal),

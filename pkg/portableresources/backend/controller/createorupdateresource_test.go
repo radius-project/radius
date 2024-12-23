@@ -29,6 +29,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -38,7 +39,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 const (
@@ -129,10 +129,10 @@ var newOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-r
 var newOutputResource = rpv1.OutputResource{ID: resources.MustParse(newOutputResourceResourceID)}
 
 func TestCreateOrUpdateResource_Run(t *testing.T) {
-	setupTest := func() (*store.MockStorageClient, *engine.MockEngine, *processors.MockResourceClient, *configloader.MockConfigurationLoader) {
+	setupTest := func() (*database.MockClient, *engine.MockEngine, *processors.MockResourceClient, *configloader.MockConfigurationLoader) {
 		mctrl := gomock.NewController(t)
 
-		msc := store.NewMockStorageClient(mctrl)
+		msc := database.NewMockClient(mctrl)
 		eng := engine.NewMockEngine(mctrl)
 		cfg := configloader.NewMockConfigurationLoader(mctrl)
 		client := processors.NewMockResourceClient(mctrl)
@@ -156,28 +156,28 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
 				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
-			&store.ErrNotFound{ID: TestResourceID},
+			&database.ErrNotFound{ID: TestResourceID},
 			false,
 			nil,
 			nil,
 			nil,
 			nil,
 			nil,
-			&store.ErrNotFound{ID: TestResourceID},
+			&database.ErrNotFound{ID: TestResourceID},
 		},
 		{
 			"get-error",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
 				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
-			&store.ErrInvalid{},
+			&database.ErrInvalid{},
 			false,
 			nil,
 			nil,
 			nil,
 			nil,
 			nil,
-			&store.ErrInvalid{},
+			&database.ErrInvalid{},
 		},
 		{
 			"conversion-failure",
@@ -314,12 +314,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				stillPassing = false
 				msc.EXPECT().
 					Get(gomock.Any(), TestResourceID).
-					Return(&store.Object{Data: nil}, tt.getErr).
+					Return(&database.Object{Data: nil}, tt.getErr).
 					Times(1)
 			} else if stillPassing {
 				msc.EXPECT().
 					Get(gomock.Any(), TestResourceID).
-					Return(&store.Object{Data: data}, nil).
+					Return(&database.Object{Data: data}, nil).
 					Times(1)
 			}
 
@@ -412,7 +412,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: msc,
+				DatabaseClient: msc,
 			}
 
 			recipeCfg := &controllerconfig.RecipeControllerConfig{

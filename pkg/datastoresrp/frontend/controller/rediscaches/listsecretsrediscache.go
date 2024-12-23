@@ -24,10 +24,10 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/portableresources/renderers"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*ListSecretsRedisCache)(nil)
@@ -57,7 +57,7 @@ func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWrite
 	parsedResourceID := sCtx.ResourceID.Truncate()
 	resource, _, err := ctrl.GetResource(ctx, parsedResourceID)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{ID: parsedResourceID.String()}, err) {
+		if errors.Is(&database.ErrNotFound{ID: parsedResourceID.String()}, err) {
 			return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 		}
 		return nil, err

@@ -22,12 +22,11 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/components/database"
 	model "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -38,7 +37,7 @@ const (
 	appNamespace = "app-default"
 )
 
-func fakeStoreObject(dm v1.DataModelInterface) *store.Object {
+func fakeStoreObject(dm v1.DataModelInterface) *database.Object {
 	b, err := json.Marshal(dm)
 	if err != nil {
 		return nil
@@ -48,7 +47,7 @@ func fakeStoreObject(dm v1.DataModelInterface) *store.Object {
 	if err != nil {
 		return nil
 	}
-	return &store.Object{Data: r}
+	return &database.Object{Data: r}
 }
 
 func TestFindNamespaceByEnvID(t *testing.T) {
@@ -87,12 +86,10 @@ func TestFindNamespaceByEnvID(t *testing.T) {
 				},
 			}
 
-			mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
-			mockSC := store.NewMockStorageClient(mctrl)
-
-			mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).Times(1)
+			mockSC := database.NewMockClient(mctrl)
 			mockSC.EXPECT().Get(gomock.Any(), tc.id, gomock.Any()).Return(fakeStoreObject(envdm), nil).Times(1)
-			ns, err := FindNamespaceByEnvID(context.Background(), mockSP, testEnvID)
+
+			ns, err := FindNamespaceByEnvID(context.Background(), mockSC, testEnvID)
 			require.NoError(t, err)
 			require.Equal(t, tc.out, ns)
 		})
