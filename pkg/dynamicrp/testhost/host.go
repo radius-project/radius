@@ -55,6 +55,11 @@ func (f TestHostOptionFunc) Apply(options *dynamicrp.Options) {
 // TestHost provides a test host for the dynamic-rp server.
 type TestHost struct {
 	*testhost.TestHost
+	options *dynamicrp.Options
+}
+
+func (th *TestHost) Options() *dynamicrp.Options {
+	return th.options
 }
 
 func Start(t *testing.T, opts ...TestHostOption) (*TestHost, *ucptesthost.TestHost) {
@@ -124,7 +129,7 @@ func StartWithOptions(t *testing.T, options *dynamicrp.Options) (*TestHost, *ucp
 	require.NoError(t, err, "failed to create server")
 
 	th := testhost.StartHost(t, host, baseURL)
-	return &TestHost{th}, startUCP(t, baseURL, ucpPort)
+	return &TestHost{TestHost: th, options: options}, startUCP(t, baseURL, ucpPort)
 }
 
 func startUCP(t *testing.T, dynamicRPURL string, ucpPort int) *ucptesthost.TestHost {
