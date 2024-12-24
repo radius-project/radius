@@ -17,6 +17,7 @@ limitations under the License.
 package bicep
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -37,7 +38,7 @@ import (
 )
 
 const (
-	resourceGroupRequiredMessage = "ResourceGroup is required. Please provide a value for the --resource-group flag."
+	resourceGroupRequiredMessage = "Radius resource group is required. Please provide a value for the --group (-g) flag."
 )
 
 // NewCommand creates a command for the `rad bicep generate-kubernetes-manifest` command.
@@ -229,12 +230,18 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 
 // createDeploymentTemplateYAMLFile creates a DeploymentTemplate YAML file with the given content.
 func (r *Runner) createDeploymentTemplateYAMLFile(deploymentTemplate map[string]any) error {
-	deploymentTemplateYaml, err := yaml.Marshal(deploymentTemplate)
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+
+	// Set the indentation to 2 spaces
+	encoder.SetIndent(2)
+
+	err := encoder.Encode(deploymentTemplate)
 	if err != nil {
 		return err
 	}
 
-	return r.FileSystem.WriteFile(r.DestinationFile, deploymentTemplateYaml, 0644)
+	return r.FileSystem.WriteFile(r.DestinationFile, buf.Bytes(), 0644)
 }
 
 // generateProviderConfig generates a ProviderConfig object based on the given scopes.

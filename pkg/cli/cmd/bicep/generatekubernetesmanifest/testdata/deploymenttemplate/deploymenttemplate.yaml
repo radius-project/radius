@@ -2,7 +2,6 @@ apiVersion: radapp.io/v1alpha3
 kind: DeploymentTemplate
 metadata:
   name: deploymenttemplate.bicep
-  namespace: radius-system
 spec:
   parameters:
     tag: v1.0.0
