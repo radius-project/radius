@@ -1,14 +1,20 @@
 environment:
-  name: Dev
+  name: "dev"
   roleLocation: "global"
 profilerProvider:
   enabled: true
   port: 6063
 metricsProvider:
+  enabled: true
+  serviceName: "controller"
   prometheus:
-    enabled: true
     path: "/metrics"
     port: 9093
+tracerProvider:
+  enabled: false
+  serviceName: "controller"
+  zipkin:
+    url: "http://localhost:9411/api/v2/spans"
 server:
   host: "0.0.0.0"
   port: 8083

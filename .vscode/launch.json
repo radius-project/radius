@@ -31,13 +31,6 @@
       "mode": "auto",
       "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/applications-rp/main.go",
-      "args": [
-        "--config-file",
-        "${workspaceFolder}/cmd/applications-rp/radius-self-hosted.yaml"
-      ],
-      "env": {
-        "RADIUS_ENV": "self-hosted"
-      }
     },
     {
       "name": "Launch Dynamic RP",
@@ -54,11 +47,6 @@
       "mode": "auto",
       "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/ucpd/main.go",
-      "cwd": "${workspaceFolder}",
-      "args": [
-        "--config-file",
-        "${workspaceFolder}/cmd/ucpd/ucp-dev.yaml"
-      ]
     },
     {
       "name": "Launch Controller",
@@ -67,16 +55,10 @@
       "mode": "auto",
       "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/controller/main.go",
-      "cwd": "${workspaceFolder}",
       "args": [
-        "--config-file",
-        "${workspaceFolder}/cmd/controller/controller-self-hosted.yaml",
         "--cert-dir",
         ""
       ],
-      "env": {
-        "RADIUS_ENV": "self-hosted"
-      }
     },
     {
       "name": "Launch Deployment Engine",

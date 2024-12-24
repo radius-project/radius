@@ -10,7 +10,7 @@
 # - Disables metrics and profiler
 #
 environment:
-  name: Dev
+  name: "dev"
   roleLocation: "global"
 server:
   port: 9000
@@ -69,8 +69,9 @@ routing:
 # port is not the same as metrics configuration in radius-self-hosted.yaml
 # so that we can run both services in debug mode.
 metricsProvider:
+  enabled: false
+  serviceName: "ucp"
   prometheus:
-    enabled: false
     path: "/metrics"
     port: 9091
 
@@ -81,6 +82,7 @@ logging:
 
 # Tracing configuration
 tracerProvider:
+  enabled: false
   serviceName: "ucp"
   zipkin:
     url: "http://localhost:9411/api/v2/spans"

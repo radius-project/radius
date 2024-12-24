@@ -14,18 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package trace
+package metricsservice
 
-// Options represents the trace options.
+// Options represents the options of the providers for publishing metrics.
 type Options struct {
-	// ServiceName represents the name of service.
+	// Enabled is the flag to enable the metrics service.
+	Enabled bool `yaml:"enabled"`
+
+	// ServiceName is the name of the service.
 	ServiceName string `yaml:"serviceName,omitempty"`
-	// Zipkin represents zipkin options.
-	Zipkin *ZipkinOptions `yaml:"zipkin,omitempty"`
+
+	// Prometheus is the options for the prometheus metrics provider.
+	Prometheus *PrometheusOptions `yaml:"prometheus,omitempty"`
 }
 
-// ZipkinOptions represents zipkin trace provider options.
-type ZipkinOptions struct {
-	// URL represents the url of zipkin endpoint.
-	URL string `yaml:"url"`
+// PrometheusOptions represents prometheus metrics provider options.
+type PrometheusOptions struct {
+	// Path is the path where the prometheus metrics are exposed.
+	Path string `yaml:"path"`
+
+	// Address is the address where the prometheus metrics are exposed.
+	Port int `yaml:"port"`
 }

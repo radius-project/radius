@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )

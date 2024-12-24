@@ -21,11 +21,11 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
+	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
-	metricsprovider "github.com/radius-project/radius/pkg/metrics/provider"
-	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
-	"github.com/radius-project/radius/pkg/trace"
+	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"gopkg.in/yaml.v3"
@@ -48,10 +48,10 @@ type Config struct {
 	Logging ucplog.LoggingOptions `yaml:"logging"`
 
 	// Metrics is the configuration for the metrics endpoint.
-	Metrics metricsprovider.MetricsProviderOptions `yaml:"metricsProvider"`
+	Metrics metricsservice.Options `yaml:"metricsProvider"`
 
 	// Profiler is the configuration for the profiler endpoint.
-	Profiler profilerprovider.ProfilerProviderOptions `yaml:"profilerProvider"`
+	Profiler profilerservice.Options `yaml:"profilerProvider"`
 
 	// Queue is the configuration for the message queue.
 	Queue queueprovider.QueueProviderOptions `yaml:"queueProvider"`
@@ -66,7 +66,7 @@ type Config struct {
 	Terraform hostoptions.TerraformOptions `yaml:"terraform"`
 
 	// Tracing is the configuration for the tracing system.
-	Tracing trace.Options `yaml:"tracerProvider"`
+	Tracing traceservice.Options `yaml:"tracerProvider"`
 
 	// UCPConfig is the configuration for the connection to UCP.
 	UCP ucpconfig.UCPOptions `yaml:"ucp"`
