@@ -125,8 +125,8 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 	fileName := "module.bicep"
 	templateFilePath := path.Join("testdata", "module", "module.json")
 	parameters := []string{
-		"name=dt-module",
-		"namespace=dt-ns-module",
+		fmt.Sprintf("name=%s", name),
+		fmt.Sprintf("namespace=%s", namespace),
 	}
 
 	providerConfig, err := generateDefaultProviderConfig()
@@ -195,8 +195,8 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 	parameters := []string{
 		testutil.GetBicepRecipeRegistry(),
 		testutil.GetBicepRecipeVersion(),
-		"name=dt-recipe",
-		"namespace=dt-ns-recipe",
+		fmt.Sprintf("name=%s", name),
+		fmt.Sprintf("namespace=%s", namespace),
 	}
 
 	providerConfig, err := generateDefaultProviderConfig()

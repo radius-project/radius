@@ -41,10 +41,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const (
-	rootFileNameField = "spec.rootFileName"
-)
-
 // DeploymentResourceReconciler reconciles a DeploymentResource object.
 type DeploymentResourceReconciler struct {
 	// Client is the Kubernetes client.
