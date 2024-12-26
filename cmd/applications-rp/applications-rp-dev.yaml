@@ -8,7 +8,7 @@
 # - Disables metrics and profiler
 #
 environment:
-  name: self-hosted
+  name: "dev"
   roleLocation: "global"
 databaseProvider:
   provider: "apiserver"
@@ -24,8 +24,9 @@ queueProvider:
 secretProvider:
   provider: "kubernetes"
 metricsProvider:
+  enabled: false
+  serviceName: applications-rp
   prometheus:
-    enabled: true
     path: "/metrics"
     port: 9092
 profilerProvider:
@@ -49,7 +50,8 @@ logging:
   json: false
 # Tracing configuration
 tracerProvider:
-  serviceName: "applications.core"
+  enabled: false
+  serviceName: applications-rp
   zipkin:
     url: "http://localhost:9411/api/v2/spans"
 bicep:

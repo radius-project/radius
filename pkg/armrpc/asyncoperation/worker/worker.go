@@ -29,10 +29,10 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/queue"
+	"github.com/radius-project/radius/pkg/components/trace"
 	"github.com/radius-project/radius/pkg/logging"
-	"github.com/radius-project/radius/pkg/metrics"
-	"github.com/radius-project/radius/pkg/trace"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 

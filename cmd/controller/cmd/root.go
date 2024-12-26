@@ -28,9 +28,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/components/hosting"
+	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	"github.com/radius-project/radius/pkg/controller"
-	"github.com/radius-project/radius/pkg/trace"
-	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -62,11 +62,15 @@ var rootCmd = &cobra.Command{
 
 		logger.Info("Loaded options", "configfile", configFilePath)
 
-		host := &hosting.Host{Services: []hosting.Service{
-			&trace.Service{Options: options.Config.TracerProvider},
+		services := []hosting.Service{
 			&controller.Service{Options: options, TLSCertDir: tlsCertDir},
-		}}
+		}
 
+		if options.Config.TracerProvider.Enabled {
+			services = append(services, &traceservice.Service{Options: &options.Config.TracerProvider})
+		}
+
+		host := &hosting.Host{Services: services}
 		return hosting.RunWithInterrupts(ctx, host)
 	},
 }

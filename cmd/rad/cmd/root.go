@@ -83,8 +83,11 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/trace"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -145,9 +148,7 @@ func prettyPrintJSON(o any) (string, error) {
 func Execute() error {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 
-	shutdown, err := trace.InitTracer(trace.Options{
-		ServiceName: serviceName,
-	})
+	shutdown, err := initTracer()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return err
@@ -181,6 +182,23 @@ func Execute() error {
 	}
 
 	return nil
+}
+
+func initTracer() (func(context.Context) error, error) {
+	// Intialize the tracer provider
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(serviceName),
+		)),
+	)
+
+	// Set the tracer provider as "global" for the CLI process.
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}))
+
+	return tp.Shutdown, nil
 }
 
 func init() {

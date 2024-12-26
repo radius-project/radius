@@ -21,9 +21,9 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/components/hosting"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
-	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -64,8 +64,8 @@ func (*Service) Name() string {
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	metricsAddr := "0" // Disable metrics
-	if s.Options.Config.MetricsProvider.Prometheus.Enabled {
+	metricsAddr := "0" // Setting the address to 0 will disable the metrics server.
+	if s.Options.Config.MetricsProvider.Enabled {
 		metricsAddr = fmt.Sprintf(":%d", s.Options.Config.MetricsProvider.Prometheus.Port)
 	}
 

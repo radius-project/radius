@@ -26,8 +26,8 @@ import (
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/ucp"
-	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/server"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -75,6 +75,6 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	// Let users override the configuration via `--config-file`.
-	rootCmd.Flags().String("config-file", fmt.Sprintf("radius-%s.yaml", hostoptions.Environment()), "The service configuration file.")
+	rootCmd.Flags().String("config-file", fmt.Sprintf("ucp-%s.yaml", hostoptions.Environment()), "The service configuration file.")
 	cobra.CheckErr(rootCmd.ExecuteContext(context.Background()))
 }
