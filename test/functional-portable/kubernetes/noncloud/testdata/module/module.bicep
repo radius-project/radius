@@ -19,5 +19,6 @@ module module 'module-dependency.bicep' = {
   params: {
     name: name
     envId: env.id
+    namespace: namespace
   }
 }

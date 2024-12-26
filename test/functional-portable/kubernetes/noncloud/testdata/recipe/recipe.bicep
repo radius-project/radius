@@ -28,6 +28,12 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: '${name}-app'
   properties: {
     environment: env.id
+    extensions: [
+      {
+        kind: 'kubernetesNamespace'
+        namespace: namespace
+      }
+    ]
   }
 }
 

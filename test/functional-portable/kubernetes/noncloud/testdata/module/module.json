@@ -4,11 +4,13 @@
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-    "_EXPERIMENTAL_FEATURES_ENABLED": ["Extensibility"],
+    "_EXPERIMENTAL_FEATURES_ENABLED": [
+      "Extensibility"
+    ],
     "_generator": {
       "name": "bicep",
       "version": "0.32.4.45862",
-      "templateHash": "18123004600558185514"
+      "templateHash": "425481402541999124"
     }
   },
   "parameters": {
@@ -55,6 +57,9 @@
           },
           "envId": {
             "value": "[reference('env').id]"
+          },
+          "namespace": {
+            "value": "[parameters('namespace')]"
           }
         },
         "template": {
@@ -63,11 +68,13 @@
           "contentVersion": "1.0.0.0",
           "metadata": {
             "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-            "_EXPERIMENTAL_FEATURES_ENABLED": ["Extensibility"],
+            "_EXPERIMENTAL_FEATURES_ENABLED": [
+              "Extensibility"
+            ],
             "_generator": {
               "name": "bicep",
               "version": "0.32.4.45862",
-              "templateHash": "6618993452395382629"
+              "templateHash": "5602568770499112182"
             }
           },
           "parameters": {
@@ -75,6 +82,9 @@
               "type": "string"
             },
             "envId": {
+              "type": "string"
+            },
+            "namespace": {
               "type": "string"
             }
           },
@@ -91,7 +101,13 @@
               "properties": {
                 "name": "[format('{0}-app', parameters('name'))]",
                 "properties": {
-                  "environment": "[parameters('envId')]"
+                  "environment": "[parameters('envId')]",
+                  "extensions": [
+                    {
+                      "kind": "kubernetesNamespace",
+                      "namespace": "[parameters('namespace')]"
+                    }
+                  ]
                 }
               }
             }
@@ -104,7 +120,9 @@
           }
         }
       },
-      "dependsOn": ["env"]
+      "dependsOn": [
+        "env"
+      ]
     }
   }
 }
