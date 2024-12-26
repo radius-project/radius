@@ -4,9 +4,7 @@
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-    "_EXPERIMENTAL_FEATURES_ENABLED": [
-      "Extensibility"
-    ],
+    "_EXPERIMENTAL_FEATURES_ENABLED": ["Extensibility"],
     "_generator": {
       "name": "bicep",
       "version": "0.32.4.45862",
@@ -71,9 +69,7 @@
           ]
         }
       },
-      "dependsOn": [
-        "env"
-      ]
+      "dependsOn": ["env"]
     },
     "recipe": {
       "import": "Radius",
@@ -85,10 +81,7 @@
           "environment": "[reference('env').id]"
         }
       },
-      "dependsOn": [
-        "app",
-        "env"
-      ]
+      "dependsOn": ["app", "env"]
     }
   }
 }
