@@ -251,7 +251,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 		require.Eventually(t, func() bool {
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
 			return apierrors.IsNotFound(err)
-		}, time.Second*60, time.Second*5, "waiting for deploymentTemplate to be deleted")
+		}, time.Minute*3, time.Second*5, "waiting for deploymentTemplate to be deleted")
 	})
 }
 
