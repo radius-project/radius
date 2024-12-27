@@ -38,6 +38,7 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/retry"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
@@ -74,7 +75,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -126,7 +127,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -165,7 +166,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -211,7 +212,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -287,7 +288,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
 
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -322,4 +323,115 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, expectedResponseObject, actualResponseObject)
+}
+
+func Test_GetAWSResourceWithPost_RetryableError(t *testing.T) {
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+
+	output := cloudformation.DescribeTypeOutput{
+		TypeName: aws.String(testResource.AWSResourceType),
+		Schema:   aws.String(testResource.Schema),
+	}
+
+	testOptions := setupTest(t)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
+
+	getResponseBody := map[string]any{
+		"Name":                 testResource.ResourceName,
+		"RetentionPeriodHours": 178,
+		"ShardCount":           3,
+	}
+	getResponseBodyBytes, err := json.Marshal(getResponseBody)
+	require.NoError(t, err)
+
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		nil, &types.ResourceNotFoundException{
+			Message: aws.String("Resource not found"),
+		}).Times(1)
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.GetResourceOutput{
+			ResourceDescription: &types.ResourceDescription{
+				Identifier: aws.String(testResource.ResourceName),
+				Properties: aws.String(string(getResponseBodyBytes)),
+			},
+		}, nil).Times(1)
+
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+
+	retryer := retry.NewDefaultRetryer()
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retryer)
+	require.NoError(t, err)
+
+	requestBody := map[string]any{
+		"properties": map[string]any{
+			"Name": testResource.ResourceName,
+		},
+	}
+	body, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
+	require.NoError(t, err)
+
+	ctx := rpctest.NewARMRequestContext(request)
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.NoError(t, err)
+
+	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
+		"id":   testResource.SingleResourcePath,
+		"type": testResource.ResourceType,
+		"name": aws.String(testResource.ResourceName),
+		"properties": map[string]any{
+			"Name":                 testResource.ResourceName,
+			"RetentionPeriodHours": float64(178),
+			"ShardCount":           float64(3),
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, expectedResponse, actualResponse)
+}
+
+func Test_GetAWSResourceWithPost_NonRetryableError(t *testing.T) {
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+
+	output := cloudformation.DescribeTypeOutput{
+		TypeName: aws.String(testResource.AWSResourceType),
+		Schema:   aws.String(testResource.Schema),
+	}
+
+	testOptions := setupTest(t)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
+
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
+
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+
+	retryer := retry.NewDefaultRetryer()
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retryer)
+	require.NoError(t, err)
+
+	requestBody := map[string]any{
+		"properties": map[string]any{
+			"Name": testResource.ResourceName,
+		},
+	}
+	body, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
+	require.NoError(t, err)
+
+	ctx := rpctest.NewARMRequestContext(request)
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.Error(t, err)
+
+	require.Nil(t, actualResponse)
+	require.Equal(t, "something bad happened", err.Error())
 }
