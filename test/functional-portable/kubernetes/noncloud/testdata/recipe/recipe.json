@@ -8,7 +8,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.32.4.45862",
-      "templateHash": "428005444297831394"
+      "templateHash": "11540297415417574795"
     }
   },
   "parameters": {
@@ -41,7 +41,7 @@
           "compute": {
             "kind": "kubernetes",
             "resourceId": "self",
-            "namespace": "[parameters('namespace')]"
+            "namespace": "[format('{0}-env', parameters('name'))]"
           },
           "recipes": {
             "Applications.Datastores/redisCaches": {
