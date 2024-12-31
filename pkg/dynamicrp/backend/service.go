@@ -19,7 +19,9 @@ package backend
 import (
 	"context"
 
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
+
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 )
@@ -70,7 +72,7 @@ func (w *Service) Run(ctx context.Context) error {
 	w.Service.QueueClient = queueClient
 	w.Service.OperationStatusManager = w.options.StatusManager
 
-	err = w.registerControllers(ctx)
+	err = w.registerControllers()
 	if err != nil {
 		return err
 	}
@@ -78,7 +80,10 @@ func (w *Service) Run(ctx context.Context) error {
 	return w.Start(ctx)
 }
 
-func (w *Service) registerControllers(ctx context.Context) error {
-	// No controllers yet.
-	return nil
+func (w *Service) registerControllers() error {
+	options := ctrl.Options{
+		DatabaseClient: w.Service.DatabaseClient,
+	}
+
+	return w.Service.Controllers().RegisterDefault(NewDynamicResourceController, options)
 }

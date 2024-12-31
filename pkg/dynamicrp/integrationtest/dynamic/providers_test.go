@@ -42,7 +42,7 @@ const (
 	exampleResourcePlaneID = "/planes/radius/" + radiusPlaneName
 	exampleResourceGroupID = exampleResourcePlaneID + "/resourceGroups/test-group"
 
-	exampleResourceID  = exampleResourceGroupID + "/providers/Applications.Test/exampleResources/" + exampleResourceName
+	exampleResourceID  = exampleResourceGroupID + "/providers/" + resourceProviderNamespace + "/" + resourceTypeName + "/" + exampleResourceName
 	exampleResourceURL = exampleResourceID + "?api-version=" + apiVersion
 )
 
@@ -60,12 +60,61 @@ func Test_Dynamic_Resource_Lifecycle(t *testing.T) {
 	// Setup a resource group where we can interact with the new resource type.
 	createResourceGroup(ucp)
 
-	// We have not yet implemented any functionality for dynamic RP.
+	// Now let's test the basic CRUD operations on the new resource type.
 	//
-	// This is the hello-worldiest of tests. We're just making sure that all
-	// of the infrastructure works.
-	response := ucp.MakeRequest(http.MethodGet, exampleResourceURL, nil)
-	response.EqualsErrorCode(404, "NotFound")
+	// This resource type DOES NOT support recipes, so it's "inert" and doesn't do anything in the backend.
+	resource := map[string]any{
+		"properties": map[string]any{
+			"foo": "bar",
+		},
+		"tags": map[string]string{
+			"costcenter": "12345",
+		},
+	}
+
+	// Create the resource
+	response := ucp.MakeTypedRequest(http.MethodPut, exampleResourceURL, resource)
+	response.WaitForOperationComplete(nil)
+
+	// Now lets verify the resource was created successfully.
+
+	expectedResource := map[string]any{
+		"id":       "/planes/radius/testing/resourcegroups/test-group/providers/Applications.Test/exampleResources/my-example",
+		"location": "global",
+		"name":     "my-example",
+		"properties": map[string]any{
+			"foo":               "bar",
+			"provisioningState": "Succeeded",
+		},
+		"tags": map[string]any{
+			"costcenter": "12345",
+		},
+		"type": "Applications.Test/exampleResources",
+	}
+
+	expectedList := map[string]any{
+		"value": []any{expectedResource},
+	}
+
+	// GET (single)
+	response = ucp.MakeRequest(http.MethodGet, exampleResourceURL, nil)
+	response.EqualsValue(200, expectedResource)
+
+	// GET (list at plane-scope)
+	response = ucp.MakeRequest(http.MethodGet, "/planes/radius/testing/resourcegroups/test-group/providers/Applications.Test/exampleResources"+"?api-version="+apiVersion, nil)
+	response.EqualsValue(200, expectedList)
+
+	// GET (list at resourcegroup-scope)
+	response = ucp.MakeRequest(http.MethodGet, "/planes/radius/testing/providers/Applications.Test/exampleResources"+"?api-version="+apiVersion, nil)
+	response.EqualsValue(200, expectedList)
+
+	// Now lets delete the resource
+	response = ucp.MakeRequest(http.MethodDelete, exampleResourceURL, nil)
+	response.WaitForOperationComplete(nil)
+
+	// Now we should get a 404 when trying to get the resource
+	response = ucp.MakeRequest(http.MethodGet, exampleResourceURL, nil)
+	response.EqualsErrorCode(404, v1.CodeNotFound)
 }
 
 func createRadiusPlane(server *ucptesthost.TestHost) v20231001preview.RadiusPlanesClientCreateOrUpdateResponse {

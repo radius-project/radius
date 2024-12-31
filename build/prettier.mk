@@ -14,16 +14,18 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-.PHONY: prettier-check prettier-format me prettier
+##@ Formatting (of JSON files)
 
 PRETTIER_VERSION := 3.3.3
 
-format-check:
+.PHONY: format-check
+format-check: ## Checks the formatting of JSON files.
 	@echo "$(ARROW) Checking for formatting issues using prettier..."
 	@echo ""
-	@npx prettier@$(PRETTIER_VERSION) --check "*/**/*.{ts,js,mjs,json}"
+	@npx --yes prettier@$(PRETTIER_VERSION) --check "*/**/*.{ts,js,mjs,json}"
 
-format-write:
+.PHONY: format-write
+format-write: ## Updates the formatting of JSON files.
 	@echo "$(ARROW) Reformatting files using prettier..."
 	@echo ""
-	@npx prettier@$(PRETTIER_VERSION) --write "*/**/*.{ts,js,mjs,json}"
+	@npx --yes prettier@$(PRETTIER_VERSION) --write "*/**/*.{ts,js,mjs,json}"
