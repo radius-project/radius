@@ -27,6 +27,9 @@ type ResourceProvider struct {
 
 // ResourceType represents a resource type in a resource provider manifest.
 type ResourceType struct {
+	// Capabilities is a list of capabilities for the resource type.
+	Capabilities []string `yaml:"capabilities" validate:"dive,capability"`
+
 	// DefaultAPIVersion is the default API version for the resource type.
 	DefaultAPIVersion *string `yaml:"defaultApiVersion,omitempty" validate:"omitempty,apiVersion"`
 
@@ -40,7 +43,4 @@ type ResourceTypeAPIVersion struct {
 	// TODO: this allows anything right now, and will be ignored. We'll improve this in
 	// a future pull-request.
 	Schema any `yaml:"schema" validate:"required"`
-
-	// Capabilities is a list of capabilities for the resource type.
-	Capabilities []string `yaml:"capabilities" validate:"dive,capability"`
 }
