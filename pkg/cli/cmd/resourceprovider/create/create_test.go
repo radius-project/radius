@@ -17,22 +17,17 @@ limitations under the License.
 package create
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/common"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -68,101 +63,43 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 	}
+
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
 func Test_Run(t *testing.T) {
 	t.Run("Success: resource provider created", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
 
 		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
 		require.NoError(t, err)
 
-		expectedResourceProvider := v20231001preview.ResourceProviderResource{
-			Location:   to.Ptr(v1.LocationGlobal),
-			Properties: &v20231001preview.ResourceProviderProperties{},
-		}
-		expectedResourceType := v20231001preview.ResourceTypeResource{
-			Properties: &v20231001preview.ResourceTypeProperties{},
-		}
-		expectedAPIVersion := v20231001preview.APIVersionResource{
-			Properties: &v20231001preview.APIVersionProperties{},
-		}
-		expectedLocation := v20231001preview.LocationResource{
-			Properties: &v20231001preview.LocationProperties{
-				ResourceTypes: map[string]*v20231001preview.LocationResourceType{
-					"testResources": {
-						APIVersions: map[string]map[string]any{
-							"2025-01-01-preview": {},
-						},
-					},
-				},
-			},
-		}
+		expectedResourceType := "testResources"
+		expectedAPIVersion := "2025-01-01-preview"
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			CreateOrUpdateResourceProvider(gomock.Any(), "local", "MyCompany.Resources", &expectedResourceProvider).
-			Return(expectedResourceProvider, nil).
-			Times(1)
-		appManagementClient.EXPECT().
-			CreateOrUpdateResourceType(gomock.Any(), "local", "MyCompany.Resources", "testResources", &expectedResourceType).
-			Return(expectedResourceType, nil).
-			Times(1)
-		appManagementClient.EXPECT().
-			CreateOrUpdateAPIVersion(gomock.Any(), "local", "MyCompany.Resources", "testResources", "2025-01-01-preview", &expectedAPIVersion).
-			Return(expectedAPIVersion, nil).
-			Times(1)
-		appManagementClient.EXPECT().
-			CreateOrUpdateLocation(gomock.Any(), "local", "MyCompany.Resources", v1.LocationGlobal, &expectedLocation).
-			Return(expectedLocation, nil).
-			Times(1)
-		appManagementClient.EXPECT().
-			GetResourceProvider(gomock.Any(), "local", "MyCompany.Resources").
-			Return(expectedResourceProvider, nil).
-			Times(1)
+		clientFactory, err := manifest.NewTestClientFactory()
+		require.NoError(t, err)
 
-		outputSink := &output.MockOutput{}
+		var logBuffer bytes.Buffer
+		logger := func(format string, args ...any) {
+			fmt.Fprintf(&logBuffer, format+"\n", args...)
+		}
 
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Output:            outputSink,
-			Workspace:         &workspaces.Workspace{},
-			ResourceProvider:  resourceProviderData,
-			Format:            "table",
+			UCPClientFactory:                 clientFactory,
+			Output:                           &output.MockOutput{},
+			Workspace:                        &workspaces.Workspace{},
+			ResourceProvider:                 resourceProviderData,
+			Format:                           "table",
+			Logger:                           logger,
+			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 		}
 
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expectedOutput := []any{
-			output.LogOutput{
-				Format: "Creating resource provider %s",
-				Params: []any{"MyCompany.Resources"},
-			},
-			output.LogOutput{
-				Format: "Creating resource type %s/%s",
-				Params: []any{"MyCompany.Resources", "testResources"},
-			},
-			output.LogOutput{
-				Format: "Creating API Version %s/%s@%s",
-				Params: []any{"MyCompany.Resources", "testResources", "2025-01-01-preview"},
-			},
-			output.LogOutput{
-				Format: "Creating location %s/%s",
-				Params: []any{"MyCompany.Resources", "global"},
-			},
-			output.LogOutput{
-				Format: "",
-				Params: nil,
-			},
-			output.FormattedOutput{
-				Format:  "table",
-				Obj:     expectedResourceProvider,
-				Options: common.GetResourceProviderTableFormat(),
-			},
-		}
-		require.Equal(t, expectedOutput, outputSink.Writes)
+		logOutput := logBuffer.String()
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource provider %s", resourceProviderData.Name))
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", resourceProviderData.Name, expectedResourceType))
+		require.Contains(t, logOutput, fmt.Sprintf("Creating API Version %s/%s@%s", resourceProviderData.Name, expectedResourceType, expectedAPIVersion))
 	})
-
 }

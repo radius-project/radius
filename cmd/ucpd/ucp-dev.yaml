@@ -52,6 +52,8 @@ initialization:
           Applications.Datastores: "http://localhost:8080"
           Microsoft.Resources: "http://localhost:5017"
         kind: "UCPNative"
+  # This is the directory location which contains manifests to be registered.
+  manifestDirectory: ""      
 
 identity:
   authMethod: default
