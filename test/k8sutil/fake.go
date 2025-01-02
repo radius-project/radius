@@ -19,15 +19,20 @@ package k8sutil
 import (
 	"context"
 
+	openapi_v2 "github.com/google/gnostic-models/openapiv2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/version"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/openapi"
+	"k8s.io/client-go/rest"
 	clienttesting "k8s.io/client-go/testing"
 )
 
@@ -103,6 +108,31 @@ type DiscoveryClient struct {
 	Groups    *metav1.APIGroupList
 	Resources []*metav1.APIResourceList
 	APIGroup  []*metav1.APIGroup
+}
+
+// OpenAPISchema implements discovery.DiscoveryInterface.
+func (d *DiscoveryClient) OpenAPISchema() (*openapi_v2.Document, error) {
+	panic("unimplemented")
+}
+
+// OpenAPIV3 implements discovery.DiscoveryInterface.
+func (d *DiscoveryClient) OpenAPIV3() openapi.Client {
+	panic("unimplemented")
+}
+
+// RESTClient implements discovery.DiscoveryInterface.
+func (d *DiscoveryClient) RESTClient() rest.Interface {
+	panic("unimplemented")
+}
+
+// ServerVersion implements discovery.DiscoveryInterface.
+func (d *DiscoveryClient) ServerVersion() (*version.Info, error) {
+	panic("unimplemented")
+}
+
+// WithLegacy implements discovery.DiscoveryInterface.
+func (d *DiscoveryClient) WithLegacy() discovery.DiscoveryInterface {
+	panic("unimplemented")
 }
 
 // ServerGroups returns a list of API groups supported by the server.

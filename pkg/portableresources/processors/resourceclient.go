@@ -28,6 +28,7 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/trace"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -38,7 +39,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/discovery"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,16 +51,13 @@ type resourceClient struct {
 	// connection is the connection to use for UCP resources. Override this for testing.
 	connection sdk.Connection
 
-	// k8sClient is the Kubernetes client used to delete Kubernetes resources. Override this for testing.
-	k8sClient runtime_client.Client
-
-	// k8sDiscoveryClient is the Kubernetes client to used for API version lookups on Kubernetes resources. Override this for testing.
-	k8sDiscoveryClient discovery.ServerResourcesInterface
+	// kubernetesClient is the Kubernetes client provider used to create Kubernetes clients. Override this for testing.
+	kubernetesClient *kubernetesclientprovider.KubernetesClientProvider
 }
 
 // NewResourceClient creates a new resourceClient instance with the given parameters.
-func NewResourceClient(arm *armauth.ArmConfig, connection sdk.Connection, k8sClient runtime_client.Client, k8sDiscoveryClient discovery.ServerResourcesInterface) *resourceClient {
-	return &resourceClient{arm: arm, connection: connection, k8sClient: k8sClient, k8sDiscoveryClient: k8sDiscoveryClient}
+func NewResourceClient(arm *armauth.ArmConfig, connection sdk.Connection, kubernetesClient *kubernetesclientprovider.KubernetesClientProvider) *resourceClient {
+	return &resourceClient{arm: arm, connection: connection, kubernetesClient: kubernetesClient}
 }
 
 // Delete attempts to delete a resource, either through UCP, Azure, or Kubernetes, depending on the resource type.
@@ -234,7 +231,12 @@ func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resour
 		},
 	}
 
-	err = runtime_client.IgnoreNotFound(c.k8sClient.Delete(ctx, &obj))
+	runtimeClient, err := c.kubernetesClient.RuntimeClient()
+	if err != nil {
+		return err
+	}
+
+	err = runtime_client.IgnoreNotFound(runtimeClient.Delete(ctx, &obj))
 	if err != nil {
 		return err
 	}
@@ -245,14 +247,19 @@ func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resour
 func (c *resourceClient) lookupKubernetesAPIVersion(id resources.ID) (string, error) {
 	group, kind, namespace, _ := resources_kubernetes.ToParts(id)
 	var resourceLists []*v1.APIResourceList
-	var err error
+
+	discoveryClient, err := c.kubernetesClient.DiscoveryClient()
+	if err != nil {
+		return "", err
+	}
+
 	if namespace == "" {
-		resourceLists, err = c.k8sDiscoveryClient.ServerPreferredResources()
+		resourceLists, err = discoveryClient.ServerPreferredResources()
 		if err != nil {
 			return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
 		}
 	} else {
-		resourceLists, err = c.k8sDiscoveryClient.ServerPreferredNamespacedResources()
+		resourceLists, err = discoveryClient.ServerPreferredNamespacedResources()
 		if err != nil {
 			return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
 		}
