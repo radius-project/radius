@@ -26,11 +26,13 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/components/testhost"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/server"
+	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/config"
@@ -71,6 +73,9 @@ func Start(t *testing.T, opts ...TestHostOption) (*TestHost, *ucptesthost.TestHo
 			Name:         "test",
 			RoleLocation: v1.LocationGlobal,
 		},
+		Kubernetes: kubernetesclientprovider.Options{
+			Kind: kubernetesclientprovider.KindNone,
+		},
 		Queue: queueprovider.QueueProviderOptions{
 			Provider: queueprovider.TypeInmemory,
 			Name:     "dynamic-rp",
@@ -91,6 +96,9 @@ func Start(t *testing.T, opts ...TestHostOption) (*TestHost, *ucptesthost.TestHo
 
 	options, err := dynamicrp.NewOptions(context.Background(), config)
 	require.NoError(t, err)
+
+	// Prevent the default recipe drivers from being registered.
+	options.Recipes.Drivers = map[string]func(options *dynamicrp.Options) (driver.Driver, error){}
 
 	for _, opt := range opts {
 		opt.Apply(options)

@@ -21,6 +21,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
@@ -43,6 +44,9 @@ type Config struct {
 
 	// Environment is the configuration for the hosting environment.
 	Environment hostoptions.EnvironmentOptions `yaml:"environment"`
+
+	// Kubernetes is the configuration for the Kubernetes client.
+	Kubernetes kubernetesclientprovider.Options `yaml:"kubernetes"`
 
 	// Logging is the configuration for the logging system.
 	Logging ucplog.LoggingOptions `yaml:"logging"`

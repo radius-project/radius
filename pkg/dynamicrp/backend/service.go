@@ -23,14 +23,14 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 
 	"github.com/radius-project/radius/pkg/dynamicrp"
-	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
+	"github.com/radius-project/radius/pkg/recipes/engine"
 )
 
 // Service runs the backend for the dynamic-rp.
 type Service struct {
 	worker.Service
 	options *dynamicrp.Options
-	recipes *controllerconfig.RecipeControllerConfig
+	recipes engine.Engine
 }
 
 // NewService creates a new service to run the dynamic-rp backend.
@@ -40,7 +40,7 @@ func NewService(options *dynamicrp.Options) *Service {
 		Service: worker.Service{
 			// Will be initialized later
 		},
-		recipes: options.Recipes,
+		recipes: nil, // Will be initialized later
 	}
 }
 
@@ -57,6 +57,13 @@ func (w *Service) Run(ctx context.Context) error {
 	if w.options.Config.Worker.MaxOperationRetryCount != nil {
 		w.Service.Options.MaxOperationRetryCount = *w.options.Config.Worker.MaxOperationRetryCount
 	}
+
+	e, err := w.options.RecipeEngine()
+	if err != nil {
+		return err
+	}
+
+	w.recipes = e
 
 	databaseClient, err := w.options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
