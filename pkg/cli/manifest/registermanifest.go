@@ -161,6 +161,68 @@ func RegisterDirectory(ctx context.Context, clientFactory *v20231001preview.Clie
 	return nil
 }
 
+// RegisterType registers a type specified in a manifest file
+func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, filePath string, typeName string, logger func(format string, args ...any)) error {
+	// Check for valid file path
+	if filePath == "" {
+		return fmt.Errorf("invalid manifest file path")
+	}
+
+	// Read the manifest file
+	resourceProvider, err := ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	// Check if the type exists in the manifest file
+	resourceType, ok := resourceProvider.Types[typeName]
+	if !ok {
+		return fmt.Errorf("type %s not found in manifest file %s", typeName, filePath)
+	}
+
+	logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, typeName)
+	resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, v20231001preview.ResourceTypeResource{
+		Properties: &v20231001preview.ResourceTypeProperties{
+			DefaultAPIVersion: resourceProvider.Types[typeName].DefaultAPIVersion,
+		},
+	}, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = resourceTypePoller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	// get the existing location resource and update it
+	locationResourceGetResponse, err := clientFactory.NewLocationsClient().Get(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, nil)
+	if err != nil {
+		return err
+	}
+
+	locationResource := locationResourceGetResponse.LocationResource
+	locationResource.Properties.ResourceTypes[typeName] = &v20231001preview.LocationResourceType{
+		APIVersions: map[string]map[string]any{
+			*resourceType.DefaultAPIVersion: {},
+		},
+	}
+
+	//set it back to resource provider
+	logIfEnabled(logger, "Updating location %s/%s", resourceProvider.Name, v1.LocationGlobal)
+	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, locationResource, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = locationPoller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Define an optional logger to prevent nil pointer dereference
 func logIfEnabled(logger func(format string, args ...any), format string, args ...any) {
 	if logger != nil {
