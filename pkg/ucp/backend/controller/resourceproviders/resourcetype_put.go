@@ -78,6 +78,7 @@ func (c *ResourceTypePutController) updateSummary(id resources.ID, resourceType 
 			resourceTypeEntry = datamodel.ResourceProviderSummaryPropertiesResourceType{}
 		}
 
+		resourceTypeEntry.Capabilities = resourceType.Properties.Capabilities
 		resourceTypeEntry.DefaultAPIVersion = resourceType.Properties.DefaultAPIVersion
 		summary.Properties.ResourceTypes[resourceTypeName] = resourceTypeEntry
 		return nil

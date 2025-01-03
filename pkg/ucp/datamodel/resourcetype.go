@@ -41,6 +41,9 @@ func (r *ResourceType) ResourceTypeName() string {
 
 // ResourceTypeProperties stores the properties of a resource type.
 type ResourceTypeProperties struct {
+	// Capabilities is the list of capabilities supported by the resource type.
+	Capabilities []string `json:"capabilities,omitempty"`
+
 	// DefaultAPIVersion is the default API version for this resource type.
 	DefaultAPIVersion *string `json:"defaultApiVersion"`
 }

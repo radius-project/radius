@@ -17,6 +17,8 @@ limitations under the License.
 package v20231001preview
 
 import (
+	"fmt"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -39,7 +41,18 @@ func (src *ResourceTypeResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 	}
 
+	capabilities := []string{}
+	for _, capability := range src.Properties.Capabilities {
+		err := validateCapability(capability)
+		if err != nil {
+			return nil, err
+		}
+
+		capabilities = append(capabilities, *capability)
+	}
+
 	dst.Properties = datamodel.ResourceTypeProperties{
+		Capabilities:      capabilities,
 		DefaultAPIVersion: src.Properties.DefaultAPIVersion,
 	}
 
@@ -61,8 +74,21 @@ func (dst *ResourceTypeResource) ConvertFrom(src v1.DataModelInterface) error {
 
 	dst.Properties = &ResourceTypeProperties{
 		ProvisioningState: to.Ptr(ProvisioningState(dm.InternalMetadata.AsyncProvisioningState)),
+		Capabilities:      to.SliceOfPtrs(dm.Properties.Capabilities...),
 		DefaultAPIVersion: dm.Properties.DefaultAPIVersion,
 	}
 
 	return nil
+}
+
+func validateCapability(input *string) error {
+	if input == nil {
+		return v1.NewClientErrInvalidRequest("capability cannot be null")
+	}
+
+	if *input == datamodel.CapabilitySupportsRecipes {
+		return nil
+	}
+
+	return v1.NewClientErrInvalidRequest(fmt.Sprintf("capability %q is not recognized. Supported capabilities: %s", *input, datamodel.CapabilitySupportsRecipes))
 }

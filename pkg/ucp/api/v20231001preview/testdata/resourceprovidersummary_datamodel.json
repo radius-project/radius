@@ -6,6 +6,7 @@
     },
     "resourceTypes": {
       "testResources": {
+        "capabilities": ["SupportsRecipes"],
         "defaultApiVersion": "2025-01-01",
         "apiVersions": {
           "2025-01-01": {}

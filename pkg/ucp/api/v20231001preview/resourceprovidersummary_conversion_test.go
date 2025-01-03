@@ -44,6 +44,7 @@ func Test_ResourceProviderSummary_DataModelToVersioned(t *testing.T) {
 				},
 				ResourceTypes: map[string]*ResourceProviderSummaryResourceType{
 					"testResources": {
+						Capabilities:      []*string{to.Ptr("SupportsRecipes")},
 						DefaultAPIVersion: to.Ptr("2025-01-01"),
 						APIVersions: map[string]map[string]any{
 							"2025-01-01": {},

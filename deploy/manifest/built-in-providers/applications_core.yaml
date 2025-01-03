@@ -4,34 +4,34 @@ types:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: []
+    capabilities: []
   applications:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: []
+    capabilities: []
   environments:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: []
+    capabilities: []
   gateways:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: []
+    capabilities: []
   secretStores:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: []
+    capabilities: []
   extenders:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: ["Recipes"]
+    capabilities: ["SupportsRecipes"]
   volumes:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: []
+    capabilities: []

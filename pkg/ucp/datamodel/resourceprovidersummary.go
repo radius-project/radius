@@ -72,6 +72,9 @@ type ResourceProviderSummaryPropertiesResourceType struct {
 	// DefaultAPIVersion is the default API version for the resource type.
 	DefaultAPIVersion *string `json:"defaultApiVersion,omitempty"`
 
+	// Capabilities is the list of capabilities supported by the resource type.
+	Capabilities []string `json:"capabilities,omitempty"`
+
 	// APIVersions is the list of API versions available for the resource type.
 	APIVersions map[string]ResourceProviderSummaryPropertiesAPIVersion `json:"apiVersions,omitempty"`
 }

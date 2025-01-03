@@ -66,6 +66,7 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, resourceTypeName)
 		resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, resourceTypeName, v20231001preview.ResourceTypeResource{
 			Properties: &v20231001preview.ResourceTypeProperties{
+				Capabilities:      to.SliceOfPtrs(resourceType.Capabilities...),
 				DefaultAPIVersion: resourceType.DefaultAPIVersion,
 			},
 		}, nil)

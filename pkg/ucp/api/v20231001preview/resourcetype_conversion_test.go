@@ -48,6 +48,7 @@ func Test_ResourceType_VersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.ResourceTypeProperties{
+					Capabilities:      []string{"SupportsRecipes"},
 					DefaultAPIVersion: to.Ptr("2025-01-01"),
 				},
 			},
@@ -87,6 +88,7 @@ func Test_ResourceType_DataModelToVersioned(t *testing.T) {
 				Name: to.Ptr("testResources"),
 				Properties: &ResourceTypeProperties{
 					ProvisioningState: to.Ptr(ProvisioningStateSucceeded),
+					Capabilities:      []*string{to.Ptr("SupportsRecipes")},
 					DefaultAPIVersion: to.Ptr("2025-01-01"),
 				},
 			},
@@ -109,6 +111,41 @@ func Test_ResourceType_DataModelToVersioned(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, versioned)
+			}
+		})
+	}
+}
+
+func Test_validateCapability(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       *string
+		expectedErr error
+	}{
+		{
+			name:  "valid capability",
+			input: to.Ptr(datamodel.CapabilitySupportsRecipes),
+		},
+		{
+			name:        "invalid capability",
+			input:       to.Ptr("InvalidCapability"),
+			expectedErr: v1.NewClientErrInvalidRequest("capability \"InvalidCapability\" is not recognized. Supported capabilities: SupportsRecipes"),
+		},
+		{
+			name:        "nil capability",
+			input:       nil,
+			expectedErr: v1.NewClientErrInvalidRequest("capability cannot be null"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCapability(tt.input)
+			if tt.expectedErr != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedErr, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

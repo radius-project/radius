@@ -48,6 +48,7 @@ func (dst *ResourceProviderSummary) ConvertFrom(src v1.DataModelInterface) error
 	dst.ResourceTypes = map[string]*ResourceProviderSummaryResourceType{}
 	for resourceTypeName, resourceType := range dm.Properties.ResourceTypes {
 		dst.ResourceTypes[resourceTypeName] = &ResourceProviderSummaryResourceType{
+			Capabilities:      to.SliceOfPtrs(resourceType.Capabilities...),
 			DefaultAPIVersion: resourceType.DefaultAPIVersion,
 			APIVersions:       map[string]map[string]any{},
 		}

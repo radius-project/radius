@@ -4,6 +4,7 @@
       "id": "/planes/radius/local/providers/System.Resources/resourceproviders/Applications.Test/resourcetypes/testResources",
       "name": "testResources",
       "properties": {
+        "capabilities": ["SupportsRecipes"],
         "defaultApiVersion": "2025-01-01",
         "provisioningState": "Succeeded"
       },
