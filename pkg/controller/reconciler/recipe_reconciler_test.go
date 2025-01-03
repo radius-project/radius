@@ -90,7 +90,7 @@ func Test_RecipeReconciler_WithoutSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -132,7 +132,7 @@ func Test_RecipeReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -146,7 +146,7 @@ func Test_RecipeReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 	status = waitForRecipeStateReady(t, client, name)
 	require.Equal(t, "/planes/radius/local/resourcegroups/default-recipe-change-envapp/providers/Applications.Core/extenders/test-recipe-change-envapp", status.Resource)
 
-	createEnvironment(radius, "new-environment")
+	createEnvironment(radius, "new-environment", "new-environment")
 
 	// Now update the recipe to change the environment and application.
 	err = client.Get(ctx, name, recipe)
@@ -209,7 +209,7 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -275,7 +275,7 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)

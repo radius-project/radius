@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
@@ -69,7 +70,7 @@ When passing multiple parameters in a single file, use the format described here
 	https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
 
 You can specify parameters using multiple sources. Parameters can be overridden based on the 
-order the are provided. Parameters appearing later in the argument list will override those defined earlier.
+order they are provided. Parameters appearing later in the argument list will override those defined earlier.
 `,
 		Example: `
 # deploy a Bicep template
@@ -235,7 +236,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
+	parser := bicep.ParameterParser{FileSystem: filesystem.NewOSFS()}
 	r.Parameters, err = parser.Parse(parameterArgs...)
 	if err != nil {
 		return err

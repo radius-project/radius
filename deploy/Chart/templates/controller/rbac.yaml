@@ -38,6 +38,10 @@ rules:
   resources:
   - recipes
   - recipes/status
+  - deploymenttemplates
+  - deploymenttemplates/status
+  - deploymentresources
+  - deploymentresources/status
   verbs:
   - create
   - delete

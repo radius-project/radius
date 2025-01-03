@@ -47,4 +47,10 @@ const (
 
 	// RecipeFinalizer is the name of the finalizer added to Recipes.
 	RecipeFinalizer = "radapp.io/recipe-finalizer"
+
+	// DeploymentTemplateFinalizer is the name of the finalizer added to DeploymentTemplates.
+	DeploymentTemplateFinalizer = "radapp.io/deployment-template-finalizer"
+
+	// DeploymentResourceFinalizer is the name of the finalizer added to DeploymentResources.
+	DeploymentResourceFinalizer = "radapp.io/deployment-resource-finalizer"
 )

@@ -280,3 +280,22 @@ func createOrUpdateContainer(ctx context.Context, radius RadiusClient, container
 
 	return nil, nil
 }
+
+func generateDeploymentResourceName(resourceId string) (string, error) {
+	id, err := resources.ParseResource(resourceId)
+	if err != nil {
+		return "", err
+	}
+
+	return id.Name(), nil
+}
+
+func convertToARMJSONParameters(parameters map[string]string) map[string]map[string]string {
+	armJSONParameters := make(map[string]map[string]string, len(parameters))
+	for key, value := range parameters {
+		armJSONParameters[key] = map[string]string{
+			"value": value,
+		}
+	}
+	return armJSONParameters
+}
