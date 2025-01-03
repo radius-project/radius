@@ -31,12 +31,16 @@ const (
 	retryDelaySecs = 5
 )
 
+func GetBicepFilePath() (string, error) {
+	return tools.GetLocalFilepath(radBicepEnvVar, binaryName)
+}
+
 // IsBicepInstalled returns true if our local copy of bicep is installed
 //
 
 // IsBicepInstalled checks if the Bicep binary is installed on the local machine and returns a boolean and an error if one occurs.
 func IsBicepInstalled() (bool, error) {
-	filepath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
+	filepath, err := GetBicepFilePath()
 	if err != nil {
 		return false, err
 	}
@@ -53,7 +57,7 @@ func IsBicepInstalled() (bool, error) {
 
 // DeleteBicep cleans our local copy of bicep
 func DeleteBicep() error {
-	filepath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
+	filepath, err := GetBicepFilePath()
 	if err != nil {
 		return err
 	}
@@ -72,7 +76,7 @@ func DeleteBicep() error {
 // DownloadBicep() attempts to download a file from a given URI and save it to a local filepath, retrying up to 10 times if
 // the download fails. If an error occurs, an error is returned.
 func DownloadBicep() error {
-	filepath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
+	filepath, err := GetBicepFilePath()
 	if err != nil {
 		return err
 	}

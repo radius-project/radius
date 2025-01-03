@@ -36,6 +36,7 @@ import (
 	app_show "github.com/radius-project/radius/pkg/cli/cmd/app/show"
 	app_status "github.com/radius-project/radius/pkg/cli/cmd/app/status"
 	bicep_publish "github.com/radius-project/radius/pkg/cli/cmd/bicep/publish"
+	bicep_publishextension "github.com/radius-project/radius/pkg/cli/cmd/bicep/publishextension"
 	credential "github.com/radius-project/radius/pkg/cli/cmd/credential"
 	cmd_deploy "github.com/radius-project/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/radius-project/radius/pkg/cli/cmd/env/create"
@@ -343,6 +344,9 @@ func initSubCommands() {
 
 	bicepPublishCmd, _ := bicep_publish.NewCommand(framework)
 	bicepCmd.AddCommand(bicepPublishCmd)
+
+	bicepPublishExtensionCmd, _ := bicep_publishextension.NewCommand(framework)
+	bicepCmd.AddCommand(bicepPublishExtensionCmd)
 
 	installCmd := install.NewCommand()
 	RootCmd.AddCommand(installCmd)
