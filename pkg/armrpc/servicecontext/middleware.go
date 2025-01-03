@@ -45,7 +45,7 @@ func ARMRequestCtx(pathBase, location string) func(h http.Handler) http.Handler 
 			rpcContext, err := v1.FromARMRequest(r, pathBase, location)
 			if err != nil {
 				resp := rest.NewBadRequestARMResponse(v1.ErrorResponse{
-					Error: v1.ErrorDetails{
+					Error: &v1.ErrorDetails{
 						Code:    v1.CodeInvalid,
 						Message: fmt.Sprintf("unexpected error: %v", err),
 					},

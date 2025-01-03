@@ -110,7 +110,7 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
 
-func (detail DeploymentErrorDetail) Matches(candidate v1.ErrorDetails) bool {
+func (detail DeploymentErrorDetail) Matches(candidate *v1.ErrorDetails) bool {
 	// Successful deployment of this resource. Skip.
 	if candidate.Code == "OK" {
 		return false

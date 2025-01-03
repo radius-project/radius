@@ -37,7 +37,7 @@ func Recoverer(h http.Handler) http.Handler {
 				log.Error(msg, "recovering from panic")
 
 				resp := rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
-					Error: v1.ErrorDetails{
+					Error: &v1.ErrorDetails{
 						Code:    v1.CodeInternal,
 						Message: fmt.Sprintf("unexpected error: %v", err),
 					},

@@ -57,14 +57,14 @@ func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *dat
 		if runtimes.Kubernetes.Base != "" {
 			err := validateBaseManifest([]byte(runtimes.Kubernetes.Base), newResource)
 			if err != nil {
-				return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(v1.ErrorDetails)}), nil
+				return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(*v1.ErrorDetails)}), nil
 			}
 		}
 
 		if runtimes.Kubernetes.Pod != "" {
 			err := validatePodSpec([]byte(runtimes.Kubernetes.Pod))
 			if err != nil {
-				return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(v1.ErrorDetails)}), nil
+				return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(*v1.ErrorDetails)}), nil
 			}
 		}
 	}
@@ -79,7 +79,7 @@ func validatePodSpec(patch []byte) error {
 	podSpec := &corev1.PodSpec{}
 	err := json.Unmarshal(patch, podSpec)
 	if err != nil {
-		return v1.ErrorDetails{
+		return &v1.ErrorDetails{
 			Code:    v1.CodeInvalidRequestContent,
 			Target:  podTargetProperty,
 			Message: fmt.Sprintf("Invalid PodSpec for patching: %s.", err.Error()),
@@ -88,20 +88,20 @@ func validatePodSpec(patch []byte) error {
 	return nil
 }
 
-func errMultipleResources(typeName string, num int) v1.ErrorDetails {
-	return v1.ErrorDetails{
+func errMultipleResources(typeName string, num int) *v1.ErrorDetails {
+	return &v1.ErrorDetails{
 		Code:    v1.CodeInvalidRequestContent,
 		Target:  manifestTargetProperty,
 		Message: fmt.Sprintf("only one %s is allowed, but the manifest includes %d resources.", typeName, num),
 	}
 }
 
-func errUnmatchedName(obj runtime.Object, name string) v1.ErrorDetails {
+func errUnmatchedName(obj runtime.Object, name string) *v1.ErrorDetails {
 	meta := obj.(metav1.ObjectMetaAccessor)
 	typeName := obj.GetObjectKind().GroupVersionKind().Kind
 	resourceName := meta.GetObjectMeta().GetName()
 
-	return v1.ErrorDetails{
+	return &v1.ErrorDetails{
 		Code:    v1.CodeInvalidRequestContent,
 		Target:  manifestTargetProperty,
 		Message: fmt.Sprintf("%s name %s in manifest does not match resource name %s.", typeName, resourceName, name),
@@ -118,11 +118,11 @@ func errUnmatchedName(obj runtime.Object, name string) v1.ErrorDetails {
 // - ConfigMap : 0-N
 // - Secret : 0-N
 func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResource) error {
-	errDetails := []v1.ErrorDetails{}
+	errDetails := []*v1.ErrorDetails{}
 
 	resourceMap, err := kubeutil.ParseManifest(manifest)
 	if err != nil {
-		return v1.ErrorDetails{
+		return &v1.ErrorDetails{
 			Code:    v1.CodeInvalidRequestContent,
 			Target:  manifestTargetProperty,
 			Message: err.Error(),
@@ -135,7 +135,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 		for _, resource := range resources {
 			meta := resource.(metav1.ObjectMetaAccessor)
 			if meta.GetObjectMeta().GetNamespace() != "" {
-				errDetails = append(errDetails, v1.ErrorDetails{
+				errDetails = append(errDetails, &v1.ErrorDetails{
 					Code:    v1.CodeInvalidRequestContent,
 					Target:  manifestTargetProperty,
 					Message: fmt.Sprintf("namespace is not allowed in resources: %s.", meta.GetObjectMeta().GetNamespace()),
@@ -179,7 +179,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 
 			podSA := deployment.(*appsv1.Deployment).Spec.Template.Spec.ServiceAccountName
 			if podSA != sa.Name {
-				errDetails = append(errDetails, v1.ErrorDetails{
+				errDetails = append(errDetails, &v1.ErrorDetails{
 					Code:    v1.CodeInvalidRequestContent,
 					Target:  manifestTargetProperty,
 					Message: fmt.Sprintf("ServiceAccount name %s in PodSpec does not match the name %s in ServiceAccount.", podSA, sa.Name),
@@ -191,7 +191,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 		case corev1.SchemeGroupVersion.WithKind("ConfigMap"):
 
 		default:
-			errDetails = append(errDetails, v1.ErrorDetails{
+			errDetails = append(errDetails, &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  manifestTargetProperty,
 				Message: fmt.Sprintf("%s is not supported.", k),
@@ -200,7 +200,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 	}
 
 	if len(errDetails) > 0 {
-		return v1.ErrorDetails{
+		return &v1.ErrorDetails{
 			Code:    v1.CodeInvalidRequestContent,
 			Target:  manifestTargetProperty,
 			Message: "The manifest includes invalid resources.",

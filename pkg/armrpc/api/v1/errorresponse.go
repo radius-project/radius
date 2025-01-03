@@ -20,20 +20,20 @@ package v1
 
 // ErrorResponse represents an error HTTP response as defined by the ARM API.
 type ErrorResponse struct {
-	Error ErrorDetails `json:"error"`
+	Error *ErrorDetails `json:"error"`
 }
 
 // ErrorDetails represents an error as defined by the ARM API.
 type ErrorDetails struct {
-	Code           string                `json:"code"`
-	Message        string                `json:"message"`
-	Target         string                `json:"target,omitempty"`
-	AdditionalInfo []ErrorAdditionalInfo `json:"additionalInfo,omitempty"`
-	Details        []ErrorDetails        `json:"details,omitempty"`
+	Code           string                 `json:"code"`
+	Message        string                 `json:"message"`
+	Target         string                 `json:"target,omitempty"`
+	AdditionalInfo []*ErrorAdditionalInfo `json:"additionalInfo,omitempty"`
+	Details        []*ErrorDetails        `json:"details,omitempty"`
 }
 
 // Error returns error message in ErrorDetails to implement error interface.
-func (e ErrorDetails) Error() string {
+func (e *ErrorDetails) Error() string {
 	return e.Message
 }
 
