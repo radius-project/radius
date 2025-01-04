@@ -4,19 +4,19 @@ types:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: ["Recipes"]
+    capabilities: ["SupportsRecipes"]
   pubSubBrokers:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: ["Recipes"]
+    capabilities: ["SupportsRecipes"]
   secretStores:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: ["Recipes"]
+    capabilities: ["SupportsRecipes"]
   stateStores:
     apiVersions:
       "2025-01-01-preview":
         schema: {}
-        capabilities: ["Recipes"]
+    capabilities: ["SupportsRecipes"]

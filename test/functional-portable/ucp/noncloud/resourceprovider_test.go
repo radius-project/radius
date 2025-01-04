@@ -51,6 +51,7 @@ func Test_ResourceProviderRegistration(t *testing.T) {
 				"apiVersions": map[string]any{
 					expectedApiVersion: map[string]any{},
 				},
+				"capabilities": []any{"SupportsRecipes"},
 			},
 		},
 	}
