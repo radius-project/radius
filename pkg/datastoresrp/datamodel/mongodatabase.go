@@ -112,17 +112,22 @@ func (r *MongoDatabase) OutputResources() []rpv1.OutputResource {
 }
 
 // ResourceMetadata returns the BasicResourceProperties of the Mongo database instance i.e. application resource metadata.
-func (r *MongoDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
+func (r *MongoDatabase) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
 
 // Recipe returns the ResourceRecipe associated with the Mongo database instance, or nil if the
 // ResourceProvisioning is set to Manual.
-func (r *MongoDatabase) Recipe() *portableresources.ResourceRecipe {
+func (r *MongoDatabase) GetRecipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &r.Properties.Recipe
+}
+
+// SetRecipe sets the recipe information.
+func (r *MongoDatabase) SetRecipe(recipe *portableresources.ResourceRecipe) {
+	r.Properties.Recipe = *recipe
 }
 
 // ResourceTypeName returns the resource type for Mongo database resource.
