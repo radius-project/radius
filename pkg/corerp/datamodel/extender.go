@@ -48,7 +48,7 @@ func (r *Extender) OutputResources() []rpv1.OutputResource {
 }
 
 // ResourceMetadata returns the BasicResourceProperties of the Extender resource.
-func (r *Extender) ResourceMetadata() *rpv1.BasicResourceProperties {
+func (r *Extender) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -59,11 +59,16 @@ func (r *Extender) ResourceTypeName() string {
 
 // Recipe returns the ResourceRecipe associated with the Extender if the ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (r *Extender) Recipe() *portableresources.ResourceRecipe {
+func (r *Extender) GetRecipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &r.Properties.ResourceRecipe
+}
+
+// SetRecipe sets the recipe information.
+func (r *Extender) SetRecipe(recipe *portableresources.ResourceRecipe) {
+	r.Properties.ResourceRecipe = *recipe
 }
 
 // ExtenderProperties represents the properties of Extender resource.
