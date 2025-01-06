@@ -35,16 +35,16 @@ func PrepareRadiusResource[P interface {
 		return nil, nil
 	}
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	oldProp := P(oldResource).ResourceMetadata()
-	newProp := P(newResource).ResourceMetadata()
+	oldScope := P(oldResource).ResourceMetadata()
+	newScope := P(newResource).ResourceMetadata()
 
-	if !oldProp.EqualLinkedResource(newProp) {
-		return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
+	if !rpv1.ScopesEqual(oldScope, newScope) {
+		return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldScope, newScope), nil
 	}
 
 	// Keep outputresource from existing resource since the incoming request hasn't had an outputresource
 	// processed by the backend yet.
-	newProp.Status.DeepCopy(&oldProp.Status)
+	newScope.SetResourceStatus(oldScope.GetResourceStatus().DeepCopy())
 
 	return nil, nil
 }

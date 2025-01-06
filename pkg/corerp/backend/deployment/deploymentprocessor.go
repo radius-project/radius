@@ -118,7 +118,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 
 	c := app.Properties.Status.Compute
 	// Override environment-scope namespace with application-scope kubernetes namespace.
-	if c != nil && c.Kind == rpv1.KubernetesComputeKind {
+	if c.Kind == rpv1.KubernetesComputeKind {
 		envOptions.Namespace = c.KubernetesCompute.Namespace
 	}
 

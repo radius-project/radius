@@ -37,9 +37,6 @@ type RecipeControllerConfig struct {
 	// Kubernetes provides access to the Kubernetes clients.
 	Kubernetes *kubernetesclientprovider.KubernetesClientProvider
 
-	// ResourceClient is a client used by resource processors for interacting with UCP resources.
-	ResourceClient processors.ResourceClient
-
 	// ConfigLoader is the configuration loader.
 	ConfigLoader configloader.ConfigurationLoader
 
@@ -62,7 +59,6 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 
 	cfg.UCPConnection = &options.UCPConnection
 
-	cfg.ResourceClient = processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.Kubernetes)
 	clientOptions := sdk.NewClientOptions(options.UCPConnection)
 
 	cfg.DeploymentEngineClient, err = clients.NewResourceDeploymentsClient(&clients.Options{
@@ -100,7 +96,7 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 			recipes.TemplateKindBicep: driver.NewBicepDriver(
 				clientOptions,
 				cfg.DeploymentEngineClient,
-				cfg.ResourceClient,
+				processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.Kubernetes),
 				driver.BicepOptions{
 					DeleteRetryCount:        bicepDeleteRetryCount,
 					DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,

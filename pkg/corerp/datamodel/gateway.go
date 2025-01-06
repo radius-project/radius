@@ -56,7 +56,7 @@ func (g *Gateway) OutputResources() []rpv1.OutputResource {
 }
 
 // ResourceMetadata returns the BasicResourceProperties of the Gateway instance.
-func (h *Gateway) ResourceMetadata() *rpv1.BasicResourceProperties {
+func (h *Gateway) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &h.Properties.BasicResourceProperties
 }
 
