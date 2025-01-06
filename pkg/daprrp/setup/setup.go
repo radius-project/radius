@@ -53,7 +53,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -63,7 +63,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -86,7 +86,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -96,7 +96,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -119,7 +119,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -129,7 +129,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -152,7 +152,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprConfigurationStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprConfigurationStore, datamodel.DaprConfigurationStore](options, &configurationstores_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprConfigurationStore, datamodel.DaprConfigurationStore](options, &configurationstores_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprConfigurationStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -162,7 +162,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprConfigurationStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprConfigurationStore, datamodel.DaprConfigurationStore](options, &configurationstores_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprConfigurationStore, datamodel.DaprConfigurationStore](options, &configurationstores_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    dapr_ctrl.AsyncCreateOrUpdateDaprConfigurationStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
