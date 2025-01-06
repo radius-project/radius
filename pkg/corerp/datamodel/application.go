@@ -50,7 +50,7 @@ func (c *Application) OutputResources() []rpv1.OutputResource {
 }
 
 // ResourceMetadata returns the BasicResourceProperties of the Application instance.
-func (h *Application) ResourceMetadata() *rpv1.BasicResourceProperties {
+func (h *Application) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &h.Properties.BasicResourceProperties
 }
 
