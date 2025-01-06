@@ -138,8 +138,29 @@ func NewTestClientFactory() (*v20231001preview.ClientFactory, error) {
 
 			return
 		},
+		Get: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			locationName string,
+			options *v20231001preview.LocationsClientGetOptions,
+		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
+			response := v20231001preview.LocationsClientGetResponse{
+				LocationResource: v20231001preview.LocationResource{
+					Name: to.Ptr(locationName),
+					ID:   to.Ptr("id"),
+					Properties: &v20231001preview.LocationProperties{
+						ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, response, nil)
+			return
+		},
 	}
-
+	//func(ctx context.Context, planeName string, resourceProviderName string, locationName string, options *v20231001preview.LocationsClientGetOptions)
+	// (resp "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake".Responder[v20231001preview.LocationsClientGetResponse], errResp "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake".ErrorResponder)
+	//(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, nil)
 	serverFactory := ucpfake.ServerFactory{
 		ResourceProvidersServer: resourceProvidersServer,
 		ResourceTypesServer:     resourceTypesServer,

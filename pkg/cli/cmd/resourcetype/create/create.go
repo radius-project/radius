@@ -19,16 +19,17 @@ package create
 import (
 	"context"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+
 	"github.com/radius-project/radius/pkg/cli"
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
 )
@@ -55,38 +56,39 @@ rad resource-type create myType --from-file /path/to/input.yaml
 # Create a resource type from JSON file
 rad resource-type create myType --from-file /path/to/input.json
 `,
-		Args: cobra.ExactArgs(0),
+		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddFromFileFlagVar(cmd, &runner.ResourceProviderManifestFilePath)
-	_ = cmd.MarkFlagRequired("from-file")
-	_ = cmd.MarkFlagFilename("from-file", "yaml", "json")
 
 	return cmd, runner
 }
 
 // Runner is the Runner implementation for the `rad resourceprovider create` command.
 type Runner struct {
-	ConnectionFactory connections.Factory
-	ConfigHolder      *framework.ConfigHolder
-	Output            output.Interface
-	Format            string
-	Workspace         *workspaces.Workspace
+	UCPClientFactory *v20231001preview.ClientFactory
+	ConfigHolder     *framework.ConfigHolder
+	Output           output.Interface
+	Format           string
+	Workspace        *workspaces.Workspace
 
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
 	ResourceTypeName                 string
+	Logger                           func(format string, args ...any)
 }
 
 // NewRunner creates an instance of the runner for the `rad resourceprovider create` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
+		Logger: func(format string, args ...any) {
+			output.LogInfo(format, args...)
+		},
 	}
 }
 
@@ -126,64 +128,53 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad resourcetype create` command.
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
-	}
-
-	r.Output.LogInfo("Checking resource provider %q exists", r.ResourceProvider.Name)
-	_, err = client.GetResourceProvider(ctx, "local", r.ResourceProvider.Name)
-
-	if clients.Is404Error(err) {
-		return clierrors.Message("Resource Provider %q not found. Please create using `rad resorce-provider create` before creating a resource-type", r.ResourceProvider.Name)
-	} else if err != nil {
-		return err
-	}
-
-	// The location resource contains references to all of the resource types and API versions that the resource provider supports.
-	// We're instantiating the struct here so we can update it as we loop.
-	locationResource := v20231001preview.LocationResource{
-		Properties: &v20231001preview.LocationProperties{
-			ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
-		},
-	}
-
-	resourceType := r.ResourceProvider.Types[r.ResourceTypeName]
-	r.Output.LogInfo("Creating resource type %s/%s", r.ResourceProvider.Name, r.ResourceTypeName)
-	_, err = client.CreateOrUpdateResourceType(ctx, "local", r.ResourceProvider.Name, r.ResourceTypeName, &v20231001preview.ResourceTypeResource{
-		Properties: &v20231001preview.ResourceTypeProperties{
-			DefaultAPIVersion: resourceType.DefaultAPIVersion,
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	locationResourceType := &v20231001preview.LocationResourceType{
-		APIVersions: map[string]map[string]any{},
-	}
-
-	for apiVersionName := range resourceType.APIVersions {
-		r.Output.LogInfo("Creating API Version %s/%s@%s", r.ResourceProvider.Name, r.ResourceTypeName, apiVersionName)
-		_, err := client.CreateOrUpdateAPIVersion(ctx, "local", r.ResourceProvider.Name, r.ResourceTypeName, apiVersionName, &v20231001preview.APIVersionResource{
-			Properties: &v20231001preview.APIVersionProperties{},
-		})
+	// Initialize the client factory if it hasn't been set externally.
+	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
+	if r.UCPClientFactory == nil {
+		err := r.initializeClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
-
-		locationResourceType.APIVersions[apiVersionName] = map[string]any{}
 	}
 
-	locationResource.Properties.ResourceTypes[r.ResourceTypeName] = locationResourceType
+	//response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
+	response, err := r.UCPClientFactory.NewResourceTypesClient().Get(ctx, "local", r.ResourceProvider.Name, r.ResourceTypeName, nil)
+	if err != nil {
+		r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)
+		if err := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
+			return err
+		}
+	} else {
+		r.Output.LogInfo("Resource provider %q found. Registering resource type %q.", r.ResourceProvider.Name, r.ResourceTypeName)
+		if err := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger); err != nil {
+			return err
+		}
+	}
 
-	r.Output.LogInfo("Creating location %s/%s", r.ResourceProvider.Name, v1.LocationGlobal)
-	_, err = client.CreateOrUpdateLocation(ctx, "local", r.ResourceProvider.Name, v1.LocationGlobal, &locationResource)
+	// Add a blank line before printing the result.
+	r.Output.LogInfo("")
+
+	err = r.Output.WriteFormatted(r.Format, response, common.GetResourceTypeTableFormat())
 	if err != nil {
 		return err
 	}
 
-	r.Output.LogInfo("Resource type %s/%s created successfully", r.ResourceProvider.Name, r.ResourceTypeName)
+	return nil
+}
 
+func (r *Runner) initializeClientFactory(ctx context.Context, workspace *workspaces.Workspace) error {
+	connection, err := workspace.Connect(ctx)
+	if err != nil {
+		return err
+	}
+
+	clientOptions := sdk.NewClientOptions(connection)
+
+	clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return err
+	}
+
+	r.UCPClientFactory = clientFactory
 	return nil
 }

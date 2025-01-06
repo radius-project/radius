@@ -201,15 +201,21 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
+	var defaultAPIVersion string
+	if resourceType.DefaultAPIVersion == nil {
+		defaultAPIVersion = "2023-10-01-preview"
+	} else {
+		defaultAPIVersion = *resourceType.DefaultAPIVersion
+	}
 	locationResource := locationResourceGetResponse.LocationResource
 	locationResource.Properties.ResourceTypes[typeName] = &v20231001preview.LocationResourceType{
 		APIVersions: map[string]map[string]any{
-			*resourceType.DefaultAPIVersion: {},
+			defaultAPIVersion: {},
 		},
 	}
 
 	//set it back to resource provider
-	logIfEnabled(logger, "Updating location %s/%s", resourceProvider.Name, v1.LocationGlobal)
+	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Name, v1.LocationGlobal)
 	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, locationResource, nil)
 	if err != nil {
 		return err
@@ -220,6 +226,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
+	logIfEnabled(logger, "Resource type %s/%s created successfully", resourceProvider.Name, typeName)
 	return nil
 }
 
