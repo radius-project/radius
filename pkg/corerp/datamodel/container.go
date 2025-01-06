@@ -54,7 +54,7 @@ func (c *ContainerResource) OutputResources() []rpv1.OutputResource {
 }
 
 // ResourceMetadata returns the BasicResourceProperties of the ContainerResource instance.
-func (h *ContainerResource) ResourceMetadata() *rpv1.BasicResourceProperties {
+func (h *ContainerResource) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &h.Properties.BasicResourceProperties
 }
 

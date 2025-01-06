@@ -52,7 +52,7 @@ func (c *TestResourceDataModel) OutputResources() []rpv1.OutputResource {
 }
 
 // ResourceMetadata returns the application resource metadata.
-func (h *TestResourceDataModel) ResourceMetadata() *rpv1.BasicResourceProperties {
+func (h *TestResourceDataModel) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &h.Properties.BasicResourceProperties
 }
 

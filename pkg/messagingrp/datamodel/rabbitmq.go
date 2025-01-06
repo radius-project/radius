@@ -50,7 +50,7 @@ func (r *RabbitMQQueue) OutputResources() []rpv1.OutputResource {
 }
 
 // ResourceMetadata returns the BasicResourceProperties of the RabbitMQQueue instance.
-func (r *RabbitMQQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
+func (r *RabbitMQQueue) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -87,11 +87,16 @@ func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
 
 // Recipe returns the recipe for the RabbitMQQueue. It gets the ResourceRecipe associated with the RabbitMQQueue instance
 // if the ResourceProvisioning is not set to Manual, otherwise it returns nil.
-func (r *RabbitMQQueue) Recipe() *portableresources.ResourceRecipe {
+func (r *RabbitMQQueue) GetRecipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &r.Properties.Recipe
+}
+
+// SetRecipe sets the recipe information.
+func (r *RabbitMQQueue) SetRecipe(recipe *portableresources.ResourceRecipe) {
+	r.Properties.Recipe = *recipe
 }
 
 // VerifyInputs checks if the queue is provided when resourceProvisioning is set to manual and returns an error if not.
