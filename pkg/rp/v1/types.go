@@ -49,6 +49,28 @@ type BasicResourceProperties struct {
 	Status ResourceStatus `json:"status,omitempty"`
 }
 
+var _ BasicResourcePropertiesAdapter = (*BasicResourceProperties)(nil)
+
+// ApplicationID implements BasicResourcePropertiesAdapter.
+func (b *BasicResourceProperties) ApplicationID() string {
+	return b.Application
+}
+
+// EnvironmentID implements BasicResourcePropertiesAdapter.
+func (b *BasicResourceProperties) EnvironmentID() string {
+	return b.Environment
+}
+
+// GetResourceStatus implements BasicResourcePropertiesAdapter.
+func (b *BasicResourceProperties) GetResourceStatus() ResourceStatus {
+	return b.Status
+}
+
+// SetResourceStatus implements BasicResourcePropertiesAdapter.
+func (b *BasicResourceProperties) SetResourceStatus(status ResourceStatus) {
+	b.Status = status
+}
+
 // DaprComponentMetadataValue is the value of a Dapr Metadata
 type DaprComponentMetadataValue struct {
 	// Plain text value
@@ -71,17 +93,6 @@ type DaprComponentAuth struct {
 	SecretStore string `json:"secretStore,omitempty"`
 }
 
-// Method EqualLinkedResource compares two BasicResourceProperties objects and returns true if their Application and
-// Environment fields are equal (i.e. resource belongs to the same env and app).
-func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {
-	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
-}
-
-// Method IsGlobalScopedResource checks if resource is global scoped.
-func (b *BasicResourceProperties) IsGlobalScopedResource() bool {
-	return b.Application == "" && b.Environment == ""
-}
-
 // ResourceStatus represents the output status of Radius resource.
 type ResourceStatus struct {
 	// Compute represents a resource presented in the underlying platform.
@@ -92,17 +103,19 @@ type ResourceStatus struct {
 	Recipe          *RecipeStatus    `json:"recipe,omitempty"`
 }
 
-// DeepCopy copies the contents of the ResourceStatus struct from in to out.
-func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
-	in.Compute = out.Compute
-	in.OutputResources = out.OutputResources
-	if out.Recipe != nil {
-		in.Recipe = &RecipeStatus{
-			TemplateKind:    out.Recipe.TemplateKind,
-			TemplatePath:    out.Recipe.TemplatePath,
-			TemplateVersion: out.Recipe.TemplateVersion,
+func (original ResourceStatus) DeepCopy() ResourceStatus {
+	// TODO: this isn't really a deep copy. It only deep-copies the RecipeStatus.
+	copy := original
+
+	if original.Recipe != nil {
+		copy.Recipe = &RecipeStatus{
+			TemplateKind:    original.Recipe.TemplateKind,
+			TemplatePath:    original.Recipe.TemplatePath,
+			TemplateVersion: original.Recipe.TemplateVersion,
 		}
 	}
+
+	return copy
 }
 
 // EnvironmentCompute represents the compute resource of Environment.
@@ -132,7 +145,38 @@ type RadiusResourceModel interface {
 	ApplyDeploymentOutput(deploymentOutput DeploymentOutput) error
 	OutputResources() []OutputResource
 
-	ResourceMetadata() *BasicResourceProperties
+	ResourceMetadata() BasicResourcePropertiesAdapter
+}
+
+// ResourceScopePropertiesAdapter is the interface that wraps the resource scope properties (application and environment ids).
+type ResourceScopePropertiesAdapter interface {
+	// ApplicationID returns the resource id of the application.
+	ApplicationID() string
+
+	// EnvironmentID returns the resource id of the environment.
+	EnvironmentID() string
+}
+
+// BasicResourcePropertiesAdapter is the interface that wraps the basic resource properties.
+type BasicResourcePropertiesAdapter interface {
+	ResourceScopePropertiesAdapter
+
+	// GetResourceStatus returns the resource status.
+	GetResourceStatus() ResourceStatus
+
+	// SetResourceStatus sets the resource status.
+	SetResourceStatus(status ResourceStatus)
+}
+
+// ScopesEqual compares two resources and returns true if their Application and
+// Environment fields are equal (i.e. resource belongs to the same env and app).
+func ScopesEqual(a ResourceScopePropertiesAdapter, b ResourceScopePropertiesAdapter) bool {
+	return strings.EqualFold(a.ApplicationID(), b.ApplicationID()) && strings.EqualFold(a.EnvironmentID(), b.EnvironmentID())
+}
+
+// IsGlobalScopedResource checks if resource is global scoped.
+func IsGlobalScopedResource(resource ResourceScopePropertiesAdapter) bool {
+	return resource.ApplicationID() == "" && resource.EnvironmentID() == ""
 }
 
 // DeploymentOutput is the output details of a deployment.
