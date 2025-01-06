@@ -26,6 +26,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
+	"github.com/Masterminds/semver"
 	"github.com/radius-project/radius/pkg/version"
 )
 
@@ -51,7 +52,13 @@ func NewDefaultClusterOptions() ClusterOptions {
 	// If this is an edge build, we'll use the latest available.
 	chartVersion := version.ChartVersion()
 	if !version.IsEdgeChannel() {
-		chartVersion = fmt.Sprintf("~%s", version.ChartVersion())
+		// When the chart version is the final release, we should use the ~ operator to ensure we fetch the latest patch version.
+		// For the pre release or dev builds, we should use the exact version.
+		ver, _ := semver.NewVersion(chartVersion)
+		preRelease := ver.Prerelease()
+		if preRelease == "" {
+			chartVersion = fmt.Sprintf("~%s", version.ChartVersion())
+		}
 	}
 
 	return ClusterOptions{
