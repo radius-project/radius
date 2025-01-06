@@ -94,7 +94,6 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad resourceprovider create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	// Validate command line args and
 	resourceTypeName, err := cli.RequireResourceTypeNameArgs(cmd, args)
 	if err != nil {
 		return err
@@ -137,7 +136,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	//response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
+	// If resource provider does not exist or if there is any other error, first register the resource provider.
 	response, err := r.UCPClientFactory.NewResourceTypesClient().Get(ctx, "local", r.ResourceProvider.Name, r.ResourceTypeName, nil)
 	if err != nil {
 		r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)

@@ -177,7 +177,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 	// Check if the type exists in the manifest file
 	resourceType, ok := resourceProvider.Types[typeName]
 	if !ok {
-		return fmt.Errorf("type %s not found in manifest file %s", typeName, filePath)
+		return fmt.Errorf("Type %s not found in manifest file %s", typeName, filePath)
 	}
 
 	logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, typeName)
@@ -195,7 +195,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
-	// get the existing location resource and update it
+	// get the existing location resource and update it with new resource type. We have to revisit this code once schema is finalized and validated.
 	locationResourceGetResponse, err := clientFactory.NewLocationsClient().Get(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, nil)
 	if err != nil {
 		return err

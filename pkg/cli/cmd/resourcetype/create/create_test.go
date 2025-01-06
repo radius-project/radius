@@ -45,13 +45,13 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
-			Name:          "Invalid: Error in manifest",
-			Input:         []string{"testResources", "--from-file", "testdata/missing-required-field.yaml"},
+			Name:          "Invalid: resource type not present in manifest",
+			Input:         []string{"myResources", "--from-file", "testdata/valid.yaml"},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
-			Name:          "Invalid: missing arguments",
+			Name:          "Invalid: missing resource type as argument",
 			Input:         []string{"--from-file", "testdata/valid.yaml"},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: config},

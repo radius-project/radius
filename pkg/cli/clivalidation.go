@@ -465,7 +465,7 @@ func RequireResourceTypeNameArgs(cmd *cobra.Command, args []string) (string, err
 		return "", err
 	}
 	if resourceType == "" {
-		return "", fmt.Errorf("resource type name is not provided or is empty ")
+		return "", fmt.Errorf("resource type name is not provided or is empty")
 	}
 
 	return resourceType, nil
@@ -474,7 +474,7 @@ func RequireResourceTypeNameArgs(cmd *cobra.Command, args []string) (string, err
 // ReadResourceTypeNameArgs is used to get the resource type name that is supplied as the first argument
 func ReadResourceTypeNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	if len(args) < 1 {
-		return "", errors.New("no resource type name provided")
+		return "", errors.New("resource type name is provided")
 	}
 	return args[0], nil
 }
