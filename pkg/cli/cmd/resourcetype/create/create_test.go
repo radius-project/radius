@@ -63,13 +63,12 @@ func Test_Validate(t *testing.T) {
 
 func Test_Run(t *testing.T) {
 	t.Run("Success: resource type created", func(t *testing.T) {
-
 		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
 		require.NoError(t, err)
 
 		expectedResourceType := "testResources"
 
-		clientFactory, err := manifest.NewTestClientFactory()
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
 		var logBuffer bytes.Buffer
@@ -92,6 +91,39 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		logOutput := logBuffer.String()
+		require.NotContains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
 		require.Contains(t, logOutput, fmt.Sprintf("Resource type %s/%s created successfully", resourceProviderData.Name, expectedResourceType))
 	})
+	// another test for failure
+	t.Run("Resource provider does not exist", func(t *testing.T) {
+		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
+		require.NoError(t, err)
+
+		expectedResourceType := "testResources"
+
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNotFoundError)
+		require.NoError(t, err)
+
+		var logBuffer bytes.Buffer
+		logger := func(format string, args ...any) {
+			fmt.Fprintf(&logBuffer, format+"\n", args...)
+		}
+
+		runner := &Runner{
+			UCPClientFactory:                 clientFactory,
+			Output:                           &output.MockOutput{},
+			Workspace:                        &workspaces.Workspace{},
+			ResourceProvider:                 resourceProviderData,
+			Format:                           "table",
+			Logger:                           logger,
+			ResourceProviderManifestFilePath: "testdata/valid.yaml",
+			ResourceTypeName:                 expectedResourceType,
+		}
+
+		_ = runner.Run(context.Background())
+		logOutput := logBuffer.String()
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
+
+	})
+
 }

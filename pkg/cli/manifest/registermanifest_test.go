@@ -73,7 +73,7 @@ func TestRegisterDirectory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clientFactory, err := NewTestClientFactory()
+			clientFactory, err := NewTestClientFactory(WithResourceProviderServerNoError)
 			require.NoError(t, err)
 
 			err = RegisterDirectory(context.Background(), clientFactory, tt.planeName, tt.directoryPath, nil)
@@ -129,7 +129,7 @@ func TestRegisterFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			clientFactory, err := NewTestClientFactory()
+			clientFactory, err := NewTestClientFactory(WithResourceProviderServerNoError)
 			require.NoError(t, err, "Failed to create client factory")
 
 			var logBuffer bytes.Buffer

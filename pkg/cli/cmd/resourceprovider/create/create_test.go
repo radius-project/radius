@@ -76,7 +76,7 @@ func Test_Run(t *testing.T) {
 		expectedResourceType := "testResources"
 		expectedAPIVersion := "2025-01-01-preview"
 
-		clientFactory, err := manifest.NewTestClientFactory()
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
 		var logBuffer bytes.Buffer

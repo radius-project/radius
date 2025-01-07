@@ -19,8 +19,6 @@ package create
 import (
 	"context"
 
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
-
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
@@ -32,6 +30,8 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
+
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -137,16 +137,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// If resource provider does not exist or if there is any other error, first register the resource provider.
-	response, err := r.UCPClientFactory.NewResourceTypesClient().Get(ctx, "local", r.ResourceProvider.Name, r.ResourceTypeName, nil)
+	response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
 	if err != nil {
 		r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)
-		if err := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
-			return err
+		if registerErr := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
+			return registerErr
 		}
 	} else {
 		r.Output.LogInfo("Resource provider %q found. Registering resource type %q.", r.ResourceProvider.Name, r.ResourceTypeName)
-		if err := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger); err != nil {
-			return err
+		if registerErr := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger); err != nil {
+			return registerErr
 		}
 	}
 

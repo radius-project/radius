@@ -30,8 +30,31 @@ import (
 )
 
 // NewTestClientFactory creates a new client factory for testing purposes.
-func NewTestClientFactory() (*v20231001preview.ClientFactory, error) {
-	// Create fake servers for each client
+func NewTestClientFactory(resourceProvidersServer func() ucpfake.ResourceProvidersServer) (*v20231001preview.ClientFactory, error) {
+	serverFactory := ucpfake.ServerFactory{
+		ResourceProvidersServer: resourceProvidersServer(),
+		ResourceTypesServer:     WithResourceTypeServerNoError(),
+		APIVersionsServer:       WithAPIVersionServerNoError(),
+		LocationsServer:         WithLocationServerNoError(),
+	}
+
+	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
+
+	clientOptions := &armpolicy.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: serverFactoryTransport,
+		},
+	}
+
+	clientFactory, err := v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientFactory, err
+}
+
+func WithResourceProviderServerNoError() ucpfake.ResourceProvidersServer {
 	resourceProvidersServer := ucpfake.ResourceProvidersServer{
 		BeginCreateOrUpdate: func(
 			ctx context.Context,
@@ -64,7 +87,10 @@ func NewTestClientFactory() (*v20231001preview.ClientFactory, error) {
 			return
 		},
 	}
+	return resourceProvidersServer
+}
 
+func WithResourceTypeServerNoError() ucpfake.ResourceTypesServer {
 	resourceTypesServer := ucpfake.ResourceTypesServer{
 		BeginCreateOrUpdate: func(
 			ctx context.Context,
@@ -99,7 +125,10 @@ func NewTestClientFactory() (*v20231001preview.ClientFactory, error) {
 			return
 		},
 	}
+	return resourceTypesServer
+}
 
+func WithAPIVersionServerNoError() ucpfake.APIVersionsServer {
 	apiVersionsServer := ucpfake.APIVersionsServer{
 		BeginCreateOrUpdate: func(
 			ctx context.Context,
@@ -119,7 +148,10 @@ func NewTestClientFactory() (*v20231001preview.ClientFactory, error) {
 			return
 		},
 	}
+	return apiVersionsServer
+}
 
+func WithLocationServerNoError() ucpfake.LocationsServer {
 	locationsServer := ucpfake.LocationsServer{
 		BeginCreateOrUpdate: func(
 			ctx context.Context,
@@ -158,28 +190,41 @@ func NewTestClientFactory() (*v20231001preview.ClientFactory, error) {
 			return
 		},
 	}
-	//func(ctx context.Context, planeName string, resourceProviderName string, locationName string, options *v20231001preview.LocationsClientGetOptions)
-	// (resp "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake".Responder[v20231001preview.LocationsClientGetResponse], errResp "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake".ErrorResponder)
-	//(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, nil)
-	serverFactory := ucpfake.ServerFactory{
-		ResourceProvidersServer: resourceProvidersServer,
-		ResourceTypesServer:     resourceTypesServer,
-		APIVersionsServer:       apiVersionsServer,
-		LocationsServer:         locationsServer,
-	}
+	return locationsServer
+}
 
-	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
+func WithResourceProviderServerNotFoundError() ucpfake.ResourceProvidersServer {
+	resourceProvidersNotFoundServer := ucpfake.ResourceProvidersServer{
+		BeginCreateOrUpdate: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			resource v20231001preview.ResourceProviderResource,
+			options *v20231001preview.ResourceProvidersClientBeginCreateOrUpdateOptions,
+		) (resp azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			// Simulate successful creation
+			result := v20231001preview.ResourceProvidersClientCreateOrUpdateResponse{
+				ResourceProviderResource: resource,
+			}
+			resp.AddNonTerminalResponse(http.StatusCreated, nil)
+			resp.SetTerminalResponse(http.StatusOK, result, nil)
 
-	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
+			return
+		},
+		Get: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			options *v20231001preview.ResourceProvidersClientGetOptions, // Add this parameter
+		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
+			response := v20231001preview.ResourceProvidersClientGetResponse{
+				ResourceProviderResource: v20231001preview.ResourceProviderResource{
+					Name: to.Ptr(resourceProviderName),
+				},
+			}
+			resp.SetResponse(http.StatusNotFound, response, nil)
+			return
 		},
 	}
-
-	clientFactory, err := v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	return clientFactory, err
+	return resourceProvidersNotFoundServer
 }

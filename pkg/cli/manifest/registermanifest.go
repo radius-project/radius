@@ -214,7 +214,6 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		},
 	}
 
-	//set it back to resource provider
 	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Name, v1.LocationGlobal)
 	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, locationResource, nil)
 	if err != nil {
