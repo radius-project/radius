@@ -53,7 +53,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 	chartVersion := version.ChartVersion()
 	if !version.IsEdgeChannel() {
 		// When the chart version is the final release, we should use the ~ operator to ensure we fetch the latest patch version.
-		// For the pre release or dev builds, we should use the exact version.
+		// For the pre release, we should use the exact version.
 		ver, _ := semver.NewVersion(chartVersion)
 		preRelease := ver.Prerelease()
 		if preRelease == "" {
