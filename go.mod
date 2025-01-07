@@ -21,7 +21,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.23.3
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.56.2
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.198.1
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.38.0
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.38.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.3
 	github.com/aws/smithy-go v1.22.1
 	github.com/charmbracelet/bubbles v0.20.0
@@ -32,7 +32,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.18.0
 	github.com/go-chi/chi/v5 v5.2.0
-	github.com/go-git/go-git/v5 v5.13.0
+	github.com/go-git/go-git/v5 v5.13.1
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-openapi/errors v0.22.0
@@ -46,11 +46,12 @@ require (
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/goccy/go-yaml v1.15.13
 	github.com/gofrs/flock v0.12.1
+	github.com/google/gnostic-models v0.6.8
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gosuri/uilive v0.0.4
 	github.com/hashicorp/go-retryablehttp v0.7.7
-	github.com/hashicorp/hc-install v0.9.0
+	github.com/hashicorp/hc-install v0.9.1
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20240607080351-271db412dbcb
 	github.com/hashicorp/terraform-exec v0.21.0
 	github.com/jackc/pgx/v5 v5.7.2
@@ -120,10 +121,9 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
-	github.com/go-git/go-billy/v5 v5.6.0 // indirect
+	github.com/go-git/go-billy/v5 v5.6.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.5 // indirect
@@ -189,7 +189,7 @@ require (
 	github.com/cloudflare/circl v1.3.9 // indirect
 	github.com/containerd/containerd v1.7.24
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
-	github.com/cyphar/filepath-securejoin v0.3.4 // indirect
+	github.com/cyphar/filepath-securejoin v0.3.6 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/docker/cli v26.1.4+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
@@ -289,7 +289,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
-	golang.org/x/mod v0.21.0 // indirect
+	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
