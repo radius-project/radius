@@ -42,13 +42,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "create [input]",
 		Short: "Create or update a resource type",
 		Long: `Create or update a resource type from a resource provider manifest.
-		
-Resource types are user defined types such as  'Mycompany.Messaging/plaid'. 
-
-Creating a resource type defines a new type that can be used in applications. 
-
-Input can be passed in using a JSON or YAML file using the --from-file option.
-`,
+	
+	Resource types are user defined types such as 'Mycompany.Messaging/plaid'.
+	
+	Creating a resource type defines a new type that can be used in applications.
+	
+	Input can be passed in using a JSON or YAML file using the --from-file option.
+	`,
 		Example: `
 # Create a resource type from YAML file
 rad resource-type create myType --from-file /path/to/input.yaml
@@ -67,7 +67,7 @@ rad resource-type create myType --from-file /path/to/input.json
 	return cmd, runner
 }
 
-// Runner is the Runner implementation for the `rad resourceprovider create` command.
+// Runner is the Runner implementation for the `rad resource-type create` command.
 type Runner struct {
 	UCPClientFactory *v20231001preview.ClientFactory
 	ConfigHolder     *framework.ConfigHolder
@@ -81,7 +81,7 @@ type Runner struct {
 	Logger                           func(format string, args ...any)
 }
 
-// NewRunner creates an instance of the runner for the `rad resourceprovider create` command.
+// NewRunner creates an instance of the runner for the `rad resource-type create` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),
@@ -92,7 +92,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad resourceprovider create` command.
+// Validate runs validation for the `rad resource-type create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	resourceTypeName, err := cli.RequireResourceTypeNameArgs(cmd, args)
 	if err != nil {
@@ -125,7 +125,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad resourcetype create` command.
+// Run runs the `rad resource-type create` command.
 func (r *Runner) Run(ctx context.Context) error {
 	// Initialize the client factory if it hasn't been set externally.
 	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
