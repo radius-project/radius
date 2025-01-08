@@ -1,7 +1,10 @@
 name: Applications.Messaging
+locations:
+  global:
+    address: "http://localhost:8080"
 types:
   rabbitMQQueues:
     apiVersions:
-      "2025-01-01-preview":
+      "2023-10-01-preview":
         schema: {}
     capabilities: ["SupportsRecipes"]

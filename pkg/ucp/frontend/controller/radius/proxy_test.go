@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
@@ -68,9 +69,10 @@ func createController(t *testing.T) (*ProxyController, *database.MockClient, *mo
 func Test_Run(t *testing.T) {
 	id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
 
-	// This test covers the legacy (pre-UDT) behavior for looking up the downstream URL. Update
-	// this when the old behavior is removed.
 	resourceTypeID, err := datamodel.ResourceTypeIDFromResourceID(id)
+	require.NoError(t, err)
+
+	locationID, err := datamodel.ResourceProviderLocationIDFromResourceID(id, "global")
 	require.NoError(t, err)
 
 	plane := datamodel.RadiusPlane{
@@ -80,7 +82,42 @@ func Test_Run(t *testing.T) {
 			},
 		},
 	}
-	resourceGroup := datamodel.ResourceGroup{}
+	resourceGroup := &datamodel.ResourceGroup{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID: id.RootScope(),
+			},
+		},
+	}
+
+	resourceTypeResource := &datamodel.ResourceType{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				Name: "testResources",
+				ID:   resourceTypeID.String(),
+			},
+		},
+		Properties: datamodel.ResourceTypeProperties{},
+	}
+
+	locationResource := &datamodel.Location{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				Name: "global",
+				ID:   locationID.String(),
+			},
+		},
+		Properties: datamodel.LocationProperties{
+			Address: to.Ptr("https://localhost:1234"),
+			ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
+				"testResources": {
+					APIVersions: map[string]datamodel.LocationAPIVersionConfiguration{
+						"2025-01-01": {},
+					},
+				},
+			},
+		},
+	}
 
 	t.Run("success (non-tracked)", func(t *testing.T) {
 		p, databaseClient, _, roundTripper, _ := createController(t)
@@ -98,16 +135,20 @@ func Test_Run(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, id.String()+"?api-version="+apiVersion, nil)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
-			Return(nil, &database.ErrNotFound{}).Times(1)
+			Get(gomock.Any(), id.PlaneScope(), gomock.Any()).
+			Return(&database.Object{Data: plane}, nil).Times(1)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), "/planes/"+id.PlaneNamespace(), gomock.Any()).
-			Return(&database.Object{Data: plane}, nil).Times(1)
+			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
+			Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), id.RootScope(), gomock.Any()).
 			Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+
+		databaseClient.EXPECT().
+			Get(gomock.Any(), locationResource.ID).
+			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		downstreamResponse := httptest.NewRecorder()
 		downstreamResponse.WriteHeader(http.StatusOK)
@@ -134,16 +175,20 @@ func Test_Run(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, id.String()+"?api-version="+apiVersion, nil)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
-			Return(nil, &database.ErrNotFound{}).Times(1)
+			Get(gomock.Any(), id.PlaneScope(), gomock.Any()).
+			Return(&database.Object{Data: plane}, nil).Times(1)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), "/planes/"+id.PlaneNamespace(), gomock.Any()).
-			Return(&database.Object{Data: plane}, nil).Times(1)
+			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
+			Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), id.RootScope(), gomock.Any()).
 			Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+
+		databaseClient.EXPECT().
+			Get(gomock.Any(), locationResource.ID).
+			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		downstreamResponse := httptest.NewRecorder()
 		downstreamResponse.WriteHeader(http.StatusOK)
@@ -173,16 +218,20 @@ func Test_Run(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, id.String()+"?api-version="+apiVersion, nil)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
-			Return(nil, &database.ErrNotFound{}).Times(1)
+			Get(gomock.Any(), id.PlaneScope(), gomock.Any()).
+			Return(&database.Object{Data: plane}, nil).Times(1)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), "/planes/"+id.PlaneNamespace(), gomock.Any()).
-			Return(&database.Object{Data: plane}, nil).Times(1)
+			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
+			Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), id.RootScope(), gomock.Any()).
 			Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+
+		databaseClient.EXPECT().
+			Get(gomock.Any(), locationResource.ID).
+			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		// Tracking entry created
 		databaseClient.EXPECT().
@@ -224,16 +273,20 @@ func Test_Run(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, id.String()+"?api-version="+apiVersion, nil)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
-			Return(nil, &database.ErrNotFound{}).Times(1)
+			Get(gomock.Any(), id.PlaneScope(), gomock.Any()).
+			Return(&database.Object{Data: plane}, nil).Times(1)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), "/planes/"+id.PlaneNamespace(), gomock.Any()).
-			Return(&database.Object{Data: plane}, nil).Times(1)
+			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
+			Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), id.RootScope(), gomock.Any()).
 			Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+
+		databaseClient.EXPECT().
+			Get(gomock.Any(), locationResource.ID).
+			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		// Tracking entry created
 		existingEntry := &database.Object{
@@ -343,6 +396,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 		require.Equal(t, "failed to parse downstream URL: parse \"\\ninvalid\": net/url: invalid control character in URL", err.Error())
 		require.Nil(t, proxyReq)
 	})
+
 }
 
 type mockUpdater struct {
