@@ -151,6 +151,6 @@ func Test_Run(t *testing.T) {
 
 		err = runner.Run(context.Background())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "Internal Error")
+		require.Contains(t, err.Error(), "unexpected status code 500.")
 	})
 }
