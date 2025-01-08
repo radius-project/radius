@@ -29,12 +29,10 @@ import (
 
 // RegisterFile registers a manifest file
 func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, filePath string, logger func(format string, args ...any)) error {
-	// Check for valid file path
 	if filePath == "" {
 		return fmt.Errorf("invalid manifest file path")
 	}
 
-	// Read the manifest file
 	resourceProvider, err := ReadFile(filePath)
 	if err != nil {
 		return err
@@ -124,7 +122,6 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 // RegisterDirectory registers all manifest files in a directory
 func RegisterDirectory(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, directoryPath string, logger func(format string, args ...any)) error {
-	// Check for valid directory path
 	if directoryPath == "" {
 		return fmt.Errorf("invalid manifest directory")
 	}
@@ -138,16 +135,14 @@ func RegisterDirectory(ctx context.Context, clientFactory *v20231001preview.Clie
 		return fmt.Errorf("manifest path %s is not a directory", directoryPath)
 	}
 
-	// List all files in the manifestDirectory
 	files, err := os.ReadDir(directoryPath)
 	if err != nil {
 		return err
 	}
 
-	// Iterate over each file in the directory
 	for _, fileInfo := range files {
 		if fileInfo.IsDir() {
-			continue // Skip directories
+			continue
 		}
 		filePath := filepath.Join(directoryPath, fileInfo.Name())
 
@@ -158,6 +153,71 @@ func RegisterDirectory(ctx context.Context, clientFactory *v20231001preview.Clie
 		}
 	}
 
+	return nil
+}
+
+// RegisterType registers a type specified in a manifest file
+func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, filePath string, typeName string, logger func(format string, args ...any)) error {
+	if filePath == "" {
+		return fmt.Errorf("invalid manifest file path")
+	}
+
+	resourceProvider, err := ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	resourceType, ok := resourceProvider.Types[typeName]
+	if !ok {
+		return fmt.Errorf("Type %s not found in manifest file %s", typeName, filePath)
+	}
+
+	logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, typeName)
+	resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, v20231001preview.ResourceTypeResource{
+		Properties: &v20231001preview.ResourceTypeProperties{
+			DefaultAPIVersion: resourceProvider.Types[typeName].DefaultAPIVersion,
+		},
+	}, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = resourceTypePoller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	// get the existing location resource and update it with new resource type. We have to revisit this code once schema is finalized and validated.
+	locationResourceGetResponse, err := clientFactory.NewLocationsClient().Get(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, nil)
+	if err != nil {
+		return err
+	}
+
+	var defaultAPIVersion string
+	if resourceType.DefaultAPIVersion == nil {
+		defaultAPIVersion = v20231001preview.Version //hardcoded for now, since we don't have a default API version in the manifest but it should be made mandatory as part of schema validation
+	} else {
+		defaultAPIVersion = *resourceType.DefaultAPIVersion
+	}
+	locationResource := locationResourceGetResponse.LocationResource
+	locationResource.Properties.ResourceTypes[typeName] = &v20231001preview.LocationResourceType{
+		APIVersions: map[string]map[string]any{
+			defaultAPIVersion: {},
+		},
+	}
+
+	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Name, v1.LocationGlobal)
+	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, locationResource, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = locationPoller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	logIfEnabled(logger, "Resource type %s/%s created successfully", resourceProvider.Name, typeName)
 	return nil
 }
 

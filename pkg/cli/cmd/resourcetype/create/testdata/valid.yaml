@@ -1,0 +1,12 @@
+name: CoolCompany.Resources
+types:
+  testResources:
+    apiVersions:
+      '2023-10-01-preview':
+        schema: {}
+    capabilities: ["Recipes"]
+  coolResources:
+    apiVersions:
+      '2023-10-01-preview':
+        schema: {}
+    capabilities: ["Recipes"]
