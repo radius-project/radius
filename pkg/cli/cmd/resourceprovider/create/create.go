@@ -136,7 +136,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Add a blank line before printing the result.
 	r.Output.LogInfo("")
 
 	err = r.Output.WriteFormatted(r.Format, response, common.GetResourceProviderTableFormat())

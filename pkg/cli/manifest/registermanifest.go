@@ -195,7 +195,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 	var defaultAPIVersion string
 	if resourceType.DefaultAPIVersion == nil {
-		defaultAPIVersion = "2023-10-01-preview" //hardcoded for now, since we don't have a default API version in the manifest but it should be made mandatory as part of schema validation
+		defaultAPIVersion = v20231001preview.Version //hardcoded for now, since we don't have a default API version in the manifest but it should be made mandatory as part of schema validation
 	} else {
 		defaultAPIVersion = *resourceType.DefaultAPIVersion
 	}
