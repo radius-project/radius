@@ -1,0 +1,40 @@
+name: Applications.Core
+locations:
+  global:
+    address: "http://applications-rp.radius-system:5443"
+types:
+  containers:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: []
+  applications:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: []
+  environments:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: []
+  gateways:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: []
+  secretStores:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: []
+  extenders:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: ["Recipes"]
+  volumes:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: []
