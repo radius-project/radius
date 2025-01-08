@@ -94,7 +94,6 @@ func Test_Run(t *testing.T) {
 		require.NotContains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
 		require.Contains(t, logOutput, fmt.Sprintf("Resource type %s/%s created successfully", resourceProviderData.Name, expectedResourceType))
 	})
-	// another test for failure
 	t.Run("Resource provider does not exist", func(t *testing.T) {
 		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
 		require.NoError(t, err)
@@ -125,5 +124,33 @@ func Test_Run(t *testing.T) {
 		require.Contains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
 
 	})
+	t.Run("Get Resource provider Internal Error", func(t *testing.T) {
+		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
+		require.NoError(t, err)
 
+		expectedResourceType := "testResources"
+
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerInternalError)
+		require.NoError(t, err)
+
+		var logBuffer bytes.Buffer
+		logger := func(format string, args ...any) {
+			fmt.Fprintf(&logBuffer, format+"\n", args...)
+		}
+
+		runner := &Runner{
+			UCPClientFactory:                 clientFactory,
+			Output:                           &output.MockOutput{},
+			Workspace:                        &workspaces.Workspace{},
+			ResourceProvider:                 resourceProviderData,
+			Format:                           "table",
+			Logger:                           logger,
+			ResourceProviderManifestFilePath: "testdata/valid.yaml",
+			ResourceTypeName:                 expectedResourceType,
+		}
+
+		err = runner.Run(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Internal Error")
+	})
 }

@@ -18,8 +18,10 @@ package create
 
 import (
 	"context"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
@@ -32,6 +34,10 @@ import (
 	"github.com/spf13/cobra"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+)
+
+const (
+	fakeServerResourceProviderNotFoundResponse = "unexpected status code 404. acceptable values are http.StatusOK"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -136,12 +142,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	// If resource provider does not exist or if there is any other error, first register the resource provider.
 	response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
 	if err != nil {
-		r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)
-		if registerErr := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
-			return registerErr
+		// The second clause is required for testing purpose since fake server returns a different type of error.
+		if clients.Is404Error(err) || strings.Contains(err.Error(), fakeServerResourceProviderNotFoundResponse) {
+			r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)
+			if registerErr := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
+				return registerErr
+			}
+		} else {
+			return err
 		}
 	} else {
 		r.Output.LogInfo("Resource provider %q found. Registering resource type %q.", r.ResourceProvider.Name, r.ResourceTypeName)

@@ -228,3 +228,39 @@ func WithResourceProviderServerNotFoundError() ucpfake.ResourceProvidersServer {
 	}
 	return resourceProvidersNotFoundServer
 }
+
+func WithResourceProviderServerInternalError() ucpfake.ResourceProvidersServer {
+	resourceProvidersServerInternalError := ucpfake.ResourceProvidersServer{
+		BeginCreateOrUpdate: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			resource v20231001preview.ResourceProviderResource,
+			options *v20231001preview.ResourceProvidersClientBeginCreateOrUpdateOptions,
+		) (resp azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			// Simulate successful creation
+			result := v20231001preview.ResourceProvidersClientCreateOrUpdateResponse{
+				ResourceProviderResource: resource,
+			}
+			resp.AddNonTerminalResponse(http.StatusCreated, nil)
+			resp.SetTerminalResponse(http.StatusOK, result, nil)
+
+			return
+		},
+		Get: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			options *v20231001preview.ResourceProvidersClientGetOptions, // Add this parameter
+		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
+			response := v20231001preview.ResourceProvidersClientGetResponse{
+				ResourceProviderResource: v20231001preview.ResourceProviderResource{
+					Name: to.Ptr(resourceProviderName),
+				},
+			}
+			resp.SetResponse(http.StatusInternalServerError, response, nil)
+			return
+		},
+	}
+	return resourceProvidersServerInternalError
+}

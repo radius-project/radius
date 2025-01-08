@@ -29,12 +29,10 @@ import (
 
 // RegisterFile registers a manifest file
 func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, filePath string, logger func(format string, args ...any)) error {
-	// Check for valid file path
 	if filePath == "" {
 		return fmt.Errorf("invalid manifest file path")
 	}
 
-	// Read the manifest file
 	resourceProvider, err := ReadFile(filePath)
 	if err != nil {
 		return err
@@ -124,7 +122,6 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 // RegisterDirectory registers all manifest files in a directory
 func RegisterDirectory(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, directoryPath string, logger func(format string, args ...any)) error {
-	// Check for valid directory path
 	if directoryPath == "" {
 		return fmt.Errorf("invalid manifest directory")
 	}
@@ -138,16 +135,14 @@ func RegisterDirectory(ctx context.Context, clientFactory *v20231001preview.Clie
 		return fmt.Errorf("manifest path %s is not a directory", directoryPath)
 	}
 
-	// List all files in the manifestDirectory
 	files, err := os.ReadDir(directoryPath)
 	if err != nil {
 		return err
 	}
 
-	// Iterate over each file in the directory
 	for _, fileInfo := range files {
 		if fileInfo.IsDir() {
-			continue // Skip directories
+			continue
 		}
 		filePath := filepath.Join(directoryPath, fileInfo.Name())
 
@@ -163,18 +158,15 @@ func RegisterDirectory(ctx context.Context, clientFactory *v20231001preview.Clie
 
 // RegisterType registers a type specified in a manifest file
 func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, filePath string, typeName string, logger func(format string, args ...any)) error {
-	// Check for valid file path
 	if filePath == "" {
 		return fmt.Errorf("invalid manifest file path")
 	}
 
-	// Read the manifest file
 	resourceProvider, err := ReadFile(filePath)
 	if err != nil {
 		return err
 	}
 
-	// Check if the type exists in the manifest file
 	resourceType, ok := resourceProvider.Types[typeName]
 	if !ok {
 		return fmt.Errorf("Type %s not found in manifest file %s", typeName, filePath)
@@ -203,7 +195,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 	var defaultAPIVersion string
 	if resourceType.DefaultAPIVersion == nil {
-		defaultAPIVersion = "2023-10-01-preview"
+		defaultAPIVersion = "2023-10-01-preview" //hardcoded for now, since we don't have a default API version in the manifest but it should be made mandatory as part of schema validation
 	} else {
 		defaultAPIVersion = *resourceType.DefaultAPIVersion
 	}
