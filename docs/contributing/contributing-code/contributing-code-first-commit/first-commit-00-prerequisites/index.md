@@ -17,9 +17,9 @@ On our supported OSes using a package manager to install these dependencies is a
 
 ## Required installs
 
-We recommend the usage of either GitHub Codespaces or dev containers to setup your development environment. Here are the links that provide more details:
+We recommend the usage of either dev containers to setup your development environment. Here are the links that provide more details:
 
-- [Getting started - GitHub Codespaces](../contributing-code-prerequisites/README.md#github-codespaces)
+<!-- - [Getting started - GitHub Codespaces](../contributing-code-prerequisites/README.md#github-codespaces) -->
 - [Getting started - Dev Containers](../contributing-code-prerequisites/README.md#vs-code-and-dev-container)
 
 However, you can also install all tools locally. This is the list of core dependencies to install for the most common tasks. In general we expect all contributors to have all of these tools present:
