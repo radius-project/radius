@@ -65,7 +65,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "Build Deployment Engine",
-      "program": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine/bin/Debug/net6.0/arm-de.dll",
+      "program": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine/bin/Debug/net8.0/arm-de.dll",
       "args": [],
       "cwd": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine",
       "stopAtEntry": false,
