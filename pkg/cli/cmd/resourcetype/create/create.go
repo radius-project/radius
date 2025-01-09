@@ -18,11 +18,13 @@ package create
 
 import (
 	"context"
+	"strings"
 
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/common"
+	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -30,44 +32,48 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
+
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
 
-// NewCommand creates an instance of the `rad resource-provider create` command and runner.
+const (
+	fakeServerResourceProviderNotFoundResponse = "unexpected status code 404. acceptable values are http.StatusOK"
+)
+
+// NewCommand creates an instance of the `rad resource-type create` command and runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
 		Use:   "create [input]",
-		Short: "Create or update a resource provider",
-		Long: `Create or update a resource provider
-		
-Resource providers are the entities that implement resource types such as 'Applications.Core/containers'. Resource providers can be defined, registered, and unregistered by users.
-
-Creating a resource provider defines new resource types that can be used in applications.
-
-Input can be passed in using a JSON or YAML file using the --from-file option.
-`,
+		Short: "Create or update a resource type",
+		Long: `Create or update a resource type from a resource provider manifest.
+	
+	Resource types are user defined types such as 'Mycompany.Messaging/plaid'.
+	
+	Creating a resource type defines a new type that can be used in applications.
+	
+	Input can be passed in using a JSON or YAML file using the --from-file option.
+	`,
 		Example: `
-# Create a resource provider from YAML file
-rad resource-provider create --from-file /path/to/input.yaml
+# Create a resource type from YAML file
+rad resource-type create myType --from-file /path/to/input.yaml
 
-# Create a resource provider from JSON file
-rad resource-provider create --from-file /path/to/input.json
+# Create a resource type from JSON file
+rad resource-type create myType --from-file /path/to/input.json
 `,
-		Args: cobra.ExactArgs(0),
+		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddFromFileFlagVar(cmd, &runner.ResourceProviderManifestFilePath)
-	_ = cmd.MarkFlagRequired("from-file")
-	_ = cmd.MarkFlagFilename("from-file", "yaml", "json")
 
 	return cmd, runner
 }
 
-// Runner is the Runner implementation for the `rad resource-provider create` command.
+// Runner is the Runner implementation for the `rad resource-type create` command.
 type Runner struct {
 	UCPClientFactory *v20231001preview.ClientFactory
 	ConfigHolder     *framework.ConfigHolder
@@ -77,24 +83,29 @@ type Runner struct {
 
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
+	ResourceTypeName                 string
 	Logger                           func(format string, args ...any)
 }
 
-// NewRunner creates an instance of the runner for the `rad resource-provider create` command.
+// NewRunner creates an instance of the runner for the `rad resource-type create` command.
 func NewRunner(factory framework.Factory) *Runner {
-	output := factory.GetOutput()
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),
-		Output:       output,
+		Output:       factory.GetOutput(),
 		Logger: func(format string, args ...any) {
 			output.LogInfo(format, args...)
 		},
 	}
 }
 
-// Validate runs validation for the `rad resource-provider create` command.
+// Validate runs validation for the `rad resource-type create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	// Validate command line args and
+	resourceTypeName, err := cli.RequireResourceTypeNameArgs(cmd, args)
+	if err != nil {
+		return err
+	}
+	r.ResourceTypeName = resourceTypeName
+
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
@@ -112,10 +123,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	resourcesTypes := r.ResourceProvider.Types
+	if _, ok := resourcesTypes[r.ResourceTypeName]; !ok {
+		return clierrors.Message("Resource type %q not found in the manifest", r.ResourceTypeName)
+	}
+
 	return nil
 }
 
-// Run runs the `rad resource-provider create` command.
+// Run runs the `rad resource-type create` command.
 func (r *Runner) Run(ctx context.Context) error {
 	// Initialize the client factory if it hasn't been set externally.
 	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
@@ -126,19 +142,27 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	// Proceed with registering manifests
-	if err := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
-		return err
-	}
-
 	response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
 	if err != nil {
-		return err
+		// The second clause is required for testing purpose since fake server returns a different type of error.
+		if clients.Is404Error(err) || strings.Contains(err.Error(), fakeServerResourceProviderNotFoundResponse) {
+			r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)
+			if registerErr := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
+				return registerErr
+			}
+		} else {
+			return err
+		}
+	} else {
+		r.Output.LogInfo("Resource provider %q found. Registering resource type %q.", r.ResourceProvider.Name, r.ResourceTypeName)
+		if registerErr := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger); err != nil {
+			return registerErr
+		}
 	}
 
 	r.Output.LogInfo("")
 
-	err = r.Output.WriteFormatted(r.Format, response, common.GetResourceProviderTableFormat())
+	err = r.Output.WriteFormatted(r.Format, response, common.GetResourceTypeTableFormat())
 	if err != nil {
 		return err
 	}
