@@ -17,7 +17,7 @@ On our supported OSes using a package manager to install these dependencies is a
 
 ## Required installs
 
-We recommend the usage of either dev containers to setup your development environment. Here are the links that provide more details:
+We recommend the usage of dev containers to setup your development environment. Here are the links that provide more details:
 
 <!-- - [Getting started - GitHub Codespaces](../contributing-code-prerequisites/README.md#github-codespaces) -->
 - [Getting started - Dev Containers](../contributing-code-prerequisites/README.md#vs-code-and-dev-container)

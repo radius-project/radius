@@ -22,7 +22,7 @@ If you get stuck with any development setup option, please ask for help in our [
 
 ## Development environment - setup options
 
-The following sections describe the aforementioned alternatives of development setups in more detail. We recommend to use of _dev containers_ in VS Code as they are the most convenient way to get started.
+The following sections describe the aforementioned alternatives of development setups in more detail. We recommend use of _dev containers_ in VS Code as they are the most convenient way to get started.
 
 <!-- ### GitHub Codespaces
 
