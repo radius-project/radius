@@ -29,7 +29,7 @@ If you need to manually test APIs you can reach them at the following endpoints 
 1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data.
 2. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other.
 3. Run `git submodule update --init` in the `deployment-engine` repo.
-4. Install .NET 6.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/6.0>.
+4. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
 5. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
 6. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
   
@@ -161,7 +161,7 @@ dotnet --list-runtimes
 dotnet --list-sdks
 ```
 
-Make sure you see a `6.0` entry in `--list-runtimes` for `Microsoft.AspNetCore.App` and a `6.0` or newer entry for `--list-sdks`.
+Make sure you see a `8.0` entry in `--list-runtimes` for `Microsoft.AspNetCore.App` and a `8.0` or newer entry for `--list-sdks`.
 
 If you run into issues here, please re-read the prerequisites related to installing .NET.
 
