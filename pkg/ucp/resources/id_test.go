@@ -1228,3 +1228,12 @@ func Test_ParseProviderScope(t *testing.T) {
 		})
 	}
 }
+
+// Fuzz testing function for resource IDs to ensure user input is handled correctly.
+func Fuzz_ResourceIDs(f *testing.F) {
+	f.Add("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0")
+	f.Fuzz(func(t *testing.T, id string) {
+		_, _ = Parse(id)
+
+	})
+}
