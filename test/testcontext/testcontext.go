@@ -18,6 +18,7 @@ package testcontext
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -48,12 +49,60 @@ func Wrap(t *testing.T, ctx context.Context) (context.Context, context.CancelFun
 		ctx = context.Background()
 	}
 
+	// See comments on testSink for why we need this.
+	wrapper := &testSink{wrapped: t}
+	t.Cleanup(wrapper.Stop)
+
 	// Setting verbosity so that everything gets logged.
-	ctx = logr.NewContext(ctx, testr.NewWithOptions(t, testr.Options{LogTimestamp: true, Verbosity: 10000}))
+	ctx = logr.NewContext(ctx, testr.NewWithInterface(wrapper, testr.Options{LogTimestamp: true, Verbosity: 10000}))
 	deadline, ok := t.Deadline()
 	if ok {
 		return context.WithDeadline(ctx, deadline)
 	} else {
 		return context.WithCancel(ctx)
+	}
+}
+
+// testSink wraps testing.T for logging purposes.
+//
+// This type exists to work around an intentional limitation of testing.T.Log. It's not allowed to log after
+// the test completes.
+//
+// Unfortunately that's not always viable for us given the amount of async processing we do in Radius.
+//
+// This type can hook onto testing.T.Cleanup and no-op all logging when the test completes.
+type testSink struct {
+	wrapped *testing.T
+	mutex   sync.Mutex
+	stopped bool
+}
+
+var _ testr.TestingT = (*testSink)(nil)
+
+// Stop is called when the test terminates, this will disable logging.
+func (t *testSink) Stop() {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	t.stopped = true
+}
+
+// Helper implements testr.TestingT.
+func (t *testSink) Helper() {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if !t.stopped {
+		t.wrapped.Helper()
+	}
+}
+
+// Log implements testr.TestingT.
+func (t *testSink) Log(args ...any) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if !t.stopped {
+		t.wrapped.Log(args...)
 	}
 }
