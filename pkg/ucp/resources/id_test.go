@@ -1228,3 +1228,11 @@ func Test_ParseProviderScope(t *testing.T) {
 		})
 	}
 }
+
+func Fuzz_ResourceIDS(f *testing.F) {
+	f.Add("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0")
+	f.Fuzz(func(t *testing.T, id string) {
+		_, _ = Parse(id)
+
+	})
+}
