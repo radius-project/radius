@@ -30,10 +30,6 @@ type DeploymentTemplateSpec struct {
 
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
-
-	// RootFileName is the name of the Bicep file that
-	// `bicep build` is run on.
-	RootFileName string `json:"rootFileName,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of DeploymentTemplate
@@ -41,18 +37,8 @@ type DeploymentTemplateStatus struct {
 	// ObservedGeneration is the most recent generation observed for this DeploymentTemplate.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`
 
-	// Template is the ARM JSON manifest that defines the resources to deploy.
-	Template string `json:"template,omitempty"`
-
-	// Parameters is the ARM JSON parameters for the template.
-	Parameters string `json:"parameters,omitempty"`
-
-	// ProviderConfig specifies the scope for resources
-	ProviderConfig string `json:"providerConfig,omitempty"`
-
-	// RootFileName is the name of the Bicep file that
-	// `bicep build` is run on.
-	RootFileName string `json:"rootFileName,omitempty"`
+	// StatusHash is a hash of the DeploymentTemplate's status.
+	StatusHash string `json:"statusHash,omitempty"`
 
 	// Resource is the resource id of the deployment.
 	Resource string `json:"resource,omitempty"`
@@ -92,9 +78,8 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories={"all","radius"}
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase",description="Status of the resource"
-// +kubebuilder:printcolumn:name="RootFileName",type="string",JSONPath=".status.rootFileName",description="Name of the Bicep file that bicep build is run on"
+// +kubebuilder:resource:categories={"all","radius"}
 
 // DeploymentTemplate is the Schema for the deploymenttemplates API
 type DeploymentTemplate struct {

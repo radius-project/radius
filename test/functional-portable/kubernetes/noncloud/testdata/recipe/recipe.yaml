@@ -1,10 +1,9 @@
 apiVersion: radapp.io/v1alpha3
 kind: DeploymentTemplate
 metadata:
-  name: deploymenttemplate.bicep
+  name: recipe.bicep
 spec:
-  parameters:
-    tag: v1.0.0
+  parameters: {}
   providerConfig: |-
     {
       "radius": {
@@ -38,42 +37,80 @@ spec:
         "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
         "_generator": {
           "name": "bicep",
-          "templateHash": "16344337442844554850",
-          "version": "0.32.4.45862"
+          "templateHash": "7805117482855564",
+          "version": "0.31.92.45157"
         }
       },
       "parameters": {
-        "kubernetesNamespace": {
-          "defaultValue": "default",
+        "name": {
           "type": "string"
         },
-        "tag": {
-          "defaultValue": "latest",
+        "namespace": {
+          "type": "string"
+        },
+        "registry": {
+          "type": "string"
+        },
+        "version": {
           "type": "string"
         }
       },
       "resources": {
-        "parameters": {
+        "app": {
+          "dependsOn": [
+            "env"
+          ],
           "import": "Radius",
           "properties": {
-            "name": "parameters",
+            "name": "[format('{0}-app', parameters('name'))]",
+            "properties": {
+              "environment": "[reference('env').id]",
+              "extensions": [
+                {
+                  "kind": "kubernetesNamespace",
+                  "namespace": "[parameters('namespace')]"
+                }
+              ]
+            }
+          },
+          "type": "Applications.Core/applications@2023-10-01-preview"
+        },
+        "env": {
+          "import": "Radius",
+          "properties": {
+            "name": "[format('{0}-env', parameters('name'))]",
             "properties": {
               "compute": {
                 "kind": "kubernetes",
-                "namespace": "[parameters('kubernetesNamespace')]",
+                "namespace": "[format('{0}-env', parameters('name'))]",
                 "resourceId": "self"
               },
               "recipes": {
                 "Applications.Datastores/redisCaches": {
                   "default": {
                     "templateKind": "bicep",
-                    "templatePath": "[format('ghcr.io/myregistry:{0}', parameters('tag'))]"
+                    "templatePath": "[format('{0}/test/testrecipes/test-bicep-recipes/redis-recipe-value-backed:{1}', parameters('registry'), parameters('version'))]"
                   }
                 }
               }
             }
           },
           "type": "Applications.Core/environments@2023-10-01-preview"
+        },
+        "recipe": {
+          "dependsOn": [
+            "app",
+            "env"
+          ],
+          "import": "Radius",
+          "properties": {
+            "name": "[format('{0}-recipe', parameters('name'))]",
+            "properties": {
+              "application": "[reference('app').id]",
+              "environment": "[reference('env').id]"
+            }
+          },
+          "type": "Applications.Datastores/redisCaches@2023-10-01-preview"
         }
       }
     }

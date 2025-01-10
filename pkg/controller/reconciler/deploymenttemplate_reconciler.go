@@ -18,6 +18,8 @@ package reconciler
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -125,7 +127,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		scope, err := ParseDeploymentScopeFromProviderConfig(deploymentTemplate.Status.ProviderConfig)
+		scope, err := ParseDeploymentScopeFromProviderConfig(deploymentTemplate.Spec.ProviderConfig)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to parse deployment scope: %w", err)
 		}
@@ -205,7 +207,6 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 						Spec: radappiov1alpha3.DeploymentResourceSpec{
 							Id:             outputResourceId,
 							ProviderConfig: deploymentTemplate.Spec.ProviderConfig,
-							RootFileName:   deploymentTemplate.Spec.RootFileName,
 						},
 					}
 
@@ -246,16 +247,15 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 		}
 
-		specParameters := convertToARMJSONParameters(deploymentTemplate.Spec.Parameters)
-		stringifiedSpecParameters, err := json.MarshalIndent(specParameters, "", "  ")
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to marshal parameters: %w", err)
-		}
-
 		providerConfig := sdkclients.ProviderConfig{}
 		err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to unmarshal providerConfig: %w", err)
+		}
+
+		hash, err := computeHash(deploymentTemplate)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 
 		// If we get here, the operation was a success. Update the status and continue.
@@ -263,8 +263,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		// NOTE: we don't need to save the status here, because we're going to continue reconciling.
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
-		deploymentTemplate.Status.Template = deploymentTemplate.Spec.Template
-		deploymentTemplate.Status.Parameters = string(stringifiedSpecParameters)
+		deploymentTemplate.Status.StatusHash = hash
 		deploymentTemplate.Status.Resource = providerConfig.Deployments.Value.Scope + "/providers/" + deploymentResourceType + "/" + deploymentTemplate.Name
 
 		return ctrl.Result{}, nil
@@ -304,9 +303,6 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
 	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
-
-	deploymentTemplate.Status.ProviderConfig = deploymentTemplate.Spec.ProviderConfig
-	deploymentTemplate.Status.RootFileName = deploymentTemplate.Spec.RootFileName
 
 	updatePoller, err := r.startPutOperationIfNeeded(ctx, deploymentTemplate)
 	if err != nil {
@@ -435,24 +431,17 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	specParameters := convertToARMJSONParameters(deploymentTemplate.Spec.Parameters)
-	stringifiedSpecParameters, err := json.MarshalIndent(specParameters, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal parameters: %w", err)
-	}
 
 	// If the resource is already created and is up-to-date, then we don't need to do anything.
-	if deploymentTemplate.Status.Template == deploymentTemplate.Spec.Template &&
-		deploymentTemplate.Status.Parameters == string(stringifiedSpecParameters) &&
-		deploymentTemplate.Status.RootFileName == deploymentTemplate.Spec.RootFileName &&
-		deploymentTemplate.Status.ProviderConfig == deploymentTemplate.Spec.ProviderConfig {
-		logger.Info("Resource is already created and is up-to-date.")
+	if isUpToDate(deploymentTemplate) {
+		logger.Info("Resource is up-to-date.")
 		return nil, nil
 	}
 
-	logger.Info("Template, Parameters, RootFileName, or ProviderConfig have changed, starting PUT operation.")
+	logger.Info("Desired state has changed, starting PUT operation.")
 
 	var template any
-	err = json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
+	err := json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal template: %w", err)
 	}
@@ -469,10 +458,10 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 		return nil, fmt.Errorf("providerConfig.Deployments.Value.Scope is empty")
 	}
 
-	// NOTE: using resource groups with lowercase here is a workaround for a casing bug in `rad app graph`.
-	// When https://github.com/radius-project/radius/issues/6422 is fixed we can use the more correct casing.
-	resourceGroupID := "/planes/radius/local/resourcegroups/default"
-	err = createResourceGroupIfNotExists(ctx, r.Radius, resourceGroupID)
+	// Create the Radius resource group corresponding the providerConfig.Deployments.Value.Scope
+	// if it does not exist. This is necessary because the resource group is required for the
+	// deployment operation.
+	err = createResourceGroupIfNotExists(ctx, r.Radius, providerConfig.Deployments.Value.Scope)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource group: %w", err)
 	}
@@ -543,6 +532,29 @@ func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1al
 		}
 	}
 	return false
+}
+
+// computeHash computes a hash of the DeploymentTemplate's spec (desired state).
+func computeHash(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (string, error) {
+	b, err := json.Marshal(deploymentTemplate.Spec)
+	if err != nil {
+		return "", err
+	}
+
+	sum := sha1.Sum(b)
+	hash := hex.EncodeToString(sum[:])
+	return hash, nil
+}
+
+// isUpToDate returns true if the desired state of the DeploymentTemplate
+// matches the observed state.
+func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
+	hash, err := computeHash(deploymentTemplate)
+	if err != nil {
+		return false
+	}
+
+	return deploymentTemplate.Status.StatusHash == hash
 }
 
 // SetupWithManager sets up the controller with the Manager.

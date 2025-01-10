@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -49,7 +50,7 @@ func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
 		Controller: crconfig.Controller{
-			SkipNameValidation: boolPtr(true),
+			SkipNameValidation: to.Ptr(true),
 		},
 
 		// Suppress metrics in tests to avoid conflicts.

@@ -55,7 +55,6 @@ func Test_DeploymentTemplate_Basic(t *testing.T) {
 
 	name := "dt-env"
 	namespace := "dt-env-ns"
-	fileName := "env.bicep"
 	templateFilePath := path.Join("testdata", "env", "env.json")
 	parameters := []string{
 		fmt.Sprintf("name=%s", name),
@@ -74,7 +73,7 @@ func Test_DeploymentTemplate_Basic(t *testing.T) {
 	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
-	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, fileName, parametersMap)
+	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
 
 	t.Run("Create DeploymentTemplate", func(t *testing.T) {
 		t.Log("Creating DeploymentTemplate")
@@ -122,7 +121,6 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 
 	name := "dt-module"
 	namespace := "dt-module-ns"
-	fileName := "module.bicep"
 	templateFilePath := path.Join("testdata", "module", "module.json")
 	parameters := []string{
 		fmt.Sprintf("name=%s", name),
@@ -141,7 +139,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
-	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, fileName, parametersMap)
+	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
 
 	t.Run("Create DeploymentTemplate", func(t *testing.T) {
 		t.Log("Creating DeploymentTemplate")
@@ -190,7 +188,6 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 
 	name := "dt-recipe"
 	namespace := "dt-recipe-ns"
-	fileName := "recipe.bicep"
 	templateFilePath := path.Join("testdata", "recipe", "recipe.json")
 	parameters := []string{
 		testutil.GetBicepRecipeRegistry(),
@@ -211,7 +208,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
-	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, fileName, parametersMap)
+	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
 
 	t.Run("Create DeploymentTemplate", func(t *testing.T) {
 		t.Log("Creating DeploymentTemplate")
@@ -255,7 +252,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 	})
 }
 
-func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig, rootFileName string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
+func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
 	deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name.Name,
@@ -265,7 +262,6 @@ func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig,
 			Template:       template,
 			Parameters:     parameters,
 			ProviderConfig: providerConfig,
-			RootFileName:   rootFileName,
 		},
 	}
 

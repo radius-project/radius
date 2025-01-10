@@ -17,16 +17,7 @@ spec:
     singular: deploymenttemplate
   scope: Namespaced
   versions:
-  - additionalPrinterColumns:
-    - description: Status of the resource
-      jsonPath: .status.phrase
-      name: Status
-      type: string
-    - description: Name of the Bicep file that bicep build is run on
-      jsonPath: .status.rootFileName
-      name: RootFileName
-      type: string
-    name: v1alpha3
+  - name: v1alpha3
     schema:
       openAPIV3Schema:
         description: DeploymentTemplate is the Schema for the deploymenttemplates
@@ -59,11 +50,6 @@ spec:
                 type: object
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
-                type: string
-              rootFileName:
-                description: |-
-                  RootFileName is the name of the Bicep file that
-                  `bicep build` is run on.
                 type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources
@@ -101,27 +87,15 @@ spec:
                 items:
                   type: string
                 type: array
-              parameters:
-                description: Parameters is the ARM JSON parameters for the template.
-                type: string
               phrase:
                 description: Phrase indicates the current status of the Deployment
                   Template.
                 type: string
-              providerConfig:
-                description: ProviderConfig specifies the scope for resources
-                type: string
               resource:
                 description: Resource is the resource id of the deployment.
                 type: string
-              rootFileName:
-                description: |-
-                  RootFileName is the name of the Bicep file that
-                  `bicep build` is run on.
-                type: string
-              template:
-                description: Template is the ARM JSON manifest that defines the resources
-                  to deploy.
+              statusHash:
+                description: StatusHash is a hash of the DeploymentTemplate's status.
                 type: string
             type: object
         type: object

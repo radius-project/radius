@@ -114,7 +114,6 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseReady
 	deploymentResource.Status.ProviderConfig = deploymentResource.Spec.ProviderConfig
-	deploymentResource.Status.RootFileName = deploymentResource.Spec.RootFileName
 	deploymentResource.Status.Id = deploymentResource.Spec.Id
 	err = r.Client.Status().Update(ctx, &deploymentResource)
 	if err != nil {

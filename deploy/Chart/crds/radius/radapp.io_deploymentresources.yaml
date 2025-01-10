@@ -17,16 +17,7 @@ spec:
     singular: deploymentresource
   scope: Namespaced
   versions:
-  - additionalPrinterColumns:
-    - description: Status of the resource
-      jsonPath: .status.phrase
-      name: Status
-      type: string
-    - description: Name of the Bicep file that bicep build is run on
-      jsonPath: .status.rootFileName
-      name: RootFileName
-      type: string
-    name: v1alpha3
+  - name: v1alpha3
     schema:
       openAPIV3Schema:
         description: DeploymentResource is the Schema for the DeploymentResources
@@ -57,11 +48,6 @@ spec:
                 type: string
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
-                type: string
-              rootFileName:
-                description: |-
-                  RootFileName is the name of the Bicep file that
-                  `bicep build` is run on.
                 type: string
             type: object
           status:
@@ -98,11 +84,6 @@ spec:
                 type: string
               providerConfig:
                 description: ProviderConfig specifies the scope for resources
-                type: string
-              rootFileName:
-                description: |-
-                  RootFileName is the name of the Bicep file that
-                  `bicep build` is run on.
                 type: string
             type: object
         type: object

@@ -27,10 +27,6 @@ type DeploymentResourceSpec struct {
 
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
-
-	// RootFileName is the name of the Bicep file that
-	// `bicep build` is run on.
-	RootFileName string `json:"rootFileName,omitempty"`
 }
 
 // DeploymentResourceStatus defines the observed state of DeploymentResource
@@ -40,10 +36,6 @@ type DeploymentResourceStatus struct {
 
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig string `json:"providerConfig,omitempty"`
-
-	// RootFileName is the name of the Bicep file that
-	// `bicep build` is run on.
-	RootFileName string `json:"rootFileName,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed for this DeploymentResource.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`
@@ -77,9 +69,8 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories={"all","radius"}
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phrase",description="Status of the resource"
-// +kubebuilder:printcolumn:name="RootFileName",type="string",JSONPath=".status.rootFileName",description="Name of the Bicep file that bicep build is run on"
+// +kubebuilder:resource:categories={"all","radius"}
 
 // DeploymentResource is the Schema for the DeploymentResources API
 type DeploymentResource struct {

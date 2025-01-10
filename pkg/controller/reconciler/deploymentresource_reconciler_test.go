@@ -22,6 +22,7 @@ import (
 	"time"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,7 +67,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, client.Client
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
 		Controller: crconfig.Controller{
-			SkipNameValidation: boolPtr(true),
+			SkipNameValidation: to.Ptr(true),
 		},
 
 		// Suppress metrics in tests to avoid conflicts.
