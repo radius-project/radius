@@ -25,6 +25,9 @@ import (
 func TestReadFileYAML(t *testing.T) {
 	expected := &ResourceProvider{
 		Name: "MyCompany.Resources",
+		Location: map[string]string{
+			"global": "http://localhost:8080",
+		},
 		Types: map[string]*ResourceType{
 			"testResources": {
 				APIVersions: map[string]*ResourceTypeAPIVersion{

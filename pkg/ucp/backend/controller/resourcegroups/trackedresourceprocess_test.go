@@ -203,7 +203,6 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, expected, result)
 		require.NoError(t, err)
 	})
-
 }
 
 type mockUpdater struct {
