@@ -37,6 +37,7 @@ import (
 	app_status "github.com/radius-project/radius/pkg/cli/cmd/app/status"
 	bicep_generate_kubernetes_manifest "github.com/radius-project/radius/pkg/cli/cmd/bicep/generatekubernetesmanifest"
 	bicep_publish "github.com/radius-project/radius/pkg/cli/cmd/bicep/publish"
+	bicep_publishextension "github.com/radius-project/radius/pkg/cli/cmd/bicep/publishextension"
 	credential "github.com/radius-project/radius/pkg/cli/cmd/credential"
 	cmd_deploy "github.com/radius-project/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/radius-project/radius/pkg/cli/cmd/env/create"
@@ -62,6 +63,7 @@ import (
 	resourceprovider_delete "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/delete"
 	resourceprovider_list "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/list"
 	resourceprovider_show "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/show"
+	resourcetype_create "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/create"
 	resourcetype_delete "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/delete"
 	resourcetype_list "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/list"
 	resourcetype_show "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/show"
@@ -273,6 +275,9 @@ func initSubCommands() {
 	resourceTypeDeleteCmd, _ := resourcetype_delete.NewCommand(framework)
 	resourceTypeCmd.AddCommand(resourceTypeDeleteCmd)
 
+	resourceTypeCreateCmd, _ := resourcetype_create.NewCommand(framework)
+	resourceTypeCmd.AddCommand(resourceTypeCreateCmd)
+
 	listRecipeCmd, _ := recipe_list.NewCommand(framework)
 	recipeCmd.AddCommand(listRecipeCmd)
 
@@ -347,6 +352,9 @@ func initSubCommands() {
 
 	bicepGenerateKubernetesManifestCmd, _ := bicep_generate_kubernetes_manifest.NewCommand(framework)
 	bicepCmd.AddCommand(bicepGenerateKubernetesManifestCmd)
+
+	bicepPublishExtensionCmd, _ := bicep_publishextension.NewCommand(framework)
+	bicepCmd.AddCommand(bicepPublishExtensionCmd)
 
 	installCmd := install.NewCommand()
 	RootCmd.AddCommand(installCmd)

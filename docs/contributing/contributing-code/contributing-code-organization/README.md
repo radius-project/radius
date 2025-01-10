@@ -28,10 +28,12 @@ In general you should ask for guidance before creating a new top-level folder in
 | `aws/`                 | Utility code and library integrations for working with AWS                              |
 | `azure/`               | Utility code and library integrations for working with Azure                            |
 | `cli/`                 | Implementation code for the `rad` CLI                                                   |
+| `components/`         | Components and its folders hold the implementations of shared components used by the Radius control-plane services                                                       |
 | `controllers/`         | Kubernetes controllers for Radius                                                       |
 | `corerp/`              | Resource Provider implementation for `Applications.Core` resources                      |
 | `daprrp/`              | Resource Provider implementation for `Applications.Dapr` resources                      |
 | `datastoresrp/`        | Resource Provider implementation for `Applications.Datastores` resources                |
+| `dynamicrp/`        | Implementation of the dynamic resource provider. The dynamicrp is responsible for managing the lifecycle of resources that are defined without their own resource provider implementation.             |
 | `kubernetes/`          | Utility code and library integrations for working with Kubernetes                       |
 | `kubeutil/`            | Utility code and working with Kubernetes on client side                                 |
 | `portableresources/`   | Shared Resource Provider implementation for portable resources                          |

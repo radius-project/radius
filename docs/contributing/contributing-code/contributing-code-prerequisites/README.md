@@ -2,13 +2,13 @@
 
 This page lists the prerequisites for working with the repository. In general, you have three options to get your development setup up and running:
 
-- Remotely using GitHub Codespaces
+<!-- - Remotely using GitHub Codespaces -->
 - Using Visual Studio Code and dev containers
 - Locally by installing all prerequisites on your machine
 
 We will walk you through the options in the following sections.
 
-> 📝 **Tip** - We recommend the usage of GitHub Codespaces or dev containers in Visual Studio Code as they are the most convenient way to get started.
+> 📝 **Tip** - We recommend the usage of dev containers in Visual Studio Code as they are the most convenient way to get started.
 
 Depending on the task you need to perform, you may need to install more tools, but basic prerequisites should be sufficient for most contributors to get started.
 
@@ -22,9 +22,9 @@ If you get stuck with any development setup option, please ask for help in our [
 
 ## Development environment - setup options
 
-The following sections describe the aforementioned alternatives of development setups in more detail. We recommend to use of _GitHub Codespaces_ or _dev containers_ in VS Code as they are the most convenient way to get started.
+The following sections describe the aforementioned alternatives of development setups in more detail. We recommend use of _dev containers_ in VS Code as they are the most convenient way to get started.
 
-### GitHub Codespaces
+<!-- ### GitHub Codespaces
 
 The easiest way to get started is using our pre-built GitHub Codespace.
 
@@ -36,7 +36,7 @@ The steps to execute are:
 
 1. There is no second step - you are ready to contribute 😎
 
-> **Note** - When using GitHub Codespaces cost can occur on your side after you have used up the monthly included storage and core hours for your account. You find more details [here](https://docs.github.com/en/billing/managing-billing-for-github-codespaces/about-billing-for-github-codespaces).
+> **Note** - When using GitHub Codespaces cost can occur on your side after you have used up the monthly included storage and core hours for your account. You find more details [here](https://docs.github.com/en/billing/managing-billing-for-github-codespaces/about-billing-for-github-codespaces). -->
 
 ### VS Code and Dev Container
 
@@ -72,7 +72,7 @@ Once the container is up and running you can start with your contribution.
 
 Contributing to Radius requires several tools to get started. This section lists them grouped by their context
 
-> 📝 **Tip** - If your are using [GitHub Codespaces](#github-codespaces) or [VS Code and Dev Container](#vs-code-and-dev-container), all these tools are already in place and available out-of-the-box.
+> 📝 **Tip** - If your are using [VS Code and Dev Container](#vs-code-and-dev-container), all these tools are already in place and available out-of-the-box.
 
 <!--
     Note: some of this content is synchronized with the first-commit guide for simplicity. Keep these in sync!

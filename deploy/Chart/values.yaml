@@ -112,3 +112,17 @@ dashboard:
       memory: "60Mi"
     limits:
       memory: "300Mi"
+
+database:
+  image: ghcr.io/radius-project/mirror/postgres
+  tag: latest
+  storageClassName: "standard" # set to the storage class name if required
+  # Minimum resource requirements, may need to revisit and scale.
+  storageSize: "1Gi"
+  resources:
+    requests:
+      cpu: "2"
+      memory: "512Mi"
+    limits:
+      cpu: "2"
+      memory: "1024Mi"

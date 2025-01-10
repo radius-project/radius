@@ -15,7 +15,7 @@ Alternatively, you can choose whichever editor you are most comfortable for work
 - [Visual Studio Code](https://code.visualstudio.com/)
 - [Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go)
 
-> 📝 **Tip** - If your are using GitHub Codespaces or Dev Containers, the Go extension is already installed for you. You find more details on these options in the [Repository Prerequisites](../contributing-code-prerequisites/README.md).
+> 📝 **Tip** - If your are using Dev Containers, the Go extension is already installed for you. You find more details on these options in the [Repository Prerequisites](../contributing-code-prerequisites/README.md).
 
 Install both of these and then follow the steps in the *Quick Start* for the Go extension.
 
