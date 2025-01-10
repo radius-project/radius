@@ -1,7 +1,7 @@
 name: Applications.Dapr
-locations:
+location:
   global:
-    address: "http://localhost:8080"
+    "http://localhost:8080"
 types:
   configurationStores:
     apiVersions:

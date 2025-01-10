@@ -1,7 +1,7 @@
 name: Applications.Datastores
-locations:
+location:
   global:
-    address: "http://localhost:8080"
+    "http://localhost:8080"
 types:
   mongoDatabases:
     apiVersions:

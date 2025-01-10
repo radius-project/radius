@@ -396,7 +396,6 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 		require.Equal(t, "failed to parse downstream URL: parse \"\\ninvalid\": net/url: invalid control character in URL", err.Error())
 		require.Nil(t, proxyReq)
 	})
-
 }
 
 type mockUpdater struct {

@@ -36,14 +36,14 @@ import (
 
 const (
 	apiVersionParameter      = "api-version=2023-10-01-preview"
-	testRadiusPlaneID        = "/planes/radius/local"
+	testRadiusPlaneID        = "/planes/radius/test"
 	testResourceNamespace    = "System.Test"
 	testResourceGroupID      = testRadiusPlaneID + "/resourceGroups/test-rg"
-	testResourceProviderID   = "/planes/radius/local/providers/System.Resources/resourceproviders/System.Test"
+	testResourceProviderID   = testRadiusPlaneID + "/providers/System.Resources/resourceproviders/System.Test"
 	testResourceCollectionID = testResourceGroupID + "/providers/System.Test/testResources"
 	testResourceID           = testResourceCollectionID + "/test-resource"
-	resourceTypeURL          = "/planes/radius/local/providers/System.Resources/resourceproviders/System.Test/resourcetypes/testResources"
-	locationID               = "/planes/radius/local/providers/System.Resources/resourceproviders/System.Test/locations/global"
+	resourceTypeURL          = testResourceProviderID + "/resourcetypes/testResources"
+	locationID               = testResourceProviderID + "/locations/global"
 
 	assertTimeout = time.Second * 10
 	assertRetry   = time.Second * 2
@@ -60,7 +60,7 @@ func Test_RadiusPlane_Proxy_ResourceGroupDoesNotExist(t *testing.T) {
 
 	response := ucp.MakeRequest(http.MethodGet, testResourceID+"?api-version="+testrp.Version, nil)
 	response.EqualsErrorCode(http.StatusNotFound, "NotFound")
-	require.Equal(t, "the resource with id '/planes/radius/local/resourceGroups/test-rg/providers/System.Test/testResources/test-resource' was not found: resource group \"/planes/radius/local/resourceGroups/test-rg\" not found", response.Error.Error.Message)
+	require.Equal(t, "the resource with id '/planes/radius/test/resourceGroups/test-rg/providers/System.Test/testResources/test-resource' was not found: resource group \"/planes/radius/test/resourceGroups/test-rg\" not found", response.Error.Error.Message)
 }
 
 func Test_RadiusPlane_ResourceSync(t *testing.T) {
