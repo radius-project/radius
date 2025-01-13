@@ -110,7 +110,7 @@ kubectl create namespace radius-testing
 
 > 💡 This step is required only if you are an external contributor and do not have access to `radius-project/deployment-engine` repo.
 > 
-`docker run  -e RADIUSBACKENDURI=http://host.docker.internal:9000 -p 5017:8080 ghcr.io/radius-project/deployment-engine:latest.`
+`docker run  -e RADIUSBACKENDURL=http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3 -p 5017:8080 ghcr.io/radius-project/deployment-engine:latest`
 
 `host.docker.internal` is a special DNS name provided by Docker that allows containers to access services running on the host machine
 
