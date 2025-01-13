@@ -26,7 +26,7 @@ If you need to manually test APIs you can reach them at the following endpoints 
 
 ## Prerequisites
 
-1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data.
+1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data. 
 2. If you have access to `radius-project/deployment-engine` repo, 
    1. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other.
    2. Run `git submodule update --init` in the `deployment-engine` repo.
