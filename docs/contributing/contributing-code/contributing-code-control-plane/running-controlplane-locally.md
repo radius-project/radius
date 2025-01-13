@@ -26,7 +26,7 @@ If you need to manually test APIs you can reach them at the following endpoints 
 
 ## Prerequisites
 
-1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data.
+1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data. 
 2. If you have access to `radius-project/deployment-engine` repo, 
    1. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other.
    2. Run `git submodule update --init` in the `deployment-engine` repo.
@@ -108,7 +108,8 @@ kubectl create namespace radius-testing
 
 ## Setup Step 4: Run Deployment Engine as docker container
 
-Note: This step is required only if you are an external contributor and do not have access to `radius-project/deployment-engine` repo
+> 💡 This step is required only if you are an external contributor and do not have access to `radius-project/deployment-engine` repo.
+> 
 `docker run  -e RADIUSBACKENDURI=http://host.docker.internal:9000 -p 5017:8080 ghcr.io/radius-project/deployment-engine:latest.`
 
 `host.docker.internal` is a special DNS name provided by Docker that allows containers to access services running on the host machine
