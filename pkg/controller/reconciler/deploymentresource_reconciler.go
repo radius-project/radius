@@ -113,7 +113,6 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 	logger.Info("Resource is in desired state.", "resourceId", deploymentResource.Spec.Id)
 
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseReady
-	deploymentResource.Status.ProviderConfig = deploymentResource.Spec.ProviderConfig
 	deploymentResource.Status.Id = deploymentResource.Spec.Id
 	err = r.Client.Status().Update(ctx, &deploymentResource)
 	if err != nil {
@@ -355,7 +354,7 @@ func listResourcesWithSameOwner(ctx context.Context, c client.Client, namespace 
 // checkForDeploymentResourceDependencies checks if the deploymentResource is an application or environment.
 // If it is, it checks if other (non-application or environment) resources exist.
 // If other resources exist, it returns the ID of one of the dependent resources.
-// NOTE: This is a workaround for Radius API behavior. Since deleting
+// NOTE: This is a workaround for existing Radius API behavior. Since deleting
 // an application or environment can leave hanging resources, we need to make sure to
 // delete these resources before deleting the application or environment.
 // https://github.com/radius-project/radius/issues/8164

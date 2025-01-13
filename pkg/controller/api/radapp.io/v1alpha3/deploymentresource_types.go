@@ -34,9 +34,6 @@ type DeploymentResourceStatus struct {
 	// Id is the resource Id.
 	Id string `json:"id,omitempty"`
 
-	// ProviderConfig specifies the scope for resources
-	ProviderConfig string `json:"providerConfig,omitempty"`
-
 	// ObservedGeneration is the most recent generation observed for this DeploymentResource.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`
 

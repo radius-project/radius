@@ -87,9 +87,6 @@ spec:
                 description: Phrase indicates the current status of the Deployment
                   Resource.
                 type: string
-              providerConfig:
-                description: ProviderConfig specifies the scope for resources
-                type: string
             type: object
         type: object
     served: true
