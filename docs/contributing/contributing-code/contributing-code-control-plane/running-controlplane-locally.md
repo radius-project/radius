@@ -27,11 +27,12 @@ If you need to manually test APIs you can reach them at the following endpoints 
 ## Prerequisites
 
 1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data.
-2. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other.
-3. Run `git submodule update --init` in the `deployment-engine` repo.
-4. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
-5. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
-6. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
+2. If you have access to `radius-project/deployment-engine` repo, 
+   1. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other.
+   2. Run `git submodule update --init` in the `deployment-engine` repo.
+   3. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
+   4. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
+3. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
   
 > 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
 > 💡 Radius will use your locally configured Azure or AWS credentials. If you are able to use the `az` or `aws` CLI then you don't need to do any additional setup.
@@ -105,14 +106,38 @@ Run this command to create the namespace that will be used to store data.
 kubectl create namespace radius-testing
 ```
 
-## Setup Step 4: Create Resource Group and Environment
+## Setup Step 4: Run Deployment Engine as docker container
+
+Note: This step is required only if you are an external contributor and do not have access to `radius-project/deployment-engine` repo
+`docker run -e RADIUSBACKENDURI=http://host.docker.internal:9000 -p 5017:8080 ghcr.io/radius-project/deployment-engine:latest.`
+
+`host.docker.internal` is a special DNS name provided by Docker that allows containers to access services running on the host machine
+
+## Setup Step 5: Create Resource Group and Environment
 
 At this point Radius is working but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
 
 In VS Code:
 
 - Open the Debug tab in VS Code
-- Select `Launch Control Plane (all)` from the drop-down
+- If you have access to `radius-project/deployment-engine` repo
+  - Select `Launch Control Plane (all)` from the drop-down 
+- If you are an external contributor, open launch.json and comment out `Launch Deployment Engine` in `Launch Control Plane (all)`. The debug setup will use the Deployment Engine running as docker container. 
+  ```
+  "compounds": [
+    {
+      "name": "Launch Control Plane (all)",
+      "configurations": [
+        "Launch UCP",
+        "Launch Applications RP",
+        "Launch Dynamic RP",
+        "Launch Controller",
+        // "Launch Deployment Engine"
+      ],
+      "stopAll": true
+    }
+  ],
+  ```
 - Press Debug
 
 Wait until all five debuggers have attached and their startup sequences have completed. You should see the following entries in the Debug Tab --> Call Stack window:
