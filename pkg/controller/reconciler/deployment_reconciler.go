@@ -577,7 +577,6 @@ func (r *DeploymentReconciler) updateDeployment(ctx context.Context, deployment 
 
 	// Add the hash of the secret data to the Pod definition. This will force a rollout when the secrets
 	// change.
-	// TODOWILLSMITH: here
 	hash := kubernetes.HashSecretData(secret.Data)
 	if deployment.Spec.Template.ObjectMeta.Annotations == nil {
 		deployment.Spec.Template.ObjectMeta.Annotations = map[string]string{}
