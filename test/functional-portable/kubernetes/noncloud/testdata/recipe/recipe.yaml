@@ -3,19 +3,23 @@ kind: DeploymentTemplate
 metadata:
   name: recipe.bicep
 spec:
-  parameters: {}
+  parameters:
+    name: dt-recipe
+    namespace: dt-recipe
+    registry: ghcr.io/radius-project/dev
+    version: pr-funcf74af565f0
   providerConfig: |-
     {
       "radius": {
         "type": "radius",
         "value": {
-          "scope": "/planes/radius/local/resourceGroups/default"
+          "scope": "/planes/radius/local/resourceGroups/jambalaya"
         }
       },
       "deployments": {
         "type": "Microsoft.Resources",
         "value": {
-          "scope": "/planes/radius/local/resourceGroups/default"
+          "scope": "/planes/radius/local/resourceGroups/jambalaya"
         }
       }
     }
@@ -37,8 +41,8 @@ spec:
         "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
         "_generator": {
           "name": "bicep",
-          "templateHash": "7805117482855564",
-          "version": "0.31.92.45157"
+          "templateHash": "11540297415417574795",
+          "version": "0.32.4.45862"
         }
       },
       "parameters": {

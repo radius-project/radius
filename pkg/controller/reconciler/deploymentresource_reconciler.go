@@ -106,7 +106,7 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	if deploymentResource.DeletionTimestamp != nil {
+	if deploymentResource.ObjectMeta.DeletionTimestamp != nil {
 		return r.reconcileDelete(ctx, &deploymentResource)
 	}
 
@@ -365,33 +365,30 @@ func checkForDeploymentResourceDependencies(deploymentResource *radappiov1alpha3
 		return "", err
 	}
 
-	if strings.EqualFold(deploymentResourceID.Type(), "Applications.Core/applications") {
-		return "", nil
-	}
+	// If the deploymentResource is an application or environment, check if other resources exist
+	if strings.EqualFold(deploymentResourceID.Type(), "Applications.Core/applications") || strings.EqualFold(deploymentResourceID.Type(), "Applications.Core/environments") {
+		resourceCount := 0
+		dependentResource := ""
+		for _, dr := range deploymentResourceList {
+			if dr.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseDeleted {
+				continue
+			}
 
-	if strings.EqualFold(deploymentResourceID.Type(), "Applications.Core/environments") {
-		return "", nil
-	}
+			id, err := resources.ParseResource(dr.Spec.Id)
+			if err != nil {
+				return "", err
+			}
 
-	resourceCount := 0
-	dependentResource := ""
-	for _, dr := range deploymentResourceList {
-		// shouldn't need this...
-		// if dr.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseDeleted {
-		// 	continue
-		// }
-
-		id, err := resources.ParseResource(dr.Spec.Id)
-		if err != nil {
-			return "", err
+			// don't count applications or environments
+			if !strings.EqualFold(id.Type(), "Applications.Core/applications") && !strings.EqualFold(id.Type(), "Applications.Core/environments") {
+				resourceCount++
+				dependentResource = dr.Spec.Id
+			}
 		}
 
-		// don't count applications or environments
-		if !strings.EqualFold(id.Type(), "Applications.Core/applications") && !strings.EqualFold(id.Type(), "Applications.Core/environments") {
-			resourceCount++
-			dependentResource = dr.Spec.Id
-		}
+		return dependentResource, nil
 	}
 
-	return dependentResource, nil
+	// If the deploymentResource is not an application or environment, just return
+	return "", nil
 }

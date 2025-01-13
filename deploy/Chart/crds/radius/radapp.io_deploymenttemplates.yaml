@@ -17,7 +17,12 @@ spec:
     singular: deploymenttemplate
   scope: Namespaced
   versions:
-  - name: v1alpha3
+  - additionalPrinterColumns:
+    - description: Status of the resource
+      jsonPath: .status.phrase
+      name: Status
+      type: string
+    name: v1alpha3
     schema:
       openAPIV3Schema:
         description: DeploymentTemplate is the Schema for the deploymenttemplates
