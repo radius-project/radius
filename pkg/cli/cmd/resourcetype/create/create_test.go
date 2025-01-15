@@ -80,12 +80,6 @@ func Test_Run(t *testing.T) {
 				},
 			},
 		}
-
-		resourceType := common.ResourceType{
-			Name:                      "MyCompany.Resources/testResources",
-			ResourceProviderNamespace: "MyCompany.Resources",
-			APIVersions:               []string{"2023-10-01-preview"},
-		}
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -101,37 +95,55 @@ func Test_Run(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
-		//var logBuffer bytes.Buffer
-		//logger := func(format string, args ...any) {
-		//	fmt.Fprintf(&logBuffer, format+"\n", args...)
-		//}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			UCPClientFactory:  clientFactory,
-			Output:            outputSink,
-			Workspace:         &workspaces.Workspace{},
-			ResourceProvider:  resourceProviderData,
-			Format:            "table",
-			//Logger:                           logger,
+			ConnectionFactory:                &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:                 clientFactory,
+			Output:                           outputSink,
+			Workspace:                        &workspaces.Workspace{},
+			ResourceProvider:                 resourceProviderData,
+			Format:                           "table",
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 			ResourceTypeName:                 "testResources",
 		}
 
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
-
-		expected := []any{
+		expected := []interface{}{
+			output.LogOutput{
+				Format: "Resource provider %q found. Registering resource type %q.",
+				Params: []interface{}{"MyCompany.Resources", "testResources"},
+			},
+			output.LogOutput{
+				Format: "",
+				Params: nil,
+			},
 			output.FormattedOutput{
-				Format:  "table",
-				Obj:     resourceType,
-				Options: common.GetResourceTypeTableFormat(),
+				Format: "table",
+				Obj: common.ResourceType{
+					Name:                      "MyCompany.Resources/testResources",
+					ResourceProviderNamespace: "MyCompany.Resources",
+					APIVersions:               []string{"2023-10-01-preview"},
+				},
+				Options: output.FormatterOptions{
+					Columns: []output.Column{
+						{
+							Heading:  "TYPE",
+							JSONPath: "{ .Name }",
+						},
+						{
+							Heading:  "NAMESPACE",
+							JSONPath: "{ .ResourceProviderNamespace }",
+						},
+						{
+							Heading:  "DEFAULT APIVERSION",
+							JSONPath: "{ .APIVersions }",
+						},
+					},
+				},
 			},
 		}
-		require.Contains(t, expected, outputSink.Writes)
-		//logOutput := logBuffer.String()
-		//require.NotContains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
-		//require.Contains(t, logOutput, fmt.Sprintf("Resource type %s/testResources created successfully", runner.ResourceProvider.Name))
+		require.Equal(t, expected, outputSink.Writes, "Mismatch in output sink writes")
 	})
 
 	t.Run("Resource provider does not exist", func(t *testing.T) {
