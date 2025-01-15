@@ -88,7 +88,7 @@ func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, re
 	})
 
 	if idx < 0 {
-		return ResourceType{}, clierrors.Message("Resource type %q not found in resource provider %q.", resourceTypeName, resourceProvider)
+		return ResourceType{}, clierrors.Message("Resource type %q not found in resource provider %q.", resourceTypeName, resourceProvider.Name)
 	}
 
 	return resourceTypes[idx], nil

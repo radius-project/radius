@@ -175,6 +175,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Name, r.ResourceTypeName, client)
+	if err != nil {
+		return err
+	}
 	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeTableFormat())
 	if err != nil {
 		return err
