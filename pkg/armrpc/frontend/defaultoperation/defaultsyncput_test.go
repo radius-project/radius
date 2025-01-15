@@ -27,7 +27,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -44,17 +44,17 @@ func TestDefaultSyncPut_Create(t *testing.T) {
 	}{
 		{
 			"sync-create-new-resource-success",
-			&store.ErrNotFound{},
+			&database.ErrNotFound{},
 			nil,
 			http.StatusOK,
 			nil,
 		},
 		{
 			"sync-create-new-resource-concurrency-error",
-			&store.ErrConcurrency{},
+			&database.ErrConcurrency{},
 			nil,
 			http.StatusOK,
-			&store.ErrConcurrency{},
+			&database.ErrConcurrency{},
 		},
 	}
 
@@ -72,18 +72,18 @@ func TestDefaultSyncPut_Create(t *testing.T) {
 			ctx := rpctest.NewARMRequestContext(req)
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
-				Return(&store.Object{}, tt.getErr).
+				Return(&database.Object{}, tt.getErr).
 				Times(1)
 
-			if tt.getErr == nil || errors.Is(&store.ErrNotFound{}, tt.getErr) {
+			if tt.getErr == nil || errors.Is(&database.ErrNotFound{}, tt.getErr) {
 				mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.saveErr).
 					Times(1)
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
+				DatabaseClient: mds,
+				StatusManager:  msm,
 			}
 
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{
@@ -154,11 +154,11 @@ func TestDefaultSyncPut_Update(t *testing.T) {
 			"resource-datamodel.json",
 			nil,
 			false,
-			&store.ErrConcurrency{},
+			&database.ErrConcurrency{},
 			nil,
 			nil,
 			http.StatusInternalServerError,
-			&store.ErrConcurrency{},
+			&database.ErrConcurrency{},
 		},
 		{
 			"sync-update-existing-resource-save-error",
@@ -166,11 +166,11 @@ func TestDefaultSyncPut_Update(t *testing.T) {
 			"resource-datamodel.json",
 			nil,
 			false,
-			&store.ErrInvalid{Message: "testing initial save err"},
+			&database.ErrInvalid{Message: "testing initial save err"},
 			nil,
 			nil,
 			http.StatusInternalServerError,
-			&store.ErrInvalid{Message: "testing initial save err"},
+			&database.ErrInvalid{Message: "testing initial save err"},
 		},
 	}
 
@@ -192,8 +192,8 @@ func TestDefaultSyncPut_Update(t *testing.T) {
 			ctx := rpctest.NewARMRequestContext(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
-			so := &store.Object{
-				Metadata: store.Metadata{ID: sCtx.ResourceID.String()},
+			so := &database.Object{
+				Metadata: database.Metadata{ID: sCtx.ResourceID.String()},
 				Data:     reqDataModel,
 			}
 
@@ -208,8 +208,8 @@ func TestDefaultSyncPut_Update(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
+				DatabaseClient: mds,
+				StatusManager:  msm,
 			}
 
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{

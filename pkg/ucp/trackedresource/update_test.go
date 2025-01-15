@@ -27,9 +27,9 @@ import (
 	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -45,12 +45,12 @@ var (
 	}()
 )
 
-func setupUpdater(t *testing.T) (*Updater, *store.MockStorageClient, *mockRoundTripper) {
+func setupUpdater(t *testing.T) (*Updater, *database.MockClient, *mockRoundTripper) {
 	ctrl := gomock.NewController(t)
 
-	storeClient := store.NewMockStorageClient(ctrl)
+	databaseClient := database.NewMockClient(ctrl)
 	roundTripper := &mockRoundTripper{}
-	updater := NewUpdater(storeClient, &http.Client{Transport: roundTripper})
+	updater := NewUpdater(databaseClient, &http.Client{Transport: roundTripper})
 
 	// Optimize these values for testability. We don't want to wait for retries or timeouts unless
 	// the test is specifically testing that behavior.
@@ -58,12 +58,12 @@ func setupUpdater(t *testing.T) (*Updater, *store.MockStorageClient, *mockRoundT
 	updater.AttemptCount = 1
 	updater.RequestTimeout = time.Microsecond * 100
 
-	return updater, storeClient, roundTripper
+	return updater, databaseClient, roundTripper
 }
 
 func Test_Update(t *testing.T) {
 	t.Run("successful update", func(t *testing.T) {
-		updater, storeClient, roundTripper := setupUpdater(t)
+		updater, databaseClient, roundTripper := setupUpdater(t)
 
 		apiVersion := "1234"
 		resource := map[string]any{
@@ -73,17 +73,17 @@ func Test_Update(t *testing.T) {
 			"properties": map[string]any{},
 		}
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(nil, &store.ErrNotFound{}).
+			Return(nil, &database.ErrNotFound{}).
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
+			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 				require.Equal(t, IDFor(testID).String(), obj.ID)
 
 				dm := obj.Data.(*datamodel.GenericResource)
@@ -99,7 +99,7 @@ func Test_Update(t *testing.T) {
 	})
 
 	t.Run("retry then success", func(t *testing.T) {
-		updater, storeClient, roundTripper := setupUpdater(t)
+		updater, databaseClient, roundTripper := setupUpdater(t)
 		updater.AttemptCount = 2
 
 		apiVersion := "1234"
@@ -111,21 +111,21 @@ func Test_Update(t *testing.T) {
 		}
 
 		// Fail once, then succeed.
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, errors.New("this will be retried")).
 			Times(1)
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(nil, &store.ErrNotFound{}).
+			Return(nil, &database.ErrNotFound{}).
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
+			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 				require.Equal(t, IDFor(testID).String(), obj.ID)
 
 				dm := obj.Data.(*datamodel.GenericResource)
@@ -141,7 +141,7 @@ func Test_Update(t *testing.T) {
 	})
 
 	t.Run("resource still provisioning", func(t *testing.T) {
-		updater, storeClient, roundTripper := setupUpdater(t)
+		updater, databaseClient, roundTripper := setupUpdater(t)
 
 		apiVersion := "1234"
 		resource := map[string]any{
@@ -153,9 +153,9 @@ func Test_Update(t *testing.T) {
 			},
 		}
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(nil, &store.ErrNotFound{}).
+			Return(nil, &database.ErrNotFound{}).
 			Times(1)
 
 		// Mock a successful (non-terminal) response from the downstream API.
@@ -167,7 +167,7 @@ func Test_Update(t *testing.T) {
 	})
 
 	t.Run("tracked resource updated concurrently", func(t *testing.T) {
-		updater, storeClient, roundTripper := setupUpdater(t)
+		updater, databaseClient, roundTripper := setupUpdater(t)
 
 		apiVersion := "1234"
 		resource := map[string]any{
@@ -176,15 +176,15 @@ func Test_Update(t *testing.T) {
 			"type": testID.Type(),
 		}
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(nil, &store.ErrNotFound{}).
+			Return(nil, &database.ErrNotFound{}).
 			Times(1)
 
 		// Fail the "Save" operation due to a concurrent update.
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(&store.ErrConcurrency{}).
+			Return(&database.ErrConcurrency{}).
 			Times(1)
 
 		// Mock a successful (non-terminal) response from the downstream API.
@@ -196,13 +196,13 @@ func Test_Update(t *testing.T) {
 	})
 
 	t.Run("retries exhausted", func(t *testing.T) {
-		updater, storeClient, _ := setupUpdater(t)
+		updater, databaseClient, _ := setupUpdater(t)
 		updater.AttemptCount = 3
 
 		apiVersion := "1234"
 
 		// Fail enough times to exhaust our retries.
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, errors.New("this will be retried")).
 			Times(3)
@@ -217,7 +217,7 @@ func Test_run(t *testing.T) {
 	apiVersion := "1234"
 
 	t.Run("successful update (new resource)", func(t *testing.T) {
-		updater, storeClient, roundTripper := setupUpdater(t)
+		updater, databaseClient, roundTripper := setupUpdater(t)
 
 		resource := map[string]any{
 			"id":         testID.String(),
@@ -226,17 +226,17 @@ func Test_run(t *testing.T) {
 			"properties": map[string]any{},
 		}
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(nil, &store.ErrNotFound{}).
+			Return(nil, &database.ErrNotFound{}).
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
+			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 				require.Equal(t, IDFor(testID).String(), obj.ID)
 
 				dm := obj.Data.(*datamodel.GenericResource)
@@ -252,7 +252,7 @@ func Test_run(t *testing.T) {
 	})
 
 	t.Run("successful update (existing resource)", func(t *testing.T) {
-		updater, storeClient, roundTripper := setupUpdater(t)
+		updater, databaseClient, roundTripper := setupUpdater(t)
 
 		resource := map[string]any{
 			"id":         testID.String(),
@@ -265,17 +265,17 @@ func Test_run(t *testing.T) {
 		dm := datamodel.GenericResourceFromID(testID, IDFor(testID))
 		dm.Properties.APIVersion = apiVersion
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(&store.Object{Metadata: store.Metadata{ETag: etag}, Data: dm}, nil).
+			Return(&database.Object{Metadata: database.Metadata{ETag: etag}, Data: dm}, nil).
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
+			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 				require.Equal(t, IDFor(testID).String(), obj.ID)
 
 				dm := obj.Data.(*datamodel.GenericResource)
@@ -291,21 +291,21 @@ func Test_run(t *testing.T) {
 	})
 
 	t.Run("successful delete", func(t *testing.T) {
-		updater, storeClient, roundTripper := setupUpdater(t)
+		updater, databaseClient, roundTripper := setupUpdater(t)
 
 		etag := "some-etag"
 		dm := datamodel.GenericResourceFromID(testID, IDFor(testID))
 		dm.Properties.APIVersion = apiVersion
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(&store.Object{Metadata: store.Metadata{ETag: etag}, Data: dm}, nil).
+			Return(&database.Object{Metadata: database.Metadata{ETag: etag}, Data: dm}, nil).
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusNotFound, &v1.ErrorResponse{Error: v1.ErrorDetails{Code: v1.CodeNotFound}})
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Delete(gomock.Any(), IDFor(testID).String(), gomock.Any()).
 			Return(nil).
 			Times(1)
@@ -315,7 +315,7 @@ func Test_run(t *testing.T) {
 	})
 
 	t.Run("resource still provisioning", func(t *testing.T) {
-		updater, storeClient, roundTripper := setupUpdater(t)
+		updater, databaseClient, roundTripper := setupUpdater(t)
 
 		resource := map[string]any{
 			"id":   testID.String(),
@@ -326,9 +326,9 @@ func Test_run(t *testing.T) {
 			},
 		}
 
-		storeClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(nil, &store.ErrNotFound{}).
+			Return(nil, &database.ErrNotFound{}).
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.

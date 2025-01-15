@@ -28,12 +28,12 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/metrics"
+	"github.com/radius-project/radius/pkg/components/queue"
+	"github.com/radius-project/radius/pkg/components/trace"
 	"github.com/radius-project/radius/pkg/logging"
-	"github.com/radius-project/radius/pkg/metrics"
-	"github.com/radius-project/radius/pkg/trace"
-	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"github.com/google/uuid"
@@ -168,7 +168,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
 
-			asyncCtrl, err := w.registry.Get(reqCtx, armReqCtx.OperationType)
+			asyncCtrl, err := w.registry.Get(armReqCtx.OperationType)
 			if err != nil {
 				opLogger.Error(err, "failed to get async controller.")
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
@@ -192,7 +192,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 					Code:    v1.CodeInternal,
 					Message: errMsg,
 				})
-				w.completeOperation(reqCtx, msgreq, failed, asyncCtrl.StorageClient())
+				w.completeOperation(reqCtx, msgreq, failed, asyncCtrl.DatabaseClient())
 				return
 			}
 
@@ -210,7 +210,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			if err = w.updateResourceAndOperationStatus(reqCtx, asyncCtrl.StorageClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
+			if err = w.updateResourceAndOperationStatus(reqCtx, asyncCtrl.DatabaseClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
 				return
 			}
 
@@ -267,14 +267,19 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			result.SetFailed(armErr, false)
 		}
 
-		logger.Info("Operation returned", "success", result.Error == nil, "provisioningState", result.ProvisioningState(), "err", result.Error)
+		// We need the if/else here to prevent a panic inside the logger.
+		if result.Error == nil {
+			logger.Info("Operation returned", "success", "true", "provisioningState", result.ProvisioningState())
+		} else {
+			logger.Info("Operation returned", "success", "false", "provisioningState", result.ProvisioningState(), "err", result.Error)
+		}
 
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186
 		// 2. When parent context is canceled or done, we need to requeue the operation to reprocess the request.
 		// Such cases should not call w.completeOperation.
 		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
-			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
+			w.completeOperation(ctx, message, result, asyncCtrl.DatabaseClient())
 		}
 		trace.SetAsyncResultStatus(result, span)
 	}()
@@ -300,7 +305,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			errMessage := fmt.Sprintf("Operation (%s) has timed out because it was processing longer than %d s.", asyncReq.OperationType, int(asyncReq.Timeout().Seconds()))
 			result := ctrl.NewCanceledResult(errMessage)
 			result.Error.Target = asyncReq.ResourceID
-			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
+			w.completeOperation(ctx, message, result, asyncCtrl.DatabaseClient())
 			return
 
 		case <-ctx.Done():
@@ -326,7 +331,7 @@ func extractError(err error) v1.ErrorDetails {
 	}
 }
 
-func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result ctrl.Result, sc store.StorageClient) {
+func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result ctrl.Result, sc database.Client) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	req := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, req); err != nil {
@@ -350,7 +355,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 	metrics.DefaultAsyncOperationMetrics.RecordAsyncOperation(ctx, req, &result)
 }
 
-func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
+func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc database.Client, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	rID, err := resources.ParseResource(req.ResourceID)
@@ -360,7 +365,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	}
 
 	err = updateResourceState(ctx, sc, rID.String(), state)
-	if errors.Is(err, &store.ErrNotFound{}) {
+	if errors.Is(err, &database.ErrNotFound{}) {
 		logger.Info("failed to update the provisioningState in resource because it no longer exists.")
 	} else if err != nil {
 		logger.Error(err, "failed to update the provisioningState in resource.")
@@ -408,7 +413,7 @@ func (w *AsyncRequestProcessWorker) getMessageExtendDuration(visibleAt time.Time
 	return d
 }
 
-func updateResourceState(ctx context.Context, sc store.StorageClient, id string, state v1.ProvisioningState) error {
+func updateResourceState(ctx context.Context, sc database.Client, id string, state v1.ProvisioningState) error {
 	obj, err := sc.Get(ctx, id)
 	if err != nil {
 		return err
@@ -425,7 +430,7 @@ func updateResourceState(ctx context.Context, sc store.StorageClient, id string,
 
 	objmap["provisioningState"] = string(state)
 
-	err = sc.Save(ctx, obj, store.WithETag(obj.ETag))
+	err = sc.Save(ctx, obj, database.WithETag(obj.ETag))
 	if err != nil {
 		return err
 	}

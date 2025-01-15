@@ -27,9 +27,9 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/portableresources/renderers"
-	"github.com/radius-project/radius/pkg/ucp/store"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -39,7 +39,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+	databaseClient := database.NewMockClient(mctrl)
 	ctx := context.Background()
 
 	_, redisDataModel, _ := getTestModels20231001preview()
@@ -50,15 +50,15 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{ID: id}
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return nil, &database.ErrNotFound{ID: id}
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 		ctl, err := NewListSecretsRedisCache(opts)
 		require.NoError(t, err)
@@ -81,18 +81,18 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			renderers.ConnectionStringValue: "test-connection-string",
 		}
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id},
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return &database.Object{
+					Metadata: database.Metadata{ID: id},
 					Data:     redisDataModel,
 				}, nil
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -120,18 +120,18 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			renderers.PasswordStringHolder: "testPassword",
 		}
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id},
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return &database.Object{
+					Metadata: database.Metadata{ID: id},
 					Data:     redisDataModel,
 				}, nil
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -155,15 +155,15 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 		ctx := rpctest.NewARMRequestContext(req)
 		w := httptest.NewRecorder()
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -181,18 +181,18 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 		sCtx := v1.ARMRequestContextFromContext(ctx)
 		sCtx.APIVersion = "invalid-api-version"
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id},
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return &database.Object{
+					Metadata: database.Metadata{ID: id},
 					Data:     redisDataModel,
 				}, nil
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)

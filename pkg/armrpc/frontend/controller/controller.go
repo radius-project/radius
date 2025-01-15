@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -25,8 +26,7 @@ import (
 	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -52,11 +52,8 @@ type Options struct {
 	// Code that needs to construct a URL path should use the base path prefix when constructing the URL path.
 	PathBase string
 
-	// StorageClient is the data storage client.
-	StorageClient store.StorageClient
-
-	// DataProvider is the data storage provider.
-	DataProvider dataprovider.DataStorageProvider
+	// DatabaseClient is the database client.
+	DatabaseClient database.Client
 
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
@@ -67,6 +64,28 @@ type Options struct {
 
 	// StatusManager is the async operation status manager.
 	StatusManager sm.StatusManager
+}
+
+func (o Options) Validate() error {
+	var err error
+	if o.Address == "" {
+		err = errors.Join(err, errors.New(".Address is required"))
+	}
+	if o.DatabaseClient == nil {
+		err = errors.Join(err, errors.New(".DatabaseClient is required"))
+	}
+	if o.ResourceType == "" {
+		err = errors.Join(err, errors.New(".ResourceType is required"))
+	}
+	if o.StatusManager == nil {
+		err = errors.Join(err, errors.New(".StatusManager is required"))
+	}
+
+	// PathBase is usually empty, so it is not validated here.
+	//
+	// KubeClient is not used by the majority of the code, so it is not validated here.
+
+	return err
 }
 
 // ResourceOptions represents the options and filters for resource.
@@ -117,14 +136,9 @@ func NewBaseController(options Options) BaseController {
 	}
 }
 
-// StorageClient gets storage client for this controller.
-func (b *BaseController) StorageClient() store.StorageClient {
-	return b.options.StorageClient
-}
-
-// DataProvider gets data storage provider for this controller.
-func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
-	return b.options.DataProvider
+// DatabaseClient gets database client for this controller.
+func (b *BaseController) DatabaseClient() database.Client {
+	return b.options.DatabaseClient
 }
 
 // KubeClient gets Kubernetes client for this controller.
@@ -146,8 +160,8 @@ func (b *BaseController) StatusManager() sm.StatusManager {
 // the ETag of the resource and an error if one occurs.
 func (c *BaseController) GetResource(ctx context.Context, id string, out any) (etag string, err error) {
 	etag = ""
-	var res *store.Object
-	if res, err = c.StorageClient().Get(ctx, id); err == nil {
+	var res *database.Object
+	if res, err = c.DatabaseClient().Get(ctx, id); err == nil {
 		if err = res.As(out); err == nil {
 			etag = res.ETag
 			return
@@ -157,14 +171,14 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out any) (e
 }
 
 // SaveResource saves a resource to the data store with an ETag and returns a store object or an error if the save fails.
-func (c *BaseController) SaveResource(ctx context.Context, id string, in any, etag string) (*store.Object, error) {
-	nr := &store.Object{
-		Metadata: store.Metadata{
+func (c *BaseController) SaveResource(ctx context.Context, id string, in any, etag string) (*database.Object, error) {
+	nr := &database.Object{
+		Metadata: database.Metadata{
 			ID: id,
 		},
 		Data: in,
 	}
-	err := c.StorageClient().Save(ctx, nr, store.WithETag(etag))
+	err := c.DatabaseClient().Save(ctx, nr, database.WithETag(etag))
 	if err != nil {
 		return nil, err
 	}

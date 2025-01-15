@@ -25,14 +25,14 @@ import (
 	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
 
 	"github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/components/secret"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
-	"github.com/radius-project/radius/pkg/ucp/secret"
-	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -61,11 +61,11 @@ var _ Provider = (*awsProvider)(nil)
 
 type awsProvider struct {
 	ucpConn        sdk.Connection
-	secretProvider *ucp_provider.SecretProvider
+	secretProvider *secretprovider.SecretProvider
 }
 
 // NewAWSProvider creates a new AWSProvider instance.
-func NewAWSProvider(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) Provider {
+func NewAWSProvider(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider) Provider {
 	return &awsProvider{ucpConn: ucpConn, secretProvider: secretProvider}
 }
 

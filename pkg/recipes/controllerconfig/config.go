@@ -21,7 +21,8 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
-	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
@@ -29,13 +30,12 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/sdk/clients"
-	"github.com/radius-project/radius/pkg/ucp/secret/provider"
 )
 
 // RecipeControllerConfig is the configuration for the controllers which uses recipe.
 type RecipeControllerConfig struct {
-	// K8sClients is the collections of Kubernetes clients.
-	K8sClients *kubeutil.Clients
+	// Kubernetes provides access to the Kubernetes clients.
+	Kubernetes *kubernetesclientprovider.KubernetesClientProvider
 
 	// ResourceClient is a client used by resource processors for interacting with UCP resources.
 	ResourceClient processors.ResourceClient
@@ -57,14 +57,12 @@ type RecipeControllerConfig struct {
 func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	cfg := &RecipeControllerConfig{}
 	var err error
-	cfg.K8sClients, err = kubeutil.NewClients(options.K8sConfig)
-	if err != nil {
-		return nil, err
-	}
+
+	cfg.Kubernetes = kubernetesclientprovider.FromConfig(options.K8sConfig)
 
 	cfg.UCPConnection = &options.UCPConnection
 
-	cfg.ResourceClient = processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.K8sClients.RuntimeClient, cfg.K8sClients.DiscoveryClient)
+	cfg.ResourceClient = processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.Kubernetes)
 	clientOptions := sdk.NewClientOptions(options.UCPConnection)
 
 	cfg.DeploymentEngineClient, err = clients.NewResourceDeploymentsClient(&clients.Options{
@@ -74,6 +72,14 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if options.Config.Bicep.DeleteRetryCount == "" {
+		options.Config.Bicep.DeleteRetryCount = "3"
+	}
+
+	if options.Config.Bicep.DeleteRetryDelaySeconds == "" {
+		options.Config.Bicep.DeleteRetryDelaySeconds = "10"
 	}
 
 	bicepDeleteRetryCount, err := strconv.Atoi(options.Config.Bicep.DeleteRetryCount)
@@ -100,10 +106,10 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 					DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,
 				},
 			),
-			recipes.TemplateKindTerraform: driver.NewTerraformDriver(options.UCPConnection, provider.NewSecretProvider(options.Config.SecretProvider),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(options.UCPConnection, secretprovider.NewSecretProvider(options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: options.Config.Terraform.Path,
-				}, cfg.K8sClients.ClientSet),
+				}, *cfg.Kubernetes),
 		},
 	})
 

@@ -28,8 +28,8 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/testutil"
 
 	"go.uber.org/mock/gomock"
@@ -207,9 +207,9 @@ func loadTestResurce() (*TestResource, *TestResourceDataModel, *TestResource) {
 	return reqModel, datamodel, respModel
 }
 
-func setupTest(tb testing.TB) (func(testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+func setupTest(tb testing.TB) (func(testing.TB), *database.MockClient, *statusmanager.MockStatusManager) {
 	mctrl := gomock.NewController(tb)
-	mds := store.NewMockStorageClient(mctrl)
+	mds := database.NewMockClient(mctrl)
 	msm := statusmanager.NewMockStatusManager(mctrl)
 
 	return func(tb testing.TB) {

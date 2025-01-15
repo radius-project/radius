@@ -47,7 +47,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewDeleteAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewDeleteAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)
@@ -89,7 +89,7 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewDeleteAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewDeleteAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)

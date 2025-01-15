@@ -25,9 +25,9 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
 
+	"github.com/radius-project/radius/pkg/components/secret"
 	ucp_credentials "github.com/radius-project/radius/pkg/ucp/credentials"
 	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/secret"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )

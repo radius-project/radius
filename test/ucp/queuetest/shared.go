@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radius-project/radius/pkg/ucp/queue/client"
+	"github.com/radius-project/radius/pkg/components/queue"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -42,12 +42,12 @@ type testQueueMessage struct {
 	Message string `json:"msg"`
 }
 
-func queueTestMessage(cli client.Client, num int) error {
+func queueTestMessage(cli queue.Client, num int) error {
 	// Enqueue multiple message and dequeue them
 	for i := 0; i < num; i++ {
 		msg := &testQueueMessage{ID: fmt.Sprintf("%d", i), Message: fmt.Sprintf("hello world %d", i)}
 
-		err := cli.Enqueue(context.Background(), client.NewMessage(msg))
+		err := cli.Enqueue(context.Background(), queue.NewMessage(msg))
 		if err != nil {
 			return err
 		}
@@ -60,21 +60,21 @@ func queueTestMessage(cli client.Client, num int) error {
 // and checking for errors when nil messages are passed. It also tests the StartDequeuer method by dequeuing messages via a
 //
 //	channel.
-func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
+func RunTest(t *testing.T, cli queue.Client, clear func(t *testing.T)) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
 
 	t.Run("nil message", func(t *testing.T) {
-		err := cli.Enqueue(ctx, &client.Message{Data: []byte("")})
-		require.ErrorIs(t, err, client.ErrEmptyMessage)
-		err = cli.Enqueue(ctx, &client.Message{Data: nil})
-		require.ErrorIs(t, err, client.ErrEmptyMessage)
+		err := cli.Enqueue(ctx, &queue.Message{Data: []byte("")})
+		require.ErrorIs(t, err, queue.ErrEmptyMessage)
+		err = cli.Enqueue(ctx, &queue.Message{Data: nil})
+		require.ErrorIs(t, err, queue.ErrEmptyMessage)
 		err = cli.Enqueue(ctx, nil)
-		require.ErrorIs(t, err, client.ErrEmptyMessage)
+		require.ErrorIs(t, err, queue.ErrEmptyMessage)
 		err = cli.FinishMessage(ctx, nil)
-		require.ErrorIs(t, err, client.ErrEmptyMessage)
+		require.ErrorIs(t, err, queue.ErrEmptyMessage)
 		err = cli.ExtendMessage(ctx, nil)
-		require.ErrorIs(t, err, client.ErrEmptyMessage)
+		require.ErrorIs(t, err, queue.ErrEmptyMessage)
 	})
 
 	t.Run("enqueue and dequeue messages", func(t *testing.T) {
@@ -85,9 +85,9 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		err := queueTestMessage(cli, num)
 		require.NoError(t, err)
 
-		checked := map[string]*client.Message{}
+		checked := map[string]*queue.Message{}
 		for i := 0; i < num; i++ {
-			msg, err := cli.Dequeue(ctx, client.QueueClientConfig{})
+			msg, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 			require.NoError(t, err)
 			result := &testQueueMessage{}
 			err = json.Unmarshal(msg.Data, result)
@@ -110,24 +110,24 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		err := queueTestMessage(cli, 2)
 		require.NoError(t, err)
 
-		msg1, err := cli.Dequeue(ctx, client.QueueClientConfig{})
+		msg1, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 		require.NoError(t, err)
 		require.NotNil(t, msg1)
 
 		time.Sleep(10 * time.Millisecond)
 
-		msg2, err := cli.Dequeue(ctx, client.QueueClientConfig{})
+		msg2, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 		require.NoError(t, err)
 		require.NotNil(t, msg2)
 
 		// Ensure that queue doesn't have any valid messages
-		_, err = cli.Dequeue(ctx, client.QueueClientConfig{})
-		require.ErrorIs(t, err, client.ErrMessageNotFound)
+		_, err = cli.Dequeue(ctx, queue.QueueClientConfig{})
+		require.ErrorIs(t, err, queue.ErrMessageNotFound)
 
 		// Dequeue until message is requeued.
-		var msg3 *client.Message
+		var msg3 *queue.Message
 		for {
-			msg3, err = cli.Dequeue(ctx, client.QueueClientConfig{})
+			msg3, err = cli.Dequeue(ctx, queue.QueueClientConfig{})
 			if err == nil {
 				break
 			}
@@ -143,17 +143,17 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		err := queueTestMessage(cli, 2)
 		require.NoError(t, err)
 
-		msg1, err := cli.Dequeue(ctx, client.QueueClientConfig{})
+		msg1, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 		require.NoError(t, err)
 		t.Logf("%s %v", msg1.ID, msg1.NextVisibleAt)
 
-		msg2, err := cli.Dequeue(ctx, client.QueueClientConfig{})
+		msg2, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 		require.NoError(t, err)
 		t.Logf("%s %v", msg2.ID, msg2.NextVisibleAt)
 
 		// Ensure that queue doesn't have any valid messages
-		_, err = cli.Dequeue(ctx, client.QueueClientConfig{})
-		require.ErrorIs(t, err, client.ErrMessageNotFound)
+		_, err = cli.Dequeue(ctx, queue.QueueClientConfig{})
+		require.ErrorIs(t, err, queue.ErrMessageNotFound)
 		// Extend msg1 after sometime
 		time.Sleep(TestMessageLockTime / 2)
 		err = cli.ExtendMessage(ctx, msg1)
@@ -163,7 +163,7 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 
 		for {
 			// msg2 is requeued. msg3 must be msg2
-			msg3, err := cli.Dequeue(ctx, client.QueueClientConfig{})
+			msg3, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 			if err == nil {
 				t.Logf("%s %v", msg3.ID, msg3.NextVisibleAt)
 				require.Equal(t, msg2.ID, msg3.ID)
@@ -179,18 +179,18 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		err := queueTestMessage(cli, 2)
 		require.NoError(t, err)
 
-		msg1, err := cli.Dequeue(ctx, client.QueueClientConfig{})
+		msg1, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 		require.NoError(t, err)
 		t.Logf("%s %v", msg1.ID, msg1.NextVisibleAt)
 
 		time.Sleep(TestMessageLockTime / 2)
 
-		msg2, err := cli.Dequeue(ctx, client.QueueClientConfig{})
+		msg2, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 		require.NoError(t, err)
 		t.Logf("%s %v", msg2.ID, msg2.NextVisibleAt)
 
 		for {
-			msg3, err := cli.Dequeue(ctx, client.QueueClientConfig{})
+			msg3, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 			if err == nil {
 				t.Logf("%s %v", msg3.ID, msg3.NextVisibleAt)
 				break
@@ -201,12 +201,12 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		// Wait until message lock is released.
 		time.Sleep(TestMessageLockTime * 2)
 		err = cli.ExtendMessage(ctx, msg2)
-		require.ErrorIs(t, err, client.ErrInvalidMessage)
+		require.ErrorIs(t, err, queue.ErrInvalidMessage)
 	})
 
 	t.Run("StartDequeuer dequeues message via channel", func(t *testing.T) {
 		clear(t)
-		msgCh, err := client.StartDequeuer(ctx, cli, client.WithDequeueInterval(defaultTestDequeueInterval))
+		msgCh, err := queue.StartDequeuer(ctx, cli, queue.WithDequeueInterval(defaultTestDequeueInterval))
 		require.NoError(t, err)
 
 		recvCnt := 0
@@ -215,7 +215,7 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		msgCount := 10
 
 		// Consumer
-		go func(msgCh <-chan *client.Message) {
+		go func(msgCh <-chan *queue.Message) {
 			for msg := range msgCh {
 				require.Equal(t, 1, msg.DequeueCount)
 				t.Logf("Dequeued Message ID: %s", msg.ID)
@@ -230,7 +230,7 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		// Producer
 		for i := 0; i < msgCount; i++ {
 			msg := &testQueueMessage{ID: fmt.Sprintf("%d", i), Message: fmt.Sprintf("hello world %d", i)}
-			err = cli.Enqueue(ctx, client.NewMessage(msg))
+			err = cli.Enqueue(ctx, queue.NewMessage(msg))
 			require.NoError(t, err)
 		}
 

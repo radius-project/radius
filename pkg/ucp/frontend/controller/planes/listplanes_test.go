@@ -23,10 +23,10 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -34,9 +34,9 @@ import (
 func Test_ListPlanes(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+	mockDatabaseClient := database.NewMockClient(mockCtrl)
 
-	planesCtrl, err := NewListPlanes(armrpc_controller.Options{StorageClient: mockStorageClient})
+	planesCtrl, err := NewListPlanes(armrpc_controller.Options{DatabaseClient: mockDatabaseClient})
 	require.NoError(t, err)
 
 	url := "/planes?api-version=2023-10-01-preview"
@@ -57,30 +57,30 @@ func Test_ListPlanes(t *testing.T) {
 		Properties: datamodel.AWSPlaneProperties{},
 	}
 
-	mockStorageClient.EXPECT().Query(gomock.Any(), store.Query{
+	mockDatabaseClient.EXPECT().Query(gomock.Any(), database.Query{
 		RootScope:    "/planes",
 		ResourceType: "aws",
 		IsScopeQuery: true,
-	}).Return(&store.ObjectQueryResult{
-		Items: []store.Object{
+	}).Return(&database.ObjectQueryResult{
+		Items: []database.Object{
 			{
-				Metadata: store.Metadata{},
+				Metadata: database.Metadata{},
 				Data:     &planeData,
 			},
 		},
 	}, nil)
 
-	mockStorageClient.EXPECT().Query(gomock.Any(), store.Query{
+	mockDatabaseClient.EXPECT().Query(gomock.Any(), database.Query{
 		RootScope:    "/planes",
 		ResourceType: "azure",
 		IsScopeQuery: true,
-	}).Return(&store.ObjectQueryResult{}, nil)
+	}).Return(&database.ObjectQueryResult{}, nil)
 
-	mockStorageClient.EXPECT().Query(gomock.Any(), store.Query{
+	mockDatabaseClient.EXPECT().Query(gomock.Any(), database.Query{
 		RootScope:    "/planes",
 		ResourceType: "radius",
 		IsScopeQuery: true,
-	}).Return(&store.ObjectQueryResult{}, nil)
+	}).Return(&database.ObjectQueryResult{}, nil)
 
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)

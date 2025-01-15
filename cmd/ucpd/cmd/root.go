@@ -19,15 +19,15 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	etcdclient "go.etcd.io/etcd/client/v3"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/components/hosting"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/server"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -38,12 +38,23 @@ var rootCmd = &cobra.Command{
 	Long:  `Server process for the Universal Control Plane (UCP).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configFilePath := cmd.Flag("config-file").Value.String()
-		options, err := server.NewServerOptionsFromEnvironment(configFilePath)
+
+		bs, err := os.ReadFile(configFilePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read configuration file: %w", err)
 		}
 
-		logger, flush, err := ucplog.NewLogger(ucplog.LoggerName, &options.LoggingOptions)
+		config, err := ucp.LoadConfig(bs)
+		if err != nil {
+			return fmt.Errorf("failed to parse configuration file: %w", err)
+		}
+
+		options, err := ucp.NewOptions(cmd.Context(), config)
+		if err != nil {
+			return fmt.Errorf("failed to create server options: %w", err)
+		}
+
+		logger, flush, err := ucplog.NewLogger(ucplog.LoggerName, &options.Config.Logging)
 		if err != nil {
 			return err
 		}
@@ -52,17 +63,7 @@ var rootCmd = &cobra.Command{
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
 
-		if options.StorageProviderOptions.Provider == dataprovider.TypeETCD &&
-			options.StorageProviderOptions.ETCD.InMemory {
-			// For in-memory etcd we need to register another service to manage its lifecycle.
-			//
-			// The client will be initialized asynchronously.
-			clientconfigSource := hosting.NewAsyncValue[etcdclient.Client]()
-			options.StorageProviderOptions.ETCD.Client = clientconfigSource
-			options.SecretProviderOptions.ETCD.Client = clientconfigSource
-		}
-
-		host, err := server.NewServer(&options)
+		host, err := server.NewServer(options)
 		if err != nil {
 			return err
 		}
@@ -74,6 +75,6 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	// Let users override the configuration via `--config-file`.
-	rootCmd.Flags().String("config-file", fmt.Sprintf("radius-%s.yaml", hostoptions.Environment()), "The service configuration file.")
+	rootCmd.Flags().String("config-file", fmt.Sprintf("ucp-%s.yaml", hostoptions.Environment()), "The service configuration file.")
 	cobra.CheckErr(rootCmd.ExecuteContext(context.Background()))
 }

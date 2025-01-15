@@ -26,7 +26,7 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -42,9 +42,9 @@ func TestDefaultSyncDelete(t *testing.T) {
 		code             int
 	}{
 		{"sync-delete-existing-resource-success", "", nil, nil, false, http.StatusOK},
-		{"sync-delete-non-existing-resource", "", &store.ErrNotFound{}, nil, false, http.StatusNoContent},
+		{"sync-delete-non-existing-resource", "", &database.ErrNotFound{}, nil, false, http.StatusNoContent},
 		{"sync-delete-existing-resource-blocked-by-filter", "", nil, nil, true, http.StatusConflict},
-		{"sync-delete-fails-resource-notfound", "", nil, &store.ErrNotFound{}, false, http.StatusNoContent},
+		{"sync-delete-fails-resource-notfound", "", nil, &database.ErrNotFound{}, false, http.StatusNoContent},
 	}
 
 	for _, tt := range deleteCases {
@@ -63,8 +63,8 @@ func TestDefaultSyncDelete(t *testing.T) {
 
 			mds.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				Return(&store.Object{
-					Metadata: store.Metadata{ID: appDataModel.ID},
+				Return(&database.Object{
+					Metadata: database.Metadata{ID: appDataModel.ID},
 					Data:     appDataModel,
 				}, tt.getErr).
 				Times(1)
@@ -78,8 +78,8 @@ func TestDefaultSyncDelete(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
+				DatabaseClient: mds,
+				StatusManager:  msm,
 			}
 
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{

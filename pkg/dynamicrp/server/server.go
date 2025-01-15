@@ -17,54 +17,32 @@ limitations under the License.
 package server
 
 import (
-	"time"
-
+	"github.com/radius-project/radius/pkg/components/hosting"
+	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
+	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
+	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend"
 	"github.com/radius-project/radius/pkg/dynamicrp/frontend"
-	metricsservice "github.com/radius-project/radius/pkg/metrics/service"
-	profilerservice "github.com/radius-project/radius/pkg/profiler/service"
-	"github.com/radius-project/radius/pkg/trace"
-	"github.com/radius-project/radius/pkg/ucp/data"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/hosting"
 )
 
-const (
-	HTTPServerStopTimeout = time.Second * 10
-	ServiceName           = "dynamic-rp"
-)
-
-const UCPProviderName = "System.Resources"
-
-// NewServer creates a new hosting.Host instance with services for API, EmbeddedETCD, Metrics, Profiler and Backend (if
-// enabled) based on the given Options.
+// NewServer initializes a host for UCP based on the provided options.
 func NewServer(options *dynamicrp.Options) (*hosting.Host, error) {
 	services := []hosting.Service{}
 
-	// In-memory ETCD requires a service running in the process.
-	if options.Config.Storage.Provider == dataprovider.TypeETCD &&
-		options.Config.Storage.ETCD.InMemory {
-		services = append(services, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: options.Config.Storage.ETCD.Client}))
-	}
-
 	// Metrics is provided via a service.
-	if options.Config.Metrics.Prometheus.Enabled {
-		services = append(services, metricsservice.NewService(metricsservice.HostOptions{
-			Config: &options.Config.Metrics,
-		}))
+	if options.Config.Metrics.Enabled {
+		services = append(services, &metricsservice.Service{Options: &options.Config.Metrics})
 	}
 
 	// Profiling is provided via a service.
 	if options.Config.Profiler.Enabled {
-		services = append(services, profilerservice.NewService(profilerservice.HostOptions{
-			Config: &options.Config.Profiler,
-		}))
+		services = append(services, &profilerservice.Service{Options: &options.Config.Profiler})
 	}
 
 	// Tracing is provided via a service.
-	if options.Config.Tracing.ServiceName != "" {
-		services = append(services, &trace.Service{Options: options.Config.Tracing})
+	if options.Config.Tracing.Enabled {
+		services = append(services, &traceservice.Service{Options: &options.Config.Tracing})
 	}
 
 	services = append(services, frontend.NewService(options))

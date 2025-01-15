@@ -66,7 +66,7 @@ func Test_CreateAWSResource(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
@@ -131,7 +131,7 @@ func Test_CreateAWSResourceInvalidRegion(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
@@ -222,7 +222,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
@@ -304,7 +304,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))

@@ -25,9 +25,9 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/secret"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/secret"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -35,11 +35,11 @@ import (
 func Test_Credential_Delete(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+	mockDatabaseClient := database.NewMockClient(mockCtrl)
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
 	credentialCtrl, err := NewDeleteAzureCredential(armrpc_controller.Options{
-		StorageClient: mockStorageClient,
+		DatabaseClient: mockDatabaseClient,
 	}, mockSecretClient)
 	require.NoError(t, err)
 
@@ -47,7 +47,7 @@ func Test_Credential_Delete(t *testing.T) {
 		name       string
 		url        string
 		headerfile string
-		fn         func(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient)
+		fn         func(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient)
 		expected   armrpc_rest.Response
 		err        error
 	}{
@@ -111,7 +111,7 @@ func Test_Credential_Delete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.fn(*mockStorageClient, *mockSecretClient)
+			tt.fn(*mockDatabaseClient, *mockSecretClient)
 			request, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodDelete, tt.headerfile, nil)
 			require.NoError(t, err)
 
@@ -128,7 +128,7 @@ func Test_Credential_Delete(t *testing.T) {
 	}
 }
 
-func setupCredentialMocks(mockStorageClient store.MockStorageClient) {
+func setupCredentialMocks(mockDatabaseClient database.MockClient) {
 	datamodelCredential := datamodel.AzureCredential{
 		BaseResource: v1.BaseResource{},
 		Properties: &datamodel.AzureCredentialResourceProperties{
@@ -136,10 +136,10 @@ func setupCredentialMocks(mockStorageClient store.MockStorageClient) {
 		},
 	}
 
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-			return &store.Object{
-				Metadata: store.Metadata{
+	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
+			return &database.Object{
+				Metadata: database.Metadata{
 					ID: datamodelCredential.TrackedResource.ID,
 				},
 				Data: &datamodelCredential,
@@ -147,42 +147,42 @@ func setupCredentialMocks(mockStorageClient store.MockStorageClient) {
 		}).Times(1)
 }
 
-func setupCredentialDeleteSuccessMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	setupCredentialMocks(mockStorageClient)
+func setupCredentialDeleteSuccessMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	setupCredentialMocks(mockDatabaseClient)
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	mockDatabaseClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 }
 
-func setupNonExistentCredentialDeleteMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &store.ErrNotFound{}).Times(1)
+func setupNonExistentCredentialDeleteMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &database.ErrNotFound{}).Times(1)
 }
 
-func setupCredentialExistenceCheckFailureMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("test_failure")).Times(1)
+func setupCredentialExistenceCheckFailureMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("test_failure")).Times(1)
 }
 
-func setupNonExistentSecretDeleteMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	setupCredentialMocks(mockStorageClient)
+func setupNonExistentSecretDeleteMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	setupCredentialMocks(mockDatabaseClient)
 
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(&secret.ErrNotFound{}).Times(1)
 }
 
-func setupSecretDeleteFailureMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	setupCredentialMocks(mockStorageClient)
+func setupSecretDeleteFailureMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	setupCredentialMocks(mockDatabaseClient)
 
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Failed secret deletion")).Times(1)
 }
 
-func setupNonExistingCredentialDeleteFromStorageMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	setupCredentialMocks(mockStorageClient)
+func setupNonExistingCredentialDeleteFromStorageMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	setupCredentialMocks(mockDatabaseClient)
 
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store.ErrNotFound{}).Times(1)
+	mockDatabaseClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(&database.ErrNotFound{}).Times(1)
 }
 
-func setupFailedCredentialDeleteFromStorageMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
-	setupCredentialMocks(mockStorageClient)
+func setupFailedCredentialDeleteFromStorageMocks(mockDatabaseClient database.MockClient, mockSecretClient secret.MockClient) {
+	setupCredentialMocks(mockDatabaseClient)
 
 	mockSecretClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Failed Storage Deletion")).Times(1)
+	mockDatabaseClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Failed Storage Deletion")).Times(1)
 }

@@ -9,8 +9,14 @@
 # - Talk to Portable Resources' Providers on port 8081
 # - Disables metrics and profiler
 #
-location: 'global'
-storageProvider:
+environment:
+  name: "dev"
+  roleLocation: "global"
+server:
+  port: 9000
+  pathBase: /apis/api.ucp.dev/v1alpha3
+
+databaseProvider:
   provider: "apiserver"
   apiserver:
     context: ''
@@ -32,19 +38,22 @@ profilerProvider:
 
 #Default planes configuration with which ucp starts
 # TODO: Remove azure and aws planes once rad provider commands are supported
-planes:
-  - id: "/planes/aws/aws"
-    properties:
-      kind: "AWS"
-  - id: "/planes/radius/local"
-    properties:
-      resourceProviders:
-        Applications.Core: "http://localhost:8080"
-        Applications.Messaging: "http://localhost:8080"
-        Applications.Dapr: "http://localhost:8080"
-        Applications.Datastores: "http://localhost:8080"
-        Microsoft.Resources: "http://localhost:5017"
-      kind: "UCPNative"
+initialization:
+  planes:
+    - id: "/planes/aws/aws"
+      properties:
+        kind: "AWS"
+    - id: "/planes/radius/local"
+      properties:
+        resourceProviders:
+          Applications.Core: "http://localhost:8080"
+          Applications.Messaging: "http://localhost:8080"
+          Applications.Dapr: "http://localhost:8080"
+          Applications.Datastores: "http://localhost:8080"
+          Microsoft.Resources: "http://localhost:5017"
+        kind: "UCPNative"
+  # This is the directory location which contains manifests to be registered.
+  manifestDirectory: ""      
 
 identity:
   authMethod: default
@@ -62,8 +71,9 @@ routing:
 # port is not the same as metrics configuration in radius-self-hosted.yaml
 # so that we can run both services in debug mode.
 metricsProvider:
+  enabled: false
+  serviceName: "ucp"
   prometheus:
-    enabled: false
     path: "/metrics"
     port: 9091
 
@@ -74,6 +84,7 @@ logging:
 
 # Tracing configuration
 tracerProvider:
+  enabled: false
   serviceName: "ucp"
   zipkin:
     url: "http://localhost:9411/api/v2/spans"

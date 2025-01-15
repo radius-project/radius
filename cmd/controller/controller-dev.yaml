@@ -1,0 +1,31 @@
+environment:
+  name: "dev"
+  roleLocation: "global"
+profilerProvider:
+  enabled: true
+  port: 6063
+metricsProvider:
+  enabled: true
+  serviceName: "controller"
+  prometheus:
+    path: "/metrics"
+    port: 9093
+tracerProvider:
+  enabled: false
+  serviceName: "controller"
+  zipkin:
+    url: "http://localhost:9411/api/v2/spans"
+server:
+  host: "0.0.0.0"
+  port: 8083
+
+# workerServer port specifies port set for Health Checks
+workerServer:
+  port: 7073
+ucp:
+  kind: direct
+  direct:
+    endpoint: "http://localhost:9000/apis/api.ucp.dev/v1alpha3"
+logging:
+  level: "info"
+  json: false

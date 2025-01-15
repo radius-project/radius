@@ -27,7 +27,7 @@ import (
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -38,7 +38,7 @@ func TestGetOperationStatusRun(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+	databaseClient := database.NewMockClient(mctrl)
 	ctx := context.Background()
 
 	rawDataModel := testutil.ReadFixture("operationstatus_datamodel.json")
@@ -55,15 +55,15 @@ func TestGetOperationStatusRun(t *testing.T) {
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{ID: id}
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return nil, &database.ErrNotFound{ID: id}
 			})
 
 		ctl, err := NewGetOperationStatus(ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		})
 
 		require.NoError(t, err)
@@ -79,18 +79,18 @@ func TestGetOperationStatusRun(t *testing.T) {
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id},
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return &database.Object{
+					Metadata: database.Metadata{ID: id},
 					Data:     osDataModel,
 				}, nil
 			})
 
 		ctl, err := NewGetOperationStatus(ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		})
 
 		require.NoError(t, err)

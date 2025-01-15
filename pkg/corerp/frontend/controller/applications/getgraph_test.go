@@ -24,8 +24,8 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -34,7 +34,7 @@ func TestGetGraphRun_20231001Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
 		context.Background(),
 		v1.OperationPost.HTTPMethod(),
@@ -43,13 +43,13 @@ func TestGetGraphRun_20231001Preview(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("resource not found", func(t *testing.T) {
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			Return(nil, &store.ErrNotFound{})
+			Return(nil, &database.ErrNotFound{})
 		ctx := rpctest.NewARMRequestContext(req)
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		conn, err := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")

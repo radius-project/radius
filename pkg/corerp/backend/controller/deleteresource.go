@@ -37,11 +37,11 @@ func NewDeleteResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteResource{ctrl.NewBaseAsyncController(opts)}, nil
 }
 
-// Run retrieves a resource from storage, parses its ID, gets its data model, converts it to a deployment
-// data model, deletes the resource from the deployment processor, and deletes the resource from storage.
+// Run retrieves a resource from the database, parses its ID, gets its data model, converts it to a deployment
+// data model, deletes the resource from the deployment processor, and deletes the resource from the database.
 // It returns an error if any of these steps fail.
 func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
+	obj, err := c.DatabaseClient().Get(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 	}
@@ -71,7 +71,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	err = c.StorageClient().Delete(ctx, request.ResourceID)
+	err = c.DatabaseClient().Delete(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

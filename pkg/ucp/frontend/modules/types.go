@@ -19,14 +19,6 @@ package modules
 import (
 	"context"
 	"net/http"
-
-	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/hostoptions"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
-	"github.com/radius-project/radius/pkg/validator"
 )
 
 // Initializer is an interface that can be implemented by modules that want to provide functionality for a plane.
@@ -44,37 +36,4 @@ type Initializer interface {
 	// - kubernetes
 	// - radius
 	PlaneType() string
-}
-
-// Options defines the options for a module.
-type Options struct {
-	// Config is the bootstrap configuration loaded from config file.
-	Config *hostoptions.UCPConfig
-
-	// Address is the hostname + port of the server hosting UCP.
-	Address string
-
-	// PathBase is the base path of the server as it appears in the URL. eg: '/apis/api.ucp.dev/v1alpha3'.
-	PathBase string
-
-	// Location is the location of the server hosting UCP.
-	Location string
-
-	// DataProvider is the data storage provider.
-	DataProvider dataprovider.DataStorageProvider
-
-	// QeueueProvider provides access to the queue for async operations.
-	QueueProvider *queueprovider.QueueProvider
-
-	// SecretProvider is the secret store provider used for managing credentials.
-	SecretProvider *secretprovider.SecretProvider
-
-	// SpecLoader is the OpenAPI spec loader containing specs for the UCP APIs.
-	SpecLoader *validator.Loader
-
-	// StatusManager is the async operation status manager.
-	StatusManager statusmanager.StatusManager
-
-	// UCPConnection is the connection used to communicate with UCP APIs.
-	UCPConnection sdk.Connection
 }

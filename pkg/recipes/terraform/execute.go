@@ -27,17 +27,17 @@ import (
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
-	"github.com/radius-project/radius/pkg/metrics"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
+	"github.com/radius-project/radius/pkg/components/metrics"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/radius-project/radius/pkg/sdk"
-	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 var (
@@ -48,8 +48,8 @@ var (
 var _ TerraformExecutor = (*executor)(nil)
 
 // NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
-func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, k8sClientSet kubernetes.Interface) *executor {
-	return &executor{ucpConn: ucpConn, secretProvider: secretProvider, k8sClientSet: k8sClientSet}
+func NewExecutor(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) *executor {
+	return &executor{ucpConn: ucpConn, secretProvider: secretProvider, kubernetesClients: kubernetesClients}
 }
 
 type executor struct {
@@ -57,10 +57,10 @@ type executor struct {
 	ucpConn sdk.Connection
 
 	// secretProvider is the secret store provider used for managing credentials in UCP.
-	secretProvider *ucp_provider.SecretProvider
+	secretProvider *secretprovider.SecretProvider
 
-	// k8sClientSet is the Kubernetes client.
-	k8sClientSet kubernetes.Interface
+	// kubernetesClients provides access to the Kubernetes clients.
+	kubernetesClients kubernetesclientprovider.KubernetesClientProvider
 }
 
 // Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
@@ -104,7 +104,12 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	// Validate that the terraform state file backend source exists.
 	// Currently only Kubernetes secret backend is supported, which is created by Terraform as a part of Terraform apply.
-	backendExists, err := backends.NewKubernetesBackend(e.k8sClientSet).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	kubernetesClient, err := e.kubernetesClients.ClientGoClient()
+	if err != nil {
+		return nil, fmt.Errorf("error getting kubernetes client: %w", err)
+	}
+
+	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
 	} else if !backendExists {
@@ -142,7 +147,12 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	// Before running terraform init and destroy, ensure that the Terraform state file storage source exists.
 	// If the state file source has been deleted or wasn't created due to a failure during apply then
 	// terraform initialization will fail due to missing backend source.
-	backendExists, err := backends.NewKubernetesBackend(e.k8sClientSet).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	kubernetesClient, err := e.kubernetesClients.ClientGoClient()
+	if err != nil {
+		return fmt.Errorf("error getting kubernetes client: %w", err)
+	}
+
+	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 	if err != nil {
 		// Continue with the delete flow for all errors other than backend not found.
 		// If it is an intermittent error then the delete flow will fail and should be retried from the client.
@@ -160,7 +170,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Delete the kubernetes secret created for terraform state file.
-	err = e.k8sClientSet.CoreV1().
+	err = kubernetesClient.CoreV1().
 		Secrets(backends.RadiusNamespace).
 		Delete(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix, metav1.DeleteOptions{})
 	if err != nil {
@@ -214,14 +224,14 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 	recipeConfig := &options.EnvConfig.RecipeConfig
 	var envVarUpdate bool
 
-	if recipeConfig != nil && recipeConfig.Env.AdditionalProperties != nil && len(recipeConfig.Env.AdditionalProperties) > 0 {
+	if len(recipeConfig.Env.AdditionalProperties) > 0 {
 		envVarUpdate = true
 		for key, value := range recipeConfig.Env.AdditionalProperties {
 			envVars[key] = value
 		}
 	}
 
-	if recipeConfig != nil && recipeConfig.EnvSecrets != nil && len(recipeConfig.EnvSecrets) > 0 {
+	if len(recipeConfig.EnvSecrets) > 0 {
 		for secretName, secretReference := range recipeConfig.EnvSecrets {
 			// Extract secret value from the secrets input
 			if secretData, ok := options.Secrets[secretReference.Source]; ok {
@@ -282,7 +292,12 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return "", err
 	}
 
-	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend(e.k8sClientSet))
+	kubernetesClient, err := e.kubernetesClients.ClientGoClient()
+	if err != nil {
+		return "", fmt.Errorf("error getting kubernetes client: %w", err)
+	}
+
+	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend(kubernetesClient))
 	if err != nil {
 		return "", err
 	}

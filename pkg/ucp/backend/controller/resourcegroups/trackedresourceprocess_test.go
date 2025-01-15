@@ -23,9 +23,9 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -33,16 +33,16 @@ import (
 )
 
 func Test_Run(t *testing.T) {
-	setup := func(t *testing.T) (*TrackedResourceProcessController, *mockUpdater, *store.MockStorageClient) {
+	setup := func(t *testing.T) (*TrackedResourceProcessController, *mockUpdater, *database.MockClient) {
 		ctrl := gomock.NewController(t)
-		storageClient := store.NewMockStorageClient(ctrl)
+		databaseClient := database.NewMockClient(ctrl)
 
-		pc, err := NewTrackedResourceProcessController(controller.Options{StorageClient: storageClient}, nil, nil)
+		pc, err := NewTrackedResourceProcessController(controller.Options{DatabaseClient: databaseClient}, nil, nil)
 		require.NoError(t, err)
 
 		updater := mockUpdater{}
 		pc.(*TrackedResourceProcessController).updater = &updater
-		return pc.(*TrackedResourceProcessController), &updater, storageClient
+		return pc.(*TrackedResourceProcessController), &updater, databaseClient
 	}
 
 	id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
@@ -63,23 +63,23 @@ func Test_Run(t *testing.T) {
 
 	// Most of the heavy lifting is done by the updater. We just need to test that we're calling it correctly.
 	t.Run("Success", func(t *testing.T) {
-		pc, _, storageClient := setup(t)
+		pc, _, databaseClient := setup(t)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), trackingID.String(), gomock.Any()).
-			Return(&store.Object{Data: data}, nil).Times(1)
+			Return(&database.Object{Data: data}, nil).Times(1)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), "/planes/"+trackingID.PlaneNamespace(), gomock.Any()).
-			Return(&store.Object{Data: plane}, nil).Times(1)
+			Return(&database.Object{Data: plane}, nil).Times(1)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
-			Return(nil, &store.ErrNotFound{}).Times(1)
+			Return(nil, &database.ErrNotFound{}).Times(1)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), trackingID.RootScope(), gomock.Any()).
-			Return(&store.Object{Data: resourceGroup}, nil).Times(1)
+			Return(&database.Object{Data: resourceGroup}, nil).Times(1)
 
 		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, controller.Result{}, result)
@@ -87,23 +87,23 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("retry", func(t *testing.T) {
-		pc, updater, storageClient := setup(t)
+		pc, updater, databaseClient := setup(t)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), trackingID.String(), gomock.Any()).
-			Return(&store.Object{Data: data}, nil).Times(1)
+			Return(&database.Object{Data: data}, nil).Times(1)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), "/planes/"+trackingID.PlaneNamespace(), gomock.Any()).
-			Return(&store.Object{Data: plane}, nil).Times(1)
+			Return(&database.Object{Data: plane}, nil).Times(1)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
-			Return(nil, &store.ErrNotFound{}).Times(1)
+			Return(nil, &database.ErrNotFound{}).Times(1)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), trackingID.RootScope(), gomock.Any()).
-			Return(&store.Object{Data: resourceGroup}, nil).Times(1)
+			Return(&database.Object{Data: resourceGroup}, nil).Times(1)
 
 		// Force a retry.
 		updater.Result = &trackedresource.InProgressErr{}
@@ -117,11 +117,11 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Failure (resource not found)", func(t *testing.T) {
-		pc, _, storageClient := setup(t)
+		pc, _, databaseClient := setup(t)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), trackingID.String(), gomock.Any()).
-			Return(nil, &store.ErrNotFound{}).Times(1)
+			Return(nil, &database.ErrNotFound{}).Times(1)
 
 		expected := controller.NewFailedResult(v1.ErrorDetails{
 			Code:    v1.CodeNotFound,
@@ -135,15 +135,15 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Failure (validate downstream: not found)", func(t *testing.T) {
-		pc, _, storageClient := setup(t)
+		pc, _, databaseClient := setup(t)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), trackingID.String(), gomock.Any()).
-			Return(&store.Object{Data: data}, nil).Times(1)
+			Return(&database.Object{Data: data}, nil).Times(1)
 
-		storageClient.EXPECT().
+		databaseClient.EXPECT().
 			Get(gomock.Any(), "/planes/"+trackingID.PlaneNamespace(), gomock.Any()).
-			Return(nil, &store.ErrNotFound{}).Times(1)
+			Return(nil, &database.ErrNotFound{}).Times(1)
 
 		expected := controller.NewFailedResult(v1.ErrorDetails{
 			Code:    v1.CodeNotFound,

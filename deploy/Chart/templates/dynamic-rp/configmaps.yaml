@@ -13,7 +13,7 @@ data:
     environment:
       name: self-hosted
       roleLocation: "global"
-    storageProvider:
+    databaseProvider:
       provider: "apiserver"
       apiserver:
         context: ""
@@ -25,8 +25,9 @@ data:
         context: ""
         namespace: "radius-system"
     metricsProvider:
+      enabled: true
+      serviceName: "dynamic-rp"
       prometheus:
-        enabled: true
         path: "/metrics"
         port: 9092
     profilerProvider:
@@ -34,6 +35,8 @@ data:
       port: 6062
     secretProvider:
       provider: kubernetes
+    kubernetes:
+      kind: default
     server:
       host: "0.0.0.0"
       port: 8082
@@ -47,6 +50,7 @@ data:
       json: true
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
+      enabled: true
       serviceName: "dynamic-rp"
       zipkin: 
         url: {{ .Values.global.zipkin.url }}

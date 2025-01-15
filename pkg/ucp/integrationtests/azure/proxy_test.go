@@ -25,9 +25,8 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testrp"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,7 +37,7 @@ const (
 )
 
 func Test_AzurePlane_ProxyRequest(t *testing.T) {
-	ucp := testserver.StartWithETCD(t, api.DefaultModules)
+	ucp := testhost.Start(t)
 
 	data := map[string]string{
 		"message":         "here is some test data",
@@ -63,7 +62,7 @@ func Test_AzurePlane_ProxyRequest(t *testing.T) {
 	require.Equal(t, "SomeValue", response.Raw.Header.Get("SomeHeader"))
 }
 
-func createAzurePlane(ucp *testserver.TestServer, rp *testrp.Server) {
+func createAzurePlane(ucp *testhost.TestHost, rp *testrp.Server) {
 	body := v20231001preview.AzurePlaneResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Properties: &v20231001preview.AzurePlaneResourceProperties{

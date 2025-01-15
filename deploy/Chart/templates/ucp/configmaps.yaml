@@ -10,8 +10,14 @@ data:
   ucp-config.yaml: |-
     # Radius configuration file.
     # See https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
-    location: 'global'
-    storageProvider:
+    environment:
+      name: self-hosted
+      roleLocation: "global"
+    server:
+      port: 9443
+      pathBase: /apis/api.ucp.dev/v1alpha3
+      tlsCertificateDirectory: /var/tls/cert
+    databaseProvider:
       provider: "apiserver"
       apiserver:
         context: ""
@@ -30,20 +36,21 @@ data:
     profilerProvider:
       enabled: true
       port: 6060
-
-    planes:
-      - id: "/planes/radius/local"
-        properties:
-          resourceProviders:
-            Applications.Core: "http://applications-rp.radius-system:5443"
-            Applications.Dapr: "http://applications-rp.radius-system:5443"
-            Applications.Datastores: "http://applications-rp.radius-system:5443"
-            Applications.Messaging: "http://applications-rp.radius-system:5443"
-            Microsoft.Resources: "http://bicep-de.radius-system:6443"
-          kind: "UCPNative"
-      - id: "/planes/aws/aws"
-        properties:
-          kind: "AWS"
+    initialization:
+      planes:
+        - id: "/planes/radius/local"
+          properties:
+            resourceProviders:
+              Applications.Core: "http://applications-rp.radius-system:5443"
+              Applications.Dapr: "http://applications-rp.radius-system:5443"
+              Applications.Datastores: "http://applications-rp.radius-system:5443"
+              Applications.Messaging: "http://applications-rp.radius-system:5443"
+              Microsoft.Resources: "http://bicep-de.radius-system:6443"
+            kind: "UCPNative"
+        - id: "/planes/aws/aws"
+          properties:
+            kind: "AWS"
+      manifestDirectory: ""      
 
     identity:
       authMethod: UCPCredential
@@ -55,8 +62,9 @@ data:
       defaultDownstreamEndpoint: "http://dynamic-rp.radius-sytem:8082"
 
     metricsProvider:
+      enabled: true
+      serviceName: "ucp"
       prometheus:
-        enabled: true
         path: "/metrics"
         port: 9090
 
@@ -66,6 +74,7 @@ data:
 
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
+      enabled: true
       serviceName: "ucp"
       zipkin: 
         url: {{ .Values.global.zipkin.url }}

@@ -26,9 +26,9 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/messagingrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/portableresources/renderers"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -37,7 +37,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+	databaseClient := database.NewMockClient(mctrl)
 	ctx := context.Background()
 
 	_, rabbitMQDataModel, _ := getTest_Model20231001preview()
@@ -48,15 +48,15 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{}
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return nil, &database.ErrNotFound{}
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctl, err := NewListSecretsRabbitMQQueue(opts)
@@ -78,18 +78,18 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			renderers.URI: "connection://string",
 		}
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id},
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+				return &database.Object{
+					Metadata: database.Metadata{ID: id},
 					Data:     rabbitMQDataModel,
 				}, nil
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctl, err := NewListSecretsRabbitMQQueue(opts)
@@ -113,15 +113,15 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 		ctx := rpctest.NewARMRequestContext(req)
 		w := httptest.NewRecorder()
 
-		mStorageClient.
+		databaseClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			DatabaseClient: databaseClient,
 		}
 
 		ctl, err := NewListSecretsRabbitMQQueue(opts)

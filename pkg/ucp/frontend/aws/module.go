@@ -18,6 +18,7 @@ package aws
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/radius-project/radius/pkg/ucp"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/validator"
@@ -32,7 +33,7 @@ const (
 )
 
 // NewModule creates a new AWS module.
-func NewModule(options modules.Options) *Module {
+func NewModule(options *ucp.Options) *Module {
 	m := Module{options: options}
 	m.router = chi.NewRouter()
 	m.router.NotFound(validator.APINotFoundHandler())
@@ -45,7 +46,7 @@ var _ modules.Initializer = &Module{}
 
 // Module defines the module for AWS functionality.
 type Module struct {
-	options modules.Options
+	options *ucp.Options
 	router  chi.Router
 
 	// AWSClients provides access to AWS services. This field can be overridden by tests.

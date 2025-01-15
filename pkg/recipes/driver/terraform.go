@@ -27,9 +27,10 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"golang.org/x/exp/slices"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
@@ -38,7 +39,6 @@ import (
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
 	awsresources "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	kubernetesresources "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
-	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util"
 
@@ -48,9 +48,9 @@ import (
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, options TerraformOptions, k8sClientSet kubernetes.Interface) Driver {
+func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, options TerraformOptions, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) Driver {
 	return &terraformDriver{
-		terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, k8sClientSet),
+		terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, kubernetesClients),
 		options:           options,
 	}
 }

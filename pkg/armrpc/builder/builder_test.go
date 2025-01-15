@@ -23,12 +23,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	asyncctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	backendctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -167,28 +167,19 @@ var defaultHandlerTests = []rpctest.HandlerTestSpec{
 	},
 }
 
-func setup(t *testing.T) (*dataprovider.MockDataStorageProvider, *store.MockStorageClient) {
-	mctrl := gomock.NewController(t)
-
-	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
-	mockSC := store.NewMockStorageClient(mctrl)
-
-	mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store.Object{}, nil).AnyTimes()
-	mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockSC.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockSC.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store.ObjectQueryResult{}, nil).AnyTimes()
-	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
-
-	return mockSP, mockSC
-}
-
 func TestApplyAPIHandlers(t *testing.T) {
-	mockSP, _ := setup(t)
-
 	runTests := func(t *testing.T, testSpecs []rpctest.HandlerTestSpec, b *Builder) {
 		rpctest.AssertRequests(t, testSpecs, "/api.ucp.dev", "/planes/radius/local", func(ctx context.Context) (chi.Router, error) {
 			r := chi.NewRouter()
-			return r, b.ApplyAPIHandlers(ctx, r, apictrl.Options{PathBase: "/api.ucp.dev", DataProvider: mockSP})
+
+			options := apictrl.Options{
+				Address:        "localhost:8080",
+				PathBase:       "/api.ucp.dev",
+				DatabaseClient: inmemory.NewClient(),
+				StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
+			}
+
+			return r, b.ApplyAPIHandlers(ctx, r, options)
 		})
 	}
 
@@ -218,7 +209,6 @@ func TestApplyAPIHandlers(t *testing.T) {
 }
 
 func TestApplyAPIHandlers_AvailableOperations(t *testing.T) {
-	mockSP, _ := setup(t)
 	ns := newTestNamespace(t)
 
 	ns.SetAvailableOperations([]v1.Operation{
@@ -237,17 +227,27 @@ func TestApplyAPIHandlers_AvailableOperations(t *testing.T) {
 	builder := ns.GenerateBuilder()
 	rpctest.AssertRequests(t, handlerTests, "/api.ucp.dev", "/planes/radius/local", func(ctx context.Context) (chi.Router, error) {
 		r := chi.NewRouter()
-		return r, builder.ApplyAPIHandlers(ctx, r, apictrl.Options{PathBase: "/api.ucp.dev", DataProvider: mockSP})
+		options := apictrl.Options{
+			Address:        "localhost:8080",
+			PathBase:       "/api.ucp.dev",
+			DatabaseClient: inmemory.NewClient(),
+			StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
+		}
+		return r, builder.ApplyAPIHandlers(ctx, r, options)
 	})
 }
 
 func TestApplyAsyncHandler(t *testing.T) {
-	mockSP, _ := setup(t)
 	ns := newTestNamespace(t)
 	builder := ns.GenerateBuilder()
-	registry := worker.NewControllerRegistry(mockSP)
+	registry := worker.NewControllerRegistry()
 	ctx := testcontext.New(t)
-	err := builder.ApplyAsyncHandler(ctx, registry, asyncctrl.Options{})
+
+	options := backendctrl.Options{
+		DatabaseClient: inmemory.NewClient(),
+	}
+
+	err := builder.ApplyAsyncHandler(ctx, registry, options)
 	require.NoError(t, err)
 
 	expectedOperations := []v1.OperationType{
@@ -261,7 +261,7 @@ func TestApplyAsyncHandler(t *testing.T) {
 	}
 
 	for _, op := range expectedOperations {
-		jobCtrl, err := registry.Get(context.Background(), op)
+		jobCtrl, err := registry.Get(op)
 		require.NoError(t, err)
 		require.NotNil(t, jobCtrl)
 	}

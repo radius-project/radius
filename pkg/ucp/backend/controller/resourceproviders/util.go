@@ -23,9 +23,9 @@ import (
 	"strings"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -63,8 +63,8 @@ func resourceProviderSummaryIDFromRequest(request *ctrl.Request) (resources.ID, 
 	return id, summaryID, nil
 }
 
-// updateResourceProviderSummaryWithETag updates the summary with the provided function and saves it to the storage client.
-func updateResourceProviderSummaryWithETag(ctx context.Context, client store.StorageClient, summaryID resources.ID, policy summaryNotFoundPolicy, update func(summary *datamodel.ResourceProviderSummary) error) error {
+// updateResourceProviderSummaryWithETag updates the summary with the provided function and saves it to the database client.
+func updateResourceProviderSummaryWithETag(ctx context.Context, client database.Client, summaryID resources.ID, policy summaryNotFoundPolicy, update func(summary *datamodel.ResourceProviderSummary) error) error {
 	// There are a few cases here:
 	// 1. The summary does not exist and we are allowed to create it (in the resource provider).
 	// 2. The summary does not exist and we are not allowed to create it (in the child-types of resource provider).
@@ -72,20 +72,20 @@ func updateResourceProviderSummaryWithETag(ctx context.Context, client store.Sto
 	summary := &datamodel.ResourceProviderSummary{}
 
 	obj, err := client.Get(ctx, summaryID.String())
-	if errors.Is(err, &store.ErrNotFound{}) && policy == summaryNotFoundCreate {
+	if errors.Is(err, &database.ErrNotFound{}) && policy == summaryNotFoundCreate {
 		// This is fine. We will create a new summary.
 		summary.ID = summaryID.String()
 		summary.Name = summaryID.Name()
 		summary.Type = summaryID.Type()
 
-		obj = &store.Object{
-			Metadata: store.Metadata{
+		obj = &database.Object{
+			Metadata: database.Metadata{
 				ID: summary.ID,
 			},
 		}
-	} else if errors.Is(err, &store.ErrNotFound{}) && policy == summaryNotFoundIgnore {
+	} else if errors.Is(err, &database.ErrNotFound{}) && policy == summaryNotFoundIgnore {
 		return nil
-	} else if errors.Is(err, &store.ErrNotFound{}) {
+	} else if errors.Is(err, &database.ErrNotFound{}) {
 		return err
 	} else if err != nil {
 		return err
@@ -104,9 +104,9 @@ func updateResourceProviderSummaryWithETag(ctx context.Context, client store.Sto
 	}
 
 	// Now we can save. Use the ETag if the resource already existed.
-	options := []store.SaveOptions{}
+	options := []database.SaveOptions{}
 	if obj.ETag != "" {
-		options = append(options, store.WithETag(obj.ETag))
+		options = append(options, database.WithETag(obj.ETag))
 	}
 
 	obj.Data = summary

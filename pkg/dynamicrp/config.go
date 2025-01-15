@@ -20,33 +20,42 @@ import (
 	"bytes"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	metricsprovider "github.com/radius-project/radius/pkg/metrics/provider"
-	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
-	"github.com/radius-project/radius/pkg/trace"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
+	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
+	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
+	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"gopkg.in/yaml.v3"
 )
 
 // Config defines the configuration for the DynamicRP server.
+//
+// For testability, all fields on this struct MUST be parsable from YAML without any further initialization required.
 type Config struct {
 	// Bicep configures properties for the Bicep recipe driver.
 	Bicep hostoptions.BicepOptions `yaml:"bicep"`
 
+	// Database is the configuration for the database.
+	Database databaseprovider.Options `yaml:"databaseProvider"`
+
 	// Environment is the configuration for the hosting environment.
 	Environment hostoptions.EnvironmentOptions `yaml:"environment"`
+
+	// Kubernetes is the configuration for the Kubernetes client.
+	Kubernetes kubernetesclientprovider.Options `yaml:"kubernetes"`
 
 	// Logging is the configuration for the logging system.
 	Logging ucplog.LoggingOptions `yaml:"logging"`
 
 	// Metrics is the configuration for the metrics endpoint.
-	Metrics metricsprovider.MetricsProviderOptions `yaml:"metricsProvider"`
+	Metrics metricsservice.Options `yaml:"metricsProvider"`
 
 	// Profiler is the configuration for the profiler endpoint.
-	Profiler profilerprovider.ProfilerProviderOptions `yaml:"profilerProvider"`
+	Profiler profilerservice.Options `yaml:"profilerProvider"`
 
 	// Queue is the configuration for the message queue.
 	Queue queueprovider.QueueProviderOptions `yaml:"queueProvider"`
@@ -57,14 +66,11 @@ type Config struct {
 	// Server is the configuration for the HTTP server.
 	Server hostoptions.ServerOptions `yaml:"server"`
 
-	// Storage is the configuration for the database used for storage.
-	Storage dataprovider.StorageProviderOptions `yaml:"storageProvider"`
-
 	// Terraform configures properties for the Terraform recipe driver.
 	Terraform hostoptions.TerraformOptions `yaml:"terraform"`
 
 	// Tracing is the configuration for the tracing system.
-	Tracing trace.Options `yaml:"tracerProvider"`
+	Tracing traceservice.Options `yaml:"tracerProvider"`
 
 	// UCPConfig is the configuration for the connection to UCP.
 	UCP ucpconfig.UCPOptions `yaml:"ucp"`

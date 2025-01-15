@@ -19,19 +19,28 @@ package resourceproviders
 import (
 	"net/http"
 	"testing"
+	"time"
 
-	"github.com/radius-project/radius/pkg/ucp/frontend/api"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 )
 
 const (
 	resourceProviderEmptyListResponseFixture = "testdata/resourceprovider_v20231001preview_emptylist_responsebody.json"
 	resourceProviderListResponseFixture      = "testdata/resourceprovider_v20231001preview_list_responsebody.json"
+
+	manifestResourceProviderListResponseFixture = "testdata/resourceprovider_manifest_list_responsebody.json"
+	manifestResourceProviderResponseFixture     = "testdata/resourceprovider_manifest_responsebody.json"
+
+	manifestResourceTypeListResponseFixture = "testdata/resourcetype_manifest_list_responsebody.json"
+
+	registerManifestWaitDuration = 30 * time.Second
+	registerManifestWaitInterval = 3 * time.Second
 )
 
 func Test_ResourceProvider_Lifecycle(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -61,7 +70,7 @@ func Test_ResourceProvider_Lifecycle(t *testing.T) {
 }
 
 func Test_ResourceProvider_CascadingDelete(t *testing.T) {
-	server := testserver.StartWithETCD(t, api.DefaultModules)
+	server := testhost.Start(t)
 	defer server.Close()
 
 	createRadiusPlane(server)
@@ -87,4 +96,32 @@ func Test_ResourceProvider_CascadingDelete(t *testing.T) {
 	response = server.MakeRequest(http.MethodGet, locationURL, nil)
 	response.EqualsErrorCode(404, "NotFound")
 	require.Equal(t, locationID, response.Error.Error.Target)
+}
+
+func Test_ResourceProvider_RegisterManifests(t *testing.T) {
+	server := testhost.Start(t, testhost.TestHostOptionFunc(func(options *ucp.Options) {
+		options.Config.Initialization.ManifestDirectory = "testdata/manifests"
+	}))
+	defer server.Close()
+
+	createRadiusPlane(server)
+
+	require.Eventuallyf(t, func() bool {
+		// Responses should contain the resource provider and resource type in the manifest
+		response := server.MakeRequest(http.MethodGet, manifestResourceProviderCollectionURL, nil)
+		response.EqualsFixture(200, manifestResourceProviderListResponseFixture)
+
+		response = server.MakeRequest(http.MethodGet, manifestResourceProviderURL, nil)
+		response.EqualsFixture(200, manifestResourceProviderResponseFixture)
+
+		response = server.MakeRequest(http.MethodGet, manifestResourceTypeCollectionURL, nil)
+		response.EqualsFixture(200, manifestResourceTypeListResponseFixture)
+
+		response = server.MakeRequest(http.MethodGet, manifestResourceTypeURL, nil)
+		response.EqualsFixture(200, manifestResourceTypeResponseFixture)
+
+		deleteManifestResourceProvider(server)
+
+		return true
+	}, registerManifestWaitDuration, registerManifestWaitInterval, "manifest registration did not complete in time")
 }

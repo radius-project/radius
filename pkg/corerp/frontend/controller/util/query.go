@@ -19,20 +19,20 @@ package util
 import (
 	"context"
 
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database"
 )
 
 // FindResources searches for resources of a given type with a given filter key and value, and returns the query result.
-func FindResources(ctx context.Context, rootScope, resourceType, filterKey, filterValue string, storageClient store.StorageClient) (*store.ObjectQueryResult, error) {
-	query := store.Query{
+func FindResources(ctx context.Context, rootScope, resourceType, filterKey, filterValue string, databaseClient database.Client) (*database.ObjectQueryResult, error) {
+	query := database.Query{
 		RootScope:    rootScope,
 		ResourceType: resourceType,
-		Filters: []store.QueryFilter{
+		Filters: []database.QueryFilter{
 			{
 				Field: filterKey,
 				Value: filterValue,
 			},
 		},
 	}
-	return storageClient.Query(ctx, query)
+	return databaseClient.Query(ctx, query)
 }

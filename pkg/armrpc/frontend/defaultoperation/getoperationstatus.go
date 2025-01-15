@@ -25,7 +25,7 @@ import (
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/components/database"
 )
 
 var _ ctrl.Controller = (*GetOperationStatus)(nil)
@@ -49,7 +49,7 @@ func (e *GetOperationStatus) Run(ctx context.Context, w http.ResponseWriter, req
 
 	os := &manager.Status{}
 	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), os)
-	if err != nil && errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
+	if err != nil && errors.Is(&database.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 

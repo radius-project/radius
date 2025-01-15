@@ -28,9 +28,8 @@ import (
 	backend_ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testrp"
-	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,7 +47,7 @@ const (
 )
 
 func Test_RadiusPlane_Proxy_ResourceGroupDoesNotExist(t *testing.T) {
-	ucp := testserver.StartWithETCD(t, api.DefaultModules)
+	ucp := testhost.Start(t)
 	rp := testrp.Start(t)
 
 	rps := map[string]*string{
@@ -62,7 +61,7 @@ func Test_RadiusPlane_Proxy_ResourceGroupDoesNotExist(t *testing.T) {
 }
 
 func Test_RadiusPlane_ResourceSync(t *testing.T) {
-	ucp := testserver.StartWithETCD(t, api.DefaultModules)
+	ucp := testhost.Start(t)
 	rp := testrp.Start(t)
 	rp.Handler = testrp.SyncResource(t, ucp, testResourceGroupID)
 
@@ -158,7 +157,7 @@ func Test_RadiusPlane_ResourceSync(t *testing.T) {
 }
 
 func Test_RadiusPlane_ResourceAsync(t *testing.T) {
-	ucp := testserver.StartWithETCD(t, api.DefaultModules)
+	ucp := testhost.Start(t)
 	rp := testrp.Start(t)
 
 	// Block background work item completion until we're ready.
@@ -176,7 +175,7 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 			return result, nil
 		}
 
-		client, err := ucp.Clients.StorageProvider.GetStorageClient(ctx, "System.Test/testResources")
+		client, err := ucp.Options().DatabaseProvider.GetClient(ctx)
 		require.NoError(t, err)
 		err = client.Delete(ctx, testResourceID)
 		require.NoError(t, err)
@@ -222,8 +221,8 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 
 		location := response.Raw.Header.Get("Location")
 		azureAsyncOperation := response.Raw.Header.Get("Azure-AsyncOperation")
-		require.True(t, strings.HasPrefix(location, ucp.BaseURL), "Location starts with UCP URL")
-		require.True(t, strings.HasPrefix(azureAsyncOperation, ucp.BaseURL), "Azure-AsyncOperation starts with UCP URL")
+		require.True(t, strings.HasPrefix(location, ucp.BaseURL()), "Location starts with UCP URL")
+		require.True(t, strings.HasPrefix(azureAsyncOperation, ucp.BaseURL()), "Azure-AsyncOperation starts with UCP URL")
 	})
 
 	t.Run("LIST (during PUT)", func(t *testing.T) {
@@ -382,7 +381,7 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 	})
 }
 
-func createRadiusPlane(ucp *testserver.TestServer, resourceProviders map[string]*string) {
+func createRadiusPlane(ucp *testhost.TestHost, resourceProviders map[string]*string) {
 	body := v20231001preview.RadiusPlaneResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Properties: &v20231001preview.RadiusPlaneResourceProperties{
@@ -393,7 +392,7 @@ func createRadiusPlane(ucp *testserver.TestServer, resourceProviders map[string]
 	response.EqualsStatusCode(http.StatusOK)
 }
 
-func createResourceGroup(ucp *testserver.TestServer, id string) {
+func createResourceGroup(ucp *testhost.TestHost, id string) {
 	body := v20231001preview.ResourceGroupResource{
 		Location:   to.Ptr(v1.LocationGlobal),
 		Properties: &v20231001preview.ResourceGroupProperties{},

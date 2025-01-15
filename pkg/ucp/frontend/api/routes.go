@@ -26,6 +26,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	"github.com/radius-project/radius/pkg/ucp"
 	kubernetes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
@@ -74,9 +75,9 @@ func initModules(ctx context.Context, mods []modules.Initializer) (map[string]ht
 }
 
 // Register registers the routes for UCP including modules.
-func Register(ctx context.Context, router chi.Router, planeModules []modules.Initializer, options modules.Options) error {
+func Register(ctx context.Context, router chi.Router, planeModules []modules.Initializer, options *ucp.Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Registering routes with path base: %s", options.PathBase))
+	logger.Info(fmt.Sprintf("Registering routes with path base: %s", options.Config.Server.PathBase))
 
 	router.NotFound(validator.APINotFoundHandler())
 	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
@@ -89,7 +90,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 
 	handlerOptions := []server.HandlerOptions{}
 	// If we're in Kubernetes we have some required routes to implement.
-	if options.PathBase != "" {
+	if options.Config.Server.PathBase != "" {
 		// NOTE: the Kubernetes API Server does not include the gvr (base path) in
 		// the URL for swagger routes.
 		handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -97,6 +98,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 				ParentRouter:      router,
 				Path:              "/openapi/v2",
 				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesOpenAPIV2Doc, Method: v1.OperationGet},
+				ResourceType:      OperationTypeKubernetesOpenAPIV2Doc,
 				Method:            v1.OperationGet,
 				ControllerFactory: kubernetes_ctrl.NewOpenAPIv2Doc,
 			},
@@ -104,13 +106,15 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 				ParentRouter:      router,
 				Path:              "/openapi/v3",
 				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesOpenAPIV3Doc, Method: v1.OperationGet},
+				ResourceType:      OperationTypeKubernetesOpenAPIV3Doc,
 				Method:            v1.OperationGet,
 				ControllerFactory: kubernetes_ctrl.NewOpenAPIv3Doc,
 			},
 			{
 				ParentRouter:      router,
-				Path:              options.PathBase,
+				Path:              options.Config.Server.PathBase,
 				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesDiscoveryDoc, Method: v1.OperationGet},
+				ResourceType:      OperationTypeKubernetesDiscoveryDoc,
 				Method:            v1.OperationGet,
 				ControllerFactory: kubernetes_ctrl.NewDiscoveryDoc,
 			},
@@ -124,7 +128,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 	})
 
 	// Configures planes collection and resource routes.
-	planeCollectionRouter := server.NewSubrouter(router, options.PathBase+planeCollectionPath, apiValidator)
+	planeCollectionRouter := server.NewSubrouter(router, options.Config.Server.PathBase+planeCollectionPath, apiValidator)
 
 	// The "list all planes by type" handler is registered here.
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
@@ -134,14 +138,24 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 			ParentRouter:      planeCollectionRouter,
 			Method:            v1.OperationList,
 			OperationType:     &v1.OperationType{Type: OperationTypePlanes, Method: v1.OperationList},
+			ResourceType:      OperationTypePlanes,
 			ControllerFactory: planes_ctrl.NewListPlanes,
 		},
 	}...)
 
+	databaseClient, err := options.DatabaseProvider.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+
 	ctrlOptions := controller.Options{
-		Address:      options.Address,
-		PathBase:     options.PathBase,
-		DataProvider: options.DataProvider,
+		Address:        options.Config.Server.Address(),
+		DatabaseClient: databaseClient,
+		PathBase:       options.Config.Server.PathBase,
+		StatusManager:  options.StatusManager,
+
+		KubeClient:   nil, // Unused by UCP
+		ResourceType: "",  // Set dynamically
 	}
 
 	for _, h := range handlerOptions {
@@ -151,7 +165,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 	}
 
 	// Register a catch-all route to handle requests that get dispatched to a specific plane.
-	unknownPlaneRouter := server.NewSubrouter(router, options.PathBase+planeTypeCollectionPath)
+	unknownPlaneRouter := server.NewSubrouter(router, options.Config.Server.PathBase+planeTypeCollectionPath)
 	unknownPlaneRouter.HandleFunc(server.CatchAllPath, func(w http.ResponseWriter, r *http.Request) {
 		planeType := chi.URLParam(r, "planeType")
 		handler, ok := moduleHandlers[planeType]

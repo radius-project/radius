@@ -52,7 +52,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
@@ -93,7 +93,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
@@ -135,7 +135,7 @@ func Test_GetAWSOperationStatuses_Delete_NotFound(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)

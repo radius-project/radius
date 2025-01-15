@@ -25,14 +25,15 @@ import (
 	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/secret"
+	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
-	"github.com/radius-project/radius/pkg/ucp/hostoptions"
-	"github.com/radius-project/radius/pkg/ucp/secret"
-	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 )
 
 const pathBase = "/some-path-base"
@@ -111,24 +112,31 @@ func Test_Routes(t *testing.T) {
 	}
 
 	ctrl := gomock.NewController(t)
-	dataProvider := dataprovider.NewMockDataStorageProvider(ctrl)
-	dataProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	secretClient := secret.NewMockClient(ctrl)
 	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
 	secretProvider.SetClient(secretClient)
 
-	options := modules.Options{
-		Address:        "localhost",
-		PathBase:       pathBase,
-		Config:         &hostoptions.UCPConfig{},
-		DataProvider:   dataProvider,
-		SecretProvider: secretProvider,
+	options := &ucp.Options{
+		Config: &ucp.Config{
+			Server: hostoptions.ServerOptions{
+				Host:     "localhost",
+				Port:     8080,
+				PathBase: pathBase,
+			},
+		},
+		DatabaseProvider: databaseprovider.FromMemory(),
+		SecretProvider:   secretProvider,
+		StatusManager:    statusmanager.NewMockStatusManager(gomock.NewController(t)),
 	}
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
 		module := NewModule(options)
 		handler, err := module.Initialize(ctx)
-		return handler.(chi.Router), err
+		if err != nil {
+			return nil, err
+		}
+
+		return handler.(chi.Router), nil
 	})
 }

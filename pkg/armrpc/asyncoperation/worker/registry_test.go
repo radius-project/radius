@@ -22,8 +22,8 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -32,21 +32,17 @@ func TestRegister_Get(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
-	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-
-	registry := NewControllerRegistry(mockSP)
+	registry := NewControllerRegistry()
 
 	opGet := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationGet}
 	opPut := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationPut}
 
 	ctrlOpts := ctrl.Options{
-		StorageClient:          nil,
-		DataProvider:           mockSP,
+		DatabaseClient:         inmemory.NewClient(),
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor { return nil },
 	}
 
-	err := registry.Register(context.TODO(), opGet.Type, opGet.Method, func(opts ctrl.Options) (ctrl.Controller, error) {
+	err := registry.Register(opGet.Type, opGet.Method, func(opts ctrl.Options) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(ctrlOpts),
 			fn: func(ctx context.Context) (ctrl.Result, error) {
@@ -56,45 +52,38 @@ func TestRegister_Get(t *testing.T) {
 	}, ctrlOpts)
 	require.NoError(t, err)
 
-	err = registry.Register(context.TODO(), opPut.Type, opPut.Method, func(opts ctrl.Options) (ctrl.Controller, error) {
+	err = registry.Register(opPut.Type, opPut.Method, func(opts ctrl.Options) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(ctrlOpts),
 		}, nil
 	}, ctrlOpts)
 	require.NoError(t, err)
 
-	ctrl, err := registry.Get(context.Background(), opGet)
+	ctrl, err := registry.Get(opGet)
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 
-	ctrl, err = registry.Get(context.Background(), opPut)
+	ctrl, err = registry.Get(opPut)
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 
 	// Getting a controller that is not registered should return nil by default.
-	ctrl, err = registry.Get(context.Background(), v1.OperationType{Type: "Applications.Core/unknown", Method: v1.OperationGet})
+	ctrl, err = registry.Get(v1.OperationType{Type: "Applications.Core/unknown", Method: v1.OperationGet})
 	require.NoError(t, err)
 	require.Nil(t, ctrl)
 }
 
 func TestRegister_Get_WithDefault(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
-
-	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
-	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-
-	registry := NewControllerRegistry(mockSP)
+	registry := NewControllerRegistry()
 
 	opGet := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationGet}
 
 	ctrlOpts := ctrl.Options{
-		StorageClient:          nil,
-		DataProvider:           mockSP,
+		DatabaseClient:         inmemory.NewClient(),
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor { return nil },
 	}
 
-	err := registry.Register(context.TODO(), opGet.Type, opGet.Method, func(opts ctrl.Options) (ctrl.Controller, error) {
+	err := registry.Register(opGet.Type, opGet.Method, func(opts ctrl.Options) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(ctrlOpts),
 			fn: func(ctx context.Context) (ctrl.Result, error) {
@@ -104,19 +93,19 @@ func TestRegister_Get_WithDefault(t *testing.T) {
 	}, ctrlOpts)
 	require.NoError(t, err)
 
-	err = registry.RegisterDefault(context.TODO(), func(opts ctrl.Options) (ctrl.Controller, error) {
+	err = registry.RegisterDefault(func(opts ctrl.Options) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(ctrlOpts),
 		}, nil
 	}, ctrlOpts)
 	require.NoError(t, err)
 
-	ctrl, err := registry.Get(context.Background(), opGet)
+	ctrl, err := registry.Get(opGet)
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 
 	// Getting a controller that is not registered should default the default
-	ctrl, err = registry.Get(context.Background(), v1.OperationType{Type: "Applications.Core/unknown", Method: v1.OperationGet})
+	ctrl, err = registry.Get(v1.OperationType{Type: "Applications.Core/unknown", Method: v1.OperationGet})
 	require.NoError(t, err)
 	require.NotNil(t, ctrl)
 }

@@ -18,25 +18,25 @@ package azure
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/validator"
 )
 
 // NewModule creates a new Azure module.
-func NewModule(options modules.Options) *Module {
-	m := Module{options: options}
-	m.router = chi.NewRouter()
-	m.router.NotFound(validator.APINotFoundHandler())
-	m.router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
+func NewModule(options *ucp.Options) *Module {
+	router := chi.NewRouter()
+	router.NotFound(validator.APINotFoundHandler())
+	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
-	return &Module{options: options, router: m.router}
+	return &Module{options: options, router: router}
 }
 
 var _ modules.Initializer = &Module{}
 
 // Module defines the module for Azure functionality.
 type Module struct {
-	options modules.Options
+	options *ucp.Options
 	router  chi.Router
 }
 

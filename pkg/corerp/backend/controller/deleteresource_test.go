@@ -24,18 +24,18 @@ import (
 
 	"github.com/google/uuid"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	deployment "github.com/radius-project/radius/pkg/corerp/backend/deployment"
-	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 
-	setupTest := func() (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor, *ctrl.Request) {
+	setupTest := func() (func(tb testing.TB), *database.MockClient, *deployment.MockDeploymentProcessor, *ctrl.Request) {
 		mctrl := gomock.NewController(t)
 
-		msc := store.NewMockStorageClient(mctrl)
+		msc := database.NewMockClient(mctrl)
 		mdp := deployment.NewMockDeploymentProcessor(mctrl)
 
 		req := &ctrl.Request{
@@ -61,7 +61,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 		scDelErr error
 	}{
 		{"delete-existing-resource", nil, nil, nil},
-		{"delete-non-existing-resource", &store.ErrNotFound{}, nil, nil},
+		{"delete-non-existing-resource", &database.ErrNotFound{}, nil, nil},
 		{"delete-resource-dp-delete-error", nil, errors.New("deployment processor delete error"), nil},
 		{"delete-resource-delete-from-db-error", nil, nil, errors.New("delete from db error")},
 	}
@@ -73,7 +73,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 
 			msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				Return(&store.Object{}, tt.getErr).
+				Return(&database.Object{}, tt.getErr).
 				Times(1)
 
 			if tt.getErr == nil {
@@ -91,7 +91,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: msc,
+				DatabaseClient: msc,
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mdp
 				},

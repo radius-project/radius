@@ -26,13 +26,13 @@ import (
 	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var handlerTests = []rpctest.HandlerTestSpec{
@@ -124,15 +124,6 @@ var handlerTests = []rpctest.HandlerTestSpec{
 }
 
 func TestRouter(t *testing.T) {
-	mctrl := gomock.NewController(t)
-
-	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
-	mockSC := store.NewMockStorageClient(mctrl)
-
-	mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store.Object{}, nil).AnyTimes()
-	mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
-
 	cfg := &controllerconfig.RecipeControllerConfig{}
 	ns := SetupNamespace(cfg)
 	nsBuilder := ns.GenerateBuilder()
@@ -141,6 +132,14 @@ func TestRouter(t *testing.T) {
 		r := chi.NewRouter()
 		validator, err := builder.NewOpenAPIValidator(ctx, "/api.ucp.dev", "applications.datastores")
 		require.NoError(t, err)
-		return r, nsBuilder.ApplyAPIHandlers(ctx, r, apictrl.Options{PathBase: "/api.ucp.dev", DataProvider: mockSP}, validator)
+
+		options := apictrl.Options{
+			Address:        "localhost:9000",
+			PathBase:       "/api.ucp.dev",
+			DatabaseClient: inmemory.NewClient(),
+			StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
+		}
+
+		return r, nsBuilder.ApplyAPIHandlers(ctx, r, options, validator)
 	})
 }

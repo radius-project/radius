@@ -74,7 +74,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -126,7 +126,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -165,7 +165,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -211,7 +211,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -287,7 +287,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
 
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)

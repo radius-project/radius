@@ -22,20 +22,17 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	etcdclient "go.etcd.io/etcd/client/v3"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	metricsservice "github.com/radius-project/radius/pkg/metrics/service"
-	profilerservice "github.com/radius-project/radius/pkg/profiler/service"
+	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
+	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
+	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/server"
-	"github.com/radius-project/radius/pkg/trace"
 
-	"github.com/radius-project/radius/pkg/ucp/data"
-	"github.com/radius-project/radius/pkg/ucp/dataprovider"
-	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	corerp_setup "github.com/radius-project/radius/pkg/corerp/setup"
@@ -57,19 +54,6 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		hostingSvc := []hosting.Service{}
-
-		metricOptions := metricsservice.NewHostOptionsFromEnvironment(*options.Config)
-		metricOptions.Config.ServiceName = serviceName
-		if metricOptions.Config.Prometheus.Enabled {
-			hostingSvc = append(hostingSvc, metricsservice.NewService(metricOptions))
-		}
-
-		profilerOptions := profilerservice.NewHostOptionsFromEnvironment(*options.Config)
-		if profilerOptions.Config.Enabled {
-			hostingSvc = append(hostingSvc, profilerservice.NewService(profilerOptions))
-		}
-
 		logger, flush, err := ucplog.NewLogger(serviceName, &options.Config.Logging)
 		if err != nil {
 			return err
@@ -79,17 +63,17 @@ var rootCmd = &cobra.Command{
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
 
-		if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
-			options.Config.StorageProvider.ETCD.InMemory {
-			// For in-memory etcd we need to register another service to manage its lifecycle.
-			//
-			// The client will be initialized asynchronously.
-			logger.Info("Enabled in-memory etcd")
-			client := hosting.NewAsyncValue[etcdclient.Client]()
-			options.Config.StorageProvider.ETCD.Client = client
-			options.Config.SecretProvider.ETCD.Client = client
+		services := []hosting.Service{}
+		if options.Config.MetricsProvider.Enabled {
+			services = append(services, &metricsservice.Service{Options: &options.Config.MetricsProvider})
+		}
 
-			hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
+		if options.Config.ProfilerProvider.Enabled {
+			services = append(services, &profilerservice.Service{Options: &options.Config.ProfilerProvider})
+		}
+
+		if options.Config.TracerProvider.Enabled {
+			services = append(services, &traceservice.Service{Options: &options.Config.TracerProvider})
 		}
 
 		builders, err := builders(options)
@@ -97,28 +81,29 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		hostingSvc = append(
-			hostingSvc,
+		services = append(
+			services,
 			server.NewAPIService(options, builders),
 			server.NewAsyncWorker(options, builders),
 		)
 
-		tracerOpts := options.Config.TracerProvider
-		tracerOpts.ServiceName = serviceName
-		hostingSvc = append(hostingSvc, &trace.Service{Options: tracerOpts})
-
 		host := &hosting.Host{
-			Services: hostingSvc,
+			Services: services,
 		}
 
+		// Make the logger available to the services.
 		ctx := logr.NewContext(context.Background(), logger)
+
+		// Make the hosting configuration available to the services.
+		ctx = hostoptions.WithContext(ctx, options.Config)
+
 		return hosting.RunWithInterrupts(ctx, host)
 	},
 }
 
 func Execute() {
 	// Let users override the configuration via `--config-file`.
-	rootCmd.Flags().String("config-file", fmt.Sprintf("radius-%s.yaml", hostoptions.Environment()), "The service configuration file.")
+	rootCmd.Flags().String("config-file", fmt.Sprintf("applications-rp-%s.yaml", hostoptions.Environment()), "The service configuration file.")
 	cobra.CheckErr(rootCmd.ExecuteContext(context.Background()))
 }
 

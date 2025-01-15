@@ -1,8 +1,8 @@
 # This is an example of configuration file.
 environment:
-  name: Dev
+  name: "dev"
   roleLocation: "global"
-storageProvider:
+databaseProvider:
   provider: "apiserver"
   apiserver:
     context: ''
@@ -19,10 +19,18 @@ profilerProvider:
   enabled: false
   port: 6062
 metricsProvider:
+  enabled: false
+  serviceName: "dynamic-rp"
   prometheus:
-    enabled: false
     path: "/metrics"
     port: 9092
+tracerProvider:
+  enabled: false
+  serviceName: "dynamic-rp"
+  zipkin:
+    url: "http://localhost:9411/api/v2/spans"
+kubernetes:
+  kind: default
 server:
   host: "0.0.0.0"
   port: 8082
