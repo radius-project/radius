@@ -144,7 +144,6 @@ func TestRegisterFile(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 
-				// Verify the expected resource provider exists
 				if tt.expectedResourceProvider != "" {
 					rp, err := clientFactory.NewResourceProvidersClient().Get(context.Background(), tt.planeName, tt.expectedResourceProvider, nil)
 					require.NoError(t, err, "Failed to retrieve the expected resource provider")
