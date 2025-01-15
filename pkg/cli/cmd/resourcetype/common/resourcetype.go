@@ -62,7 +62,7 @@ func GetResourceTypeTableFormat() output.FormatterOptions {
 				JSONPath: "{ .ResourceProviderNamespace }",
 			},
 			{
-				Heading:  "APIVERSION",
+				Heading:  "DEFAULT APIVERSION",
 				JSONPath: "{ .APIVersions }",
 			},
 		},

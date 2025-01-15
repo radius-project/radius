@@ -158,3 +158,86 @@ func TestRegisterFile(t *testing.T) {
 		})
 	}
 }
+
+func TestRegisterType(t *testing.T) {
+	tests := []struct {
+		name                     string
+		planeName                string
+		resourceProviderName     string
+		resourceTypeName         string
+		filePath                 string
+		expectError              bool
+		expectedErrorMessage     string
+		expectedResourceProvider string
+		expectedResourceTypeName string
+		expectedAPIVersion       string
+	}{
+		{
+			name:                     "Success",
+			planeName:                "local",
+			resourceProviderName:     "MyCompany2.CompanyName2",
+			resourceTypeName:         "testResource3",
+			filePath:                 "testdata/registerdirectory/resourceprovider-valid2.yaml",
+			expectError:              false,
+			expectedErrorMessage:     "",
+			expectedResourceProvider: "MyCompany2.CompanyName2",
+			expectedResourceTypeName: "testResource3",
+			expectedAPIVersion:       "2025-01-01-preview",
+		},
+		{
+			name:                     "ResourceTypeNotFound",
+			planeName:                "local",
+			resourceProviderName:     "MyCompany2.CompanyName2",
+			resourceTypeName:         "testResource5",
+			filePath:                 "testdata/registerdirectory/resourceprovider-valid2.yaml",
+			expectError:              true,
+			expectedErrorMessage:     "Type testResource5 not found in manifest file testdata/registerdirectory/resourceprovider-valid2.yaml",
+			expectedResourceProvider: "",
+			expectedResourceTypeName: "",
+		},
+		{
+			name:                     "EmptyFilePath",
+			planeName:                "local",
+			resourceProviderName:     "MyCompany2.CompanyName2",
+			resourceTypeName:         "testResource3",
+			filePath:                 "",
+			expectError:              true,
+			expectedErrorMessage:     "invalid manifest file path",
+			expectedResourceProvider: "",
+			expectedResourceTypeName: "",
+		},
+	}
+
+	// Run the tests
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			clientFactory, err := NewTestClientFactory(WithResourceProviderServerNoError)
+			require.NoError(t, err, "Failed to create client factory")
+
+			var logBuffer bytes.Buffer
+			logger := func(format string, args ...interface{}) {
+				fmt.Fprintf(&logBuffer, format+"\n", args...)
+			}
+
+			err = RegisterType(context.Background(), clientFactory, tt.planeName, tt.filePath, tt.resourceTypeName, logger)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedErrorMessage)
+			} else {
+				require.NoError(t, err)
+
+				// Verify the expected resource provider exists
+				if tt.expectedResourceProvider != "" {
+					rp, err := clientFactory.NewResourceProvidersClient().Get(context.Background(), tt.planeName, tt.expectedResourceProvider, nil)
+					require.NoError(t, err, "Failed to retrieve the expected resource provider")
+					require.Equal(t, to.Ptr(tt.expectedResourceProvider), rp.Name)
+
+					logOutput := logBuffer.String()
+					require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", tt.expectedResourceProvider, tt.expectedResourceTypeName))
+					require.Contains(t, logOutput, fmt.Sprintf("Creating API Version %s/%s@%s", tt.expectedResourceProvider, tt.expectedResourceTypeName, tt.expectedAPIVersion))
+				}
+			}
+		})
+	}
+}

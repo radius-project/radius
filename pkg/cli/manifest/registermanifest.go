@@ -187,6 +187,22 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
+	for apiVersionName := range resourceType.APIVersions {
+		logIfEnabled(logger, "Creating API Version %s/%s@%s", resourceProvider.Name, typeName, apiVersionName)
+		apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, apiVersionName, v20231001preview.APIVersionResource{
+			Properties: &v20231001preview.APIVersionProperties{},
+		}, nil)
+		if err != nil {
+			return err
+		}
+
+		_, err = apiVersionsPoller.PollUntilDone(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+	}
+
 	// get the existing location resource and update it with new resource type. We have to revisit this code once schema is finalized and validated.
 	locationResourceGetResponse, err := clientFactory.NewLocationsClient().Get(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, nil)
 	if err != nil {

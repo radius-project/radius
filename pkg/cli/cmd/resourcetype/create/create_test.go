@@ -22,12 +22,18 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
+	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -63,38 +69,76 @@ func Test_Validate(t *testing.T) {
 
 func Test_Run(t *testing.T) {
 	t.Run("Success: resource type created", func(t *testing.T) {
+		resourceProvider := v20231001preview.ResourceProviderSummary{
+			Name: to.Ptr("MyCompany.Resources"),
+			ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
+				"testResources": &v20231001preview.ResourceProviderSummaryResourceType{
+					APIVersions: map[string]map[string]any{
+						"2023-10-01-preview": {},
+					},
+					Capabilities: []*string{},
+				},
+			},
+		}
+
+		resourceType := common.ResourceType{
+			Name:                      "MyCompany.Resources/testResources",
+			ResourceProviderNamespace: "MyCompany.Resources",
+			APIVersions:               []string{"2023-10-01-preview"},
+		}
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetResourceProviderSummary(gomock.Any(), "local", "MyCompany.Resources").
+			Return(resourceProvider, nil).
+			Times(1)
+
 		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
 		require.NoError(t, err)
-
-		expectedResourceType := "testResources"
 
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
-		var logBuffer bytes.Buffer
-		logger := func(format string, args ...any) {
-			fmt.Fprintf(&logBuffer, format+"\n", args...)
-		}
-
+		//var logBuffer bytes.Buffer
+		//logger := func(format string, args ...any) {
+		//	fmt.Fprintf(&logBuffer, format+"\n", args...)
+		//}
+		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			UCPClientFactory:                 clientFactory,
-			Output:                           &output.MockOutput{},
-			Workspace:                        &workspaces.Workspace{},
-			ResourceProvider:                 resourceProviderData,
-			Format:                           "table",
-			Logger:                           logger,
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:  clientFactory,
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{},
+			ResourceProvider:  resourceProviderData,
+			Format:            "table",
+			//Logger:                           logger,
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
-			ResourceTypeName:                 expectedResourceType,
+			ResourceTypeName:                 "testResources",
 		}
 
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
 
-		logOutput := logBuffer.String()
-		require.NotContains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
-		require.Contains(t, logOutput, fmt.Sprintf("Resource type %s/%s created successfully", resourceProviderData.Name, expectedResourceType))
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     resourceType,
+				Options: common.GetResourceTypeTableFormat(),
+			},
+		}
+		require.Contains(t, expected, outputSink.Writes)
+		//logOutput := logBuffer.String()
+		//require.NotContains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
+		//require.Contains(t, logOutput, fmt.Sprintf("Resource type %s/testResources created successfully", runner.ResourceProvider.Name))
 	})
+
 	t.Run("Resource provider does not exist", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
 		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
 		require.NoError(t, err)
 
@@ -109,6 +153,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
+			ConnectionFactory:                &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			UCPClientFactory:                 clientFactory,
 			Output:                           &output.MockOutput{},
 			Workspace:                        &workspaces.Workspace{},
@@ -125,6 +170,10 @@ func Test_Run(t *testing.T) {
 
 	})
 	t.Run("Get Resource provider Internal Error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
 		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
 		require.NoError(t, err)
 
@@ -139,6 +188,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
+			ConnectionFactory:                &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			UCPClientFactory:                 clientFactory,
 			Output:                           &output.MockOutput{},
 			Workspace:                        &workspaces.Workspace{},
