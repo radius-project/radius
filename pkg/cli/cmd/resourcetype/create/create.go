@@ -18,7 +18,6 @@ package create
 
 import (
 	"context"
-	"slices"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
@@ -175,24 +174,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	resourceProvider, err := client.GetResourceProviderSummary(ctx, "local", r.ResourceProvider.Name)
-	if clients.Is404Error(err) {
-		return clierrors.Message("The resource provider %q was not found or has been deleted.", r.ResourceProvider.Name)
-	} else if err != nil {
-		return err
-	}
-
-	resourceTypes := common.ResourceTypesForProvider(&resourceProvider)
-	idx := slices.IndexFunc(resourceTypes, func(rt common.ResourceType) bool {
-		return rt.Name == r.ResourceProvider.Name+"/"+r.ResourceTypeName
-	})
-
-	if idx < 0 {
-		return clierrors.Message("Resource type %q not found in resource provider %q.", r.ResourceTypeName, r.ResourceProvider)
-	}
-
-	err = r.Output.WriteFormatted(r.Format, resourceTypes[idx], common.GetResourceTypeTableFormat())
+	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Name, r.ResourceTypeName, client)
+	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeTableFormat())
 	if err != nil {
 		return err
 	}

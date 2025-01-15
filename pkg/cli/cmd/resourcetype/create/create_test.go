@@ -46,7 +46,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid",
-			Input:         []string{"coolResources", "--from-file", "testdata/valid.yaml"},
+			Input:         []string{"testResources", "--from-file", "testdata/valid.yaml"},
 			ExpectedValid: true,
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
@@ -136,7 +136,7 @@ func Test_Run(t *testing.T) {
 							JSONPath: "{ .ResourceProviderNamespace }",
 						},
 						{
-							Heading:  "DEFAULT APIVERSION",
+							Heading:  "APIVERSION",
 							JSONPath: "{ .APIVersions }",
 						},
 					},
