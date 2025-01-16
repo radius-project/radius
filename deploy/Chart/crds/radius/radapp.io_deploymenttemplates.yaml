@@ -55,7 +55,11 @@ spec:
                 description: Parameters is the ARM JSON parameters for the template.
                 type: object
               providerConfig:
-                description: ProviderConfig specifies the scopes for resources.
+                description: ProviderConfig specifies the scope for resources.
+                type: string
+              repository:
+                description: Repository is the git repository that the Bicep manifests
+                  are stored in.
                 type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources

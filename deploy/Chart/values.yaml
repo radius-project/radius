@@ -127,3 +127,8 @@ database:
     limits:
       cpu: "2"
       memory: "1024Mi"
+
+bicep:
+  image: ghcr.io/radius-project/bicep
+  # Default tag uses Chart AppVersion.
+  # tag: latest
