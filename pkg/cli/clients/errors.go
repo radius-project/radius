@@ -43,6 +43,11 @@ func Is404Error(err error) bool {
 		return false
 	}
 
+	// NotFound Response from Fake Server - used for testing
+	if strings.Contains(err.Error(), FakeServerNotFoundResponse) {
+		return true
+	}
+
 	// The error might already be an ResponseError
 	responseError := &azcore.ResponseError{}
 	if errors.As(err, &responseError) && responseError.ErrorCode == v1.CodeNotFound || responseError.StatusCode == http.StatusNotFound {
@@ -59,11 +64,6 @@ func Is404Error(err error) bool {
 	}
 
 	if errorResponse.Error != nil && *errorResponse.Error.Code == v1.CodeNotFound {
-		return true
-	}
-
-	// NotFound Response from Fake Server - used for testing
-	if strings.Contains(err.Error(), FakeServerNotFoundResponse) {
 		return true
 	}
 

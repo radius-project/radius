@@ -179,7 +179,6 @@ func Test_Run(t *testing.T) {
 		_ = runner.Run(context.Background())
 		logOutput := logBuffer.String()
 		require.Contains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
-
 	})
 	t.Run("Get Resource provider Internal Error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
