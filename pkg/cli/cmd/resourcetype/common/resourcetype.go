@@ -74,6 +74,7 @@ func GetResourceTypeTableFormat() output.FormatterOptions {
 	}
 }
 
+// GetResourceTypeDetails fetches the details of a resource type from the resource provider.
 func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, resourceTypeName string, client clients.ApplicationsManagementClient) (ResourceType, error) {
 	resourceProvider, err := client.GetResourceProviderSummary(ctx, "local", resourceProviderName)
 	if clients.Is404Error(err) {

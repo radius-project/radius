@@ -200,7 +200,6 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		if err != nil {
 			return err
 		}
-
 	}
 
 	// get the existing location resource and update it with new resource type. We have to revisit this code once schema is finalized and validated.

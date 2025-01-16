@@ -18,7 +18,6 @@ package create
 
 import (
 	"context"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -35,10 +34,6 @@ import (
 	"github.com/spf13/cobra"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
-)
-
-const (
-	fakeServerResourceProviderNotFoundResponse = "unexpected status code 404. acceptable values are http.StatusOK"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -147,8 +142,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
 	if err != nil {
-		// The second clause is required for testing purpose since fake server returns a different type of error.
-		if clients.Is404Error(err) || strings.Contains(err.Error(), fakeServerResourceProviderNotFoundResponse) {
+		if clients.Is404Error(err) {
 			r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)
 			if registerErr := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
 				return registerErr
