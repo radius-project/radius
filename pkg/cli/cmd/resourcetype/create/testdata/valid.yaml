@@ -1,12 +1,7 @@
-name: CoolCompany.Resources
+name: MyCompany.Resources
 types:
   testResources:
     apiVersions:
-      '2023-10-01-preview':
+      '2025-01-01-preview':
         schema: {}
-    capabilities: ["Recipes"]
-  coolResources:
-    apiVersions:
-      '2023-10-01-preview':
-        schema: {}
-    capabilities: ["Recipes"]
+    capabilities: ["SupportsRecipes"]
