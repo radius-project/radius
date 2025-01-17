@@ -18,13 +18,13 @@ package create
 
 import (
 	"context"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
+	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -36,10 +36,6 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
 
-const (
-	fakeServerResourceProviderNotFoundResponse = "unexpected status code 404. acceptable values are http.StatusOK"
-)
-
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
@@ -47,7 +43,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	cmd := &cobra.Command{
 		Use:   "create [input]",
 		Short: "Create or update a resource type",
-		Long: `Create or update a resource type from a resource provider manifest.
+		Long: `Create or update a resource type from a resource type manifest.
 	
 	Resource types are user defined types such as 'Mycompany.Messaging/plaid'.
 	
@@ -75,11 +71,12 @@ rad resource-type create myType --from-file /path/to/input.json
 
 // Runner is the Runner implementation for the `rad resource-type create` command.
 type Runner struct {
-	UCPClientFactory *v20231001preview.ClientFactory
-	ConfigHolder     *framework.ConfigHolder
-	Output           output.Interface
-	Format           string
-	Workspace        *workspaces.Workspace
+	UCPClientFactory  *v20231001preview.ClientFactory
+	ConnectionFactory connections.Factory
+	ConfigHolder      *framework.ConfigHolder
+	Output            output.Interface
+	Format            string
+	Workspace         *workspaces.Workspace
 
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
@@ -90,8 +87,9 @@ type Runner struct {
 // NewRunner creates an instance of the runner for the `rad resource-type create` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConfigHolder: factory.GetConfigHolder(),
-		Output:       factory.GetOutput(),
+		ConnectionFactory: factory.GetConnectionFactory(),
+		ConfigHolder:      factory.GetConfigHolder(),
+		Output:            factory.GetOutput(),
 		Logger: func(format string, args ...any) {
 			output.LogInfo(format, args...)
 		},
@@ -142,10 +140,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
+	_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
 	if err != nil {
-		// The second clause is required for testing purpose since fake server returns a different type of error.
-		if clients.Is404Error(err) || strings.Contains(err.Error(), fakeServerResourceProviderNotFoundResponse) {
+		if clients.Is404Error(err) {
 			r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)
 			if registerErr := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
 				return registerErr
@@ -160,9 +157,22 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
+	_, err = r.UCPClientFactory.NewResourceTypesClient().Get(ctx, "local", r.ResourceProvider.Name, r.ResourceTypeName, nil)
+	if err != nil {
+		return err
+	}
+
 	r.Output.LogInfo("")
 
-	err = r.Output.WriteFormatted(r.Format, response, common.GetResourceTypeTableFormat())
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Name, r.ResourceTypeName, client)
+	if err != nil {
+		return err
+	}
+	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeTableFormat())
 	if err != nil {
 		return err
 	}

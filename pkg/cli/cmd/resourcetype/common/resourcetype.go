@@ -17,6 +17,11 @@ limitations under the License.
 package common
 
 import (
+	"context"
+	"slices"
+
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
@@ -67,4 +72,25 @@ func GetResourceTypeTableFormat() output.FormatterOptions {
 			},
 		},
 	}
+}
+
+// GetResourceTypeDetails fetches the details of a resource type from the resource provider.
+func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, resourceTypeName string, client clients.ApplicationsManagementClient) (ResourceType, error) {
+	resourceProvider, err := client.GetResourceProviderSummary(ctx, "local", resourceProviderName)
+	if clients.Is404Error(err) {
+		return ResourceType{}, clierrors.Message("The resource provider %q was not found or has been deleted.", resourceProviderName)
+	} else if err != nil {
+		return ResourceType{}, err
+	}
+
+	resourceTypes := ResourceTypesForProvider(&resourceProvider)
+	idx := slices.IndexFunc(resourceTypes, func(rt ResourceType) bool {
+		return rt.Name == resourceProviderName+"/"+resourceTypeName
+	})
+
+	if idx < 0 {
+		return ResourceType{}, clierrors.Message("Resource type %q not found in resource provider %q.", resourceTypeName, *resourceProvider.Name)
+	}
+
+	return resourceTypes[idx], nil
 }

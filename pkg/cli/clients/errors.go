@@ -20,10 +20,15 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+)
+
+const (
+	fakeServerNotFoundResponse = "unexpected status code 404. acceptable values are http.StatusOK"
 )
 
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
@@ -36,6 +41,11 @@ import (
 func Is404Error(err error) bool {
 	if err == nil {
 		return false
+	}
+
+	// NotFound Response from Fake Server - used for testing
+	if strings.Contains(err.Error(), fakeServerNotFoundResponse) {
+		return true
 	}
 
 	// The error might already be an ResponseError
