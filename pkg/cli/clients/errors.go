@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	FakeServerNotFoundResponse = "unexpected status code 404. acceptable values are http.StatusOK"
+	fakeServerNotFoundResponse = "unexpected status code 404. acceptable values are http.StatusOK"
 )
 
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
@@ -44,7 +44,7 @@ func Is404Error(err error) bool {
 	}
 
 	// NotFound Response from Fake Server - used for testing
-	if strings.Contains(err.Error(), FakeServerNotFoundResponse) {
+	if strings.Contains(err.Error(), fakeServerNotFoundResponse) {
 		return true
 	}
 
