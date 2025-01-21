@@ -1,6 +1,9 @@
-name: MyCompany.Resources
+name: Applications.Messaging
+location:
+  global:
+    "http://localhost:8080"
 types:
-  testResources:
+  rabbitMQQueues:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
