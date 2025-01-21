@@ -17,8 +17,6 @@ limitations under the License.
 package datamodel
 
 import (
-	"strings"
-
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
@@ -45,16 +43,4 @@ type RadiusPlane struct {
 // ResourceTypeName returns the type of the Plane as a string.
 func (p RadiusPlane) ResourceTypeName() string {
 	return p.Type
-}
-
-// LookupResourceProvider checks if the input provider is in the list of configured providers.
-func (plane RadiusPlane) LookupResourceProvider(key string) string {
-	var value string
-	for k, v := range plane.Properties.ResourceProviders {
-		if strings.EqualFold(k, key) {
-			value = v
-			break
-		}
-	}
-	return value
 }
