@@ -86,6 +86,7 @@ type resourceProviderClient interface {
 type resourceTypeClient interface {
 	BeginCreateOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource ucpv20231001.ResourceTypeResource, options *ucpv20231001.ResourceTypesClientBeginCreateOrUpdateOptions) (*runtime.Poller[ucpv20231001.ResourceTypesClientCreateOrUpdateResponse], error)
 	BeginDelete(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ucpv20231001.ResourceTypesClientBeginDeleteOptions) (*runtime.Poller[ucpv20231001.ResourceTypesClientDeleteResponse], error)
+	NewListPager(planeName string, resourceProviderName string, options *ucpv20231001.ResourceTypesClientListOptions) *runtime.Pager[ucpv20231001.ResourceTypesClientListResponse]
 }
 
 // apiVersionClient is an interface for mocking the generated SDK client for API versions.
