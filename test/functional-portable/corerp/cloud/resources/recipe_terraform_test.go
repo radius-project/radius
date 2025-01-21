@@ -17,10 +17,9 @@ limitations under the License.
 package resource_test
 
 // This file contains tests for Terraform recipes functionality - covering general behaviors that should
-// be consistent across all resource types. These tests mostly use the extender resource type and mostly
-// avoid cloud resources to avoid unnecessary coupling and reliability issues.
+// be consistent across all resource types.
 //
-// Tests in this file should only use cloud resources if absolutely necessary.
+// New tests using cloud resources should be added if absolutely necessary.
 //
 // Tests in this file should be kept *roughly* in sync with recipe_bicep_test and any other drivers.
 
@@ -44,12 +43,12 @@ var (
 	secretPrefix    = "tfstate-default-"
 )
 
-// Test_TerraformRecipe_AzureStorage creates an Extender resource consuming a Terraform recipe that deploys an Azure blob storage instance.
-func Test_TerraformRecipe_AzureStorage(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-azurestorage.bicep"
-	name := "corerp-resources-terraform-azstorage"
-	appName := "corerp-resources-terraform-azstorage-app"
-	envName := "corerp-resources-terraform-azstorage-env"
+// Test_TerraformRecipe_AzureResourceGroup creates an Extender resource consuming a Terraform recipe that deploys an Azure resource group instance.
+func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
+	template := "testdata/corerp-resources-terraform-azurerg.bicep"
+	name := "corerp-resources-terraform-azrg"
+	appName := "corerp-resources-terraform-azrg-app"
+	envName := "corerp-resources-terraform-azrg-env"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{

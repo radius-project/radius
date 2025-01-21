@@ -38,9 +38,21 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
-	logIfEnabled(logger, "Creating resource provider %s", resourceProvider.Name)
+	var locationName string
+	var address string
+
+	if resourceProvider.Location == nil {
+		locationName = v1.LocationGlobal
+	} else {
+		for locationName, address = range resourceProvider.Location {
+			// We support one location per resourceProvider
+			break
+		}
+	}
+
+	logIfEnabled(logger, "Creating resource provider %s at location %s", resourceProvider.Name, locationName)
 	resourceProviderPoller, err := clientFactory.NewResourceProvidersClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, v20231001preview.ResourceProviderResource{
-		Location:   to.Ptr(v1.LocationGlobal),
+		Location:   to.Ptr(locationName),
 		Properties: &v20231001preview.ResourceProviderProperties{},
 	}, nil)
 	if err != nil {
@@ -101,8 +113,12 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		locationResource.Properties.ResourceTypes[resourceTypeName] = locationResourceType
 	}
 
-	logIfEnabled(logger, "Creating location %s/%s", resourceProvider.Name, v1.LocationGlobal)
-	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, locationResource, nil)
+	if address != "" {
+		locationResource.Properties.Address = to.Ptr(address)
+	}
+
+	logIfEnabled(logger, "Creating location %s/%s/%s", resourceProvider.Name, locationName, address)
+	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, locationName, locationResource, nil)
 	if err != nil {
 		return err
 	}
@@ -167,9 +183,21 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
+	var locationName string
+	var address string
+
+	if resourceProvider.Location == nil {
+		locationName = v1.LocationGlobal
+	} else {
+		for locationName, address = range resourceProvider.Location {
+			// We support one location per resourceProvider
+			break
+		}
+	}
+
 	resourceType, ok := resourceProvider.Types[typeName]
 	if !ok {
-		return fmt.Errorf("Type %s not found in manifest file %s", typeName, filePath)
+		return fmt.Errorf("type %s not found in manifest file %s", typeName, filePath)
 	}
 
 	logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, typeName)
@@ -187,8 +215,23 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
+	for apiVersionName := range resourceType.APIVersions {
+		logIfEnabled(logger, "Creating API Version %s/%s@%s", resourceProvider.Name, typeName, apiVersionName)
+		apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, apiVersionName, v20231001preview.APIVersionResource{
+			Properties: &v20231001preview.APIVersionProperties{},
+		}, nil)
+		if err != nil {
+			return err
+		}
+
+		_, err = apiVersionsPoller.PollUntilDone(ctx, nil)
+		if err != nil {
+			return err
+		}
+	}
+
 	// get the existing location resource and update it with new resource type. We have to revisit this code once schema is finalized and validated.
-	locationResourceGetResponse, err := clientFactory.NewLocationsClient().Get(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, nil)
+	locationResourceGetResponse, err := clientFactory.NewLocationsClient().Get(ctx, planeName, resourceProvider.Name, locationName, nil)
 	if err != nil {
 		return err
 	}
@@ -199,15 +242,20 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 	} else {
 		defaultAPIVersion = *resourceType.DefaultAPIVersion
 	}
+
 	locationResource := locationResourceGetResponse.LocationResource
+	if address != "" {
+		locationResource.Properties.Address = to.Ptr(address)
+	}
+
 	locationResource.Properties.ResourceTypes[typeName] = &v20231001preview.LocationResourceType{
 		APIVersions: map[string]map[string]any{
 			defaultAPIVersion: {},
 		},
 	}
 
-	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Name, v1.LocationGlobal)
-	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, v1.LocationGlobal, locationResource, nil)
+	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Name, locationName)
+	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, locationName, locationResource, nil)
 	if err != nil {
 		return err
 	}
