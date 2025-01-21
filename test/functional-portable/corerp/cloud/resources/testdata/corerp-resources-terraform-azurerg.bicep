@@ -9,12 +9,12 @@ param moduleServer string
 param appName string
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'corerp-resources-terraform-azstorage-env'
+  name: 'corerp-resources-terraform-azrg-env'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-terraform-azstorage-env'
+      namespace: 'corerp-resources-terraform-azrg-env'
     }
     providers: {
       azure: {
@@ -25,9 +25,9 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Core/extenders': {
         default: {
           templateKind: 'terraform'
-          templatePath: '${moduleServer}/azure-storage.zip'
+          templatePath: '${moduleServer}/azure-rg.zip'
           parameters: {
-            resource_group_name: resourceGroup().name
+            name: 'tfrg${uniqueString(resourceGroup().id)}'
             location: location
           }
         }
@@ -50,7 +50,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource webapp 'Applications.Core/extenders@2023-10-01-preview' = {
-  name: 'corerp-resources-terraform-azstorage'
+  name: 'corerp-resources-terraform-azrg'
   properties: {
     application: app.id
     environment: env.id
