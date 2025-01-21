@@ -74,6 +74,14 @@ var (
 	}
 )
 
+var (
+	ExcludeResourceTypesList = []string{
+		"Microsoft.Resources/deployments",
+		"Applications.Core/applications",
+		"Applications.Core/environments",
+	}
+)
+
 // ListResourcesOfType lists all resources of a given type in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
 	client, err := amc.createGenericClient(amc.RootScope, resourceType)
@@ -141,9 +149,40 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx
 	return results, nil
 }
 
+// ListAllResourceTypes lists all resource types in all resource providers in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context) ([]string, error) {
+	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, "local")
+	if err != nil {
+		return []string{}, err
+	}
+
+	resourceTypeNames := []string{}
+	for _, summary := range resourceProviderSummaries {
+		if inStringSlice(*summary.Name, ExcludeResourceTypesList) {
+			continue
+		}
+
+		if strings.EqualFold(*summary.Name, "Microsoft.Resources") || strings.EqualFold(*summary.Name, "Applications.Core") {
+			continue
+		}
+		resourceTypes := summary.ResourceTypes
+		for name, _ := range resourceTypes {
+			resourceTypeNames = append(resourceTypeNames, *summary.Name+"/"+name)
+		}
+	}
+	resourceTypeNames = []string{"Applications.Dapr/pubSubBrokers"}
+
+	return resourceTypeNames, nil
+}
+
 // ListResourcesInApplication lists all resources in a given application in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error) {
 	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
+	if err != nil {
+		return nil, err
+	}
+
+	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +208,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 	}
 
 	results := []generated.GenericResource{}
+	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx)
 	for _, resourceType := range ResourceTypesList {
 		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
 		if err != nil {
@@ -685,7 +725,7 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Cont
 	return response.StatusCode != 204, nil
 }
 
-// ListResourceProviders lists all resource providers in the configured scope.
+// ListResourceProviders lists all resource providers in the configured plane.
 func (amc *UCPApplicationsManagementClient) ListResourceProviders(ctx context.Context, planeName string) ([]ucpv20231001.ResourceProviderResource, error) {
 	client, err := amc.createResourceProviderClient()
 	if err != nil {
@@ -845,6 +885,29 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceType(ctx context.Conte
 	}
 
 	return response.StatusCode != 204, nil
+}
+
+// ListResourceTypes lists all resource types in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListResourceTypes(ctx context.Context, planeName string, resourceProviderName string) ([]ucpv20231001.ResourceTypeResource, error) {
+	client, err := amc.createResourceTypeClient()
+	if err != nil {
+		return nil, err
+	}
+
+	results := []ucpv20231001.ResourceTypeResource{}
+	pager := client.NewListPager(planeName, resourceProviderName, &ucpv20231001.ResourceTypesClientListOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, resourceType := range page.Value {
+			results = append(results, *resourceType)
+		}
+	}
+
+	return results, nil
 }
 
 // CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.
@@ -1028,4 +1091,13 @@ func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context,
 	}
 
 	return amc.capture(ctx, response)
+}
+
+func inStringSlice(s string, slice []string) bool {
+	for _, v := range slice {
+		if strings.EqualFold(s, v) {
+			return true
+		}
+	}
+	return false
 }
