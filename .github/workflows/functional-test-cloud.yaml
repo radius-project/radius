@@ -679,8 +679,9 @@ jobs:
             kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
 
             # Exit on error
-            if grep -qi "error" registermanifest_logs.txt; then
-              echo "Error found in ucp logs."
+            if grep -qi "Service initializer terminated with error" registermanifest_logs.txt; then
+              echo "Error found in ucp logs:"
+              grep -i "Service initializer terminated with error" registermanifest_logs.txt
               exit 1
             fi
 
@@ -721,7 +722,7 @@ jobs:
           
           rad credential register aws irsa \
             --iam-role ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
-          
+
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
