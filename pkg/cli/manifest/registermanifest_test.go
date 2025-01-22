@@ -190,7 +190,7 @@ func TestRegisterType(t *testing.T) {
 			resourceTypeName:         "testResource5",
 			filePath:                 "testdata/registerdirectory/resourceprovider-valid2.yaml",
 			expectError:              true,
-			expectedErrorMessage:     "type testResource5 not found in manifest file testdata/registerdirectory/resourceprovider-valid2.yaml",
+			expectedErrorMessage:     "Type testResource5 not found in manifest file testdata/registerdirectory/resourceprovider-valid2.yaml",
 			expectedResourceProvider: "",
 			expectedResourceTypeName: "",
 		},

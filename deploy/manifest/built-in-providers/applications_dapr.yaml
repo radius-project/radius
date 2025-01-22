@@ -1,25 +1,22 @@
 name: Applications.Dapr
-location:
-  global:
-    "http://applications-rp.radius-system:5443"
 types:
   configurationStores:
     apiVersions:
-      "2023-10-01-preview":
+      "2025-01-01-preview":
         schema: {}
     capabilities: ["SupportsRecipes"]
   pubSubBrokers:
     apiVersions:
-      "2023-10-01-preview":
+      "2025-01-01-preview":
         schema: {}
     capabilities: ["SupportsRecipes"]
   secretStores:
     apiVersions:
-      "2023-10-01-preview":
+      "2025-01-01-preview":
         schema: {}
     capabilities: ["SupportsRecipes"]
   stateStores:
     apiVersions:
-      "2023-10-01-preview":
+      "2025-01-01-preview":
         schema: {}
     capabilities: ["SupportsRecipes"]
