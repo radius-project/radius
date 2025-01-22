@@ -123,7 +123,12 @@ func ValidateResourceType(ctx context.Context, client database.Client, id resour
 
 		_, err = database.GetResource[datamodel.ResourceType](ctx, client, resourceTypeID.String())
 		if errors.Is(err, &database.ErrNotFound{}) {
-			return nil, &InvalidError{Message: fmt.Sprintf("resource type %q not found", id.Type())}
+
+			// Return the error as-is to fallback to the legacy routing behavior.
+			return nil, err
+
+			// Uncomment this when we remove the legacy routing behavior.
+			// return nil, &InvalidError{Message: fmt.Sprintf("resource type %q not found", id.Type())}
 		} else if err != nil {
 			return nil, fmt.Errorf("failed to fetch resource type %q: %w", id.Type(), err)
 		}
@@ -136,7 +141,12 @@ func ValidateResourceType(ctx context.Context, client database.Client, id resour
 
 	location, err := database.GetResource[datamodel.Location](ctx, client, locationID.String())
 	if errors.Is(err, &database.ErrNotFound{}) {
-		return nil, &InvalidError{Message: fmt.Sprintf("location %q not found for resource provider %q", locationName, id.ProviderNamespace())}
+
+		// Return the error as-is to fallback to the legacy routing behavior.
+		return nil, err
+
+		// Uncomment this when we remove the legacy routing behavior.
+		// return nil, &InvalidError{Message: fmt.Sprintf("location %q not found for resource provider %q", locationName, id.ProviderNamespace())}
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to fetch location %q: %w", locationID.String(), err)
 	}
@@ -220,6 +230,22 @@ func isOperationResourceType(id resources.ID) bool {
 	return false
 }
 
+// ValidateLegacyResourceProvider validates that the resource provider specified in the id exists. Returns InvalidError if the plane
+// contains invalid data.
+func ValidateLegacyResourceProvider(ctx context.Context, client database.Client, id resources.ID, plane *datamodel.RadiusPlane) (*url.URL, error) {
+	downstream := plane.LookupResourceProvider(id.ProviderNamespace())
+	if downstream == "" {
+		return nil, &InvalidError{Message: fmt.Sprintf("resource provider %s not configured", id.ProviderNamespace())}
+	}
+
+	downstreamURL, err := url.Parse(downstream)
+	if err != nil {
+		return nil, &InvalidError{Message: fmt.Sprintf("failed to parse downstream URL: %v", err.Error())}
+	}
+
+	return downstreamURL, nil
+}
+
 // ValidateDownstream can be used to find and validate the downstream URL for a resource.
 // Returns NotFoundError for the case where the plane or resource group does not exist.
 // Returns InvalidError for cases where the data is invalid, like when the resource provider is not configured.
@@ -229,11 +255,12 @@ func ValidateDownstream(ctx context.Context, client database.Client, id resource
 	// - The plane exists
 	// - The resource group exists
 	// - The resource provider is configured .. either:
+	// 		- As part of the plane (legacy routing)
 	// 		- As part of a resource provider resource (System.Resources/resourceProviders) (new/UDT routing)
 	//
 
 	// The plane exists.
-	_, err := ValidateRadiusPlane(ctx, client, id)
+	plane, err := ValidateRadiusPlane(ctx, client, id)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +273,10 @@ func ValidateDownstream(ctx context.Context, client database.Client, id resource
 
 	// If this returns success, it means the resource type is configured using new/UDT routing.
 	downstreamURL, err := ValidateResourceType(ctx, client, id, location, apiVersion)
-	if err != nil {
+	if errors.Is(err, &database.ErrNotFound{}) {
+		// If the resource provider is not found, treat it like a legacy provider.
+		return ValidateLegacyResourceProvider(ctx, client, id, plane)
+	} else if err != nil {
 		return nil, err
 	}
 

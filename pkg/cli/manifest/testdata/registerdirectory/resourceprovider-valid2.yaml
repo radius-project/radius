@@ -1,7 +1,4 @@
 name: MyCompany2.CompanyName2
-location:
-  global:
-    'http://localhost:8080'
 types:
   testResource3:
     apiVersions:
