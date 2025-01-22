@@ -1,7 +1,4 @@
 name: TestProvider.TestCompany
-location:
-  global:
-    'http://localhost:8080'
 types:
   testResourcesAbc:
     apiVersions:

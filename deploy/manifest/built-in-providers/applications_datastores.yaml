@@ -1,20 +1,17 @@
 name: Applications.Datastores
-location:
-  global:
-    "http://localhost:8080"
 types:
   mongoDatabases:
     apiVersions:
-      "2023-10-01-preview":
+      "2025-01-01-preview":
         schema: {}
     capabilities: ["SupportsRecipes"]
   sqlDatabases:
     apiVersions:
-      "2023-10-01-preview":
+      "2025-01-01-preview":
         schema: {}
     capabilities: ["SupportsRecipes"]
   redisCaches:
     apiVersions:
-      "2023-10-01-preview":
+      "2025-01-01-preview":
         schema: {}
     capabilities: ["SupportsRecipes"]
