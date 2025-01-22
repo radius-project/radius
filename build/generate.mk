@@ -119,9 +119,9 @@ generate-bicep-types: generate-node-installed ## Generate Bicep extensibility ty
 	git submodule update --init --recursive; \
 	npm --prefix bicep-types/src/bicep-types install; \
 	npm --prefix bicep-types/src/bicep-types ci && npm --prefix bicep-types/src/bicep-types run build; \
-	npm --prefix hack/bicep-types-radius/src/autorest.bicep ci && npm --prefix hack/bicep-types-radius/src/autorest.bicep run build; \
-	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	npm --prefix hack/bicep-types-radius/src/generator ci && npm --prefix hack/bicep-types-radius/src/generator run generate -- --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+	npm --prefix bicep-types-radius/src/autorest.bicep ci && npm --prefix bicep-types-radius/src/autorest.bicep run build; \
+	echo "Run generator from bicep-types-radius/src/generator dir"; \
+	npm --prefix bicep-types-radius/src/generator ci && npm --prefix bicep-types-radius/src/generator run generate -- --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..

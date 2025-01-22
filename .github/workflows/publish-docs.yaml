@@ -81,7 +81,7 @@ jobs:
           make generate
       # Generate resource reference docs
       - name: Generate resource reference docs
-        run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
+        run: python docs/.github/scripts/generate_resource_references.py ./radius/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
       - name: Upload resource reference docs
         uses: actions/upload-artifact@v4
         with:

@@ -57,7 +57,7 @@ jobs:
           mkdir tmp-radius-bicep-extension
       - name: Publish bicep types 
         run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz 
+          bicep publish-extension ./bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz 
       - name: Install jq
         run: sudo apt-get install -y jq
       - name: Modify bicepconfig.json

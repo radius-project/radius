@@ -13,7 +13,7 @@ In general you should ask for guidance before creating a new top-level folder in
 | `typespec/`    | Definitions for generating Radius swagger files.                                      |
 | `deploy/`  | Assets used to package, deploy, and install Radius                                    |
 | `docs/`    | All project documentation                                                             |
-| `hack/`    | Utility code to generate Radius bicep types                                           | 
+| `bicep-types-radius/`    | Utility code to generate Radius bicep types                                           | 
 | `pkg/`     | The majority of the Go code powering Radius                                           |
 | `swagger/` | OpenAPI Specification v2 files to describe the REST APIs of Radius resource providers |
 | `test/`    | Integration and end-to-end tests                                                      |

@@ -357,7 +357,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: radius_bicep_types_cloud
-          path: ./hack/bicep-types-radius/generated
+          path: ./bicep-types-radius/generated
           if-no-files-found: error
 
       - name: 'Login via Azure CLI'
@@ -376,7 +376,7 @@ jobs:
           
       - name: Publish bicep types 
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          bicep publish-extension ./bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
       - name: Generate test bicepconfig.json
         run: |

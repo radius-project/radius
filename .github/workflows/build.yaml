@@ -286,7 +286,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: radius-bicep-types
-          path: ./hack/bicep-types-radius/generated
+          path: ./bicep-types-radius/generated
           if-no-files-found: error
       - name: 'Login via Azure CLI'
         if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
@@ -305,7 +305,7 @@ jobs:
       - name: Publish bicep types 
         if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/radius:${{ env.REL_CHANNEL == 'edge' && 'latest' || env.REL_CHANNEL }} --force
+          bicep publish-extension ./bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/radius:${{ env.REL_CHANNEL == 'edge' && 'latest' || env.REL_CHANNEL }} --force
 
   publish-release:
     name: Publish GitHub Release

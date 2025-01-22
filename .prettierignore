@@ -1,7 +1,7 @@
 # .prettierignore
 pkg/validator/testdata/put-environments-invalid-json.json
 
-hack/bicep-types-radius/generated/*
+bicep-types-radius/generated/*
 
 bicep-types/*
 
