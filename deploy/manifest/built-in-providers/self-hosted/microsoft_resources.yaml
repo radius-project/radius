@@ -1,0 +1,12 @@
+name: Microsoft.Resources
+location:
+  global:
+    "http://bicep-de.radius-system:6443"
+types:
+  deployments:
+    apiVersions:
+      "2020-10-01":
+        schema: {}
+      "2022-09-01":
+        schema: {} 
+    capabilities: []

@@ -1,0 +1,25 @@
+name: Applications.Dapr
+location:
+  global:
+    "http://localhost:8080"
+types:
+  configurationStores:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: ["SupportsRecipes"]
+  pubSubBrokers:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: ["SupportsRecipes"]
+  secretStores:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: ["SupportsRecipes"]
+  stateStores:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: ["SupportsRecipes"]
