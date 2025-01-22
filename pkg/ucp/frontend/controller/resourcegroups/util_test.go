@@ -409,3 +409,211 @@ func Test_ValidateDownstream(t *testing.T) {
 		require.Nil(t, downstreamURL)
 	})
 }
+
+// This test validates the pre-UDT before where resource providers are registered as part of the plane.
+// This can be deleted once the legacy routing behavior is removed.
+func Test_ValidateDownstream_Legacy(t *testing.T) {
+	id, err := resources.ParseResource("/planes/radius/local/resourceGroups/test-group/providers/System.TestRP/testResources/name")
+	require.NoError(t, err)
+
+	idWithoutResourceGroup, err := resources.Parse("/planes/radius/local/providers/System.TestRP/testResources")
+	require.NoError(t, err)
+
+	resourceTypeID, err := datamodel.ResourceTypeIDFromResourceID(id)
+	require.NoError(t, err)
+
+	downstream := "http://localhost:7443"
+
+	plane := &datamodel.RadiusPlane{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID: id.PlaneScope(),
+			},
+		},
+		Properties: datamodel.RadiusPlaneProperties{
+			ResourceProviders: map[string]string{
+				"System.TestRP": downstream,
+			},
+		},
+	}
+
+	setup := func(t *testing.T) *database.MockClient {
+		ctrl := gomock.NewController(t)
+		return database.NewMockClient(ctrl)
+	}
+
+	t.Run("success (resource group)", func(t *testing.T) {
+		resourceGroup := &datamodel.ResourceGroup{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: id.RootScope(),
+				},
+			},
+		}
+
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+
+		expectedURL, err := url.Parse(downstream)
+		require.NoError(t, err)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		require.NoError(t, err)
+		require.Equal(t, expectedURL, downstreamURL)
+	})
+
+	t.Run("success (non resource group)", func(t *testing.T) {
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), idWithoutResourceGroup.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+
+		expectedURL, err := url.Parse(downstream)
+		require.NoError(t, err)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, idWithoutResourceGroup, location, apiVersion)
+		require.NoError(t, err)
+		require.Equal(t, expectedURL, downstreamURL)
+	})
+
+	t.Run("plane not found", func(t *testing.T) {
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, &database.ErrNotFound{}).Times(1)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		require.Error(t, err)
+		require.Equal(t, &NotFoundError{Message: "plane \"/planes/radius/local\" not found"}, err)
+		require.Nil(t, downstreamURL)
+	})
+
+	t.Run("plane retrieval failure", func(t *testing.T) {
+		databaseClient := setup(t)
+
+		expected := fmt.Errorf("failed to fetch plane \"/planes/radius/local\": %w", errors.New("test error"))
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, errors.New("test error")).Times(1)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		require.Error(t, err)
+		require.Equal(t, expected, err)
+		require.Nil(t, downstreamURL)
+	})
+
+	t.Run("resource group not found", func(t *testing.T) {
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, &database.ErrNotFound{}).Times(1)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		require.Error(t, err)
+		require.Equal(t, &NotFoundError{Message: "resource group \"/planes/radius/local/resourceGroups/test-group\" not found"}, err)
+		require.Nil(t, downstreamURL)
+	})
+
+	t.Run("resource group err", func(t *testing.T) {
+		databaseClient := setup(t)
+
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, errors.New("test error")).Times(1)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		require.Error(t, err)
+		require.Equal(t, "failed to fetch resource group \"/planes/radius/local/resourceGroups/test-group\": test error", err.Error())
+		require.Nil(t, downstreamURL)
+	})
+
+	t.Run("legacy resource provider not configured", func(t *testing.T) {
+		plane := &datamodel.RadiusPlane{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: id.PlaneScope(),
+				},
+			},
+			Properties: datamodel.RadiusPlaneProperties{
+				ResourceProviders: map[string]string{},
+			},
+		}
+
+		resourceGroup := &datamodel.ResourceGroup{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: id.RootScope(),
+				},
+			},
+		}
+
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		require.Error(t, err)
+		require.Equal(t, &InvalidError{Message: "resource provider System.TestRP not configured"}, err)
+		require.Nil(t, downstreamURL)
+	})
+
+	t.Run("location not found", func(t *testing.T) {
+		plane := &datamodel.RadiusPlane{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: id.PlaneScope(),
+				},
+			},
+			Properties: datamodel.RadiusPlaneProperties{
+				ResourceProviders: map[string]string{},
+			},
+		}
+
+		resourceGroup := &datamodel.ResourceGroup{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: id.RootScope(),
+				},
+			},
+		}
+
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		require.Error(t, err)
+		require.Equal(t, &InvalidError{Message: "resource provider System.TestRP not configured"}, err)
+		require.Nil(t, downstreamURL)
+	})
+
+	t.Run("resource provider invalid URL", func(t *testing.T) {
+		plane := &datamodel.RadiusPlane{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: id.PlaneScope(),
+				},
+			},
+			Properties: datamodel.RadiusPlaneProperties{
+				ResourceProviders: map[string]string{
+					"System.TestRP": "\ninvalid",
+				},
+			},
+		}
+
+		resourceGroup := &datamodel.ResourceGroup{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: id.RootScope(),
+				},
+			},
+		}
+
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeID.String()).Return(nil, &database.ErrNotFound{}).Times(1)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		require.Error(t, err)
+		require.Equal(t, &InvalidError{Message: "failed to parse downstream URL: parse \"\\ninvalid\": net/url: invalid control character in URL"}, err)
+		require.Nil(t, downstreamURL)
+	})
+}

@@ -17,7 +17,6 @@
 DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
 IMAGE_SRC?=https://github.com/radius-project/radius
-MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
 ##@ Docker Images
 
@@ -107,17 +106,6 @@ APPS_MAP := ucpd:./deploy/images/ucpd \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego
 
-# copy_manifests copies the manifests to the output directory
-.PHONY: copy-manifests
-copy-manifests:
-	@if [ ! -d "$(MANIFEST_DIR)" ] || [ -z "$$(ls -A $(MANIFEST_DIR))" ]; then \
-		echo "MANIFEST_DIR '$(MANIFEST_DIR)' does not exist or is empty"; \
-		exit 1; \
-	fi
-	@mkdir -p $(OUT_DIR)/manifest/built-in-providers/
-	@echo "Copying manifests from $(MANIFEST_DIR) to $(OUT_DIR)/manifest/built-in-providers/"
-	@cp -v $(MANIFEST_DIR)/* $(OUT_DIR)/manifest/built-in-providers/
-
 # Function to extract the name and the directory of the Dockerfile from the app string
 define parseApp
 $(eval NAME := $(shell echo $(1) | cut -d: -f1))
@@ -144,7 +132,7 @@ DOCKER_PUSH_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(
 
 # targets to build development images
 .PHONY: docker-build
-docker-build: copy-manifests $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.
+docker-build: $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.
 
 .PHONY: docker-push
 docker-push: $(DOCKER_PUSH_TARGETS) ## Pushes all Docker images (without building).
@@ -152,7 +140,7 @@ docker-push: $(DOCKER_PUSH_TARGETS) ## Pushes all Docker images (without buildin
 # targets to build and push multi arch images. If you run this target in your machine,
 # ensure you have qemu and buildx installed by running make configure-buildx.
 .PHONY: docker-multi-arch-build
-docker-multi-arch-build: copy-manifests $(DOCKER_BUILD_MULTI_TARGETS) ## Builds all docker images for multiple architectures.
+docker-multi-arch-build: $(DOCKER_BUILD_MULTI_TARGETS) ## Builds all docker images for multiple architectures.
 
 .PHONY: docker-multi-arch-push
-docker-multi-arch-push: copy-manifests $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images for multiple architectures after building.
+docker-multi-arch-push: $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images for multiple architectures after building.

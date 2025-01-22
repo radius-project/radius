@@ -50,7 +50,7 @@ data:
         - id: "/planes/aws/aws"
           properties:
             kind: "AWS"
-      manifestDirectory: "/manifest/built-in-providers"      
+      manifestDirectory: ""      
 
     identity:
       authMethod: UCPCredential

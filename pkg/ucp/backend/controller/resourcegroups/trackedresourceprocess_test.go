@@ -24,7 +24,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
@@ -48,13 +47,8 @@ func Test_Run(t *testing.T) {
 
 	id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
 	trackingID := trackedresource.IDFor(id)
-	data := datamodel.GenericResourceFromID(id, trackingID)
-	data.Properties.APIVersion = "2025-01-01"
 
 	resourceTypeID, err := datamodel.ResourceTypeIDFromResourceID(id)
-	require.NoError(t, err)
-
-	locationID, err := datamodel.ResourceProviderLocationIDFromResourceID(id, "global")
 	require.NoError(t, err)
 
 	plane := datamodel.RadiusPlane{
@@ -64,42 +58,8 @@ func Test_Run(t *testing.T) {
 			},
 		},
 	}
-	resourceGroup := &datamodel.ResourceGroup{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: id.RootScope(),
-			},
-		},
-	}
-
-	resourceTypeResource := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "testResources",
-				ID:   resourceTypeID.String(),
-			},
-		},
-		Properties: datamodel.ResourceTypeProperties{},
-	}
-
-	locationResource := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "global",
-				ID:   locationID.String(),
-			},
-		},
-		Properties: datamodel.LocationProperties{
-			Address: to.Ptr("https://localhost:1234"),
-			ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
-				"testResources": {
-					APIVersions: map[string]datamodel.LocationAPIVersionConfiguration{
-						"2025-01-01": {},
-					},
-				},
-			},
-		},
-	}
+	resourceGroup := datamodel.ResourceGroup{}
+	data := datamodel.GenericResourceFromID(id, trackingID)
 
 	// Most of the heavy lifting is done by the updater. We just need to test that we're calling it correctly.
 	t.Run("Success", func(t *testing.T) {
@@ -110,20 +70,16 @@ func Test_Run(t *testing.T) {
 			Return(&database.Object{Data: data}, nil).Times(1)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), trackingID.PlaneScope(), gomock.Any()).
+			Get(gomock.Any(), "/planes/"+trackingID.PlaneNamespace(), gomock.Any()).
 			Return(&database.Object{Data: plane}, nil).Times(1)
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
-			Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
+			Return(nil, &database.ErrNotFound{}).Times(1)
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), trackingID.RootScope(), gomock.Any()).
 			Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-
-		databaseClient.EXPECT().
-			Get(gomock.Any(), locationResource.ID).
-			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, controller.Result{}, result)
@@ -138,20 +94,16 @@ func Test_Run(t *testing.T) {
 			Return(&database.Object{Data: data}, nil).Times(1)
 
 		databaseClient.EXPECT().
-			Get(gomock.Any(), trackingID.PlaneScope(), gomock.Any()).
+			Get(gomock.Any(), "/planes/"+trackingID.PlaneNamespace(), gomock.Any()).
 			Return(&database.Object{Data: plane}, nil).Times(1)
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), resourceTypeID.String(), gomock.Any()).
-			Return(&database.Object{Data: resourceTypeResource}, nil).Times(1)
+			Return(nil, &database.ErrNotFound{}).Times(1)
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), trackingID.RootScope(), gomock.Any()).
 			Return(&database.Object{Data: resourceGroup}, nil).Times(1)
-
-		databaseClient.EXPECT().
-			Get(gomock.Any(), locationResource.ID).
-			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
 		// Force a retry.
 		updater.Result = &trackedresource.InProgressErr{}
