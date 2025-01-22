@@ -158,19 +158,14 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 
 	resourceTypeNames := []string{}
 	for _, summary := range resourceProviderSummaries {
-		if inStringSlice(*summary.Name, ExcludeResourceTypesList) {
-			continue
-		}
 
-		if strings.EqualFold(*summary.Name, "Microsoft.Resources") || strings.EqualFold(*summary.Name, "Applications.Core") {
-			continue
-		}
 		resourceTypes := summary.ResourceTypes
 		for name, _ := range resourceTypes {
-			resourceTypeNames = append(resourceTypeNames, *summary.Name+"/"+name)
+			if !inStringSlice(*summary.Name+"/"+name, ExcludeResourceTypesList) {
+				resourceTypeNames = append(resourceTypeNames, *summary.Name+"/"+name)
+			}
 		}
 	}
-	resourceTypeNames = []string{"Applications.Dapr/pubSubBrokers"}
 
 	return resourceTypeNames, nil
 }
