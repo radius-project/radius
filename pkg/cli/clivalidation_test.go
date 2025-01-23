@@ -19,23 +19,12 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_RequireResourceType(t *testing.T) {
-
-	supportedTypes := []string{}
-
-	for _, resourceType := range clients.ResourceTypesList {
-		supportedType := strings.Split(resourceType, "/")[1]
-		supportedTypes = append(supportedTypes, supportedType)
-	}
-
-	resourceTypesErrorString := strings.Join(supportedTypes, "\n")
 
 	tests := []struct {
 		name    string
@@ -50,28 +39,16 @@ func Test_RequireResourceType(t *testing.T) {
 			wantErr: errors.New("no resource type provided"),
 		},
 		{
-			name:    "Supported resource type",
-			args:    []string{"mongoDatabases"},
-			want:    "Applications.Datastores/mongoDatabases",
-			wantErr: nil,
-		},
-		{
 			name:    "Fully-qualified resource type",
 			args:    []string{"Applications.Test/exampleResources"},
 			want:    "Applications.Test/exampleResources",
 			wantErr: nil,
 		},
 		{
-			name:    "Multiple resource types",
-			args:    []string{"secretStores"},
+			name:    "resource type not fully qualified",
+			args:    []string{"exampleResources"},
 			want:    "",
-			wantErr: fmt.Errorf("multiple resource types match 'secretStores'. Please specify the full resource type and try again:\n\nApplications.Dapr/secretStores\nApplications.Core/secretStores\n"),
-		},
-		{
-			name:    "Unsupported resource type",
-			args:    []string{"unsupported"},
-			want:    "",
-			wantErr: fmt.Errorf("'unsupported' is not a valid resource type. Available Types are: \n\n%s\n", resourceTypesErrorString),
+			wantErr: fmt.Errorf("'exampleResources' is not a valid resource type. Please specify the full resource type and try again"),
 		},
 	}
 

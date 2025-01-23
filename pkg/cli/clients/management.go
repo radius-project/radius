@@ -149,72 +149,6 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx
 	return results, nil
 }
 
-// ListAllResourceTypes lists all resource types in all resource providers in the configured scope.
-func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context) ([]string, error) {
-	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, "local")
-	if err != nil {
-		return []string{}, err
-	}
-
-	resourceTypeNames := []string{}
-	for _, summary := range resourceProviderSummaries {
-
-		resourceTypes := summary.ResourceTypes
-		for name, _ := range resourceTypes {
-			if !inStringSlice(*summary.Name+"/"+name, ExcludeResourceTypesList) {
-				resourceTypeNames = append(resourceTypeNames, *summary.Name+"/"+name)
-			}
-		}
-	}
-
-	return resourceTypeNames, nil
-}
-
-// ListResourcesInApplication lists all resources in a given application in the configured scope.
-func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error) {
-	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
-	if err != nil {
-		return nil, err
-	}
-
-	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	results := []generated.GenericResource{}
-	for _, resourceType := range ResourceTypesList {
-		resources, err := amc.ListResourcesOfTypeInApplication(ctx, applicationID, resourceType)
-		if err != nil {
-			return nil, err
-		}
-
-		results = append(results, resources...)
-	}
-
-	return results, nil
-}
-
-// ListResourcesInEnvironment lists all resources in a given environment in the configured scope.
-func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error) {
-	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
-	if err != nil {
-		return nil, err
-	}
-
-	results := []generated.GenericResource{}
-	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx)
-	for _, resourceType := range ResourceTypesList {
-		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
-		if err != nil {
-			return nil, err
-		}
-		results = append(results, resources...)
-	}
-
-	return results, nil
-}
-
 // GetResource retrieves a resource by its type and name (or id).
 func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, resourceType string, resourceNameOrID string) (generated.GenericResource, error) {
 	scope, name, err := amc.extractScopeAndName(resourceNameOrID)
@@ -839,6 +773,72 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 	return response.ResourceProviderSummary, nil
 }
 
+// ListAllResourceTypes lists all resource types in all resource providers in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context) ([]string, error) {
+	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, "local")
+	if err != nil {
+		return []string{}, err
+	}
+
+	resourceTypeNames := []string{}
+	for _, summary := range resourceProviderSummaries {
+
+		resourceTypes := summary.ResourceTypes
+		for name, _ := range resourceTypes {
+			if !inStringSlice(*summary.Name+"/"+name, ExcludeResourceTypesList) {
+				resourceTypeNames = append(resourceTypeNames, *summary.Name+"/"+name)
+			}
+		}
+	}
+
+	return resourceTypeNames, nil
+}
+
+// ListResourcesInApplication lists all resources in a given application in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error) {
+	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
+	if err != nil {
+		return nil, err
+	}
+
+	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	results := []generated.GenericResource{}
+	for _, resourceType := range ResourceTypesList {
+		resources, err := amc.ListResourcesOfTypeInApplication(ctx, applicationID, resourceType)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, resources...)
+	}
+
+	return results, nil
+}
+
+// ListResourcesInEnvironment lists all resources in a given environment in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error) {
+	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
+	if err != nil {
+		return nil, err
+	}
+
+	results := []generated.GenericResource{}
+	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx)
+	for _, resourceType := range ResourceTypesList {
+		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, resources...)
+	}
+
+	return results, nil
+}
+
 // CreateOrUpdateResourceType creates or updates a resource type in the configured scope.
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource *ucpv20231001.ResourceTypeResource) (ucpv20231001.ResourceTypeResource, error) {
 	client, err := amc.createResourceTypeClient()
@@ -880,29 +880,6 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceType(ctx context.Conte
 	}
 
 	return response.StatusCode != 204, nil
-}
-
-// ListResourceTypes lists all resource types in the configured scope.
-func (amc *UCPApplicationsManagementClient) ListResourceTypes(ctx context.Context, planeName string, resourceProviderName string) ([]ucpv20231001.ResourceTypeResource, error) {
-	client, err := amc.createResourceTypeClient()
-	if err != nil {
-		return nil, err
-	}
-
-	results := []ucpv20231001.ResourceTypeResource{}
-	pager := client.NewListPager(planeName, resourceProviderName, &ucpv20231001.ResourceTypesClientListOptions{})
-	for pager.More() {
-		page, err := pager.NextPage(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, resourceType := range page.Value {
-			results = append(results, *resourceType)
-		}
-	}
-
-	return results, nil
 }
 
 // CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.

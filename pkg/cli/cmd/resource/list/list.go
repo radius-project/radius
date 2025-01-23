@@ -18,12 +18,14 @@ package list
 
 import (
 	"context"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
@@ -144,6 +146,17 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	var resourceList []generated.GenericResource
+
+	parts := strings.Split(r.ResourceType, "/")
+	if len(parts) != 2 {
+		return clierrors.Message("Invalid resource type %q. Expected format: '<provider>/<type>'", r.ResourceType)
+	}
+	resourceProviderNamespace := parts[0]
+	resourceTypeSuffix := parts[1]
+	_, err = common.GetResourceTypeDetails(ctx, resourceProviderNamespace, resourceTypeSuffix, client)
+	if err != nil {
+		return err
+	}
 
 	if r.ApplicationName == "" {
 		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)

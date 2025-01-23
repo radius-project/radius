@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/config"
@@ -284,8 +283,8 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 	return resourceType, resourceName, nil
 }
 
-// RequireResourceType checks if the first argument provided is a valid resource type and returns it if it is. If the
-// argument is not valid, an error is returned with a list of valid resource types.
+// RequireResourceType checks if the first argument provided is a valid resource type 'providernamespace/resourcetype' and returns it if it is. If the
+// argument is not valid, an error is returned.
 //
 // Example of resource Type: Applications.Datastores/redisCaches
 func RequireResourceType(args []string) (string, error) {
@@ -296,28 +295,11 @@ func RequireResourceType(args []string) (string, error) {
 	resourceTypeName := args[0]
 
 	// Allow any fully-qualified resource type.
-	if strings.Contains(resourceTypeName, "/") {
-		return resourceTypeName, nil
+	if !strings.Contains(resourceTypeName, "/") {
+		return "", fmt.Errorf("'%s' is not a valid resource type. Please specify the full resource type and try again", resourceTypeName)
 	}
 
-	supportedTypes := []string{}
-	foundTypes := []string{}
-	for _, resourceType := range clients.ResourceTypesList {
-		supportedType := strings.Split(resourceType, "/")[1]
-		supportedTypes = append(supportedTypes, supportedType)
-		//check to see if the resource type is the correct short or long name.
-		if strings.EqualFold(supportedType, resourceTypeName) || strings.EqualFold(resourceType, resourceTypeName) {
-			foundTypes = append(foundTypes, resourceType)
-		}
-	}
-	if len(foundTypes) == 1 {
-		return foundTypes[0], nil
-	} else if len(foundTypes) > 1 {
-		return "", fmt.Errorf("multiple resource types match '%s'. Please specify the full resource type and try again:\n\n%s\n",
-			resourceTypeName, strings.Join(foundTypes, "\n"))
-	}
-	return "", fmt.Errorf("'%s' is not a valid resource type. Available Types are: \n\n%s\n",
-		resourceTypeName, strings.Join(supportedTypes, "\n"))
+	return resourceTypeName, nil
 }
 
 // "RequireAzureResource" takes in a command and a slice of strings and returns an AzureResource object and an error. It
