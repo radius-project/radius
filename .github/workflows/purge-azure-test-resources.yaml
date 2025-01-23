@@ -39,7 +39,7 @@ jobs:
   purge_azure_resources:
     name: Clean up unused Azure resources
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
+    if: github.repository == 'radius-project/radius' && github.event_name != 'workflow_dispatch'
     steps:
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
