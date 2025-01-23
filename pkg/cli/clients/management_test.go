@@ -1055,9 +1055,9 @@ func Test_ResourceProvider(t *testing.T) {
 			GetProviderSummary(gomock.Any(), "local", testResourceProviderName, gomock.Any()).
 			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{ResourceProviderSummary: expectedResource}, nil)
 
-		group, err := client.GetResourceProviderSummary(context.Background(), "local", testResourceProviderName)
+		summary, err := client.GetResourceProviderSummary(context.Background(), "local", testResourceProviderName)
 		require.NoError(t, err)
-		require.Equal(t, expectedResource, group)
+		require.Equal(t, expectedResource, summary)
 	})
 }
 

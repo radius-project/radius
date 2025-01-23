@@ -44,7 +44,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Delete Command",
-			Input:         []string{"containers", "foo"},
+			Input:         []string{"Applications.Core/containers", "foo"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -53,7 +53,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Delete Command with fallback workspace",
-			Input:         []string{"containers", "foo", "-g", "my-group"},
+			Input:         []string{"Applications.Core/containers", "foo", "-g", "my-group"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -71,7 +71,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Delete Command with insufficient args",
-			Input:         []string{"containers"},
+			Input:         []string{"Applications.Core/containers"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -80,7 +80,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Delete Command with too many args",
-			Input:         []string{"containers", "a", "b"},
+			Input:         []string{"Applications.Core/containers", "a", "b"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -89,7 +89,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "List Command with ambiguous args",
-			Input:         []string{"secretStores"},
+			Input:         []string{"Applications.Core/secretStores"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
