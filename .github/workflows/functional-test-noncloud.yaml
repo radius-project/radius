@@ -317,12 +317,7 @@ jobs:
             }
           }
           EOF
-      - name: Restore Bicep artifacts before running functional tests
-        run: |
-          # Restore Radius Bicep types
-          bicep build ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep
-          # Restore AWS Bicep types 
-          bicep build ./test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep
+          
       - name: Publish Bicep Test Recipes
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
