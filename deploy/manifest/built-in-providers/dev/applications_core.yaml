@@ -1,37 +1,40 @@
 name: Applications.Core
+location:
+  global:
+    "http://localhost:8080"
 types:
   containers:
     apiVersions:
-      "2025-01-01-preview":
+      "2023-10-01-preview":
         schema: {}
     capabilities: []
   applications:
     apiVersions:
-      "2025-01-01-preview":
+      "2023-10-01-preview":
         schema: {}
     capabilities: []
   environments:
     apiVersions:
-      "2025-01-01-preview":
+      "2023-10-01-preview":
         schema: {}
     capabilities: []
   gateways:
     apiVersions:
-      "2025-01-01-preview":
+      "2023-10-01-preview":
         schema: {}
     capabilities: []
   secretStores:
     apiVersions:
-      "2025-01-01-preview":
+      "2023-10-01-preview":
         schema: {}
     capabilities: []
   extenders:
     apiVersions:
-      "2025-01-01-preview":
+      "2023-10-01-preview":
         schema: {}
     capabilities: ["SupportsRecipes"]
   volumes:
     apiVersions:
-      "2025-01-01-preview":
+      "2023-10-01-preview":
         schema: {}
     capabilities: []
