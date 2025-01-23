@@ -317,7 +317,7 @@ jobs:
             }
           }
           EOF
-          
+
       - name: Publish Bicep Test Recipes
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
