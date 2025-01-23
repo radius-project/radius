@@ -108,7 +108,7 @@ jobs:
           REGISTRY_NAME="biceptypes"
           DATE="$(date -d '90 days ago' +%Y-%m-%d)"
 
-          az acr manifest list-metadata \ 
+          az acr manifest list-metadata \
             -r $REGISTRY_NAME \
             -n $REPO_NAME \
             --query "[?lastUpdateTime<='$DATE'].digest" \
