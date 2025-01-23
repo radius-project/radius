@@ -1,13 +1,23 @@
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
   name: database-secret
+  namespace: {{ .Release.Namespace }}
+  labels:
+    control-plane: database
+    app.kubernetes.io/part-of: radius
+stringData:
+  POSTGRES_USER: "{{ .Values.database.postgres_user }}"
+  POSTGRES_PASSWORD: "{{ randAlphaNum 16 }}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
   namespace: "{{ .Release.Namespace }}"
   labels:
     control-plane: database
     app.kubernetes.io/name: database
     app.kubernetes.io/part-of: radius
 data:
-  POSTGRES_DB: ps_db
-  POSTGRES_USER: ps_user
-  POSTGRES_PASSWORD: SecurePassword
+  POSTGRES_DB: POSTGRES_DB

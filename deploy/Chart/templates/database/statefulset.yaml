@@ -34,9 +34,22 @@ spec:
           limits:
             memory: "{{ .Values.database.resources.limits.memory }}"
             cpu: "{{ .Values.database.resources.limits.cpu }}"
-        envFrom:
-        - configMapRef:
-            name: database-secret
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: database-config
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_PASSWORD
         ports:
         - containerPort: 5432
           name: postgres
