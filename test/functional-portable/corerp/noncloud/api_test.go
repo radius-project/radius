@@ -49,7 +49,7 @@ func Test_ResourceList(t *testing.T) {
 
 	resourceGroupScope := parsed.String()
 
-	resourceTypesList, err := options.ManagementClient.(*clients.UCPApplicationsManagementClient).ListAllResourceTypesNames(context.Background())
+	resourceTypesList, err := options.ManagementClient.(*clients.UCPApplicationsManagementClient).ListAllResourceTypesNames(context.Background(), "local")
 	require.NoError(t, err)
 	resourceTypes := []string{"Applications.Core/applications", "Applications.Core/environments"}
 	resourceTypes = append(resourceTypes, resourceTypesList...)

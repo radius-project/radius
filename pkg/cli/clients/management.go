@@ -774,8 +774,8 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 }
 
 // ListAllResourceTypes lists all resource types in all resource providers in the configured scope.
-func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context) ([]string, error) {
-	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, "local")
+func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
+	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
 	if err != nil {
 		return []string{}, err
 	}
@@ -801,7 +801,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx conte
 		return nil, err
 	}
 
-	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx)
+	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
 	if err != nil {
 		return nil, err
 	}
@@ -827,7 +827,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 	}
 
 	results := []generated.GenericResource{}
-	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx)
+	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
 	for _, resourceType := range ResourceTypesList {
 		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
 		if err != nil {
