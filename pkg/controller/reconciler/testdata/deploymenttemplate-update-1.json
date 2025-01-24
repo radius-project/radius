@@ -18,11 +18,11 @@
     }
   },
   "resources": {
-    "deploymenttemplate-withresources-env": {
+    "deploymenttemplate-update-env": {
       "import": "Radius",
       "type": "Applications.Core/environments@2023-10-01-preview",
       "properties": {
-        "name": "deploymenttemplate-withresources-env",
+        "name": "deploymenttemplate-update-env",
         "location": "global",
         "properties": {
           "compute": {

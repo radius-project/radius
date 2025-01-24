@@ -59,6 +59,11 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "rad bicep generate-kubernetes-manifest - invalid with no group provided",
+			Input:         []string{"app.bicep"},
+			ExpectedValid: false,
+		},
+		{
 			Name:          "rad bicep generate-kubernetes-manifest - valid with parameters",
 			Input:         []string{"app.bicep", "-g", "default", "-p", "foo=bar", "--parameters", "a=b", "--parameters", "@testdata/parameters.json"},
 			ExpectedValid: true,

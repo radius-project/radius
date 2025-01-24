@@ -90,5 +90,5 @@ func GenerateProviderConfig(resourceGroup, awsScope, azureScope string) Provider
 
 // constructRadiusDeploymentScope constructs the scope for Radius deployments.
 func constructRadiusDeploymentScope(group string) string {
-	return fmt.Sprintf("/planes/radius/local/resourceGroups/%s", group)
+	return fmt.Sprintf("/planes/radius/local/resourcegroups/%s", group)
 }

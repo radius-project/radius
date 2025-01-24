@@ -49,7 +49,7 @@ import (
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func Test_DeploymentTemplate_Basic(t *testing.T) {
+func Test_DeploymentTemplate_Env(t *testing.T) {
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 
@@ -268,6 +268,8 @@ func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig 
 	return deploymentTemplate
 }
 
+// waitForDeploymentTemplateReady watches the creation of the DeploymentTemplate object
+// and waits for it to be in the "Ready" state.
 func waitForDeploymentTemplateReady(t *testing.T, ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch, initialVersion string) (*radappiov1alpha3.DeploymentTemplate, error) {
 	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
 	lister := &cache.ListWatch{

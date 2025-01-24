@@ -17,7 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -25,7 +24,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
@@ -221,45 +219,4 @@ func makeDeploymentResource(name types.NamespacedName, id string) *radappiov1alp
 			Id: id,
 		},
 	}
-}
-
-func generateProviderConfig(radiusScope, azureScope, awsScope string) (string, error) {
-	if radiusScope == "" {
-		return "", fmt.Errorf("radiusScope is required")
-	}
-
-	providerConfig := sdkclients.ProviderConfig{}
-	if awsScope != "" {
-		providerConfig.AWS = &sdkclients.AWS{
-			Type: "aws",
-			Value: sdkclients.Value{
-				Scope: awsScope,
-			},
-		}
-	}
-	if azureScope != "" {
-		providerConfig.Az = &sdkclients.Az{
-			Type: "azure",
-			Value: sdkclients.Value{
-				Scope: azureScope,
-			},
-		}
-	}
-
-	providerConfig.Radius = &sdkclients.Radius{
-		Type: "Radius",
-		Value: sdkclients.Value{
-			Scope: radiusScope,
-		},
-	}
-	providerConfig.Deployments = &sdkclients.Deployments{
-		Type: "Microsoft.Resources",
-		Value: sdkclients.Value{
-			Scope: radiusScope,
-		},
-	}
-
-	b, err := json.Marshal(providerConfig)
-
-	return string(b), err
 }

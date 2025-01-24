@@ -75,8 +75,8 @@ rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddParameterFlag(cmd)
 
-	cmd.Flags().StringP("destination-file", "d", "", "Path of the generated DeploymentTemplate yaml file.")
-	_ = cmd.MarkFlagFilename("destination-file", ".yaml")
+	cmd.Flags().StringP("destination-file", "d", "", "Path of the generated DeploymentTemplate yaml file created by running this command.")
+	_ = cmd.MarkFlagFilename("destination-file", ".yaml", ".yml")
 
 	cmd.Flags().String("azure-scope", "", "Scope for Azure deployment.")
 	cmd.Flags().String("aws-scope", "", "Scope for AWS deployment.")
@@ -101,7 +101,7 @@ type Runner struct {
 	AWSScope        string
 }
 
-// NewRunner creates a new instance of the `rad deploy` runner.
+// NewRunner creates a new instance of the `rad bicep generate-kubernetes-manifest` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		Bicep:             factory.GetBicep(),
@@ -146,8 +146,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.DestinationFile = strings.TrimSuffix(filepath.Base(r.FilePath), filepath.Ext(r.FilePath)) + ".yaml"
 	}
 
-	if filepath.Ext(r.DestinationFile) != ".yaml" {
-		return clierrors.Message("Destination file must have a .yaml extension")
+	if filepath.Ext(r.DestinationFile) != ".yaml" && filepath.Ext(r.DestinationFile) != ".yml" {
+		return clierrors.Message("Destination file must have a .yaml or .yml extension")
 	}
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
@@ -185,7 +185,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Print the path to the file
 	r.Output.LogInfo("DeploymentTemplate file created at %s", r.DestinationFile)
 
 	return nil
@@ -231,7 +230,6 @@ func (r *Runner) createDeploymentTemplateYAMLFile(deploymentTemplate map[string]
 	var buf bytes.Buffer
 	encoder := yaml.NewEncoder(&buf)
 
-	// Set the indentation to 2 spaces
 	encoder.SetIndent(2)
 
 	err := encoder.Encode(deploymentTemplate)
