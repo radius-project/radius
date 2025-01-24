@@ -229,12 +229,10 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
 	require.NoError(t, err)
 
-	providerConfig := sdkclients.GenerateProviderConfig("deploymenttemplate-basic", "", "")
-	require.NoError(t, err)
-	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
+	providerConfig, err := sdkclients.GenerateProviderConfig("deploymenttemplate-basic", "", "").String()
 	require.NoError(t, err)
 
-	deploymentTemplate := makeDeploymentTemplate(name, "{}", string(marshalledProviderConfig), map[string]string{})
+	deploymentTemplate := makeDeploymentTemplate(name, "{}", providerConfig, map[string]string{})
 	err = client.Create(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
@@ -276,7 +274,7 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
 			Template:       "{}",
 			Parameters:     map[string]string{},
-			ProviderConfig: string(marshalledProviderConfig),
+			ProviderConfig: providerConfig,
 		},
 	}
 
@@ -306,12 +304,10 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
 	require.NoError(t, err)
 
-	providerConfig := sdkclients.GenerateProviderConfig("deploymenttemplate-failurerecovery", "", "")
-	require.NoError(t, err)
-	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
+	providerConfig, err := sdkclients.GenerateProviderConfig("deploymenttemplate-failurerecovery", "", "").String()
 	require.NoError(t, err)
 
-	deploymentTemplate := makeDeploymentTemplate(name, "{}", string(marshalledProviderConfig), map[string]string{})
+	deploymentTemplate := makeDeploymentTemplate(name, "{}", providerConfig, map[string]string{})
 	err = client.Create(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
@@ -360,12 +356,10 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 	require.NoError(t, err)
 
 	scope := "/planes/radius/local/resourceGroups/deploymenttemplate-withresources"
-	providerConfig := sdkclients.GenerateProviderConfig("deploymenttemplate-withresources", "", "")
-	require.NoError(t, err)
-	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
+	providerConfig, err := sdkclients.GenerateProviderConfig("deploymenttemplate-withresources", "", "").String()
 	require.NoError(t, err)
 
-	deploymentTemplate := makeDeploymentTemplate(name, string(template), string(marshalledProviderConfig), map[string]string{})
+	deploymentTemplate := makeDeploymentTemplate(name, string(template), providerConfig, map[string]string{})
 	err = client.Create(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
@@ -424,7 +418,7 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
 			Template:       string(template),
 			Parameters:     map[string]string{},
-			ProviderConfig: string(marshalledProviderConfig),
+			ProviderConfig: providerConfig,
 		},
 	}
 
@@ -470,12 +464,10 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 	require.NoError(t, err)
 
 	scope := "/planes/radius/local/resourceGroups/deploymenttemplate-update"
-	providerConfig := sdkclients.GenerateProviderConfig("deploymenttemplate-update", "", "")
-	require.NoError(t, err)
-	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
+	providerConfig, err := sdkclients.GenerateProviderConfig("deploymenttemplate-update", "", "").String()
 	require.NoError(t, err)
 
-	deploymentTemplate := makeDeploymentTemplate(name, string(template), string(marshalledProviderConfig), map[string]string{})
+	deploymentTemplate := makeDeploymentTemplate(name, string(template), providerConfig, map[string]string{})
 	err = client.Create(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
@@ -534,7 +526,7 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
 			Template:       string(template),
 			Parameters:     map[string]string{},
-			ProviderConfig: string(marshalledProviderConfig),
+			ProviderConfig: providerConfig,
 		},
 	}
 
@@ -617,7 +609,7 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
 			Template:       string(template),
 			Parameters:     map[string]string{},
-			ProviderConfig: string(marshalledProviderConfig),
+			ProviderConfig: providerConfig,
 		},
 	}
 

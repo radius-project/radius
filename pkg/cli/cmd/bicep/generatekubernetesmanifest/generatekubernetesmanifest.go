@@ -197,9 +197,7 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 		return nil, err
 	}
 
-	providerConfig := sdkclients.GenerateProviderConfig(r.Group, r.AWSScope, r.AzureScope)
-
-	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
+	providerConfig, err := sdkclients.GenerateProviderConfig(r.Group, r.AWSScope, r.AzureScope).String()
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +216,7 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 		"spec": map[string]any{
 			"template":       string(marshalledTemplate),
 			"parameters":     params,
-			"providerConfig": string(marshalledProviderConfig),
+			"providerConfig": providerConfig,
 		},
 	}
 

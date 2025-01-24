@@ -16,7 +16,10 @@ limitations under the License.
 
 package clients
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 const (
 	// ProviderTypeAzure is used to specify the provider configuration for Azure resources.
@@ -91,4 +94,15 @@ func GenerateProviderConfig(resourceGroup, awsScope, azureScope string) Provider
 // constructRadiusDeploymentScope constructs the scope for Radius deployments.
 func constructRadiusDeploymentScope(group string) string {
 	return fmt.Sprintf("/planes/radius/local/resourceGroups/%s", group)
+}
+
+// String returns the JSON representation of the ProviderConfig object
+// in a string format.
+func (p ProviderConfig) String() (string, error) {
+	b, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
 }

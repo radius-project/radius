@@ -18,7 +18,6 @@ package kubernetes_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -61,7 +60,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 		fmt.Sprintf("namespace=%s", namespace),
 	}
 
-	providerConfig, err := generateDefaultProviderConfig()
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(name).String()
 	require.NoError(t, err)
 
 	parametersMap := createParametersMap(parameters)
@@ -127,7 +126,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 		fmt.Sprintf("namespace=%s", namespace),
 	}
 
-	providerConfig, err := generateDefaultProviderConfig()
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(name).String()
 	require.NoError(t, err)
 
 	parametersMap := createParametersMap(parameters)
@@ -196,7 +195,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 		fmt.Sprintf("namespace=%s", namespace),
 	}
 
-	providerConfig, err := generateDefaultProviderConfig()
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(name).String()
 	require.NoError(t, err)
 
 	parametersMap := createParametersMap(parameters)
@@ -252,6 +251,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 	})
 }
 
+// makeDeploymentTemplate returns a DeploymentTemplate object with the given name, template, providerConfig, and parameters.
 func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
 	deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{
 		ObjectMeta: metav1.ObjectMeta{
@@ -309,29 +309,8 @@ func waitForDeploymentTemplateReady(t *testing.T, ctx context.Context, name type
 	}
 }
 
-func generateDefaultProviderConfig() (string, error) {
-	providerConfig := sdkclients.ProviderConfig{}
-
-	providerConfig.Radius = &sdkclients.Radius{
-		Type: "radius",
-		Value: sdkclients.Value{
-			Scope: "/planes/radius/local/resourceGroups/default",
-		},
-	}
-	providerConfig.Deployments = &sdkclients.Deployments{
-		Type: "Microsoft.Resources",
-		Value: sdkclients.Value{
-			Scope: "/planes/radius/local/resourceGroups/default",
-		},
-	}
-
-	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	return string(marshalledProviderConfig), nil
-}
-
+// createParametersMap creates a map of parameters from a list of parameters
+// in the form of key=value.
 func createParametersMap(parameters []string) map[string]string {
 	parametersMap := make(map[string]string)
 	for _, param := range parameters {
