@@ -16,6 +16,8 @@ limitations under the License.
 
 package clients
 
+import "fmt"
+
 const (
 	// ProviderTypeAzure is used to specify the provider configuration for Azure resources.
 	ProviderTypeAzure = "AzureResourceManager"
@@ -33,18 +35,60 @@ const (
 func NewDefaultProviderConfig(resourceGroup string) ProviderConfig {
 	config := ProviderConfig{
 		Deployments: &Deployments{
-			Type: "Microsoft.Resources",
+			Type: ProviderTypeDeployments,
 			Value: Value{
-				Scope: "/planes/radius/local/resourceGroups/" + resourceGroup,
+				Scope: constructRadiusDeploymentScope(resourceGroup),
 			},
 		},
 		Radius: &Radius{
-			Type: "Radius",
+			Type: ProviderTypeRadius,
 			Value: Value{
-				Scope: "/planes/radius/local/resourceGroups/" + resourceGroup,
+				Scope: constructRadiusDeploymentScope(resourceGroup),
 			},
 		},
 	}
 
 	return config
+}
+
+// GenerateProviderConfig generates a ProviderConfig object based on the given scopes.
+func GenerateProviderConfig(resourceGroup, awsScope, azureScope string) ProviderConfig {
+	providerConfig := ProviderConfig{}
+	if awsScope != "" {
+		providerConfig.AWS = &AWS{
+			Type: ProviderTypeAWS,
+			Value: Value{
+				Scope: awsScope,
+			},
+		}
+	}
+	if azureScope != "" {
+		providerConfig.Az = &Az{
+			Type: ProviderTypeAzure,
+			Value: Value{
+				Scope: azureScope,
+			},
+		}
+	}
+	if resourceGroup != "" {
+		providerConfig.Radius = &Radius{
+			Type: ProviderTypeRadius,
+			Value: Value{
+				Scope: constructRadiusDeploymentScope(resourceGroup),
+			},
+		}
+		providerConfig.Deployments = &Deployments{
+			Type: ProviderTypeDeployments,
+			Value: Value{
+				Scope: constructRadiusDeploymentScope(resourceGroup),
+			},
+		}
+	}
+
+	return providerConfig
+}
+
+// constructRadiusDeploymentScope constructs the scope for Radius deployments.
+func constructRadiusDeploymentScope(group string) string {
+	return fmt.Sprintf("/planes/radius/local/resourceGroups/%s", group)
 }

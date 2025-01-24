@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -199,7 +198,7 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 		return nil, err
 	}
 
-	providerConfig := r.generateProviderConfig()
+	providerConfig := sdkclients.GenerateProviderConfig(r.Group, r.AWSScope, r.AzureScope)
 
 	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
 	if err != nil {
@@ -241,45 +240,4 @@ func (r *Runner) createDeploymentTemplateYAMLFile(deploymentTemplate map[string]
 	}
 
 	return r.FileSystem.WriteFile(r.DestinationFile, buf.Bytes(), 0644)
-}
-
-// generateProviderConfig generates a ProviderConfig object based on the given scopes.
-func (r *Runner) generateProviderConfig() (providerConfig sdkclients.ProviderConfig) {
-	providerConfig = sdkclients.ProviderConfig{}
-	if r.AWSScope != "" {
-		providerConfig.AWS = &sdkclients.AWS{
-			Type: "aws",
-			Value: sdkclients.Value{
-				Scope: r.AWSScope,
-			},
-		}
-	}
-	if r.AzureScope != "" {
-		providerConfig.Az = &sdkclients.Az{
-			Type: "azure",
-			Value: sdkclients.Value{
-				Scope: r.AzureScope,
-			},
-		}
-	}
-	if r.Group != "" {
-		providerConfig.Radius = &sdkclients.Radius{
-			Type: "radius",
-			Value: sdkclients.Value{
-				Scope: constructRadiusDeploymentScope(r.Group),
-			},
-		}
-		providerConfig.Deployments = &sdkclients.Deployments{
-			Type: "Microsoft.Resources",
-			Value: sdkclients.Value{
-				Scope: constructRadiusDeploymentScope(r.Group),
-			},
-		}
-	}
-
-	return providerConfig
-}
-
-func constructRadiusDeploymentScope(group string) string {
-	return fmt.Sprintf("/planes/radius/local/resourceGroups/%s", group)
 }
