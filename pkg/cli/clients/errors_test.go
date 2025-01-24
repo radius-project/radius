@@ -62,4 +62,10 @@ func TestIs404Error(t *testing.T) {
 	if Is404Error(nil) {
 		t.Errorf("Expected Is404Error to return false for nil error, but it returned true")
 	}
+
+	// Test with a fake server not found response
+	err = errors.New(fakeServerNotFoundResponse)
+	if !Is404Error(err) {
+		t.Errorf("Expected Is404Error to return true for fake server not found response, but it returned false")
+	}
 }

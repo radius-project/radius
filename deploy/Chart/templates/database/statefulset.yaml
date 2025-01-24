@@ -40,13 +40,17 @@ spec:
         ports:
         - containerPort: 5432
           name: postgres
+        volumeMounts:
+        - name: database
+          mountPath: /var/lib/postgresql/data
+          subPath: postgres
         
   volumeClaimTemplates:
   - metadata:
       name: database
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: "{{ .Values.database.storageClassName }}"
+      storageClassName: {{ .Values.database.storageClassName }}
       resources:
         requests:
           storage: {{ .Values.database.storageSize }}
