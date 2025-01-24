@@ -111,13 +111,13 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				GetResourceProviderSummary(context.Background(), "local", "Applications.Core").
 				Return(ucp.ResourceProviderSummary{
-					Name: to.Ptr("Applications.Test1"),
+					Name: to.Ptr("Applications.Core"),
 					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-						"resourceType1": {
+						"containers": {
 							APIVersions: map[string]map[string]any{
-								"2025-01-01": {},
+								"2023-01-01": {},
 							},
-							DefaultAPIVersion: to.Ptr("2025-01-01"),
+							DefaultAPIVersion: to.Ptr("2023-01-01"),
 						},
 					},
 					Locations: map[string]map[string]any{
@@ -155,10 +155,26 @@ func Test_Run(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
+				GetResourceProviderSummary(context.Background(), "local", "Applications.Core").
+				Return(ucp.ResourceProviderSummary{
+					Name: to.Ptr("Applications.Core"),
+					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+						"containers": {
+							APIVersions: map[string]map[string]any{
+								"2023-01-01": {},
+							},
+							DefaultAPIVersion: to.Ptr("2023-01-01"),
+						},
+					},
+					Locations: map[string]map[string]any{
+						"east": {},
+					},
+				}, nil).Times(1)
+			appManagementClient.EXPECT().
 				GetApplication(gomock.Any(), "test-app").
 				Return(v20231001preview.ApplicationResource{}, nil).Times(1)
 			appManagementClient.EXPECT().
-				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "containers").
+				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "Applications.Core/containers").
 				Return(resources, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -195,6 +211,23 @@ func Test_Run(t *testing.T) {
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetResourceProviderSummary(context.Background(), "local", "Applications.Core").
+				Return(ucp.ResourceProviderSummary{
+					Name: to.Ptr("Applications.Core"),
+					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+						"containers": {
+							APIVersions: map[string]map[string]any{
+								"2023-01-01": {},
+							},
+							DefaultAPIVersion: to.Ptr("2023-01-01"),
+						},
+					},
+					Locations: map[string]map[string]any{
+						"east": {},
+					},
+				}, nil).Times(1)
+
 			appManagementClient.EXPECT().
 				ListResourcesOfType(gomock.Any(), "Applications.Core/containers").
 				Return(resources, nil).Times(1)
