@@ -8,5 +8,7 @@ types:
       "2020-10-01":
         schema: {}
       "2022-09-01":
-        schema: {} 
+        schema: {}
+      "2023-10-01-preview":
+        schema: {}   
     capabilities: []
