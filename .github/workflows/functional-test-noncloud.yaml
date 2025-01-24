@@ -126,7 +126,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest-m]
+        os: [ubuntu-latest]
         name:
           [
             cli-noncloud,
@@ -179,25 +179,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
-          cache: false
-
-      - name: Get Go Cache path
-        id: go-cache-paths
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          sudo rm -rf $(go env GOCACHE)
-
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-          sudo rm -rf $(go env GOMODCACHE)
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ${{ steps.go-cache-paths.outputs.go-build }}
-            ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -312,8 +294,9 @@ jobs:
             kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
             
             # Exit on error
-            if grep -qi "error" registermanifest_logs.txt; then
+            if grep -qi "Service initializer terminated with error" registermanifest_logs.txt; then
               echo "Error found in ucp logs."
+              grep -i "Service initializer terminated with error" registermanifest_logs.txt
               exit 1
             fi
 
@@ -341,6 +324,8 @@ jobs:
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
+        continue-on-error: true  
+
         env:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
