@@ -643,6 +643,50 @@ jobs:
             --set global.azureWorkloadIdentity.enabled=true \
             --set global.aws.irsa.enabled=true 
           
+          echo "*** Verify manifests are registered ***"
+          rm -f registermanifest_logs.txt
+          # Find the pod with container "ucp"
+          POD_NAME=$(
+            kubectl get pods -n radius-system \
+              -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.containers[*].name}{"\n"}{end}' \
+            | grep "ucp" \
+            | head -n1 \
+            | cut -d" " -f1
+          )
+          echo "Found ucp pod: $POD_NAME"
+
+          if [ -z "$POD_NAME" ]; then
+            echo "No pod with container 'ucp' found in namespace radius-system."
+            exit 1
+          fi
+
+          # Poll logs for up to  iterations, 30 seconds each (upto 3 minutes total)
+          for i in {1..6}; do
+            kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
+
+            # Exit on error
+            if grep -qi "Service initializer terminated with error" registermanifest_logs.txt; then
+              echo "Error found in ucp logs:"
+              grep -i "Service initializer terminated with error" registermanifest_logs.txt
+              exit 1
+            fi
+
+            # Check for success
+            if grep -q "Successfully registered manifests" registermanifest_logs.txt; then
+              echo "Successfully registered manifests - message found."
+              break
+            fi
+
+            echo "Logs not ready, waiting 30 seconds..."
+            sleep 30
+          done
+
+          # Final check to ensure success message was found
+          if ! grep -q "Successfully registered manifests" registermanifest_logs.txt; then
+            echo "Manifests not registered after 3 minutes."
+            exit 1
+          fi
+
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
           rad group create kind-radius
@@ -664,7 +708,7 @@ jobs:
           
           rad credential register aws irsa \
             --iam-role ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
-          
+
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
