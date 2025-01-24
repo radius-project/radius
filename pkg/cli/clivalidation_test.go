@@ -48,7 +48,7 @@ func Test_RequireResourceType(t *testing.T) {
 			name:    "resource type not fully qualified",
 			args:    []string{"exampleResources"},
 			want:    "",
-			wantErr: fmt.Errorf("'exampleResources' is not a valid resource type. Please specify the full resource type and try again"),
+			wantErr: fmt.Errorf("'exampleResources' is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again"),
 		},
 	}
 
