@@ -47,18 +47,18 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Lists resources",
 		Long:  "List all resources of specified type",
 		Example: `
-sample list of resourceType: containers, gateways, pubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, stateStores, secretStores
+sample list of resourceType: applications.core/containers, applications.core/gateways, applications.dapr/daprPubSubBrokers, applications.core/extenders, applications.datastores/mongoDatabases, applications.messaging/rabbitMQMessageQueues, applications.datastores/redisCaches, applications.datastores/sqlDatabases, applications.dapr/daprStateStores, applications.dapr/daprSecretStores
 
 # list all resources of a specified type in the default environment
 
-rad resource list containers
-rad resource list gateways
+rad resource list applications.core/containers
+rad resource list applications.core/gateways
 
 # list all resources of a specified type in an application
-rad resource list containers --application icecream-store
+rad resource list applications.core/containers --application icecream-store
 
 # list all resources of a specified type in an application (shorthand flag)
-rad resource list containers -a icecream-store
+rad resource list applications.core/containers -a icecream-store
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),

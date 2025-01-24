@@ -296,7 +296,7 @@ func RequireResourceType(args []string) (string, error) {
 
 	// Allow any fully-qualified resource type.
 	if !strings.Contains(resourceTypeName, "/") {
-		return "", fmt.Errorf("'%s' is not a valid resource type. Please specify the full resource type and try again", resourceTypeName)
+		return "", fmt.Errorf("'%s' is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again", resourceTypeName)
 	}
 
 	return resourceTypeName, nil
