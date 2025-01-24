@@ -8,7 +8,7 @@ spec:
   providerConfig: |-
     {
       "radius": {
-        "type": "radius",
+        "type": "Radius",
         "value": {
           "scope": "/planes/radius/local/resourceGroups/default"
         }

@@ -245,7 +245,7 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 
 	// DeploymentTemplate should be ready after the operation completes.
 	status = waitForDeploymentTemplateStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourcegroups/deploymenttemplate-basic/providers/Microsoft.Resources/deployments/test-deploymenttemplate-basic", status.Resource)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-basic/providers/Microsoft.Resources/deployments/test-deploymenttemplate-basic", status.Resource)
 
 	// Verify that the Radius deployment contains the expected properties.
 	expectedProperties := map[string]any{
@@ -256,18 +256,18 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 			Radius: &sdkclients.Radius{
 				Type: "Radius",
 				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourcegroups/deploymenttemplate-basic",
+					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-basic",
 				},
 			},
 			Deployments: &sdkclients.Deployments{
 				Type: "Microsoft.Resources",
 				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourcegroups/deploymenttemplate-basic",
+					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-basic",
 				},
 			},
 		},
 	}
-	resource, err := radius.Resources("/planes/radius/local/resourcegroups/deploymenttemplate-basic", "Microsoft.Resources/deployments").Get(ctx, name.Name)
+	resource, err := radius.Resources("/planes/radius/local/resourceGroups/deploymenttemplate-basic", "Microsoft.Resources/deployments").Get(ctx, name.Name)
 	require.NoError(t, err)
 	require.Equal(t, expectedProperties, resource.Properties)
 
@@ -359,7 +359,7 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 	template, err := json.MarshalIndent(templateMap, "", "  ")
 	require.NoError(t, err)
 
-	scope := "/planes/radius/local/resourcegroups/deploymenttemplate-withresources"
+	scope := "/planes/radius/local/resourceGroups/deploymenttemplate-withresources"
 	providerConfig := sdkclients.GenerateProviderConfig("deploymenttemplate-withresources", "", "")
 	require.NoError(t, err)
 	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
@@ -376,21 +376,21 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties["outputResources"] = []any{
-			map[string]any{"id": "/planes/radius/local/resourcegroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env"},
+			map[string]any{"id": "/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env"},
 		}
 		state.value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
 	})
 
 	// DeploymentTemplate should be ready after the operation completes.
 	status = waitForDeploymentTemplateStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourcegroups/deploymenttemplate-withresources/providers/Microsoft.Resources/deployments/test-deploymenttemplate-withresources", status.Resource)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Microsoft.Resources/deployments/test-deploymenttemplate-withresources", status.Resource)
 
 	// DeploymentTemplate will be waiting for environment to be created.
 	createEnvironment(radius, "deploymenttemplate-withresources", "deploymenttemplate-withresources-env")
 
 	dependencyName := types.NamespacedName{Namespace: name.Namespace, Name: "deploymenttemplate-withresources-env"}
 	dependencyStatus := waitForDeploymentResourceStateReady(t, client, dependencyName)
-	require.Equal(t, "/planes/radius/local/resourcegroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env", dependencyStatus.Id)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env", dependencyStatus.Id)
 
 	// Verify that the Radius deployment contains the expected properties.
 	resource, err := radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
@@ -403,18 +403,18 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 			Radius: &sdkclients.Radius{
 				Type: "Radius",
 				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourcegroups/deploymenttemplate-withresources",
+					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-withresources",
 				},
 			},
 			Deployments: &sdkclients.Deployments{
 				Type: "Microsoft.Resources",
 				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourcegroups/deploymenttemplate-withresources",
+					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-withresources",
 				},
 			},
 		},
 		"outputResources": []any{
-			map[string]any{"id": "/planes/radius/local/resourcegroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env"},
+			map[string]any{"id": "/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env"},
 		},
 	}
 	require.Equal(t, expectedProperties, resource.Properties)
@@ -469,7 +469,7 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 	template, err := json.MarshalIndent(templateMap, "", "  ")
 	require.NoError(t, err)
 
-	scope := "/planes/radius/local/resourcegroups/deploymenttemplate-update"
+	scope := "/planes/radius/local/resourceGroups/deploymenttemplate-update"
 	providerConfig := sdkclients.GenerateProviderConfig("deploymenttemplate-update", "", "")
 	require.NoError(t, err)
 	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
@@ -486,21 +486,21 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties["outputResources"] = []any{
-			map[string]any{"id": "/planes/radius/local/resourcegroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
+			map[string]any{"id": "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
 		}
 		state.value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
 	})
 
 	// DeploymentTemplate should be ready after the operation completes.
 	status = waitForDeploymentTemplateStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourcegroups/deploymenttemplate-update/providers/Microsoft.Resources/deployments/test-deploymenttemplate-update", status.Resource)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Microsoft.Resources/deployments/test-deploymenttemplate-update", status.Resource)
 
 	// DeploymentTemplate will be waiting for environment to be created.
 	createEnvironment(radius, "deploymenttemplate-update", "deploymenttemplate-update-env")
 
 	dependencyName := types.NamespacedName{Namespace: name.Namespace, Name: "deploymenttemplate-update-env"}
 	dependencyStatus := waitForDeploymentResourceStateReady(t, client, dependencyName)
-	require.Equal(t, "/planes/radius/local/resourcegroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
 
 	// Verify that the Radius deployment contains the expected properties.
 	resource, err := radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
@@ -513,18 +513,18 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 			Radius: &sdkclients.Radius{
 				Type: "Radius",
 				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourcegroups/deploymenttemplate-update",
+					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-update",
 				},
 			},
 			Deployments: &sdkclients.Deployments{
 				Type: "Microsoft.Resources",
 				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourcegroups/deploymenttemplate-update",
+					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-update",
 				},
 			},
 		},
 		"outputResources": []any{
-			map[string]any{"id": "/planes/radius/local/resourcegroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
+			map[string]any{"id": "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
 		},
 	}
 	require.Equal(t, expectedProperties, resource.Properties)
@@ -569,21 +569,21 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties["outputResources"] = []any{
-			map[string]any{"id": "/planes/radius/local/resourcegroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
+			map[string]any{"id": "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
 		}
 		state.value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
 	})
 
 	// DeploymentTemplate should be ready after the operation completes.
 	status = waitForDeploymentTemplateStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourcegroups/deploymenttemplate-update/providers/Microsoft.Resources/deployments/test-deploymenttemplate-update", status.Resource)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Microsoft.Resources/deployments/test-deploymenttemplate-update", status.Resource)
 
 	// DeploymentTemplate will be waiting for environment to be created.
 	createEnvironment(radius, "deploymenttemplate-update", "deploymenttemplate-update-env")
 
 	dependencyName = types.NamespacedName{Namespace: name.Namespace, Name: "deploymenttemplate-update-env"}
 	dependencyStatus = waitForDeploymentResourceStateReady(t, client, dependencyName)
-	require.Equal(t, "/planes/radius/local/resourcegroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
 
 	// Verify that the Radius deployment contains the expected properties.
 	resource, err = radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, name.Name)
@@ -596,18 +596,18 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 			Radius: &sdkclients.Radius{
 				Type: "Radius",
 				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourcegroups/deploymenttemplate-update",
+					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-update",
 				},
 			},
 			Deployments: &sdkclients.Deployments{
 				Type: "Microsoft.Resources",
 				Value: sdkclients.Value{
-					Scope: "/planes/radius/local/resourcegroups/deploymenttemplate-update",
+					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-update",
 				},
 			},
 		},
 		"outputResources": []any{
-			map[string]any{"id": "/planes/radius/local/resourcegroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
+			map[string]any{"id": "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
 		},
 	}
 	require.Equal(t, expectedProperties, resource.Properties)
