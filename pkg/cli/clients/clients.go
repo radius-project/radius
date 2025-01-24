@@ -239,7 +239,7 @@ type ApplicationsManagementClient interface {
 	// DeleteResourceType deletes a resource type in the configured scope.
 	DeleteResourceType(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string) (bool, error)
 
-	// ListResourceTypesNames lists the names of all resource types in the configured scope.
+	// ListAllResourceTypesNames lists the names of all resource types in the configured scope.
 	ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error)
 
 	// CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.
