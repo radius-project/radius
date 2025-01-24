@@ -240,7 +240,7 @@ type ApplicationsManagementClient interface {
 	DeleteResourceType(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string) (bool, error)
 
 	// ListResourceTypesNames lists the names of all resource types in the configured scope.
-	ListAllResourceTypesNames(ctx context.Context) ([]string, error)
+	ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error)
 
 	// CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.
 	CreateOrUpdateAPIVersion(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, apiVersionName string, resource *ucp_v20231001preview.APIVersionResource) (ucp_v20231001preview.APIVersionResource, error)
