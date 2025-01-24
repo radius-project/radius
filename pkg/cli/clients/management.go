@@ -828,6 +828,10 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 
 	results := []generated.GenericResource{}
 	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	if err != nil {
+		return nil, err
+	}
+
 	for _, resourceType := range ResourceTypesList {
 		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
 		if err != nil {
