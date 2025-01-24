@@ -761,9 +761,9 @@ jobs:
       - name: Restore Bicep artifacts before running functional tests
         run: |
           # Restore Radius Bicep types
-          bicep restore --file ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
+          bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
           # Restore AWS Bicep types 
-          bicep restore --file ./test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep --force
+          bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep --force
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
