@@ -205,7 +205,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		actualOutput, err := cli.ResourceShow(ctx, "containers", containerName)
+		actualOutput, err := cli.ResourceShow(ctx, "Applications.Core/containers", containerName)
 		require.NoError(t, err)
 
 		lines := strings.Split(actualOutput, "\n")

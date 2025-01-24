@@ -33,7 +33,7 @@ import (
 const (
 	LevenshteinCutoff = 2
 
-	ContainerType = "containers"
+	ContainerType = "Applications.Core/containers"
 )
 
 var resourceExposeCmd = &cobra.Command{
