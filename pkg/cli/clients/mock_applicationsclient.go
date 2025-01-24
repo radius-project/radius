@@ -936,18 +936,18 @@ func (c *MockApplicationsManagementClientGetResourceProviderSummaryCall) DoAndRe
 }
 
 // ListAllResourceTypesNames mocks base method.
-func (m *MockApplicationsManagementClient) ListAllResourceTypesNames(arg0 context.Context) ([]string, error) {
+func (m *MockApplicationsManagementClient) ListAllResourceTypesNames(arg0 context.Context, arg1 string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAllResourceTypesNames", arg0)
+	ret := m.ctrl.Call(m, "ListAllResourceTypesNames", arg0, arg1)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAllResourceTypesNames indicates an expected call of ListAllResourceTypesNames.
-func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourceTypesNames(arg0 any) *MockApplicationsManagementClientListAllResourceTypesNamesCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourceTypesNames(arg0, arg1 any) *MockApplicationsManagementClientListAllResourceTypesNamesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourceTypesNames", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourceTypesNames), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourceTypesNames", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourceTypesNames), arg0, arg1)
 	return &MockApplicationsManagementClientListAllResourceTypesNamesCall{Call: call}
 }
 
@@ -963,13 +963,13 @@ func (c *MockApplicationsManagementClientListAllResourceTypesNamesCall) Return(a
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockApplicationsManagementClientListAllResourceTypesNamesCall) Do(f func(context.Context) ([]string, error)) *MockApplicationsManagementClientListAllResourceTypesNamesCall {
+func (c *MockApplicationsManagementClientListAllResourceTypesNamesCall) Do(f func(context.Context, string) ([]string, error)) *MockApplicationsManagementClientListAllResourceTypesNamesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockApplicationsManagementClientListAllResourceTypesNamesCall) DoAndReturn(f func(context.Context) ([]string, error)) *MockApplicationsManagementClientListAllResourceTypesNamesCall {
+func (c *MockApplicationsManagementClientListAllResourceTypesNamesCall) DoAndReturn(f func(context.Context, string) ([]string, error)) *MockApplicationsManagementClientListAllResourceTypesNamesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
