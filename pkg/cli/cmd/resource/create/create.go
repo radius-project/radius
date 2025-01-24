@@ -39,7 +39,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "create test [resource type] [name] -f [inputfilepath]",
+		Use:   "create test git [resource type] [name] -f [inputfilepath]",
 		Short: "Create or update a resource",
 		Long: `Create or update a resource
 		
