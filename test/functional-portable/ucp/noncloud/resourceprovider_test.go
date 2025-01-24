@@ -38,7 +38,7 @@ func Test_ResourceProviderRegistration(t *testing.T) {
 		manifestPath             = "testdata/resourceprovider.yaml"
 		resourceProviderName     = "MyCompany.Resources"
 		expectedResourceTypeName = "testResources"
-		expectedApiVersion       = "2025-01-01-preview"
+		expectedApiVersion       = "2023-10-01-preview"
 	)
 
 	expectedData := map[string]any{
@@ -51,6 +51,7 @@ func Test_ResourceProviderRegistration(t *testing.T) {
 				"apiVersions": map[string]any{
 					expectedApiVersion: map[string]any{},
 				},
+				"capabilities": []any{"SupportsRecipes"},
 			},
 		},
 	}

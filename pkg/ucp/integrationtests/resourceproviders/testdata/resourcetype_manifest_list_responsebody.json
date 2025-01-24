@@ -1,0 +1,13 @@
+{
+  "value": [
+    {
+      "id": "/planes/radius/local/providers/System.Resources/resourceproviders/TestProvider.TestCompany/resourcetypes/testResourcesAbc",
+      "name": "testResourcesAbc",
+      "properties": {
+        "provisioningState": "Succeeded",
+        "capabilities": []
+      },
+      "type": "System.Resources/resourceproviders/resourcetypes"
+    }
+  ]
+}

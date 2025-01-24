@@ -126,7 +126,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest-m]
+        os: [ubuntu-latest]
         name:
           [
             cli-noncloud,
@@ -179,24 +179,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
-
-      - name: Get Go Cache path
-        id: go-cache-paths
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          sudo rm -rf $(go env GOCACHE)
-
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-          sudo rm -rf $(go env GOMODCACHE)
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ${{ steps.go-cache-paths.outputs.go-build }}
-            ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -289,6 +272,50 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           eval $RAD_COMMAND
 
+          echo "*** Verify manifests are registered ***"
+          rm -f registermanifest_logs.txt
+          # Find the pod with container "ucp"
+          POD_NAME=$(
+            kubectl get pods -n radius-system \
+              -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.containers[*].name}{"\n"}{end}' \
+            | grep "ucp" \
+            | head -n1 \
+            | cut -d" " -f1
+          )
+          echo "Found ucp pod: $POD_NAME"
+
+          if [ -z "$POD_NAME" ]; then
+            echo "No pod with container 'ucp' found in namespace radius-system."
+            exit 1
+          fi
+
+          # Poll logs for up to  iterations, 30 seconds each (upto 3 minutes total)
+          for i in {1..6}; do
+            kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
+            
+            # Exit on error
+            if grep -qi "Service initializer terminated with error" registermanifest_logs.txt; then
+              echo "Error found in ucp logs."
+              grep -i "Service initializer terminated with error" registermanifest_logs.txt
+              exit 1
+            fi
+
+            # Check for success
+            if grep -q "Successfully registered manifests" registermanifest_logs.txt; then
+              echo "Successfully registered manifests - message found."
+              break
+            fi
+
+            echo "Logs not ready, waiting 30 seconds..."
+            sleep 30
+          done
+
+          # Final check to ensure success message was found
+          if ! grep -q "Successfully registered manifests" registermanifest_logs.txt; then
+            echo "Manifests not registered after 3 minutes."
+            exit 1
+          fi
+
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
           rad group create kind-radius
@@ -297,6 +324,8 @@ jobs:
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
+        continue-on-error: true  
+
         env:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}

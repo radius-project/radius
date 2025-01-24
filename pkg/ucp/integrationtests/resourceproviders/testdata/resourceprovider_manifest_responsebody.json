@@ -1,0 +1,10 @@
+{
+  "id": "/planes/radius/local/providers/System.Resources/resourceproviders/TestProvider.TestCompany",
+  "location": "global",
+  "name": "TestProvider.TestCompany",
+  "properties": {
+    "provisioningState": "Succeeded"
+  },
+  "tags": {},
+  "type": "System.Resources/resourceproviders"
+}

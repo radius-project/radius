@@ -86,11 +86,19 @@ model ResourceTypeResource
   name: ResourceTypeNameString;
 }
 
+@doc("A capability defines the behaviors and features that a resource type supports.")
+@maxLength(63)
+@pattern("^[A-Za-z][A-Za-z0-9]*$")
+scalar Capability extends string;
+
 @doc("The properties of a resource type.")
 model ResourceTypeProperties {
   @doc("The status of the asynchronous operation.")
   @visibility("read")
   provisioningState?: ProvisioningState;
+
+  @doc("The resource type capabilities.")
+  capabilities?: Capability[];
 
   @doc("The default api version for the resource type.")
   defaultApiVersion?: ApiVersionNameString;
@@ -166,6 +174,9 @@ model ResourceProviderSummaryLocation {}
 model ResourceProviderSummaryResourceType {
   @doc("API versions supported by the resource type.")
   apiVersions: Record<ResourceTypeSummaryResultApiVersion>;
+
+  @doc("The resource type capabilities.")
+  capabilities?: Capability[];
 
   @doc("The default api version for the resource type.")
   defaultApiVersion?: string;

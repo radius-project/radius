@@ -21,12 +21,18 @@ type ResourceProvider struct {
 	// Name is the resource provider name. This is also the namespace of the types defined by the resource provider.
 	Name string `yaml:"name" validate:"required,resourceProviderNamespace"`
 
+	// Location is a map of location name to address in the resource provider.
+	Location map[string]string `yaml:"location,omitempty"`
+
 	// Types is a map of resource types in the resource provider.
 	Types map[string]*ResourceType `yaml:"types" validate:"dive,keys,resourceType,endkeys,required"`
 }
 
 // ResourceType represents a resource type in a resource provider manifest.
 type ResourceType struct {
+	// Capabilities is a list of capabilities for the resource type.
+	Capabilities []string `yaml:"capabilities" validate:"dive,capability"`
+
 	// DefaultAPIVersion is the default API version for the resource type.
 	DefaultAPIVersion *string `yaml:"defaultApiVersion,omitempty" validate:"omitempty,apiVersion"`
 
@@ -40,7 +46,4 @@ type ResourceTypeAPIVersion struct {
 	// TODO: this allows anything right now, and will be ignored. We'll improve this in
 	// a future pull-request.
 	Schema any `yaml:"schema" validate:"required"`
-
-	// Capabilities is a list of capabilities for the resource type.
-	Capabilities []string `yaml:"capabilities" validate:"dive,capability"`
 }

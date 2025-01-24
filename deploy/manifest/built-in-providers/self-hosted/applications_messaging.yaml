@@ -1,0 +1,10 @@
+name: Applications.Messaging
+location:
+  global:
+    "http://applications-rp.radius-system:5443"
+types:
+  rabbitMQQueues:
+    apiVersions:
+      "2023-10-01-preview":
+        schema: {}
+    capabilities: ["SupportsRecipes"]

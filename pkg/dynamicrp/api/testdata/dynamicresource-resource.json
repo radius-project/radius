@@ -1,0 +1,12 @@
+{
+  "id": "/planes/radius/local/resourceGroups/test/providers/Applications.Test/testResources/testResource",
+  "name": "testResource",
+  "type": "Applications.Test/testResources",
+  "location": "global",
+  "tags": {
+    "env": "dev"
+  },
+  "properties": {
+    "message": "Hello, world!"
+  }
+}

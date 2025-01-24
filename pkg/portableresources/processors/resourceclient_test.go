@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/k8sutil"
@@ -51,7 +52,7 @@ const (
 )
 
 func Test_Delete_InvalidResourceID(t *testing.T) {
-	c := NewResourceClient(nil, nil, nil, nil)
+	c := NewResourceClient(nil, nil, nil)
 	err := c.Delete(context.Background(), "invalid")
 	require.Error(t, err)
 }
@@ -68,7 +69,7 @@ func Test_Delete_ARM(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(context.Background(), ARMResourceID)
@@ -96,7 +97,7 @@ func Test_Delete_ARM(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(context.Background(), ARMResourceID)
@@ -119,7 +120,7 @@ func Test_Delete_ARM(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(context.Background(), ARMResourceID)
@@ -146,7 +147,7 @@ func Test_Delete_ARM(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(context.Background(), ARMResourceID)
@@ -160,7 +161,7 @@ func Test_Delete_ARM(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(context.Background(), ARMResourceID)
@@ -178,7 +179,7 @@ func Test_Delete_ARM(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(context.Background(), ARMResourceID)
@@ -202,7 +203,7 @@ func Test_Delete_ARM(t *testing.T) {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(context.Background(), ARMResourceID)
@@ -238,7 +239,11 @@ func Test_Delete_Kubernetes(t *testing.T) {
 			},
 		}
 
-		c := NewResourceClient(nil, nil, client, dc)
+		kcp := kubernetesclientprovider.FromConfig(nil)
+		kcp.SetRuntimeClient(client)
+		kcp.SetDiscoveryClient(dc)
+
+		c := NewResourceClient(nil, nil, kcp)
 
 		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
 		require.NoError(t, err)
@@ -266,7 +271,11 @@ func Test_Delete_Kubernetes(t *testing.T) {
 			},
 		}
 
-		c := NewResourceClient(nil, nil, client, dc)
+		kcp := kubernetesclientprovider.FromConfig(nil)
+		kcp.SetRuntimeClient(client)
+		kcp.SetDiscoveryClient(dc)
+
+		c := NewResourceClient(nil, nil, kcp)
 
 		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
 		require.NoError(t, err)
@@ -284,7 +293,11 @@ func Test_Delete_Kubernetes(t *testing.T) {
 			Resources: []*metav1.APIResourceList{},
 		}
 
-		c := NewResourceClient(nil, nil, client, dc)
+		kcp := kubernetesclientprovider.FromConfig(nil)
+		kcp.SetRuntimeClient(client)
+		kcp.SetDiscoveryClient(dc)
+
+		c := NewResourceClient(nil, nil, kcp)
 
 		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
 		require.Error(t, err)
@@ -303,7 +316,7 @@ func Test_Delete_UCP(t *testing.T) {
 		connection, err := sdk.NewDirectConnection(server.URL)
 		require.NoError(t, err)
 
-		c := NewResourceClient(nil, connection, nil, nil)
+		c := NewResourceClient(nil, connection, nil)
 
 		err = c.Delete(context.Background(), AWSResourceID)
 		require.NoError(t, err)
@@ -319,7 +332,7 @@ func Test_Delete_UCP(t *testing.T) {
 		connection, err := sdk.NewDirectConnection(server.URL)
 		require.NoError(t, err)
 
-		c := NewResourceClient(nil, connection, nil, nil)
+		c := NewResourceClient(nil, connection, nil)
 
 		err = c.Delete(context.Background(), AWSResourceID)
 		require.NoError(t, err)
@@ -339,7 +352,7 @@ func Test_Delete_UCP(t *testing.T) {
 		connection, err := sdk.NewDirectConnection(server.URL)
 		require.NoError(t, err)
 
-		c := NewResourceClient(nil, connection, nil, nil)
+		c := NewResourceClient(nil, connection, nil)
 
 		err = c.Delete(context.Background(), AWSResourceID)
 		require.Error(t, err)

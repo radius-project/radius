@@ -19,16 +19,18 @@ package backend
 import (
 	"context"
 
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
+
 	"github.com/radius-project/radius/pkg/dynamicrp"
-	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
+	"github.com/radius-project/radius/pkg/recipes/engine"
 )
 
 // Service runs the backend for the dynamic-rp.
 type Service struct {
 	worker.Service
 	options *dynamicrp.Options
-	recipes *controllerconfig.RecipeControllerConfig
+	recipes engine.Engine
 }
 
 // NewService creates a new service to run the dynamic-rp backend.
@@ -38,7 +40,7 @@ func NewService(options *dynamicrp.Options) *Service {
 		Service: worker.Service{
 			// Will be initialized later
 		},
-		recipes: options.Recipes,
+		recipes: nil, // Will be initialized later
 	}
 }
 
@@ -56,6 +58,13 @@ func (w *Service) Run(ctx context.Context) error {
 		w.Service.Options.MaxOperationRetryCount = *w.options.Config.Worker.MaxOperationRetryCount
 	}
 
+	e, err := w.options.RecipeEngine()
+	if err != nil {
+		return err
+	}
+
+	w.recipes = e
+
 	databaseClient, err := w.options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return err
@@ -70,7 +79,7 @@ func (w *Service) Run(ctx context.Context) error {
 	w.Service.QueueClient = queueClient
 	w.Service.OperationStatusManager = w.options.StatusManager
 
-	err = w.registerControllers(ctx)
+	err = w.registerControllers()
 	if err != nil {
 		return err
 	}
@@ -78,7 +87,10 @@ func (w *Service) Run(ctx context.Context) error {
 	return w.Start(ctx)
 }
 
-func (w *Service) registerControllers(ctx context.Context) error {
-	// No controllers yet.
-	return nil
+func (w *Service) registerControllers() error {
+	options := ctrl.Options{
+		DatabaseClient: w.Service.DatabaseClient,
+	}
+
+	return w.Service.Controllers().RegisterDefault(NewDynamicResourceController, options)
 }

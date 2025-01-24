@@ -21,11 +21,11 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
+	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
-	metricsprovider "github.com/radius-project/radius/pkg/metrics/provider"
-	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
-	"github.com/radius-project/radius/pkg/trace"
+	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"gopkg.in/yaml.v3"
@@ -51,10 +51,10 @@ type Config struct {
 	Logging ucplog.LoggingOptions `yaml:"logging"`
 
 	// Metrics is the configuration for the metrics endpoint.
-	Metrics metricsprovider.MetricsProviderOptions `yaml:"metricsProvider"`
+	Metrics metricsservice.Options `yaml:"metricsProvider"`
 
 	// Profiler is the configuration for the profiler endpoint.
-	Profiler profilerprovider.ProfilerProviderOptions `yaml:"profilerProvider"`
+	Profiler profilerservice.Options `yaml:"profilerProvider"`
 
 	// Routing is the configuration for UCP routing.
 	Routing RoutingConfig `yaml:"routing"`
@@ -69,7 +69,7 @@ type Config struct {
 	Server hostoptions.ServerOptions `yaml:"server"`
 
 	// Tracing is the configuration for the tracing system.
-	Tracing trace.Options `yaml:"tracerProvider"`
+	Tracing traceservice.Options `yaml:"tracerProvider"`
 
 	// UCPConfig is the configuration for the connection to UCP.
 	UCP ucpconfig.UCPOptions `yaml:"ucp"`
@@ -108,6 +108,9 @@ type RoutingConfig struct {
 type InitializationConfig struct {
 	// Planes is a list of planes to create at startup.
 	Planes []Plane `yaml:"planes,omitempty"`
+
+	// ManifestDirectory is the directory which contains manifests.
+	ManifestDirectory string `yaml:"manifestDirectory"`
 }
 
 // Plane is a configuration entry for a plane resource. This is used to create a plane resource at startup.
@@ -125,6 +128,7 @@ type Plane struct {
 	Properties PlaneProperties `json:"properties" yaml:"properties"`
 }
 
+// PlaneProperties represents the properties of a plane resource.
 type PlaneProperties struct {
 	// ResourceProviders is a map of resource provider namespaces to their respective addresses.
 	//

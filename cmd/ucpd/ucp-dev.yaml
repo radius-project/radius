@@ -10,7 +10,7 @@
 # - Disables metrics and profiler
 #
 environment:
-  name: Dev
+  name: "dev"
   roleLocation: "global"
 server:
   port: 9000
@@ -52,6 +52,8 @@ initialization:
           Applications.Datastores: "http://localhost:8080"
           Microsoft.Resources: "http://localhost:5017"
         kind: "UCPNative"
+  # This is the directory location which contains manifests to be registered.
+  manifestDirectory: "manifest/built-in-providers/"      
 
 identity:
   authMethod: default
@@ -69,8 +71,9 @@ routing:
 # port is not the same as metrics configuration in radius-self-hosted.yaml
 # so that we can run both services in debug mode.
 metricsProvider:
+  enabled: false
+  serviceName: "ucp"
   prometheus:
-    enabled: false
     path: "/metrics"
     port: 9091
 
@@ -81,6 +84,7 @@ logging:
 
 # Tracing configuration
 tracerProvider:
+  enabled: false
   serviceName: "ucp"
   zipkin:
     url: "http://localhost:9411/api/v2/spans"

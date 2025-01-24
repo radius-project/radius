@@ -25,14 +25,17 @@ import (
 func TestReadFileYAML(t *testing.T) {
 	expected := &ResourceProvider{
 		Name: "MyCompany.Resources",
+		Location: map[string]string{
+			"global": "http://localhost:8080",
+		},
 		Types: map[string]*ResourceType{
 			"testResources": {
 				APIVersions: map[string]*ResourceTypeAPIVersion{
 					"2025-01-01-preview": {
-						Schema:       map[string]any{},
-						Capabilities: []string{"Recipes"},
+						Schema: map[string]any{},
 					},
 				},
+				Capabilities: []string{"SupportsRecipes"},
 			},
 		},
 	}
@@ -70,10 +73,10 @@ func TestReadFileJSON(t *testing.T) {
 			"testResources": {
 				APIVersions: map[string]*ResourceTypeAPIVersion{
 					"2025-01-01-preview": {
-						Schema:       map[string]any{},
-						Capabilities: []string{"Recipes"},
+						Schema: map[string]any{},
 					},
 				},
+				Capabilities: []string{"SupportsRecipes"},
 			},
 		},
 	}
