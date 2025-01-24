@@ -9,17 +9,19 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+     // "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/rad/main.go",
       "cwd": "${workspaceFolder}",
-      "args": []
+      //"console": "integratedTerminal"
+      "args": ["env", "delete", "default"],
+      "console":"integratedTerminal"
     },
     {
       "name": "Debug rad CLI (prompt for args)",
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "preLaunchTask": "Build Radius (all)",
+     // "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/rad",
       "args": "${input:cliArgs}",
       "console": "integratedTerminal"
@@ -29,7 +31,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+    //  "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/applications-rp/main.go",
     },
     {
@@ -37,7 +39,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+     // "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/dynamic-rp/main.go",
     },
     {
@@ -45,7 +47,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+    //  "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/ucpd/main.go",
     },
     {
@@ -53,7 +55,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+      //"preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/controller/main.go",
       "args": [
         "--cert-dir",
@@ -64,7 +66,7 @@
       "name": "Launch Deployment Engine",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "Build Deployment Engine",
+    //  "preLaunchTask": "Build Deployment Engine",
       "program": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine/bin/Debug/net8.0/arm-de.dll",
       "args": [],
       "cwd": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine",
@@ -100,7 +102,7 @@
         "Launch Applications RP",
         "Launch Dynamic RP",
         "Launch Controller",
-        "Launch Deployment Engine"
+       // "Launch Deployment Engine"
       ],
       "stopAll": true
     }
