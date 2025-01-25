@@ -30,7 +30,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
@@ -50,7 +50,7 @@ var (
 	TestDeploymentResourceID    = fmt.Sprintf("%s/providers/Microsoft.Resources/deployments/%s", TestDeploymentResourceScope, TestDeploymentResourceName)
 )
 
-func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, client.Client) {
+func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *mockDeploymentClient, k8sClient.Client) {
 	SkipWithoutEnvironment(t)
 
 	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
@@ -77,13 +77,16 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, client.Client
 	})
 	require.NoError(t, err)
 
-	radius := NewMockRadiusClient()
+	mockRadiusClient := NewMockRadiusClient()
+	mockDeploymentClient := NewMockDeploymentClient()
+
 	err = (&DeploymentResourceReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("deploymentresource-controller"),
-		Radius:        radius,
-		DelayInterval: DeploymentResourceTestControllerDelayInterval,
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		EventRecorder:    mgr.GetEventRecorderFor("deploymentresource-controller"),
+		Radius:           mockRadiusClient,
+		DeploymentClient: mockDeploymentClient,
+		DelayInterval:    DeploymentResourceTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
@@ -92,33 +95,33 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, client.Client
 		require.NoError(t, err)
 	}()
 
-	return radius, mgr.GetClient()
+	return mockRadiusClient, mockDeploymentClient, mgr.GetClient()
 }
 
 func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
 	ctx := testcontext.New(t)
-	_, client := SetupDeploymentResourceTest(t)
+	_, _, k8sClient := SetupDeploymentTemplateTest(t)
 
 	name := types.NamespacedName{Namespace: TestDeploymentResourceNamespace, Name: TestDeploymentResourceName}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
 	require.NoError(t, err)
 
 	deployment := makeDeploymentResource(name, TestDeploymentResourceID)
-	err = client.Create(ctx, deployment)
+	err = k8sClient.Create(ctx, deployment)
 	require.NoError(t, err)
 
 	// Deployment will update after operation completes
-	status := waitForDeploymentResourceStateReady(t, client, name)
+	status := waitForDeploymentResourceStateReady(t, k8sClient, name)
 	require.Equal(t, TestDeploymentResourceID, status.Id)
 
-	err = client.Delete(ctx, deployment)
+	err = k8sClient.Delete(ctx, deployment)
 	require.NoError(t, err)
 
 	// Now deleting of the DeploymentResource object can complete.
-	waitForDeploymentResourceDeleted(t, client, name)
+	waitForDeploymentResourceDeleted(t, k8sClient, name)
 }
 
-func waitForDeploymentResourceStateReady(t *testing.T, client client.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentResourceStatus {
+func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentResourceStatus {
 	ctx := testcontext.New(t)
 
 	logger := t
@@ -139,7 +142,7 @@ func waitForDeploymentResourceStateReady(t *testing.T, client client.Client, nam
 	return status
 }
 
-func waitForDeploymentResourceStateDeleting(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentResourceStatus {
+func waitForDeploymentResourceStateDeleting(t *testing.T, client k8sClient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentResourceStatus {
 	ctx := testcontext.New(t)
 
 	logger := t
@@ -163,7 +166,7 @@ func waitForDeploymentResourceStateDeleting(t *testing.T, client client.Client, 
 	return status
 }
 
-func waitForDeploymentResourceDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
+func waitForDeploymentResourceDeleted(t *testing.T, client k8sClient.Client, name types.NamespacedName) {
 	ctx := testcontext.New(t)
 
 	logger := t

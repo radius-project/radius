@@ -225,44 +225,55 @@ func Test_DeploymentTemplateReconciler_IsUpToDate(t *testing.T) {
 }
 
 func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
+	// This test tests the basic functionality of the DeploymentTemplate controller.
+	// It creates a DeploymentTemplate (with an empty template field),
+	// waits for it to be ready, and then deletes it.
+	//
+	// This is the same structure as all of the following tests.
+
 	ctx := testcontext.New(t)
+
+	// Set up the test.
 	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-
-	namespacedName := types.NamespacedName{Namespace: "deploymenttemplate-basic", Name: "test-deploymenttemplate-basic"}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespacedName.Namespace}})
+	testNamespace := "deploymenttemplate-basic"
+	testName := "test-deploymenttemplate-basic"
+	template := "{}"
+	parameters := map[string]string{}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
 	require.NoError(t, err)
 
-	providerConfig, err := sdkclients.NewDefaultProviderConfig("deploymenttemplate-basic").String()
+	// Create k8s namespace for the test.
+	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
+	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
 	require.NoError(t, err)
 
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, "{}", providerConfig, map[string]string{})
+	// Create the DeploymentTemplate resource.
+	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
 	err = k8sClient.Create(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
-	// Wait for the DeploymentTemplate to enter the updating state.
+	// Wait for the DeploymentTemplate to enter the Updating state.
 	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
 	// Complete the operation.
 	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
 
-	// DeploymentTemplate should be ready after the operation completes.
+	// DeploymentTemplate should be Ready after the operation completes.
 	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
 
-	// Verify that the DeploymentTemplate contains the expected properties.
+	// Verify that the DeploymentTemplate desired state contains the expected properties.
 	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template:       "{}",
-			Parameters:     map[string]string{},
+			Template:       template,
+			Parameters:     parameters,
 			ProviderConfig: providerConfig,
 		},
 	}
-
 	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
 	require.NoError(t, err)
-
 	require.Equal(t, expectedStatusHash, status.StatusHash)
 
-	// Delete the DeploymentTemplate
+	// Trigger deletion of the DeploymentTemplate.
 	err = k8sClient.Delete(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
@@ -277,20 +288,27 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 	// and verify that the controller will (eventually) retry these operations.
 
 	ctx := testcontext.New(t)
+
+	// Set up the test.
 	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-
-	namespacedName := types.NamespacedName{Namespace: "deploymenttemplate-failurerecovery", Name: "test-deploymenttemplate-failurerecovery"}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespacedName.Namespace}})
+	testNamespace := "deploymenttemplate-failurerecovery"
+	testName := "test-deploymenttemplate-failurerecovery"
+	template := "{}"
+	parameters := map[string]string{}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
 	require.NoError(t, err)
 
-	providerConfig, err := sdkclients.GenerateProviderConfig("deploymenttemplate-failurerecovery", "", "").String()
+	// Create k8s namespace for the test.
+	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
+	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
 	require.NoError(t, err)
 
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, "{}", providerConfig, map[string]string{})
+	// Create the DeploymentTemplate resource.
+	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
 	err = k8sClient.Create(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
-	// Wait for the DeploymentTemplate to enter the updating state.
+	// Wait for the DeploymentTemplate to enter the Updating state.
 	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
 	// Complete the operation, but make it fail.
@@ -310,46 +328,63 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 
 	// Complete the operation, successfully this time.
 	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
-	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
 
-	// Delete the DeploymentTemplate
+	// Verify that the DeploymentTemplate desired state contains the expected properties.
+	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template:       template,
+			Parameters:     parameters,
+			ProviderConfig: providerConfig,
+		},
+	}
+	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
+	require.NoError(t, err)
+	require.Equal(t, expectedStatusHash, status.StatusHash)
+
+	// Trigger deletion of the DeploymentTemplate.
 	err = k8sClient.Delete(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
+	// Wait for the DeploymentTemplate to be deleted.
 	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
 }
 
 func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
+	// This test tests the ability to handle deployments of
+	// resources created by the DeploymentTemplate.
+
 	ctx := testcontext.New(t)
+
+	// Set up the test.
 	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-
-	namespacedName := types.NamespacedName{Namespace: "deploymenttemplate-withresources", Name: "test-deploymenttemplate-withresources"}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespacedName.Namespace}})
+	testNamespace := "deploymenttemplate-withresources"
+	testName := "test-deploymenttemplate-withresources"
+	template := readFileIntoTemplate(t, "deploymenttemplate-withresources.json")
+	parameters := map[string]string{}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
 	require.NoError(t, err)
 
-	fileContent, err := os.ReadFile(path.Join("testdata", "deploymenttemplate-withresources.json"))
-	require.NoError(t, err)
-	templateMap := map[string]any{}
-	err = json.Unmarshal(fileContent, &templateMap)
-	require.NoError(t, err)
-	template, err := json.MarshalIndent(templateMap, "", "  ")
+	// Create k8s namespace for the test.
+	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
+	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
 	require.NoError(t, err)
 
-	providerConfig, err := sdkclients.GenerateProviderConfig("deploymenttemplate-withresources", "", "").String()
-	require.NoError(t, err)
-
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, string(template), providerConfig, map[string]string{})
+	// Create the DeploymentTemplate resource.
+	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
 	err = k8sClient.Create(ctx, deploymentTemplate)
 	require.NoError(t, err)
 
+	// Wait for the DeploymentTemplate to enter the Updating state.
 	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
+	// Complete the operation.
 	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
 		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
-			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env")},
+			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-withresources-env")},
 		}
 		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
@@ -357,20 +392,21 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 	// DeploymentTemplate should be ready after the operation completes.
 	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
 
+	// The dependencies (DeploymentResource resources) should be created.
 	dependencyName := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-withresources-env"}
 	dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependencyName)
-	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env", dependencyStatus.Id)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-withresources-env", dependencyStatus.Id)
 
+	// Verify that the DeploymentTemplate desired state contains the expected properties.
 	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template:       string(template),
-			Parameters:     map[string]string{},
+			Template:       template,
+			Parameters:     parameters,
 			ProviderConfig: providerConfig,
 		},
 	}
 	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
 	require.NoError(t, err)
-
 	require.Equal(t, expectedStatusHash, status.StatusHash)
 
 	// Trigger deletion of the DeploymentTemplate.
@@ -386,154 +422,314 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 	// Complete the delete operation on the DeploymentResource.
 	mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
 
+	// Wait for the DeploymentTemplate to be deleted.
 	waitForDeploymentResourceDeleted(t, k8sClient, dependencyName)
 	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
 }
 
-// func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
-// 	// This test tests our ability to update a DeploymentTemplate.
-// 	// We create a DeploymentTemplate, update it, and verify that the Radius resource is updated accordingly.
+func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
+	// This test tests our ability to update a DeploymentTemplate.
+	// We create a DeploymentTemplate, update it, and verify that the Radius resource is updated accordingly.
 
-// 	ctx := testcontext.New(t)
-// 	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
+	ctx := testcontext.New(t)
 
-// 	namespacedName := types.NamespacedName{Namespace: "deploymenttemplate-update", Name: "test-deploymenttemplate-update"}
-// 	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespacedName.Namespace}})
-// 	require.NoError(t, err)
+	// Set up the test.
+	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
+	testNamespace := "deploymenttemplate-update"
+	testName := "test-deploymenttemplate-update"
+	template := readFileIntoTemplate(t, "deploymenttemplate-update-1.json")
+	parameters := map[string]string{}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
+	require.NoError(t, err)
 
-// 	fileContent, err := os.ReadFile(path.Join("testdata", "deploymenttemplate-update-1.json"))
-// 	require.NoError(t, err)
-// 	templateMap := map[string]any{}
-// 	err = json.Unmarshal(fileContent, &templateMap)
-// 	require.NoError(t, err)
-// 	template, err := json.MarshalIndent(templateMap, "", "  ")
-// 	require.NoError(t, err)
+	// Create k8s namespace for the test.
+	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
+	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	require.NoError(t, err)
 
-// 	scope := "/planes/radius/local/resourceGroups/deploymenttemplate-update"
-// 	providerConfig, err := sdkclients.GenerateProviderConfig("deploymenttemplate-update", "", "").String()
-// 	require.NoError(t, err)
+	// Create the DeploymentTemplate resource.
+	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
+	err = k8sClient.Create(ctx, deploymentTemplate)
+	require.NoError(t, err)
 
-// 	deploymentTemplate := makeDeploymentTemplate(namespacedName, string(template), providerConfig, map[string]string{})
-// 	err = k8sClient.Create(ctx, deploymentTemplate)
-// 	require.NoError(t, err)
+	// Wait for the DeploymentTemplate to enter the Updating state.
+	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
-// 	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
+	// Complete the operation.
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
+		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+		require.True(t, ok, "failed to find resource")
 
-// 	radius.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-// 		resource, ok := radius.resources[state.resourceID]
-// 		require.True(t, ok, "failed to find resource")
+		resource.Properties.OutputResources = []*armresources.ResourceReference{
+			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
+		}
+		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+	})
 
-// 		resource.Properties["outputResources"] = []any{
-// 			map[string]any{"id": "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
-// 		}
-// 		state.value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
-// 	})
+	// DeploymentTemplate should be ready after the operation completes.
+	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
 
-// 	// DeploymentTemplate should be ready after the operation completes.
-// 	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+	// The dependencies (DeploymentResource resources) should be created.
+	dependencyName := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-update-env"}
+	dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependencyName)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
 
-// 	// DeploymentTemplate will be waiting for environment to be created.
-// 	createEnvironment(radius, "deploymenttemplate-update", "deploymenttemplate-update-env")
+	// Verify that the DeploymentTemplate desired state contains the expected properties.
+	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template:       template,
+			Parameters:     parameters,
+			ProviderConfig: providerConfig,
+		},
+	}
+	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
+	require.NoError(t, err)
+	require.Equal(t, expectedStatusHash, status.StatusHash)
 
-// 	dependencyName := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-update-env"}
-// 	dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependencyName)
-// 	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
+	// Now, we will re-deploy the DeploymentTemplate with a new template.
 
-// 	// Verify that the Radius deployment contains the expected properties.
-// 	resource, err := radius.Resources(scope, "Microsoft.Resources/deployments").Get(ctx, namespacedName.Name)
-// 	require.NoError(t, err)
-// 	expectedProperties := map[string]any{
-// 		"mode":       "Incremental",
-// 		"template":   templateMap,
-// 		"parameters": map[string]map[string]string{},
-// 		"providerConfig": sdkclients.ProviderConfig{
-// 			Radius: &sdkclients.Radius{
-// 				Type: "Radius",
-// 				Value: sdkclients.Value{
-// 					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-update",
-// 				},
-// 			},
-// 			Deployments: &sdkclients.Deployments{
-// 				Type: "Microsoft.Resources",
-// 				Value: sdkclients.Value{
-// 					Scope: "/planes/radius/local/resourceGroups/deploymenttemplate-update",
-// 				},
-// 			},
-// 		},
-// 		"outputResources": []any{
-// 			map[string]any{"id": "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
-// 		},
-// 	}
-// 	require.Equal(t, expectedProperties, resource.Properties)
+	// Get the DeploymentTemplate resource.
+	newDeploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
+	err = k8sClient.Get(ctx, namespacedName, &newDeploymentTemplate)
+	require.NoError(t, err)
 
-// 	// Verify that the DeploymentTemplate contains the expected properties.
-// 	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
-// 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-// 			Template:       string(template),
-// 			Parameters:     map[string]string{},
-// 			ProviderConfig: providerConfig,
-// 		},
-// 	}
+	// Update the template field on the DeploymentTemplate.
+	template = readFileIntoTemplate(t, "deploymenttemplate-update-2.json")
+	newDeploymentTemplate.Spec.Template = string(template)
 
-// 	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
-// 	require.NoError(t, err)
-// 	require.Equal(t, expectedStatusHash, status.StatusHash)
+	// Update the DeploymentTemplate resource.
+	err = k8sClient.Update(ctx, &newDeploymentTemplate)
+	require.NoError(t, err)
 
-// 	// Re-deploy the DeploymentTemplate with a new template.
+	// Now, the DeploymentTemplate should re-enter the Updating state.
+	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
-// 	fileContent, err = os.ReadFile(path.Join("testdata", "deploymenttemplate-update-2.json"))
-// 	require.NoError(t, err)
-// 	templateMap = map[string]any{}
-// 	err = json.Unmarshal(fileContent, &templateMap)
-// 	require.NoError(t, err)
-// 	template, err = json.MarshalIndent(templateMap, "", "  ")
-// 	require.NoError(t, err)
+	// Complete the operation again.
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
+		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+		require.True(t, ok, "failed to find resource")
 
-// 	newDeploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
-// 	err = k8sClient.Get(ctx, namespacedName, &newDeploymentTemplate)
-// 	require.NoError(t, err)
+		resource.Properties.OutputResources = []*armresources.ResourceReference{
+			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
+		}
+		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+	})
 
-// 	// Update the template
-// 	newDeploymentTemplate.Spec.Template = string(template)
+	// DeploymentTemplate should be Ready again after the operation completes.
+	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
 
-// 	err = k8sClient.Update(ctx, &newDeploymentTemplate)
-// 	require.NoError(t, err)
+	// The dependencies (DeploymentResource resources) should also be Ready.
+	dependencyName = types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-update-env"}
+	dependencyStatus = waitForDeploymentResourceStateReady(t, k8sClient, dependencyName)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
 
-// 	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, name, nil)
+	// Verify that the DeploymentTemplate contains the expected properties.
+	expectedDeploymentTemplateSpec = &radappiov1alpha3.DeploymentTemplate{
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template:       template,
+			Parameters:     parameters,
+			ProviderConfig: providerConfig,
+		},
+	}
+	expectedStatusHash, err = computeHash(expectedDeploymentTemplateSpec)
+	require.NoError(t, err)
+	require.Equal(t, expectedStatusHash, status.StatusHash)
 
-// 	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-// 		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
-// 		require.True(t, ok, "failed to find resource")
+	// Trigger deletion of the DeploymentTemplate.
+	err = k8sClient.Delete(ctx, deploymentTemplate)
+	require.NoError(t, err)
 
-// 		resource.Properties["outputResources"] = []any{
-// 			map[string]any{"id": "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env"},
-// 		}
-// 		state.value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
-// 	})
+	// The DeploymentTemplate should be in the deleting state.
+	waitForDeploymentTemplateStateDeleting(t, k8sClient, namespacedName)
 
-// 	// DeploymentTemplate should be ready after the operation completes.
-// 	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+	// Get the status of the dependency (DeploymentResource resource).
+	dependencyStatus = waitForDeploymentResourceStateDeleting(t, k8sClient, dependencyName, nil)
 
-// 	// DeploymentTemplate will be waiting for environment to be created.
-// 	createEnvironment(radius, "deploymenttemplate-update", "deploymenttemplate-update-env")
+	// Complete the delete operation on the DeploymentResource.
+	mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
 
-// 	dependencyName = types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-update-env"}
-// 	dependencyStatus = waitForDeploymentResourceStateReady(t, k8sClient, dependencyName)
-// 	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
+	// Wait for the DeploymentTemplate to be deleted.
+	waitForDeploymentResourceDeleted(t, k8sClient, dependencyName)
+	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
+}
 
-// 	// Verify that the DeploymentTemplate contains the expected properties.
-// 	expectedDeploymentTemplateSpec = &radappiov1alpha3.DeploymentTemplate{
-// 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-// 			Template:       string(template),
-// 			Parameters:     map[string]string{},
-// 			ProviderConfig: providerConfig,
-// 		},
-// 	}
+func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
+	// This test tests the ability to perform diff detection on
+	// the OutputResources field of the DeploymentTemplate.
+	// We create a DeploymentTemplate with some resources,
+	// update the DeploymentTemplate to remove some resources,
+	// and verify that the diff is correct.
 
-// 	expectedStatusHash, err = computeHash(expectedDeploymentTemplateSpec)
-// 	require.NoError(t, err)
-// 	require.Equal(t, expectedStatusHash, status.StatusHash)
-// }
+	ctx := testcontext.New(t)
+
+	// Set up the test.
+	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
+	testNamespace := "deploymenttemplate-outputresources"
+	testName := "test-deploymenttemplate-outputresources"
+	template := readFileIntoTemplate(t, "deploymenttemplate-outputresources-1.json")
+	parameters := map[string]string{}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
+	require.NoError(t, err)
+
+	// Create k8s namespace for the test.
+	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
+	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	require.NoError(t, err)
+
+	// Create the DeploymentTemplate resource.
+	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
+	err = k8sClient.Create(ctx, deploymentTemplate)
+	require.NoError(t, err)
+
+	// Wait for the DeploymentTemplate to enter the Updating state.
+	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
+
+	// Complete the operation.
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
+		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+		require.True(t, ok, "failed to find resource")
+
+		resource.Properties.OutputResources = []*armresources.ResourceReference{
+			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
+			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
+			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/containers/deploymenttemplate-outputresources-container")},
+		}
+		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+	})
+
+	// DeploymentTemplate should be ready after the operation completes.
+	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+
+	// The dependencies (DeploymentResource resources) should be created.
+	dependencies := []struct {
+		resourceID     string
+		namespacedName types.NamespacedName
+	}{
+		{
+			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment",
+			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-environment"},
+		},
+		{
+			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application",
+			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-application"},
+		},
+		{
+			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/containers/deploymenttemplate-outputresources-container",
+			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-container"},
+		},
+	}
+	for _, dependency := range dependencies {
+		dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependency.namespacedName)
+		require.Equal(t, dependency.resourceID, dependencyStatus.Id)
+	}
+
+	// Verify that the DeploymentTemplate desired state contains the expected properties.
+	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template:       template,
+			Parameters:     parameters,
+			ProviderConfig: providerConfig,
+		},
+	}
+	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
+	require.NoError(t, err)
+	require.Equal(t, expectedStatusHash, status.StatusHash)
+
+	// Now, we will re-deploy the DeploymentTemplate with a new template.
+	// This template has the container resource removed.
+
+	// Get the DeploymentTemplate resource.
+	newDeploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
+	err = k8sClient.Get(ctx, namespacedName, &newDeploymentTemplate)
+	require.NoError(t, err)
+
+	// Update the template field on the DeploymentTemplate.
+	template = readFileIntoTemplate(t, "deploymenttemplate-outputresources-2.json")
+	newDeploymentTemplate.Spec.Template = string(template)
+
+	// Update the DeploymentTemplate resource.
+	err = k8sClient.Update(ctx, &newDeploymentTemplate)
+	require.NoError(t, err)
+
+	// Now, the DeploymentTemplate should re-enter the Updating state.
+	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
+
+	// Complete the operation again, with a different set of output resources.
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
+		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+		require.True(t, ok, "failed to find resource")
+
+		resource.Properties.OutputResources = []*armresources.ResourceReference{
+			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
+			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
+		}
+		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+	})
+
+	// Complete the delete operation on the container resource.
+	dependencyName := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-container"}
+	dependencyStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, dependencyName, nil)
+	mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
+
+	// DeploymentTemplate should be Ready again after the operation completes.
+	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+
+	// The dependencies (DeploymentResource resources) should be in the Ready state.
+	dependencies = []struct {
+		resourceID     string
+		namespacedName types.NamespacedName
+	}{
+		{
+			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment",
+			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-environment"},
+		},
+		{
+			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application",
+			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-application"},
+		},
+	}
+	for _, dependency := range dependencies {
+		dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependency.namespacedName)
+		require.Equal(t, dependency.resourceID, dependencyStatus.Id)
+	}
+
+	// Assert that the container resource has been deleted.
+	dependencyName = types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-container"}
+	waitForDeploymentResourceDeleted(t, k8sClient, dependencyName)
+
+	// Check the cluster for the container resource, it should not exist.
+	err = k8sClient.Get(ctx, dependencyName, &radappiov1alpha3.DeploymentResource{})
+	require.True(t, apierrors.IsNotFound(err), "expected DeploymentResource to be deleted")
+
+	// Verify that the DeploymentTemplate contains the expected properties.
+	expectedDeploymentTemplateSpec = &radappiov1alpha3.DeploymentTemplate{
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template:       template,
+			Parameters:     map[string]string{},
+			ProviderConfig: providerConfig,
+		},
+	}
+	expectedStatusHash, err = computeHash(expectedDeploymentTemplateSpec)
+	require.NoError(t, err)
+	require.Equal(t, expectedStatusHash, status.StatusHash)
+
+	// Trigger deletion of the DeploymentTemplate.
+	err = k8sClient.Delete(ctx, deploymentTemplate)
+	require.NoError(t, err)
+
+	// The DeploymentTemplate should be in the deleting state.
+	waitForDeploymentTemplateStateDeleting(t, k8sClient, namespacedName)
+
+	// Wait for all of the dependencies (DeploymentResource resources) to be deleted.
+	for _, dependency := range dependencies {
+		dependencyStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, dependency.namespacedName, nil)
+		mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
+		waitForDeploymentResourceDeleted(t, k8sClient, dependency.namespacedName)
+	}
+
+	// Wait for the DeploymentTemplate to be deleted.
+	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
+}
 
 func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentTemplateStatus {
 	ctx := testcontext.New(t)
@@ -624,4 +820,15 @@ func waitForDeploymentTemplateStateDeleted(t *testing.T, client k8sclient.Client
 		return false
 
 	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "DeploymentTemplate still exists")
+}
+
+func readFileIntoTemplate(t *testing.T, filename string) string {
+	fileContent, err := os.ReadFile(path.Join("testdata", filename))
+	require.NoError(t, err)
+	templateMap := map[string]any{}
+	err = json.Unmarshal(fileContent, &templateMap)
+	require.NoError(t, err)
+	template, err := json.MarshalIndent(templateMap, "", "  ")
+	require.NoError(t, err)
+	return string(template)
 }
