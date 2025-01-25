@@ -49,7 +49,7 @@ const (
 
 type ResourceDeploymentClient struct {
 	RadiusResourceGroup string
-	Client              *sdkclients.ResourceDeploymentsClient
+	Client              sdkclients.ResourceDeploymentsClient
 	OperationsClient    *sdkclients.ResourceDeploymentOperationsClient
 	Tags                map[string]*string
 }

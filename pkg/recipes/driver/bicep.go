@@ -56,7 +56,7 @@ const (
 var _ Driver = (*bicepDriver)(nil)
 
 // NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client, and options.
-func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient, client processors.ResourceClient, options BicepOptions) Driver {
+func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, client processors.ResourceClient, options BicepOptions) Driver {
 	return &bicepDriver{
 		ArmClientOptions: armOptions,
 		DeploymentClient: deploymentClient,
@@ -72,7 +72,7 @@ type BicepOptions struct {
 
 type bicepDriver struct {
 	ArmClientOptions *arm.ClientOptions
-	DeploymentClient *clients.ResourceDeploymentsClient
+	DeploymentClient clients.ResourceDeploymentsClient
 	ResourceClient   processors.ResourceClient
 	options          BicepOptions
 

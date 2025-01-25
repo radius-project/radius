@@ -174,7 +174,6 @@ func ValidateResourceType(ctx context.Context, client database.Client, id resour
 	}
 
 	_, ok := locationResourceType.APIVersions[apiVersion]
-	fmt.Println("DEBUG - locationResourceType.APIVersions[apiVersion]: ", locationResourceType.APIVersions[apiVersion])
 	if !ok {
 		return nil, &InvalidError{Message: fmt.Sprintf("api version %q is not supported for resource type %q by location %q", apiVersion, id.Type(), locationName)}
 	}

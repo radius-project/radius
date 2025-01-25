@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	azcoreruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -196,7 +197,7 @@ func (cc *mockContainerClient) BeginCreateOrUpdate(ctx context.Context, containe
 	cc.mock.containers[id] = resource
 	cc.mock.operations[operationID] = state
 
-	return &mockPoller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse]{mock: cc.mock, operationID: operationID, state: state}, nil
+	return &mockRadiusClientPoller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse]{mock: cc.mock, operationID: operationID, state: state}, nil
 }
 
 func (cc *mockContainerClient) BeginDelete(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientBeginDeleteOptions) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
@@ -211,7 +212,7 @@ func (cc *mockContainerClient) BeginDelete(ctx context.Context, containerName st
 	operationID := uuid.New().String()
 	cc.mock.operations[operationID] = state
 
-	return &mockPoller[corerpv20231001preview.ContainersClientDeleteResponse]{mock: cc.mock, operationID: operationID, state: state}, nil
+	return &mockRadiusClientPoller[corerpv20231001preview.ContainersClientDeleteResponse]{mock: cc.mock, operationID: operationID, state: state}, nil
 }
 
 func (cc *mockContainerClient) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
@@ -223,7 +224,7 @@ func (cc *mockContainerClient) ContinueCreateOperation(ctx context.Context, resu
 		panic("operation not found: " + resumeToken)
 	}
 
-	return &mockPoller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse]{mock: cc.mock, operationID: resumeToken, state: state}, nil
+	return &mockRadiusClientPoller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse]{mock: cc.mock, operationID: resumeToken, state: state}, nil
 }
 
 func (cc *mockContainerClient) ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
@@ -235,7 +236,7 @@ func (cc *mockContainerClient) ContinueDeleteOperation(ctx context.Context, resu
 		panic("operation not found: " + resumeToken)
 	}
 
-	return &mockPoller[corerpv20231001preview.ContainersClientDeleteResponse]{mock: cc.mock, operationID: resumeToken, state: state}, nil
+	return &mockRadiusClientPoller[corerpv20231001preview.ContainersClientDeleteResponse]{mock: cc.mock, operationID: resumeToken, state: state}, nil
 }
 
 func (cc *mockContainerClient) Get(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientGetOptions) (corerpv20231001preview.ContainersClientGetResponse, error) {
@@ -333,7 +334,7 @@ func (rc *mockResourceClient) BeginCreateOrUpdate(ctx context.Context, resourceN
 	rc.mock.resources[id] = resource
 	rc.mock.operations[operationID] = state
 
-	return &mockPoller[generated.GenericResourcesClientCreateOrUpdateResponse]{mock: rc.mock, operationID: operationID, state: state}, nil
+	return &mockRadiusClientPoller[generated.GenericResourcesClientCreateOrUpdateResponse]{mock: rc.mock, operationID: operationID, state: state}, nil
 }
 
 func (rc *mockResourceClient) BeginDelete(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
@@ -348,7 +349,7 @@ func (rc *mockResourceClient) BeginDelete(ctx context.Context, resourceName stri
 	operationID := uuid.New().String()
 	rc.mock.operations[operationID] = state
 
-	return &mockPoller[generated.GenericResourcesClientDeleteResponse]{mock: rc.mock, operationID: operationID, state: state}, nil
+	return &mockRadiusClientPoller[generated.GenericResourcesClientDeleteResponse]{mock: rc.mock, operationID: operationID, state: state}, nil
 }
 
 func (rc *mockResourceClient) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
@@ -360,7 +361,7 @@ func (rc *mockResourceClient) ContinueCreateOperation(ctx context.Context, resum
 		panic("operation not found: " + resumeToken)
 	}
 
-	return &mockPoller[generated.GenericResourcesClientCreateOrUpdateResponse]{mock: rc.mock, operationID: resumeToken, state: state}, nil
+	return &mockRadiusClientPoller[generated.GenericResourcesClientCreateOrUpdateResponse]{mock: rc.mock, operationID: resumeToken, state: state}, nil
 }
 
 func (rc *mockResourceClient) ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
@@ -372,7 +373,7 @@ func (rc *mockResourceClient) ContinueDeleteOperation(ctx context.Context, resum
 		panic("operation not found: " + resumeToken)
 	}
 
-	return &mockPoller[generated.GenericResourcesClientDeleteResponse]{mock: rc.mock, operationID: resumeToken, state: state}, nil
+	return &mockRadiusClientPoller[generated.GenericResourcesClientDeleteResponse]{mock: rc.mock, operationID: resumeToken, state: state}, nil
 }
 
 func (rc *mockResourceClient) Get(ctx context.Context, resourceName string) (generated.GenericResourcesClientGetResponse, error) {
@@ -417,22 +418,22 @@ func (rc *mockResourceClient) ListSecrets(ctx context.Context, resourceName stri
 	return generated.GenericResourcesClientListSecretsResponse{Value: secrets}, nil
 }
 
-var _ Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse] = (*mockPoller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse])(nil)
+var _ Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse] = (*azcoreruntime.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse])(nil)
 
-type mockPoller[T any] struct {
+type mockRadiusClientPoller[T any] struct {
 	operationID string
 	mock        *mockRadiusClient
 	state       *operationState
 }
 
-func (mp *mockPoller[T]) Done() bool {
+func (mp *mockRadiusClientPoller[T]) Done() bool {
 	mp.mock.lock.Lock()
 	defer mp.mock.lock.Unlock()
 
 	return mp.state.complete // Status updates are delivered via the Poll function.
 }
 
-func (mp *mockPoller[T]) Poll(ctx context.Context) (*http.Response, error) {
+func (mp *mockRadiusClientPoller[T]) Poll(ctx context.Context) (*http.Response, error) {
 	mp.mock.lock.Lock()
 	defer mp.mock.lock.Unlock()
 
@@ -441,7 +442,7 @@ func (mp *mockPoller[T]) Poll(ctx context.Context) (*http.Response, error) {
 	return nil, nil
 }
 
-func (mp *mockPoller[T]) Result(ctx context.Context) (T, error) {
+func (mp *mockRadiusClientPoller[T]) Result(ctx context.Context) (T, error) {
 	mp.mock.lock.Lock()
 	defer mp.mock.lock.Unlock()
 
@@ -454,6 +455,6 @@ func (mp *mockPoller[T]) Result(ctx context.Context) (T, error) {
 	panic("operation not done")
 }
 
-func (mp *mockPoller[T]) ResumeToken() (string, error) {
+func (mp *mockRadiusClientPoller[T]) ResumeToken() (string, error) {
 	return mp.operationID, nil
 }

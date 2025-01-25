@@ -20,18 +20,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// DeploymentResourceSpec defines the desired state of DeploymentResource
+// DeploymentResourceSpec defines the desired state of a DeploymentResource resource.
 type DeploymentResourceSpec struct {
-	// Id is the resource Id.
+	// Id is the resource id of the Radius resource.
 	Id string `json:"id,omitempty"`
-
-	// ProviderConfig specifies the scope for resources
-	ProviderConfig string `json:"providerConfig,omitempty"`
 }
 
-// DeploymentResourceStatus defines the observed state of DeploymentResource
+// DeploymentResourceStatus defines the observed state of a DeploymentResource resource.
 type DeploymentResourceStatus struct {
-	// Id is the resource Id.
+	// Id is the resource id of the Radius resource.
 	Id string `json:"id,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed for this DeploymentResource.
@@ -42,9 +39,6 @@ type DeploymentResourceStatus struct {
 
 	// Phrase indicates the current status of the Deployment Resource.
 	Phrase DeploymentResourcePhrase `json:"phrase,omitempty"`
-
-	// Message is a human-readable description of the status of the Deployment Resource.
-	Message string `json:"message,omitempty"`
 }
 
 // DeploymentResourcePhrase is a string representation of the current status of a Deployment Resource.

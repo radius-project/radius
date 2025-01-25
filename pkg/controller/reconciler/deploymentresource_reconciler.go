@@ -18,7 +18,6 @@ package reconciler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -33,7 +32,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -54,6 +52,9 @@ type DeploymentResourceReconciler struct {
 
 	// Radius is the Radius client.
 	Radius RadiusClient
+
+	// DeploymentClient is the UCP Deployments client.
+	DeploymentClient DeploymentClient
 
 	// DelayInterval is the amount of time to wait between operations.
 	DelayInterval time.Duration
@@ -100,17 +101,18 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 			// NOTE: if reconcileOperation completes successfully, then it will return a "zero" result,
 			// this means the operation has completed and we should continue processing.
 			logger.Info("Operation completed successfully.")
+			// TODO (willsmith) return here?
 		} else {
 			logger.Info("Requeueing to continue operation.")
 			return result, nil
 		}
 	}
 
-	if deploymentResource.ObjectMeta.DeletionTimestamp != nil {
+	if deploymentResource.DeletionTimestamp != nil {
 		return r.reconcileDelete(ctx, &deploymentResource)
 	}
 
-	logger.Info("Resource is in desired state.", "resourceId", deploymentResource.Spec.Id)
+	logger.Info("Resource is in desired state.")
 
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseReady
 	deploymentResource.Status.Id = deploymentResource.Spec.Id
@@ -128,13 +130,8 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentResource.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-		providerConfig := sdkclients.ProviderConfig{}
-		err := json.Unmarshal([]byte(deploymentResource.Spec.ProviderConfig), &providerConfig)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to unmarshal providerConfig: %w", err)
-		}
 
-		poller, err := r.Radius.Resources(providerConfig.Deployments.Value.Scope, deploymentResourceType).ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
+		poller, err := r.DeploymentClient.ResourceDeployments().ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue DELETE operation: %w", err)
 		}
@@ -223,13 +220,18 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	logger.Info("Resource is being deleted.", "resourceId", deploymentResource.Spec.Id)
+	logger.Info("Resource is being deleted.")
 
 	// Since we're going to reconcile, update the observed generation.
 	//
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
 	deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
+	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
+	err := r.Client.Status().Update(ctx, deploymentResource)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// Check if the resource is being used by another resource
 	deploymentResourceList, err := listResourcesWithSameOwner(ctx, r.Client, deploymentResource.Namespace, deploymentResource.OwnerReferences[0])
@@ -248,20 +250,19 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 	}
 
-	poller, err := r.startDeleteOperation(ctx, deploymentResource)
+	deletePoller, err := r.startDeleteOperation(ctx, deploymentResource)
 	if err != nil {
 		logger.Error(err, "Unable to delete resource.")
 		r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
 		return ctrl.Result{}, err
-	} else if poller != nil {
+	} else if deletePoller != nil && !deletePoller.Done() {
 		// We've successfully started an operation. Update the status and requeue.
-		token, err := poller.ResumeToken()
+		token, err := deletePoller.ResumeToken()
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
 		}
 
 		deploymentResource.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
-		deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
 		err = r.Client.Status().Update(ctx, deploymentResource)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -270,6 +271,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 	}
 
+	// If we get here then it means we can process the result of the operation.
 	logger.Info("Resource is deleted.")
 
 	// At this point we've cleaned up everything. We can remove the finalizer which will allow deletion of the
@@ -283,26 +285,23 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		}
 	}
 
-	logger.Info("Finalizer was not removed, requeueing.")
-
-	err = r.Client.Status().Update(ctx, deploymentResource)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	// If we get here, then we're in a bad state. We should have removed the finalizer, but we didn't.
 	// We should requeue and try again.
+
+	logger.Info("Finalizer was not removed, requeueing.")
 
 	return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 }
 
-func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
+func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (Poller[sdkclients.ClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceId := deploymentResource.Spec.Id
+	// TODO (willsmith) HARDCODED API VERSION
+	apiVersion := "2023-10-01-preview"
 
 	logger.Info("Starting DELETE operation.")
-	poller, err := deleteResource(ctx, r.Radius, resourceId)
+	poller, err := r.DeploymentClient.ResourceDeployments().Delete(ctx, resourceId, apiVersion)
 	if err != nil {
 		return nil, err
 	} else if poller != nil {

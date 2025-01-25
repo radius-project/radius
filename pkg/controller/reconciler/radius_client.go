@@ -1,5 +1,5 @@
 /*
-Copyright 2023.
+Copyright 2024 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,9 +18,7 @@ package reconciler
 
 import (
 	"context"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -28,15 +26,6 @@ import (
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
-
-type Poller[T any] interface {
-	Done() bool
-	Poll(ctx context.Context) (*http.Response, error)
-	Result(ctx context.Context) (T, error)
-	ResumeToken() (string, error)
-}
-
-var _ Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse] = (*runtime.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse])(nil)
 
 type RadiusClient interface {
 	Applications(scope string) ApplicationClient
@@ -78,17 +67,17 @@ type ResourceClient interface {
 	ListSecrets(ctx context.Context, resourceName string) (generated.GenericResourcesClientListSecretsResponse, error)
 }
 
-type Client struct {
+type RadiusClientImpl struct {
 	connection sdk.Connection
 }
 
-func NewClient(connection sdk.Connection) *Client {
-	return &Client{connection: connection}
+func NewRadiusClient(connection sdk.Connection) *RadiusClientImpl {
+	return &RadiusClientImpl{connection: connection}
 }
 
-var _ RadiusClient = (*Client)(nil)
+var _ RadiusClient = (*RadiusClientImpl)(nil)
 
-func (c *Client) Applications(scope string) ApplicationClient {
+func (c *RadiusClientImpl) Applications(scope string) ApplicationClient {
 	ac, err := corerpv20231001preview.NewApplicationsClient(scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
@@ -97,7 +86,7 @@ func (c *Client) Applications(scope string) ApplicationClient {
 	return &ApplicationClientImpl{inner: ac}
 }
 
-func (c *Client) Containers(scope string) ContainerClient {
+func (c *RadiusClientImpl) Containers(scope string) ContainerClient {
 	cc, err := corerpv20231001preview.NewContainersClient(scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
@@ -106,7 +95,7 @@ func (c *Client) Containers(scope string) ContainerClient {
 	return &ContainerClientImpl{inner: cc}
 }
 
-func (c *Client) Environments(scope string) EnvironmentClient {
+func (c *RadiusClientImpl) Environments(scope string) EnvironmentClient {
 	ec, err := corerpv20231001preview.NewEnvironmentsClient(scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
@@ -115,7 +104,7 @@ func (c *Client) Environments(scope string) EnvironmentClient {
 	return &EnvironmentClientImpl{inner: ec}
 }
 
-func (c *Client) Groups(scope string) ResourceGroupClient {
+func (c *RadiusClientImpl) Groups(scope string) ResourceGroupClient {
 	rgc, err := ucpv20231001preview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
@@ -124,7 +113,7 @@ func (c *Client) Groups(scope string) ResourceGroupClient {
 	return &ResourceGroupClientImpl{inner: rgc, scope: scope}
 }
 
-func (c *Client) Resources(scope string, resourceType string) ResourceClient {
+func (c *RadiusClientImpl) Resources(scope string, resourceType string) ResourceClient {
 	gc, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())

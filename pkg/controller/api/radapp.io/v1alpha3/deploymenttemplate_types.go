@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// DeploymentTemplateSpec defines the desired state of DeploymentTemplate
+// DeploymentTemplateSpec defines the desired state of a DeploymentTemplate resource.
 type DeploymentTemplateSpec struct {
 	// Template is the ARM JSON manifest that defines the resources to deploy.
 	Template string `json:"template,omitempty"`
@@ -28,20 +28,17 @@ type DeploymentTemplateSpec struct {
 	// Parameters is the ARM JSON parameters for the template.
 	Parameters map[string]string `json:"parameters,omitempty"`
 
-	// ProviderConfig specifies the scope for resources
+	// ProviderConfig specifies the scopes for resources.
 	ProviderConfig string `json:"providerConfig,omitempty"`
 }
 
-// DeploymentTemplateStatus defines the observed state of DeploymentTemplate
+// DeploymentTemplateStatus defines the observed state of a DeploymentTemplate resource.
 type DeploymentTemplateStatus struct {
 	// ObservedGeneration is the most recent generation observed for this DeploymentTemplate.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`
 
-	// StatusHash is a hash of the DeploymentTemplate's status.
+	// StatusHash is a hash of the DeploymentTemplate's state (template, parameters, and provider config).
 	StatusHash string `json:"statusHash,omitempty"`
-
-	// Resource is the resource id of the deployment.
-	Resource string `json:"resource,omitempty"`
 
 	// OutputResources is a list of the resourceIDs that were created by the template on the last deployment.
 	OutputResources []string `json:"outputResources,omitempty"`
@@ -51,9 +48,6 @@ type DeploymentTemplateStatus struct {
 
 	// Phrase indicates the current status of the Deployment Template.
 	Phrase DeploymentTemplatePhrase `json:"phrase,omitempty"`
-
-	// Message is a human-readable description of the status of the Deployment Template.
-	Message string `json:"message,omitempty"`
 }
 
 // DeploymentTemplatePhrase is a string representation of the current status of a Deployment Template.

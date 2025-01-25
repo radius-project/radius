@@ -93,7 +93,7 @@ func (s *Service) Run(ctx context.Context) error {
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		EventRecorder: mgr.GetEventRecorderFor("recipe-controller"),
-		Radius:        reconciler.NewClient(s.Options.UCPConnection),
+		Radius:        reconciler.NewRadiusClient(s.Options.UCPConnection),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "Recipe", err)
@@ -102,25 +102,27 @@ func (s *Service) Run(ctx context.Context) error {
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		EventRecorder: mgr.GetEventRecorderFor("radius-deployment-controller"),
-		Radius:        reconciler.NewClient(s.Options.UCPConnection),
+		Radius:        reconciler.NewRadiusClient(s.Options.UCPConnection),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "Deployment", err)
 	}
 	err = (&reconciler.DeploymentTemplateReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("deploymenttemplate-controller"),
-		Radius:        reconciler.NewClient(s.Options.UCPConnection),
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		EventRecorder:    mgr.GetEventRecorderFor("deploymenttemplate-controller"),
+		Radius:           reconciler.NewRadiusClient(s.Options.UCPConnection),
+		DeploymentClient: reconciler.NewDeploymentClient(s.Options.UCPConnection),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentTemplate", err)
 	}
 	err = (&reconciler.DeploymentResourceReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("deploymentresource-controller"),
-		Radius:        reconciler.NewClient(s.Options.UCPConnection),
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		EventRecorder:    mgr.GetEventRecorderFor("deploymentresource-controller"),
+		Radius:           reconciler.NewRadiusClient(s.Options.UCPConnection),
+		DeploymentClient: reconciler.NewDeploymentClient(s.Options.UCPConnection),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentResource", err)
