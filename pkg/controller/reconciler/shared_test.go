@@ -54,13 +54,6 @@ func createEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
 	})
 }
 
-func deleteEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
-	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", resourceGroup, name)
-	radius.Delete(func() {
-		delete(radius.environments, id)
-	})
-}
-
 func makeRecipe(name types.NamespacedName, resourceType string) *radappiov1alpha3.Recipe {
 	return &radappiov1alpha3.Recipe{
 		ObjectMeta: ctrl.ObjectMeta{
