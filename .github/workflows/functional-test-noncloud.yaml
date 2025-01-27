@@ -374,7 +374,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
           SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
-      
+
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
