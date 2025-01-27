@@ -106,7 +106,7 @@ jobs:
         run: |
           REPO_NAME="test/radius"
           REGISTRY_NAME="biceptypes"
-          DATE="$(date -d '90 days ago' +%Y-%m-%d)"
+          DATE="$(date -d '30 days ago' +%Y-%m-%d)"
 
           az acr manifest list-metadata \
             -r $REGISTRY_NAME \
