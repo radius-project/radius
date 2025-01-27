@@ -194,6 +194,8 @@ func (client *ResourceDeploymentsClientImpl) ContinueCreateOperation(ctx context
 	return runtime.NewPollerFromResumeToken[ClientCreateOrUpdateResponse](resumeToken, *client.pipeline, nil)
 }
 
+// Delete creates a request to delete a resource and returns a poller to
+// track the progress of the operation.
 func (client *ResourceDeploymentsClientImpl) Delete(ctx context.Context, resourceID, apiVersion string) (*runtime.Poller[ClientDeleteResponse], error) {
 	if !strings.HasPrefix(resourceID, "/") {
 		return nil, fmt.Errorf("error creating or updating a deployment: resourceID must start with a slash")

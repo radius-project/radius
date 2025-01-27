@@ -25,10 +25,14 @@ import (
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 )
 
+// DeploymentClient is an interface for interacting with
+// UCP ResourceDeploymentsClient.
 type DeploymentClient interface {
 	ResourceDeployments() ResourceDeploymentsClient
 }
 
+// ResourceDeploymentsClient is an interface for interacting
+// with UCP Deployments.
 type ResourceDeploymentsClient interface {
 	CreateOrUpdate(ctx context.Context, parameters sdkclients.Deployment, resourceID, apiVersion string) (Poller[sdkclients.ClientCreateOrUpdateResponse], error)
 	ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[sdkclients.ClientCreateOrUpdateResponse], error)
@@ -36,38 +40,47 @@ type ResourceDeploymentsClient interface {
 	ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[sdkclients.ClientDeleteResponse], error)
 }
 
+// DeploymentClientImpl is an implementation of DeploymentClient.
 type DeploymentClientImpl struct {
 	connection sdk.Connection
 }
 
+// NewDeploymentClient creates a new DeploymentClient
+// with the given connection.
 func NewDeploymentClient(connection sdk.Connection) *DeploymentClientImpl {
 	return &DeploymentClientImpl{connection: connection}
 }
 
 var _ DeploymentClient = (*DeploymentClientImpl)(nil)
 
+// CreateOrUpdate creates or updates a deployment.
 func (rdc *ResourceDeploymentsClientImpl) CreateOrUpdate(ctx context.Context, parameters sdkclients.Deployment, resourceID, apiVersion string) (Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
 	return rdc.inner.CreateOrUpdate(ctx, parameters, resourceID, apiVersion)
 }
 
+// ContinueCreateOperation continues a create operation.
 func (rdc *ResourceDeploymentsClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
 	return rdc.inner.ContinueCreateOperation(ctx, resumeToken)
 }
 
+// Delete deletes a deployment.
 func (rdc *ResourceDeploymentsClientImpl) Delete(ctx context.Context, resourceID, apiVersion string) (Poller[sdkclients.ClientDeleteResponse], error) {
 	return rdc.inner.Delete(ctx, resourceID, apiVersion)
 }
 
+// ContinueDeleteOperation continues a delete operation.
 func (rdc *ResourceDeploymentsClientImpl) ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[sdkclients.ClientDeleteResponse], error) {
 	return rdc.inner.ContinueDeleteOperation(ctx, resumeToken)
 }
 
 var _ ResourceDeploymentsClient = (*ResourceDeploymentsClientImpl)(nil)
 
+// ResourceDeploymentsClientImpl is an implementation of ResourceDeploymentsClient.
 type ResourceDeploymentsClientImpl struct {
 	inner sdkclients.ResourceDeploymentsClient
 }
 
+// ResourceDeployments returns a ResourceDeploymentsClient.
 func (c *DeploymentClientImpl) ResourceDeployments() ResourceDeploymentsClient {
 	rdc, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{
 		Cred:             &aztoken.AnonymousCredential{},
