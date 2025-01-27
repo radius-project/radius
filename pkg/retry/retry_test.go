@@ -51,6 +51,12 @@ func TestNewRetryer(t *testing.T) {
 	require.NotNil(t, retryer)
 	require.NotNil(t, retryer.config)
 	require.NotNil(t, retryer.config.BackoffStrategy)
+
+	config = &RetryConfig{}
+	retryer = NewRetryer(config)
+	require.NotNil(t, retryer)
+	require.NotNil(t, retryer.config)
+	require.NotNil(t, retryer.config.BackoffStrategy)
 }
 
 func TestRetryer_RetryFunc(t *testing.T) {

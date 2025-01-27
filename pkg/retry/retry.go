@@ -25,17 +25,18 @@ type Retryer struct {
 }
 
 // NewNoOpRetryer creates a new Retryer that does not retry.
+// This is useful for testing.
 func NewNoOpRetryer() *Retryer {
 	b := retry.NewConstant(1 * time.Second)
 	b = retry.WithMaxRetries(0, b)
 
-	noOpRetryer := NewRetryer(&RetryConfig{
+	return NewRetryer(&RetryConfig{
 		BackoffStrategy: b,
 	})
-
-	return noOpRetryer
 }
 
+// DefaultBackoffStrategy returns the default backoff strategy.
+// The default backoff strategy is an exponential backoff with a maximum duration and maximum retries.
 func DefaultBackoffStrategy() retry.Backoff {
 	b := retry.NewExponential(1 * time.Second)
 	b = retry.WithMaxDuration(defaultMaxDuration, b)
@@ -44,24 +45,25 @@ func DefaultBackoffStrategy() retry.Backoff {
 	return b
 }
 
+// NewDefaultRetryer creates a new Retryer with the default configuration.
+// The default configuration is an exponential backoff with a maximum duration and maximum retries.
 func NewDefaultRetryer() *Retryer {
-	defaultRetryer := NewRetryer(&RetryConfig{
+	return NewRetryer(&RetryConfig{
 		BackoffStrategy: DefaultBackoffStrategy(),
 	})
-
-	return defaultRetryer
 }
 
 // NewRetryer creates a new Retryer with the given configuration.
+// If either the config or config.BackoffStrategy are nil,
+// the default configuration is used.
+// The default configuration is an exponential backoff with a maximum duration and maximum retries.
 func NewRetryer(config *RetryConfig) *Retryer {
 	retryConfig := &RetryConfig{}
 
-	if config != nil {
-		if config.BackoffStrategy != nil {
-			retryConfig.BackoffStrategy = config.BackoffStrategy
-		}
+	if config != nil && config.BackoffStrategy != nil {
+		retryConfig.BackoffStrategy = config.BackoffStrategy
 	} else {
-		retryConfig.BackoffStrategy = retry.NewExponential(defaultInterval)
+		retryConfig.BackoffStrategy = DefaultBackoffStrategy()
 	}
 
 	return &Retryer{
@@ -69,7 +71,7 @@ func NewRetryer(config *RetryConfig) *Retryer {
 	}
 }
 
-// RetryFunc retries the given function until it returns nil or the maximum number of retries is reached.
+// RetryFunc retries the given function with the backoff strategy.
 func (r *Retryer) RetryFunc(ctx context.Context, f func(ctx context.Context) error) error {
 	return retry.Do(ctx, r.config.BackoffStrategy, f)
 }
