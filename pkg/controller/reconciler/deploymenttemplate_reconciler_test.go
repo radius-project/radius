@@ -224,6 +224,43 @@ func Test_DeploymentTemplateReconciler_IsUpToDate(t *testing.T) {
 	}
 }
 
+func Test_ParseDeploymentScopeFromProviderConfig(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name           string
+		providerConfig string
+		wantScope      string
+		wantErr        bool
+	}{
+		{
+			name:           "valid: provider with scope",
+			providerConfig: `{"deployments":{"type":"deployments","value":{"scope":"deploymentsscope"}}}`,
+			wantScope:      "deploymentsscope",
+			wantErr:        false,
+		},
+		{
+			name:           "invalid: deployments scope not present",
+			providerConfig: `{"radius":{"type":"radius","value":{"scope":"deploymentsscope"}}}`,
+			wantErr:        true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			scope, err := ParseDeploymentScopeFromProviderConfig(tc.providerConfig)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantScope, scope)
+		})
+	}
+}
+
 func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 	// This test tests the basic functionality of the DeploymentTemplate controller.
 	// It creates a DeploymentTemplate (with an empty template field),

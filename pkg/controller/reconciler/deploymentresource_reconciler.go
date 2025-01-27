@@ -101,7 +101,6 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 			// NOTE: if reconcileOperation completes successfully, then it will return a "zero" result,
 			// this means the operation has completed and we should continue processing.
 			logger.Info("Operation completed successfully.")
-			// TODO (willsmith) return here?
 		} else {
 			logger.Info("Requeueing to continue operation.")
 			return result, nil
@@ -297,11 +296,10 @@ func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context,
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceId := deploymentResource.Spec.Id
-	// TODO (willsmith) HARDCODED API VERSION
-	apiVersion := "2023-10-01-preview"
+	radiusAPIVersion := "2023-10-01-preview"
 
 	logger.Info("Starting DELETE operation.")
-	poller, err := r.DeploymentClient.ResourceDeployments().Delete(ctx, resourceId, apiVersion)
+	poller, err := r.DeploymentClient.ResourceDeployments().Delete(ctx, resourceId, radiusAPIVersion)
 	if err != nil {
 		return nil, err
 	} else if poller != nil {

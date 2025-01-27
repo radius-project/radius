@@ -46,7 +46,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: DeploymentTemplateSpec defines the desired state of DeploymentTemplate
+            description: DeploymentTemplateSpec defines the desired state of a DeploymentTemplate
+              resource.
             properties:
               parameters:
                 additionalProperties:
@@ -54,7 +55,7 @@ spec:
                 description: Parameters is the ARM JSON parameters for the template.
                 type: object
               providerConfig:
-                description: ProviderConfig specifies the scope for resources
+                description: ProviderConfig specifies the scopes for resources.
                 type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources
@@ -62,12 +63,9 @@ spec:
                 type: string
             type: object
           status:
-            description: DeploymentTemplateStatus defines the observed state of DeploymentTemplate
+            description: DeploymentTemplateStatus defines the observed state of a
+              DeploymentTemplate resource.
             properties:
-              message:
-                description: Message is a human-readable description of the status
-                  of the Deployment Template.
-                type: string
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this DeploymentTemplate.
@@ -96,11 +94,9 @@ spec:
                 description: Phrase indicates the current status of the Deployment
                   Template.
                 type: string
-              resource:
-                description: Resource is the resource id of the deployment.
-                type: string
               statusHash:
-                description: StatusHash is a hash of the DeploymentTemplate's status.
+                description: StatusHash is a hash of the DeploymentTemplate's state
+                  (template, parameters, and provider config).
                 type: string
             type: object
         type: object

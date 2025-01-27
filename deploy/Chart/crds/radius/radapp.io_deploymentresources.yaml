@@ -46,24 +46,19 @@ spec:
           metadata:
             type: object
           spec:
-            description: DeploymentResourceSpec defines the desired state of DeploymentResource
+            description: DeploymentResourceSpec defines the desired state of a DeploymentResource
+              resource.
             properties:
               id:
-                description: Id is the resource Id.
-                type: string
-              providerConfig:
-                description: ProviderConfig specifies the scope for resources
+                description: Id is the resource id of the Radius resource.
                 type: string
             type: object
           status:
-            description: DeploymentResourceStatus defines the observed state of DeploymentResource
+            description: DeploymentResourceStatus defines the observed state of a
+              DeploymentResource resource.
             properties:
               id:
-                description: Id is the resource Id.
-                type: string
-              message:
-                description: Message is a human-readable description of the status
-                  of the Deployment Resource.
+                description: Id is the resource id of the Radius resource.
                 type: string
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
