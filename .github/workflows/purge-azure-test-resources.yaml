@@ -91,9 +91,36 @@ jobs:
               az group delete --resource-group $line --yes --verbose --no-wait
           done
 
+  purge_bicep_types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
+
+      # Delete Bicep types that are older than 30 days from the test registry 
+      - name: Delete test bicep type manifests
+        run: |
+          REPO_NAME="test/radius"
+          REGISTRY_NAME="biceptypes"
+          DATE="$(date -d '30 days ago' +%Y-%m-%d)"
+
+          az acr manifest list-metadata \
+            -r $REGISTRY_NAME \
+            -n $REPO_NAME \
+            --query "[?lastUpdateTime<='$DATE'].digest" \
+            -o tsv | while read DIGEST; do 
+              az acr manifest delete \
+                -n $REPO_NAME@$DIGEST \
+                -r $REGISTRY_NAME --yes
+          done
+
   create_issue_on_failure:
     name: Create issue for failing purge Azure test resources run
-    needs: [purge_azure_resources]
+    needs: [purge_azure_resources, purge_bicep_types]
     runs-on: ubuntu-latest
     if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
     steps:
