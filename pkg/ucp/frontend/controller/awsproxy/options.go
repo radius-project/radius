@@ -28,7 +28,7 @@ func CloudControlRegionOption(region string) func(*cloudcontrol.Options) {
 }
 
 // CloudFormationRegionOption sets the region for the CloudFormation client.
-func CloudFormationWithRegionOption(region string) func(*cloudformation.Options) {
+func CloudFormationRegionOption(region string) func(*cloudformation.Options) {
 	return func(o *cloudformation.Options) {
 		o.Region = region
 	}
