@@ -68,7 +68,9 @@ func (client *RadiusPlanesClient) BeginCreateOrUpdate(ctx context.Context, plane
 // Generated from API version 2023-10-01-preview
 func (client *RadiusPlanesClient) createOrUpdate(ctx context.Context, planeName string, resource RadiusPlaneResource, options *RadiusPlanesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RadiusPlanesClient.BeginCreateOrUpdate", client.internal.Tracer(), nil)
+	const operationName = "RadiusPlanesClient.BeginCreateOrUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, resource, options)
 	if err != nil {
@@ -137,7 +139,9 @@ func (client *RadiusPlanesClient) BeginDelete(ctx context.Context, planeName str
 // Generated from API version 2023-10-01-preview
 func (client *RadiusPlanesClient) deleteOperation(ctx context.Context, planeName string, options *RadiusPlanesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RadiusPlanesClient.BeginDelete", client.internal.Tracer(), nil)
+	const operationName = "RadiusPlanesClient.BeginDelete"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, planeName, options)
 	if err != nil {
@@ -180,7 +184,9 @@ func (client *RadiusPlanesClient) deleteCreateRequest(ctx context.Context, plane
 //   - options - RadiusPlanesClientGetOptions contains the optional parameters for the RadiusPlanesClient.Get method.
 func (client *RadiusPlanesClient) Get(ctx context.Context, planeName string, options *RadiusPlanesClientGetOptions) (RadiusPlanesClientGetResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RadiusPlanesClient.Get", client.internal.Tracer(), nil)
+	const operationName = "RadiusPlanesClient.Get"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, planeName, options)
 	if err != nil {
@@ -235,6 +241,7 @@ func (client *RadiusPlanesClient) NewListPager(options *RadiusPlanesClientListOp
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *RadiusPlanesClientListResponse) (RadiusPlanesClientListResponse, error) {
+		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RadiusPlanesClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -306,7 +313,9 @@ func (client *RadiusPlanesClient) BeginUpdate(ctx context.Context, planeName str
 // Generated from API version 2023-10-01-preview
 func (client *RadiusPlanesClient) update(ctx context.Context, planeName string, properties RadiusPlaneResourceTagsUpdate, options *RadiusPlanesClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RadiusPlanesClient.BeginUpdate", client.internal.Tracer(), nil)
+	const operationName = "RadiusPlanesClient.BeginUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, planeName, properties, options)
 	if err != nil {

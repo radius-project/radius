@@ -1,0 +1,15 @@
+name: MyCompany2.CompanyName2
+location:
+  global:
+    'http://localhost:8080'
+types:
+  testResource3:
+    apiVersions:
+      "2025-01-01-preview":
+        schema: {}
+    capabilities: ["SupportsRecipes"]
+  testResource4:
+    apiVersions:
+      "2025-01-01-preview":
+        schema: {}
+    capabilities: ["SupportsRecipes"]

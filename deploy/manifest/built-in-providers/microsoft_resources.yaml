@@ -1,8 +1,0 @@
-name: Microsoft.Resources
-types:
-  deployments:
-    apiVersions:
-      "2025-01-01-preview":
-        schema: {}
-        capabilities: []
-  

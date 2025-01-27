@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: database-secret
+  namespace: {{ .Release.Namespace }}
+  labels:
+    control-plane: database
+    app.kubernetes.io/name: database
+    app.kubernetes.io/part-of: radius
+stringData:
+  POSTGRES_USER: "{{ .Values.database.postgres_user }}"
+  POSTGRES_PASSWORD: "{{ randAlphaNum 16 }}"
+  POSTGRES_DB: POSTGRES_DB
+
+  
