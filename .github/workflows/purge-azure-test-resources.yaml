@@ -101,7 +101,7 @@ jobs:
           tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
           subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
 
-      # Delete Bicep types that are older than 90 days from the test registry 
+      # Delete Bicep types that are older than 30 days from the test registry 
       - name: Delete test bicep type manifests
         run: |
           REPO_NAME="test/radius"
