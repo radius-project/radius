@@ -27,9 +27,21 @@ Fixes: #issue_number
 ## Contributor checklist
 Please verify that the PR meets the following requirements, where applicable:
 
-- [ ] An overview of proposed schema changes is included in a linked GitHub issue.
-- [ ] A design document PR is created in the [design-notes repository](https://github.com/radius-project/design-notes/), if new APIs are being introduced.
-- [ ] If applicable, design document has been reviewed and approved by Radius maintainers/approvers.
-- [ ] A PR for the [samples repository](https://github.com/radius-project/samples) is created, if existing samples are affected by the changes in this PR.
-- [ ] A PR for the [documentation repository](https://github.com/radius-project/docs) is created, if the changes in this PR affect the documentation or any user facing updates are made.
-- [ ] A PR for the [recipes repository](https://github.com/radius-project/recipes) is created, if existing recipes are affected by the changes in this PR.
+- An overview of proposed schema changes is included in a linked GitHub issue.
+    - [ ] Yes
+    - [ ] Not applicable
+- A design document PR is created in the [design-notes repository](https://github.com/radius-project/design-notes/), if new APIs are being introduced.
+    - [ ] Yes
+    - [ ] Not applicable
+- The design document has been reviewed and approved by Radius maintainers/approvers.
+    - [ ] Yes
+    - [ ] Not applicable
+- A PR for the [samples repository](https://github.com/radius-project/samples) is created, if existing samples are affected by the changes in this PR.
+    - [ ] Yes
+    - [ ] Not applicable
+- A PR for the [documentation repository](https://github.com/radius-project/docs) is created, if the changes in this PR affect the documentation or any user facing updates are made.
+    - [ ] Yes
+    - [ ] Not applicable
+- A PR for the [recipes repository](https://github.com/radius-project/recipes) is created, if existing recipes are affected by the changes in this PR.
+    - [ ] Yes
+    - [ ] Not applicable
