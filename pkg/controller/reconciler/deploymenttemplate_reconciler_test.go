@@ -46,7 +46,7 @@ const (
 	deploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
 )
 
-func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *mockDeploymentClient, k8sclient.Client) {
+func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.MockResourceDeploymentsClient, k8sclient.Client) {
 	SkipWithoutEnvironment(t)
 
 	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
@@ -74,27 +74,27 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *mockDeployme
 	require.NoError(t, err)
 
 	mockRadiusClient := NewMockRadiusClient()
-	mockDeploymentClient := NewMockDeploymentClient()
+	mockResourceDeploymentsClient := sdkclients.NewMockResourceDeploymentsClient()
 
 	// Set up DeploymentTemplateReconciler.
 	err = (&DeploymentTemplateReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		EventRecorder:    mgr.GetEventRecorderFor("deploymenttemplate-controller"),
-		Radius:           mockRadiusClient,
-		DeploymentClient: mockDeploymentClient,
-		DelayInterval:    deploymentTemplateTestControllerDelayInterval,
+		Client:                    mgr.GetClient(),
+		Scheme:                    mgr.GetScheme(),
+		EventRecorder:             mgr.GetEventRecorderFor("deploymenttemplate-controller"),
+		Radius:                    mockRadiusClient,
+		ResourceDeploymentsClient: mockResourceDeploymentsClient,
+		DelayInterval:             deploymentTemplateTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
 	// Set up DeploymentResourceReconciler.
 	err = (&DeploymentResourceReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		EventRecorder:    mgr.GetEventRecorderFor("deploymentresource-controller"),
-		Radius:           mockRadiusClient,
-		DeploymentClient: mockDeploymentClient,
-		DelayInterval:    DeploymentResourceTestControllerDelayInterval,
+		Client:                    mgr.GetClient(),
+		Scheme:                    mgr.GetScheme(),
+		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
+		Radius:                    mockRadiusClient,
+		ResourceDeploymentsClient: mockResourceDeploymentsClient,
+		DelayInterval:             DeploymentResourceTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
@@ -103,7 +103,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *mockDeployme
 		require.NoError(t, err)
 	}()
 
-	return mockRadiusClient, mockDeploymentClient, mgr.GetClient()
+	return mockRadiusClient, mockResourceDeploymentsClient, mgr.GetClient()
 }
 
 func Test_DeploymentTemplateReconciler_ComputeHash(t *testing.T) {
@@ -350,14 +350,14 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 
 	// Complete the operation, but make it fail.
 	operation := status.Operation
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		state.err = errors.New("failure")
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		state.Err = errors.New("failure")
 
-		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.ProvisioningState = to.Ptr(armresources.ProvisioningStateFailed)
-		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
 
 	// DeploymentTemplate should (eventually) start a new provisioning operation
@@ -416,14 +416,14 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
 	// Complete the operation.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
 			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-withresources-env")},
 		}
-		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
 
 	// DeploymentTemplate should be ready after the operation completes.
@@ -493,14 +493,14 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
 	// Complete the operation.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
 			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
 		}
-		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
 
 	// DeploymentTemplate should be ready after the operation completes.
@@ -542,14 +542,14 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
 	// Complete the operation again.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
 			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
 		}
-		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
 
 	// DeploymentTemplate should be Ready again after the operation completes.
@@ -622,8 +622,8 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
 	// Complete the operation.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
@@ -631,7 +631,7 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
 			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/containers/deploymenttemplate-outputresources-container")},
 		}
-		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
 
 	// DeploymentTemplate should be ready after the operation completes.
@@ -692,15 +692,15 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
 
 	// Complete the operation again, with a different set of output resources.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		resource, ok := mockDeploymentClient.resourceDeployments[state.resourceID]
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
 			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
 			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
 		}
-		state.value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
 
 	// Complete the delete operation on the container resource.

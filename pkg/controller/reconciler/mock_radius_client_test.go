@@ -28,6 +28,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
@@ -41,7 +42,7 @@ func NewMockRadiusClient() *mockRadiusClient {
 		environments: map[string]corerpv20231001preview.EnvironmentResource{},
 		groups:       map[string]ucpv20231001preview.ResourceGroupResource{},
 		resources:    map[string]generated.GenericResource{},
-		operations:   map[string]*operationState{},
+		operations:   map[string]*sdkclients.OperationState{},
 
 		lock: &sync.Mutex{},
 	}
@@ -55,18 +56,9 @@ type mockRadiusClient struct {
 	environments map[string]corerpv20231001preview.EnvironmentResource
 	groups       map[string]ucpv20231001preview.ResourceGroupResource
 	resources    map[string]generated.GenericResource
-	operations   map[string]*operationState
+	operations   map[string]*sdkclients.OperationState
 
 	lock *sync.Mutex
-}
-
-type operationState struct {
-	complete bool
-	value    any
-	// Ideally we'd use azcore.ResponseError here, but it's tricky to set up in tests.
-	err        error
-	resourceID string
-	kind       string
 }
 
 func (rc *mockRadiusClient) Update(exec func()) {
@@ -103,7 +95,7 @@ func (rc *mockRadiusClient) Resources(scope string, resourceType string) Resourc
 	return &mockResourceClient{mock: rc, scope: scope, resourceType: resourceType}
 }
 
-func (rc *mockRadiusClient) CompleteOperation(operationID string, update func(state *operationState)) {
+func (rc *mockRadiusClient) CompleteOperation(operationID string, update func(state *sdkclients.OperationState)) {
 	rc.lock.Lock()
 	defer rc.lock.Unlock()
 
@@ -116,14 +108,14 @@ func (rc *mockRadiusClient) CompleteOperation(operationID string, update func(st
 		update(state)
 	}
 
-	state.complete = true
+	state.Complete = true
 
-	if state.kind == http.MethodDelete {
-		delete(rc.environments, state.resourceID)
-		delete(rc.applications, state.resourceID)
-		delete(rc.containers, state.resourceID)
-		delete(rc.groups, state.resourceID)
-		delete(rc.resources, state.resourceID)
+	if state.Kind == http.MethodDelete {
+		delete(rc.environments, state.ResourceID)
+		delete(rc.applications, state.ResourceID)
+		delete(rc.containers, state.ResourceID)
+		delete(rc.groups, state.ResourceID)
+		delete(rc.resources, state.ResourceID)
 	}
 }
 
@@ -184,14 +176,14 @@ func (cc *mockContainerClient) id(containerName string) string {
 	return cc.scope + "/providers/Applications.Core/containers/" + containerName
 }
 
-func (cc *mockContainerClient) BeginCreateOrUpdate(ctx context.Context, containerName string, resource corerpv20231001preview.ContainerResource, options *corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
+func (cc *mockContainerClient) BeginCreateOrUpdate(ctx context.Context, containerName string, resource corerpv20231001preview.ContainerResource, options *corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
 	id := cc.id(containerName)
 
 	cc.mock.lock.Lock()
 	defer cc.mock.lock.Unlock()
 
 	value := corerpv20231001preview.ContainersClientCreateOrUpdateResponse{ContainerResource: resource}
-	state := &operationState{kind: http.MethodPut, value: value, resourceID: id}
+	state := &sdkclients.OperationState{Kind: http.MethodPut, Value: value, ResourceID: id}
 
 	operationID := uuid.New().String()
 	cc.mock.containers[id] = resource
@@ -200,14 +192,14 @@ func (cc *mockContainerClient) BeginCreateOrUpdate(ctx context.Context, containe
 	return &mockRadiusClientPoller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse]{mock: cc.mock, operationID: operationID, state: state}, nil
 }
 
-func (cc *mockContainerClient) BeginDelete(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientBeginDeleteOptions) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
+func (cc *mockContainerClient) BeginDelete(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientBeginDeleteOptions) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
 	id := cc.id(containerName)
 
 	cc.mock.lock.Lock()
 	defer cc.mock.lock.Unlock()
 
 	value := corerpv20231001preview.ContainersClientDeleteResponse{}
-	state := &operationState{kind: http.MethodDelete, value: value, resourceID: id}
+	state := &sdkclients.OperationState{Kind: http.MethodDelete, Value: value, ResourceID: id}
 
 	operationID := uuid.New().String()
 	cc.mock.operations[operationID] = state
@@ -215,7 +207,7 @@ func (cc *mockContainerClient) BeginDelete(ctx context.Context, containerName st
 	return &mockRadiusClientPoller[corerpv20231001preview.ContainersClientDeleteResponse]{mock: cc.mock, operationID: operationID, state: state}, nil
 }
 
-func (cc *mockContainerClient) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
+func (cc *mockContainerClient) ContinueCreateOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
 	cc.mock.lock.Lock()
 	defer cc.mock.lock.Unlock()
 
@@ -227,7 +219,7 @@ func (cc *mockContainerClient) ContinueCreateOperation(ctx context.Context, resu
 	return &mockRadiusClientPoller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse]{mock: cc.mock, operationID: resumeToken, state: state}, nil
 }
 
-func (cc *mockContainerClient) ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
+func (cc *mockContainerClient) ContinueDeleteOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
 	cc.mock.lock.Lock()
 	defer cc.mock.lock.Unlock()
 
@@ -321,14 +313,14 @@ func (rc *mockResourceClient) id(resourceName string) string {
 	return rc.scope + "/providers/" + rc.resourceType + "/" + resourceName
 }
 
-func (rc *mockResourceClient) BeginCreateOrUpdate(ctx context.Context, resourceName string, resource generated.GenericResource, options *generated.GenericResourcesClientBeginCreateOrUpdateOptions) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
+func (rc *mockResourceClient) BeginCreateOrUpdate(ctx context.Context, resourceName string, resource generated.GenericResource, options *generated.GenericResourcesClientBeginCreateOrUpdateOptions) (sdkclients.Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
 	id := rc.id(resourceName)
 
 	rc.mock.lock.Lock()
 	defer rc.mock.lock.Unlock()
 
 	value := generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
-	state := &operationState{kind: http.MethodPut, value: value, resourceID: id}
+	state := &sdkclients.OperationState{Kind: http.MethodPut, Value: value, ResourceID: id}
 
 	operationID := uuid.New().String()
 	rc.mock.resources[id] = resource
@@ -337,14 +329,14 @@ func (rc *mockResourceClient) BeginCreateOrUpdate(ctx context.Context, resourceN
 	return &mockRadiusClientPoller[generated.GenericResourcesClientCreateOrUpdateResponse]{mock: rc.mock, operationID: operationID, state: state}, nil
 }
 
-func (rc *mockResourceClient) BeginDelete(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
+func (rc *mockResourceClient) BeginDelete(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	id := rc.id(resourceName)
 
 	rc.mock.lock.Lock()
 	defer rc.mock.lock.Unlock()
 
 	value := generated.GenericResourcesClientDeleteResponse{}
-	state := &operationState{kind: http.MethodDelete, value: value, resourceID: id}
+	state := &sdkclients.OperationState{Kind: http.MethodDelete, Value: value, ResourceID: id}
 
 	operationID := uuid.New().String()
 	rc.mock.operations[operationID] = state
@@ -352,7 +344,7 @@ func (rc *mockResourceClient) BeginDelete(ctx context.Context, resourceName stri
 	return &mockRadiusClientPoller[generated.GenericResourcesClientDeleteResponse]{mock: rc.mock, operationID: operationID, state: state}, nil
 }
 
-func (rc *mockResourceClient) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
+func (rc *mockResourceClient) ContinueCreateOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
 	rc.mock.lock.Lock()
 	defer rc.mock.lock.Unlock()
 
@@ -364,7 +356,7 @@ func (rc *mockResourceClient) ContinueCreateOperation(ctx context.Context, resum
 	return &mockRadiusClientPoller[generated.GenericResourcesClientCreateOrUpdateResponse]{mock: rc.mock, operationID: resumeToken, state: state}, nil
 }
 
-func (rc *mockResourceClient) ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
+func (rc *mockResourceClient) ContinueDeleteOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	rc.mock.lock.Lock()
 	defer rc.mock.lock.Unlock()
 
@@ -418,19 +410,19 @@ func (rc *mockResourceClient) ListSecrets(ctx context.Context, resourceName stri
 	return generated.GenericResourcesClientListSecretsResponse{Value: secrets}, nil
 }
 
-var _ Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse] = (*azcoreruntime.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse])(nil)
+var _ sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse] = (*mockRadiusClientPoller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse])(nil)
 
 type mockRadiusClientPoller[T any] struct {
 	operationID string
 	mock        *mockRadiusClient
-	state       *operationState
+	state       *sdkclients.OperationState
 }
 
 func (mp *mockRadiusClientPoller[T]) Done() bool {
 	mp.mock.lock.Lock()
 	defer mp.mock.lock.Unlock()
 
-	return mp.state.complete // Status updates are delivered via the Poll function.
+	return mp.state.Complete // Status updates are delivered via the Poll function.
 }
 
 func (mp *mockRadiusClientPoller[T]) Poll(ctx context.Context) (*http.Response, error) {
@@ -446,10 +438,10 @@ func (mp *mockRadiusClientPoller[T]) Result(ctx context.Context) (T, error) {
 	mp.mock.lock.Lock()
 	defer mp.mock.lock.Unlock()
 
-	if mp.state.complete && mp.state.err != nil {
-		return mp.state.value.(T), mp.state.err
-	} else if mp.state.complete {
-		return mp.state.value.(T), nil
+	if mp.state.Complete && mp.state.Err != nil {
+		return mp.state.Value.(T), mp.state.Err
+	} else if mp.state.Complete {
+		return mp.state.Value.(T), nil
 	}
 
 	panic("operation not done")
@@ -457,4 +449,8 @@ func (mp *mockRadiusClientPoller[T]) Result(ctx context.Context) (T, error) {
 
 func (mp *mockRadiusClientPoller[T]) ResumeToken() (string, error) {
 	return mp.operationID, nil
+}
+
+func (mp *mockRadiusClientPoller[T]) PollUntilDone(ctx context.Context, options *azcoreruntime.PollUntilDoneOptions) (T, error) {
+	return mp.Result(ctx)
 }

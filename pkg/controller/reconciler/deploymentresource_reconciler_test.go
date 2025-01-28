@@ -22,6 +22,7 @@ import (
 	"time"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +51,7 @@ var (
 	TestDeploymentResourceID    = fmt.Sprintf("%s/providers/Microsoft.Resources/deployments/%s", TestDeploymentResourceScope, TestDeploymentResourceName)
 )
 
-func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *mockDeploymentClient, k8sClient.Client) {
+func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.MockResourceDeploymentsClient, k8sClient.Client) {
 	SkipWithoutEnvironment(t)
 
 	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
@@ -78,15 +79,15 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *mockDeployme
 	require.NoError(t, err)
 
 	mockRadiusClient := NewMockRadiusClient()
-	mockDeploymentClient := NewMockDeploymentClient()
+	mockResourceDeploymentsClient := sdkclients.NewMockResourceDeploymentsClient()
 
 	err = (&DeploymentResourceReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		EventRecorder:    mgr.GetEventRecorderFor("deploymentresource-controller"),
-		Radius:           mockRadiusClient,
-		DeploymentClient: mockDeploymentClient,
-		DelayInterval:    DeploymentResourceTestControllerDelayInterval,
+		Client:                    mgr.GetClient(),
+		Scheme:                    mgr.GetScheme(),
+		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
+		Radius:                    mockRadiusClient,
+		ResourceDeploymentsClient: mockResourceDeploymentsClient,
+		DelayInterval:             DeploymentResourceTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
@@ -95,7 +96,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *mockDeployme
 		require.NoError(t, err)
 	}()
 
-	return mockRadiusClient, mockDeploymentClient, mgr.GetClient()
+	return mockRadiusClient, mockResourceDeploymentsClient, mgr.GetClient()
 }
 
 func Test_DeploymentResourceReconciler_Basic(t *testing.T) {

@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"golang.org/x/sync/errgroup"
@@ -160,7 +159,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{Frequency: pollFrequency})
+	resp, err := poller.PollUntilDone(ctx, &clients.PollUntilDoneOptions{Frequency: pollFrequency})
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}

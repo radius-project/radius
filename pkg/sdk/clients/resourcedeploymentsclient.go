@@ -95,10 +95,10 @@ type ProviderConfig struct {
 // ResourceDeploymentsClient is a deployments client for Azure Resource Manager.
 // It is used by both Azure and UCP clients.
 type ResourceDeploymentsClient interface {
-	CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error)
-	ContinueCreateOperation(ctx context.Context, resumeToken string) (*runtime.Poller[ClientCreateOrUpdateResponse], error)
-	Delete(ctx context.Context, resourceID, apiVersion string) (*runtime.Poller[ClientDeleteResponse], error)
-	ContinueDeleteOperation(ctx context.Context, resumeToken string) (*runtime.Poller[ClientDeleteResponse], error)
+	CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (Poller[ClientCreateOrUpdateResponse], error)
+	ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[ClientCreateOrUpdateResponse], error)
+	Delete(ctx context.Context, resourceID, apiVersion string) (Poller[ClientDeleteResponse], error)
+	ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[ClientDeleteResponse], error)
 }
 
 type ResourceDeploymentsClientImpl struct {
@@ -139,13 +139,14 @@ type ClientCreateOrUpdateResponse struct {
 	armresources.DeploymentExtended
 }
 
+// ClientDeleteResponse contains the response from method Client.Delete.
 type ClientDeleteResponse struct {
 	armresources.DeploymentExtended
 }
 
 // CreateOrUpdate creates a request to create or update a deployment and returns a poller to
 // track the progress of the operation.
-func (client *ResourceDeploymentsClientImpl) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
+func (client *ResourceDeploymentsClientImpl) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (Poller[ClientCreateOrUpdateResponse], error) {
 	if !strings.HasPrefix(resourceID, "/") {
 		return nil, fmt.Errorf("error creating or updating a deployment: resourceID must start with a slash")
 	}
@@ -190,13 +191,13 @@ func (client *ResourceDeploymentsClientImpl) createOrUpdateCreateRequest(ctx con
 }
 
 // ContinueCreateOperation continues a create operation given a resume token.
-func (client *ResourceDeploymentsClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
+func (client *ResourceDeploymentsClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[ClientCreateOrUpdateResponse], error) {
 	return runtime.NewPollerFromResumeToken[ClientCreateOrUpdateResponse](resumeToken, *client.pipeline, nil)
 }
 
 // Delete creates a request to delete a resource and returns a poller to
 // track the progress of the operation.
-func (client *ResourceDeploymentsClientImpl) Delete(ctx context.Context, resourceID, apiVersion string) (*runtime.Poller[ClientDeleteResponse], error) {
+func (client *ResourceDeploymentsClientImpl) Delete(ctx context.Context, resourceID, apiVersion string) (Poller[ClientDeleteResponse], error) {
 	if !strings.HasPrefix(resourceID, "/") {
 		return nil, fmt.Errorf("error creating or updating a deployment: resourceID must start with a slash")
 	}
@@ -241,6 +242,6 @@ func (client *ResourceDeploymentsClientImpl) deleteCreateRequest(ctx context.Con
 }
 
 // ContinueCreateOperation continues a create operation given a resume token.
-func (client *ResourceDeploymentsClientImpl) ContinueDeleteOperation(ctx context.Context, resumeToken string) (*runtime.Poller[ClientDeleteResponse], error) {
+func (client *ResourceDeploymentsClientImpl) ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[ClientDeleteResponse], error) {
 	return runtime.NewPollerFromResumeToken[ClientDeleteResponse](resumeToken, *client.pipeline, nil)
 }

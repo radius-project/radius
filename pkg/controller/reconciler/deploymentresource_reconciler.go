@@ -53,8 +53,8 @@ type DeploymentResourceReconciler struct {
 	// Radius is the Radius client.
 	Radius RadiusClient
 
-	// DeploymentClient is the UCP Deployments client.
-	DeploymentClient DeploymentClient
+	// ResourceDeploymentsClient is the client for managing deployments.
+	ResourceDeploymentsClient sdkclients.ResourceDeploymentsClient
 
 	// DelayInterval is the amount of time to wait between operations.
 	DelayInterval time.Duration
@@ -130,7 +130,7 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 
 	if deploymentResource.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
 
-		poller, err := r.DeploymentClient.ResourceDeployments().ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
+		poller, err := r.ResourceDeploymentsClient.ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue DELETE operation: %w", err)
 		}
@@ -292,14 +292,14 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 }
 
-func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (Poller[sdkclients.ClientDeleteResponse], error) {
+func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (sdkclients.Poller[sdkclients.ClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceId := deploymentResource.Spec.Id
 	radiusAPIVersion := "2023-10-01-preview"
 
 	logger.Info("Starting DELETE operation.")
-	poller, err := r.DeploymentClient.ResourceDeployments().Delete(ctx, resourceId, radiusAPIVersion)
+	poller, err := r.ResourceDeploymentsClient.Delete(ctx, resourceId, radiusAPIVersion)
 	if err != nil {
 		return nil, err
 	} else if poller != nil {

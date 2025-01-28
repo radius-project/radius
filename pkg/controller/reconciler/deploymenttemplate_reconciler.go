@@ -55,8 +55,8 @@ type DeploymentTemplateReconciler struct {
 	// Radius is the Radius client.
 	Radius RadiusClient
 
-	// DeploymentClient is the UCP Deployments client.
-	DeploymentClient DeploymentClient
+	// ResourceDeploymentsClient is the client for managing deployments.
+	ResourceDeploymentsClient sdkclients.ResourceDeploymentsClient
 
 	// DelayInterval is the amount of time to wait between operations.
 	DelayInterval time.Duration
@@ -128,7 +128,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		poller, err := r.DeploymentClient.ResourceDeployments().ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
+		poller, err := r.ResourceDeploymentsClient.ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue PUT operation: %w", err)
 		}
@@ -411,7 +411,7 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 	return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 }
 
-func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
+func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (sdkclients.Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	specParameters := convertToARMJSONParameters(deploymentTemplate.Spec.Parameters)
@@ -454,7 +454,7 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 	resourceID := providerConfig.Deployments.Value.Scope + "/providers/" + "Microsoft.Resources/deployments" + "/" + deploymentName
 
 	logger.Info("Starting PUT operation.")
-	poller, err := r.DeploymentClient.ResourceDeployments().CreateOrUpdate(ctx,
+	poller, err := r.ResourceDeploymentsClient.CreateOrUpdate(ctx,
 		sdkclients.Deployment{
 			Properties: &sdkclients.DeploymentProperties{
 				Template:       template,
