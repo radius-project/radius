@@ -116,6 +116,9 @@ func (s *Service) Run(ctx context.Context) error {
 		BaseURI:          s.Options.UCPConnection.Endpoint(),
 		ARMClientOptions: sdk.NewClientOptions(s.Options.UCPConnection),
 	})
+	if err != nil {
+		return fmt.Errorf("failed to create resource deployments client: %w", err)
+	}
 	err = (&reconciler.DeploymentTemplateReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
