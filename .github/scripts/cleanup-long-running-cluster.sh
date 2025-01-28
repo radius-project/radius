@@ -18,7 +18,9 @@
 
 set -e
 
+SKIP_RESOURCE_FILE="${1:-}"
 echo "cleaning up long-running cluster on Azure"
+echo "Using skip-resource-list from: $SKIP_RESOURCE_FILE"
 
 # Delete all test resources in queuemessages.
 if kubectl get crd queuemessages.ucp.dev >/dev/null 2>&1; then
@@ -33,8 +35,11 @@ if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
     echo "delete all resources in resources.ucp.dev"
     resources=$(kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name")
     for r in $resources; do
+        # Skip resources if they're either scope.* or listed in skip resource file
         if [[ $r == scope.local.* || $r == scope.aws.* || -z "$r" ]]; then
             echo "skip deletion: $r"
+        elif [ -n "$SKIP_RESOURCE_FILE" ] && [ -f "$SKIP_RESOURCE_FILE" ] && grep -q "$r" "$SKIP_RESOURCE_FILE"; then
+            echo "Skip deletion: $r (found in skip-resource-list $SKIP_RESOURCE_FILE)"    
         else
             echo "delete resource: $r"
             kubectl delete resources.ucp.dev $r -n radius-system --ignore-not-found=true
