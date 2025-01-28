@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2024 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package filesystem
 
 import (
-	"github.com/spf13/cobra"
+	"io/fs"
 )
 
-var bicepCmd = &cobra.Command{
-	Use:   "bicep",
-	Short: "Handle bicep-specific tasks for Radius",
-	Long:  `Handle bicep-specific tasks for Radius`,
-}
-
-func init() {
-	RootCmd.AddCommand(bicepCmd)
+// FileSystem is an interface that defines the methods needed to interact with a file system.
+type FileSystem interface {
+	Create(name string) (fs.File, error)
+	Exists(name string) bool
+	Open(name string) (fs.File, error)
+	ReadFile(name string) ([]byte, error)
+	Stat(name string) (fs.FileInfo, error)
+	WriteFile(name string, data []byte, perm fs.FileMode) error
 }

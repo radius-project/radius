@@ -54,8 +54,6 @@ func Test_GetProviderConfigs(t *testing.T) {
 func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 	resourceDeploymentClient := ResourceDeploymentClient{
 		RadiusResourceGroup: "testrg",
-		Client:              &sdkclients.ResourceDeploymentsClient{},
-		OperationsClient:    &sdkclients.ResourceDeploymentOperationsClient{},
 	}
 
 	options := clients.DeploymentOptions{

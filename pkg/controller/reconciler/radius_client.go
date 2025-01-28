@@ -1,5 +1,5 @@
 /*
-Copyright 2023.
+Copyright 2024 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,25 +18,15 @@ package reconciler
 
 import (
 	"context"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/sdk"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
-
-type Poller[T any] interface {
-	Done() bool
-	Poll(ctx context.Context) (*http.Response, error)
-	Result(ctx context.Context) (T, error)
-	ResumeToken() (string, error)
-}
-
-var _ Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse] = (*runtime.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse])(nil)
 
 type RadiusClient interface {
 	Applications(scope string) ApplicationClient
@@ -53,10 +43,10 @@ type ApplicationClient interface {
 }
 
 type ContainerClient interface {
-	BeginCreateOrUpdate(ctx context.Context, containerName string, resource corerpv20231001preview.ContainerResource, options *corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error)
-	BeginDelete(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientBeginDeleteOptions) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error)
-	ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error)
-	ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error)
+	BeginCreateOrUpdate(ctx context.Context, containerName string, resource corerpv20231001preview.ContainerResource, options *corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error)
+	BeginDelete(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientBeginDeleteOptions) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error)
+	ContinueCreateOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error)
+	ContinueDeleteOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error)
 	Get(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientGetOptions) (corerpv20231001preview.ContainersClientGetResponse, error)
 }
 
@@ -70,25 +60,25 @@ type ResourceGroupClient interface {
 }
 
 type ResourceClient interface {
-	BeginCreateOrUpdate(ctx context.Context, resourceName string, resource generated.GenericResource, options *generated.GenericResourcesClientBeginCreateOrUpdateOptions) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error)
-	BeginDelete(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (Poller[generated.GenericResourcesClientDeleteResponse], error)
-	ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error)
-	ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[generated.GenericResourcesClientDeleteResponse], error)
+	BeginCreateOrUpdate(ctx context.Context, resourceName string, resource generated.GenericResource, options *generated.GenericResourcesClientBeginCreateOrUpdateOptions) (sdkclients.Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error)
+	BeginDelete(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error)
+	ContinueCreateOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error)
+	ContinueDeleteOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error)
 	Get(ctx context.Context, resourceName string) (generated.GenericResourcesClientGetResponse, error)
 	ListSecrets(ctx context.Context, resourceName string) (generated.GenericResourcesClientListSecretsResponse, error)
 }
 
-type Client struct {
+type RadiusClientImpl struct {
 	connection sdk.Connection
 }
 
-func NewClient(connection sdk.Connection) *Client {
-	return &Client{connection: connection}
+func NewRadiusClient(connection sdk.Connection) *RadiusClientImpl {
+	return &RadiusClientImpl{connection: connection}
 }
 
-var _ RadiusClient = (*Client)(nil)
+var _ RadiusClient = (*RadiusClientImpl)(nil)
 
-func (c *Client) Applications(scope string) ApplicationClient {
+func (c *RadiusClientImpl) Applications(scope string) ApplicationClient {
 	ac, err := corerpv20231001preview.NewApplicationsClient(scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
@@ -97,7 +87,7 @@ func (c *Client) Applications(scope string) ApplicationClient {
 	return &ApplicationClientImpl{inner: ac}
 }
 
-func (c *Client) Containers(scope string) ContainerClient {
+func (c *RadiusClientImpl) Containers(scope string) ContainerClient {
 	cc, err := corerpv20231001preview.NewContainersClient(scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
@@ -106,7 +96,7 @@ func (c *Client) Containers(scope string) ContainerClient {
 	return &ContainerClientImpl{inner: cc}
 }
 
-func (c *Client) Environments(scope string) EnvironmentClient {
+func (c *RadiusClientImpl) Environments(scope string) EnvironmentClient {
 	ec, err := corerpv20231001preview.NewEnvironmentsClient(scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
@@ -115,7 +105,7 @@ func (c *Client) Environments(scope string) EnvironmentClient {
 	return &EnvironmentClientImpl{inner: ec}
 }
 
-func (c *Client) Groups(scope string) ResourceGroupClient {
+func (c *RadiusClientImpl) Groups(scope string) ResourceGroupClient {
 	rgc, err := ucpv20231001preview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
@@ -124,7 +114,7 @@ func (c *Client) Groups(scope string) ResourceGroupClient {
 	return &ResourceGroupClientImpl{inner: rgc, scope: scope}
 }
 
-func (c *Client) Resources(scope string, resourceType string) ResourceClient {
+func (c *RadiusClientImpl) Resources(scope string, resourceType string) ResourceClient {
 	gc, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
@@ -157,19 +147,19 @@ type ContainerClientImpl struct {
 	inner *corerpv20231001preview.ContainersClient
 }
 
-func (cc *ContainerClientImpl) BeginCreateOrUpdate(ctx context.Context, containerName string, resource corerpv20231001preview.ContainerResource, options *corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
+func (cc *ContainerClientImpl) BeginCreateOrUpdate(ctx context.Context, containerName string, resource corerpv20231001preview.ContainerResource, options *corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
 	return cc.inner.BeginCreateOrUpdate(ctx, containerName, resource, options)
 }
 
-func (cc *ContainerClientImpl) BeginDelete(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientBeginDeleteOptions) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
+func (cc *ContainerClientImpl) BeginDelete(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientBeginDeleteOptions) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
 	return cc.inner.BeginDelete(ctx, containerName, options)
 }
 
-func (cc *ContainerClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
+func (cc *ContainerClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
 	return cc.inner.BeginCreateOrUpdate(ctx, "", corerpv20231001preview.ContainerResource{}, &corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions{ResumeToken: resumeToken})
 }
 
-func (cc *ContainerClientImpl) ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
+func (cc *ContainerClientImpl) ContinueDeleteOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
 	return cc.inner.BeginDelete(ctx, "", &corerpv20231001preview.ContainersClientBeginDeleteOptions{ResumeToken: resumeToken})
 }
 
@@ -227,19 +217,19 @@ type ResourceClientImpl struct {
 	inner *generated.GenericResourcesClient
 }
 
-func (rc *ResourceClientImpl) BeginCreateOrUpdate(ctx context.Context, resourceName string, resource generated.GenericResource, options *generated.GenericResourcesClientBeginCreateOrUpdateOptions) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
+func (rc *ResourceClientImpl) BeginCreateOrUpdate(ctx context.Context, resourceName string, resource generated.GenericResource, options *generated.GenericResourcesClientBeginCreateOrUpdateOptions) (sdkclients.Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
 	return rc.inner.BeginCreateOrUpdate(ctx, resourceName, resource, options)
 }
 
-func (rc *ResourceClientImpl) BeginDelete(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
+func (rc *ResourceClientImpl) BeginDelete(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	return rc.inner.BeginDelete(ctx, resourceName, options)
 }
 
-func (rc *ResourceClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
+func (rc *ResourceClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
 	return rc.inner.BeginCreateOrUpdate(ctx, "", generated.GenericResource{}, &generated.GenericResourcesClientBeginCreateOrUpdateOptions{ResumeToken: resumeToken})
 }
 
-func (rc *ResourceClientImpl) ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
+func (rc *ResourceClientImpl) ContinueDeleteOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	return rc.inner.BeginDelete(ctx, "", &generated.GenericResourcesClientBeginDeleteOptions{ResumeToken: resumeToken})
 }
 

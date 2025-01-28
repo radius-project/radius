@@ -43,8 +43,8 @@ const (
 	recipeTestControllerDelayInterval = time.Millisecond * 100
 )
 
-func createEnvironment(radius *mockRadiusClient, name string) {
-	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", name, name)
+func createEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
+	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", resourceGroup, name)
 	radius.Update(func() {
 		radius.environments[id] = v20231001preview.EnvironmentResource{
 			ID:       to.Ptr(id),
@@ -188,6 +188,28 @@ func makeDeployment(name types.NamespacedName) *appsv1.Deployment {
 	}
 }
 
-func boolPtr(b bool) *bool {
-	return &b
+func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
+	return &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: ctrl.ObjectMeta{
+			Namespace: name.Namespace,
+			Name:      name.Name,
+		},
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template:       template,
+			ProviderConfig: providerConfig,
+			Parameters:     parameters,
+		},
+	}
+}
+
+func makeDeploymentResource(name types.NamespacedName, id string) *radappiov1alpha3.DeploymentResource {
+	return &radappiov1alpha3.DeploymentResource{
+		ObjectMeta: ctrl.ObjectMeta{
+			Namespace: name.Namespace,
+			Name:      name.Name,
+		},
+		Spec: radappiov1alpha3.DeploymentResourceSpec{
+			Id: id,
+		},
+	}
 }

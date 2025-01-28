@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -49,7 +51,7 @@ func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
 		Controller: crconfig.Controller{
-			SkipNameValidation: boolPtr(true),
+			SkipNameValidation: to.Ptr(true),
 		},
 
 		// Suppress metrics in tests to avoid conflicts.
@@ -90,7 +92,7 @@ func Test_RecipeReconciler_WithoutSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -132,7 +134,7 @@ func Test_RecipeReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -146,7 +148,7 @@ func Test_RecipeReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 	status = waitForRecipeStateReady(t, client, name)
 	require.Equal(t, "/planes/radius/local/resourcegroups/default-recipe-change-envapp/providers/Applications.Core/extenders/test-recipe-change-envapp", status.Resource)
 
-	createEnvironment(radius, "new-environment")
+	createEnvironment(radius, "new-environment", "new-environment")
 
 	// Now update the recipe to change the environment and application.
 	err = client.Get(ctx, name, recipe)
@@ -209,21 +211,21 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
 
 	// Complete the operation, but make it fail.
 	operation := status.Operation
-	radius.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		state.err = errors.New("oops")
+	radius.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		state.Err = errors.New("oops")
 
-		resource, ok := radius.resources[state.resourceID]
+		resource, ok := radius.resources[state.ResourceID]
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties["provisioningState"] = "Failed"
-		state.value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
+		state.Value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
 	})
 
 	// Recipe should (eventually) start a new provisioning operation
@@ -241,10 +243,10 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 
 	// Complete the operation, but make it fail.
 	operation = status.Operation
-	radius.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		state.err = errors.New("oops")
+	radius.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		state.Err = errors.New("oops")
 
-		resource, ok := radius.resources[state.resourceID]
+		resource, ok := radius.resources[state.ResourceID]
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties["provisioningState"] = "Failed"
@@ -275,21 +277,21 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
 
 	// Update the resource with computed values as part of completing the operation.
-	radius.CompleteOperation(status.Operation.ResumeToken, func(state *operationState) {
-		resource, ok := radius.resources[state.resourceID]
+	radius.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := radius.resources[state.ResourceID]
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties["a-value"] = "a"
 		resource.Properties["secrets"] = map[string]string{
 			"b-secret": "b",
 		}
-		state.value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
+		state.Value = generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: resource}
 	})
 
 	// Recipe will update after operation completes

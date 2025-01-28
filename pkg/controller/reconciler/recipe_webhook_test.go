@@ -54,7 +54,7 @@ func Test_ValidateRecipe_Type(t *testing.T) {
 	radius, client := setupWebhookTest(t)
 
 	// Environment is created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	t.Run("test recipe for invalid type", func(t *testing.T) {
 		recipeName := "test-recipe-invalidtype"

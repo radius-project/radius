@@ -1,0 +1,87 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.1-experimental",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
+    "_EXPERIMENTAL_FEATURES_ENABLED": ["Extensibility"],
+    "_generator": {
+      "name": "bicep",
+      "version": "0.32.4.45862",
+      "templateHash": "11540297415417574795"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "namespace": {
+      "type": "string"
+    },
+    "registry": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "imports": {
+    "Radius": {
+      "provider": "Radius",
+      "version": "latest"
+    }
+  },
+  "resources": {
+    "env": {
+      "import": "Radius",
+      "type": "Applications.Core/environments@2023-10-01-preview",
+      "properties": {
+        "name": "[format('{0}-env', parameters('name'))]",
+        "properties": {
+          "compute": {
+            "kind": "kubernetes",
+            "resourceId": "self",
+            "namespace": "[format('{0}-env', parameters('name'))]"
+          },
+          "recipes": {
+            "Applications.Datastores/redisCaches": {
+              "default": {
+                "templateKind": "bicep",
+                "templatePath": "[format('{0}/test/testrecipes/test-bicep-recipes/redis-recipe-value-backed:{1}', parameters('registry'), parameters('version'))]"
+              }
+            }
+          }
+        }
+      }
+    },
+    "app": {
+      "import": "Radius",
+      "type": "Applications.Core/applications@2023-10-01-preview",
+      "properties": {
+        "name": "[format('{0}-app', parameters('name'))]",
+        "properties": {
+          "environment": "[reference('env').id]",
+          "extensions": [
+            {
+              "kind": "kubernetesNamespace",
+              "namespace": "[parameters('namespace')]"
+            }
+          ]
+        }
+      },
+      "dependsOn": ["env"]
+    },
+    "recipe": {
+      "import": "Radius",
+      "type": "Applications.Datastores/redisCaches@2023-10-01-preview",
+      "properties": {
+        "name": "[format('{0}-recipe', parameters('name'))]",
+        "properties": {
+          "application": "[reference('app').id]",
+          "environment": "[reference('env').id]"
+        }
+      },
+      "dependsOn": ["app", "env"]
+    }
+  }
+}

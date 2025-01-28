@@ -45,7 +45,7 @@ type DeploymentProperties struct {
 	Template any `json:"template,omitempty"`
 	// TemplateLink - The URI of the template. Use either the templateLink property or the template property, but not both.
 	TemplateLink *armresources.TemplateLink `json:"templateLink,omitempty"`
-	//ProviderConfig specifies the scope for resources
+	// ProviderConfig specifies the scope for resources
 	ProviderConfig any `json:"providerconfig,omitempty"`
 	// Parameters - Name and value pairs that define the deployment parameters for the template. You use this element when you want to provide the parameter values directly in the request rather than link to an existing parameter file. Use either the parametersLink property or the parameters property, but not both. It can be a JObject or a well formed JSON string.
 	Parameters any `json:"parameters,omitempty"`
@@ -94,15 +94,24 @@ type ProviderConfig struct {
 
 // ResourceDeploymentsClient is a deployments client for Azure Resource Manager.
 // It is used by both Azure and UCP clients.
-type ResourceDeploymentsClient struct {
+type ResourceDeploymentsClient interface {
+	CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (Poller[ClientCreateOrUpdateResponse], error)
+	ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[ClientCreateOrUpdateResponse], error)
+	Delete(ctx context.Context, resourceID, apiVersion string) (Poller[ClientDeleteResponse], error)
+	ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[ClientDeleteResponse], error)
+}
+
+type ResourceDeploymentsClientImpl struct {
 	client   *armresources.Client
 	pipeline *runtime.Pipeline
 	baseURI  string
 }
 
+var _ ResourceDeploymentsClient = (*ResourceDeploymentsClientImpl)(nil)
+
 // NewResourceDeploymentsClient creates a new ResourceDeploymentsClient with the provided options and returns an error if
 // the options are invalid.
-func NewResourceDeploymentsClient(options *Options) (*ResourceDeploymentsClient, error) {
+func NewResourceDeploymentsClient(options *Options) (ResourceDeploymentsClient, error) {
 	if options.BaseURI == "" {
 		return nil, errors.New("baseURI cannot be empty")
 	}
@@ -118,7 +127,7 @@ func NewResourceDeploymentsClient(options *Options) (*ResourceDeploymentsClient,
 		return nil, err
 	}
 
-	return &ResourceDeploymentsClient{
+	return &ResourceDeploymentsClientImpl{
 		client:   client,
 		pipeline: &pipeline,
 		baseURI:  options.BaseURI,
@@ -130,9 +139,14 @@ type ClientCreateOrUpdateResponse struct {
 	armresources.DeploymentExtended
 }
 
+// ClientDeleteResponse contains the response from method Client.Delete.
+type ClientDeleteResponse struct {
+	armresources.DeploymentExtended
+}
+
 // CreateOrUpdate creates a request to create or update a deployment and returns a poller to
 // track the progress of the operation.
-func (client *ResourceDeploymentsClient) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
+func (client *ResourceDeploymentsClientImpl) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (Poller[ClientCreateOrUpdateResponse], error) {
 	if !strings.HasPrefix(resourceID, "/") {
 		return nil, fmt.Errorf("error creating or updating a deployment: resourceID must start with a slash")
 	}
@@ -159,7 +173,7 @@ func (client *ResourceDeploymentsClient) CreateOrUpdate(ctx context.Context, par
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ResourceDeploymentsClient) createOrUpdateCreateRequest(ctx context.Context, resourceID, apiVersion string, parameters Deployment) (*policy.Request, error) {
+func (client *ResourceDeploymentsClientImpl) createOrUpdateCreateRequest(ctx context.Context, resourceID, apiVersion string, parameters Deployment) (*policy.Request, error) {
 	if resourceID == "" {
 		return nil, errors.New("resourceID cannot be empty")
 	}
@@ -174,4 +188,60 @@ func (client *ResourceDeploymentsClient) createOrUpdateCreateRequest(ctx context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, parameters)
+}
+
+// ContinueCreateOperation continues a create operation given a resume token.
+func (client *ResourceDeploymentsClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[ClientCreateOrUpdateResponse], error) {
+	return runtime.NewPollerFromResumeToken[ClientCreateOrUpdateResponse](resumeToken, *client.pipeline, nil)
+}
+
+// Delete creates a request to delete a resource and returns a poller to
+// track the progress of the operation.
+func (client *ResourceDeploymentsClientImpl) Delete(ctx context.Context, resourceID, apiVersion string) (Poller[ClientDeleteResponse], error) {
+	if !strings.HasPrefix(resourceID, "/") {
+		return nil, fmt.Errorf("error creating or updating a deployment: resourceID must start with a slash")
+	}
+
+	_, err := resources.ParseResource(resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resourceID: %v", resourceID)
+	}
+
+	req, err := client.deleteCreateRequest(ctx, resourceID, apiVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.pipeline.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusNoContent, http.StatusAccepted, http.StatusNotFound) {
+		return nil, runtime.NewResponseError(resp)
+	}
+
+	return runtime.NewPoller[ClientDeleteResponse](resp, *client.pipeline, nil)
+}
+
+// deleteCreateRequest creates the Delete request.
+func (client *ResourceDeploymentsClientImpl) deleteCreateRequest(ctx context.Context, resourceID, apiVersion string) (*policy.Request, error) {
+	if resourceID == "" {
+		return nil, errors.New("resourceID cannot be empty")
+	}
+
+	urlPath := DeploymentEngineURL(client.baseURI, resourceID)
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, urlPath)
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", apiVersion)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
+// ContinueCreateOperation continues a create operation given a resume token.
+func (client *ResourceDeploymentsClientImpl) ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[ClientDeleteResponse], error) {
+	return runtime.NewPollerFromResumeToken[ClientDeleteResponse](resumeToken, *client.pipeline, nil)
 }
