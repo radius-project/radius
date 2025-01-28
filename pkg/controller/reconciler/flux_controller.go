@@ -32,16 +32,20 @@ const (
 	radiusConfigFileName              = "radius-config.yaml"
 )
 
-// GitRepositoryWatcher watches GitRepository objects for revision changes
-type GitRepositoryWatcher struct {
+// FluxController watches GitRepository objects for revision changes
+// and processes the artifacts fetched from the Source Controller.
+// It reads the git repository configuration, builds the bicep files.
+// specified in the configuration, and creates DeploymentTemplate objects
+// on the cluster.
+type FluxController struct {
 	client.Client
 	filesystem      filesystem.FileSystem
-	radiusConfig    *RadiusConfig
 	artifactFetcher *fetch.ArchiveFetcher
 	HttpRetry       int
 }
 
 // RadiusConfig is the configuration for Radius in a Git repository
+// TODO (willsmith): adapt this to .rad/config.yaml format
 type RadiusConfig struct {
 	RadiusResourceGroup string       `yaml:"radiusResourceGroup,omitempty"`
 	AWSScope            string       `yaml:"awsScope,omitempty"`
@@ -65,7 +69,7 @@ func deploymentTemplateRepositoryIndexer(o client.Object) []string {
 	return []string{deploymentTemplate.Spec.Repository}
 }
 
-func (r *GitRepositoryWatcher) SetupWithManager(mgr ctrl.Manager) error {
+func (r *FluxController) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &radappiov1alpha3.DeploymentTemplate{}, deploymentTemplateRepositoryField, deploymentTemplateRepositoryIndexer); err != nil {
 		return err
 	}
@@ -87,8 +91,8 @@ func (r *GitRepositoryWatcher) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
 // +kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories/status,verbs=get
 
-func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "GitRepositoryWatcher", "name", req.Name, "namespace", req.Namespace)
+func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "FluxController", "name", req.Name, "namespace", req.Namespace)
 	ctx = logr.NewContext(ctx, logger)
 
 	// Get the GitRepository object from the cluster
@@ -142,14 +146,14 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Parse the radius-config.yaml file
-	r.radiusConfig, err = r.parseAndValidateRadiusConfigFromFile(tmpDir, radiusConfigFileName)
+	radiusConfig, err := r.parseAndValidateRadiusConfigFromFile(tmpDir, radiusConfigFileName)
 	if err != nil {
 		logger.Error(err, "failed to parse radius-config.yaml")
 		return ctrl.Result{}, err
 	}
 
 	// Run bicep build on all bicep files specified in radius-config.yaml.
-	for _, bicepFile := range r.radiusConfig.BicepBuild {
+	for _, bicepFile := range radiusConfig.BicepBuild {
 		fileName := bicepFile.Name
 		paramFileName := bicepFile.Params
 		namespace := bicepFile.Namespace
@@ -183,7 +187,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// Generate the provider config from the radius-config.yaml file
-		providerConfig := r.generateProviderConfig()
+		providerConfig := sdkclients.GenerateProviderConfig(radiusConfig.RadiusResourceGroup, radiusConfig.AWSScope, radiusConfig.AzureScope)
 		marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
 		if err != nil {
 			return ctrl.Result{}, err
@@ -226,7 +230,7 @@ func (r *GitRepositoryWatcher) Reconcile(ctx context.Context, req ctrl.Request) 
 	return ctrl.Result{}, nil
 }
 
-func (r *GitRepositoryWatcher) runBicepBuild(ctx context.Context, filepath, filename string) (armJSON string, err error) {
+func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename string) (armJSON string, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	logger.Info("Running bicep build on " + path.Join(filepath, filename))
@@ -253,7 +257,7 @@ func (r *GitRepositoryWatcher) runBicepBuild(ctx context.Context, filepath, file
 	return string(contents), nil
 }
 
-func (r *GitRepositoryWatcher) runBicepBuildParams(ctx context.Context, filepath, filename string) (map[string]string, error) {
+func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, filename string) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	logger.Info("Running bicep build-params on " + filename)
@@ -290,7 +294,7 @@ func (r *GitRepositoryWatcher) runBicepBuildParams(ctx context.Context, filepath
 	return nil, nil
 }
 
-func (r *GitRepositoryWatcher) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string) {
+func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	deploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
@@ -353,7 +357,7 @@ func (r *GitRepositoryWatcher) createOrUpdateDeploymentTemplate(ctx context.Cont
 // parseAndValidateRadiusConfigFromFile reads the radius-config.yaml file from the given directory
 // and parses it into a RadiusConfig struct. It then validates the Radius configuration in the
 // radius-config.yaml file.
-func (r *GitRepositoryWatcher) parseAndValidateRadiusConfigFromFile(dir, configFileName string) (*RadiusConfig, error) {
+func (r *FluxController) parseAndValidateRadiusConfigFromFile(dir, configFileName string) (*RadiusConfig, error) {
 	radiusConfig := RadiusConfig{}
 
 	// Read the file contents
@@ -408,45 +412,4 @@ func (r *GitRepositoryWatcher) parseAndValidateRadiusConfigFromFile(dir, configF
 		}
 	}
 	return &radiusConfig, nil
-}
-
-// generateProviderConfig generates a ProviderConfig object based on the given scopes.
-func (r *GitRepositoryWatcher) generateProviderConfig() (providerConfig sdkclients.ProviderConfig) {
-	providerConfig = sdkclients.ProviderConfig{}
-	if r.radiusConfig.AWSScope != "" {
-		providerConfig.AWS = &sdkclients.AWS{
-			Type: "aws",
-			Value: sdkclients.Value{
-				Scope: r.radiusConfig.AWSScope,
-			},
-		}
-	}
-	if r.radiusConfig.AzureScope != "" {
-		providerConfig.Az = &sdkclients.Az{
-			Type: "azure",
-			Value: sdkclients.Value{
-				Scope: r.radiusConfig.AzureScope,
-			},
-		}
-	}
-	if r.radiusConfig.RadiusResourceGroup != "" {
-		providerConfig.Radius = &sdkclients.Radius{
-			Type: "radius",
-			Value: sdkclients.Value{
-				Scope: constructRadiusDeploymentScope(r.radiusConfig.RadiusResourceGroup),
-			},
-		}
-		providerConfig.Deployments = &sdkclients.Deployments{
-			Type: "Microsoft.Resources",
-			Value: sdkclients.Value{
-				Scope: constructRadiusDeploymentScope(r.radiusConfig.RadiusResourceGroup),
-			},
-		}
-	}
-
-	return providerConfig
-}
-
-func constructRadiusDeploymentScope(group string) string {
-	return fmt.Sprintf("/planes/radius/local/resourceGroups/%s", group)
 }

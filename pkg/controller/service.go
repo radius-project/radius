@@ -141,12 +141,12 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentResource", err)
 	}
-	err = (&reconciler.GitRepositoryWatcher{
+	err = (&reconciler.FluxController{
 		Client:    mgr.GetClient(),
 		HttpRetry: reconciler.GitRepositoryHttpRetryCount,
 	}).SetupWithManager(mgr)
 	if err != nil {
-		return fmt.Errorf("failed to setup %s controller: %w", "GitRepositoryWatcher", err)
+		return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)
 	}
 
 	if s.TLSCertDir == "" {
