@@ -404,8 +404,9 @@ jobs:
           rad install kubernetes --reinstall \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
             --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},dynamicrp.image=${{ env.CONTAINER_REGISTRY }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
-      
-          echo "*** Verify manifests are registered ***"
+      - name: Verify manifests are registered
+        if: env.SKIP_BUILD != 'true'
+        run: |
           rm -f registermanifest_logs.txt
           # Find the pod with container "ucp"
           POD_NAME=$(
@@ -448,6 +449,16 @@ jobs:
             echo "Manifests not registered after 3 minutes."
             exit 1
           fi
+      - name: Create a list of resources not to be deleted
+        if: env.SKIP_BUILD != 'true'
+        run: |
+          kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
+      - name: Save list of resources not to be deleted
+        if: env.SKIP_BUILD != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: skip-delete-resources-list.txt
+          key: skip-delete-resources-list-file
       - name: Configure Radius test workspace
         run: |
           set -x
@@ -553,10 +564,23 @@ jobs:
             --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes --verbose
+      - name: Restore skip-delete-resources-list
+        if: always()
+        uses: actions/cache/restore@v4
+        with:
+          path: skip-delete-resources-list.txt
+          key: skip-delete-resources-list-file
       - name: Clean up cluster
         if: always()
         timeout-minutes: 60
-        run: ./.github/scripts/cleanup-long-running-cluster.sh
+        run: |
+          # Report if skip-delete-resources-list.txt is missing or empty
+          if [ ! -s skip-delete-resources-list.txt ]; then
+            echo "skip-delete-resources-list.txt does not exist or is empty. Proceeding without skip list..."
+          else
+            echo "Found skip-delete-resources-list.txt. Cleaning up resources..."
+          fi
+          ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
   report-failure:
     name: Report test failure
     needs: [build, tests]
