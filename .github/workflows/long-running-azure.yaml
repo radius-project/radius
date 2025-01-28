@@ -379,10 +379,23 @@ jobs:
             --name ${{ env.AKS_CLUSTER_NAME }} --admin
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+      - name: Restore skip-delete-resources-list
+        if: always()
+        uses: actions/cache/restore@v4
+        with:
+          path: skip-delete-resources-list.txt
+          key: skip-delete-resources-list-file    
       - name: Clean up cluster
         if: always()
         timeout-minutes: 60
-        run: ./.github/scripts/cleanup-long-running-cluster.sh
+        run: |
+          if [ "${{ env.SKIP_BUILD }}" != "true" ] ; then
+            echo "Running cleanup without skip delete resource list. This will delete all resources."
+            ./.github/scripts/cleanup-long-running-cluster.sh
+          else
+            echo "Running cleanup with skip-delete-resources-list.txt. Built-In resources will not be deleted."
+            ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
+          fi
       - name: Download Bicep
         run: |
           chmod +x ./bin/rad
