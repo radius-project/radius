@@ -24,7 +24,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -49,7 +48,7 @@ const (
 
 type ResourceDeploymentClient struct {
 	RadiusResourceGroup string
-	Client              *sdkclients.ResourceDeploymentsClient
+	Client              sdkclients.ResourceDeploymentsClient
 	OperationsClient    *sdkclients.ResourceDeploymentOperationsClient
 	Tags                map[string]*string
 }
@@ -94,7 +93,7 @@ func (dc *ResourceDeploymentClient) Deploy(ctx context.Context, options clients.
 	return summary, nil
 }
 
-func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*runtime.Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
+func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (sdkclients.Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
 	var resourceId string
 	scopes := []ucpresources.ScopeSegment{
 		{
@@ -197,8 +196,8 @@ func (dc *ResourceDeploymentClient) createSummary(deployment *armresources.Deplo
 	return clients.DeploymentResult{Resources: resources, Outputs: outputs}, nil
 }
 
-func (dc *ResourceDeploymentClient) waitForCompletion(ctx context.Context, poller *runtime.Poller[sdkclients.ClientCreateOrUpdateResponse]) (clients.DeploymentResult, error) {
-	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{Frequency: deploymentPollInterval})
+func (dc *ResourceDeploymentClient) waitForCompletion(ctx context.Context, poller sdkclients.Poller[sdkclients.ClientCreateOrUpdateResponse]) (clients.DeploymentResult, error) {
+	resp, err := poller.PollUntilDone(ctx, &sdkclients.PollUntilDoneOptions{Frequency: deploymentPollInterval})
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}

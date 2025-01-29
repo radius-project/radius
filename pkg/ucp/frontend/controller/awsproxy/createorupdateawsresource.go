@@ -87,7 +87,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
-	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
+	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationRegionOption(region)}
 
 	// Create and update work differently for AWS - we need to know if the resource
 	// we're working on exists already.
@@ -125,7 +125,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	if existing {
 		// Get resource type schema
-
 		describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 			Type:     types.RegistryTypeResource,
 			TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),

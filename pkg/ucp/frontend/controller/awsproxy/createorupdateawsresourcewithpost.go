@@ -76,7 +76,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
-	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
+	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationRegionOption(region)}
 
 	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,

@@ -527,7 +527,6 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Deployment with missing parameters", func(t *testing.T) {
-		//t.Skip()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 

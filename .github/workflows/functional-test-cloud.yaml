@@ -758,6 +758,13 @@ jobs:
             }
           }
           EOF
+      - name: Restore Bicep artifacts before running functional tests
+      # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension and 1 that uses the AWS extension so we can restore both Bicep artifacts before the tests start
+        run: |
+          # Restore Radius Bicep types
+          bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
+          # Restore AWS Bicep types 
+          bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep --force
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.

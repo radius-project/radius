@@ -44,7 +44,7 @@ type RecipeControllerConfig struct {
 	ConfigLoader configloader.ConfigurationLoader
 
 	// DeploymentEngineClient is the client for interacting with the deployment engine.
-	DeploymentEngineClient *clients.ResourceDeploymentsClient
+	DeploymentEngineClient clients.ResourceDeploymentsClient
 
 	// Engine is the engine for executing recipes.
 	Engine engine.Engine

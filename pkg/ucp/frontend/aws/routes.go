@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/retry"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
@@ -225,7 +226,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetImperative},
 			ResourceType:  OperationTypeAWSResource,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewGetAWSResourceWithPost(opt, m.AWSClients)
+				return awsproxy_ctrl.NewGetAWSResourceWithPost(opt, m.AWSClients, retry.NewDefaultRetryer())
 			},
 		},
 		{

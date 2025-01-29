@@ -63,7 +63,7 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
 		Controller: crconfig.Controller{
-			SkipNameValidation: boolPtr(true),
+			SkipNameValidation: to.Ptr(true),
 		},
 
 		// Suppress metrics in tests to avoid conflicts.
@@ -108,7 +108,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenDeploymentDeleted(t *testing.T)
 	require.NoError(t, err)
 
 	// Deployment will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Deployment will be waiting for container to complete deployment.
 	annotations := waitForStateUpdating(t, client, name)
@@ -154,7 +154,7 @@ func Test_DeploymentReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 	require.NoError(t, err)
 
 	// Deployment will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Deployment will be waiting for container to complete deployment.
 	annotations := waitForStateUpdating(t, client, name)
@@ -167,7 +167,7 @@ func Test_DeploymentReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 	annotations = waitForStateReady(t, client, name)
 	require.Equal(t, "/planes/radius/local/resourcegroups/default-deployment-change-envapp/providers/Applications.Core/containers/test-deployment-change-envapp", annotations.Status.Container)
 
-	createEnvironment(radius, "new-environment")
+	createEnvironment(radius, "new-environment", "new-environment")
 
 	// Now update the deployment to change the environment and application.
 	err = client.Get(ctx, name, deployment)
@@ -228,7 +228,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenRadiusDisabled(t *testing.T) {
 	require.NoError(t, err)
 
 	// Deployment will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Deployment will be waiting for container to complete deployment.
 	annotations := waitForStateUpdating(t, client, name)
@@ -283,7 +283,7 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 	require.NoError(t, err)
 
 	// Deployment will be waiting for environment to be created.
-	createEnvironment(radius, "default")
+	createEnvironment(radius, "default", "default")
 
 	// Deployment will be waiting for recipe resources to be created
 	_ = waitForStateWaiting(t, client, name)
