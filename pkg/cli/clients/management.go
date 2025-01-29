@@ -18,6 +18,7 @@ package clients
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -74,8 +75,10 @@ var (
 	}
 )
 
+// ExcludedResourceTypesList is a list of resource types that should be excluded from the list of application resources
+// to be displayed to the user.
 var (
-	ExcludeResourceTypesList = []string{
+	ExcludedResourceTypesList = []string{
 		"Microsoft.Resources/deployments",
 		"Applications.Core/applications",
 		"Applications.Core/environments",
@@ -773,20 +776,22 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 	return response.ResourceProviderSummary, nil
 }
 
-// ListAllResourceTypes lists all resource types in all resource providers in the configured scope.
+// ListAllResourceTypesNames lists all resource types in all resource providers in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
 	if err != nil {
-		return []string{}, err
+		return nil, fmt.Errorf("failed to list resource provider summaries: %v", err)
 	}
 
 	resourceTypeNames := []string{}
 	for _, summary := range resourceProviderSummaries {
 
 		resourceTypes := summary.ResourceTypes
-		for name, _ := range resourceTypes {
-			if !inStringSlice(*summary.Name+"/"+name, ExcludeResourceTypesList) {
-				resourceTypeNames = append(resourceTypeNames, *summary.Name+"/"+name)
+		if summary.Name != nil && resourceTypes != nil {
+			for name, _ := range resourceTypes {
+				if !inStringSlice(*summary.Name+"/"+name, ExcludedResourceTypesList) {
+					resourceTypeNames = append(resourceTypeNames, *summary.Name+"/"+name)
+				}
 			}
 		}
 	}

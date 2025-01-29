@@ -124,6 +124,16 @@ func Test_Resource(t *testing.T) {
 		}
 	}
 
+	createResourceProviderClient := func(wrapped resourceProviderClient) *UCPApplicationsManagementClient {
+		return &UCPApplicationsManagementClient{
+			RootScope: testScope,
+			resourceProviderClientFactory: func() (resourceProviderClient, error) {
+				return wrapped, nil
+			},
+			capture: testCapture,
+		}
+	}
+
 	testResourceType := "Applications.Test/testResource"
 	testResourceName := "test-resource-name"
 	testResourceID := testScope + "/providers/" + testResourceType + "/" + testResourceName
@@ -203,6 +213,17 @@ func Test_Resource(t *testing.T) {
 		resources, err := client.ListResourcesOfType(context.Background(), testResourceType)
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
+	})
+
+	t.Run("ListAllResourceTypesNames", func(t *testing.T) {
+		mockResourceProviderClient := NewMockresourceProviderClient(gomock.NewController(t))
+
+		mockResourceProviderClient.EXPECT().NewListProviderSummariesPager("local", gomock.Any()).Return(pager(resourceProviderSummaryPages)).AnyTimes()
+		client := createResourceProviderClient(mockResourceProviderClient)
+
+		resourceTypes, err := client.ListAllResourceTypesNames(context.Background(), "local")
+		require.NoError(t, err)
+		require.Equal(t, []string{"Applications.Test1/resourceType1", "Applications.Test2/resourceType2", "Applications.Test3/resourceType3"}, resourceTypes)
 	})
 
 	t.Run("ListResourcesOfTypeInApplication", func(t *testing.T) {
@@ -1024,7 +1045,6 @@ func Test_ResourceProvider(t *testing.T) {
 		mock.EXPECT().
 			NewListProviderSummariesPager(gomock.Any(), gomock.Any()).
 			Return(pager(resourceProviderSummaryPages))
-
 		expected := []ucp.ResourceProviderSummary{*resourceProviderSummaryPages[0].Value[0], *resourceProviderSummaryPages[0].Value[1], *resourceProviderSummaryPages[1].Value[0]}
 
 		resourceProviderSummaries, err := client.ListResourceProviderSummaries(context.Background(), "local")
