@@ -23,13 +23,13 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/pkg/sdk"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -141,9 +141,11 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentResource", err)
 	}
+
 	err = (&reconciler.FluxController{
-		Client:    mgr.GetClient(),
-		HttpRetry: reconciler.GitRepositoryHttpRetryCount,
+		Client:         mgr.GetClient(),
+		ArchiveFetcher: reconciler.NewArchiveFetcher(),
+		Filesystem:     filesystem.NewOSFS(),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)

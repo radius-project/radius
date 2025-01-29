@@ -20,8 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/fluxcd/pkg/http/fetch"
-	"github.com/fluxcd/pkg/tar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
@@ -39,9 +37,8 @@ const (
 // on the cluster.
 type FluxController struct {
 	client.Client
-	filesystem      filesystem.FileSystem
-	artifactFetcher *fetch.ArchiveFetcher
-	HttpRetry       int
+	Filesystem     filesystem.FileSystem
+	ArchiveFetcher ArchiveFetcher
 }
 
 // RadiusConfig is the configuration for Radius in a Git repository
@@ -73,15 +70,6 @@ func (r *FluxController) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &radappiov1alpha3.DeploymentTemplate{}, deploymentTemplateRepositoryField, deploymentTemplateRepositoryIndexer); err != nil {
 		return err
 	}
-
-	r.artifactFetcher = fetch.New(
-		fetch.WithRetries(r.HttpRetry),
-		fetch.WithMaxDownloadSize(tar.UnlimitedUntarSize),
-		fetch.WithUntar(tar.WithMaxUntarSize(tar.UnlimitedUntarSize)),
-		fetch.WithLogger(nil),
-	)
-
-	r.filesystem = filesystem.NewOSFS()
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sourcev1.GitRepository{}, builder.WithPredicates(GitRepositoryRevisionChangePredicate{})).
@@ -125,7 +113,7 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	// Fetch the artifact from the Source Controller
 	logger.Info("Fetching artifact", "url", artifact.URL)
-	if err := r.artifactFetcher.Fetch(artifact.URL, artifact.Digest, tmpDir); err != nil {
+	if err := r.ArchiveFetcher.Fetch(artifact.URL, artifact.Digest, tmpDir); err != nil {
 		logger.Error(err, "unable to fetch artifact")
 		return ctrl.Result{}, err
 	}
@@ -361,7 +349,7 @@ func (r *FluxController) parseAndValidateRadiusConfigFromFile(dir, configFileNam
 	radiusConfig := RadiusConfig{}
 
 	// Read the file contents
-	b, err := r.filesystem.ReadFile(path.Join(dir, configFileName))
+	b, err := r.Filesystem.ReadFile(path.Join(dir, configFileName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read radius-config.yaml, error: %w", err)
 	}
