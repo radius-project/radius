@@ -93,6 +93,20 @@ var (
 							"east": {},
 						},
 					},
+					{
+						Name: to.Ptr("Applications.Core"),
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							"environments": {
+								APIVersions: map[string]map[string]any{
+									"2025-01-01": {},
+								},
+								DefaultAPIVersion: to.Ptr("2025-01-01"),
+							},
+						},
+						Locations: map[string]map[string]any{
+							"east": {},
+						},
+					},
 				},
 				NextLink: to.Ptr("1"),
 			},
@@ -111,7 +125,7 @@ func Test_Resource(t *testing.T) {
 		}
 	}
 
-	createResourceAndRPClient := func(wrapped genericResourceClient, wrappedRP resourceProviderClient) *UCPApplicationsManagementClient {
+	createResourceAndResourceProviderClient := func(wrapped genericResourceClient, wrappedRP resourceProviderClient) *UCPApplicationsManagementClient {
 		return &UCPApplicationsManagementClient{
 			RootScope: testScope,
 			genericResourceClientFactory: func(scope string, resourceType string) (genericResourceClient, error) {
@@ -259,8 +273,7 @@ func Test_Resource(t *testing.T) {
 	t.Run("ListResourcesInApplication", func(t *testing.T) {
 		mockResourceClient := NewMockgenericResourceClient(gomock.NewController(t))
 		mockResourceProviderClient := NewMockresourceProviderClient(gomock.NewController(t))
-
-		client := createResourceAndRPClient(mockResourceClient, mockResourceProviderClient)
+		client := createResourceAndResourceProviderClient(mockResourceClient, mockResourceProviderClient)
 		mockResourceProviderClient.EXPECT().NewListProviderSummariesPager("local", gomock.Any()).Return(pager(resourceProviderSummaryPages))
 		mockResourceClient.EXPECT().
 			NewListByRootScopePager(gomock.Any()).
@@ -277,7 +290,7 @@ func Test_Resource(t *testing.T) {
 		mockResourceClient := NewMockgenericResourceClient(gomock.NewController(t))
 		mockResourceProviderClient := NewMockresourceProviderClient(gomock.NewController(t))
 
-		client := createResourceAndRPClient(mockResourceClient, mockResourceProviderClient)
+		client := createResourceAndResourceProviderClient(mockResourceClient, mockResourceProviderClient)
 
 		mockResourceProviderClient.EXPECT().NewListProviderSummariesPager("local", gomock.Any()).Return(pager(resourceProviderSummaryPages))
 		mockResourceClient.EXPECT().
@@ -1045,7 +1058,7 @@ func Test_ResourceProvider(t *testing.T) {
 		mock.EXPECT().
 			NewListProviderSummariesPager(gomock.Any(), gomock.Any()).
 			Return(pager(resourceProviderSummaryPages))
-		expected := []ucp.ResourceProviderSummary{*resourceProviderSummaryPages[0].Value[0], *resourceProviderSummaryPages[0].Value[1], *resourceProviderSummaryPages[1].Value[0]}
+		expected := []ucp.ResourceProviderSummary{*resourceProviderSummaryPages[0].Value[0], *resourceProviderSummaryPages[0].Value[1], *resourceProviderSummaryPages[1].Value[0], *resourceProviderSummaryPages[1].Value[1]}
 
 		resourceProviderSummaries, err := client.ListResourceProviderSummaries(context.Background(), "local")
 		require.NoError(t, err)
