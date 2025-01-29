@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -30,13 +31,6 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	cntr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
-	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
-	gtwy_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
-	sstr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
-	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
-	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
-	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
@@ -57,23 +51,6 @@ type UCPApplicationsManagementClient struct {
 }
 
 var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
-
-var (
-	ResourceTypesList = []string{
-		ds_ctrl.MongoDatabasesResourceType,
-		msg_ctrl.RabbitMQQueuesResourceType,
-		ds_ctrl.RedisCachesResourceType,
-		ds_ctrl.SqlDatabasesResourceType,
-		dapr_ctrl.DaprStateStoresResourceType,
-		dapr_ctrl.DaprSecretStoresResourceType,
-		dapr_ctrl.DaprPubSubBrokersResourceType,
-		dapr_ctrl.DaprConfigurationStoresResourceType,
-		ext_ctrl.ResourceTypeName,
-		gtwy_ctrl.ResourceTypeName,
-		cntr_ctrl.ResourceTypeName,
-		sstr_ctrl.ResourceTypeName,
-	}
-)
 
 // ExcludedResourceTypesList is a list of resource types that should be excluded from the list of application resources
 // to be displayed to the user.
@@ -782,16 +759,13 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 	if err != nil {
 		return nil, fmt.Errorf("failed to list resource provider summaries: %v", err)
 	}
-
 	resourceTypeNames := []string{}
 	for _, summary := range resourceProviderSummaries {
-
-		resourceTypes := summary.ResourceTypes
-		if summary.Name != nil && resourceTypes != nil {
-			for name, _ := range resourceTypes {
-				if !inStringSlice(*summary.Name+"/"+name, ExcludedResourceTypesList) {
-					resourceTypeNames = append(resourceTypeNames, *summary.Name+"/"+name)
-				}
+		resourceProvider := *summary.Name
+		for typeName, _ := range summary.ResourceTypes {
+			fullResourceName := resourceProvider + "/" + typeName
+			if !slices.Contains(ExcludedResourceTypesList, fullResourceName) {
+				resourceTypeNames = append(resourceTypeNames, fullResourceName)
 			}
 		}
 	}
@@ -806,13 +780,13 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx conte
 		return nil, err
 	}
 
-	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
 	if err != nil {
 		return nil, err
 	}
 
 	results := []generated.GenericResource{}
-	for _, resourceType := range ResourceTypesList {
+	for _, resourceType := range resourceTypesList {
 		resources, err := amc.ListResourcesOfTypeInApplication(ctx, applicationID, resourceType)
 		if err != nil {
 			return nil, err
@@ -832,12 +806,12 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 	}
 
 	results := []generated.GenericResource{}
-	ResourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
 	if err != nil {
 		return nil, err
 	}
 
-	for _, resourceType := range ResourceTypesList {
+	for _, resourceType := range resourceTypesList {
 		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
 		if err != nil {
 			return nil, err
