@@ -110,7 +110,7 @@ func Test_RequireFullyQualifiedResourceTypeAndName(t *testing.T) {
 			name:    "No arguments",
 			args:    []string{},
 			want:    []string{},
-			wantErr: errors.New("no fully qualified resource type and name provided"),
+			wantErr: errors.New("no resource type or name provided"),
 		},
 		{
 			name:    "Fully-qualified resource type and name",
@@ -137,4 +137,3 @@ func Test_RequireFullyQualifiedResourceTypeAndName(t *testing.T) {
 		})
 	}
 }
-
