@@ -124,13 +124,13 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         &workspaces.Workspace{},
-				ResourceType:      "Applications.Core/containers",
-				ResourceName:      "test-container",
-				Format:            "table",
-				Confirm:           true,
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                         outputSink,
+				Workspace:                      &workspaces.Workspace{},
+				FullyQualifiedResourceTypeName: "Applications.Core/containers",
+				ResourceName:                   "test-container",
+				Format:                         "table",
+				Confirm:                        true,
 			}
 
 			err := runner.Run(context.Background())
@@ -166,13 +166,13 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         &workspaces.Workspace{},
-				ResourceType:      "Applications.Core/containers",
-				ResourceName:      "test-container",
-				Format:            "table",
-				Confirm:           true,
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                         outputSink,
+				Workspace:                      &workspaces.Workspace{},
+				FullyQualifiedResourceTypeName: "Applications.Core/containers",
+				ResourceName:                   "test-container",
+				Format:                         "table",
+				Confirm:                        true,
 			}
 
 			err := runner.Run(context.Background())
@@ -221,13 +221,13 @@ func Test_Run(t *testing.T) {
 			}
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         workspace,
-				ResourceType:      "Applications.Core/containers",
-				ResourceName:      "test-container",
-				Format:            "table",
-				InputPrompter:     promptMock,
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                         outputSink,
+				Workspace:                      workspace,
+				FullyQualifiedResourceTypeName: "Applications.Core/containers",
+				ResourceName:                   "test-container",
+				Format:                         "table",
+				InputPrompter:                  promptMock,
 			}
 
 			err := runner.Run(context.Background())
@@ -277,13 +277,13 @@ func Test_Run(t *testing.T) {
 
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         workspace,
-				ResourceType:      "Applications.Core/containers",
-				ResourceName:      "test-container",
-				Format:            "table",
-				InputPrompter:     promptMock,
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                         outputSink,
+				Workspace:                      workspace,
+				FullyQualifiedResourceTypeName: "Applications.Core/containers",
+				ResourceName:                   "test-container",
+				Format:                         "table",
+				InputPrompter:                  promptMock,
 			}
 
 			err := runner.Run(context.Background())
@@ -343,13 +343,13 @@ func Test_Run(t *testing.T) {
 
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         workspace,
-				ResourceType:      "Applications.Core/containers",
-				ResourceName:      "test-container",
-				Format:            "table",
-				InputPrompter:     promptMock,
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                         outputSink,
+				Workspace:                      workspace,
+				FullyQualifiedResourceTypeName: "Applications.Core/containers",
+				ResourceName:                   "test-container",
+				Format:                         "table",
+				InputPrompter:                  promptMock,
 			}
 
 			err := runner.Run(context.Background())
@@ -397,13 +397,13 @@ func Test_Run(t *testing.T) {
 			}
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         workspace,
-				ResourceType:      "Applications.Core/containers",
-				ResourceName:      "test-container",
-				Format:            "table",
-				InputPrompter:     promptMock,
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                         outputSink,
+				Workspace:                      workspace,
+				FullyQualifiedResourceTypeName: "Applications.Core/containers",
+				ResourceName:                   "test-container",
+				Format:                         "table",
+				InputPrompter:                  promptMock,
 			}
 
 			err := runner.Run(context.Background())
@@ -450,13 +450,13 @@ func Test_Run(t *testing.T) {
 
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				InputPrompter:     promptMock,
-				Workspace:         workspace,
-				Format:            "table",
-				Output:            outputSink,
-				ResourceType:      "Applications.Core/containers",
-				ResourceName:      "test-container",
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				InputPrompter:                  promptMock,
+				Workspace:                      workspace,
+				Format:                         "table",
+				Output:                         outputSink,
+				FullyQualifiedResourceTypeName: "Applications.Core/containers",
+				ResourceName:                   "test-container",
 			}
 
 			err := runner.Run(context.Background())

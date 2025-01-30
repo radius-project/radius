@@ -69,13 +69,13 @@ rad resource show applications.core/containers orders -a icecream-store
 
 // Runner is the runner implementation for the `rad resource show` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Output            output.Interface
-	Workspace         *workspaces.Workspace
-	ResourceType      string
-	ResourceName      string
-	Format            string
+	ConfigHolder                   *framework.ConfigHolder
+	ConnectionFactory              connections.Factory
+	Output                         output.Interface
+	Workspace                      *workspaces.Workspace
+	FullyQualifiedResourceTypeName string
+	ResourceName                   string
+	Format                         string
 }
 
 // NewRunner creates a new instance of the `rad resource show` runner.
@@ -105,11 +105,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Scope = scope
 
-	resourceType, resourceName, err := cli.RequireResourceTypeAndName(args)
+	resourceProviderName, resourceTypeName, resourceName, err := cli.RequireFullyQualifiedResourceTypeAndName(args)
 	if err != nil {
 		return err
 	}
-	r.ResourceType = resourceType
+	r.FullyQualifiedResourceTypeName = resourceProviderName + "/" + resourceTypeName
 	r.ResourceName = resourceName
 
 	format, err := cli.RequireOutput(cmd)
@@ -132,7 +132,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	resourceDetails, err := client.GetResource(ctx, r.ResourceType, r.ResourceName)
+	resourceDetails, err := client.GetResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName)
 	if err != nil {
 		return err
 	}
