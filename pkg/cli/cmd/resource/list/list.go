@@ -117,11 +117,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.ApplicationName = applicationName
 
-	resourceType, err := cli.RequireResourceType(args)
+	resourceProviderName, resourceTypeName, err := cli.RequireFullyQualifiedResourceType(args)
 	if err != nil {
 		return err
 	}
-	r.ResourceType = resourceType
+	r.ResourceType = resourceProviderName + "/" + resourceTypeName
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
