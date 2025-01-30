@@ -1047,12 +1047,3 @@ func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context,
 
 	return amc.capture(ctx, response)
 }
-
-func inStringSlice(s string, slice []string) bool {
-	for _, v := range slice {
-		if strings.EqualFold(s, v) {
-			return true
-		}
-	}
-	return false
-}
