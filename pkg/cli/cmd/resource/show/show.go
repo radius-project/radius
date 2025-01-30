@@ -43,7 +43,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Show Radius resource details",
 		Long:  "Show details of the specified Radius resource",
 		Example: `
-sample list of resourceType: applications.core/containers, applications.core/gateways, applications.dapr/daprPubSubBrokers, applications.core/extenders, applications.datastores/mongoDatabases, applications.messaging/rabbitMQMessageQueues, applications.datastores/redisCaches, applications.datastores/sqlDatabases, applications.dapr/daprStateStores, applications.dapr/daprSecretStores
+sample list of resourceType: Applications.Core/containers, Applications.Core/gateways, Applications.Dapr/daprPubSubBrokers, Applications.Core/extenders, Applications.Datastores/mongoDatabases, Applications.Messaging/rabbitMQMessageQueues, Applications.Datastores/redisCaches, Applications.Datastores/sqlDatabases, Applications.Dapr/daprStateStores, Applications.Dapr/daprSecretStores
 
 # show details of a specified resource in the default environment
 
