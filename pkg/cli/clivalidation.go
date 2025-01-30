@@ -294,9 +294,8 @@ func RequireResourceType(args []string) (string, error) {
 
 	resourceTypeName := args[0]
 
-	// Allow any fully-qualified resource type.
-	if !strings.Contains(resourceTypeName, "/") {
-		return "", fmt.Errorf("'%s' is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again", resourceTypeName)
+	if strings.Contains(resourceTypeName, "/") {
+		return "", fmt.Errorf("`%s` is not a valid resource type name. Please specify the resource type name. ex: `containers`", resourceTypeName)
 	}
 
 	return resourceTypeName, nil
@@ -304,14 +303,14 @@ func RequireResourceType(args []string) (string, error) {
 
 func RequireFullyQualifiedResourceType(args []string) (string, string, error) {
 	if len(args) < 1 {
-		return "", "", errors.New("no resource type provided")
+		return "", "", errors.New("no fully qualified resource type provided")
 	}
 
 	resourceTypeName := args[0]
 
-	// Allow any fully-qualified resource type.
+	// Allow only fully-qualified resource type.
 	if !strings.Contains(resourceTypeName, "/") {
-		return "", "", fmt.Errorf("'%s' is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again", resourceTypeName)
+		return "", "", fmt.Errorf("`%s` is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again", resourceTypeName)
 	}
 
 	parts := strings.Split(resourceTypeName, "/")

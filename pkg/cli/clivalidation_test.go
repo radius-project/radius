@@ -41,14 +41,8 @@ func Test_RequireResourceType(t *testing.T) {
 		{
 			name:    "Fully-qualified resource type",
 			args:    []string{"Applications.Test/exampleResources"},
-			want:    "Applications.Test/exampleResources",
-			wantErr: nil,
-		},
-		{
-			name:    "resource type not fully qualified",
-			args:    []string{"exampleResources"},
 			want:    "",
-			wantErr: fmt.Errorf("'exampleResources' is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again"),
+			wantErr: errors.New("`Applications.Test/exampleResources` is not a valid resource type name. Please specify the resource type name. ex: `containers`"),
 		},
 	}
 
@@ -76,7 +70,7 @@ func Test_RequireFullyQualifiedResourceType(t *testing.T) {
 			name:    "No arguments",
 			args:    []string{},
 			want:    []string{},
-			wantErr: errors.New("no resource type provided"),
+			wantErr: errors.New("no fully qualified resource type provided"),
 		},
 		{
 			name:    "Fully-qualified resource type",
@@ -88,7 +82,7 @@ func Test_RequireFullyQualifiedResourceType(t *testing.T) {
 			name:    "resource type not fully qualified",
 			args:    []string{"exampleResources"},
 			want:    []string{},
-			wantErr: fmt.Errorf("'exampleResources' is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again"),
+			wantErr: fmt.Errorf("`exampleResources` is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again"),
 		},
 	}
 
