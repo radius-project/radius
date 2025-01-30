@@ -303,7 +303,7 @@ func Test_run(t *testing.T) {
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
-		roundTripper.RespondWithJSON(t, http.StatusNotFound, &v1.ErrorResponse{Error: v1.ErrorDetails{Code: v1.CodeNotFound}})
+		roundTripper.RespondWithJSON(t, http.StatusNotFound, &v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeNotFound}})
 
 		databaseClient.EXPECT().
 			Delete(gomock.Any(), IDFor(testID).String(), gomock.Any()).
@@ -351,7 +351,7 @@ func Test_fetch(t *testing.T) {
 	}
 
 	errorResponse := &v1.ErrorResponse{
-		Error: v1.ErrorDetails{
+		Error: &v1.ErrorDetails{
 			Code:    "SomeErrorCode",
 			Message: "This is a test.",
 		},

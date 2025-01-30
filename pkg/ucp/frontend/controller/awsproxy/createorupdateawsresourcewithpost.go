@@ -67,7 +67,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
 		e := v1.ErrorResponse{
-			Error: v1.ErrorDetails{
+			Error: &v1.ErrorDetails{
 				Code:    v1.CodeInvalid,
 				Message: "failed to read request body",
 			},

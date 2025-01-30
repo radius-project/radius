@@ -231,7 +231,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedResponse := armrpc_rest.NewInternalServerErrorARMResponse(armrpc_v1.ErrorResponse{
-		Error: armrpc_v1.ErrorDetails{
+		Error: &armrpc_v1.ErrorDetails{
 			Code:    "NotFound",
 			Message: "Resource not found",
 		},

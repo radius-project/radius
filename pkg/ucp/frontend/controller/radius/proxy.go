@@ -109,7 +109,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	apiVersion := requestCtx.APIVersion
 	if apiVersion == "" {
 		message := "the api-version query parameter is required"
-		response := v1.ErrorResponse{Error: v1.ErrorDetails{Code: v1.CodeInvalid, Message: message, Target: id.String()}}
+		response := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInvalid, Message: message, Target: id.String()}}
 		return armrpc_rest.NewBadRequestARMResponse(response), nil
 	}
 
@@ -117,7 +117,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
 		return armrpc_rest.NewNotFoundResponseWithCause(id, err.Error()), nil
 	} else if errors.Is(err, &resourcegroups.InvalidError{}) {
-		response := v1.ErrorResponse{Error: v1.ErrorDetails{Code: v1.CodeInvalid, Message: err.Error(), Target: id.String()}}
+		response := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInvalid, Message: err.Error(), Target: id.String()}}
 		return armrpc_rest.NewBadRequestARMResponse(response), nil
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to validate downstream: %w", err)
@@ -129,7 +129,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 
 	if downstreamURL == nil {
 		message := "No downstream address was configured for the resource provider, and no default downstream address was provided"
-		response := v1.ErrorResponse{Error: v1.ErrorDetails{Code: v1.CodeInvalid, Message: message, Target: id.String()}}
+		response := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInvalid, Message: message, Target: id.String()}}
 		return armrpc_rest.NewInternalServerErrorARMResponse(response), nil
 	}
 

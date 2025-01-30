@@ -47,7 +47,7 @@ func TestARMRequestCtx(t *testing.T) {
 		code int
 		ok   bool
 		body string
-		err  v1.ErrorDetails
+		err  *v1.ErrorDetails
 	}{
 		{
 			"get-env-success",
@@ -55,7 +55,7 @@ func TestARMRequestCtx(t *testing.T) {
 			http.StatusOK,
 			true,
 			"00001b53-0000-0000-0000-00006235a42c",
-			v1.ErrorDetails{},
+			&v1.ErrorDetails{},
 		},
 		{
 			"out-of-bounds-top-query-param",
@@ -63,7 +63,7 @@ func TestARMRequestCtx(t *testing.T) {
 			http.StatusBadRequest,
 			false,
 			"",
-			outOfBoundsTopParamError,
+			&outOfBoundsTopParamError,
 		},
 		{
 			"bad-top-query-param",
@@ -71,7 +71,7 @@ func TestARMRequestCtx(t *testing.T) {
 			http.StatusBadRequest,
 			false,
 			"",
-			invalidTopParamError,
+			&invalidTopParamError,
 		},
 	}
 

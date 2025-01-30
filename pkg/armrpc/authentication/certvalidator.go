@@ -67,7 +67,7 @@ func handleErr(ctx context.Context, w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		// Responds with an HTTP 500
 		body := v1.ErrorResponse{
-			Error: v1.ErrorDetails{
+			Error: &v1.ErrorDetails{
 				Code:    v1.CodeInternal,
 				Message: err.Error(),
 			},

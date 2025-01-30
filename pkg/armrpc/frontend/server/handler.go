@@ -277,14 +277,14 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	switch v := err.(type) {
 	case *v1.ErrModelConversion:
 		response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
-			Error: v1.ErrorDetails{
+			Error: &v1.ErrorDetails{
 				Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 				Message: err.Error(),
 			},
 		})
 	case *v1.ErrClientRP:
 		response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
-			Error: v1.ErrorDetails{
+			Error: &v1.ErrorDetails{
 				Code:    v.Code,
 				Message: v.Message,
 			},
@@ -292,14 +292,14 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	default:
 		if errors.Is(err, v1.ErrInvalidModelConversion) {
 			response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 					Message: err.Error(),
 				},
 			})
 		} else {
 			response = rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    v1.CodeInternal,
 					Message: err.Error(),
 				},
@@ -309,8 +309,8 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 
 	err = response.Apply(ctx, w, req)
 	if err != nil {
-		body := v1.ErrorResponse{
-			Error: v1.ErrorDetails{
+		body := &v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
 				Code:    v1.CodeInternal,
 				Message: err.Error(),
 			},

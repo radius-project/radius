@@ -90,7 +90,7 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:          "http://localhost:8080/providers/applications.core/notfound",
 			responseCode: http.StatusNotFound,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "NotFound",
 					Message: "The request 'GET /providers/applications.core/notfound' is invalid.",
 				},
@@ -105,7 +105,7 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:          "http://localhost:8080/providers/applications.core/operations",
 			responseCode: http.StatusMethodNotAllowed,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "BadRequest",
 					Message: "The request method 'PUT' is invalid.",
 				},
@@ -213,7 +213,7 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "InvalidApiVersionParameter",
 					Message: "API version '2022-06-20-privatepreview' for type 'applications.core/environments' is not supported. The supported api-versions are '2023-10-01-preview'.",
 				},
@@ -229,11 +229,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidProperties",
 							Message: "$.location in body is required",
@@ -252,11 +252,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidProperties",
 							Message: "$.properties.compute.kind in body is required",
@@ -275,11 +275,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidProperties",
 							Message: "$.location in body is required",
@@ -302,11 +302,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             resourceIDUrl,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "The request content was invalid and could not be deserialized.",
@@ -325,11 +325,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             longARMResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should be at most 63 chars long",
@@ -348,11 +348,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             longUCPResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should be at most 63 chars long",
@@ -371,11 +371,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             underscoreARMResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should match '^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$'",
@@ -394,11 +394,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             underscoreUCPResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should match '^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$'",
@@ -417,11 +417,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             digitARMResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should match '^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$'",
@@ -440,11 +440,11 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 			url:             digitUCPResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should match '^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$'",
