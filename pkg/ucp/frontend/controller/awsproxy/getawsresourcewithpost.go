@@ -36,6 +36,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+
+	"github.com/radius-project/radius/pkg/retry"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSResourceWithPost)(nil)
@@ -44,13 +46,15 @@ var _ armrpc_controller.Controller = (*GetAWSResourceWithPost)(nil)
 type GetAWSResourceWithPost struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
 	awsClients ucpaws.Clients
+	retryer    *retry.Retryer
 }
 
 // NewGetAWSResourceWithPost creates a new GetAWSResourceWithPost controller with the given options and AWS clients.
-func NewGetAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucpaws.Clients) (armrpc_controller.Controller, error) {
+func NewGetAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucpaws.Clients, retryer *retry.Retryer) (armrpc_controller.Controller, error) {
 	return &GetAWSResourceWithPost{
 		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
 		awsClients: awsClients,
+		retryer:    retryer,
 	}, nil
 }
 
@@ -77,7 +81,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationWithRegionOption(region)}
+	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationRegionOption(region)}
 	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
@@ -100,15 +104,27 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 
 	cloudcontrolOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	logger.Info("Fetching resource", "resourceType", serviceCtx.ResourceTypeInAWSFormat(), "resourceID", awsResourceIdentifier)
-	response, err := p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
-		Identifier: aws.String(awsResourceIdentifier),
-	}, cloudcontrolOpts...)
 
-	if ucpaws.IsAWSResourceNotFoundError(err) {
-		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.Options().PathBase, req.URL.Path), awsResourceIdentifier)), nil
-	} else if err != nil {
-		return ucpaws.HandleAWSError(err)
+	var response *cloudcontrol.GetResourceOutput
+	if err := p.retryer.RetryFunc(ctx, func(ctx context.Context) error {
+		response, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
+			TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+			Identifier: aws.String(awsResourceIdentifier),
+		}, cloudcontrolOpts...)
+
+		// If the resource is not found, retry.
+		if ucpaws.IsAWSResourceNotFoundError(err) {
+			return retry.RetryableError(err)
+		}
+
+		// If any other error occurs, return the error.
+		return err
+	}); err != nil {
+		if ucpaws.IsAWSResourceNotFoundError(err) {
+			return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.Options().PathBase, req.URL.Path), awsResourceIdentifier)), nil
+		} else {
+			return ucpaws.HandleAWSError(err)
+		}
 	}
 
 	resourceProperties := map[string]any{}

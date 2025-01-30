@@ -114,9 +114,10 @@ dashboard:
       memory: "300Mi"
 
 database:
+  postgres_user: "radius"
   image: ghcr.io/radius-project/mirror/postgres
   tag: latest
-  storageClassName: "" # set to the storage class name if required
+  storageClassName: "" # set to the storage class name if required, the empty string will pickup the default storage class.
   # Minimum resource requirements, may need to revisit and scale.
   storageSize: "1Gi"
   resources:

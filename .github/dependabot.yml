@@ -17,7 +17,7 @@ updates:
         patterns:
           - "*"
   - package-ecosystem: "devcontainers"
-    directory: "/.devcontainer/contributor"
+    directory: "/"
     schedule:
       interval: weekly
     groups:

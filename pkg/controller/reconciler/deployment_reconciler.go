@@ -43,6 +43,7 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/kubernetes"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -403,7 +404,7 @@ func (r *DeploymentReconciler) reconcileDelete(ctx context.Context, deployment *
 	return ctrl.Result{}, nil
 }
 
-func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) (Poller[v20231001preview.ContainersClientCreateOrUpdateResponse], Poller[v20231001preview.ContainersClientDeleteResponse], bool, error) {
+func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) (sdkclients.Poller[v20231001preview.ContainersClientCreateOrUpdateResponse], sdkclients.Poller[v20231001preview.ContainersClientDeleteResponse], bool, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceID := annotations.Status.Scope + "/providers/Applications.Core/containers/" + deployment.Name
@@ -479,7 +480,7 @@ func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Con
 	return poller, nil, false, nil
 }
 
-func (r *DeploymentReconciler) startDeleteOperationIfNeeded(ctx context.Context, annotations *deploymentAnnotations) (Poller[v20231001preview.ContainersClientDeleteResponse], error) {
+func (r *DeploymentReconciler) startDeleteOperationIfNeeded(ctx context.Context, annotations *deploymentAnnotations) (sdkclients.Poller[v20231001preview.ContainersClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if annotations.Status.Container == "" {
 		logger.Info("Container is already deleted (or was never created).")

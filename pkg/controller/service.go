@@ -21,9 +21,12 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
+	"github.com/radius-project/radius/pkg/sdk"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -93,7 +96,7 @@ func (s *Service) Run(ctx context.Context) error {
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		EventRecorder: mgr.GetEventRecorderFor("recipe-controller"),
-		Radius:        reconciler.NewClient(s.Options.UCPConnection),
+		Radius:        reconciler.NewRadiusClient(s.Options.UCPConnection),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "Recipe", err)
@@ -102,10 +105,39 @@ func (s *Service) Run(ctx context.Context) error {
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		EventRecorder: mgr.GetEventRecorderFor("radius-deployment-controller"),
-		Radius:        reconciler.NewClient(s.Options.UCPConnection),
+		Radius:        reconciler.NewRadiusClient(s.Options.UCPConnection),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "Deployment", err)
+	}
+
+	resourceDeploymentsClient, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{
+		Cred:             &aztoken.AnonymousCredential{},
+		BaseURI:          s.Options.UCPConnection.Endpoint(),
+		ARMClientOptions: sdk.NewClientOptions(s.Options.UCPConnection),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create resource deployments client: %w", err)
+	}
+	err = (&reconciler.DeploymentTemplateReconciler{
+		Client:                    mgr.GetClient(),
+		Scheme:                    mgr.GetScheme(),
+		EventRecorder:             mgr.GetEventRecorderFor("deploymenttemplate-controller"),
+		Radius:                    reconciler.NewRadiusClient(s.Options.UCPConnection),
+		ResourceDeploymentsClient: resourceDeploymentsClient,
+	}).SetupWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentTemplate", err)
+	}
+	err = (&reconciler.DeploymentResourceReconciler{
+		Client:                    mgr.GetClient(),
+		Scheme:                    mgr.GetScheme(),
+		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
+		Radius:                    reconciler.NewRadiusClient(s.Options.UCPConnection),
+		ResourceDeploymentsClient: resourceDeploymentsClient,
+	}).SetupWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentResource", err)
 	}
 
 	if s.TLSCertDir == "" {

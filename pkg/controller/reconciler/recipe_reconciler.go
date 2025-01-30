@@ -33,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -367,7 +368,7 @@ func (r *RecipeReconciler) reconcileDelete(ctx context.Context, recipe *radappio
 	return ctrl.Result{}, nil
 }
 
-func (r *RecipeReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context, recipe *radappiov1alpha3.Recipe) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], Poller[generated.GenericResourcesClientDeleteResponse], error) {
+func (r *RecipeReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context, recipe *radappiov1alpha3.Recipe) (sdkclients.Poller[generated.GenericResourcesClientCreateOrUpdateResponse], sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceID := recipe.Status.Scope + "/providers/" + recipe.Spec.Type + "/" + recipe.Name
@@ -413,7 +414,7 @@ func (r *RecipeReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context
 	return nil, nil, nil
 }
 
-func (r *RecipeReconciler) startDeleteOperationIfNeeded(ctx context.Context, recipe *radappiov1alpha3.Recipe) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
+func (r *RecipeReconciler) startDeleteOperationIfNeeded(ctx context.Context, recipe *radappiov1alpha3.Recipe) (sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if recipe.Status.Resource == "" {
 		logger.Info("Resource is already deleted (or was never created).")

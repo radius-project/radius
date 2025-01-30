@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -151,7 +152,7 @@ func createApplicationIfNotExists(ctx context.Context, radius RadiusClient, envi
 	return nil
 }
 
-func deleteResource(ctx context.Context, radius RadiusClient, resourceID string) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
+func deleteResource(ctx context.Context, radius RadiusClient, resourceID string) (sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	id, err := resources.Parse(resourceID)
 	if err != nil {
 		return nil, err
@@ -178,7 +179,7 @@ func deleteResource(ctx context.Context, radius RadiusClient, resourceID string)
 	return nil, nil
 }
 
-func createOrUpdateResource(ctx context.Context, radius RadiusClient, resourceID string, properties map[string]any) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
+func createOrUpdateResource(ctx context.Context, radius RadiusClient, resourceID string, properties map[string]any) (sdkclients.Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
 	id, err := resources.Parse(resourceID)
 	if err != nil {
 		return nil, err
@@ -222,7 +223,7 @@ func fetchResource(ctx context.Context, radius RadiusClient, resourceID string) 
 	return radius.Resources(id.RootScope(), id.Type()).Get(ctx, id.Name())
 }
 
-func deleteContainer(ctx context.Context, radius RadiusClient, containerID string) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
+func deleteContainer(ctx context.Context, radius RadiusClient, containerID string) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
 	id, err := resources.Parse(containerID)
 	if err != nil {
 		return nil, err
@@ -249,7 +250,7 @@ func deleteContainer(ctx context.Context, radius RadiusClient, containerID strin
 	return nil, nil
 }
 
-func createOrUpdateContainer(ctx context.Context, radius RadiusClient, containerID string, properties *corerpv20231001preview.ContainerProperties) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
+func createOrUpdateContainer(ctx context.Context, radius RadiusClient, containerID string, properties *corerpv20231001preview.ContainerProperties) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
 	id, err := resources.Parse(containerID)
 	if err != nil {
 		return nil, err
@@ -279,4 +280,23 @@ func createOrUpdateContainer(ctx context.Context, radius RadiusClient, container
 	}
 
 	return nil, nil
+}
+
+func generateDeploymentResourceName(resourceId string) (string, error) {
+	id, err := resources.ParseResource(resourceId)
+	if err != nil {
+		return "", err
+	}
+
+	return id.Name(), nil
+}
+
+func convertToARMJSONParameters(parameters map[string]string) map[string]map[string]string {
+	armJSONParameters := make(map[string]map[string]string, len(parameters))
+	for key, value := range parameters {
+		armJSONParameters[key] = map[string]string{
+			"value": value,
+		}
+	}
+	return armJSONParameters
 }
