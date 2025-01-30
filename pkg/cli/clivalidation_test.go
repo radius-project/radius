@@ -97,3 +97,44 @@ func Test_RequireFullyQualifiedResourceType(t *testing.T) {
 		})
 	}
 }
+
+func Test_RequireFullyQualifiedResourceTypeAndName(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		args    []string
+		want    []string
+		wantErr error
+	}{
+		{
+			name:    "No arguments",
+			args:    []string{},
+			want:    []string{},
+			wantErr: errors.New("no fully qualified resource type and name provided"),
+		},
+		{
+			name:    "Fully-qualified resource type and name",
+			args:    []string{"Applications.Test/exampleResources", "my-example"},
+			want:    []string{"Applications.Test", "exampleResources", "my-example"},
+			wantErr: nil,
+		},
+		{
+			name:    "resource type not fully qualified",
+			args:    []string{"exampleResources", "my-example"},
+			want:    []string{},
+			wantErr: fmt.Errorf("`exampleResources` is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resourceProviderName, resourceTypeName, resourceName, err := RequireFullyQualifiedResourceTypeAndName(tt.args)
+			if len(tt.want) > 0 {
+				require.Equal(t, tt.want, []string{resourceProviderName, resourceTypeName, resourceName})
+			} else {
+				require.Equal(t, tt.wantErr, err)
+			}
+		})
+	}
+}
+

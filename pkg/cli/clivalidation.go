@@ -269,18 +269,18 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 	return results[0], results[1], nil
 }
 
-// RequireResourceTypeAndName checks if the provided arguments contain a resource type and name, and returns them if they
+// RequireFullyQualifiedResourceTypeAndName checks if the provided arguments contain a resource type and name, and returns them if they
 // are present. If either is missing, an error is returned.
-func RequireResourceTypeAndName(args []string) (string, string, error) {
+func RequireFullyQualifiedResourceTypeAndName(args []string) (string, string, string, error) {
 	if len(args) < 2 {
-		return "", "", errors.New("no resource type or name provided")
+		return "", "", "", errors.New("no resource type or name provided")
 	}
-	resourceType, err := RequireResourceType(args)
+	resourceProviderName, resourceTypeName, err := RequireFullyQualifiedResourceType(args)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	resourceName := args[1]
-	return resourceType, resourceName, nil
+	return resourceProviderName, resourceTypeName, resourceName, nil
 }
 
 // RequireResourceType checks if the first argument provided is a valid resource type 'providernamespace/resourcetype' and returns it if it is. If the
