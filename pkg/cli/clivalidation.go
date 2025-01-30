@@ -302,6 +302,26 @@ func RequireResourceType(args []string) (string, error) {
 	return resourceTypeName, nil
 }
 
+func RequireFullyQualifiedResourceType(args []string) (string, string, error) {
+	if len(args) < 1 {
+		return "", "", errors.New("no resource type provided")
+	}
+
+	resourceTypeName := args[0]
+
+	// Allow any fully-qualified resource type.
+	if !strings.Contains(resourceTypeName, "/") {
+		return "", "", fmt.Errorf("'%s' is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again", resourceTypeName)
+	}
+
+	parts := strings.Split(resourceTypeName, "/")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("'%s' is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again", resourceTypeName)
+	}
+
+	return parts[0], parts[1], nil
+}
+
 // "RequireAzureResource" takes in a command and a slice of strings and returns an AzureResource object and an error. It
 // uses the "requiredMultiple" function to get the values of the required parameters and then creates an AzureResource
 // object with those values. If any of the required parameters are missing, it returns an error.
