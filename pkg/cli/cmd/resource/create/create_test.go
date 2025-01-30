@@ -105,13 +105,13 @@ func Test_Run(t *testing.T) {
 		outputSink := &output.MockOutput{}
 
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Output:            outputSink,
-			Workspace:         &workspaces.Workspace{},
-			ResourceType:      "Applications.Test/exampleResources",
-			ResourceName:      "my-example",
-			Resource:          expectedResource,
-			Format:            "table",
+			ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:                         outputSink,
+			Workspace:                      &workspaces.Workspace{},
+			FullyQualifiedResourceTypeName: "Applications.Test/exampleResources",
+			ResourceName:                   "my-example",
+			Resource:                       expectedResource,
+			Format:                         "table",
 		}
 
 		err := runner.Run(context.Background())

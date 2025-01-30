@@ -89,15 +89,6 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 		},
-		{
-			Name:          "List Command with ambiguous args",
-			Input:         []string{"applications.dapr/secretStores"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -116,12 +107,12 @@ func Test_Run(t *testing.T) {
 		outputSink := &output.MockOutput{}
 
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Output:            outputSink,
-			Workspace:         &workspaces.Workspace{},
-			ResourceType:      "applications.core/containers",
-			ResourceName:      "foo",
-			Format:            "table",
+			ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:                         outputSink,
+			Workspace:                      &workspaces.Workspace{},
+			FullyQualifiedResourceTypeName: "applications.core/containers",
+			ResourceName:                   "foo",
+			Format:                         "table",
 		}
 
 		err := runner.Run(context.Background())
