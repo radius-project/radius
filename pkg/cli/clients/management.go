@@ -760,10 +760,10 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 		return nil, fmt.Errorf("failed to list resource provider summaries: %v", err)
 	}
 	resourceTypeNames := []string{}
-	for _, summary := range resourceProviderSummaries {
-		resourceProvider := *summary.Name
-		for typeName, _ := range summary.ResourceTypes {
-			fullResourceName := resourceProvider + "/" + typeName
+	for _, resourceProvider := range resourceProviderSummaries {
+		resourceProviderName := *resourceProvider.Name
+		for typeName, _ := range resourceProvider.ResourceTypes {
+			fullResourceName := resourceProviderName + "/" + typeName
 			if !slices.Contains(ExcludedResourceTypesList, fullResourceName) {
 				resourceTypeNames = append(resourceTypeNames, fullResourceName)
 			}
