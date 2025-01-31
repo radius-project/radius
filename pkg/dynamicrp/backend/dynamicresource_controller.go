@@ -19,9 +19,14 @@ package backend
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
+	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -30,12 +35,19 @@ import (
 // This controller will use the capabilities and the operation to determine the correct controller to use.
 type DynamicResourceController struct {
 	ctrl.BaseController
+
+	ucp                 *v20231001preview.ClientFactory
+	engine              engine.Engine
+	configurationLoader configloader.ConfigurationLoader
 }
 
 // NewDynamicResourceController creates a new DynamicResourcePutController.
-func NewDynamicResourceController(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDynamicResourceController(opts ctrl.Options, ucp *v20231001preview.ClientFactory, engine engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
 	return &DynamicResourceController{
-		BaseController: ctrl.NewBaseAsyncController(opts),
+		BaseController:      ctrl.NewBaseAsyncController(opts),
+		ucp:                 ucp,
+		engine:              engine,
+		configurationLoader: configurationLoader,
 	}, nil
 }
 
@@ -44,7 +56,7 @@ func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Reque
 	// This is where we have the opportunity to branch out to different controllers based on:
 	// - The operation type. (eg: PUT, DELETE, etc)
 	// - The capabilities of the resource type. (eg: Does it support recipes?)
-	controller, err := c.selectController(request)
+	controller, err := c.selectController(ctx, request)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create controller: %w", err)
 	}
@@ -53,7 +65,7 @@ func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Reque
 
 }
 
-func (c *DynamicResourceController) selectController(request *ctrl.Request) (ctrl.Controller, error) {
+func (c *DynamicResourceController) selectController(ctx context.Context, request *ctrl.Request) (ctrl.Controller, error) {
 	ot, ok := v1.ParseOperationType(request.OperationType)
 	if !ok {
 		return nil, fmt.Errorf("invalid operation type: %q", request.OperationType)
@@ -64,6 +76,11 @@ func (c *DynamicResourceController) selectController(request *ctrl.Request) (ctr
 		return nil, fmt.Errorf("invalid resource ID: %q", request.ResourceID)
 	}
 
+	resourceType, err := c.fetchResourceType(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch resource type: %w", err)
+	}
+
 	options := ctrl.Options{
 		DatabaseClient: c.DatabaseClient(),
 		ResourceType:   id.Type(),
@@ -71,10 +88,45 @@ func (c *DynamicResourceController) selectController(request *ctrl.Request) (ctr
 
 	switch ot.Method {
 	case v1.OperationDelete:
+		if hasCapability(resourceType, datamodel.CapabilitySupportsRecipes) {
+			return NewRecipeDeleteController(options, c.engine, c.configurationLoader)
+		}
+
 		return NewInertDeleteController(options)
+
 	case v1.OperationPut:
+		if hasCapability(resourceType, datamodel.CapabilitySupportsRecipes) {
+			return NewRecipePutController(options, c.engine, c.configurationLoader)
+		}
+
 		return NewInertPutController(options)
+
 	default:
 		return nil, fmt.Errorf("unsupported operation type: %q", request.OperationType)
 	}
+}
+
+func (c *DynamicResourceController) fetchResourceType(ctx context.Context, id resources.ID) (*v20231001preview.ResourceTypeResource, error) {
+	unqualifiedTypeName := strings.TrimPrefix(id.Type(), id.ProviderNamespace()+resources.SegmentSeparator)
+	response, err := c.ucp.NewResourceTypesClient().Get(
+		ctx,
+		id.ScopeSegments()[0].Name,
+		id.ProviderNamespace(),
+		unqualifiedTypeName,
+		nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response.ResourceTypeResource, nil
+}
+
+func hasCapability(resourceType *v20231001preview.ResourceTypeResource, capability string) bool {
+	for _, c := range resourceType.Properties.Capabilities {
+		if c != nil && *c == capability {
+			return true
+		}
+	}
+
+	return false
 }
