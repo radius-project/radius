@@ -18,7 +18,9 @@ package clients
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -29,13 +31,6 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	cntr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
-	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
-	gtwy_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
-	sstr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
-	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
-	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
-	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
@@ -57,20 +52,13 @@ type UCPApplicationsManagementClient struct {
 
 var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
+// ExcludedResourceTypesList is a list of resource types that should be excluded from the list of application resources
+// to be displayed to the user.
 var (
-	ResourceTypesList = []string{
-		ds_ctrl.MongoDatabasesResourceType,
-		msg_ctrl.RabbitMQQueuesResourceType,
-		ds_ctrl.RedisCachesResourceType,
-		ds_ctrl.SqlDatabasesResourceType,
-		dapr_ctrl.DaprStateStoresResourceType,
-		dapr_ctrl.DaprSecretStoresResourceType,
-		dapr_ctrl.DaprPubSubBrokersResourceType,
-		dapr_ctrl.DaprConfigurationStoresResourceType,
-		ext_ctrl.ResourceTypeName,
-		gtwy_ctrl.ResourceTypeName,
-		cntr_ctrl.ResourceTypeName,
-		sstr_ctrl.ResourceTypeName,
+	ExcludedResourceTypesList = []string{
+		"Microsoft.Resources/deployments",
+		"Applications.Core/applications",
+		"Applications.Core/environments",
 	}
 )
 
@@ -136,45 +124,6 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx
 		if isResourceInEnvironment(resource, environmentID) {
 			results = append(results, resource)
 		}
-	}
-
-	return results, nil
-}
-
-// ListResourcesInApplication lists all resources in a given application in the configured scope.
-func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error) {
-	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
-	if err != nil {
-		return nil, err
-	}
-
-	results := []generated.GenericResource{}
-	for _, resourceType := range ResourceTypesList {
-		resources, err := amc.ListResourcesOfTypeInApplication(ctx, applicationID, resourceType)
-		if err != nil {
-			return nil, err
-		}
-
-		results = append(results, resources...)
-	}
-
-	return results, nil
-}
-
-// ListResourcesInEnvironment lists all resources in a given environment in the configured scope.
-func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error) {
-	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
-	if err != nil {
-		return nil, err
-	}
-
-	results := []generated.GenericResource{}
-	for _, resourceType := range ResourceTypesList {
-		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
-		if err != nil {
-			return nil, err
-		}
-		results = append(results, resources...)
 	}
 
 	return results, nil
@@ -685,7 +634,7 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Cont
 	return response.StatusCode != 204, nil
 }
 
-// ListResourceProviders lists all resource providers in the configured scope.
+// ListResourceProviders lists all resource providers in the configured plane.
 func (amc *UCPApplicationsManagementClient) ListResourceProviders(ctx context.Context, planeName string) ([]ucpv20231001.ResourceProviderResource, error) {
 	client, err := amc.createResourceProviderClient()
 	if err != nil {
@@ -802,6 +751,75 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 	}
 
 	return response.ResourceProviderSummary, nil
+}
+
+// ListAllResourceTypesNames lists all resource types in all resource providers in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
+	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list resource provider summaries: %v", err)
+	}
+	resourceTypeNames := []string{}
+	for _, resourceProvider := range resourceProviderSummaries {
+		resourceProviderName := *resourceProvider.Name
+		for typeName, _ := range resourceProvider.ResourceTypes {
+			fullResourceName := resourceProviderName + "/" + typeName
+			if !slices.Contains(ExcludedResourceTypesList, fullResourceName) {
+				resourceTypeNames = append(resourceTypeNames, fullResourceName)
+			}
+		}
+	}
+
+	return resourceTypeNames, nil
+}
+
+// ListResourcesInApplication lists all resources in a given application in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error) {
+	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
+	if err != nil {
+		return nil, err
+	}
+
+	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	if err != nil {
+		return nil, err
+	}
+
+	results := []generated.GenericResource{}
+	for _, resourceType := range resourceTypesList {
+		resources, err := amc.ListResourcesOfTypeInApplication(ctx, applicationID, resourceType)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, resources...)
+	}
+
+	return results, nil
+}
+
+// ListResourcesInEnvironment lists all resources in a given environment in the configured scope.
+func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error) {
+	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
+	if err != nil {
+		return nil, err
+	}
+
+	results := []generated.GenericResource{}
+	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, resourceType := range resourceTypesList {
+		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, resources...)
+	}
+
+	return results, nil
 }
 
 // CreateOrUpdateResourceType creates or updates a resource type in the configured scope.

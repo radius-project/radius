@@ -70,10 +70,10 @@ type Runner struct {
 	Format            string
 	Workspace         *workspaces.Workspace
 
-	ResourceType  string
-	ResourceName  string
-	InputFilePath string
-	Resource      *generated.GenericResource
+	FullyQualifiedResourceTypeName string
+	ResourceName                   string
+	InputFilePath                  string
+	Resource                       *generated.GenericResource
 }
 
 // NewRunner creates an instance of the runner for the `rad resource create` command.
@@ -99,8 +99,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.Format = format
+	resourceProviderName, respurceTypeName, err := cli.RequireFullyQualifiedResourceType(args)
+	if err != nil {
+		return err
+	}
 
-	r.ResourceType = args[0]
+	r.FullyQualifiedResourceTypeName = resourceProviderName + "/" + respurceTypeName
 	r.ResourceName = args[1]
 	r.Resource, err = readInput(r.InputFilePath)
 	if err != nil {
@@ -135,7 +139,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	response, err := client.CreateOrUpdateResource(ctx, r.ResourceType, r.ResourceName, r.Resource)
+	response, err := client.CreateOrUpdateResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName, r.Resource)
 	if err != nil {
 		return err
 	}

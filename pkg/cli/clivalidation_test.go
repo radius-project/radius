@@ -19,23 +19,12 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_RequireResourceType(t *testing.T) {
-
-	supportedTypes := []string{}
-
-	for _, resourceType := range clients.ResourceTypesList {
-		supportedType := strings.Split(resourceType, "/")[1]
-		supportedTypes = append(supportedTypes, supportedType)
-	}
-
-	resourceTypesErrorString := strings.Join(supportedTypes, "\n")
 
 	tests := []struct {
 		name    string
@@ -50,28 +39,10 @@ func Test_RequireResourceType(t *testing.T) {
 			wantErr: errors.New("no resource type provided"),
 		},
 		{
-			name:    "Supported resource type",
-			args:    []string{"mongoDatabases"},
-			want:    "Applications.Datastores/mongoDatabases",
-			wantErr: nil,
-		},
-		{
 			name:    "Fully-qualified resource type",
 			args:    []string{"Applications.Test/exampleResources"},
-			want:    "Applications.Test/exampleResources",
-			wantErr: nil,
-		},
-		{
-			name:    "Multiple resource types",
-			args:    []string{"secretStores"},
 			want:    "",
-			wantErr: fmt.Errorf("multiple resource types match 'secretStores'. Please specify the full resource type and try again:\n\nApplications.Dapr/secretStores\nApplications.Core/secretStores\n"),
-		},
-		{
-			name:    "Unsupported resource type",
-			args:    []string{"unsupported"},
-			want:    "",
-			wantErr: fmt.Errorf("'unsupported' is not a valid resource type. Available Types are: \n\n%s\n", resourceTypesErrorString),
+			wantErr: errors.New("`Applications.Test/exampleResources` is not a valid resource type name. Please specify the resource type name. ex: `containers`"),
 		},
 	}
 
@@ -80,6 +51,86 @@ func Test_RequireResourceType(t *testing.T) {
 			got, err := RequireResourceType(tt.args)
 			if len(tt.want) > 0 {
 				require.Equal(t, tt.want, got)
+			} else {
+				require.Equal(t, tt.wantErr, err)
+			}
+		})
+	}
+}
+
+func Test_RequireFullyQualifiedResourceType(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		args    []string
+		want    []string
+		wantErr error
+	}{
+		{
+			name:    "No arguments",
+			args:    []string{},
+			want:    []string{},
+			wantErr: errors.New("no fully qualified resource type provided"),
+		},
+		{
+			name:    "Fully-qualified resource type",
+			args:    []string{"Applications.Test/exampleResources"},
+			want:    []string{"Applications.Test", "exampleResources"},
+			wantErr: nil,
+		},
+		{
+			name:    "resource type not fully qualified",
+			args:    []string{"exampleResources"},
+			want:    []string{},
+			wantErr: fmt.Errorf("`exampleResources` is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resourceProviderName, resourceTypeName, err := RequireFullyQualifiedResourceType(tt.args)
+			if len(tt.want) > 0 {
+				require.Equal(t, tt.want, []string{resourceProviderName, resourceTypeName})
+			} else {
+				require.Equal(t, tt.wantErr, err)
+			}
+		})
+	}
+}
+
+func Test_RequireFullyQualifiedResourceTypeAndName(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		args    []string
+		want    []string
+		wantErr error
+	}{
+		{
+			name:    "No arguments",
+			args:    []string{},
+			want:    []string{},
+			wantErr: errors.New("no resource type or name provided"),
+		},
+		{
+			name:    "Fully-qualified resource type and name",
+			args:    []string{"Applications.Test/exampleResources", "my-example"},
+			want:    []string{"Applications.Test", "exampleResources", "my-example"},
+			wantErr: nil,
+		},
+		{
+			name:    "resource type not fully qualified",
+			args:    []string{"exampleResources", "my-example"},
+			want:    []string{},
+			wantErr: fmt.Errorf("`exampleResources` is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resourceProviderName, resourceTypeName, resourceName, err := RequireFullyQualifiedResourceTypeAndName(tt.args)
+			if len(tt.want) > 0 {
+				require.Equal(t, tt.want, []string{resourceProviderName, resourceTypeName, resourceName})
 			} else {
 				require.Equal(t, tt.wantErr, err)
 			}
