@@ -51,14 +51,14 @@ sample list of resourceType: Applications.Core/containers, Applications.Core/gat
 
 # list all resources of a specified type in the default environment
 
-rad resource list applications.core/containers
-rad resource list applications.core/gateways
+rad resource list Applications.Core/containers
+rad resource list Applications.Core/gateways
 
 # list all resources of a specified type in an application
-rad resource list applications.core/containers --application icecream-store
+rad resource list Applications.Core/containers --application icecream-store
 
 # list all resources of a specified type in an application (shorthand flag)
-rad resource list applications.core/containers -a icecream-store
+rad resource list Applications.Core/containers -a icecream-store
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
