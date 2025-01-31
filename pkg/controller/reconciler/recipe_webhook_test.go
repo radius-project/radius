@@ -44,7 +44,7 @@ import (
 const (
 	defaultNamespace    = "default"
 	validResourceType   = "Applications.Core/extenders"
-	invalidResourceType = "Applications.Core/invalidType"
+	invalidResourceType = "invalidType"
 	webhookConfigName   = "recipe-webhook-config"
 )
 

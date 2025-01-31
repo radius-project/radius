@@ -340,7 +340,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "environmentresource-invalid-resourcetype.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid resource type: \"Applications.Dapr/pubsub\""},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid resource type: \"pubsub\". Must be in the format \"ResourceProvider.Namespace/resourceType\""},
 		},
 		{
 			filename: "environmentresource-invalid-templatekind.json",
