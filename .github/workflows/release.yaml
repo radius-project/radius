@@ -31,6 +31,8 @@ on:
       - 'versions.yaml'
 
 env:
+  # The functional test GitHub app id
+  FUNCTIONAL_TEST_APP_ID: 425843
   GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
 
 jobs:
