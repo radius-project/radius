@@ -18,7 +18,6 @@ package list
 
 import (
 	"context"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -74,13 +73,15 @@ rad resource list Applications.Core/containers -a icecream-store
 
 // Runner is the runner implementation for the `rad resource list` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Output            output.Interface
-	Workspace         *workspaces.Workspace
-	ApplicationName   string
-	Format            string
-	ResourceType      string
+	ConfigHolder              *framework.ConfigHolder
+	ConnectionFactory         connections.Factory
+	Output                    output.Interface
+	Workspace                 *workspaces.Workspace
+	ApplicationName           string
+	Format                    string
+	ResourceType              string
+	ResourceTypeSuffix        string
+	ResourceProviderNameSpace string
 }
 
 // NewRunner creates a new instance of the `rad resource list` runner.
@@ -117,11 +118,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.ApplicationName = applicationName
 
-	resourceProviderName, resourceTypeName, err := cli.RequireFullyQualifiedResourceType(args)
+	r.ResourceProviderNameSpace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
 	if err != nil {
 		return err
 	}
-	r.ResourceType = resourceProviderName + "/" + resourceTypeName
+	r.ResourceType = r.ResourceProviderNameSpace + "/" + r.ResourceTypeSuffix
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -147,13 +148,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	var resourceList []generated.GenericResource
 
-	parts := strings.Split(r.ResourceType, "/")
-	if len(parts) != 2 {
-		return clierrors.Message("Invalid resource type %q. Expected format: '<provider>/<type>'", r.ResourceType)
-	}
-	resourceProviderNamespace := parts[0]
-	resourceTypeSuffix := parts[1]
-	_, err = common.GetResourceTypeDetails(ctx, resourceProviderNamespace, resourceTypeSuffix, client)
+	_, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNameSpace, r.ResourceTypeSuffix, client)
 	if err != nil {
 		return err
 	}
