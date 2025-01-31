@@ -21,12 +21,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
-	portableresources "github.com/radius-project/radius/pkg/rp/portableresources"
 	"github.com/radius-project/radius/test/testcontext"
 
 	"github.com/stretchr/testify/require"
@@ -234,8 +232,7 @@ func Test_Webhook_ValidateFunctions(t *testing.T) {
 			}
 
 			if tr.wantErr {
-				validResourceTypes := strings.Join(portableresources.GetValidPortableResourceTypes(), ", ")
-				expectedError := fmt.Sprintf("Recipe.radapp.io \"%s\" is invalid: spec.type: Invalid value: \"%s\": allowed values are: %s", tr.recipeName, tr.typeName, validResourceTypes)
+				expectedError := fmt.Sprintf("Recipe.radapp.io \"%s\" is invalid: spec.type: Invalid value: \"%s\": must be in the format 'ResourceProvider.Namespace/resourceType'", tr.recipeName, tr.typeName)
 				require.True(t, apierrors.IsInvalid(err))
 				require.EqualError(t, err, expectedError)
 
