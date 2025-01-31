@@ -76,7 +76,7 @@ env:
   AWS_ACCOUNT_ID: "${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
 
   # The valid radius build time window in seconds to rebuild radius. 24 hours = 24 * 60 * 60 = 86400
-  VALID_RADIUS_BUILD_WINDOW: 1800
+  VALID_RADIUS_BUILD_WINDOW: 86400
 
   # The functional test GitHub app id
   FUNCTIONAL_TEST_APP_ID: 425843
