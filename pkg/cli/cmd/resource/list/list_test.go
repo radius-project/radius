@@ -132,12 +132,14 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         &workspaces.Workspace{Name: radcli.TestWorkspaceName},
-				ApplicationName:   "test-app",
-				ResourceType:      "Applications.Core/containers",
-				Format:            "table",
+				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                    outputSink,
+				Workspace:                 &workspaces.Workspace{Name: radcli.TestWorkspaceName},
+				ApplicationName:           "test-app",
+				ResourceType:              "Applications.Core/containers",
+				Format:                    "table",
+				ResourceTypeSuffix:        "containers",
+				ResourceProviderNameSpace: "Applications.Core",
 			}
 
 			err := runner.Run(context.Background())
@@ -180,12 +182,14 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         &workspaces.Workspace{},
-				ApplicationName:   "test-app",
-				ResourceType:      "Applications.Core/containers",
-				Format:            "table",
+				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                    outputSink,
+				Workspace:                 &workspaces.Workspace{},
+				ApplicationName:           "test-app",
+				ResourceType:              "Applications.Core/containers",
+				Format:                    "table",
+				ResourceTypeSuffix:        "containers",
+				ResourceProviderNameSpace: "Applications.Core",
 			}
 
 			err := runner.Run(context.Background())
@@ -235,12 +239,14 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:            outputSink,
-				Workspace:         &workspaces.Workspace{},
-				ApplicationName:   "",
-				ResourceType:      "Applications.Core/containers",
-				Format:            "table",
+				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                    outputSink,
+				Workspace:                 &workspaces.Workspace{},
+				ApplicationName:           "",
+				ResourceType:              "Applications.Core/containers",
+				Format:                    "table",
+				ResourceTypeSuffix:        "containers",
+				ResourceProviderNameSpace: "Applications.Core",
 			}
 
 			err := runner.Run(context.Background())
