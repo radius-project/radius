@@ -74,6 +74,8 @@ env:
   LOCAL_REGISTRY_PORT: "5000"
   # bicep-types ACR url for uploading Radius Bicep types
   BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
+  # The functional test GitHub app id
+  FUNCTIONAL_TEST_APP_ID: 425843
 
 jobs:
   build:
@@ -87,11 +89,17 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v2
+        id: get_installation_token
+        with:
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Set DE image and tag (repository_dispatch from de-functional-test)
         if: github.event_name == 'repository_dispatch'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ steps.get_installation_token.outputs.token }}
           script: |
             const clientPayload = context.payload.client_payload;
             if (clientPayload && clientPayload.event_type === `de-functional-test`) {
@@ -478,10 +486,16 @@ jobs:
     runs-on: ubuntu-latest
     if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
     steps:
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v2
+        id: get_installation_token
+        with:
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ steps.get_installation_token.outputs.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,

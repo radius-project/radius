@@ -312,8 +312,6 @@ jobs:
     needs: ["build-and-push-cli"]
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
-    env:
-      GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
