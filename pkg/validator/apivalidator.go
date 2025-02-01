@@ -132,7 +132,7 @@ func isCatchAllRoute(r *http.Request) bool {
 
 func invalidResourceIDResponse(id string) rest.Response {
 	return rest.NewBadRequestARMResponse(v1.ErrorResponse{
-		Error: v1.ErrorDetails{
+		Error: &v1.ErrorDetails{
 			Code:    v1.CodeInvalid,
 			Message: fmt.Sprintf("Invalid Resource ID: %s", id),
 		},
@@ -141,7 +141,7 @@ func invalidResourceIDResponse(id string) rest.Response {
 
 func unsupportedAPIVersionResponse(apiVersion, resourceType string, supportedAPIVersions []string) rest.Response {
 	return rest.NewBadRequestARMResponse(v1.ErrorResponse{
-		Error: v1.ErrorDetails{
+		Error: &v1.ErrorDetails{
 			Code:    v1.CodeInvalidApiVersionParameter,
 			Message: fmt.Sprintf("API version '%s' for type '%s' is not supported. The supported api-versions are '%s'.", apiVersion, resourceType, strings.Join(supportedAPIVersions, ", ")),
 		},
@@ -149,14 +149,14 @@ func unsupportedAPIVersionResponse(apiVersion, resourceType string, supportedAPI
 }
 
 func validationFailedResponse(qualifiedName string, valErrs []ValidationError) rest.Response {
-	errDetails := []v1.ErrorDetails{}
+	errDetails := []*v1.ErrorDetails{}
 
 	for _, verr := range valErrs {
-		errDetails = append(errDetails, v1.ErrorDetails{Code: verr.Code, Message: verr.Message})
+		errDetails = append(errDetails, &v1.ErrorDetails{Code: verr.Code, Message: verr.Message})
 	}
 
 	resp := rest.NewBadRequestARMResponse(v1.ErrorResponse{
-		Error: v1.ErrorDetails{
+		Error: &v1.ErrorDetails{
 			Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 			Target:  qualifiedName,
 			Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",

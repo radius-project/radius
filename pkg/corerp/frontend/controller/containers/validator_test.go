@@ -167,7 +167,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 				},
 			},
 			resp: rest.NewBadRequestARMResponse(v1.ErrorResponse{
-				Error: v1.ErrorDetails{
+				Error: &v1.ErrorDetails{
 					Code:    v1.CodeInvalidRequestContent,
 					Target:  "$.properties.runtimes.kubernetes.base",
 					Message: "couldn't get version/kind; json parse error: json: cannot unmarshal string into Go value of type struct { APIVersion string \"json:\\\"apiVersion,omitempty\\\"\"; Kind string \"json:\\\"kind,omitempty\\\"\" }",
@@ -236,11 +236,11 @@ func TestValidateManifest(t *testing.T) {
 			name:     "invalid manifest with multiple deployments",
 			manifest: strings.Join([]string{fakeDeployment, fakeDeployment}, k8sutil.YAMLSeparator),
 			resource: validResource,
-			err: v1.ErrorDetails{
+			err: &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  manifestTargetProperty,
 				Message: "The manifest includes invalid resources.",
-				Details: []v1.ErrorDetails{
+				Details: []*v1.ErrorDetails{
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
@@ -253,11 +253,11 @@ func TestValidateManifest(t *testing.T) {
 			name:     "invalid manifest with multiple services",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService}, k8sutil.YAMLSeparator),
 			resource: validResource,
-			err: v1.ErrorDetails{
+			err: &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  manifestTargetProperty,
 				Message: "The manifest includes invalid resources.",
-				Details: []v1.ErrorDetails{
+				Details: []*v1.ErrorDetails{
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
@@ -270,11 +270,11 @@ func TestValidateManifest(t *testing.T) {
 			name:     "invalid manifest with multiple serviceaccounts",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeServiceAccount}, k8sutil.YAMLSeparator),
 			resource: validResource,
-			err: v1.ErrorDetails{
+			err: &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  manifestTargetProperty,
 				Message: "The manifest includes invalid resources.",
-				Details: []v1.ErrorDetails{
+				Details: []*v1.ErrorDetails{
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
@@ -287,11 +287,11 @@ func TestValidateManifest(t *testing.T) {
 			name:     "invalid manifest with resource including namespace",
 			manifest: strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, k8sutil.YAMLSeparator),
 			resource: validResource,
-			err: v1.ErrorDetails{
+			err: &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  manifestTargetProperty,
 				Message: "The manifest includes invalid resources.",
-				Details: []v1.ErrorDetails{
+				Details: []*v1.ErrorDetails{
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
@@ -304,11 +304,11 @@ func TestValidateManifest(t *testing.T) {
 			name:     "invalid manifest with unmatched deployment name",
 			manifest: strings.Join([]string{fmt.Sprintf(k8sutil.FakeDeploymentTemplate, "pie", "", "magpie"), fakeService, fakeServiceAccount}, k8sutil.YAMLSeparator),
 			resource: validResource,
-			err: v1.ErrorDetails{
+			err: &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  manifestTargetProperty,
 				Message: "The manifest includes invalid resources.",
-				Details: []v1.ErrorDetails{
+				Details: []*v1.ErrorDetails{
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
@@ -321,11 +321,11 @@ func TestValidateManifest(t *testing.T) {
 			name:     "invalid manifest with unmatched service name",
 			manifest: strings.Join([]string{fakeDeployment, fmt.Sprintf(k8sutil.FakeServiceTemplate, "pie", ""), fakeServiceAccount}, k8sutil.YAMLSeparator),
 			resource: validResource,
-			err: v1.ErrorDetails{
+			err: &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  manifestTargetProperty,
 				Message: "The manifest includes invalid resources.",
-				Details: []v1.ErrorDetails{
+				Details: []*v1.ErrorDetails{
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
@@ -338,11 +338,11 @@ func TestValidateManifest(t *testing.T) {
 			name:     "invalid manifest with unmatched serviceaccount name",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "pie")}, k8sutil.YAMLSeparator),
 			resource: validResource,
-			err: v1.ErrorDetails{
+			err: &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  manifestTargetProperty,
 				Message: "The manifest includes invalid resources.",
-				Details: []v1.ErrorDetails{
+				Details: []*v1.ErrorDetails{
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
@@ -360,11 +360,11 @@ func TestValidateManifest(t *testing.T) {
 			name:     "invalid manifest with multiple errors",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService, fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "pie")}, k8sutil.YAMLSeparator),
 			resource: validResource,
-			err: v1.ErrorDetails{
+			err: &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  manifestTargetProperty,
 				Message: "The manifest includes invalid resources.",
-				Details: []v1.ErrorDetails{
+				Details: []*v1.ErrorDetails{
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
@@ -389,8 +389,8 @@ func TestValidateManifest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateBaseManifest([]byte(tc.manifest), tc.resource)
 			if tc.err != nil {
-				expected := tc.err.(v1.ErrorDetails)
-				actual := err.(v1.ErrorDetails)
+				expected := tc.err.(*v1.ErrorDetails)
+				actual := err.(*v1.ErrorDetails)
 				require.Equal(t, expected.Code, actual.Code)
 				require.Equal(t, expected.Target, actual.Target)
 				require.Equal(t, expected.Message, actual.Message)
@@ -427,7 +427,7 @@ func TestValidatePodSpec(t *testing.T) {
 		{
 			name:      "invalid patch PodSpec",
 			patchSpec: "invalid",
-			err: v1.ErrorDetails{
+			err: &v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
 				Target:  podTargetProperty,
 				Message: "Invalid PodSpec for patching: invalid character 'i' looking for beginning of value.",

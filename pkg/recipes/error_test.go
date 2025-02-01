@@ -49,7 +49,7 @@ func TestNewRecipeError(t *testing.T) {
 				v1.ErrorDetails{
 					Code:    RecipeDeploymentFailed,
 					Message: "test-recipe-deployment-failed-message",
-					Details: []v1.ErrorDetails{
+					Details: []*v1.ErrorDetails{
 						{
 							Code:    RecipeLanguageFailure,
 							Message: "test-recipe-language-failure-message",

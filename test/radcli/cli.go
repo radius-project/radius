@@ -62,7 +62,7 @@ func (err *CLIError) Error() string {
 func (err *CLIError) GetFirstErrorCode() string {
 	var errorCode = err.ErrorResponse.Error.Code
 
-	errorQueue := make([]v1.ErrorDetails, 0)
+	errorQueue := make([]*v1.ErrorDetails, 0)
 	errorQueue = append(errorQueue, err.ErrorResponse.Error.Details...)
 
 	for len(errorQueue) > 0 {
