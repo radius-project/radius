@@ -26,6 +26,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/database/databaseutil"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/renderers/container"
 	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
@@ -63,6 +64,23 @@ func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
 // Run checks if the resource exists, renders the resource, deploys the resource, applies the
 // deployment output to the resource, deletes any resources that are no longer needed, and saves the resource.
 func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+
+	// use id.ExtractStorageParts to get ResourceType
+	// get the resourcetyperesurce from the database
+	// see if you can get the value of recipe enabled
+	// pass it down to deployment
+	myid, err := resources.Parse(request.ResourceID)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	pre, root, routing, resourceType := databaseutil.ExtractStorageParts(myid)
+
+	resourceTypeResourceObj, err := c.DatabaseClient().Get(ctx, pre+"/"+root+"/"+routing+"/"+resourceType)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	fmt.Print(resourceTypeResourceObj)
+
 	obj, err := c.DatabaseClient().Get(ctx, request.ResourceID)
 	if err != nil && !errors.Is(&database.ErrNotFound{ID: request.ResourceID}, err) {
 		return ctrl.Result{}, err
@@ -93,6 +111,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	// here pass if recipe enabled or not in Render
 	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel)
 	if err != nil {
 		return ctrl.Result{}, err
