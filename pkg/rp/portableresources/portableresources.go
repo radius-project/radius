@@ -30,9 +30,7 @@ const ExtendersResourceType = "Applications.Core/extenders"
 // IsValidPortableResourceType checks if the provided resource type is a valid portable resource type.
 // Returns true if the resource type is valid, false otherwise.
 func IsValidPortableResourceType(resourceType string) bool {
-
-	portableResourceTypes := GetValidPortableResourceTypes()
-
+	portableResourceTypes := getValidPortableResourceTypes()
 	for _, s := range portableResourceTypes {
 		if strings.EqualFold(s, resourceType) {
 			return true
@@ -43,7 +41,7 @@ func IsValidPortableResourceType(resourceType string) bool {
 }
 
 // GetValidPortableResourceTypes returns list of valid portable resource types.
-func GetValidPortableResourceTypes() []string {
+func getValidPortableResourceTypes() []string {
 	resourceTypes := []string{
 		dapr_ctrl.DaprPubSubBrokersResourceType,
 		dapr_ctrl.DaprSecretStoresResourceType,
