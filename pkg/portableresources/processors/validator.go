@@ -66,6 +66,10 @@ func NewValidator(connectionValues *map[string]any, connectionSecrets *map[strin
 	*connectionSecrets = map[string]rpv1.SecretValueReference{}
 	*outputResources = []rpv1.OutputResource{}
 
+	if status == nil {
+		status = new(rpv1.RecipeStatus)
+	}
+
 	return &Validator{
 		ConnectionValues:  *connectionValues,
 		ConnectionSecrets: *connectionSecrets,
@@ -166,6 +170,9 @@ func (v *Validator) SetAndValidate(output *recipes.RecipeOutput) error {
 		*v.OutputResources = append(*v.OutputResources, recipeResources...)
 
 		if output.Status != nil {
+			if v.Status == nil {
+				v.Status = new(rpv1.RecipeStatus)
+			}
 			*v.Status = *output.Status
 		}
 	}

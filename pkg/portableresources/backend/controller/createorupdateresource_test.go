@@ -81,6 +81,11 @@ func (t *TestResource) GetRecipe() *portableresources.ResourceRecipe {
 	return &t.Properties.Recipe
 }
 
+// SetRecipe allows updating the recipe in the resource.
+func (t *TestResource) SetRecipe(r *portableresources.ResourceRecipe) {
+	t.Properties.Recipe = *r
+}
+
 type TestResourceProperties struct {
 	rpv1.BasicResourceProperties
 	IsProcessed bool                             `json:"isProcessed"`
@@ -207,6 +212,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			nil,
 			fmt.Errorf("could not find recipe %q in environment %q", "test-recipe", TestEnvironmentID),
 		},
+
 		{
 			"runtime-configuration-err",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
