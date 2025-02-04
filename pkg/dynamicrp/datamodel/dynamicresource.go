@@ -174,14 +174,6 @@ func (d *DynamicResource) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter
 	return &dynamicResourceBasicPropertiesAdapter{resource: d}
 }
 
-// SetRecipeStatus sets the recipe status of the resource.
-func (d *DynamicResource) SetRecipeStatus(recipeStatus rpv1.RecipeStatus) {
-	rm := d.ResourceMetadata()
-	status := rm.GetResourceStatus().DeepCopy()
-	status.Recipe = &recipeStatus
-	rm.SetResourceStatus(status)
-}
-
 // dynamicResourceBasicPropertiesAdapter adapts a DynamicResource to the BasicResourcePropertiesAdapter interface
 // so it can be used with our shared controllers.
 type dynamicResourceBasicPropertiesAdapter struct {
