@@ -56,9 +56,9 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 // to be displayed to the user.
 var (
 	ExcludedResourceTypesList = []string{
-		"Microsoft.Resources/deployments",
-		"Applications.Core/applications",
-		"Applications.Core/environments",
+		"microsoft.resources/deployments",
+		"ppplications.core/applications",
+		"applications.core/environments",
 	}
 )
 
@@ -764,7 +764,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 		resourceProviderName := *resourceProvider.Name
 		for typeName, _ := range resourceProvider.ResourceTypes {
 			fullResourceName := resourceProviderName + "/" + typeName
-			if !slices.Contains(ExcludedResourceTypesList, fullResourceName) {
+			if !slices.Contains(ExcludedResourceTypesList, strings.ToLower(fullResourceName)) {
 				resourceTypeNames = append(resourceTypeNames, fullResourceName)
 			}
 		}

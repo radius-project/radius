@@ -283,10 +283,10 @@ func RequireFullyQualifiedResourceTypeAndName(args []string) (string, string, st
 	return resourceProviderName, resourceTypeName, resourceName, nil
 }
 
-// RequireResourceType checks if the first argument provided is a valid resource type 'providernamespace/resourcetype' and returns it if it is. If the
+// RequireResourceType checks if the first argument provided is a valid resource type 'resourceType' and returns it if it is. If the
 // argument is not valid, an error is returned.
 //
-// Example of resource Type: Applications.Datastores/redisCaches
+// Example of resource Type: containers
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
 		return "", errors.New("no resource type provided")
@@ -301,6 +301,11 @@ func RequireResourceType(args []string) (string, error) {
 	return resourceTypeName, nil
 }
 
+// RequireFullyQualifiedResourceType checks if the first argument provided is a valid fully qualified resource type
+// 'resourceProvider/resourceType' and returns the resource provider and resource type if it is. If the argument is not
+// valid, an error is returned.
+//
+// Example of fully qualified resource type: Applications.Core/containers
 func RequireFullyQualifiedResourceType(args []string) (string, string, error) {
 	if len(args) < 1 {
 		return "", "", errors.New("no fully qualified resource type provided")

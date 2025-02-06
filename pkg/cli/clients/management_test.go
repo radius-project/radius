@@ -37,6 +37,7 @@ import (
 const (
 	testScope    = "/planes/radius/local/resourceGroups/my-default-rg"
 	anotherScope = "/planes/radius/local/resourceGroups/my-other-rg"
+	version      = "2025-01-01"
 )
 
 var (
@@ -49,9 +50,9 @@ var (
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resourceType1": {
 								APIVersions: map[string]map[string]any{
-									"2025-01-01": {},
+									version: {},
 								},
-								DefaultAPIVersion: to.Ptr("2025-01-01"),
+								DefaultAPIVersion: to.Ptr(version),
 							},
 						},
 						Locations: map[string]map[string]any{
@@ -63,9 +64,9 @@ var (
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resourceType2": {
 								APIVersions: map[string]map[string]any{
-									"2025-01-01": {},
+									version: {},
 								},
-								DefaultAPIVersion: to.Ptr("2025-01-01"),
+								DefaultAPIVersion: to.Ptr(version),
 							},
 						},
 						Locations: map[string]map[string]any{
@@ -84,9 +85,9 @@ var (
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resourceType3": {
 								APIVersions: map[string]map[string]any{
-									"2025-01-01": {},
+									version: {},
 								},
-								DefaultAPIVersion: to.Ptr("2025-01-01"),
+								DefaultAPIVersion: to.Ptr(version),
 							},
 						},
 						Locations: map[string]map[string]any{
@@ -98,9 +99,9 @@ var (
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"environments": {
 								APIVersions: map[string]map[string]any{
-									"2025-01-01": {},
+									version: {},
 								},
-								DefaultAPIVersion: to.Ptr("2025-01-01"),
+								DefaultAPIVersion: to.Ptr(version),
 							},
 						},
 						Locations: map[string]map[string]any{
@@ -1074,9 +1075,9 @@ func Test_ResourceProvider(t *testing.T) {
 			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 				"resourceType1": {
 					APIVersions: map[string]map[string]any{
-						"2025-01-01": {},
+						version: {},
 					},
-					DefaultAPIVersion: to.Ptr("2025-01-01"),
+					DefaultAPIVersion: to.Ptr(version),
 				},
 			},
 			Locations: map[string]map[string]any{
@@ -1157,7 +1158,7 @@ func Test_APIVersion(t *testing.T) {
 
 	testResourceProviderName := "Applications.Test"
 	testResourceTypeName := "testResources"
-	testAPIVersionResourceName := "2025-01-01"
+	testAPIVersionResourceName := version
 
 	expectedResource := ucp.APIVersionResource{
 		ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/resourceTypes/" + testResourceTypeName + "/apiVersions/" + testAPIVersionResourceName),
