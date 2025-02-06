@@ -99,12 +99,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.Format = format
-	resourceProviderName, respurceTypeName, err := cli.RequireFullyQualifiedResourceType(args)
+	resourceProviderName, resourceTypeName, err := cli.RequireFullyQualifiedResourceType(args)
 	if err != nil {
 		return err
 	}
 
-	r.FullyQualifiedResourceTypeName = resourceProviderName + "/" + respurceTypeName
+	r.FullyQualifiedResourceTypeName = resourceProviderName + "/" + resourceTypeName
 	r.ResourceName = args[1]
 	r.Resource, err = readInput(r.InputFilePath)
 	if err != nil {
