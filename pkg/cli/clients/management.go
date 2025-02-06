@@ -753,7 +753,7 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 	return response.ResourceProviderSummary, nil
 }
 
-// ListAllResourceTypesNames lists all resource types in all resource providers in the configured scope.
+// ListAllResourceTypesNames lists all resource types in all resource providers in the configured plane.
 func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
 	if err != nil {
@@ -822,7 +822,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 	return results, nil
 }
 
-// CreateOrUpdateResourceType creates or updates a resource type in the configured scope.
+// CreateOrUpdateResourceType creates or updates a resource type in the configured plane.
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource *ucpv20231001.ResourceTypeResource) (ucpv20231001.ResourceTypeResource, error) {
 	client, err := amc.createResourceTypeClient()
 	if err != nil {
@@ -842,7 +842,7 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceType(ctx conte
 	return response.ResourceTypeResource, nil
 }
 
-// DeleteResourceType deletes a resource type in the configured scope.
+// DeleteResourceType deletes a resource type in the configured plane.
 func (amc *UCPApplicationsManagementClient) DeleteResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string) (bool, error) {
 	client, err := amc.createResourceTypeClient()
 	if err != nil {
