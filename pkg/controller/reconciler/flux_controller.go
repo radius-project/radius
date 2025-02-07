@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -37,7 +38,8 @@ const (
 // on the cluster.
 type FluxController struct {
 	client.Client
-	Filesystem     filesystem.FileSystem
+	Bicep          bicep.Interface
+	FileSystem     filesystem.FileSystem
 	ArchiveFetcher ArchiveFetcher
 }
 
@@ -99,13 +101,13 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	logger.Info("New revision detected", "revision", artifact.Revision)
 
 	// Create temp dir to store the fetched artifact
-	tmpDir, err := os.MkdirTemp("", repository.Name)
+	tmpDir, err := r.FileSystem.MkdirTemp("", repository.Name)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create temp dir, error: %w", err)
 	}
 
 	defer func(path string) {
-		err := os.RemoveAll(path)
+		err := r.FileSystem.RemoveAll(path)
 		if err != nil {
 			logger.Error(err, "unable to remove temp dir")
 		}
@@ -121,7 +123,7 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	logger.Info("Fetched artifact", "url", artifact.URL)
 
 	// Check if the radius-config.yaml file exists
-	_, err = os.Stat(path.Join(tmpDir, radiusConfigFileName))
+	_, err = r.FileSystem.Stat(filepath.Join(tmpDir, radiusConfigFileName))
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No radius-config.yaml found in the repository, safe to ignore
@@ -199,7 +201,7 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// that it was created from is still present in the git repository. If not, delete the
 	// DeploymentTemplate from the cluster.
 	for _, deploymentTemplate := range deploymentTemplates.Items {
-		if _, err := os.Stat(path.Join(tmpDir, deploymentTemplate.Name)); os.IsNotExist(err) {
+		if _, err := r.FileSystem.Stat(path.Join(tmpDir, deploymentTemplate.Name)); os.IsNotExist(err) {
 			// File does not exist in the git repository,
 			// delete the DeploymentTemplate from the cluster
 			logger.Info("Deleting DeploymentTemplate", "name", deploymentTemplate.Name)
@@ -221,22 +223,15 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename string) (armJSON string, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	logger.Info("Running bicep build on " + path.Join(filepath, filename))
-
+	bicepFile := path.Join(filepath, filename)
 	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json"))
 
-	cmd := exec.Command("bicep", "build", path.Join(filepath, filename), "--outfile", outfile)
-	cmd.Dir = filepath
-
-	// Run the bicep build command
-	err = cmd.Run()
-	if err != nil {
-		logger.Error(err, "failed to run bicep build")
-		return "", err
-	}
+	// Run bicep build on the bicep file
+	logger.Info("Running bicep build on " + bicepFile)
+	r.Bicep.Build(bicepFile, "--outfile", outfile)
 
 	// Read the contents of the generated .json file
-	contents, err := os.ReadFile(outfile)
+	contents, err := r.FileSystem.ReadFile(outfile)
 	if err != nil {
 		logger.Error(err, "failed to read bicep build output")
 		return "", err
@@ -248,21 +243,15 @@ func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename s
 func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, filename string) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	logger.Info("Running bicep build-params on " + filename)
-
+	bicepParamsFile := path.Join(filepath, filename)
 	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicepparam", ".bicepparam.json"))
 
-	cmd := exec.Command("bicep", "build-params", path.Join(filepath, filename), "--outfile", outfile)
-
-	// Run the bicep build-params command
-	err := cmd.Run()
-	if err != nil {
-		logger.Error(err, "failed to run bicep build")
-		return nil, err
-	}
+	// Run bicep build-params on the bicep file
+	logger.Info("Running bicep build-params on " + bicepParamsFile)
+	r.Bicep.BuildParams(bicepParamsFile, outfile)
 
 	// Read the contents of the generated .bicepparam.json file
-	contents, err := os.ReadFile(outfile)
+	contents, err := r.FileSystem.ReadFile(outfile)
 	if err != nil {
 		logger.Error(err, "failed to read bicep build-params output")
 		return nil, err
@@ -349,7 +338,7 @@ func (r *FluxController) parseAndValidateRadiusConfigFromFile(dir, configFileNam
 	radiusConfig := RadiusConfig{}
 
 	// Read the file contents
-	b, err := r.Filesystem.ReadFile(path.Join(dir, configFileName))
+	b, err := r.FileSystem.ReadFile(path.Join(dir, configFileName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read radius-config.yaml, error: %w", err)
 	}
@@ -378,7 +367,7 @@ func (r *FluxController) parseAndValidateRadiusConfigFromFile(dir, configFileNam
 		}
 
 		// Validate that the file exists
-		_, err := os.Stat(path.Join(dir, bicepFile.Name))
+		_, err := r.FileSystem.Stat(path.Join(dir, bicepFile.Name))
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil, fmt.Errorf("failed to find bicep file %s, error: %w", bicepFile.Name, err)
@@ -389,7 +378,7 @@ func (r *FluxController) parseAndValidateRadiusConfigFromFile(dir, configFileNam
 
 		// If the bicepFile.Params field is set, validate that the file exists
 		if bicepFile.Params != "" {
-			_, err := os.Stat(path.Join(dir, bicepFile.Params))
+			_, err := r.FileSystem.Stat(path.Join(dir, bicepFile.Params))
 			if err != nil {
 				if os.IsNotExist(err) {
 					return nil, fmt.Errorf("failed to find bicepparams file %s, error: %w", bicepFile.Params, err)

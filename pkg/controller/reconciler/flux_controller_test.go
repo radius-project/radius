@@ -14,10 +14,12 @@ limitations under the License.
 package reconciler
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
@@ -35,6 +37,7 @@ import (
 type setupFluxControllerTestOptions struct {
 	archiveFetcher ArchiveFetcher
 	filesystem     filesystem.FileSystem
+	bicep          bicep.Interface
 }
 
 func SetupFluxControllerTest(t *testing.T, options setupFluxControllerTestOptions) k8sclient.Client {
@@ -67,7 +70,8 @@ func SetupFluxControllerTest(t *testing.T, options setupFluxControllerTestOption
 	// Set up FluxController.
 	fluxController := &FluxController{
 		Client:         mgr.GetClient(),
-		Filesystem:     options.filesystem,
+		FileSystem:     options.filesystem,
+		Bicep:          options.bicep,
 		ArchiveFetcher: options.archiveFetcher,
 	}
 	err = (fluxController).SetupWithManager(mgr)
@@ -84,7 +88,7 @@ func SetupFluxControllerTest(t *testing.T, options setupFluxControllerTestOption
 func Test_FluxController_Basic(t *testing.T) {
 	ctx := testcontext.New(t)
 
-	// Set up mock filesystem and ArchiveFetcher
+	// Set up mocks
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -96,13 +100,25 @@ func Test_FluxController_Basic(t *testing.T) {
 		Return(nil).
 		Times(1).
 		Do(func(archiveURL, digest string, dir string) {
-			err := fs.WriteFile("radius-config.yaml", []byte("hi mom"), 0644)
+			// Write the radius-config.yaml file to the directory.
+			err := fs.WriteFile(filepath.Join(dir, "radius-config.yaml"), []byte("radiusResourceGroup: default\nbicepBuild:\n  - name: basic.bicep\n"), 0644)
+			require.NoError(t, err)
+
+			// Write the basic.bicep file to the directory.
+			err = fs.WriteFile(filepath.Join(dir, "basic.bicep"), []byte("param location string = 'West US'\nparam sku string = 'Standard_D2_v2'\n\nresource nic 'Microsoft.Network/networkInterfaces@2020-06-01' = {\n  name: 'myNic'\n  location: location\n  properties: {\n    ipConfigurations: [\n      {\n        name: 'ipconfig1'\n        properties: {\n          privateIPAllocationMethod: 'Dynamic'\n          subnet: {\n            id: '/subscriptions/{subscription-id}/resourceGroups/{resource-group}/providers/Microsoft.Network/virtualNetworks/{vnet-name}/subnets/{subnet-name}'\n          }\n        }\n      }\n    ]\n  }\n}\n"), 0644)
 			require.NoError(t, err)
 		})
+
+	bicep := bicep.NewMockInterface(mctrl)
+	bicep.EXPECT().
+		Build(gomock.Any(), "--outfile", gomock.Any()).
+		Return(nil, nil).
+		Times(1)
 
 	options := setupFluxControllerTestOptions{
 		archiveFetcher: archiveFetcher,
 		filesystem:     fs,
+		bicep:          bicep,
 	}
 
 	k8sClient := SetupFluxControllerTest(t, options)
@@ -170,8 +186,6 @@ func Test_FluxController_Basic(t *testing.T) {
 	require.Equal(t, metav1.ConditionTrue, updatedGitRepo.Status.Conditions[0].Status)
 	require.Equal(t, "Succeeded", updatedGitRepo.Status.Conditions[0].Reason)
 	require.Equal(t, "Repository is ready", updatedGitRepo.Status.Conditions[0].Message)
-
-	// Continue with your assertions or further test logic...
 }
 
 func makeGitRepository(namespacedName types.NamespacedName, url, digest string) *sourcev1.GitRepository {

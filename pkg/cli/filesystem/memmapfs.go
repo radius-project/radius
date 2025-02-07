@@ -17,7 +17,9 @@ limitations under the License.
 package filesystem
 
 import (
+	"fmt"
 	"io/fs"
+	"math/rand"
 	"testing/fstest"
 )
 
@@ -63,6 +65,21 @@ func (mmfs MemMapFileSystem) WriteFile(name string, data []byte, perm fs.FileMod
 		Data: data,
 		Mode: perm,
 	}
+
+	return nil
+}
+
+func (mmfs MemMapFileSystem) MkdirTemp(dir, pattern string) (string, error) {
+	tempDir := fmt.Sprintf("%s%s%d", dir, pattern, rand.Intn(100000))
+	mmfs.InternalFileSystem[tempDir] = &fstest.MapFile{
+		Mode: fs.ModeDir,
+	}
+
+	return tempDir, nil
+}
+
+func (mmfs MemMapFileSystem) RemoveAll(path string) error {
+	delete(mmfs.InternalFileSystem, path)
 
 	return nil
 }

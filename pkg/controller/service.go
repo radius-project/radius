@@ -145,7 +145,7 @@ func (s *Service) Run(ctx context.Context) error {
 	err = (&reconciler.FluxController{
 		Client:         mgr.GetClient(),
 		ArchiveFetcher: reconciler.NewArchiveFetcher(),
-		Filesystem:     filesystem.NewOSFS(),
+		FileSystem:     filesystem.NewOSFS(),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)

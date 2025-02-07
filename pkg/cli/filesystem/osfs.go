@@ -55,3 +55,11 @@ func (osfs OSFileSystem) Stat(name string) (fs.FileInfo, error) {
 func (osfs OSFileSystem) WriteFile(name string, data []byte, perm fs.FileMode) error {
 	return os.WriteFile(name, data, perm)
 }
+
+func (osfs OSFileSystem) MkdirTemp(dir, pattern string) (string, error) {
+	return os.MkdirTemp(dir, pattern)
+}
+
+func (osfs OSFileSystem) RemoveAll(path string) error {
+	return os.RemoveAll(path)
+}

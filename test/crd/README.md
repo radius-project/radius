@@ -11,7 +11,7 @@ The pattern is based on the following Kubebuilder documentation: https://book-v3
 To download the CRDs, run the following command:
 
 ```bash
-go run /Users/willsmith/dev/radius/radius/test/crd/generator.go
+go run ./test/crd/generator.go
 ```
 
 This will download the CRDs to the `test/crd` directory, under the appropriate subdirectory.

@@ -28,4 +28,6 @@ type FileSystem interface {
 	ReadFile(name string) ([]byte, error)
 	Stat(name string) (fs.FileInfo, error)
 	WriteFile(name string, data []byte, perm fs.FileMode) error
+	MkdirTemp(dir string, pattern string) (string, error)
+	RemoveAll(path string) error
 }

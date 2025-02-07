@@ -97,3 +97,26 @@ func TestMemMapFileSystem_WriteFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, data, readData)
 }
+
+func TestMemMapFileSystem_MkdirTemp(t *testing.T) {
+	fs := NewMemMapFileSystem()
+	dir := "testdir"
+	pattern := "testpattern"
+
+	tempDir, err := fs.MkdirTemp(dir, pattern)
+	require.NoError(t, err)
+	require.NotNil(t, tempDir)
+	require.True(t, fs.Exists(tempDir))
+}
+
+func TestMemMapFileSystem_RemoveAll(t *testing.T) {
+	fs := NewMemMapFileSystem()
+	dir := "testdir"
+	fileName := "testfile"
+
+	_, _ = fs.Create("testdir/testfile")
+
+	err := fs.RemoveAll(dir)
+	require.NoError(t, err)
+	require.False(t, fs.Exists(fileName))
+}
