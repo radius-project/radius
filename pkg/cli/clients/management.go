@@ -57,7 +57,7 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 var (
 	ExcludedResourceTypesList = []string{
 		"microsoft.resources/deployments",
-		"ppplications.core/applications",
+		"applications.core/applications",
 		"applications.core/environments",
 	}
 )
