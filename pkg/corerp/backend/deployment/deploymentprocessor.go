@@ -106,6 +106,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
+	//pass the capabilit here
 	rendererDependencies, err := dp.fetchDependencies(ctx, requiredResources)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -574,6 +575,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 }
 
 func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData portableresources.RecipeData) (ResourceData, error) {
+	// pass
 	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)

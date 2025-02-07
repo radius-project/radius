@@ -26,7 +26,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
-	"github.com/radius-project/radius/pkg/components/database/databaseutil"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/renderers/container"
 	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
@@ -69,17 +68,44 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 	// get the resourcetyperesurce from the database
 	// see if you can get the value of recipe enabled
 	// pass it down to deployment
-	myid, err := resources.Parse(request.ResourceID)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	pre, root, routing, resourceType := databaseutil.ExtractStorageParts(myid)
+	// myid, err := resources.Parse(request.ResourceID)
+	//if err != nil {
+	//	return ctrl.Result{}, err
+	// }
+	//	pre, root, routing, resourceType := databaseutil.ExtractStorageParts(myid)
 
-	resourceTypeResourceObj, err := c.DatabaseClient().Get(ctx, pre+"/"+root+"/"+routing+"/"+resourceType)
+	//	resourceTypeResourceObj, _ := c.DatabaseClient().Get(ctx, pre+"/"+root+"/"+routing+"/"+resourceType)
+
+	resourceTypeResourceObj, err := c.DatabaseClient().Get(ctx, "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Core/resourceTypes/containers")
+
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 	fmt.Print(resourceTypeResourceObj)
+
+	data := resourceTypeResourceObj.Data
+	if data == nil {
+		return ctrl.Result{}, errors.New("data is nil")
+	}
+
+	// data is a map[string]interface{}. chexk if key capabilities is present
+	// and has "recipeEnabled"
+	properties, ok := data.(map[string]interface{})["properties"]
+	if !ok {
+		return ctrl.Result{}, errors.New("properties not found")
+	}
+
+	capabilities, ok := properties.(map[string]interface{})["capabilities"]
+	if !ok {
+		return ctrl.Result{}, errors.New("capabilities not found")
+	}
+
+	for _, capability := range capabilities.([]interface{}) {
+		if capability == "SupportsRecipes" {
+			fmt.Print("recipe enabled")
+		}
+
+	}
 
 	obj, err := c.DatabaseClient().Get(ctx, request.ResourceID)
 	if err != nil && !errors.Is(&database.ErrNotFound{ID: request.ResourceID}, err) {
@@ -88,6 +114,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 
 	isNewResource := false
 	if errors.Is(&database.ErrNotFound{ID: request.ResourceID}, err) {
+
 		isNewResource = true
 	}
 
