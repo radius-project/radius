@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/config"
@@ -270,24 +269,24 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 	return results[0], results[1], nil
 }
 
-// RequireResourceTypeAndName checks if the provided arguments contain a resource type and name, and returns them if they
+// RequireFullyQualifiedResourceTypeAndName checks if the provided arguments contain a resource type and name, and returns them if they
 // are present. If either is missing, an error is returned.
-func RequireResourceTypeAndName(args []string) (string, string, error) {
+func RequireFullyQualifiedResourceTypeAndName(args []string) (string, string, string, error) {
 	if len(args) < 2 {
-		return "", "", errors.New("no resource type or name provided")
+		return "", "", "", errors.New("no resource type or name provided")
 	}
-	resourceType, err := RequireResourceType(args)
+	resourceProviderName, resourceTypeName, err := RequireFullyQualifiedResourceType(args)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	resourceName := args[1]
-	return resourceType, resourceName, nil
+	return resourceProviderName, resourceTypeName, resourceName, nil
 }
 
-// RequireResourceType checks if the first argument provided is a valid resource type and returns it if it is. If the
-// argument is not valid, an error is returned with a list of valid resource types.
+// RequireResourceType checks if the first argument provided is a valid resource type 'resourceType' and returns it if it is. If the
+// argument is not valid, an error is returned.
 //
-// Example of resource Type: Applications.Datastores/redisCaches
+// Example of resource Type: containers
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
 		return "", errors.New("no resource type provided")
@@ -295,29 +294,36 @@ func RequireResourceType(args []string) (string, error) {
 
 	resourceTypeName := args[0]
 
-	// Allow any fully-qualified resource type.
 	if strings.Contains(resourceTypeName, "/") {
-		return resourceTypeName, nil
+		return "", fmt.Errorf("`%s` is not a valid resource type name. Please specify the resource type name. ex: `containers`", resourceTypeName)
 	}
 
-	supportedTypes := []string{}
-	foundTypes := []string{}
-	for _, resourceType := range clients.ResourceTypesList {
-		supportedType := strings.Split(resourceType, "/")[1]
-		supportedTypes = append(supportedTypes, supportedType)
-		//check to see if the resource type is the correct short or long name.
-		if strings.EqualFold(supportedType, resourceTypeName) || strings.EqualFold(resourceType, resourceTypeName) {
-			foundTypes = append(foundTypes, resourceType)
-		}
+	return resourceTypeName, nil
+}
+
+// RequireFullyQualifiedResourceType checks if the first argument provided is a valid fully qualified resource type
+// 'resourceProvider/resourceType' and returns the resource provider and resource type if it is. If the argument is not
+// valid, an error is returned.
+//
+// Example of fully qualified resource type: Applications.Core/containers
+func RequireFullyQualifiedResourceType(args []string) (string, string, error) {
+	if len(args) < 1 {
+		return "", "", errors.New("no fully qualified resource type provided")
 	}
-	if len(foundTypes) == 1 {
-		return foundTypes[0], nil
-	} else if len(foundTypes) > 1 {
-		return "", fmt.Errorf("multiple resource types match '%s'. Please specify the full resource type and try again:\n\n%s\n",
-			resourceTypeName, strings.Join(foundTypes, "\n"))
+
+	resourceTypeName := args[0]
+
+	// Allow only fully-qualified resource type.
+	if !strings.Contains(resourceTypeName, "/") {
+		return "", "", fmt.Errorf("`%s` is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again", resourceTypeName)
 	}
-	return "", fmt.Errorf("'%s' is not a valid resource type. Available Types are: \n\n%s\n",
-		resourceTypeName, strings.Join(supportedTypes, "\n"))
+
+	parts := strings.Split(resourceTypeName, "/")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("'%s' is not a valid resource type. Please specify the fully qualified resource type in format `resource-provider/resource-type` and try again", resourceTypeName)
+	}
+
+	return parts[0], parts[1], nil
 }
 
 // "RequireAzureResource" takes in a command and a slice of strings and returns an AzureResource object and an error. It

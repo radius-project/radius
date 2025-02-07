@@ -17,6 +17,7 @@ limitations under the License.
 package corerp
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -48,8 +49,10 @@ func Test_ResourceList(t *testing.T) {
 
 	resourceGroupScope := parsed.String()
 
+	resourceTypesList, err := options.ManagementClient.(*clients.UCPApplicationsManagementClient).ListAllResourceTypesNames(context.Background(), "local")
+	require.NoError(t, err)
 	resourceTypes := []string{"Applications.Core/applications", "Applications.Core/environments"}
-	resourceTypes = append(resourceTypes, clients.ResourceTypesList...)
+	resourceTypes = append(resourceTypes, resourceTypesList...)
 
 	listResources := func(t *testing.T, resourceType string) {
 		ctx, cancel := testcontext.NewWithCancel(t)

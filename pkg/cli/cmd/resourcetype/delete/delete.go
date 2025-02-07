@@ -19,7 +19,6 @@ package delete
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -43,8 +42,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "delete [resource type]",
-		Short: "Delete resource provider",
-		Long: `Delete resource provider
+		Short: "Delete resource protypevider",
+		Long: `Delete resource type
 		
 Resource types are the entities that implement resource types such as 'Applications.Core/containers'. Each resource type can define multiple API versions, and each API version defines a schema that resource instances conform to. Resource providers can be created and deleted by users.
 
@@ -110,15 +109,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.ResourceTypeName = args[0]
-	parts := strings.Split(r.ResourceTypeName, "/")
-	if len(parts) != 2 {
-		return clierrors.Message("Invalid resource type %q. Expected format: '<provider>/<type>'", r.ResourceTypeName)
+	r.ResourceProviderNamespace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
+	if err != nil {
+		return err
 	}
 
-	r.ResourceProviderNamespace = parts[0]
-	r.ResourceTypeSuffix = parts[1]
-
+	r.ResourceTypeName = r.ResourceProviderNamespace + "/" + r.ResourceTypeSuffix
 	return nil
 }
 
