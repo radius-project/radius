@@ -54,6 +54,7 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
 // ExcludedResourceTypesList is a list of resource types that should be excluded from the list of application resources
 // to be displayed to the user.
+// Lowercase is used to avoid case sensitivity issues.
 var (
 	ExcludedResourceTypesList = []string{
 		"microsoft.resources/deployments",
