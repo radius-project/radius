@@ -99,10 +99,10 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 	if !ok {
 		return ctrl.Result{}, errors.New("capabilities not found")
 	}
-
+	isPortableResource := false
 	for _, capability := range capabilities.([]interface{}) {
 		if capability == "SupportsRecipes" {
-			fmt.Print("recipe enabled")
+			isPortableResource = true
 		}
 
 	}
@@ -139,12 +139,12 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 	}
 
 	// here pass if recipe enabled or not in Render
-	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel)
+	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel, isPortableResource)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput)
+	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput, isPortableResource)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
