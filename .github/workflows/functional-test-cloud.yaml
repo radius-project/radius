@@ -215,6 +215,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
+          cache: true
 
       - name: Generate ID for release
         id: gen-id
@@ -493,22 +494,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
-          cache: false
-
-      - name: Get Go Cache path
-        id: go-cache-paths
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ${{ steps.go-cache-paths.outputs.go-build }}
-            ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
 
       - name: Download rad CLI
         uses: actions/download-artifact@v4
