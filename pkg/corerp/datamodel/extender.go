@@ -47,7 +47,7 @@ func (r *Extender) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the Extender resource.
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the Extender resource.
 func (r *Extender) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }

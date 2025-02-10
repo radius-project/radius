@@ -49,7 +49,7 @@ func (r *RedisCache) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the Redis cache resource.
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the Redis cache resource.
 func (r *RedisCache) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }

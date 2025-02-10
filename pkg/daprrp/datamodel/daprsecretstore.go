@@ -45,7 +45,7 @@ func (r *DaprSecretStore) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the DaprSecretStore resource i.e. application resources metadata.
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the Dapr SecretStore resource.
 func (r *DaprSecretStore) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
