@@ -82,18 +82,18 @@ func (c *MockDeploymentProcessorDeleteCall) DoAndReturn(f func(context.Context, 
 }
 
 // Deploy mocks base method.
-func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (v10.DeploymentOutput, error) {
+func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput, arg3 bool) (v10.DeploymentOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(v10.DeploymentOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Deploy indicates an expected call of Deploy.
-func (mr *MockDeploymentProcessorMockRecorder) Deploy(arg0, arg1, arg2 any) *MockDeploymentProcessorDeployCall {
+func (mr *MockDeploymentProcessorMockRecorder) Deploy(arg0, arg1, arg2, arg3 any) *MockDeploymentProcessorDeployCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).Deploy), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).Deploy), arg0, arg1, arg2, arg3)
 	return &MockDeploymentProcessorDeployCall{Call: call}
 }
 
@@ -109,13 +109,13 @@ func (c *MockDeploymentProcessorDeployCall) Return(arg0 v10.DeploymentOutput, ar
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockDeploymentProcessorDeployCall) Do(f func(context.Context, resources.ID, renderers.RendererOutput) (v10.DeploymentOutput, error)) *MockDeploymentProcessorDeployCall {
+func (c *MockDeploymentProcessorDeployCall) Do(f func(context.Context, resources.ID, renderers.RendererOutput, bool) (v10.DeploymentOutput, error)) *MockDeploymentProcessorDeployCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDeploymentProcessorDeployCall) DoAndReturn(f func(context.Context, resources.ID, renderers.RendererOutput) (v10.DeploymentOutput, error)) *MockDeploymentProcessorDeployCall {
+func (c *MockDeploymentProcessorDeployCall) DoAndReturn(f func(context.Context, resources.ID, renderers.RendererOutput, bool) (v10.DeploymentOutput, error)) *MockDeploymentProcessorDeployCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -160,18 +160,18 @@ func (c *MockDeploymentProcessorFetchSecretsCall) DoAndReturn(f func(context.Con
 }
 
 // Render mocks base method.
-func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 v1.DataModelInterface) (renderers.RendererOutput, error) {
+func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 v1.DataModelInterface, arg3 bool) (renderers.RendererOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(renderers.RendererOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Render indicates an expected call of Render.
-func (mr *MockDeploymentProcessorMockRecorder) Render(arg0, arg1, arg2 any) *MockDeploymentProcessorRenderCall {
+func (mr *MockDeploymentProcessorMockRecorder) Render(arg0, arg1, arg2, arg3 any) *MockDeploymentProcessorRenderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Render", reflect.TypeOf((*MockDeploymentProcessor)(nil).Render), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Render", reflect.TypeOf((*MockDeploymentProcessor)(nil).Render), arg0, arg1, arg2, arg3)
 	return &MockDeploymentProcessorRenderCall{Call: call}
 }
 
@@ -187,13 +187,13 @@ func (c *MockDeploymentProcessorRenderCall) Return(arg0 renderers.RendererOutput
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockDeploymentProcessorRenderCall) Do(f func(context.Context, resources.ID, v1.DataModelInterface) (renderers.RendererOutput, error)) *MockDeploymentProcessorRenderCall {
+func (c *MockDeploymentProcessorRenderCall) Do(f func(context.Context, resources.ID, v1.DataModelInterface, bool) (renderers.RendererOutput, error)) *MockDeploymentProcessorRenderCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDeploymentProcessorRenderCall) DoAndReturn(f func(context.Context, resources.ID, v1.DataModelInterface) (renderers.RendererOutput, error)) *MockDeploymentProcessorRenderCall {
+func (c *MockDeploymentProcessorRenderCall) DoAndReturn(f func(context.Context, resources.ID, v1.DataModelInterface, bool) (renderers.RendererOutput, error)) *MockDeploymentProcessorRenderCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

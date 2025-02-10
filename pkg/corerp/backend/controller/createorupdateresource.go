@@ -60,51 +60,55 @@ func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
 	}
 }
 
-// Run checks if the resource exists, renders the resource, deploys the resource, applies the
-// deployment output to the resource, deletes any resources that are no longer needed, and saves the resource.
-func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-
-	// use id.ExtractStorageParts to get ResourceType
-	// get the resourcetyperesurce from the database
-	// see if you can get the value of recipe enabled
-	// pass it down to deployment
-	// myid, err := resources.Parse(request.ResourceID)
-	//if err != nil {
-	//	return ctrl.Result{}, err
-	// }
-	//	pre, root, routing, resourceType := databaseutil.ExtractStorageParts(myid)
-
-	//	resourceTypeResourceObj, _ := c.DatabaseClient().Get(ctx, pre+"/"+root+"/"+routing+"/"+resourceType)
-
-	resourceTypeResourceObj, err := c.DatabaseClient().Get(ctx, "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Core/resourceTypes/containers")
-
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	fmt.Print(resourceTypeResourceObj)
-
+func isPortableResource(resourceTypeResourceObj *database.Object) (bool, error) {
 	data := resourceTypeResourceObj.Data
 	if data == nil {
-		return ctrl.Result{}, errors.New("data is nil")
+		return false, errors.New("resource type's data is nil. cannot determine if resource is portable")
 	}
 
-	// data is a map[string]interface{}. chexk if key capabilities is present
-	// and has "recipeEnabled"
 	properties, ok := data.(map[string]interface{})["properties"]
 	if !ok {
-		return ctrl.Result{}, errors.New("properties not found")
+		return false, errors.New("resource type's properties not found. cannot determine if resource is portable")
 	}
 
 	capabilities, ok := properties.(map[string]interface{})["capabilities"]
 	if !ok {
-		return ctrl.Result{}, errors.New("capabilities not found")
+		// Could be a resource type that does not have capabilities. In that case, it is not a portable resource. Ex: environment, resource group etc
+		return false, nil
 	}
-	isPortableResource := false
+
 	for _, capability := range capabilities.([]interface{}) {
 		if capability == "SupportsRecipes" {
-			isPortableResource = true
+			return true, nil
 		}
+	}
+	return false, nil
+}
 
+// Run checks if the resource exists, renders the resource, deploys the resource, applies the
+// deployment output to the resource, deletes any resources that are no longer needed, and saves the resource.
+func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+	// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
+	id, err := resources.Parse(request.ResourceID)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	fullyQualifiedType := id.Type()
+	resourceTypeInfo := strings.Split(fullyQualifiedType, "/")
+	if len(resourceTypeInfo) != 2 {
+		return ctrl.Result{}, fmt.Errorf("invalid resource type: %q for resource ID: %q", fullyQualifiedType, id.String())
+	}
+
+	resourceTypeResourceID := fmt.Sprintf("/planes/radius/local/providers/System.Resources/resourceProviders/%s/resourceTypes/%s", resourceTypeInfo[0], resourceTypeInfo[1])
+	resourceTypeResourceObj, err := c.DatabaseClient().Get(ctx, resourceTypeResourceID)
+
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	isPortableResource, err := isPortableResource(resourceTypeResourceObj)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	obj, err := c.DatabaseClient().Get(ctx, request.ResourceID)
@@ -123,12 +127,6 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
-	id, err := resources.Parse(request.ResourceID)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	dataModel, err := getDataModel(id)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -138,7 +136,6 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	// here pass if recipe enabled or not in Render
 	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel, isPortableResource)
 	if err != nil {
 		return ctrl.Result{}, err
