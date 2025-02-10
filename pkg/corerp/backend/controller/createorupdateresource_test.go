@@ -52,22 +52,24 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 	}
 
 	putCases := []struct {
-		desc      string
-		rt        string
-		opType    string
-		rId       string
-		getErr    error
-		convErr   bool
-		renderErr error
-		deployErr error
-		saveErr   error
-		expErr    error
+		desc       string
+		rt         string
+		opType     string
+		rId        string
+		getTypeErr error
+		getErr     error
+		convErr    bool
+		renderErr  error
+		deployErr  error
+		saveErr    error
+		expErr     error
 	}{
 		{
 			"container-put-success",
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			nil,
 			nil,
 			false,
 			nil,
@@ -80,6 +82,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			nil,
 			&database.ErrNotFound{},
 			false,
 			nil,
@@ -92,6 +95,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			nil,
 			errors.New("error getting object"),
 			false,
 			nil,
@@ -105,6 +109,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"APPLICATIONS.CORE/GATEWAYS|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
 			nil,
+			nil,
 			false,
 			nil,
 			nil,
@@ -116,6 +121,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PUT",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
+			nil,
 			&database.ErrNotFound{},
 			false,
 			nil,
@@ -128,6 +134,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			ds_ctrl.RedisCachesResourceType,
 			"APPLICATIONS.DATASTORES/REDISCACHES|PUT",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/redisCaches/rc0",
+			nil,
 			nil,
 			true,
 			nil,
@@ -163,7 +170,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 							"apiVersion":   "2023-10-01-preview",
 						},
 					},
-				}, nil).
+				}, tt.getTypeErr).
 				Times(1)
 
 			getCall := msc.EXPECT().
@@ -238,16 +245,17 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 	}
 
 	patchCases := []struct {
-		desc      string
-		rt        string
-		opType    string
-		rId       string
-		getErr    error
-		convErr   bool
-		renderErr error
-		deployErr error
-		saveErr   error
-		expErr    error
+		desc       string
+		rt         string
+		opType     string
+		rId        string
+		getTypeErr error
+		getErr     error
+		convErr    bool
+		renderErr  error
+		deployErr  error
+		saveErr    error
+		expErr     error
 	}{
 
 		{
@@ -255,6 +263,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PATCH",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			nil,
 			nil,
 			false,
 			nil,
@@ -267,6 +276,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PATCH",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			nil,
 			&database.ErrNotFound{},
 			false,
 			nil,
@@ -279,6 +289,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PATCH",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			nil,
 			errors.New("error getting object"),
 			false,
 			nil,
@@ -292,6 +303,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"APPLICATIONS.CORE/GATEWAYS|PATCH",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
 			nil,
+			nil,
 			false,
 			nil,
 			nil,
@@ -303,6 +315,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PATCH",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
+			nil,
 			&database.ErrNotFound{},
 			false,
 			nil,
@@ -315,6 +328,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			ds_ctrl.RedisCachesResourceType,
 			"APPLICATIONS.DATASTORES/REDISCACHES|PATCH",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/redisCaches/rc0",
+			nil,
 			nil,
 			true,
 			nil,
@@ -350,7 +364,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 							"apiVersion":   "2023-10-01-preview",
 						},
 					},
-				}, nil).
+				}, tt.getTypeErr).
 				Times(1)
 
 			getCall := msc.EXPECT().
@@ -418,6 +432,65 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, ctrl.Result{}, res)
+			}
+		})
+	}
+}
+
+func TestIsPortableResource(t *testing.T) {
+	testCases := []struct {
+		desc        string
+		obj         *database.Object
+		expIsPortal bool
+		expErr      error
+	}{
+		{
+			"portable-resource",
+			&database.Object{
+				Data: map[string]any{
+					"properties": map[string]interface{}{
+						"capabilities": []interface{}{"SupportsRecipes"},
+					},
+				},
+			},
+			true,
+			nil,
+		},
+		{
+			"not-portable-resource",
+			&database.Object{
+				Data: map[string]any{
+					"properties": map[string]interface{}{
+						"capabilities": []interface{}{
+							map[string]interface{}{
+								"capabilities": []interface{}{"someCapability"},
+							},
+						},
+					},
+				},
+			},
+			false,
+			nil,
+		},
+		{
+			"no-properties",
+			&database.Object{
+				Data: map[string]any{},
+			},
+			false,
+			errors.New("resource type's properties not found. cannot determine if resource is portable"),
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			isPortal, err := isPortableResource(tt.obj)
+			if tt.expErr != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expErr, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expIsPortal, isPortal)
 			}
 		})
 	}
