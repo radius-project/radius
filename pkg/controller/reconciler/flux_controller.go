@@ -142,6 +142,13 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
+	// Generate the provider config from the radius-config.yaml file
+	providerConfig := sdkclients.GenerateProviderConfig(radiusConfig.RadiusResourceGroup, radiusConfig.AWSScope, radiusConfig.AzureScope)
+	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// Run bicep build on all bicep files specified in radius-config.yaml.
 	for _, bicepFile := range radiusConfig.BicepBuild {
 		fileName := bicepFile.Name
@@ -164,7 +171,8 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		// If the bicepparams file exists, run bicep build-params on it
 		var parameters map[string]string
 		if paramFileName != "" {
-			if os.IsNotExist(err) {
+			if !os.IsNotExist(err) {
+				logger.Info("Running bicep build-params", "name", fileName)
 				parameters, err = r.runBicepBuildParams(ctx, tmpDir, bicepFile.Name)
 				if err != nil {
 					logger.Error(err, "failed to run bicep build-params")
@@ -174,13 +182,6 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				logger.Error(err, "failed to check if parameters file exists")
 				return ctrl.Result{}, err
 			}
-		}
-
-		// Generate the provider config from the radius-config.yaml file
-		providerConfig := sdkclients.GenerateProviderConfig(radiusConfig.RadiusResourceGroup, radiusConfig.AWSScope, radiusConfig.AzureScope)
-		marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
-		if err != nil {
-			return ctrl.Result{}, err
 		}
 
 		// Now we should create (or update) each DeploymentTemplate for the bicep files

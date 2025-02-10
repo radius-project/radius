@@ -14,6 +14,8 @@ limitations under the License.
 package reconciler
 
 import (
+	"os"
+	"path"
 	"path/filepath"
 	"testing"
 	"time"
@@ -25,6 +27,7 @@ import (
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -101,11 +104,15 @@ func Test_FluxController_Basic(t *testing.T) {
 		Times(1).
 		Do(func(archiveURL, digest string, dir string) {
 			// Write the radius-config.yaml file to the directory.
-			err := fs.WriteFile(filepath.Join(dir, "radius-config.yaml"), []byte("radiusResourceGroup: default\nbicepBuild:\n  - name: basic.bicep\n"), 0644)
+			fileContent, err := os.ReadFile(path.Join("testdata", "radius-gitops-config-basic.yaml"))
+			require.NoError(t, err)
+			err = fs.WriteFile(filepath.Join(dir, "radius-config.yaml"), fileContent, 0644)
 			require.NoError(t, err)
 
 			// Write the basic.bicep file to the directory.
-			err = fs.WriteFile(filepath.Join(dir, "basic.bicep"), []byte("param location string = 'West US'\nparam sku string = 'Standard_D2_v2'\n\nresource nic 'Microsoft.Network/networkInterfaces@2020-06-01' = {\n  name: 'myNic'\n  location: location\n  properties: {\n    ipConfigurations: [\n      {\n        name: 'ipconfig1'\n        properties: {\n          privateIPAllocationMethod: 'Dynamic'\n          subnet: {\n            id: '/subscriptions/{subscription-id}/resourceGroups/{resource-group}/providers/Microsoft.Network/virtualNetworks/{vnet-name}/subnets/{subnet-name}'\n          }\n        }\n      }\n    ]\n  }\n}\n"), 0644)
+			fileContent, err = os.ReadFile(path.Join("testdata", "radius-gitops-basic.bicep"))
+			require.NoError(t, err)
+			err = fs.WriteFile(filepath.Join(dir, "basic.bicep"), fileContent, 0644)
 			require.NoError(t, err)
 		})
 
@@ -113,7 +120,14 @@ func Test_FluxController_Basic(t *testing.T) {
 	bicep.EXPECT().
 		Build(gomock.Any(), "--outfile", gomock.Any()).
 		Return(nil, nil).
-		Times(1)
+		Times(1).
+		Do(func(args ...string) {
+			dir := filepath.Dir(args[0])
+			fileContent, err := os.ReadFile(path.Join("testdata", "radius-gitops-basic.json"))
+			require.NoError(t, err)
+			err = fs.WriteFile(filepath.Join(dir, "basic.json"), fileContent, 0644)
+			require.NoError(t, err)
+		})
 
 	options := setupFluxControllerTestOptions{
 		archiveFetcher: archiveFetcher,
@@ -123,18 +137,19 @@ func Test_FluxController_Basic(t *testing.T) {
 
 	k8sClient := SetupFluxControllerTest(t, options)
 
-	// namespace := &corev1.Namespace{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name: "default",
-	// 	},
-	// }
-	// err := k8sClient.Create(ctx, namespace)
-	// require.NoError(t, err)
+	namespaceName := "flux-basic"
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespaceName,
+		},
+	}
+	err := k8sClient.Create(ctx, namespace)
+	require.NoError(t, err)
 
 	// Create a GitRepository resource on the cluster without setting Status
-	gitRepoNamespacedName := types.NamespacedName{Name: "git-repo", Namespace: "default"}
+	gitRepoNamespacedName := types.NamespacedName{Name: "git-repo", Namespace: namespaceName}
 	gitRepo := makeGitRepository(gitRepoNamespacedName, "https://github.com/radius-project/example-repo.git", "sha256:1234")
-	err := k8sClient.Create(ctx, gitRepo)
+	err = k8sClient.Create(ctx, gitRepo)
 	require.NoError(t, err)
 
 	// Poll to confirm creation
@@ -203,24 +218,3 @@ func makeGitRepository(namespacedName types.NamespacedName, url, digest string) 
 		},
 	}
 }
-
-// func waitForGitRepositoryStateReady(t *testing.T, client k8sclient.Client, name types.NamespacedName) *sourcev1.GitRepositoryStatus {
-// 	ctx := testcontext.New(t)
-
-// 	logger := t
-// 	status := &sourcev1.GitRepositoryStatus{}
-// 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-// 		logger.Logf("Fetching GitRepository: %+v", name)
-// 		current := &sourcev1.GitRepository{}
-// 		err := client.Get(ctx, name, current)
-// 		require.NoError(t, err)
-
-// 		status = &current.Status
-// 		logger.Logf("GitRepository.Status: %+v", current.Status)
-// 		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-// 		assert.Equal(t, "True", current.Status.Conditions[0].Status)
-// 	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter ready state")
-
-// 	return status
-// }
