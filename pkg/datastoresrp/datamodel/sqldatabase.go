@@ -63,7 +63,7 @@ func (r *SqlDatabase) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the SQL database resource.
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the SQL database resource.
 func (r *SqlDatabase) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
