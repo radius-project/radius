@@ -111,7 +111,7 @@ func (r *MongoDatabase) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the Mongo database instance i.e. application resource metadata.
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the Mongo database instance.
 func (r *MongoDatabase) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
