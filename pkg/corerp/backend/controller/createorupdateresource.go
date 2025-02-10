@@ -34,6 +34,11 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
+const (
+	systemResourceProvider = "/planes/radius/local/providers/System.Resources"
+	isPortable             = "SupportsRecipes"
+)
+
 var _ ctrl.Controller = (*CreateOrUpdateResource)(nil)
 
 // CreateOrUpdateResource is the async operation controller to create or update Applications.Core/Containers resource.
@@ -74,12 +79,13 @@ func isPortableResource(resourceTypeResourceObj *database.Object) (bool, error) 
 
 	capabilities, ok := properties.(map[string]interface{})["capabilities"]
 	if !ok {
-		// Could be a resource type that does not have capabilities. In that case, it is not a portable resource. Ex: environment, resource group etc
+		// Could be a resource type that does not have capabilities field. In that case, it is not a portable resource.
+		// Ex: application, environment, radius resource group
 		return false, nil
 	}
 
 	for _, capability := range capabilities.([]interface{}) {
-		if capability == "SupportsRecipes" {
+		if capability == isPortable {
 			return true, nil
 		}
 	}
@@ -100,7 +106,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, fmt.Errorf("invalid resource type: %q for resource ID: %q", fullyQualifiedType, id.String())
 	}
 
-	resourceTypeResourceID := fmt.Sprintf("/planes/radius/local/providers/System.Resources/resourceProviders/%s/resourceTypes/%s", resourceTypeInfo[0], resourceTypeInfo[1])
+	resourceTypeResourceID := fmt.Sprintf(systemResourceProvider+"/resourceProviders/%s/resourceTypes/%s", resourceTypeInfo[0], resourceTypeInfo[1])
 	resourceTypeResourceObj, err := c.DatabaseClient().Get(ctx, resourceTypeResourceID)
 	if err != nil {
 		return ctrl.Result{}, err
