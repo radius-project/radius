@@ -154,6 +154,18 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			parsedID, err := resources.Parse(tt.rId)
 			require.NoError(t, err)
 
+			msc.EXPECT().
+				Get(gomock.Any(), gomock.Any()).
+				Return(&database.Object{
+					Data: map[string]any{
+						"properties": map[string]interface{}{
+							"capabilities": []interface{}{},
+							"apiVersion":   "2023-10-01-preview",
+						},
+					},
+				}, nil).
+				Times(1)
+
 			getCall := msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				Return(&database.Object{
@@ -167,15 +179,16 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 				Times(1)
 
 			if (tt.getErr == nil || errors.Is(&database.ErrNotFound{ID: tt.rId}, tt.getErr)) && !tt.convErr {
+
 				renderCall := mdp.EXPECT().
-					Render(gomock.Any(), gomock.Any(), gomock.Any()).
+					Render(gomock.Any(), gomock.Any(), gomock.Any(), false).
 					Return(renderers.RendererOutput{}, tt.renderErr).
 					After(getCall).
 					Times(1)
 
 				if tt.renderErr == nil {
 					deployCall := mdp.EXPECT().
-						Deploy(gomock.Any(), gomock.Any(), gomock.Any()).
+						Deploy(gomock.Any(), gomock.Any(), gomock.Any(), false).
 						Return(rpv1.DeploymentOutput{}, tt.deployErr).
 						After(renderCall).
 						Times(1)
@@ -236,6 +249,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 		saveErr   error
 		expErr    error
 	}{
+
 		{
 			"container-patch-success",
 			container.ResourceType,
@@ -327,6 +341,18 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			parsedID, err := resources.Parse(tt.rId)
 			require.NoError(t, err)
 
+			msc.EXPECT().
+				Get(gomock.Any(), gomock.Any()).
+				Return(&database.Object{
+					Data: map[string]any{
+						"properties": map[string]interface{}{
+							"capabilities": []interface{}{},
+							"apiVersion":   "2023-10-01-preview",
+						},
+					},
+				}, nil).
+				Times(1)
+
 			getCall := msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				Return(&database.Object{
@@ -341,14 +367,14 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
 			if tt.getErr == nil && !tt.convErr {
 				renderCall := mdp.EXPECT().
-					Render(gomock.Any(), gomock.Any(), gomock.Any()).
+					Render(gomock.Any(), gomock.Any(), gomock.Any(), false).
 					Return(renderers.RendererOutput{}, tt.renderErr).
 					After(getCall).
 					Times(1)
 
 				if tt.renderErr == nil {
 					deployCall := mdp.EXPECT().
-						Deploy(gomock.Any(), gomock.Any(), gomock.Any()).
+						Deploy(gomock.Any(), gomock.Any(), gomock.Any(), false).
 						Return(rpv1.DeploymentOutput{}, tt.deployErr).
 						After(renderCall).
 						Times(1)
