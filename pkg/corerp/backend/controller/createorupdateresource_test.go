@@ -65,6 +65,20 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 		expErr     error
 	}{
 		{
+			"resource-type-portable-unknown",
+			"Unknown.Provider/ResourceType",
+			"Unknown.Provider/ResourceType|PUT",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Unknown.Provider/ResourceType/resourceType0",
+			&database.ErrNotFound{},
+			nil,
+			true,
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+
+		{
 			"container-put-success",
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
@@ -172,48 +186,49 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 					},
 				}, tt.getTypeErr).
 				Times(1)
-
-			getCall := msc.EXPECT().
-				Get(gomock.Any(), gomock.Any()).
-				Return(&database.Object{
-					Data: map[string]any{
-						"name": "env0",
-						"properties": map[string]any{
-							"provisioningState": "Accepted",
+			if tt.getTypeErr == nil {
+				getCall := msc.EXPECT().
+					Get(gomock.Any(), gomock.Any()).
+					Return(&database.Object{
+						Data: map[string]any{
+							"name": "env0",
+							"properties": map[string]any{
+								"provisioningState": "Accepted",
+							},
 						},
-					},
-				}, tt.getErr).
-				Times(1)
-
-			if (tt.getErr == nil || errors.Is(&database.ErrNotFound{ID: tt.rId}, tt.getErr)) && !tt.convErr {
-
-				renderCall := mdp.EXPECT().
-					Render(gomock.Any(), gomock.Any(), gomock.Any(), false).
-					Return(renderers.RendererOutput{}, tt.renderErr).
-					After(getCall).
+					}, tt.getErr).
 					Times(1)
 
-				if tt.renderErr == nil {
-					deployCall := mdp.EXPECT().
-						Deploy(gomock.Any(), gomock.Any(), gomock.Any(), false).
-						Return(rpv1.DeploymentOutput{}, tt.deployErr).
-						After(renderCall).
+				if (tt.getErr == nil || errors.Is(&database.ErrNotFound{ID: tt.rId}, tt.getErr)) && !tt.convErr {
+
+					renderCall := mdp.EXPECT().
+						Render(gomock.Any(), gomock.Any(), gomock.Any(), false).
+						Return(renderers.RendererOutput{}, tt.renderErr).
+						After(getCall).
 						Times(1)
 
-					if !errors.Is(&database.ErrNotFound{}, tt.getErr) {
-						mdp.EXPECT().
-							Delete(gomock.Any(), gomock.Any(), gomock.Any()).
-							Return(nil).
-							After(deployCall).
+					if tt.renderErr == nil {
+						deployCall := mdp.EXPECT().
+							Deploy(gomock.Any(), gomock.Any(), gomock.Any(), false).
+							Return(rpv1.DeploymentOutput{}, tt.deployErr).
+							After(renderCall).
 							Times(1)
-					}
 
-					if tt.deployErr == nil {
-						msc.EXPECT().
-							Save(gomock.Any(), gomock.Any(), gomock.Any()).
-							Return(tt.saveErr).
-							After(deployCall).
-							Times(1)
+						if !errors.Is(&database.ErrNotFound{}, tt.getErr) {
+							mdp.EXPECT().
+								Delete(gomock.Any(), gomock.Any(), gomock.Any()).
+								Return(nil).
+								After(deployCall).
+								Times(1)
+						}
+
+						if tt.deployErr == nil {
+							msc.EXPECT().
+								Save(gomock.Any(), gomock.Any(), gomock.Any()).
+								Return(tt.saveErr).
+								After(deployCall).
+								Times(1)
+						}
 					}
 				}
 			}
@@ -229,21 +244,25 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			require.NoError(t, err)
 
 			res, err := genCtrl.Run(context.Background(), req)
-
-			if tt.convErr {
-				tt.expErr = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", strings.ToLower(tt.rt), parsedID.String())
-			}
-
-			if tt.expErr != nil {
+			if tt.getTypeErr != nil {
 				require.Error(t, err)
-				require.Equal(t, tt.expErr, err)
+				require.Equal(t, tt.getTypeErr, err)
 			} else {
-				require.NoError(t, err)
-				require.Equal(t, ctrl.Result{}, res)
+
+				if tt.convErr {
+					tt.expErr = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", strings.ToLower(tt.rt), parsedID.String())
+				}
+
+				if tt.expErr != nil {
+					require.Error(t, err)
+					require.Equal(t, tt.expErr, err)
+				} else {
+					require.NoError(t, err)
+					require.Equal(t, ctrl.Result{}, res)
+				}
 			}
 		})
 	}
-
 	patchCases := []struct {
 		desc       string
 		rt         string
