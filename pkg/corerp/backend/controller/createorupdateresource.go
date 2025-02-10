@@ -66,6 +66,7 @@ func isPortableResource(resourceTypeResourceObj *database.Object) (bool, error) 
 		return false, errors.New("resource type's data is nil. cannot determine if resource is portable")
 	}
 
+	// Mostly this condition should not be hit as the resource type should have properties.
 	properties, ok := data.(map[string]interface{})["properties"]
 	if !ok {
 		return false, errors.New("resource type's properties not found. cannot determine if resource is portable")
