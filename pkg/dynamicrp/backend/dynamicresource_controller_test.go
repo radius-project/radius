@@ -154,3 +154,113 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 		},
 	})
 }
+
+func Test_hasCapability(t *testing.T) {
+	tests := []struct {
+		name         string
+		resourceType *v20231001preview.ResourceTypeResource
+		capability   string
+		want         bool
+	}{
+		{
+			name: "has capability",
+			resourceType: &v20231001preview.ResourceTypeResource{
+				Properties: &v20231001preview.ResourceTypeProperties{
+					Capabilities: []*string{to.Ptr("capability1"), to.Ptr("capability2")},
+				},
+			},
+			capability: "capability1",
+			want:       true,
+		},
+		{
+			name: "does not have capability",
+			resourceType: &v20231001preview.ResourceTypeResource{
+				Properties: &v20231001preview.ResourceTypeProperties{
+					Capabilities: []*string{to.Ptr("capability1"), to.Ptr("capability2")},
+				},
+			},
+			capability: "capability3",
+			want:       false,
+		},
+		{
+			name: "nil capabilities",
+			resourceType: &v20231001preview.ResourceTypeResource{
+				Properties: &v20231001preview.ResourceTypeProperties{
+					Capabilities: nil,
+				},
+			},
+			capability: "capability1",
+			want:       false,
+		},
+		{
+			name: "empty capabilities",
+			resourceType: &v20231001preview.ResourceTypeResource{
+				Properties: &v20231001preview.ResourceTypeProperties{
+					Capabilities: []*string{},
+				},
+			},
+			capability: "capability1",
+			want:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := hasCapability(tt.resourceType, tt.capability)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_DynamicResourceController_fetchResourceType(t *testing.T) {
+	setup := func() *DynamicResourceController {
+		ucp, err := testUCPClientFactory()
+		require.NoError(t, err)
+		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil)
+		require.NoError(t, err)
+		return controller.(*DynamicResourceController)
+	}
+
+	tests := []struct {
+		name       string
+		resourceID string
+		wantErr    bool
+		errMessage string
+	}{
+		{
+			name:       "inert resource type found",
+			resourceID: "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
+			wantErr:    false,
+		},
+		{
+			name:       "recipe resource type found",
+			resourceID: "/planes/radius/local/resourceGroups/test-group/providers/" + recipeResourceType + "/test-resource",
+			wantErr:    false,
+		},
+		{
+			name:       "unknown resource type",
+			resourceID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/unknownType/test-resource",
+			wantErr:    true,
+			errMessage: "resource type Applications.Test/unknownType not recognized",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			controller := setup()
+			id, err := resources.ParseResource(tt.resourceID)
+			require.NoError(t, err)
+
+			resourceType, err := controller.fetchResourceType(context.Background(), id)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errMessage)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, resourceType)
+			require.NotNil(t, resourceType.Properties)
+		})
+	}
+}

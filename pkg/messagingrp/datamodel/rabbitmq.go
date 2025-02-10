@@ -49,7 +49,7 @@ func (r *RabbitMQQueue) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the RabbitMQQueue instance.
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the RabbitMQQueue instance.
 func (r *RabbitMQQueue) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }

@@ -116,7 +116,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 
 	if oldResource != nil {
 		c := oldResource.Properties.Status.Compute
-		if c.Kind == rpv1.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
+		if c != nil && c.Kind == rpv1.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
 			return rest.NewBadRequestResponse(fmt.Sprintf("Updating an application's Kubernetes namespace from '%s' to '%s' requires the application to be deleted and redeployed. Please delete your application and try again.", c.KubernetesCompute.Namespace, kubeNamespace)), nil
 		}
 	}

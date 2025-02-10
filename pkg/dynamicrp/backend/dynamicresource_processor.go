@@ -29,10 +29,13 @@ var _ processors.ResourceProcessor[*datamodel.DynamicResource, datamodel.Dynamic
 type dynamicProcessor struct {
 }
 
+// Delete implements the processors.Processor interface for dynamic resources.
+// Deletion of resources is handled in recipe_delete_controller.go and inert_delete_controller.go.
 func (d *dynamicProcessor) Delete(ctx context.Context, resource *datamodel.DynamicResource, options processors.Options) error {
 	return nil
 }
 
+// Process validates resource properties, and applies output values from the recipe output.
 func (d *dynamicProcessor) Process(ctx context.Context, resource *datamodel.DynamicResource, options processors.Options) error {
 	computedValues := map[string]any{}
 	secretValues := map[string]rpv1.SecretValueReference{}

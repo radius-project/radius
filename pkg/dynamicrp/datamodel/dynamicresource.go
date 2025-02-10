@@ -100,6 +100,15 @@ func (d *DynamicResource) GetRecipe() *portableresources.ResourceRecipe {
 
 // SetRecipe implements datamodel.RecipeDataModel.
 func (d *DynamicResource) SetRecipe(recipe *portableresources.ResourceRecipe) {
+	if d.Properties == nil {
+		d.Properties = map[string]any{}
+	}
+
+	if recipe == nil {
+		d.Properties["recipe"] = map[string]any{}
+		return
+	}
+
 	// This is the best we can do. We designed the ResourceRecipe type to be JSON-marshallable.
 	bs, err := json.Marshal(recipe)
 	if err != nil {
@@ -110,10 +119,6 @@ func (d *DynamicResource) SetRecipe(recipe *portableresources.ResourceRecipe) {
 	err = json.Unmarshal(bs, &store)
 	if err != nil {
 		panic("failed to unmarshal recipe: " + err.Error())
-	}
-
-	if d.Properties == nil {
-		d.Properties = map[string]any{}
 	}
 
 	d.Properties["recipe"] = store
@@ -169,7 +174,7 @@ func (d *DynamicResource) OutputResources() []rpv1.OutputResource {
 	return d.ResourceMetadata().GetResourceStatus().OutputResources
 }
 
-// ResourceMetadata implements v1.RadiusResourceModel.
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the DynamicResource instance.
 func (d *DynamicResource) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &dynamicResourceBasicPropertiesAdapter{resource: d}
 }
