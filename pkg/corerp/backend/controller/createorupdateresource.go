@@ -102,7 +102,6 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 
 	resourceTypeResourceID := fmt.Sprintf("/planes/radius/local/providers/System.Resources/resourceProviders/%s/resourceTypes/%s", resourceTypeInfo[0], resourceTypeInfo[1])
 	resourceTypeResourceObj, err := c.DatabaseClient().Get(ctx, resourceTypeResourceID)
-
 	if err != nil {
 		return ctrl.Result{}, err
 	}
