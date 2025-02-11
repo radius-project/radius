@@ -52,11 +52,11 @@ type UCPApplicationsManagementClient struct {
 
 var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
-// ExcludedResourceTypesList is a list of resource types that should be excluded from the list of application resources
+// excludedResourceTypesList is a list of resource types that should be excluded from the list of application resources
 // to be displayed to the user.
 // Lowercase is used to avoid case sensitivity issues.
 var (
-	ExcludedResourceTypesList = []string{
+	excludedResourceTypesList = []string{
 		"microsoft.resources/deployments",
 		"applications.core/applications",
 		"applications.core/environments",
@@ -754,7 +754,7 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 	return response.ResourceProviderSummary, nil
 }
 
-// ListAllResourceTypesNames lists all resource types in all resource providers in the configured plane.
+// ListAllResourceTypesNames lists the names of all resource types in all resource providers in the configured plane.
 func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
 	if err != nil {
@@ -765,7 +765,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 		resourceProviderName := *resourceProvider.Name
 		for typeName, _ := range resourceProvider.ResourceTypes {
 			fullResourceName := resourceProviderName + "/" + typeName
-			if !slices.Contains(ExcludedResourceTypesList, strings.ToLower(fullResourceName)) {
+			if !slices.Contains(excludedResourceTypesList, strings.ToLower(fullResourceName)) {
 				resourceTypeNames = append(resourceTypeNames, fullResourceName)
 			}
 		}
