@@ -52,17 +52,6 @@ type UCPApplicationsManagementClient struct {
 
 var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
-// excludedResourceTypesList is a list of resource types that should be excluded from the list of application resources
-// to be displayed to the user.
-// Lowercase is used to avoid case sensitivity issues.
-var (
-	excludedResourceTypesList = []string{
-		"microsoft.resources/deployments",
-		"applications.core/applications",
-		"applications.core/environments",
-	}
-)
-
 // ListResourcesOfType lists all resources of a given type in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
 	client, err := amc.createGenericClient(amc.RootScope, resourceType)
@@ -756,10 +745,20 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 
 // ListAllResourceTypesNames lists the names of all resource types in all resource providers in the configured plane.
 func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
+	// excludedResourceTypesList is a list of resource types that should be excluded from the list of application resources
+	// to be displayed to the user.
+	// Lowercase is used to avoid case sensitivity issues.
+	excludedResourceTypesList := []string{
+		"microsoft.resources/deployments",
+		"applications.core/applications",
+		"applications.core/environments",
+	}
+
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list resource provider summaries: %v", err)
 	}
+
 	resourceTypeNames := []string{}
 	for _, resourceProvider := range resourceProviderSummaries {
 		resourceProviderName := *resourceProvider.Name
