@@ -46,7 +46,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Show Command",
-			Input:         []string{"containers", "foo"},
+			Input:         []string{"applications.core/containers", "foo"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -55,7 +55,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with fallback workspace",
-			Input:         []string{"containers", "foo", "-g", "my-group"},
+			Input:         []string{"applications.core/containers", "foo", "-g", "my-group"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -73,7 +73,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with insufficient args",
-			Input:         []string{"containers"},
+			Input:         []string{"applications.core/containers"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -82,16 +82,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with too many args",
-			Input:         []string{"containers", "a", "b"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-		},
-		{
-			Name:          "List Command with ambiguous args",
-			Input:         []string{"secretStores"},
+			Input:         []string{"applications.core/containers", "a", "b"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -106,22 +97,22 @@ func Test_Run(t *testing.T) {
 	t.Run("Validate rad resource show valid container resource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		resource := radcli.CreateResource("containers", "foo")
+		resource := radcli.CreateResource("applications.core/containers", "foo")
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
-			GetResource(gomock.Any(), "containers", "foo").
+			GetResource(gomock.Any(), "applications.core/containers", "foo").
 			Return(resource, nil).Times(1)
 
 		outputSink := &output.MockOutput{}
 
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Output:            outputSink,
-			Workspace:         &workspaces.Workspace{},
-			ResourceType:      "containers",
-			ResourceName:      "foo",
-			Format:            "table",
+			ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:                         outputSink,
+			Workspace:                      &workspaces.Workspace{},
+			FullyQualifiedResourceTypeName: "applications.core/containers",
+			ResourceName:                   "foo",
+			Format:                         "table",
 		}
 
 		err := runner.Run(context.Background())

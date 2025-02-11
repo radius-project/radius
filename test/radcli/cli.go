@@ -186,7 +186,7 @@ func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (strin
 	args := []string{
 		"resource",
 		"list",
-		"containers",
+		"Applications.Core/containers",
 		"-a", applicationName,
 	}
 	return cli.RunCommand(ctx, args)
@@ -198,7 +198,7 @@ func (cli *CLI) ResourceLogs(ctx context.Context, applicationName string, resour
 		"resource",
 		"logs",
 		"-a", applicationName,
-		"containers",
+		"Applications.Core/containers",
 		resourceName,
 	}
 	return cli.RunCommand(ctx, args)
@@ -210,7 +210,7 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 		"resource",
 		"expose",
 		"-a", applicationName,
-		"containers",
+		"Applications.Core/containers",
 		resourceName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),

@@ -18,10 +18,8 @@ package show
 
 import (
 	"context"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
-	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -90,14 +88,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Format = format
 
-	r.ResourceTypeName = args[0]
-	parts := strings.Split(r.ResourceTypeName, "/")
-	if len(parts) != 2 {
-		return clierrors.Message("Invalid resource type %q. Expected format: '<provider>/<type>'", r.ResourceTypeName)
+	r.ResourceProviderNamespace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
+	if err != nil {
+		return err
 	}
-
-	r.ResourceProviderNamespace = parts[0]
-	r.ResourceTypeSuffix = parts[1]
+	r.ResourceTypeName = r.ResourceProviderNamespace + "/" + r.ResourceTypeSuffix
 
 	return nil
 }
