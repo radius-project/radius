@@ -1,3 +1,4 @@
 radiusResourceGroup: flux-basic
 bicepBuild:
   - name: basic.bicep
+    namespace: flux-basic

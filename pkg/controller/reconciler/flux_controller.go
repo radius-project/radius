@@ -15,7 +15,6 @@ import (
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"gopkg.in/yaml.v3"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -282,21 +281,6 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 			// Error getting DeploymentTemplate
 			logger.Error(err, "unable to get deployment template")
 			return
-		}
-
-		// If the namespace doesn't exist, create it
-		if err := r.Client.Get(ctx, client.ObjectKey{Name: namespace}, &corev1.Namespace{}); err != nil {
-			if client.IgnoreNotFound(err) != nil {
-				logger.Error(err, "unable to get namespace")
-				return
-			}
-
-			// Create the namespace if it doesn't exist
-			err := r.Client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespace}})
-			if err != nil {
-				logger.Error(err, "unable to create namespace")
-				return
-			}
 		}
 
 		// If the DeploymentTemplate doesn't exist, create it

@@ -14,6 +14,7 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"os"
 	"path"
 	"path/filepath"
@@ -23,6 +24,7 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
+	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -148,15 +150,20 @@ func Test_FluxController_Basic(t *testing.T) {
 
 	// Create a GitRepository resource on the cluster without setting Status
 	gitRepoNamespacedName := types.NamespacedName{Name: "git-repo", Namespace: namespaceName}
-	gitRepo := makeGitRepository(gitRepoNamespacedName, "https://github.com/radius-project/example-repo.git", "sha256:1234")
+	gitRepo := makeGitRepository(gitRepoNamespacedName, "https://github.com/radius-project/example-repo.git")
 	err = k8sClient.Create(ctx, gitRepo)
 	require.NoError(t, err)
 
-	// Poll to confirm creation
-	err = wait.PollImmediate(100*time.Millisecond, 5*time.Second, func() (bool, error) {
+	// Poll to confirm creation of GitRepository
+	timeout := 5 * time.Second
+	interval := 100 * time.Millisecond
+	deadlineCtx, deadlineCancel := context.WithTimeout(ctx, timeout)
+	defer deadlineCancel()
+
+	err = wait.PollUntilContextTimeout(deadlineCtx, interval, timeout, true, func(_ context.Context) (bool, error) {
 		err := k8sClient.Get(ctx, gitRepoNamespacedName, gitRepo)
 		if err != nil {
-			return false, nil // Keep polling
+			return false, nil // Continue polling
 		}
 		return true, nil // Found
 	})
@@ -192,18 +199,27 @@ func Test_FluxController_Basic(t *testing.T) {
 	err = k8sClient.Status().Update(ctx, gitRepo)
 	require.NoError(t, err)
 
-	// Retrieve the updated GitRepository to verify Status is set
-	updatedGitRepo := &sourcev1.GitRepository{}
-	err = k8sClient.Get(ctx, gitRepoNamespacedName, updatedGitRepo)
+	// Now, the FluxController should reconcile the GitRepository and create the DeploymentTemplate resource.
+	// Check for creation of the DeploymentTemplate resource
+	deploymentTemplateName := "basic.bicep"
+	deploymentTemplateNamespacedName := types.NamespacedName{Name: deploymentTemplateName, Namespace: namespaceName}
+
+	timeout = 60 * time.Second
+	interval = 1 * time.Second
+	deadlineCtx, deadlineCancel = context.WithTimeout(ctx, timeout)
+	defer deadlineCancel()
+
+	deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{}
+	err = wait.PollUntilContextTimeout(deadlineCtx, interval, timeout, true, func(_ context.Context) (bool, error) {
+		if err := k8sClient.Get(ctx, deploymentTemplateNamespacedName, deploymentTemplate); err != nil {
+			return false, nil // Continue polling if not found
+		}
+		return true, nil // Found DeploymentTemplate
+	})
 	require.NoError(t, err)
-	require.NotEmpty(t, updatedGitRepo.Status)
-	require.Equal(t, "sha256:1234", updatedGitRepo.Status.Artifact.Digest)
-	require.Equal(t, metav1.ConditionTrue, updatedGitRepo.Status.Conditions[0].Status)
-	require.Equal(t, "Succeeded", updatedGitRepo.Status.Conditions[0].Reason)
-	require.Equal(t, "Repository is ready", updatedGitRepo.Status.Conditions[0].Message)
 }
 
-func makeGitRepository(namespacedName types.NamespacedName, url, digest string) *sourcev1.GitRepository {
+func makeGitRepository(namespacedName types.NamespacedName, url string) *sourcev1.GitRepository {
 	return &sourcev1.GitRepository{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GitRepository",
