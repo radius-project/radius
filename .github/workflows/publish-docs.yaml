@@ -53,6 +53,7 @@ jobs:
         with:
           go-version: ${{ env.GOVER }}
           cache-dependency-path: radius/go.sum
+          cache: true
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
