@@ -20,10 +20,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	// armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -237,6 +240,234 @@ func TestRegisterType(t *testing.T) {
 					require.Contains(t, logOutput, fmt.Sprintf("Creating API Version %s/%s@%s", tt.expectedResourceProvider, tt.expectedResourceTypeName, tt.expectedAPIVersion))
 				}
 			}
+		})
+	}
+}
+func TestRetryOperation(t *testing.T) {
+	tests := []struct {
+		name          string
+		operation     func() error
+		attempts      int
+		expectedError string
+	}{
+		{
+			name: "success on first attempt",
+			operation: func() error {
+				// No retries needed; always succeeds.
+				return nil
+			},
+			attempts: 1,
+		},
+		{
+			name: "success after retry",
+			// Return a closure that keeps track of how many times it's invoked.
+			// The first call returns 409, the second returns nil.
+			operation: (func() func() error {
+				var attempt int
+				return func() error {
+					attempt++
+					if attempt == 1 {
+						return &azcore.ResponseError{StatusCode: 409}
+					}
+					return nil
+				}
+			})(),
+			attempts: 2,
+		},
+		{
+			name: "non-409 error",
+			operation: func() error {
+				// Will fail immediately, no retry.
+				return fmt.Errorf("non-409 error")
+			},
+			attempts:      1,
+			expectedError: "non-409 error",
+		},
+		{
+			name: "verify increasing backoff",
+			// Test that each retry is spaced out longer than the previous one.
+			operation: (func() func() error {
+				var lastTime time.Time
+				var lastDuration time.Duration
+				var attempt int
+				return func() error {
+					now := time.Now()
+					if attempt > 0 {
+						// Measure how long since last invocation
+						currentDuration := now.Sub(lastTime)
+						if currentDuration <= lastDuration {
+							return fmt.Errorf("backoff did not increase: previous %v, current %v",
+								lastDuration, currentDuration)
+						}
+						lastDuration = currentDuration
+					}
+					lastTime = now
+
+					attempt++
+					// Force 409 until the third attempt
+					if attempt < 3 {
+						return &azcore.ResponseError{StatusCode: 409}
+					}
+					return nil
+				}
+			})(),
+			attempts: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// We'll capture log output here
+			var logBuffer bytes.Buffer
+			logger := func(format string, args ...any) {
+				fmt.Fprintf(&logBuffer, format+"\n", args...)
+			}
+
+			var actualAttempts int
+
+			// wrappedOp is what's passed to retryOperation().
+			// Each retry calls this, so we increment actualAttempts each time.
+			wrappedOp := func() error {
+				actualAttempts++
+				return tt.operation()
+			}
+
+			err := retryOperation(context.Background(), wrappedOp, logger)
+
+			if tt.expectedError != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, tt.attempts, actualAttempts, "unexpected number of attempts")
+
+			// If more than 1 attempt, we expect conflict logs.
+			if tt.attempts > 1 {
+				logContent := logBuffer.String()
+				require.Contains(t, logContent, "Got 409 conflict on attempt")
+
+				lines := strings.Split(strings.TrimSpace(logContent), "\n")
+				// We'll see one log line per retry. E.g. if attempts=3, that means 2 retries logged.
+				require.Equal(t, tt.attempts-1, len(lines), "expected retry log messages don't match attempts")
+			}
+		})
+	}
+}
+
+func TestRetryOperationWithContext(t *testing.T) {
+	tests := []struct {
+		name          string
+		operation     func() error
+		setupCtx      func() context.Context
+		attempts      int
+		expectedError string
+	}{
+		{
+			name: "context cancelled",
+			operation: func() error {
+				return &azcore.ResponseError{StatusCode: 409}
+			},
+			setupCtx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel() // Cancel immediately
+				return ctx
+			},
+			attempts:      1,
+			expectedError: "context canceled",
+		},
+		{
+			name: "context timeout",
+			operation: func() error {
+				return &azcore.ResponseError{StatusCode: 409}
+			},
+			setupCtx: func() context.Context {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+				// Ensure cancel is called after context is done
+				go func() {
+					<-ctx.Done()
+					cancel()
+				}()
+				return ctx
+			},
+			attempts:      1,
+			expectedError: "context deadline exceeded",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logBuffer bytes.Buffer
+			logger := func(format string, args ...any) {
+				fmt.Fprintf(&logBuffer, format+"\n", args...)
+			}
+
+			actualAttempts := 0
+			wrappedOp := func() error {
+				actualAttempts++
+				return tt.operation()
+			}
+
+			ctx := tt.setupCtx()
+			err := retryOperation(ctx, wrappedOp, logger)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.expectedError)
+			require.Equal(t, tt.attempts, actualAttempts, "unexpected number of attempts")
+		})
+	}
+}
+
+func TestIs409ConflictError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "nil error",
+			err:  nil,
+			want: false,
+		},
+		{
+			name: "simple 409 conflict",
+			err: &azcore.ResponseError{
+				StatusCode: 409,
+			},
+			want: true,
+		},
+		{
+			name: "409 error with code=Conflict",
+			err: &azcore.ResponseError{
+				StatusCode: 409,
+				ErrorCode:  "Conflict",
+			},
+			want: true,
+		},
+		{
+			name: "different status code (404)",
+			err: &azcore.ResponseError{
+				StatusCode: 404,
+			},
+			want: false,
+		},
+		{
+			name: "non-ResponseError type",
+			err:  fmt.Errorf("some other error"),
+			want: false,
+		},
+		{
+			name: "wrapped 409 error",
+			err:  fmt.Errorf("wrapped: %w", &azcore.ResponseError{StatusCode: 409}),
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := is409ConflictError(tt.err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
