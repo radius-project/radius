@@ -7,7 +7,7 @@
     "@azure-tools/typespec-autorest": "~0.46.0",
     "@azure-tools/typespec-azure-core": "~0.46.0",
     "@azure-tools/typespec-azure-resource-manager": "~0.46.0",
-    "@azure-tools/typespec-providerhub": "~0.46.0",
+    "@azure-tools/typespec-providerhub": "~0.50.0",
     "@typespec/http": "~0.60.0",
     "@typespec/openapi": "~0.60.0",
     "@typespec/rest": "~0.60.0",
