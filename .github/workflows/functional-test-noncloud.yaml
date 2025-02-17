@@ -328,6 +328,21 @@ jobs:
         env:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
+      
+      - name: Install Flux Source Controller
+        run: |
+          curl -s https://fluxcd.io/install.sh | sudo bash
+          flux install --namespace=flux-system --version=latest
+          kubectl wait --for=condition=available deployment -l app=source-controller -n flux-system --timeout=120s
+
+      - name: Install Gitea (local Git server)
+        run: |
+          helm repo add gitea-charts https://dl.gitea.io/charts/
+          helm repo update
+          helm install local-gitea gitea-charts/gitea --namespace gitea --create-namespace --set service.type=NodePort
+          kubectl wait --for=condition=available deployment/local-gitea -n gitea --timeout=120s
+          GITEA_NODE_PORT=$(kubectl get svc local-gitea -n gitea -o jsonpath="{.spec.ports[0].nodePort}")
+          echo "TEST_GIT_SERVER_URL=${http://localhost:${GITEA_NODE_PORT}" >> $GITHUB_ENV
 
       - name: Publish Terraform test recipes
         run: |
@@ -394,6 +409,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
+          TEST_GIT_SERVER_URL: ${{ env.TEST_GIT_SERVER_URL }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

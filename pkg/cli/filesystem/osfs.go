@@ -60,6 +60,10 @@ func (osfs OSFileSystem) MkdirTemp(dir, pattern string) (string, error) {
 	return os.MkdirTemp(dir, pattern)
 }
 
+func (osfs OSFileSystem) MkdirAll(path string, perm fs.FileMode) error {
+	return os.MkdirAll(path, perm)
+}
+
 func (osfs OSFileSystem) RemoveAll(path string) error {
 	return os.RemoveAll(path)
 }

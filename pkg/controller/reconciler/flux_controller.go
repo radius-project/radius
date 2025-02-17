@@ -27,7 +27,7 @@ import (
 
 const (
 	deploymentTemplateRepositoryField = "spec.repository"
-	radiusConfigFileName              = "radius-config.yaml"
+	radiusConfigFileName              = "radius-gitops-config.yaml"
 )
 
 // FluxController watches GitRepository objects for revision changes
@@ -42,23 +42,24 @@ type FluxController struct {
 	ArchiveFetcher ArchiveFetcher
 }
 
-// RadiusConfig is the configuration for Radius in a Git repository
-// TODO (willsmith): adapt this to .rad/config.yaml format
-type RadiusConfig struct {
-	RadiusResourceGroup string       `yaml:"radiusResourceGroup,omitempty"`
-	AWSScope            string       `yaml:"awsScope,omitempty"`
-	AzureScope          string       `yaml:"azureScope,omitempty"`
-	BicepBuild          []BicepBuild `yaml:"bicepBuild,omitempty"`
+// RadiusGitOpsConfig is the configuration for Radius in a Git repository.
+type RadiusGitOpsConfig struct {
+	Config []BicepConfig `yaml:"config"`
 }
 
-// BicepBuild is the build configuration for a Bicep file in a Git repository
-type BicepBuild struct {
-	Name      string `yaml:"name"`
-	Params    string `yaml:"params,omitempty"`
+// BicepConfig is the build configuration for a Bicep file in a Git repository.
+type BicepConfig struct {
+	// Name is the name of the Bicep (.bicep) file.
+	Name string `yaml:"name"`
+	// Params is the name of the Bicep parameters (.bicepparam) file.
+	Params string `yaml:"params,omitempty"`
+	// Namespace is the Kubernetes namespace that the generated DeploymentTemplate should be created in.
 	Namespace string `yaml:"namespace,omitempty"`
+	// ResourceGroup is the Radius resource group that the Bicep file should be deployed to.
+	ResourceGroup string `yaml:"resourceGroup,omitempty"`
 }
 
-// deploymentTemplateRepositoryIndexer indexes DeploymentTemplate objects by their repository field
+// deploymentTemplateRepositoryIndexer indexes DeploymentTemplate objects by their repository field.
 func deploymentTemplateRepositoryIndexer(o client.Object) []string {
 	deploymentTemplate, ok := o.(*radappiov1alpha3.DeploymentTemplate)
 	if !ok {
@@ -83,6 +84,8 @@ func (r *FluxController) SetupWithManager(mgr ctrl.Manager) error {
 func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "FluxController", "name", req.Name, "namespace", req.Namespace)
 	ctx = logr.NewContext(ctx, logger)
+
+	// TODO (willsmith): Should check for deletion as well?
 
 	// Get the GitRepository object from the cluster
 	var repository sourcev1.GitRepository
@@ -121,42 +124,41 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	logger.Info("Fetched artifact", "url", artifact.URL)
 
-	// Check if the radius-config.yaml file exists
+	// Check if the radius-gitops-config.yaml file exists
 	_, err = r.FileSystem.Stat(filepath.Join(tmpDir, radiusConfigFileName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			// No radius-config.yaml found in the repository, safe to ignore
-			logger.Info(fmt.Sprintf("No radius-config.yaml found in the repository: %s", repository.Name))
+			// No radius-gitops-config.yaml found in the repository, safe to ignore
+			logger.Info(fmt.Sprintf("No radius-gitops-config.yaml found in the repository: %s", repository.Name))
 			return ctrl.Result{}, nil
 		} else {
-			logger.Error(err, "failed to check if radius-config.yaml exists")
-			return ctrl.Result{}, fmt.Errorf("failed to check if radius-config.yaml exists, error: %w", err)
+			logger.Error(err, "failed to check if radius-gitops-config.yaml exists")
+			return ctrl.Result{}, fmt.Errorf("failed to check if radius-gitops-config.yaml exists, error: %w", err)
 		}
 	}
 
-	// Parse the radius-config.yaml file
-	radiusConfig, err := r.parseAndValidateRadiusConfigFromFile(tmpDir, radiusConfigFileName)
+	// Parse the radius-gitops-config.yaml file
+	radiusConfig, err := r.parseAndValidateRadiusGitOpsConfigFromFile(tmpDir, radiusConfigFileName)
 	if err != nil {
-		logger.Error(err, "failed to parse radius-config.yaml")
+		logger.Error(err, "failed to parse radius-gitops-config.yaml")
 		return ctrl.Result{}, err
 	}
 
-	// Generate the provider config from the radius-config.yaml file
-	providerConfig := sdkclients.GenerateProviderConfig(radiusConfig.RadiusResourceGroup, radiusConfig.AWSScope, radiusConfig.AzureScope)
-	marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// Run bicep build on all bicep files specified in radius-config.yaml.
-	for _, bicepFile := range radiusConfig.BicepBuild {
+	// Run bicep build on all bicep files specified in radius-gitops-config.yaml
+	for _, bicepFile := range radiusConfig.Config {
 		fileName := bicepFile.Name
 		paramFileName := bicepFile.Params
 		namespace := bicepFile.Namespace
 		if namespace == "" {
-			// If the namespace is not set, use the name of the bicep file (without extension) as
-			// the namespace
+			// If the namespace is not set, use the name of the bicep file
+			// (without extension) as the namespace. e.g. "example.bicep" -> "example"
 			namespace = strings.TrimSuffix(fileName, path.Ext(fileName))
+		}
+		resourceGroup := bicepFile.ResourceGroup
+		if resourceGroup == "" {
+			// If the resource group is not set, use the name of the bicep file
+			// (without extension) as the resource group. e.g. "example.bicep" -> "example"
+			resourceGroup = strings.TrimSuffix(fileName, path.Ext(fileName))
 		}
 
 		// Run bicep build on the bicep file
@@ -181,6 +183,13 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				logger.Error(err, "failed to check if parameters file exists")
 				return ctrl.Result{}, err
 			}
+		}
+
+		// Generate the provider config from the radius-gitops-config.yaml file
+		providerConfig := sdkclients.GenerateProviderConfig(resourceGroup, "", "")
+		marshalledProviderConfig, err := json.MarshalIndent(providerConfig, "", "  ")
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 
 		// Now we should create (or update) each DeploymentTemplate for the bicep files
@@ -316,31 +325,26 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 	logger.Info("Updated Deployment Template", "name", deploymentTemplate.Name)
 }
 
-// parseAndValidateRadiusConfigFromFile reads the radius-config.yaml file from the given directory
-// and parses it into a RadiusConfig struct. It then validates the Radius configuration in the
-// radius-config.yaml file.
-func (r *FluxController) parseAndValidateRadiusConfigFromFile(dir, configFileName string) (*RadiusConfig, error) {
-	radiusConfig := RadiusConfig{}
+// parseAndValidateRadiusGitOpsConfigFromFile reads the radius-gitops-config.yaml file from the given directory
+// and parses it into a RadiusGitOpsConfig struct. It then validates the Radius configuration in the
+// radius-gitops-config.yaml file.
+func (r *FluxController) parseAndValidateRadiusGitOpsConfigFromFile(dir, configFileName string) (*RadiusGitOpsConfig, error) {
+	radiusConfig := RadiusGitOpsConfig{}
 
 	// Read the file contents
 	b, err := r.FileSystem.ReadFile(path.Join(dir, configFileName))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read radius-config.yaml, error: %w", err)
+		return nil, fmt.Errorf("failed to read radius-gitops-config.yaml, error: %w", err)
 	}
 
-	// Unmarshal the file contents into the RadiusConfig struct
+	// Unmarshal the file contents into the RadiusGitOpsConfig struct
 	err = yaml.Unmarshal(b, &radiusConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse radius-config.yaml, error: %w", err)
+		return nil, fmt.Errorf("failed to parse radius-gitops-config.yaml, error: %w", err)
 	}
 
-	// Validate the Radius configuration in radius-config.yaml
-	// Check if the RadiusResourceGroup field is set
-	if radiusConfig.RadiusResourceGroup == "" {
-		return nil, fmt.Errorf("radiusResourceGroup field is required in radius-config.yaml")
-	}
-
-	for _, bicepFile := range radiusConfig.BicepBuild {
+	// Validate the Radius configuration in radius-gitops-config.yaml
+	for _, bicepFile := range radiusConfig.Config {
 		// Validate if the Name field is set
 		if bicepFile.Name == "" {
 			return nil, fmt.Errorf("name field is required in bicepBuild")

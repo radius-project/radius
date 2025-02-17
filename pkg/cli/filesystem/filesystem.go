@@ -29,5 +29,6 @@ type FileSystem interface {
 	Stat(name string) (fs.FileInfo, error)
 	WriteFile(name string, data []byte, perm fs.FileMode) error
 	MkdirTemp(dir string, pattern string) (string, error)
+	MkdirAll(path string, perm fs.FileMode) error
 	RemoveAll(path string) error
 }
