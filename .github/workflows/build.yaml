@@ -253,10 +253,6 @@ jobs:
             --username ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --password ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
             --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-      # TODO: Delete this step once we use GHCR as the helm chart repo.
-      - name: Push helm chart to ACR
-        run: |
-          az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz --force
       - name: Push helm chart to GHCR
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.actor }} --password-stdin ${{ env.OCI_REGISTRY }}
