@@ -156,9 +156,9 @@ jobs:
       - name: Generate ID for release
         id: gen-id
         run: |
-          if [ -z "${{ steps.skip-build.outputs.SKIP_BUILD }}" ]; then
+          if [[ "${{ steps.skip-build.outputs.SKIP_BUILD }}" != "true" ]]; then
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
-            if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
+            if [ "$GITHUB_EVENT_NAME" == "schedule" ] || [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
               # Add run number to randomize unique id for scheduled runs.
               BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
             fi
