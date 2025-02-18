@@ -170,11 +170,11 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 
 		// If the bicepparams file exists, run bicep build-params on it
-		var parameters map[string]string
+		var armJSONParameters map[string]any
 		if paramFileName != "" {
 			if !os.IsNotExist(err) {
-				logger.Info("Running bicep build-params", "name", fileName)
-				parameters, err = r.runBicepBuildParams(ctx, tmpDir, bicepFile.Name)
+				logger.Info("Running bicep build-params", "name", paramFileName)
+				armJSONParameters, err = r.runBicepBuildParams(ctx, tmpDir, paramFileName)
 				if err != nil {
 					logger.Error(err, "failed to run bicep build-params")
 					return ctrl.Result{}, err
@@ -195,6 +195,7 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		// Now we should create (or update) each DeploymentTemplate for the bicep files
 		// specified in the git repository.
 		logger.Info("Creating or updating DeploymentTemplate", "name", bicepFile.Name)
+		parameters := convertFromARMJSONParameters(armJSONParameters)
 		r.createOrUpdateDeploymentTemplate(ctx, bicepFile.Name, namespace, template, string(marshalledProviderConfig), parameters)
 	}
 
@@ -249,17 +250,17 @@ func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename s
 	return string(contents), nil
 }
 
-func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, filename string) (map[string]string, error) {
+func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, filename string) (map[string]any, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	bicepParamsFile := path.Join(filepath, filename)
-	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicepparam", ".bicepparam.json"))
+	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicepparam", ".parameters.json"))
 
 	// Run bicep build-params on the bicep file
 	logger.Info("Running bicep build-params on " + bicepParamsFile)
-	r.Bicep.BuildParams(bicepParamsFile, outfile)
+	r.Bicep.BuildParams(bicepParamsFile, "--outfile", outfile)
 
-	// Read the contents of the generated .bicepparam.json file
+	// Read the contents of the generated .parameters.json file
 	contents, err := r.FileSystem.ReadFile(outfile)
 	if err != nil {
 		logger.Error(err, "failed to read bicep build-params output")
@@ -272,12 +273,19 @@ func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, file
 		logger.Error(err, "failed to unmarshal bicep build-params output")
 		return nil, err
 	}
+
 	if params["parameters"] == nil {
-		logger.Info("No parameters found in bicep build-params output")
-		return nil, nil
+		return nil, fmt.Errorf("parameters field not found in bicep build-params output")
 	}
 
-	return nil, nil
+	if _, ok := params["parameters"].(map[string]any); !ok {
+		typeGot := fmt.Sprintf("%T", params["parameters"])
+		return nil, fmt.Errorf("unexpected format for parameters field in bicep build-params output, got %s", typeGot)
+	}
+
+	parameters := params["parameters"].(map[string]any)
+
+	return parameters, nil
 }
 
 func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string) {
@@ -317,6 +325,7 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 		Parameters:     parameters,
 		ProviderConfig: providerConfig,
 	}
+
 	// If the DeploymentTemplate already exists, update it
 	if err := r.Client.Update(ctx, &deploymentTemplate); err != nil {
 		logger.Error(err, "unable to update deployment template")

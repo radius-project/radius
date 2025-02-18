@@ -21,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"testing/fstest"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
@@ -37,7 +36,7 @@ func Test_Parameters_Invalid(t *testing.T) {
 	}
 
 	parser := ParameterParser{
-		FileSystem: filesystem.NewMemMapFileSystem(),
+		FileSystem: filesystem.NewMemMapFileSystem(nil),
 	}
 
 	for _, input := range inputs {
@@ -59,8 +58,8 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 
 	// Initialize the ParameterParser with the in-memory filesystem
 	parser := ParameterParser{
-		FileSystem: filesystem.MemMapFileSystem{
-			InternalFileSystem: fstest.MapFS{
+		FileSystem: filesystem.NewMemMapFileSystem(
+			map[string]filesystem.MemFile{
 				"many.json": {
 					Data: []byte(`{ "parameters": { "key1": { "value": { "someValue": true } }, "key2": { "value": "overridden-value" } } }`),
 				},
@@ -68,7 +67,7 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 					Data: []byte(`{ "someValue": "another-value" }`),
 				},
 			},
-		},
+		),
 	}
 
 	parameters, err := parser.Parse(inputs...)
@@ -95,7 +94,7 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 
 func Test_ParseParameters_File(t *testing.T) {
 	parser := ParameterParser{
-		FileSystem: filesystem.NewMemMapFileSystem(),
+		FileSystem: filesystem.NewMemMapFileSystem(nil),
 	}
 
 	input, err := os.ReadFile(filepath.Join("testdata", "test-parameters.json"))

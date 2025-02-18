@@ -22,7 +22,7 @@ import (
 )
 
 func TestMemMapFileSystem_Create(t *testing.T) {
-	fs := NewMemMapFileSystem()
+	fs := NewMemMapFileSystem(nil)
 	file, err := fs.Create("testfile")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -33,7 +33,7 @@ func TestMemMapFileSystem_Create(t *testing.T) {
 }
 
 func TestMemMapFileSystem_Open(t *testing.T) {
-	fs := NewMemMapFileSystem()
+	fs := NewMemMapFileSystem(nil)
 	_, err := fs.Create("testfile")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -48,7 +48,7 @@ func TestMemMapFileSystem_Open(t *testing.T) {
 }
 
 func TestMemMapFileSystem_Remove(t *testing.T) {
-	fs := NewMemMapFileSystem()
+	fs := NewMemMapFileSystem(nil)
 	_, err := fs.Create("testfile")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -64,7 +64,7 @@ func TestMemMapFileSystem_Remove(t *testing.T) {
 }
 
 func TestMemMapFileSystem_WriteFile(t *testing.T) {
-	fs := NewMemMapFileSystem()
+	fs := NewMemMapFileSystem(nil)
 	data := []byte("hello world")
 	err := fs.WriteFile("testfile", data, os.ModePerm)
 	if err != nil {
@@ -80,7 +80,7 @@ func TestMemMapFileSystem_WriteFile(t *testing.T) {
 }
 
 func TestMemMapFileSystem_ReadFile(t *testing.T) {
-	fs := NewMemMapFileSystem()
+	fs := NewMemMapFileSystem(nil)
 	data := []byte("hello world")
 	err := fs.WriteFile("testfile", data, os.ModePerm)
 	if err != nil {
@@ -96,7 +96,7 @@ func TestMemMapFileSystem_ReadFile(t *testing.T) {
 }
 
 func TestMemMapFileSystem_Stat(t *testing.T) {
-	fs := NewMemMapFileSystem()
+	fs := NewMemMapFileSystem(nil)
 	data := []byte("hello world")
 	err := fs.WriteFile("testfile", data, os.ModePerm)
 	if err != nil {
@@ -115,7 +115,7 @@ func TestMemMapFileSystem_Stat(t *testing.T) {
 }
 
 func TestMemMapFileSystem_Exists(t *testing.T) {
-	fs := NewMemMapFileSystem()
+	fs := NewMemMapFileSystem(nil)
 	if fs.Exists("testfile") {
 		t.Fatalf("expected file to not exist")
 	}

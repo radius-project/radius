@@ -29,7 +29,7 @@ type MemMapFileSystem struct {
 
 var _ FileSystem = (*MemMapFileSystem)(nil)
 
-func NewMemMapFileSystem() *MemMapFileSystem {
+func NewMemMapFileSystem(internalFileSystem map[string]MemFile) *MemMapFileSystem {
 	return &MemMapFileSystem{
 		InternalFileSystem: make(map[string]MemFile),
 	}

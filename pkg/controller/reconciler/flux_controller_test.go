@@ -15,6 +15,7 @@ package reconciler
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 	"os"
 	"path"
@@ -94,7 +95,9 @@ func SetupFluxControllerTest(t *testing.T, options setupFluxControllerTestOption
 }
 
 type Step struct {
-	Path string
+	Path            string
+	BicepFiles      []string
+	BicepParamFiles []string
 }
 
 func RunFluxControllerTest(t *testing.T, steps []Step) {
@@ -104,7 +107,7 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	fs := filesystem.NewMemMapFileSystem()
+	fs := filesystem.NewMemMapFileSystem(nil)
 	archiveFetcher := NewMockArchiveFetcher(mctrl)
 	bicep := bicep.NewMockInterface(mctrl)
 
@@ -120,42 +123,88 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 	testGitRepoURL := "https://github.com/radius-project/example-repo.git"
 	testGitRepoSHA := "sha256:1234"
 
+	var archiveFetcherCalls []any
+	var bicepCalls []any
 	for _, step := range steps {
-		archiveFetcher.EXPECT().
+		s := step // capture loop variable
+		call := archiveFetcher.EXPECT().
 			Fetch(testGitRepoURL, testGitRepoSHA, gomock.Any()).
 			Return(nil).
-			// The archiveFetcher is called twice (TODOWILLSMITH: why?)
-			AnyTimes().
+			Times(1).
 			Do(func(archiveURL, digest, dir string) {
-				// Copy the contents of the test data directory to the test filesystem.
-				err := filepath.WalkDir(step.Path, func(srcPath string, info os.DirEntry, err error) error {
+				err := filepath.WalkDir(s.Path, func(srcPath string, info os.DirEntry, err error) error {
 					if err != nil {
 						return err
 					}
-
-					relPath, err := filepath.Rel(step.Path, srcPath)
+					relPath, err := filepath.Rel(s.Path, srcPath)
 					if err != nil {
 						return err
 					}
-
 					dstPath := filepath.Join(dir, relPath)
-
 					if info.IsDir() {
 						return fs.MkdirAll(dstPath, 0755)
 					}
-
-					// Read contents of srcFile
+					// Read contents of srcFile and write to destination.
 					data, err := os.ReadFile(srcPath)
 					if err != nil {
 						return err
 					}
-
-					// Write contents to dstFile
 					return fs.WriteFile(dstPath, data, 0644)
 				})
 				require.NoError(t, err)
 			})
 
+		archiveFetcherCalls = append(archiveFetcherCalls, call)
+
+		radiusConfig := RadiusGitOpsConfig{}
+		b, err := os.ReadFile(path.Join(s.Path, "radius-gitops-config.yaml"))
+		require.NoError(t, err)
+		err = yaml.Unmarshal(b, &radiusConfig)
+		require.NoError(t, err)
+		require.NotNil(t, radiusConfig)
+
+		for _, configEntry := range radiusConfig.Config {
+			ce := configEntry // capture loop variable
+			bicepBuildCall := bicep.EXPECT().
+				Build(gomock.Any(), "--outfile", gomock.Any()).
+				Return(nil, nil).
+				Times(1).
+				Do(func(args ...string) {
+					filePath := args[0]
+					outFilePath := args[2]
+					outFileName := filepath.Base(outFilePath)
+					localFilePath := s.Path
+					fileContent, err := os.ReadFile(path.Join(localFilePath, outFileName))
+					require.NoError(t, err)
+					err = fs.WriteFile(filePath, fileContent, 0644)
+					require.NoError(t, err)
+				})
+			bicepCalls = append(bicepCalls, bicepBuildCall)
+
+			if ce.Params != "" {
+				bicepBuildParamsCall := bicep.EXPECT().
+					BuildParams(gomock.Any(), "--outfile", gomock.Any()).
+					Return(nil, nil).
+					Times(1).
+					Do(func(args ...string) {
+						filePath := args[0]
+						outFilePath := args[2]
+						outFileName := filepath.Base(outFilePath)
+						localFilePath := s.Path
+						fileContent, err := os.ReadFile(path.Join(localFilePath, outFileName))
+						require.NoError(t, err)
+						err = fs.WriteFile(filePath, fileContent, 0644)
+						require.NoError(t, err)
+					})
+				bicepCalls = append(bicepCalls, bicepBuildParamsCall)
+			}
+		}
+	}
+	gomock.InOrder(archiveFetcherCalls...)
+	gomock.InOrder(bicepCalls...)
+
+	for stepIndex, step := range steps {
+		stepNumber := stepIndex + 1
 		radiusConfig := RadiusGitOpsConfig{}
 		b, err := os.ReadFile(path.Join(step.Path, "radius-gitops-config.yaml"))
 		require.NoError(t, err)
@@ -171,47 +220,44 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 				namespaceName = nameBase
 			}
 
-			bicep.EXPECT().
-				Build(gomock.Any(), "--outfile", gomock.Any()).
-				Return(nil, nil).
-				Times(1).
-				Do(func(args ...string) {
-					dir := filepath.Dir(args[0])
-					fileContent, err := os.ReadFile(path.Join(step.Path, name))
-					require.NoError(t, err)
-					err = fs.WriteFile(filepath.Join(dir, fmt.Sprintf("%s.json", nameBase)), fileContent, 0644)
-					require.NoError(t, err)
-				})
-
 			// Create a namespace if it does not exist
-			namespace := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: namespaceName,
-				},
+			if err := k8sClient.Get(ctx, types.NamespacedName{Name: namespaceName}, &corev1.Namespace{}); err != nil {
+				if k8sclient.IgnoreNotFound(err) != nil {
+					require.NoError(t, err)
+				}
+				namespace := &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: namespaceName,
+					},
+				}
+				err := k8sClient.Create(ctx, namespace)
+				require.NoError(t, err)
 			}
-			err := k8sClient.Create(ctx, namespace)
-			require.NoError(t, err)
 
-			// Create a GitRepository resource on the cluster
+			gitRepo := sourcev1.GitRepository{}
 			gitRepoNamespacedName := types.NamespacedName{Name: testGitRepoName, Namespace: namespaceName}
-			gitRepo := makeGitRepository(gitRepoNamespacedName, testGitRepoURL)
-			err = k8sClient.Create(ctx, gitRepo)
-			require.NoError(t, err)
+			if stepNumber == 1 {
+				// Create a GitRepository resource on the cluster
+				gitRepo = makeGitRepository(gitRepoNamespacedName, testGitRepoURL)
+				err = k8sClient.Create(ctx, &gitRepo)
+				require.NoError(t, err)
 
-			// Wait for the GitRepository to be created
-			err = waitForObjectToExist(ctx, k8sClient, gitRepoNamespacedName, gitRepo)
-			require.NoError(t, err, "GitRepository was not created successfully")
+				// Wait for the GitRepository to be created
+				err = waitForGitRepositoryToExistWithGeneration(ctx, k8sClient, gitRepoNamespacedName, &gitRepo, int64(stepNumber))
+				require.NoError(t, err, "GitRepository was not created successfully")
+			}
 
 			// Fetch the latest GitRepository object
-			err = k8sClient.Get(ctx, gitRepoNamespacedName, gitRepo)
+			err = k8sClient.Get(ctx, gitRepoNamespacedName, &gitRepo)
 			require.NoError(t, err)
 
 			// Update the Status subresource
 			updatedStatus := sourcev1.GitRepositoryStatus{
-				ObservedGeneration: 1,
+				ObservedGeneration: int64(stepNumber),
 				Artifact: &sourcev1.Artifact{
-					URL:    testGitRepoURL,
-					Digest: testGitRepoSHA,
+					URL:      testGitRepoURL,
+					Digest:   testGitRepoSHA,
+					Revision: fmt.Sprintf("v%d", stepNumber),
 					LastUpdateTime: metav1.Time{
 						Time: time.Now(),
 					},
@@ -229,18 +275,20 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 				},
 			}
 			gitRepo.Status = updatedStatus
-			err = k8sClient.Status().Update(ctx, gitRepo)
+			err = k8sClient.Status().Update(ctx, &gitRepo)
 			require.NoError(t, err)
 
 			// Now, the FluxController should reconcile the GitRepository and create the DeploymentTemplate resource.
 			deploymentTemplateName := name
 			deploymentTemplateNamespacedName := types.NamespacedName{Name: deploymentTemplateName, Namespace: namespaceName}
-			deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{}
-			err = waitForObjectToExist(ctx, k8sClient, deploymentTemplateNamespacedName, deploymentTemplate)
+			deploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
+			err = waitForDeploymentTemplateToExistWithGeneration(ctx, k8sClient, deploymentTemplateNamespacedName, &deploymentTemplate, int64(stepNumber))
 			require.NoError(t, err)
 
-			// Parse the DeploymentTemplate and check for the expected resources
-			// TODO (willsmith)
+			// Fetch the latest DeploymentTemplate object
+			err = k8sClient.Get(ctx, deploymentTemplateNamespacedName, &deploymentTemplate)
+			require.NoError(t, err)
+
 		}
 	}
 }
@@ -255,8 +303,21 @@ func Test_FluxController_Basic(t *testing.T) {
 	RunFluxControllerTest(t, steps)
 }
 
-func makeGitRepository(namespacedName types.NamespacedName, url string) *sourcev1.GitRepository {
-	return &sourcev1.GitRepository{
+func Test_FluxController_Update(t *testing.T) {
+	steps := []Step{
+		{
+			Path: "testdata/flux-update/step-1",
+		},
+		{
+			Path: "testdata/flux-update/step-2",
+		},
+	}
+
+	RunFluxControllerTest(t, steps)
+}
+
+func makeGitRepository(namespacedName types.NamespacedName, url string) sourcev1.GitRepository {
+	return sourcev1.GitRepository{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GitRepository",
 			APIVersion: "source.toolkit.fluxcd.io/v1",
@@ -271,20 +332,69 @@ func makeGitRepository(namespacedName types.NamespacedName, url string) *sourcev
 	}
 }
 
-// waitForObjectToExist waits for the specified Kubernetes object to exist
-// on the cluster. It polls the cluster at intervals until the object is found
-// or the timeout is reached.
-func waitForObjectToExist(ctx context.Context, k8sClient k8sclient.Client, key k8sclient.ObjectKey, obj k8sclient.Object) error {
+func waitForGitRepositoryToExistWithGeneration(ctx context.Context, k8sClient k8sclient.Client, key k8sclient.ObjectKey, obj k8sclient.Object, generation int64) error {
 	timeout := 10 * time.Second
 	interval := 1 * time.Second
 	deadlineCtx, deadlineCancel := context.WithTimeout(ctx, timeout)
 	defer deadlineCancel()
 
-	return wait.PollUntilContextTimeout(deadlineCtx, interval, timeout, true, func(_ context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(deadlineCtx, interval, timeout, true, func(_ context.Context) (bool, error) {
 		err := k8sClient.Get(ctx, key, obj)
 		if err != nil {
 			return false, nil // Continue polling
 		}
+
+		gitRepo, ok := obj.(*sourcev1.GitRepository)
+		if !ok {
+			return false, nil // Continue polling
+		}
+
+		if gitRepo.Generation != generation {
+			return false, nil // Continue polling
+		}
+
 		return true, nil // Found
 	})
+
+	if err != nil {
+		return fmt.Errorf("GitRepository %s/%s was not created successfully", key.Namespace, key.Name)
+	}
+
+	return nil
+}
+
+func waitForDeploymentTemplateToExistWithGeneration(ctx context.Context, k8sClient k8sclient.Client, key types.NamespacedName, obj k8sclient.Object, generation int64) error {
+	timeout := 10 * time.Second
+	interval := 1 * time.Second
+	deadlineCtx, deadlineCancel := context.WithTimeout(ctx, timeout)
+	defer deadlineCancel()
+
+	err := wait.PollUntilContextTimeout(deadlineCtx, interval, timeout, true, func(_ context.Context) (bool, error) {
+		err := k8sClient.Get(ctx, key, obj)
+		if err != nil {
+			return false, nil // Continue polling
+		}
+
+		deploymentTemplate, ok := obj.(*radappiov1alpha3.DeploymentTemplate)
+		if !ok {
+			return false, nil // Continue polling
+		}
+
+		if deploymentTemplate.Generation != generation {
+			return false, nil // Continue polling
+		}
+
+		return true, nil // Found
+	})
+
+	if err != nil {
+		return fmt.Errorf("DeploymentTemplate %s/%s was not created successfully", key.Namespace, key.Name)
+	}
+
+	return nil
+}
+
+// deploymentTemplateSpecEquals returns true if the two DeploymentTemplateSpecs are equal.
+func deploymentTemplateSpecEquals(spec, other radappiov1alpha3.DeploymentTemplateSpec) bool {
+	return sha1.Sum([]byte(fmt.Sprintf("%v", spec))) == sha1.Sum([]byte(fmt.Sprintf("%v", other)))
 }

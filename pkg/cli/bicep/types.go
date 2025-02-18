@@ -86,10 +86,10 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 // Build runs `rad-bicep build` with the given arguments.
 func (i *Impl) Build(args ...string) (map[string]any, error) {
 	buildArgs := make([]string, len(args)+1)
-	buildArgs[0] = "build-params"
+	buildArgs[0] = "build"
 	copy(buildArgs[1:], args)
 
-	return runBicepJSON(args...)
+	return runBicepJSON(buildArgs...)
 }
 
 // BuildParams runs `rad-bicep build-params` with the given arguments.
