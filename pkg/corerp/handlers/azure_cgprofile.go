@@ -21,8 +21,8 @@ import (
 	"errors"
 	"fmt"
 
-	cs2client "github.com/radius-project/azure-cs2/client/v20230515preview"
 	"github.com/radius-project/radius/pkg/azure/armauth"
+	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20240901preview"
 )
 
 func NewAzureCGProfileHandler(arm *armauth.ArmConfig) ResourceHandler {
@@ -34,7 +34,7 @@ type azureCGProfileHandler struct {
 }
 
 func (handler *azureCGProfileHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	profile, ok := options.Resource.CreateResource.Data.(*cs2client.ContainerGroupProfile)
+	profile, ok := options.Resource.CreateResource.Data.(*ngroupsclient.ContainerGroupProfile)
 	if !ok {
 		return nil, errors.New("cannot parse container group profile")
 	}
@@ -45,7 +45,7 @@ func (handler *azureCGProfileHandler) Put(ctx context.Context, options *PutOptio
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
 
-	cgp, err := cs2client.NewContainerGroupProfilesClient(subID, handler.arm.ClientOptions.Cred, nil)
+	cgp, err := ngroupsclient.NewContainerGroupProfileClient(subID, handler.arm.ClientOptions.Cred, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (handler *azureCGProfileHandler) Delete(ctx context.Context, options *Delet
 	subID := options.Resource.ID.FindScope("subscriptions")
 	resourceGroupName := options.Resource.ID.FindScope("resourceGroups")
 
-	cgp, err := cs2client.NewContainerGroupProfilesClient(subID, handler.arm.ClientOptions.Cred, nil)
+	cgp, err := ngroupsclient.NewContainerGroupProfileClient(subID, handler.arm.ClientOptions.Cred, nil)
 	if err != nil {
 		return err
 	}

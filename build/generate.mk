@@ -24,7 +24,7 @@ ifeq ($(GOOS),windows)
 endif
 
 .PHONY: generate
-generate: generate-genericcliclient generate-rad-corerp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-containerinstance-client # generate-genericcliclient generate-rad-corerp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
@@ -122,6 +122,14 @@ generate-bicep-types: generate-node-installed ## Generate Bicep extensibility ty
 	npm --prefix hack/bicep-types-radius/src/autorest.bicep ci && npm --prefix hack/bicep-types-radius/src/autorest.bicep run build; \
 	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
 	npm --prefix hack/bicep-types-radius/src/generator ci && npm --prefix hack/bicep-types-radius/src/generator run generate -- --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+
+
+.PHONY: generate-containerinstance-client
+generate-containerinstance-client: generate-node-installed generate-autorest-installed  ## Generates the Container Instances SDK (Autorest).
+	autorest \
+		swagger/specification/containerinstance/resource-manager/Microsoft.ContainerInstance/readme.md \
+		--go \
+		--tag=package-preview-2024-11
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..

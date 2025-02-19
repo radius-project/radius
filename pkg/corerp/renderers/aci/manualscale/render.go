@@ -24,9 +24,8 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/resourcemodel"
+	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20240901preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-
-	cs2client "github.com/radius-project/azure-cs2/client/v20230515preview"
 )
 
 // Renderer is the renderers.Renderer implementation for the manualscale extension.
@@ -64,7 +63,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 					// Not a Kubernetes resource
 					continue
 				}
-				o, ok := ores.CreateResource.Data.(*cs2client.ContainerScaleSet)
+				o, ok := ores.CreateResource.Data.(*ngroupsclient.NGroup)
 				if !ok {
 					return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 				}
