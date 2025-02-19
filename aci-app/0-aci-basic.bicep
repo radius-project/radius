@@ -1,12 +1,12 @@
-import radius as radius
-
+extension radius
 param aciscope string = ''
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'aci-env'
   properties: {
     compute: {
-      kind: 'aci'
+      kind: 'kubernetes'
+      namespace: 'test-aci'
     }
     providers: {
       azure: {
@@ -43,7 +43,7 @@ resource acidemo 'Applications.Core/containers@2023-10-01-preview' = {
     container: {
       image: 'ghcr.io/radius-project/samples/demo:latest'
       env: {
-        DEMO_ENV: 'test'
+        DEMO_ENV: {value: 'test'}
       }
     }
   }

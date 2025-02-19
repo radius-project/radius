@@ -73,7 +73,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/projectcontour/contour v1.30.3
 	github.com/prometheus/client_golang v1.21.1
-	github.com/radius-project/azure-cs2 v0.0.0-20231221223754-55678f89680d
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
