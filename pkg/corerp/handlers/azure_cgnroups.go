@@ -21,9 +21,9 @@ import (
 	"errors"
 	"fmt"
 
-	cs2client "github.com/radius-project/azure-cs2/client/v20230515preview"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20240901preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -39,7 +39,7 @@ type azureCGScaleSetHandler struct {
 func (handler *azureCGScaleSetHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	cs2, ok := options.Resource.CreateResource.Data.(*cs2client.ContainerScaleSet)
+	cs2, ok := options.Resource.CreateResource.Data.(*ngroupsclient.NGroup)
 	if !ok {
 		return nil, errors.New("cannot parse container group profile")
 	}
@@ -56,7 +56,7 @@ func (handler *azureCGScaleSetHandler) Put(ctx context.Context, options *PutOpti
 	}
 
 	cs2.Properties.ContainerGroupProfiles[0].Resource.ID = to.Ptr(cgpID)
-	cgp, err := cs2client.NewContainerScaleSetsClient(subID, handler.arm.ClientOptions.Cred, nil)
+	cgp, err := ngroupsclient.NewNGroupsClient(subID, handler.arm.ClientOptions.Cred, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (handler *azureCGScaleSetHandler) Delete(ctx context.Context, options *Dele
 	subID := options.Resource.ID.FindScope("subscriptions")
 	resourceGroupName := options.Resource.ID.FindScope("resourceGroups")
 
-	cgp, err := cs2client.NewContainerScaleSetsClient(subID, handler.arm.ClientOptions.Cred, nil)
+	cgp, err := ngroupsclient.NewNGroupsClient(subID, handler.arm.ClientOptions.Cred, nil)
 	if err != nil {
 		return err
 	}

@@ -16,7 +16,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
-	cs2client "github.com/radius-project/azure-cs2/client/v20230515preview"
+	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20240901preview"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
@@ -93,13 +93,13 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	orResources := []rpv1.OutputResource{}
 
 	// Populate environment variables in properties.container.env
-	env := []*cs2client.EnvironmentVariable{}
+	env := []*ngroupsclient.EnvironmentVariable{}
 	for name, val := range properties.Container.Env {
 		if val.ValueFrom != nil {
 			return renderers.RendererOutput{}, fmt.Errorf("valueFrom not supported with ACI")
 		}
 
-		env = append(env, &cs2client.EnvironmentVariable{
+		env = append(env, &ngroupsclient.EnvironmentVariable{
 			Name:  to.Ptr(name),
 			Value: val.Value,
 		})
@@ -113,7 +113,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// Populate environment variables from connections
 	for _, key := range getSortedKeys(envData) {
-		env = append(env, &cs2client.EnvironmentVariable{
+		env = append(env, &ngroupsclient.EnvironmentVariable{
 			Name:  to.Ptr(envData[key].Name),
 			Value: to.Ptr(envData[key].Value),
 		})
@@ -121,26 +121,26 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// Populate secret data from connections
 	for _, key := range getSortedKeys(secretData) {
-		env = append(env, &cs2client.EnvironmentVariable{
+		env = append(env, &ngroupsclient.EnvironmentVariable{
 			Name:        to.Ptr(secretData[key].Name),
 			SecureValue: to.Ptr(secretData[key].Value),
 		})
 	}
 
-	containerPorts := []*cs2client.ContainerPort{}
-	ipAddress := &cs2client.IPAddress{Type: to.Ptr(cs2client.ContainerGroupIPAddressTypePrivate)}
+	containerPorts := []*ngroupsclient.ContainerPort{}
+	ipAddress := &ngroupsclient.IPAddress{Type: to.Ptr(ngroupsclient.ContainerGroupIPAddressTypePrivate)}
 
 	// Support only one port for now.
 	firstPort := int32(80)
 	gatewayProvides := ""
 	for _, v := range properties.Container.Ports {
-		containerPorts = append(containerPorts, &cs2client.ContainerPort{
+		containerPorts = append(containerPorts, &ngroupsclient.ContainerPort{
 			Port:     to.Ptr[int32](v.ContainerPort),
-			Protocol: to.Ptr(cs2client.ContainerNetworkProtocolTCP),
+			Protocol: to.Ptr(ngroupsclient.ContainerNetworkProtocolTCP),
 		})
-		ipAddress.Ports = append(ipAddress.Ports, &cs2client.Port{
+		ipAddress.Ports = append(ipAddress.Ports, &ngroupsclient.Port{
 			Port:     to.Ptr[int32](v.ContainerPort),
-			Protocol: to.Ptr(cs2client.ContainerGroupNetworkProtocolTCP),
+			Protocol: to.Ptr(ngroupsclient.ContainerGroupNetworkProtocolTCP),
 		})
 
 		// TODO: This is a hack to determine if this is a gateway container.
@@ -192,7 +192,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 	orResources = append(orResources, vnetSubnet)
 
-	networkprofile := &cs2client.NetworkProfile{}
+	networkprofile := &ngroupsclient.NetworkProfile{}
 	appSubnetID := vnetID + "/subnets/" + resource.Name
 
 	profileDep := []string{rpv1.LocalIDAzureVirtualNetworkSubnet}
@@ -274,11 +274,11 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			},
 		}
 
-		networkprofile = &cs2client.NetworkProfile{
-			LoadBalancer: &cs2client.LoadBalancer{
-				BackendAddressPools: []*cs2client.LoadBalancerBackendAddressPool{
+		networkprofile = &ngroupsclient.NetworkProfile{
+			LoadBalancer: &ngroupsclient.LoadBalancer{
+				BackendAddressPools: []*ngroupsclient.LoadBalancerBackendAddressPool{
 					{
-						Resource: &cs2client.APIEntityReference{
+						Resource: &ngroupsclient.APIEntityReference{
 							ID: to.Ptr(backendAddressPoolID),
 						},
 					},
@@ -289,14 +289,14 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		profileDep = append(profileDep, rpv1.LocalIDAzureContainerLoadBalancer)
 	} else {
 		appgwID := options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/applicationGateways/" + resources.MustParse(gatewayProvides).Name()
-		networkprofile = &cs2client.NetworkProfile{
-			ApplicationGateway: &cs2client.ApplicationGateway{
-				Resource: &cs2client.APIEntityReference{
+		networkprofile = &ngroupsclient.NetworkProfile{
+			ApplicationGateway: &ngroupsclient.ApplicationGateway{
+				Resource: &ngroupsclient.APIEntityReference{
 					ID: to.Ptr(appgwID),
 				},
-				BackendAddressPools: []*cs2client.ApplicationGatewayBackendAddressPool{
+				BackendAddressPools: []*ngroupsclient.ApplicationGatewayBackendAddressPool{
 					{
-						Resource: &cs2client.APIEntityReference{
+						Resource: &ngroupsclient.APIEntityReference{
 							ID: to.Ptr(strings.Join([]string{appgwID, "backendAddressPools", resource.Name}, "/")),
 						},
 					},
@@ -305,21 +305,21 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 	}
 
-	profile := &cs2client.ContainerGroupProfile{
+	profile := &ngroupsclient.ContainerGroupProfile{
 		Location: to.Ptr(aciLocation),
 		Name:     to.Ptr(resource.Name),
-		Properties: &cs2client.ContainerGroupProfilePropertiesProperties{
-			Containers: []*cs2client.Container{
+		Properties: &ngroupsclient.ContainerGroupProfileProperties{
+			Containers: []*ngroupsclient.Container{
 				{
 					Name: to.Ptr(resource.Name),
-					Properties: &cs2client.ContainerProperties{
+					Properties: &ngroupsclient.ContainerProperties{
 						Image:                to.Ptr(resource.Properties.Container.Image),
 						EnvironmentVariables: env,
 						Command:              to.SliceOfPtrs[string](properties.Container.Command...),
 						Ports:                containerPorts,
-						Resources: &cs2client.ResourceRequirements{
+						Resources: &ngroupsclient.ResourceRequirements{
 							// Hard-coded right now!
-							Requests: &cs2client.ResourceRequests{
+							Requests: &ngroupsclient.ResourceRequests{
 								CPU:        to.Ptr[float64](1.0),
 								MemoryInGB: to.Ptr[float64](2.0),
 							},
@@ -328,8 +328,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 				},
 			},
 			IPAddress: ipAddress,
-			OSType:    to.Ptr(cs2client.OperatingSystemTypesLinux),
-			SKU:       to.Ptr(cs2client.ContainerGroupSKUStandard),
+			OSType:    to.Ptr(ngroupsclient.OperatingSystemTypesLinux),
+			SKU:       to.Ptr(ngroupsclient.ContainerGroupSKUStandard),
 		},
 	}
 
@@ -347,26 +347,27 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 	orResources = append(orResources, orProfile)
 
-	scaleSet := &cs2client.ContainerScaleSet{
+	// TODO: rename to ngroup
+	scaleSet := &ngroupsclient.NGroup{
 		Name:     to.Ptr(resource.Name),
 		Location: to.Ptr(aciLocation),
-		Properties: &cs2client.ContainerScaleSetProperties{
-			UpdateProfile: &cs2client.UpdateProfile{
-				UpdateMode: to.Ptr(cs2client.UpdateModeRolling),
+		Properties: &ngroupsclient.NGroupProperties{
+			UpdateProfile: &ngroupsclient.UpdateProfile{
+				UpdateMode: to.Ptr(ngroupsclient.UpdateProfileUpdateModeRolling),
 			},
-			ElasticProfile: &cs2client.ElasticProfile{
+			ElasticProfile: &ngroupsclient.ElasticProfile{
 				DesiredCount: to.Ptr[int32](1),
-				ContainerGroupNamingPolicy: &cs2client.ContainerGroupNamingPolicy{
-					GUIDNamingPolicy: &cs2client.GUIDNamingPolicy{
+				ContainerGroupNamingPolicy: &ngroupsclient.ElasticProfileContainerGroupNamingPolicy{
+					GUIDNamingPolicy: &ngroupsclient.ElasticProfileContainerGroupNamingPolicyGUIDNamingPolicy{
 						Prefix: to.Ptr(resource.Name + "-"),
 					},
 				},
 			},
-			ContainerGroupProfiles: []*cs2client.ContainerGroupProfileAutoGenerated{
+			ContainerGroupProfiles: []*ngroupsclient.ContainerGroupProfileStub{
 				{
-					Resource: &cs2client.APIEntityReference{}, // Updated by handler
-					ContainerGroupProperties: &cs2client.ContainerGroupProperties{
-						SubnetIDs: []*cs2client.Subnet{
+					Resource: &ngroupsclient.APIEntityReference{}, // Updated by handler
+					ContainerGroupProperties: &ngroupsclient.NGroupContainerGroupProperties{
+						SubnetIDs: []*ngroupsclient.ContainerGroupSubnetID{
 							{
 								ID:   to.Ptr(appSubnetID),
 								Name: to.Ptr(resource.Name),
