@@ -368,7 +368,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&mr, nil)
 
-		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource, true)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -418,7 +418,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -468,7 +468,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -517,7 +517,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		_, err := dp.Render(ctx, resourceID, &testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.Error(t, err, "failed to render the resource")
 	})
 
@@ -530,7 +530,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&database.Object{}, &database.ErrNotFound{ID: testResource.ID})
 
-		_, err := dp.Render(ctx, resourceID, &testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" does not exist", err.(*v1.ErrClientRP).Message)
@@ -545,7 +545,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&database.Object{}, errors.New("failed to connect to data store"))
 
-		_, err := dp.Render(ctx, resourceID, &testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.Error(t, err)
 		require.Equal(t, "failed to fetch the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\". Err: failed to connect to data store", err.Error())
 	})
@@ -558,7 +558,7 @@ func Test_Render(t *testing.T) {
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testInvalidResourceID)
 
-		_, err := dp.Render(ctx, resourceID, &testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.Error(t, err, "radius resource type 'Applications.foo/foo' is unsupported")
 	})
 
@@ -578,7 +578,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 
-		_, err := dp.Render(ctx, resourceID, &testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "application ID \"invalid-app-id\" for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" is not a valid id. Error: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
@@ -600,7 +600,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 
-		_, err := dp.Render(ctx, resourceID, &testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.Error(t, err)
 		require.Equal(t, "missing required application id for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\"", err.Error())
 	})
@@ -621,7 +621,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 
-		_, err := dp.Render(ctx, resourceID, &testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "linked \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application\" has invalid Applications.Core/applications resource type.", err.(*v1.ErrClientRP).Message)
@@ -674,7 +674,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		_, err := dp.Render(ctx, resourceID, &testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.Error(t, err, "output resource \"Deployment\" does not have a provider specified")
 	})
 
@@ -726,7 +726,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 
-		_, err := dp.Render(ctx, resourceID, &testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource, false)
 		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.roleassignment")
 	})
 }
@@ -826,7 +826,7 @@ func Test_Deploy(t *testing.T) {
 				return kubeProp, nil
 			})
 
-		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput, true)
 
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
@@ -846,7 +846,7 @@ func Test_Deploy(t *testing.T) {
 		setupDeployMocks(mocks, true)
 
 		// Note: No PUT call is made on the mocks to actually deploy the resource
-		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput, true)
 
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
@@ -865,7 +865,7 @@ func Test_Deploy(t *testing.T) {
 
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to deploy the resource"))
 
-		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput, false)
 		require.Error(t, err)
 	})
 
@@ -882,7 +882,7 @@ func Test_Deploy(t *testing.T) {
 
 		setupDeployMocks(mocks, false)
 
-		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput, false)
 
 		require.ErrorContains(t, err, "missing localID for outputresource")
 	})
@@ -900,7 +900,7 @@ func Test_Deploy(t *testing.T) {
 
 		setupDeployMocks(mocks, false)
 
-		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput, false)
 
 		require.ErrorContains(t, err, "output resource kind 'Provider: azure, Type: foo' is unsupported")
 	})
@@ -923,7 +923,7 @@ func Test_Deploy(t *testing.T) {
 			})
 
 		setupDeployMocks(mocks, false)
-		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput, true)
 
 		require.ErrorContains(t, err, `output resource "Service" does not have an id. This is a bug in the handler`)
 	})
@@ -1052,7 +1052,7 @@ func Test_getResourceDataByID(t *testing.T) {
 
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&mr, nil)
 
-		resourceData, err := dp.getResourceDataByID(ctx, depId)
+		resourceData, err := dp.getResourceDataByID(ctx, depId, true)
 		require.NoError(t, err)
 		require.Equal(t, resourceData.RecipeData, mongoResource.RecipeData)
 	})
