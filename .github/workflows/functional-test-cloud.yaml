@@ -86,16 +86,16 @@ env:
   # Private Git repository where terraform module for testing is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
   # bicep-types ACR url for uploading Radius Bicep types
-  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
+  BICEP_TYPES_REGISTRY: "biceptypes.azurecr.io"
 
 jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
     if: github.event_name == 'repository_dispatch' ||
-        (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-        github.event_name == 'workflow_dispatch'
+      (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
     env:
       DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
       DE_TAG: "latest"
@@ -343,11 +343,11 @@ jobs:
           append: true
           message: |
             :hourglass: Publishing Bicep Recipes for functional tests...
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
@@ -360,7 +360,7 @@ jobs:
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
 
-      - name: 'Login via Azure CLI'
+      - name: "Login via Azure CLI"
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
@@ -373,8 +373,8 @@ jobs:
           chmod +x ./bicep
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
-          
-      - name: Publish bicep types 
+
+      - name: Publish bicep types
         run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
@@ -432,14 +432,14 @@ jobs:
           append: true
           message: |
             :x: Test recipe publishing failed
-  
+
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: [build]
     if: github.event_name == 'repository_dispatch' ||
-        (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-        github.event_name == 'workflow_dispatch'
+      (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: true
       matrix:
@@ -777,9 +777,6 @@ jobs:
 
           # Populate the following test environment variables from JSON secret.
           # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-          # AZURE_MSSQL_RESOURCE_ID
-          # AZURE_MSSQL_USERNAME
-          # AZURE_MSSQL_PASSWORD
           eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
           make test-functional-${{ matrix.name }}
@@ -789,9 +786,6 @@ jobs:
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           AWS_REGION: ${{ env.AWS_REGION }}
           AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-          RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
-          # Test_MongoDB_Recipe_Parameters is using the following environment variable.
-          INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
