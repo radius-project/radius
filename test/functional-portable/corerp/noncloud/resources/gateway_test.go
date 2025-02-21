@@ -191,6 +191,9 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 	test.Test(t)
 }
 
+func Test_Gateway_Timeout(t *testing.T) {
+}
+
 func Test_Gateway_TLSTermination(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-tlstermination.bicep"
 	name := "corerp-resources-gateway-tlstermination"

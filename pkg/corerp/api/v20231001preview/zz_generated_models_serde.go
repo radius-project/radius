@@ -1836,6 +1836,7 @@ func (g GatewayRoute) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "enableWebsockets", g.EnableWebsockets)
 	populate(objectMap, "path", g.Path)
 	populate(objectMap, "replacePrefix", g.ReplacePrefix)
+	populate(objectMap, "timeoutPolicy", g.TimeoutPolicy)
 	return json.Marshal(objectMap)
 }
 
@@ -1859,6 +1860,40 @@ func (g *GatewayRoute) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "replacePrefix":
 				err = unpopulate(val, "ReplacePrefix", &g.ReplacePrefix)
+			delete(rawMsg, key)
+		case "timeoutPolicy":
+				err = unpopulate(val, "TimeoutPolicy", &g.TimeoutPolicy)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", g, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayRouteTimeoutPolicy.
+func (g GatewayRouteTimeoutPolicy) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "backendrequest", g.Backendrequest)
+	populate(objectMap, "request", g.Request)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type GatewayRouteTimeoutPolicy.
+func (g *GatewayRouteTimeoutPolicy) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", g, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "backendrequest":
+				err = unpopulate(val, "Backendrequest", &g.Backendrequest)
+			delete(rawMsg, key)
+		case "request":
+				err = unpopulate(val, "Request", &g.Request)
 			delete(rawMsg, key)
 		}
 		if err != nil {
