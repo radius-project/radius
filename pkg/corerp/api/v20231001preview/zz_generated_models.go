@@ -803,6 +803,18 @@ type GatewayRoute struct {
 // Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will
 // transform '/myservice/myroute' to '/myroute'
 	ReplacePrefix *string
+
+// The timeout policy for the route.
+	TimeoutPolicy *GatewayRouteTimeoutPolicy
+}
+
+// GatewayRouteTimeoutPolicy - Gateway route timeout policy
+type GatewayRouteTimeoutPolicy struct {
+// The backendrequest timeout in duration for the route. Cannot be greater than the request timeout
+	Backendrequest *string
+
+// The request timeout in duration for the route. Defaults to 15 seconds.
+	Request *string
 }
 
 // GatewayTLS - TLS configuration definition for Gateway resource.

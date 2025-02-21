@@ -3448,6 +3448,24 @@
         "enableWebsockets": {
           "type": "boolean",
           "description": "Enables websocket support for the route. Defaults to false."
+        },
+        "timeoutPolicy": {
+          "$ref": "#/definitions/GatewayRouteTimeoutPolicy",
+          "description": "The timeout policy for the route."
+        }
+      }
+    },
+    "GatewayRouteTimeoutPolicy": {
+      "type": "object",
+      "description": "Gateway route timeout policy",
+      "properties": {
+        "request": {
+          "type": "string",
+          "description": "The request timeout in duration for the route. Defaults to 15 seconds."
+        },
+        "backendrequest": {
+          "type": "string",
+          "description": "The backendrequest timeout in duration for the route. Cannot be greater than the request timeout"
         }
       }
     },

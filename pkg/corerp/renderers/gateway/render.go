@@ -328,6 +328,13 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 			}
 		}
 
+		var timeoutPolicy *contourv1.TimeoutPolicy
+		if route.TimeoutPolicy != nil {
+			timeoutPolicy = &contourv1.TimeoutPolicy{
+				Response: route.TimeoutPolicy.Request,
+			}
+		}
+
 		// If this route already exists, append to it
 		if object, exists := objects[localID]; exists {
 			if pathRewritePolicy != nil {
@@ -369,6 +376,7 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 							},
 						},
 						PathRewritePolicy: pathRewritePolicy,
+						TimeoutPolicy:     timeoutPolicy,
 						EnableWebsockets:  route.EnableWebsockets,
 					},
 				},

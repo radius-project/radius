@@ -110,6 +110,18 @@ model GatewayRoute {
 
   @doc("Enables websocket support for the route. Defaults to false.")
   enableWebsockets?: boolean;
+
+  @doc("The timeout policy for the route.")
+  timeoutPolicy?: GatewayRouteTimeoutPolicy;
+}
+
+@doc("Gateway route timeout policy")
+model GatewayRouteTimeoutPolicy {
+  @doc("The request timeout in duration for the route. Defaults to 15 seconds.")
+  request?: string;
+
+  @doc("The backendrequest timeout in duration for the route. Cannot be greater than the request timeout")
+  backendrequest?: string;
 }
 
 @armResourceOperations

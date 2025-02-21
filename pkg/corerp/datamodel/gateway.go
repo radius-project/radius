@@ -72,10 +72,17 @@ type GatewayProperties struct {
 
 // GatewayRoute represents the route attached to Gateway.
 type GatewayRoute struct {
-	Destination      string `json:"destination,omitempty"`
-	Path             string `json:"path,omitempty"`
-	ReplacePrefix    string `json:"replacePrefix,omitempty"`
-	EnableWebsockets bool   `json:"enableWebsockets,omitempty"`
+	Destination      string                     `json:"destination,omitempty"`
+	Path             string                     `json:"path,omitempty"`
+	ReplacePrefix    string                     `json:"replacePrefix,omitempty"`
+	EnableWebsockets bool                       `json:"enableWebsockets,omitempty"`
+	TimeoutPolicy    *GatewayRouteTimeoutPolicy `json:"timeoutPolicy,omitempty"`
+}
+
+// GatewayRouteTimeoutPolicy represents the timeout policy for GatewayRoute.
+type GatewayRouteTimeoutPolicy struct {
+	Request        string `json:"request,omitempty"`
+	BackendRequest string `json:"backendRequest,omitempty"`
 }
 
 // GatewayPropertiesHostname - Declare hostname information for the Gateway.
