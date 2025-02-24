@@ -18,7 +18,6 @@ package bicep
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -36,10 +35,12 @@ const SemanticVersionRegex = `(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|
 // Run rad-bicep with the given args and return the stdout. The stderr
 // is not capture but instead redirected to that of the current process.
 func runBicepRaw(args ...string) ([]byte, error) {
+	// TODO (willsmith): We should not redirect stdout to the current process.
 	if installed, _ := IsBicepInstalled(); !installed {
 		return nil, fmt.Errorf("rad-bicep not installed, run \"rad bicep download\" to install")
 	}
 
+	// TODO (willsmith): add RAD_BICEP env var to svc
 	binPath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find rad-bicep: %w", err)
@@ -81,16 +82,16 @@ func runBicepRaw(args ...string) ([]byte, error) {
 
 // runBicepJSON runs rad-bicep with the given args and returns the JSON output as a map.
 func runBicepJSON(args ...string) (map[string]any, error) {
-	bytes, err := runBicepRaw(args...)
+	_, err := runBicepRaw(args...)
 	if err != nil {
 		return nil, err
 	}
 
 	template := map[string]any{}
-	err = json.Unmarshal(bytes, &template)
-	if err != nil {
-		return nil, err
-	}
+	// err = json.Unmarshal(bytes, &template)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return template, err
 }

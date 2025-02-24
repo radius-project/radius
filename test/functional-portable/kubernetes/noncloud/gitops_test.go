@@ -37,18 +37,28 @@ type GitOpsTestStep struct {
 }
 
 // addFilesToRepository adds all files from the given path to the repository.
-func addFilesToRepository(worktree *git.Worktree, path string) error {
-	_ = filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+func addFilesToRepository(w *git.Worktree, fromPath, toPath string) error {
+	return filepath.WalkDir(fromPath, func(path string, info os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
-			return nil
+		relPath, err := filepath.Rel(fromPath, path)
+		if err != nil {
+			return err
 		}
-		_, err = worktree.Add(path)
+		dstPath := filepath.Join(toPath, relPath)
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, 0755)
+		}
+		// Read contents of srcFile and write to destination.
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
 
+		os.WriteFile(dstPath, data, 0644)
+
+		_, err = w.Add(relPath)
 		return err
 	})
-
-	return nil
 }

@@ -149,4 +149,4 @@ func (f *MemFileInfo) Size() int64        { return f.size }
 func (f *MemFileInfo) Mode() fs.FileMode  { return f.mode }
 func (f *MemFileInfo) ModTime() time.Time { return time.Now() }
 func (f *MemFileInfo) IsDir() bool        { return f.mode.IsDir() }
-func (f *MemFileInfo) Sys() interface{}   { return nil }
+func (f *MemFileInfo) Sys() any           { return nil }

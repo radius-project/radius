@@ -15,6 +15,8 @@ import (
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -192,6 +194,20 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 
+		// Create the namespace if it doesn't exist
+		namespaceObj := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: namespace,
+			},
+		}
+
+		if err := r.Client.Create(ctx, namespaceObj); err != nil {
+			if !errors.IsAlreadyExists(err) {
+				logger.Error(err, "unable to create namespace")
+				return ctrl.Result{}, err
+			}
+		}
+
 		// Now we should create (or update) each DeploymentTemplate for the bicep files
 		// specified in the git repository.
 		logger.Info("Creating or updating DeploymentTemplate", "name", bicepFile.Name)
@@ -234,14 +250,18 @@ func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename s
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	bicepFile := path.Join(filepath, filename)
-	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json"))
+	outFile := path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json"))
 
 	// Run bicep build on the bicep file
-	logger.Info("Running bicep build on " + bicepFile)
-	r.Bicep.Build(bicepFile, "--outfile", outfile)
+	logger.Info(fmt.Sprintf("Running command: bicep build %s --outfile %s", bicepFile, outFile))
+	_, err = r.Bicep.Build(bicepFile, "--outfile", outFile)
+	if err != nil {
+		logger.Error(err, "failed to run bicep build")
+		return "", err
+	}
 
 	// Read the contents of the generated .json file
-	contents, err := r.FileSystem.ReadFile(outfile)
+	contents, err := r.FileSystem.ReadFile(outFile)
 	if err != nil {
 		logger.Error(err, "failed to read bicep build output")
 		return "", err
@@ -258,6 +278,7 @@ func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, file
 
 	// Run bicep build-params on the bicep file
 	logger.Info("Running bicep build-params on " + bicepParamsFile)
+	// todo willsmith: output?
 	r.Bicep.BuildParams(bicepParamsFile, "--outfile", outfile)
 
 	// Read the contents of the generated .parameters.json file

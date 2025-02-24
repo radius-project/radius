@@ -23,6 +23,7 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
@@ -146,6 +147,7 @@ func (s *Service) Run(ctx context.Context) error {
 		Client:         mgr.GetClient(),
 		ArchiveFetcher: reconciler.NewArchiveFetcher(),
 		FileSystem:     filesystem.NewOSFS(),
+		Bicep:          &bicep.Impl{},
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)

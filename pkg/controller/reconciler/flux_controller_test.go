@@ -15,7 +15,6 @@ package reconciler
 
 import (
 	"context"
-	"crypto/sha1"
 	"fmt"
 	"os"
 	"path"
@@ -392,9 +391,4 @@ func waitForDeploymentTemplateToExistWithGeneration(ctx context.Context, k8sClie
 	}
 
 	return nil
-}
-
-// deploymentTemplateSpecEquals returns true if the two DeploymentTemplateSpecs are equal.
-func deploymentTemplateSpecEquals(spec, other radappiov1alpha3.DeploymentTemplateSpec) bool {
-	return sha1.Sum([]byte(fmt.Sprintf("%v", spec))) == sha1.Sum([]byte(fmt.Sprintf("%v", other)))
 }

@@ -1,4 +1,3 @@
-# TODOWILLSMITH: Which base image should we use?
 FROM ubuntu:latest
 
 # Argument for target architecture
