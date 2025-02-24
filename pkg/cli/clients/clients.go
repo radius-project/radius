@@ -233,11 +233,14 @@ type ApplicationsManagementClient interface {
 	// GetResourceProviderSummary gets the resource provider summary with the specified name in the configured scope.
 	GetResourceProviderSummary(ctx context.Context, planeName string, providerNamespace string) (ucp_v20231001preview.ResourceProviderSummary, error)
 
-	// CreateOrUpdateResourceType creates or updates a resource type in the configured scope.
+	// CreateOrUpdateResourceType creates or updates a resource type in the configured plane.
 	CreateOrUpdateResourceType(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, resource *ucp_v20231001preview.ResourceTypeResource) (ucp_v20231001preview.ResourceTypeResource, error)
 
-	// DeleteResourceType deletes a resource type in the configured scope.
+	// DeleteResourceType deletes a resource type in the configured plane.
 	DeleteResourceType(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string) (bool, error)
+
+	// ListAllResourceTypesNames lists the names of all resource types in the configured plane.
+	ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error)
 
 	// CreateOrUpdateAPIVersion creates or updates an API version in the configured scope.
 	CreateOrUpdateAPIVersion(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, apiVersionName string, resource *ucp_v20231001preview.APIVersionResource) (ucp_v20231001preview.APIVersionResource, error)

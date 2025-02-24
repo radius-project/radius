@@ -59,7 +59,7 @@ data:
       kind: kubernetes
     
     routing:
-      defaultDownstreamEndpoint: "http://dynamic-rp.radius-sytem:8082"
+      defaultDownstreamEndpoint: "http://dynamic-rp.radius-system:8082"
 
     metricsProvider:
       enabled: true

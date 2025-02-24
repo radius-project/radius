@@ -43,18 +43,18 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Show Radius resource details",
 		Long:  "Show details of the specified Radius resource",
 		Example: `
-sample list of resourceType: containers, gateways, daprPubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
+sample list of resourceType: Applications.Core/containers, Applications.Core/gateways, Applications.Dapr/daprPubSubBrokers, Applications.Core/extenders, Applications.Datastores/mongoDatabases, Applications.Messaging/rabbitMQMessageQueues, Applications.Datastores/redisCaches, Applications.Datastores/sqlDatabases, Applications.Dapr/daprStateStores, Applications.Dapr/daprSecretStores
 
 # show details of a specified resource in the default environment
 
-rad resource show containers orders
-rad resource show gateways orders_gateways
+rad resource show applications.core/containers orders
+rad resource show applications.core/gateways orders_gateways
 
 # show details of a specified resource in an application
-rad resource show containers orders --application icecream-store
+rad resource show applications.core/containers orders --application icecream-store
 
 # show details of a specified resource in an application (shorthand flag)
-rad resource show containers orders -a icecream-store 
+rad resource show applications.core/containers orders -a icecream-store 
 `,
 		Args: cobra.ExactArgs(2),
 		RunE: framework.RunCommand(runner),
@@ -69,13 +69,13 @@ rad resource show containers orders -a icecream-store
 
 // Runner is the runner implementation for the `rad resource show` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Output            output.Interface
-	Workspace         *workspaces.Workspace
-	ResourceType      string
-	ResourceName      string
-	Format            string
+	ConfigHolder                   *framework.ConfigHolder
+	ConnectionFactory              connections.Factory
+	Output                         output.Interface
+	Workspace                      *workspaces.Workspace
+	FullyQualifiedResourceTypeName string
+	ResourceName                   string
+	Format                         string
 }
 
 // NewRunner creates a new instance of the `rad resource show` runner.
@@ -105,11 +105,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Scope = scope
 
-	resourceType, resourceName, err := cli.RequireResourceTypeAndName(args)
+	resourceProviderName, resourceTypeName, resourceName, err := cli.RequireFullyQualifiedResourceTypeAndName(args)
 	if err != nil {
 		return err
 	}
-	r.ResourceType = resourceType
+	r.FullyQualifiedResourceTypeName = resourceProviderName + "/" + resourceTypeName
 	r.ResourceName = resourceName
 
 	format, err := cli.RequireOutput(cmd)
@@ -132,7 +132,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	resourceDetails, err := client.GetResource(ctx, r.ResourceType, r.ResourceName)
+	resourceDetails, err := client.GetResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName)
 	if err != nil {
 		return err
 	}

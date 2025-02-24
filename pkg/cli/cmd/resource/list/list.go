@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
@@ -45,18 +46,18 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Lists resources",
 		Long:  "List all resources of specified type",
 		Example: `
-sample list of resourceType: containers, gateways, pubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, stateStores, secretStores
+sample list of resourceType: Applications.Core/containers, Applications.Core/gateways, Applications.Dapr/daprPubSubBrokers, Applications.Core/extenders, Applications.Datastores/mongoDatabases, Applications.Messaging/rabbitMQMessageQueues, Applications.Datastores/redisCaches, Applications.Datastores/sqlDatabases, Applications.Dapr/daprStateStores, Applications.Dapr/daprSecretStores
 
 # list all resources of a specified type in the default environment
 
-rad resource list containers
-rad resource list gateways
+rad resource list Applications.Core/containers
+rad resource list Applications.Core/gateways
 
 # list all resources of a specified type in an application
-rad resource list containers --application icecream-store
+rad resource list Applications.Core/containers --application icecream-store
 
 # list all resources of a specified type in an application (shorthand flag)
-rad resource list containers -a icecream-store
+rad resource list Applications.Core/containers -a icecream-store
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -72,13 +73,15 @@ rad resource list containers -a icecream-store
 
 // Runner is the runner implementation for the `rad resource list` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Output            output.Interface
-	Workspace         *workspaces.Workspace
-	ApplicationName   string
-	Format            string
-	ResourceType      string
+	ConfigHolder              *framework.ConfigHolder
+	ConnectionFactory         connections.Factory
+	Output                    output.Interface
+	Workspace                 *workspaces.Workspace
+	ApplicationName           string
+	Format                    string
+	ResourceType              string
+	ResourceTypeSuffix        string
+	ResourceProviderNameSpace string
 }
 
 // NewRunner creates a new instance of the `rad resource list` runner.
@@ -115,11 +118,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.ApplicationName = applicationName
 
-	resourceType, err := cli.RequireResourceType(args)
+	r.ResourceProviderNameSpace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
 	if err != nil {
 		return err
 	}
-	r.ResourceType = resourceType
+	r.ResourceType = r.ResourceProviderNameSpace + "/" + r.ResourceTypeSuffix
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -144,6 +147,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	var resourceList []generated.GenericResource
+
+	_, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNameSpace, r.ResourceTypeSuffix, client)
+	if err != nil {
+		return err
+	}
 
 	if r.ApplicationName == "" {
 		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)

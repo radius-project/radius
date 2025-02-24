@@ -18,13 +18,21 @@ package manifest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+)
+
+const (
+	initialBackoff = 2 * time.Second
+	maxRetries     = 5
 )
 
 // RegisterFile registers a manifest file
@@ -51,15 +59,22 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 	}
 
 	logIfEnabled(logger, "Creating resource provider %s at location %s", resourceProvider.Name, locationName)
-	resourceProviderPoller, err := clientFactory.NewResourceProvidersClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, v20231001preview.ResourceProviderResource{
-		Location:   to.Ptr(locationName),
-		Properties: &v20231001preview.ResourceProviderProperties{},
-	}, nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = resourceProviderPoller.PollUntilDone(ctx, nil)
+	err = retryOperation(ctx, func() error {
+		resourceProviderPoller, err := clientFactory.NewResourceProvidersClient().BeginCreateOrUpdate(
+			ctx, planeName, resourceProvider.Name,
+			v20231001preview.ResourceProviderResource{
+				Location:   to.Ptr(locationName),
+				Properties: &v20231001preview.ResourceProviderProperties{},
+			}, nil)
+		if err != nil {
+			return err
+		}
+		_, err = resourceProviderPoller.PollUntilDone(ctx, nil)
+		if err != nil {
+			return err // also retried if error indicates a 409 conflict
+		}
+		return nil
+	}, logger)
 	if err != nil {
 		return err
 	}
@@ -74,17 +89,22 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 	for resourceTypeName, resourceType := range resourceProvider.Types {
 		logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, resourceTypeName)
-		resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, resourceTypeName, v20231001preview.ResourceTypeResource{
-			Properties: &v20231001preview.ResourceTypeProperties{
-				Capabilities:      to.SliceOfPtrs(resourceType.Capabilities...),
-				DefaultAPIVersion: resourceType.DefaultAPIVersion,
-			},
-		}, nil)
-		if err != nil {
-			return err
-		}
-
-		_, err = resourceTypePoller.PollUntilDone(ctx, nil)
+		err = retryOperation(ctx, func() error {
+			resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, resourceTypeName, v20231001preview.ResourceTypeResource{
+				Properties: &v20231001preview.ResourceTypeProperties{
+					Capabilities:      to.SliceOfPtrs(resourceType.Capabilities...),
+					DefaultAPIVersion: resourceType.DefaultAPIVersion,
+				},
+			}, nil)
+			if err != nil {
+				return err
+			}
+			_, err = resourceTypePoller.PollUntilDone(ctx, nil)
+			if err != nil {
+				return err
+			}
+			return nil
+		}, logger)
 		if err != nil {
 			return err
 		}
@@ -95,18 +115,22 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 		for apiVersionName := range resourceType.APIVersions {
 			logIfEnabled(logger, "Creating API Version %s/%s@%s", resourceProvider.Name, resourceTypeName, apiVersionName)
-			apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, resourceTypeName, apiVersionName, v20231001preview.APIVersionResource{
-				Properties: &v20231001preview.APIVersionProperties{},
-			}, nil)
+			err = retryOperation(ctx, func() error {
+				apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, resourceTypeName, apiVersionName, v20231001preview.APIVersionResource{
+					Properties: &v20231001preview.APIVersionProperties{},
+				}, nil)
+				if err != nil {
+					return err
+				}
+				_, err = apiVersionsPoller.PollUntilDone(ctx, nil)
+				if err != nil {
+					return err
+				}
+				return nil
+			}, logger)
 			if err != nil {
 				return err
 			}
-
-			_, err = apiVersionsPoller.PollUntilDone(ctx, nil)
-			if err != nil {
-				return err
-			}
-
 			locationResourceType.APIVersions[apiVersionName] = map[string]any{}
 		}
 
@@ -118,12 +142,17 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 	}
 
 	logIfEnabled(logger, "Creating location %s/%s/%s", resourceProvider.Name, locationName, address)
-	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, locationName, locationResource, nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = locationPoller.PollUntilDone(ctx, nil)
+	err = retryOperation(ctx, func() error {
+		locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, locationName, locationResource, nil)
+		if err != nil {
+			return err
+		}
+		_, err = locationPoller.PollUntilDone(ctx, nil)
+		if err != nil {
+			return err
+		}
+		return nil
+	}, logger)
 	if err != nil {
 		return err
 	}
@@ -274,4 +303,44 @@ func logIfEnabled(logger func(format string, args ...any), format string, args .
 	if logger != nil {
 		logger(format, args...)
 	}
+}
+
+// retryOperation retries an operation with exponential backoff upon a 409 conflict.
+// It also handles context cancellation or timeouts, returning immediately if ctx is done.
+func retryOperation(ctx context.Context, operation func() error, logger func(format string, args ...any)) error {
+	backoff := initialBackoff
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := operation()
+		if err != nil {
+			if is409ConflictError(err) {
+				if logger != nil {
+					logger("Got 409 conflict on attempt %d/%d. Retrying in %s...", attempt, maxRetries, backoff)
+				}
+				// Wait for either the context to be cancelled or the backoff duration to pass
+				select {
+				case <-ctx.Done():
+					// Context cancelled or timed out
+					return ctx.Err()
+				case <-time.After(backoff):
+					// Increase backoff and try again
+					backoff *= 2
+					continue
+				}
+			}
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("exceeded %d retries", maxRetries)
+}
+
+// is409ConflictError returns true if the error is a 409 Conflict error
+func is409ConflictError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var respErr *azcore.ResponseError
+	return errors.As(err, &respErr) && respErr.StatusCode == 409
 }
