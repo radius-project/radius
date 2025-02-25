@@ -45,8 +45,8 @@ func (r *DaprPubSubBroker) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the Dapr PubSubBroker resource i.e. application resources metadata.
-func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the Dapr PubSubBroker resource
+func (r *DaprPubSubBroker) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -56,11 +56,16 @@ func (r *DaprPubSubBroker) ResourceTypeName() string {
 }
 
 // Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.
-func (r *DaprPubSubBroker) Recipe() *portableresources.ResourceRecipe {
+func (r *DaprPubSubBroker) GetRecipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &r.Properties.Recipe
+}
+
+// SetRecipe sets the recipe information.
+func (r *DaprPubSubBroker) SetRecipe(recipe *portableresources.ResourceRecipe) {
+	r.Properties.Recipe = *recipe
 }
 
 // DaprPubSubBrokerProperties represents the properties of Dapr PubSubBroker resource.

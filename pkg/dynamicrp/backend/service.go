@@ -21,6 +21,9 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/recipes/engine"
@@ -92,5 +95,12 @@ func (w *Service) registerControllers() error {
 		DatabaseClient: w.Service.DatabaseClient,
 	}
 
-	return w.Service.Controllers().RegisterDefault(NewDynamicResourceController, options)
+	ucp, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(w.options.UCP))
+	if err != nil {
+		return err
+	}
+
+	return w.Service.Controllers().RegisterDefault(func(opts ctrl.Options) (ctrl.Controller, error) {
+		return NewDynamicResourceController(opts, ucp, w.recipes, w.options.Recipes.ConfigurationLoader)
+	}, options)
 }
