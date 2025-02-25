@@ -34,11 +34,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-const (
-	systemResourceProvider = "/planes/radius/local/providers/System.Resources"
-	isPortable             = "SupportsRecipes"
-)
-
 var _ ctrl.Controller = (*CreateOrUpdateResource)(nil)
 
 // CreateOrUpdateResource is the async operation controller to create or update Applications.Core/Containers resource.
@@ -65,58 +60,9 @@ func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
 	}
 }
 
-func isPortableResource(resourceTypeResourceObj *database.Object) (bool, error) {
-	data := resourceTypeResourceObj.Data
-	if data == nil {
-		return false, errors.New("resource type's data is nil. cannot determine if resource is portable")
-	}
-
-	// Mostly this condition should not be hit as the resource type should have properties.
-	properties, ok := data.(map[string]interface{})["properties"]
-	if !ok {
-		return false, errors.New("resource type's properties not found. cannot determine if resource is portable")
-	}
-
-	capabilities, ok := properties.(map[string]interface{})["capabilities"]
-	if !ok {
-		// Could be a resource type that does not have capabilities field. In that case, it is not a portable resource.
-		// Ex: application, environment, radius resource group
-		return false, nil
-	}
-
-	for _, capability := range capabilities.([]interface{}) {
-		if capability == isPortable {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 // Run checks if the resource exists, renders the resource, deploys the resource, applies the
 // deployment output to the resource, deletes any resources that are no longer needed, and saves the resource.
 func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
-	id, err := resources.Parse(request.ResourceID)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	fullyQualifiedType := id.Type()
-	resourceTypeInfo := strings.Split(fullyQualifiedType, "/")
-	if len(resourceTypeInfo) != 2 {
-		return ctrl.Result{}, fmt.Errorf("invalid resource type: %q for resource ID: %q", fullyQualifiedType, id.String())
-	}
-
-	resourceTypeResourceID := fmt.Sprintf(systemResourceProvider+"/resourceProviders/%s/resourceTypes/%s", resourceTypeInfo[0], resourceTypeInfo[1])
-	resourceTypeResourceObj, err := c.DatabaseClient().Get(ctx, resourceTypeResourceID)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	isPortableResource, err := isPortableResource(resourceTypeResourceObj)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	obj, err := c.DatabaseClient().Get(ctx, request.ResourceID)
 	if err != nil && !errors.Is(&database.ErrNotFound{ID: request.ResourceID}, err) {
 		return ctrl.Result{}, err
@@ -124,12 +70,17 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 
 	isNewResource := false
 	if errors.Is(&database.ErrNotFound{ID: request.ResourceID}, err) {
-
 		isNewResource = true
 	}
 
 	opType, _ := v1.ParseOperationType(request.OperationType)
 	if opType.Method == http.MethodPatch && errors.Is(&database.ErrNotFound{ID: request.ResourceID}, err) {
+		return ctrl.Result{}, err
+	}
+
+	// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
+	id, err := resources.Parse(request.ResourceID)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -142,12 +93,12 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel, isPortableResource)
+	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput, isPortableResource)
+	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
