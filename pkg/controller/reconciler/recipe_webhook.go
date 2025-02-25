@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
-	portableresources "github.com/radius-project/radius/pkg/rp/portableresources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -90,11 +89,10 @@ func (r *RecipeWebhook) validateRecipeType(ctx context.Context, recipe *radappio
 	logger := ucplog.FromContextOrDiscard(ctx)
 	var errList field.ErrorList
 	flPath := field.NewPath("spec").Child("type")
-	validResourceTypes := strings.Join(portableresources.GetValidPortableResourceTypes(), ", ")
 
 	logger.Info("Validating Recipe Type %s in Recipe %s", recipe.Spec.Type, recipe.Name)
-	if !portableresources.IsValidPortableResourceType(recipe.Spec.Type) {
-		errList = append(errList, field.Invalid(flPath, recipe.Spec.Type, fmt.Sprintf("allowed values are: %s", validResourceTypes)))
+	if recipe.Spec.Type == "" || strings.Count(recipe.Spec.Type, "/") != 1 {
+		errList = append(errList, field.Invalid(flPath, recipe.Spec.Type, "must be in the format 'ResourceProvider.Namespace/resourceType'"))
 
 		return nil, apierrors.NewInvalid(
 			schema.GroupKind{Group: "radapp.io", Kind: "Recipe"},
