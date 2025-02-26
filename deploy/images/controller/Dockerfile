@@ -16,8 +16,8 @@ RUN apt-get update && \
 # Copy the application binary for the specified architecture
 COPY ./linux_${TARGETARCH:-amd64}/release/controller /
 
-# # Set the user to non-root (65532:65532 is the default non-root user in distroless)
-# USER 65532:65532
+# Copy the bicepconfig.json file
+COPY bicepconfig-controller.json /bicepconfig.json
 
 # Set the entrypoint to the application binary
 ENTRYPOINT ["/controller"]

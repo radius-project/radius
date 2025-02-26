@@ -46,6 +46,8 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
+        - name: RAD_BICEP
+          value: '/usr/local/bin/bicep'
         {{- if .Values.global.rootCA.cert }}
         # This is the environment variable to set the path to the intermediate root CA for outgoing connections.
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}

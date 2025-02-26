@@ -72,6 +72,14 @@ env:
   LOCAL_REGISTRY_PORT: "5000"
   # bicep-types ACR url for uploading Radius Bicep types
   BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
+  # Gitea server URL
+  GITEA_SERVER_URL: "http://localhost:30080"
+  # Gitea username
+  GITEA_USERNAME: "testuser"
+  # Gitea email
+  GITEA_EMAIL: "testuser@radapp.io"
+  # Gitea access token name
+  GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
 
 jobs:
   build:
@@ -334,6 +342,15 @@ jobs:
           curl -s https://fluxcd.io/install.sh | sudo bash
           flux install --namespace=flux-system --version=latest --components=source-controller
           kubectl wait --for=condition=available deployment -l app=source-controller -n flux-system --timeout=120s
+        
+      - name: Install Gitea
+        id: install-gitea
+        uses: ./.github/actions/install-gitea
+        with:
+          gitea-username: ${{ env.GITEA_USERNAME }}
+          gitea-email: ${{ env.GITEA_EMAIL }}
+          gitea-password: ${{ secrets.GITEA_PASSWORD }}
+          gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
 
       - name: Publish Terraform test recipes
         run: |
@@ -400,7 +417,10 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
-          TEST_GIT_SERVER_URL: ${{ env.TEST_GIT_SERVER_URL }}
+          GITEA_SERVER_URL: ${{ env.GITEA_SERVER_URL }}
+          GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
+          GITEA_USERNAME: ${{ env.GITEA_USERNAME }}
+          GITEA_EMAIL: ${{ env.GITEA_EMAIL }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

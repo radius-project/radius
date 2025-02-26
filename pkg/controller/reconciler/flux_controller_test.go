@@ -31,7 +31,6 @@ import (
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -155,10 +154,7 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 
 		archiveFetcherCalls = append(archiveFetcherCalls, call)
 
-		radiusConfig := RadiusGitOpsConfig{}
-		b, err := os.ReadFile(path.Join(s.Path, "radius-gitops-config.yaml"))
-		require.NoError(t, err)
-		err = yaml.Unmarshal(b, &radiusConfig)
+		radiusConfig, err := ParseRadiusGitOpsConfig(path.Join(s.Path, "radius-gitops-config.yaml"))
 		require.NoError(t, err)
 		require.NotNil(t, radiusConfig)
 
@@ -204,10 +200,7 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 
 	for stepIndex, step := range steps {
 		stepNumber := stepIndex + 1
-		radiusConfig := RadiusGitOpsConfig{}
-		b, err := os.ReadFile(path.Join(step.Path, "radius-gitops-config.yaml"))
-		require.NoError(t, err)
-		err = yaml.Unmarshal(b, &radiusConfig)
+		radiusConfig, err := ParseRadiusGitOpsConfig(path.Join(step.Path, "radius-gitops-config.yaml"))
 		require.NoError(t, err)
 		require.NotNil(t, radiusConfig)
 

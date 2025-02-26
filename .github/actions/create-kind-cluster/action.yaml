@@ -47,6 +47,12 @@ runs:
         cat <<EOF | kind create cluster --config=-
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          extraPortMappings:
+            - containerPort: 30080
+              hostPort: 30080
+              protocol: TCP
         EOF
 
     - name: Create a KinD cluster with an insecure local registry
@@ -56,6 +62,12 @@ runs:
         cat <<EOF | kind create cluster --config=-
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          extraPortMappings:
+            - containerPort: 30080
+              hostPort: 30080
+              protocol: TCP
         containerdConfigPatches:
         - |-
           [plugins."io.containerd.grpc.v1.cri".registry]
@@ -101,6 +113,10 @@ runs:
           extraMounts:
             - containerPath: "/etc/containerd/certs.d/${{ inputs.registry-name }}"
               hostPath: "${{ inputs.temp-cert-dir }}/certs/${{ inputs.registry-server }}"
+          extraPortMappings:
+            - containerPort: 30080
+              hostPort: 30080
+              protocol: TCP
         containerdConfigPatches:
         - |-
           [plugins."io.containerd.grpc.v1.cri".registry]

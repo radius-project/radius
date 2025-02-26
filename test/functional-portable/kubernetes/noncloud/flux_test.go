@@ -17,14 +17,20 @@ limitations under the License.
 package kubernetes_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
+	"path"
+	"strings"
 	"testing"
 	"time"
 
+	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testcontext"
+	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 
 	gitea "code.gitea.io/sdk/gitea"
 	"github.com/fluxcd/pkg/apis/meta"
@@ -35,14 +41,20 @@ import (
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
+	watchtools "k8s.io/client-go/tools/watch"
 )
 
 const (
 	fluxSystemNamespace             = "flux-system"
-	testGitServerURLEnvVariableName = "TEST_GIT_SERVER_URL"
-	testGitUsernameEnvVariableName  = "TEST_GIT_USERNAME"
-	testGitEmailEnvVariableName     = "TEST_GIT_EMAIL"
-	testGiteaTokenEnvVariableName   = "TEST_GITEA_ACCESS_TOKEN"
+	testGitServerURLEnvVariableName = "GITEA_SERVER_URL"
+	testGitUsernameEnvVariableName  = "GITEA_USERNAME"
+	testGitEmailEnvVariableName     = "GITEA_EMAIL"
+	testGiteaTokenEnvVariableName   = "GITEA_ACCESS_TOKEN"
 )
 
 func Test_Flux_Basic(t *testing.T) {
@@ -67,15 +79,10 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 	for stepIndex, step := range steps {
 		stepNumber := stepIndex + 1
 		gitRepoName := fmt.Sprintf("%s-repo", testName)
-		// TODO (willsmith): Re-enable this
-		// gitServerURL := os.Getenv(testGitServerURLEnvVariableName)
-		// gitUsername := os.Getenv(testGitUsernameEnvVariableName)
-		// gitEmail := os.Getenv(testGitEmailEnvVariableName)
-		// giteaToken := os.Getenv(testGiteaTokenEnvVariableName)
-		gitServerURL := "http://localhost:30080"
-		gitUsername := "testuser"
-		gitEmail := "testuser@radapp.io"
-		giteaToken := "e9f709616eac25d3c3353b7daa1445713ef18d78"
+		gitServerURL := os.Getenv(testGitServerURLEnvVariableName)
+		gitUsername := os.Getenv(testGitUsernameEnvVariableName)
+		gitEmail := os.Getenv(testGitEmailEnvVariableName)
+		giteaToken := os.Getenv(testGiteaTokenEnvVariableName)
 
 		// Create the Gitea client.
 		client, err := gitea.NewClient(gitServerURL, gitea.SetToken(giteaToken))
@@ -88,10 +95,10 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			})
 			require.NoError(t, err)
 
-			// defer func() {
-			// 	_, err := client.DeleteRepo(gitUsername, gitRepoName)
-			// 	require.NoError(t, err)
-			// }()
+			defer func() {
+				_, err := client.DeleteRepo(gitUsername, gitRepoName)
+				require.NoError(t, err)
+			}()
 		}
 
 		_, _, err = client.GetRepo(gitUsername, gitRepoName)
@@ -160,25 +167,95 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 
 		err = opts.Client.Create(ctx, fluxGitRepository)
 		require.NoError(t, err)
+		defer func() {
+			err := opts.Client.Delete(ctx, fluxGitRepository)
+			require.NoError(t, err)
+		}()
 
-		// Wait for the GitRepository to be "Ready".
+		_, err = waitForGitRepositoryReady(t, ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, opts.Client, fluxGitRepository.ResourceVersion)
+		require.NoError(t, err)
 
-		// Wait for the DeploymentTemplate to be "Updating".
+		radiusConfig, err := reconciler.ParseRadiusGitOpsConfig(path.Join(step.path, "radius-gitops-config.yaml"))
+		require.NoError(t, err)
 
-		// Wait for the DeploymentTemplate to be "Ready".
+		for _, configEntry := range radiusConfig.Config {
+			name, namespace, resourceGroup, _ := getValuesFromRadiusGitOpsConfig(configEntry)
+			scope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", resourceGroup)
+
+			deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{}
+			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
+			require.NoError(t, err)
+
+			if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
+				t.Logf("DeploymentTemplate %s is already ready", name)
+			} else {
+				_, err = waitForDeploymentTemplateReady(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
+				require.NoError(t, err)
+			}
+
+			assertExpectedResourcesExist(t, ctx, scope, step.expectedResources, opts.Connection)
+		}
 	}
 }
 
-// cleanup is a helper function that cleans up resources created during the test.
-// It tries to delete all GitRepository resources, and asserts that they are deleted.
-// If any resources are not deleted (including Radius resources and DeploymentTemplate resources),
-// the test will fail.
-func cleanup(t *testing.T) {
-	// Delete the GitRepository.
+// waitForGitRepositoryReady watches the creation of the GitRepository object
+// and waits for it to be in the "Ready" state.
+func waitForGitRepositoryReady(t *testing.T, ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch, initialVersion string) (*sourcev1.GitRepository, error) {
+	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
+	lister := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
+			gitRepositories := &sourcev1.GitRepositoryList{}
+			err := client.List(ctx, gitRepositories, listOptions)
+			if err != nil {
+				return nil, err
+			}
 
-	// Wait for the GitRepository to not exist.
+			return gitRepositories, nil
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
+			gitRepositories := &sourcev1.GitRepositoryList{}
+			return client.Watch(ctx, gitRepositories, listOptions)
+		},
+	}
+	watcher, err := watchtools.NewRetryWatcher(initialVersion, lister)
+	require.NoError(t, err)
+	defer watcher.Stop()
 
-	// Wait for the DeploymentTemplate to be "Deleting".
+	for {
+		event := <-watcher.ResultChan()
+		r, ok := event.Object.(*sourcev1.GitRepository)
+		if !ok {
+			// Not a GitRepository, likely an event.
+			t.Logf("Received event: %+v", event)
+			continue
+		}
 
-	// Wait for the DeploymentTemplate to not exist.
+		t.Logf("Received GitRepository. Status: %+v", r.Status)
+		for _, condition := range r.Status.Conditions {
+			if condition.Type == "Ready" && condition.Status == metav1.ConditionTrue {
+				return r, nil
+			}
+		}
+	}
+}
+
+func getValuesFromRadiusGitOpsConfig(configEntry reconciler.BicepConfig) (name string, namespace string, resourceGroup string, params string) {
+	name = configEntry.Name
+	namespace = configEntry.Namespace
+	resourceGroup = configEntry.ResourceGroup
+	params = configEntry.Params
+
+	nameBase := strings.ReplaceAll(name, path.Ext(name), "")
+
+	if namespace == "" {
+		namespace = nameBase
+	}
+
+	if resourceGroup == "" {
+		resourceGroup = nameBase
+	}
+
+	return name, namespace, resourceGroup, params
 }

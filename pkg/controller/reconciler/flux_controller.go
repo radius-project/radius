@@ -87,8 +87,6 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "FluxController", "name", req.Name, "namespace", req.Namespace)
 	ctx = logr.NewContext(ctx, logger)
 
-	// TODO (willsmith): Should check for deletion as well?
-
 	// Get the GitRepository object from the cluster
 	var repository sourcev1.GitRepository
 	if err := r.Get(ctx, req.NamespacedName, &repository); err != nil {
@@ -278,8 +276,11 @@ func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, file
 
 	// Run bicep build-params on the bicep file
 	logger.Info("Running bicep build-params on " + bicepParamsFile)
-	// todo willsmith: output?
-	r.Bicep.BuildParams(bicepParamsFile, "--outfile", outfile)
+	_, err := r.Bicep.BuildParams(bicepParamsFile, "--outfile", outfile)
+	if err != nil {
+		logger.Error(err, "failed to run bicep build-params")
+		return map[string]any{}, err
+	}
 
 	// Read the contents of the generated .parameters.json file
 	contents, err := r.FileSystem.ReadFile(outfile)

@@ -32,6 +32,8 @@ import (
 type GitOpsTestStep struct {
 	// The path of the test data directory.
 	path string
+	// 
+	scope string
 	// The expected Radius resources that should be created on the cluster.
 	expectedResources [][]string
 }
