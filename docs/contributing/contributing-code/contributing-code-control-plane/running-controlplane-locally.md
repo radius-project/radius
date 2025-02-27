@@ -107,8 +107,9 @@ kubectl create namespace radius-testing
 > 💡 This way of setting up deployment-engine is useful if you are an external contributor and do not have access to `radius-project/deployment-engine` repo.
 > 💡 If you have access to the deployment-engine repository, you can directly proceed to step 5.
 
-You can run deployment-engine as a docker container. If Docker is not already installed, 
+### Setup Docker
 
+If Docker is not already installed, 
 * Download and install it from the [Docker Desktop download page](https://www.docker.com/products/docker-desktop). 
 Choose the installer that matches your operating system.
 * Open a terminal and run the following command to verify that Docker is installed and running:
@@ -117,13 +118,17 @@ docker --version
 ```
 You should see the Docker version information.
 
-Now, run the below command.
+### Run Deployment Engine as a Docker container
+
+Run the below command.
 
 ```sh
 docker run -e RADIUSBACKENDURL=http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3 -p 5017:8080 ghcr.io/radius-project/deployment-engine:latest
 ```
 
 `host.docker.internal` is a special DNS name provided by Docker that allows containers to access services running on the host machine 
+
+### Update launch.json 
 
 Open launch.json and comment out `Launch Deployment Engine` in `Launch Control Plane (all)`. The debug setup will use the Deployment Engine running as docker container. 
   ```json
