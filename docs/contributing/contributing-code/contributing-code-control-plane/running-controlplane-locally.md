@@ -1,9 +1,5 @@
 # Running Radius control plane provider locally
 
-> 🚧🚧🚧 Under Construction 🚧🚧🚧
->
-> This guide refers to an internal repo that can only be accessed by the Radius team. This will be updated as we migrate to public resources (running deployment engine in a container).
-
 Radius consists of a few processes that get deployed inside a Kubernetes cluster.
 
  This includes:
@@ -28,7 +24,7 @@ If you need to manually test APIs you can reach them at the following endpoints 
 
 1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data. 
 2. If you have access to `radius-project/deployment-engine` repo, 
-   1. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other.
+   1. Clone the `radius-project/radius` and `radius-project/deployment-engine` repos next to each other.
    2. Run `git submodule update --init` in the `deployment-engine` repo.
    3. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
    4. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
@@ -106,24 +102,31 @@ Run this command to create the namespace that will be used to store data.
 kubectl create namespace radius-testing
 ```
 
-## Setup Step 4: Run Deployment Engine as docker container
+## Setup Step 4: Setup Deployment Engine 
 
-Note: This step is required only if you are an external contributor and do not have access to `radius-project/deployment-engine` repo
-`docker run -e RADIUSBACKENDURI=http://host.docker.internal:9000 -p 5017:8080 ghcr.io/radius-project/deployment-engine:latest.`
+> 💡 This way of setting up deployment-engine is useful if you are an external contributor and do not have access to `radius-project/deployment-engine` repo.
+> 💡 If you have access to the deployment-engine repository, you can directly proceed to step 5.
 
-`host.docker.internal` is a special DNS name provided by Docker that allows containers to access services running on the host machine
+You can run deployment-engine as a docker container. If Docker is not already installed, 
 
-## Setup Step 5: Create Resource Group and Environment
+* Download and install it from the [Docker Desktop download page](https://www.docker.com/products/docker-desktop). 
+Choose the installer that matches your operating system.
+* Open a terminal and run the following command to verify that Docker is installed and running:
+```sh
+docker --version
+```
+You should see the Docker version information.
 
-At this point Radius is working but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
+Now, run the below command.
 
-In VS Code:
+```sh
+docker run -e RADIUSBACKENDURL=http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3 -p 5017:8080 ghcr.io/radius-project/deployment-engine:latest
+```
 
-- Open the Debug tab in VS Code
-- If you have access to `radius-project/deployment-engine` repo
-  - Select `Launch Control Plane (all)` from the drop-down 
-- If you are an external contributor, open launch.json and comment out `Launch Deployment Engine` in `Launch Control Plane (all)`. The debug setup will use the Deployment Engine running as docker container. 
-  ```
+`host.docker.internal` is a special DNS name provided by Docker that allows containers to access services running on the host machine 
+
+Open launch.json and comment out `Launch Deployment Engine` in `Launch Control Plane (all)`. The debug setup will use the Deployment Engine running as docker container. 
+  ```json
   "compounds": [
     {
       "name": "Launch Control Plane (all)",
@@ -138,7 +141,6 @@ In VS Code:
     }
   ],
   ```
-- Press Debug
 
 Wait until all five debuggers have attached and their startup sequences have completed. You should see the following entries in the Debug Tab --> Call Stack window:
 
@@ -147,6 +149,18 @@ Wait until all five debuggers have attached and their startup sequences have com
 - Applications RP
 - Dynamic RP
 - Controller
+
+
+## Setup Step 5: Create Resource Group and Environment
+
+At this point you can start the control-plane locally but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
+
+In VS Code:
+
+- Open the Debug tab in VS Code
+- Select `Launch Control Plane (all)` from the drop-down 
+- Press Debug
+- Wait for all the services to start.
 
 Then at the command line run:
 
@@ -157,22 +171,13 @@ rad env create default
 
 At this point you're done with setup! Feel free to stop the debugger.
 
-## Debugging
-
-Now you can launch the Radius locally through the VSCode menu.
-
-- Open the Debug tab in VS Code
-- Select `Launch Control Plane (all)` from the drop-down
-- Press Debug
-- You're up and running!
-
 ## Troubleshooting
 
 ### I got an error saying I need to clone the deployment engine
 
 > The radius-project/deployment-engine is not cloned as a sibling to the Radius repo. Please clone the radius-project/deployment-engine repo next to the Radius repo and try again.
 
-You should be to successfully the following commands from the Radius repository root:
+You should be able to successfully the following commands from the Radius repository root:
 
 ```sh
 ls ../deployment-engine/src
