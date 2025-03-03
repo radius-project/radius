@@ -43,16 +43,16 @@ This command allows you to access logs of a deployed application and output thos
 
 Specify the '--follow' option to stream additional logs as they are emitted by the resource. When following, press CTRL+C to exit the command and terminate the stream.`,
 	Example: `# read logs from the 'webapp' resource of the current default app
-rad resource logs containers webapp
+rad resource logs Applications.Core/containers webapp
 
 # read logs from the 'orders' resource of the 'icecream-store' application
-rad resource logs containers orders --application icecream-store
+rad resource logs Applications.Core/containers orders --application icecream-store
 
 # stream logs from the 'orders' resource of the 'icecream-store' application
-rad resource logs containers orders --application icecream-store --follow
+rad resource logs Applications.Core/containers orders --application icecream-store --follow
 
 # read logs from the 'daprd' sidecar container of the 'orders' resource of the 'icecream-store' application
-rad resource logs containers orders --application icecream-store --container daprd`,
+rad resource logs Applications.Core/containers orders --application icecream-store --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		workspace, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()), DirectoryConfigFromContext(cmd.Context()))
 		if err != nil {
