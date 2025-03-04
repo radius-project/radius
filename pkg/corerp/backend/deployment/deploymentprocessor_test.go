@@ -299,6 +299,80 @@ func Test_Render(t *testing.T) {
 		},
 	}
 
+	t.Run("verify render success", func(t *testing.T) {
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
+
+		testResource := getTestResource()
+		testRendererOutput := getTestRendererOutput()
+		resourceID := getTestResourceID(testResource.ID)
+
+		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo")
+		requiredResources := []resources.ID{depId1}
+
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
+
+		cr := database.Object{
+			Metadata: database.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+		application := datamodel.Application{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
+			},
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
+			},
+		}
+		ar := database.Object{
+			Metadata: database.Metadata{
+				ID: application.ID,
+			},
+			Data: application,
+		}
+		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
+		er := database.Object{
+			Metadata: database.Metadata{
+				ID: env.ID,
+			},
+			Data: env,
+		}
+		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+
+		mongoResource := dsrp_dm.MongoDatabase{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo",
+				},
+			},
+			Properties: dsrp_dm.MongoDatabaseProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
+			},
+		}
+		mr := database.Object{
+			Metadata: database.Metadata{
+				ID: mongoResource.ID,
+			},
+			Data: mongoResource,
+		}
+
+		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&mr, nil)
+
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
+		require.NoError(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
+	})
+
 	t.Run("verify render success lowercase resourcetype", func(t *testing.T) {
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
@@ -508,27 +582,6 @@ func Test_Render(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
 		require.Equal(t, "application ID \"invalid-app-id\" for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" is not a valid id. Error: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
-	})
-
-	t.Run("Missing application id", func(t *testing.T) {
-		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
-
-		testResource := getTestResource()
-		resourceID := getTestResourceID(testResource.ID)
-		testResource.Properties.Application = ""
-
-		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
-			Data: testResource,
-		}
-		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
-
-		_, err := dp.Render(ctx, resourceID, &testResource)
-		require.Error(t, err)
-		require.Equal(t, "code BadRequest: err application ID \"\" for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" is not a valid id. Error: '' is not a valid resource id", err.Error())
 	})
 
 	t.Run("Invalid application resource type", func(t *testing.T) {

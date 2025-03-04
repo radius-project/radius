@@ -574,13 +574,17 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 
 func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData portableresources.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
-	// This code path is used only by core application resources.
-	// Application ID is a required property for these resources and cannot be empty.
-	parsedID, err := resources.ParseResource(applicationID)
-	if err != nil {
-		return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
+	// Application id is mandatory for core resource types and is a required field.
+	if applicationID != "" {
+		parsedID, err := resources.ParseResource(applicationID)
+		if err != nil {
+			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
+		}
+		appID = &parsedID
+	} else {
+		// Application id is optional for portable resource types and UDTs.
+		appID = nil
 	}
-	appID = &parsedID
 
 	return ResourceData{
 		ID:              resourceID,
