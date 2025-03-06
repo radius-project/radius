@@ -1,0 +1,53 @@
+extension radius
+
+@description('Specifies the environment for resources.')
+param environment string
+
+@description('Specifies the port for the container resource.')
+param port int = 3000
+
+@description('Specifies the image for the container resource.')
+param magpieimage string
+
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
+  name: 'corerp-resources-gateway-tlstermination'
+  properties: {
+    environment: environment
+  }
+}
+
+resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
+  name: 'tls-gtwy-gtwy'
+  properties: {
+    application: app.id
+    routes: [
+      {
+        path: '/'
+        destination: 'http://tls-gtwy-front-ctnr:443'
+        timeoutPolicy: {
+          request: '30s'
+        }
+      }
+    ]
+  }
+}
+
+resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
+  name: 'tls-gtwy-front-ctnr'
+  properties: {
+    application: app.id
+    container: {
+      image: magpieimage
+      ports: {
+        web: {
+          containerPort: port
+          port: 443
+        }
+      }
+      readinessProbe: {
+        kind: 'tcp'
+        containerPort: port
+      }
+    }
+  }
+}
