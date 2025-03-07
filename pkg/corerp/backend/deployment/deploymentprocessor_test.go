@@ -584,6 +584,27 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, "application ID \"invalid-app-id\" for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" is not a valid id. Error: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
 	})
 
+	t.Run("Missing application id", func(t *testing.T) {
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
+
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+		testResource.Properties.Application = ""
+
+		cr := database.Object{
+			Metadata: database.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+
+		_, err := dp.Render(ctx, resourceID, &testResource)
+		require.Error(t, err)
+		require.Equal(t, "application ID is not set for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\"", err.Error())
+	})
+
 	t.Run("Invalid application resource type", func(t *testing.T) {
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}

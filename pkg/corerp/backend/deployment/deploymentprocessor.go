@@ -224,6 +224,9 @@ func (dp *deploymentProcessor) getApplicationAndEnvironmentForResourceID(ctx con
 
 	// 2. fetch the application properties from the DB
 	app := &corerp_dm.Application{}
+	if res.AppID == nil {
+		return nil, nil, fmt.Errorf("application ID is not set for the resource %q", id.String())
+	}
 	err = rp_util.FetchScopeResource(ctx, dp.databaseClient, res.AppID.String(), app)
 	if err != nil {
 		return nil, nil, err
@@ -574,7 +577,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 
 func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData portableresources.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
-	// Application id is mandatory for core resource types and is a required field.
+	// Application id is mandatory for some of the core resource types and is a required field.
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)
 		if err != nil {
