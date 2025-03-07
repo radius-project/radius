@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/kubernetes"
 	types "github.com/radius-project/radius/pkg/recipes"
 
-	rp_util "github.com/radius-project/radius/pkg/rp/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 )
@@ -67,8 +66,8 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	if src.Properties.Recipes != nil {
 		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
 		for resourceType, recipes := range src.Properties.Recipes {
-			if !rp_util.IsValidPortableResourceType(resourceType) {
-				return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid resource type: %q", resourceType))
+			if resourceType == "" || strings.Count(resourceType, "/") != 1 {
+				return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid resource type: %q. Must be in the format \"ResourceProvider.Namespace/resourceType\"", resourceType))
 			}
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipes {
