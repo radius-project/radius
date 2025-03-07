@@ -48,7 +48,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQQueue],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.RabbitMQQueue, datamodel.RabbitMQQueue](options, &rmq_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.RabbitMQQueue, datamodel.RabbitMQQueue](options, &rmq_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    msrp_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -58,7 +58,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQQueue],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.RabbitMQQueue, datamodel.RabbitMQQueue](options, &rmq_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.RabbitMQQueue, datamodel.RabbitMQQueue](options, &rmq_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    msrp_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,

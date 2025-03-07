@@ -49,8 +49,8 @@ func (r *RedisCache) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the Redis cache resource.
-func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the Redis cache resource.
+func (r *RedisCache) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -61,11 +61,16 @@ func (r *RedisCache) ResourceTypeName() string {
 
 // Recipe returns the ResourceRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (r *RedisCache) Recipe() *portableresources.ResourceRecipe {
+func (r *RedisCache) GetRecipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &r.Properties.Recipe
+}
+
+// SetRecipe sets the recipe information.
+func (r *RedisCache) SetRecipe(recipe *portableresources.ResourceRecipe) {
+	r.Properties.Recipe = *recipe
 }
 
 // IsEmpty checks if the RedisCacheSecrets instance is empty or not.
