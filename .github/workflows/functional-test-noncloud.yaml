@@ -45,8 +45,6 @@ on:
       - release/*
 
 env:
-  # Go version
-  GOVER: "1.22.5"
   # Helm version
   HELM_VER: "v3.15.3"
   # KinD cluster version
@@ -175,10 +173,10 @@ jobs:
           ref: refs/heads/edge
           path: samples
 
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GOVER }}
+          go-version-file: go.mod
           cache: true
 
       - name: Setup Node.js

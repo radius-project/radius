@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
     env:
-      GOVER: "1.22.2"
       GOPRIVATE: github.com/radius-project
     steps:
       - name: Checkout radius repository
@@ -48,10 +47,10 @@ jobs:
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
       # Setup dependencies
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GOVER }}
+          go-version-file: go.mod
           cache-dependency-path: radius/go.sum
           cache: true
       - name: Setup NodeJS

@@ -33,16 +33,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      GOVER: "1.22.2"
       GOPROXY: https://proxy.golang.org
       HELM_CHARTS_DIR: deploy/Chart
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GOVER }}
+          go-version-file: go.mod
           cache: true
       - name: Setup NodeJS
         uses: actions/setup-node@v4

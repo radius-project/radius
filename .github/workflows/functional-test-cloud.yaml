@@ -44,10 +44,6 @@ on:
       - completed
 
 env:
-  # Go version
-  GOVER: "1.22.2"
-  GOPROXY: https://proxy.golang.org
-
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
   GOTESTSUM_VER: 1.12.0
 
@@ -211,10 +207,10 @@ jobs:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
 
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GOVER }}
+          go-version-file: go.mod
           cache: true
 
       - name: Generate ID for release
@@ -490,10 +486,10 @@ jobs:
           ref: refs/heads/edge
           path: samples
 
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GOVER }}
+          go-version-file: go.mod
           cache: true
 
       - name: Download rad CLI
