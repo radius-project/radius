@@ -27,7 +27,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 
@@ -91,10 +90,9 @@ rad bicep publish --file ./redis-test.bicep --target br:ghcr.io/myregistry/redis
 
 // Runner is the runner implementation for the `rad bicep publish` command.
 type Runner struct {
-	Bicep             bicep.Interface
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Output            output.Interface
+	Bicep        bicep.Interface
+	ConfigHolder *framework.ConfigHolder
+	Output       output.Interface
 
 	File          string
 	Target        string
@@ -107,10 +105,9 @@ type Runner struct {
 // NewRunner creates a new instance of the `rad bicep publish` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		Bicep:             factory.GetBicep(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		ConnectionFactory: factory.GetConnectionFactory(),
-		Output:            factory.GetOutput(),
+		Bicep:        factory.GetBicep(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 

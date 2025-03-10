@@ -26,12 +26,14 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/databaseutil"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
 )
+
+//go:generate mockgen -typed -destination=./mock_postgresapi.go -package=postgres -self_package github.com/radius-project/radius/pkg/components/database/postgres github.com/radius-project/radius/pkg/components/database/postgres PostgresAPI
 
 // PostgresAPI defines the API surface from pgx that we use. This is used to allow for easier testing.
 //
@@ -43,6 +45,8 @@ type PostgresAPI interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	// Query executes a query that returns rows.
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	// Begin starts a new transaction.
+	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 // NewPostgresClient creates a new PostgresClient.

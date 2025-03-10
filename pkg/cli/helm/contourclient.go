@@ -40,7 +40,7 @@ type ContourOptions struct {
 	HostNetwork  bool
 }
 
-// // ApplyContourHelmChart checks if a Contour Helm chart has been installed, and if not, installs it with the given
+// ApplyContourHelmChart checks if a Contour Helm chart has been installed, and if not, installs it with the given
 // options. If an error occurs, it returns an error with the Helm output.
 func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	// For capturing output from helm.
@@ -87,6 +87,31 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	}
 
 	return err
+}
+
+// UpgradeContourHelmChart upgrades the Contour Helm chart with the given options and returns an error if the upgrade fails.
+func UpgradeContourHelmChart(options ContourOptions, kubeContext string) error {
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+	}
+
+	helmConf, err := HelmConfig(&strings.Builder{}, &flags)
+	if err != nil {
+		return fmt.Errorf("failed to get helm config, err: %w", err)
+	}
+
+	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, contourHelmRepo, contourReleaseName)
+	if err != nil {
+		return fmt.Errorf("failed to load helm chart, err: %w", err)
+	}
+
+	err = AddContourValues(helmChart, options)
+	if err != nil {
+		return fmt.Errorf("failed to add contour values, err: %w", err)
+	}
+
+	return RunContourHelmUpgrade(helmConf, helmChart, options)
 }
 
 // // AddContourValues adds values to the helm chart to enable host networking for the Envoy pod, and sets the default
@@ -140,8 +165,16 @@ func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	installClient.ReleaseName = contourReleaseName
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.CreateNamespace = true
-
 	return runInstall(installClient, helmChart)
+}
+
+// RunContourHelmUpgrade upgrades the Contour Helm chart with the given options and returns an error if the upgrade fails.
+func RunContourHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, options ContourOptions) error {
+	upgradeClient := helm.NewUpgrade(helmConf)
+	upgradeClient.Namespace = RadiusSystemNamespace
+	upgradeClient.Wait = true
+	upgradeClient.Timeout = installTimeout
+	return runUpgrade(upgradeClient, contourReleaseName, helmChart)
 }
 
 // This function "RunContourHelmUninstall" uses the Helm configuration to uninstall Contour from the specified namespace,

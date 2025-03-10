@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -86,11 +85,10 @@ rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --
 
 // Runner is the runner implementation for the `rad bicep generate-kubernetes` command.
 type Runner struct {
-	Bicep             bicep.Interface
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Deploy            deploy.Interface
-	Output            output.Interface
+	Bicep        bicep.Interface
+	ConfigHolder *framework.ConfigHolder
+	Deploy       deploy.Interface
+	Output       output.Interface
 
 	FileSystem      filesystem.FileSystem
 	Group           string
@@ -104,11 +102,10 @@ type Runner struct {
 // NewRunner creates a new instance of the `rad bicep generate-kubernetes-manifest` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		Bicep:             factory.GetBicep(),
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Deploy:            factory.GetDeploy(),
-		Output:            factory.GetOutput(),
+		Bicep:        factory.GetBicep(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Deploy:       factory.GetDeploy(),
+		Output:       factory.GetOutput(),
 	}
 }
 
