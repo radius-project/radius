@@ -177,6 +177,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -270,6 +271,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
       - name: Setup Node.js
         uses: actions/setup-node@v4

@@ -211,6 +211,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
 
       - name: Generate ID for release
@@ -490,6 +491,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
 
       - name: Download rad CLI

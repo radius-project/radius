@@ -188,6 +188,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
       - name: Log the summary of build info for new version.
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
@@ -342,6 +343,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
       - name: Download rad CLI
         if: env.SKIP_BUILD != 'true'
