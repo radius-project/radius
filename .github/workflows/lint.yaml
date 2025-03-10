@@ -77,7 +77,7 @@ jobs:
       - name: Run linter
         uses: golangci/golangci-lint-action@v6
         with:
-          # version: "v1.61.0"
+          version: "v1.64.6"
           args: --timeout=10m
           skip-cache: true
           install-mode: "binary"
