@@ -16,8 +16,5 @@ RUN apt-get update && \
 # Copy the application binary for the specified architecture
 COPY ./linux_${TARGETARCH:-amd64}/release/controller /
 
-# Copy the bicepconfig.json file
-COPY bicepconfig-controller.json /bicepconfig.json
-
 # Set the entrypoint to the application binary
 ENTRYPOINT ["/controller"]

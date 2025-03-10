@@ -66,7 +66,7 @@ export CGO_ENABLED=0
 ##@ Build
 
 .PHONY: build
-build: build-packages build-binaries ## Build all go targets.
+build: build-packages build-binaries build-bicep
 
 .PHONY: build-packages
 build-packages: ## Builds all go packages.
@@ -80,7 +80,6 @@ build-packages: ## Builds all go packages.
 # Generate a target for each binary we define
 # Params:
 # $(1): the binary name for the target
-# $(2): the binary main directory
 define generateBuildTarget
 .PHONY: build-$(1)
 build-$(1): build-$(1)-$(GOOS)-$(GOARCH)
@@ -154,10 +153,19 @@ clean: ## Cleans output directory.
 lint: ## Runs golangci-lint
 	$(GOLANGCI_LINT) run --fix --timeout 5m
 
+.PHONY: build-bicep
+build-bicep: build-bicep-$(GOOS)-$(GOARCH)
+
+# Generate a target for the bicep container
+# Params:
+# $(1): the OS
+# $(2): the ARCH
 define generateBicepBuildTarget
 .PHONY: build-bicep-$(1)-$(2)
 build-bicep-$(1)-$(2):
-	@echo "$(ARROW) Building bicep on $(1)/$(2)"
+	$(eval BINS_OUT_DIR_$(1)_$(2) := $(OUT_DIR)/$(1)_$(2)/$(BUILDTYPE_DIR))
+	@echo "$(ARROW) Building bicep container on $(1)/$(2) to $(BINS_OUT_DIR_$(1)_$(2))/bicep"
+	./build/generate-bicepconfig.sh $(REL_CHANNEL) $(BINS_OUT_DIR_$(1)_$(2))/bicep
 endef
 
 # Generate bicep build targets for each combination of OS and ARCH
