@@ -71,6 +71,45 @@ func Test_Flux_Basic(t *testing.T) {
 	testFluxIntegration(t, testName, steps)
 }
 
+func Test_Flux_Complex(t *testing.T) {
+	testName := "flux-complex"
+	steps := []GitOpsTestStep{
+		{
+			path: "testdata/gitops/complex/step1",
+			expectedResources: [][]string{
+				{"Applications.Core/environments", "flux-complex-env"},
+				{"Applications.Core/applications", "flux-complex-app"},
+				{"Applications.Core/containers", "flux-complex-container"},
+			},
+		},
+		{
+			path: "testdata/gitops/complex/step2",
+			expectedResources: [][]string{
+				{"Applications.Core/environments", "flux-complex-env"},
+				{"Applications.Core/applications", "flux-complex-app"},
+				{"Applications.Core/containers", "flux-complex-container"},
+			},
+		},
+		{
+			path: "testdata/gitops/complex/step3",
+			expectedResources: [][]string{
+				{"Applications.Core/environments", "flux-complex-env"},
+				{"Applications.Core/applications", "flux-complex-app-2"},
+				{"Applications.Core/containers", "flux-complex-container-2"},
+			},
+		},
+		{
+			path: "testdata/gitops/complex/step3",
+			expectedResources: [][]string{
+				{"Applications.Core/environments", "flux-complex-env"},
+				{"Applications.Core/applications", "flux-complex-app-2"},
+			},
+		},
+	}
+
+	testFluxIntegration(t, testName, steps)
+}
+
 // testFluxIntegration is a helper function that runs a test for the integration of Radius and Flux.
 func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) {
 	ctx := testcontext.New(t)
