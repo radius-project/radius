@@ -29,7 +29,7 @@ jobs:
       - name: Checkout radius repository
         uses: actions/checkout@v4
         with:
-          repository: radius-project/radius
+          repository: brooke-hamilton/radius
           path: radius
       - name: Parse release version and set environment variables
         run: python radius/.github/scripts/get_release_version.py
