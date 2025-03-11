@@ -21,15 +21,13 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
-	pbdatamodel "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 var _ v1.ResourceDataModel = (*DynamicResource)(nil)
-
-// Required for recipes
 var _ rpv1.RadiusResourceModel = (*DynamicResource)(nil)
-var _ pbdatamodel.RecipeDataModel = (*DynamicResource)(nil)
+var _ datamodel.RecipeDataModel = (*DynamicResource)(nil)
 
 // DynamicResource is used as the data model for dynamic resources (UDT).
 //
@@ -68,18 +66,20 @@ func (d *DynamicResource) Status() map[string]any {
 
 // GetRecipe implements datamodel.RecipeDataModel.
 func (d *DynamicResource) GetRecipe() *portableresources.ResourceRecipe {
+	defaultRecipe := &portableresources.ResourceRecipe{Name: portableresources.DefaultRecipeName}
+
 	if d.Properties == nil {
-		return &portableresources.ResourceRecipe{}
+		return defaultRecipe
 	}
 
 	obj, ok := d.Properties["recipe"]
 	if !ok {
-		return &portableresources.ResourceRecipe{}
+		return defaultRecipe
 	}
 
 	recipe, ok := obj.(map[string]any)
 	if !ok {
-		return &portableresources.ResourceRecipe{}
+		return defaultRecipe
 	}
 
 	// This is the best we can do. We require all of the data we store to be JSON-marshallable,
@@ -149,10 +149,6 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 
 	// We store computed values and secrets in the status under "binding".
 	//
-	// TODO: in the future we want to store secrets in their own resource (Applications.Core/secretStores).
-	//
-	// This will require changes to the recipe engine. The datamodel is the wrong place to manipulate resources.
-	// So for now, just store them as part of the binding.
 	binding := map[string]any{}
 	for key, value := range deploymentOutput.ComputedValues {
 		binding[key] = value

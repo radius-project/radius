@@ -223,6 +223,7 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 			"foo":               "bar",
 			"provisioningState": "Succeeded",
 			"recipe": map[string]any{
+				"name":         "default",
 				"recipeStatus": "success",
 			},
 			"status": map[string]any{

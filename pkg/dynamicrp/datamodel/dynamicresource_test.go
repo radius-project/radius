@@ -94,7 +94,7 @@ func Test_DynamicResource_GetRecipe(t *testing.T) {
 		{
 			name:     "nil properties returns empty recipe",
 			resource: DynamicResource{},
-			want:     &portableresources.ResourceRecipe{},
+			want:     &portableresources.ResourceRecipe{Name: "default"},
 		},
 		{
 			name: "no recipe in properties returns empty recipe",
@@ -103,7 +103,7 @@ func Test_DynamicResource_GetRecipe(t *testing.T) {
 					"otherField": "value",
 				},
 			},
-			want: &portableresources.ResourceRecipe{},
+			want: &portableresources.ResourceRecipe{Name: "default"},
 		},
 		{
 			name: "non-map recipe in properties returns empty recipe",
@@ -112,7 +112,7 @@ func Test_DynamicResource_GetRecipe(t *testing.T) {
 					"recipe": "invalid-string-recipe",
 				},
 			},
-			want: &portableresources.ResourceRecipe{},
+			want: &portableresources.ResourceRecipe{Name: "default"},
 		},
 		{
 			name: "valid recipe in properties returns recipe",
