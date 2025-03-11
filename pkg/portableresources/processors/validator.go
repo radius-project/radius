@@ -170,9 +170,6 @@ func (v *Validator) SetAndValidate(output *recipes.RecipeOutput) error {
 		*v.OutputResources = append(*v.OutputResources, recipeResources...)
 
 		if output.Status != nil {
-			if v.Status == nil {
-				v.Status = new(rpv1.RecipeStatus)
-			}
 			*v.Status = *output.Status
 		}
 	}
