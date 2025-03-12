@@ -46,6 +46,12 @@ permissions:
 on:
   # Enable manual trigger to deploy the latest changes from main.
   workflow_dispatch:
+    inputs:
+      skip-build:
+        description: 'Skip build (true/false)'
+        required: false
+        default: 'true'
+        type: string
   schedule:
     # Run every 2 hours
     - cron: "0 */2 * * *"
@@ -115,20 +121,29 @@ jobs:
           path: ./dist/cache
           key: radius-test-latest-
       - name: Skip build if build is still valid
-        if: github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch'
+        if: github.event_name != 'pull_request'
         id: skip-build
         run: |
           # check if the last build time to see if we need to build again
+          SKIP_BUILD="false"
           if [ -f ./dist/cache/.lastbuildtime ]; then
             lastbuild=$(cat ./dist/cache/.lastbuildtime)
             current_time=$(date +%s)
             if [ $((current_time-lastbuild)) -lt ${{ env.VALID_RADIUS_BUILD_WINDOW }} ]; then
-              echo "Skipping build as the last build is still valid."
-              echo "SKIP_BUILD=true" >> $GITHUB_OUTPUT
+              echo "Last build is still within valid window"   
+              SKIP_BUILD="true"
             fi
           fi
+          
+          # Check override in workflow_dispatch mode
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.skip-build }}" = "false" ]; then
+            echo "Manual run with skip-build=false, forcing build"
+            SKIP_BUILD="false"
+          fi
+
+          echo "SKIP_BUILD=${SKIP_BUILD}" >> $GITHUB_OUTPUT
       - name: Set up checkout target (scheduled)
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'schedule'
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
@@ -141,9 +156,9 @@ jobs:
       - name: Generate ID for release
         id: gen-id
         run: |
-          if [ -z "${{ steps.skip-build.outputs.SKIP_BUILD }}" ]; then
+          if [[ "${{ steps.skip-build.outputs.SKIP_BUILD }}" != "true" ]]; then
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
-            if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
+            if [ "$GITHUB_EVENT_NAME" == "schedule" ] || [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
               # Add run number to randomize unique id for scheduled runs.
               BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
             fi
@@ -177,6 +192,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
+          cache: true
       - name: Log the summary of build info for new version.
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         continue-on-error: true
@@ -330,6 +346,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOVER }}
+          cache: true
       - name: Download rad CLI
         if: env.SKIP_BUILD != 'true'
         uses: actions/download-artifact@v4
@@ -436,8 +453,8 @@ jobs:
             exit 1
           fi
 
-          # Poll logs for up to  iterations, 30 seconds each (upto 3 minutes total)
-          for i in {1..6}; do
+          # Poll logs for up to 20 iterations, 30 seconds each (up to 10 minutes total)
+          for i in {1..20}; do
             kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
 
             # Exit on error
@@ -459,7 +476,7 @@ jobs:
 
           # Final check to ensure success message was found
           if ! grep -q "Successfully registered manifests" registermanifest_logs.txt; then
-            echo "Manifests not registered after 3 minutes."
+            echo "Manifests not registered after 10 minutes."
             exit 1
           fi
       - name: Create a list of resources not to be deleted
@@ -608,6 +625,6 @@ jobs:
             github.rest.issues.create({
               ...context.repo,
               title: `Scheduled long running test failed - Run ID: ${context.runId}`,
-              labels: ['bug', 'test-failure'],
+              labels: ['test-failure'],
               body: `## Bug information \n\nThis issue is automatically generated if the scheduled long running test fails. The Radius long running test operates on a schedule of every 2 hours everyday. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })
