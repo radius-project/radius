@@ -10,20 +10,20 @@ param port int = 3000
 param magpieimage string
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'corerp-resources-gateway-tlstermination'
+  name: 'corerp-resources-gateway-timeout'
   properties: {
     environment: environment
   }
 }
 
 resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
-  name: 'tls-gtwy-gtwy'
+  name: 'timeout-gtwy-gtwy'
   properties: {
     application: app.id
     routes: [
       {
         path: '/'
-        destination: 'http://tls-gtwy-front-ctnr:443'
+        destination: 'http://timeout-gtwy-front-ctnr:443'
         timeoutPolicy: {
           request: '30s'
         }
@@ -33,7 +33,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
 }
 
 resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'tls-gtwy-front-ctnr'
+  name: 'timeout-gtwy-front-ctnr'
   properties: {
     application: app.id
     container: {
