@@ -97,18 +97,7 @@ workspaces:
 
 The `overrides` element tells the `rad` CLI what endpoint to talk to.
 
-## Setup Step 3: Modify ucp-dev.yaml
-Update the `manifestDirectory` field in the file `radius/cmd/ucpd/ucp-dev.yaml`.
-Set its value to the full local path of the `radius/deploy/manifest/built-in-providers/dev` directory
-
-eg.
-```
-...
-  # This is the directory location which contains manifests to be registered.
-  manifestDirectory: "/Users/exampleuser/radius/deploy/manifest/built-in-providers/dev"
-```
-
-## Setup Step 4: Create radius-testing namespace
+## Setup Step 3: Create radius-testing namespace
 
 Run this command to create the namespace that will be used to store data.
 
@@ -116,7 +105,7 @@ Run this command to create the namespace that will be used to store data.
 kubectl create namespace radius-testing
 ```
 
-## Setup Step 5: Create Resource Group and Environment
+## Setup Step 4: Create Resource Group and Environment
 
 At this point Radius is working but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
 
@@ -126,7 +115,13 @@ In VS Code:
 - Select `Launch Control Plane (all)` from the drop-down
 - Press Debug
 
-Wait for all 3 of these to start.
+Wait until all five debuggers have attached and their startup sequences have completed. You should see the following entries in the Debug Tab --> Call Stack window:
+
+- Deployment Engine
+- UCP
+- Applications RP
+- Dynamic RP
+- Controller
 
 Then at the command line run:
 
