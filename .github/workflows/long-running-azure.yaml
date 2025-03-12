@@ -625,6 +625,6 @@ jobs:
             github.rest.issues.create({
               ...context.repo,
               title: `Scheduled long running test failed - Run ID: ${context.runId}`,
-              labels: ['bug', 'test-failure'],
+              labels: ['test-failure'],
               body: `## Bug information \n\nThis issue is automatically generated if the scheduled long running test fails. The Radius long running test operates on a schedule of every 2 hours everyday. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })

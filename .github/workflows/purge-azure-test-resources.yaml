@@ -131,6 +131,6 @@ jobs:
             github.rest.issues.create({
               ...context.repo,
               title: `Purge Azure test resources failed - Run ID: ${context.runId}`,
-              labels: ['bug', 'test-failure'],
+              labels: ['test-failure'],
               body: `## Bug information \n\nThis bug is generated automatically if the purge Azure test resources workflow fails. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })

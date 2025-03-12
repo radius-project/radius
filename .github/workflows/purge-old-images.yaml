@@ -43,6 +43,6 @@ jobs:
             github.rest.issues.create({
               ...context.repo,
               title: `Purge old images failed - Run ID: ${context.runId}`,
-              labels: ['bug', 'test-failure'],
+              labels: ['test-failure'],
               body: `## Bug information \n\nThis bug is generated automatically if the purge old images workflow fails. For further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })
