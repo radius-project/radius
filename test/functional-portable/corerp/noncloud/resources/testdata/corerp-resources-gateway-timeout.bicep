@@ -23,7 +23,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
     routes: [
       {
         path: '/'
-        destination: 'http://timeout-gtwy-front-ctnr:443'
+        destination: 'http://timeout-gtwy-front-ctnr:81'
         timeoutPolicy: {
           request: '30s'
         }
@@ -41,12 +41,13 @@ resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: port
-          port: 443
+          port: 81
         }
       }
       readinessProbe: {
-        kind: 'tcp'
+        kind: 'httpGet'
         containerPort: port
+        path: '/healthz'
       }
     }
   }
