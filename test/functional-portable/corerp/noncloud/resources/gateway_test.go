@@ -229,7 +229,7 @@ func Test_Gateway_Timeout(t *testing.T) {
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
-				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpsRemotePort, true, []GatewayTestConfig{
+				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpRemotePort, false, []GatewayTestConfig{
 					// /healthz is exposed on frontend container
 					{
 						Path:               "healthz",
