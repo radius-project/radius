@@ -23,14 +23,8 @@ If you need to manually test APIs you can reach them at the following endpoints 
 ## Prerequisites
 
 1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data. 
-2. If you have access to `radius-project/deployment-engine` repo, 
-   1. Clone the `radius-project/radius` and `radius-project/deployment-engine` repos next to each other.
-   2. Run `git submodule update --init` in the `deployment-engine` repo.
-   3. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
-   4. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
-3. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
+2. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
   
-> 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
 > 💡 Radius will use your locally configured Azure or AWS credentials. If you are able to use the `az` or `aws` CLI then you don't need to do any additional setup.
 
 ## Setup Step 1: Run `rad init`
@@ -104,8 +98,10 @@ kubectl create namespace radius-testing
 
 ## Setup Step 4: Setup Deployment Engine 
 
+
+> 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
 > 💡 This way of setting up deployment-engine is useful if you are an external contributor and do not have access to `radius-project/deployment-engine` repo.
-> 💡 If you have access to the deployment-engine repository, you can directly proceed to step 5.
+> 💡 If you have access to the deployment-engine repository and would like to debug it, you can omit this step and proceed to step 5.
 
 ### Setup Docker
 
@@ -154,9 +150,17 @@ Wait until all five debuggers have attached and their startup sequences have com
 - Applications RP
 - Dynamic RP
 - Controller
+## Setup Step 5 (optional): Setup deployment Engine for debugging
+
+If you have access to `radius-project/deployment-engine` repo, you can follow the steps below to set up Deployment Engine for debugging.
+1. Clone the `radius-project/radius` and `radius-project/deployment-engine` repos next to each other.
+2. Run `git submodule update --init` in the `deployment-engine` repo.
+3. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
+4. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
 
 
-## Setup Step 5: Create Resource Group and Environment
+
+## Setup Step 6: Create Resource Group and Environment
 
 At this point you can start the control-plane locally but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
 
