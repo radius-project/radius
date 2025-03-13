@@ -118,10 +118,12 @@ model GatewayRoute {
 @doc("Gateway route timeout policy")
 model GatewayRouteTimeoutPolicy {
   @doc("The request timeout in duration for the route. Defaults to 15 seconds.")
+  @pattern("^(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h))+$")
   request?: string;
 
-  @doc("The backendrequest timeout in duration for the route. Cannot be greater than the request timeout")
-  backendrequest?: string;
+  @doc("The backend request timeout in duration for the route. Cannot be greater than the request timeout.")
+  @pattern("^(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h))+$")
+  backendRequest?: string;
 }
 
 @armResourceOperations

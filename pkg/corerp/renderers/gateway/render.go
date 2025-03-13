@@ -330,6 +330,9 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 
 		var timeoutPolicy *contourv1.TimeoutPolicy
 		if route.TimeoutPolicy != nil {
+			if route.TimeoutPolicy.Request < route.TimeoutPolicy.BackendRequest {
+				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("request timeout must be greater than backend request timeout")
+			}
 			timeoutPolicy = &contourv1.TimeoutPolicy{
 				Response: route.TimeoutPolicy.Request,
 			}

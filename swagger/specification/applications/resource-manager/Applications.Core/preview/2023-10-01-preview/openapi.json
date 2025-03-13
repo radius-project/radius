@@ -3461,11 +3461,13 @@
       "properties": {
         "request": {
           "type": "string",
-          "description": "The request timeout in duration for the route. Defaults to 15 seconds."
+          "description": "The request timeout in duration for the route. Defaults to 15 seconds.",
+          "pattern": "^(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h))+$"
         },
-        "backendrequest": {
+        "backendRequest": {
           "type": "string",
-          "description": "The backendrequest timeout in duration for the route. Cannot be greater than the request timeout"
+          "description": "The backend request timeout in duration for the route. Cannot be greater than the request timeout.",
+          "pattern": "^(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h))+$"
         }
       }
     },

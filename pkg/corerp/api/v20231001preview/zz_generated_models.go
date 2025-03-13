@@ -810,8 +810,8 @@ type GatewayRoute struct {
 
 // GatewayRouteTimeoutPolicy - Gateway route timeout policy
 type GatewayRouteTimeoutPolicy struct {
-// The backendrequest timeout in duration for the route. Cannot be greater than the request timeout
-	Backendrequest *string
+// The backend request timeout in duration for the route. Cannot be greater than the request timeout.
+	BackendRequest *string
 
 // The request timeout in duration for the route. Defaults to 15 seconds.
 	Request *string
