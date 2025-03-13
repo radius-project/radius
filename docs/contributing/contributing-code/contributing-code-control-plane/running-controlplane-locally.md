@@ -105,7 +105,7 @@ Run this command to create the namespace that will be used to store data.
 kubectl create namespace radius-testing
 ```
 
-## Setup Step 3: Create Resource Group and Environment
+## Setup Step 4: Create Resource Group and Environment
 
 At this point Radius is working but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
 
@@ -115,7 +115,13 @@ In VS Code:
 - Select `Launch Control Plane (all)` from the drop-down
 - Press Debug
 
-Wait for all 3 of these to start.
+Wait until all five debuggers have attached and their startup sequences have completed. You should see the following entries in the Debug Tab --> Call Stack window:
+
+- Deployment Engine
+- UCP
+- Applications RP
+- Dynamic RP
+- Controller
 
 Then at the command line run:
 

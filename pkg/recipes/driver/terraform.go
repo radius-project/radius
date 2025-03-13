@@ -122,7 +122,8 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 	return recipeOutputs, nil
 }
 
-// Delete returns an error if called as it is not yet implemented.
+// Delete creates a unique directory for each execution of terraform and deletes the resources deployed by the Terraform module
+// using the Terraform CLI through terraform-exec. It returns an error if the deletion fails.
 func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -153,6 +154,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		EnvConfig:      &opts.Configuration,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		Secrets:        opts.Secrets,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
