@@ -1,3 +1,6 @@
+# Use Ubuntu image to enable Bicep CLI.
+# Switch to something more lightweight when we can find a 
+# base image that supports running Bicep. 
 FROM ubuntu:latest
 
 # Argument for target architecture

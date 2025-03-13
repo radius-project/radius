@@ -341,7 +341,7 @@ jobs:
         run: |
           curl -s https://fluxcd.io/install.sh | sudo bash
           flux install --namespace=flux-system --version=latest --components=source-controller
-          kubectl wait --for=condition=available deployment -l app=source-controller -n flux-system --timeout=120s
+          kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
         
       - name: Install Gitea
         id: install-gitea
