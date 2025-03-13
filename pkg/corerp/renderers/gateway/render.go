@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -330,7 +331,17 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 
 		var timeoutPolicy *contourv1.TimeoutPolicy
 		if route.TimeoutPolicy != nil {
-			if route.TimeoutPolicy.Request < route.TimeoutPolicy.BackendRequest {
+			// Parse the timeout policy request durations and compare them
+			requestDuration, err := time.ParseDuration(route.TimeoutPolicy.Request)
+			if err != nil {
+				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("invalid request timeout duration")
+			}
+			backendRequestDuration, err := time.ParseDuration(route.TimeoutPolicy.BackendRequest)
+			if err != nil {
+				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("invalid backend request timeout duration")
+			}
+			// Compare the 2 request durations and ensure that the request timeout is greater than the backend request timeout
+			if requestDuration < backendRequestDuration {
 				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("request timeout must be greater than backend request timeout")
 			}
 			timeoutPolicy = &contourv1.TimeoutPolicy{
