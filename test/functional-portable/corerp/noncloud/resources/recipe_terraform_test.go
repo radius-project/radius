@@ -196,7 +196,6 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
-			SkipResourceDeletion: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
 					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
