@@ -20,8 +20,8 @@ set -e
 
 GITEA_USERNAME=$1
 GITEA_EMAIL=$2
-GITEA_PASSWORD=$3
-GITEA_ACCESS_TOKEN_NAME=$4
+GITEA_ACCESS_TOKEN_NAME=$3
+# Additionally, GITEA_PASSWORD should exist as an environment variable.
 
 if [ -z "$GITEA_USERNAME" ]; then
   echo "GITEA_USERNAME is not set. Exiting..."
@@ -30,11 +30,6 @@ fi
 
 if [ -z "$GITEA_EMAIL" ]; then
   echo "GITEA_EMAIL is not set. Exiting..."
-  exit 1
-fi
-
-if [ -z "$GITEA_PASSWORD" ]; then
-  echo "GITEA_PASSWORD is not set. Exiting..."
   exit 1
 fi
 
