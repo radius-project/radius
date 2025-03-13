@@ -19,7 +19,6 @@ package kubernetes_test
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"strings"
@@ -169,7 +168,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			},
 		})
 		require.NoError(t, err)
-		t.Log(t, "Commit created:", commit)
+		t.Log("Commit created:", commit)
 
 		repoURL := fmt.Sprintf("%s/%s/%s.git", gitServerURL, gitUsername, gitRepoName)
 		_, err = r.CreateRemote(&config.RemoteConfig{
@@ -177,7 +176,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			URLs: []string{repoURL},
 		})
 		if err != nil {
-			log.Fatalf("Failed to create remote: %v", err)
+			t.Errorf("Failed to create remote: %v", err)
 		}
 
 		// Push the commit back to the repository.
@@ -189,7 +188,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			},
 		})
 		require.NoError(t, err)
-		t.Log(t, "Pushed changes successfully")
+		t.Log("Pushed changes successfully")
 
 		fluxGitRepository := &sourcev1.GitRepository{
 			ObjectMeta: metav1.ObjectMeta{

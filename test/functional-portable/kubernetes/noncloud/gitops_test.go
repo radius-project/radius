@@ -32,8 +32,6 @@ import (
 type GitOpsTestStep struct {
 	// The path of the test data directory.
 	path string
-	// 
-	scope string
 	// The expected Radius resources that should be created on the cluster.
 	expectedResources [][]string
 }
@@ -58,7 +56,10 @@ func addFilesToRepository(w *git.Worktree, fromPath, toPath string) error {
 			return err
 		}
 
-		os.WriteFile(dstPath, data, 0644)
+		err = os.WriteFile(dstPath, data, 0644)
+		if err != nil {
+			return err
+		}
 
 		_, err = w.Add(relPath)
 		return err
