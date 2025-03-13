@@ -1875,7 +1875,7 @@ func (g *GatewayRoute) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type GatewayRouteTimeoutPolicy.
 func (g GatewayRouteTimeoutPolicy) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "backendrequest", g.Backendrequest)
+	populate(objectMap, "backendRequest", g.BackendRequest)
 	populate(objectMap, "request", g.Request)
 	return json.Marshal(objectMap)
 }
@@ -1889,8 +1889,8 @@ func (g *GatewayRouteTimeoutPolicy) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "backendrequest":
-				err = unpopulate(val, "Backendrequest", &g.Backendrequest)
+		case "backendRequest":
+				err = unpopulate(val, "BackendRequest", &g.BackendRequest)
 			delete(rawMsg, key)
 		case "request":
 				err = unpopulate(val, "Request", &g.Request)

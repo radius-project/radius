@@ -51,10 +51,11 @@ func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 				ReplacePrefix:    to.String(r.ReplacePrefix),
 				EnableWebsockets: to.Bool(r.EnableWebsockets),
 			}
+
 			if r.TimeoutPolicy != nil {
 				s.TimeoutPolicy = &datamodel.GatewayRouteTimeoutPolicy{
 					Request:        to.String(r.TimeoutPolicy.Request),
-					BackendRequest: to.String(r.TimeoutPolicy.Backendrequest),
+					BackendRequest: to.String(r.TimeoutPolicy.BackendRequest),
 				}
 			}
 			routes = append(routes, s)
@@ -125,7 +126,7 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 			if r.TimeoutPolicy != nil {
 				s.TimeoutPolicy = &GatewayRouteTimeoutPolicy{
 					Request:        to.Ptr(r.TimeoutPolicy.Request),
-					Backendrequest: to.Ptr(r.TimeoutPolicy.BackendRequest),
+					BackendRequest: to.Ptr(r.TimeoutPolicy.BackendRequest),
 				}
 			}
 			routes = append(routes, s)

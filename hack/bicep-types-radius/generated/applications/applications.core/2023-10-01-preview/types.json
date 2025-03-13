@@ -2683,12 +2683,12 @@
         "flags": 0,
         "description": "The request timeout in duration for the route. Defaults to 15 seconds."
       },
-      "backendrequest": {
+      "backendRequest": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The backendrequest timeout in duration for the route. Cannot be greater than the request timeout"
+        "description": "The backend request timeout in duration for the route. Cannot be greater than the request timeout."
       }
     }
   },

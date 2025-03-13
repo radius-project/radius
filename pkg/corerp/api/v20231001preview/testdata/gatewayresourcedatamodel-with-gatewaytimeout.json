@@ -32,7 +32,8 @@
         "path": "mypath",
         "replacePrefix": "myreplaceprefix",
         "timeoutPolicy": {
-          "request": "30s"
+          "request": "30s",
+          "backendRequest": "20s"
         }
       }
     ],

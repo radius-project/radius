@@ -611,7 +611,8 @@ func Test_Render_WithTimeoutPolicy(t *testing.T) {
 		Destination: "http://A",
 		Path:        path,
 		TimeoutPolicy: &datamodel.GatewayRouteTimeoutPolicy{
-			Request: "10s",
+			Request:        "10s",
+			BackendRequest: "5s",
 		},
 	}
 	routes = append(routes, route)
@@ -659,6 +660,39 @@ func Test_Render_WithTimeoutPolicy(t *testing.T) {
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
+}
+
+func Test_Render_WithInvalidTimeoutPolicy(t *testing.T) {
+	r := &Renderer{}
+
+	var routes []datamodel.GatewayRoute
+	path := "/"
+	route := datamodel.GatewayRoute{
+		Destination: "http://A",
+		Path:        path,
+		TimeoutPolicy: &datamodel.GatewayRouteTimeoutPolicy{
+			Request:        "10s",
+			BackendRequest: "15s",
+		},
+	}
+	routes = append(routes, route)
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
+	}
+	resource := makeResource(properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.Error(t, err)
+	require.Equal(t, err.(*v1.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*v1.ErrClientRP).Message, "request timeout must be greater than backend request timeout")
+	require.Len(t, output.Resources, 0)
+	require.Empty(t, output.SecretValues)
+	require.Empty(t, output.ComputedValues)
 }
 
 func Test_Render_Fails_WithNoRoute(t *testing.T) {

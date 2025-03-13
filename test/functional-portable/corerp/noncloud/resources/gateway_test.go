@@ -249,6 +249,125 @@ func Test_Gateway_Timeout(t *testing.T) {
 	})
 	test.Test(t)
 }
+func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
+	template := "testdata/corerp-resources-gateway-timeout-ber.bicep"
+	name := "corerp-resources-gateway-timeout-ber"
+	appNamespace := "default-corerp-resources-gateway-timeout-ber"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "timeout-gtwy-gtwy",
+						Type: validation.GatewaysResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "timeout-gtwy-front-ctnr"),
+						validation.NewK8sHTTPProxyForResource(name, "timeout-gtwy-gtwy"),
+						validation.NewK8sHTTPProxyForResource(name, "timeout-gtwy-front-ctnr"),
+						validation.NewK8sServiceForResource(name, "timeout-gtwy-front-ctnr"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				// Get hostname from root HTTPProxy in application namespace
+				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				require.NoError(t, err)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
+
+				// Set up pod port-forwarding for contour-envoy
+				t.Logf("Setting up portforward")
+				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpRemotePort, false, []GatewayTestConfig{
+					// /healthz is exposed on frontend container
+					{
+						Path:               "healthz",
+						ExpectedStatusCode: http.StatusOK,
+					},
+				})
+				if err != nil {
+					t.Logf("Failed to test Gateway via portforward with error: %s", err)
+				} else {
+					// Successfully ran tests
+					return
+				}
+
+				require.Fail(t, "Gateway tests failed")
+			},
+		},
+	})
+	test.Test(t)
+}
+
+func Test_Gateway_Timeout_Invalid_Duration(t *testing.T) {
+	template := "testdata/corerp-resources-gateway-timeout-invalid.bicep"
+	name := "corerp-resources-gateway-timeout-invalid"
+	appNamespace := "default-corerp-resources-gateway-timeout-invalid"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "timeout-gtwy-gtwy",
+						Type: validation.GatewaysResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "timeout-gtwy-front-ctnr"),
+						validation.NewK8sHTTPProxyForResource(name, "timeout-gtwy-gtwy"),
+						validation.NewK8sHTTPProxyForResource(name, "timeout-gtwy-front-ctnr"),
+						validation.NewK8sServiceForResource(name, "timeout-gtwy-front-ctnr"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				// Get hostname from root HTTPProxy in application namespace
+				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				require.NoError(t, err)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
+
+				// Set up pod port-forwarding for contour-envoy
+				t.Logf("Setting up portforward")
+				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpRemotePort, false, []GatewayTestConfig{
+					// /healthz is exposed on frontend container
+					{
+						Path:               "healthz",
+						ExpectedStatusCode: http.StatusOK,
+					},
+				})
+				if err != nil {
+					t.Logf("Failed to test Gateway via portforward with error: %s", err)
+				} else {
+					// Successfully ran tests
+					return
+				}
+
+				require.Fail(t, "Gateway tests failed")
+			},
+		},
+	})
+	test.Test(t)
+}
 
 func Test_Gateway_TLSTermination(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-tlstermination.bicep"
