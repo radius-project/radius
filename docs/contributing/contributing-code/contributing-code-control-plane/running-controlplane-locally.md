@@ -98,9 +98,8 @@ kubectl create namespace radius-testing
 
 ## Setup Step 4: Setup Deployment Engine 
 
-
-> 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
 > 💡 This way of setting up deployment-engine is useful if you are an external contributor and do not have access to `radius-project/deployment-engine` repo.
+
 > 💡 If you have access to the deployment-engine repository and would like to debug it, you can omit this step and proceed to step 5.
 
 ### Setup Docker
@@ -152,11 +151,15 @@ Wait until all five debuggers have attached and their startup sequences have com
 - Controller
 ## Setup Step 5 (optional): Setup deployment Engine for debugging
 
-If you have access to `radius-project/deployment-engine` repo, you can follow the steps below to set up Deployment Engine for debugging.
+
+> 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
+
+If you have access to `radius-project/deployment-engine` repo, you can follow the steps below to set up Deployment Engine for debugging instead of running it in a docker container.
 1. Clone the `radius-project/radius` and `radius-project/deployment-engine` repos next to each other.
 2. Run `git submodule update --init` in the `deployment-engine` repo.
 3. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
 4. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
+5. Uncomment // "Launch Deployment Engine" in launch.json if it's commented out.
 
 
 
