@@ -142,13 +142,6 @@ Open launch.json and comment out `Launch Deployment Engine` in `Launch Control P
   ],
   ```
 
-Wait until all five debuggers have attached and their startup sequences have completed. You should see the following entries in the Debug Tab --> Call Stack window:
-
-- Deployment Engine
-- UCP
-- Applications RP
-- Dynamic RP
-- Controller
 ## Setup Step 5 (optional): Setup deployment Engine for debugging
 
 
@@ -165,14 +158,21 @@ If you have access to `radius-project/deployment-engine` repo, you can follow th
 
 ## Setup Step 6: Create Resource Group and Environment
 
-At this point you can start the control-plane locally but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
+At this point Radius is working but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
 
 In VS Code:
 
 - Open the Debug tab in VS Code
-- Select `Launch Control Plane (all)` from the drop-down 
+- Select `Launch Control Plane (all)` from the drop-down
 - Press Debug
-- Wait for all the services to start.
+
+Wait until all five debuggers have attached and their startup sequences have completed. You should see the following entries in the Debug Tab --> Call Stack window:
+
+- Deployment Engine
+- UCP
+- Applications RP
+- Dynamic RP
+- Controller
 
 Then at the command line run:
 
