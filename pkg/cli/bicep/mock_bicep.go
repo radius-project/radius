@@ -38,6 +38,92 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
+// Build mocks base method.
+func (m *MockInterface) Build(arg0 ...string) (map[string]any, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Build", varargs...)
+	ret0, _ := ret[0].(map[string]any)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Build indicates an expected call of Build.
+func (mr *MockInterfaceMockRecorder) Build(arg0 ...any) *MockInterfaceBuildCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockInterface)(nil).Build), arg0...)
+	return &MockInterfaceBuildCall{Call: call}
+}
+
+// MockInterfaceBuildCall wrap *gomock.Call
+type MockInterfaceBuildCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceBuildCall) Return(arg0 map[string]any, arg1 error) *MockInterfaceBuildCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceBuildCall) Do(f func(...string) (map[string]any, error)) *MockInterfaceBuildCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceBuildCall) DoAndReturn(f func(...string) (map[string]any, error)) *MockInterfaceBuildCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// BuildParams mocks base method.
+func (m *MockInterface) BuildParams(arg0 ...string) (map[string]any, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "BuildParams", varargs...)
+	ret0, _ := ret[0].(map[string]any)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BuildParams indicates an expected call of BuildParams.
+func (mr *MockInterfaceMockRecorder) BuildParams(arg0 ...any) *MockInterfaceBuildParamsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildParams", reflect.TypeOf((*MockInterface)(nil).BuildParams), arg0...)
+	return &MockInterfaceBuildParamsCall{Call: call}
+}
+
+// MockInterfaceBuildParamsCall wrap *gomock.Call
+type MockInterfaceBuildParamsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceBuildParamsCall) Return(arg0 map[string]any, arg1 error) *MockInterfaceBuildParamsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceBuildParamsCall) Do(f func(...string) (map[string]any, error)) *MockInterfaceBuildParamsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceBuildParamsCall) DoAndReturn(f func(...string) (map[string]any, error)) *MockInterfaceBuildParamsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // PrepareTemplate mocks base method.
 func (m *MockInterface) PrepareTemplate(arg0 string) (map[string]any, error) {
 	m.ctrl.T.Helper()
@@ -73,6 +159,44 @@ func (c *MockInterfacePrepareTemplateCall) Do(f func(string) (map[string]any, er
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockInterfacePrepareTemplateCall) DoAndReturn(f func(string) (map[string]any, error)) *MockInterfacePrepareTemplateCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Version mocks base method.
+func (m *MockInterface) Version() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Version")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Version indicates an expected call of Version.
+func (mr *MockInterfaceMockRecorder) Version() *MockInterfaceVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Version", reflect.TypeOf((*MockInterface)(nil).Version))
+	return &MockInterfaceVersionCall{Call: call}
+}
+
+// MockInterfaceVersionCall wrap *gomock.Call
+type MockInterfaceVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceVersionCall) Return(arg0 string) *MockInterfaceVersionCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceVersionCall) Do(f func() string) *MockInterfaceVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceVersionCall) DoAndReturn(f func() string) *MockInterfaceVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

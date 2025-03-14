@@ -44,3 +44,11 @@ func (o *MockOutput) WriteFormatted(format string, obj any, options FormatterOpt
 	o.Writes = append(o.Writes, FormattedOutput{Format: format, Obj: obj, Options: options})
 	return nil
 }
+
+func (o *MockOutput) BeginStep(format string, v ...any) Step {
+	o.Writes = append(o.Writes, LogOutput{Format: format, Params: v})
+	return Step{}
+}
+
+func (o *MockOutput) CompleteStep(step Step) {
+}

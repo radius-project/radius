@@ -1,0 +1,15 @@
+redis-cluster:
+  enabled: false
+postgresql-ha:
+  enabled: false
+redis:
+  enabled: true
+postgresql:
+  enabled: true
+service:
+  http:
+    type: NodePort
+    nodePort: 30080
+  ssh:
+    type: ClusterIP
+    port: 22
