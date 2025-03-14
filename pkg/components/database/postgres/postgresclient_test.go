@@ -65,6 +65,11 @@ type postgresLogger struct {
 	pool *pgxpool.Pool
 }
 
+// Begin implements PostgresAPI.
+func (l *postgresLogger) Begin(ctx context.Context) (pgx.Tx, error) {
+	panic("unimplemented")
+}
+
 // Exec implements PostgresAPI.
 func (l *postgresLogger) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	l.t.Logf("Executing: %s", sql)
