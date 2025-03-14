@@ -508,7 +508,6 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateEnvironment(ctx contex
 	}
 
 	return nil
-
 }
 
 // DeleteEnvironment deletes an environment and all of its resources by its name (in the configured scope) or resource ID.
