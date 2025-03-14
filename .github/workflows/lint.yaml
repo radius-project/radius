@@ -17,6 +17,7 @@
 name: Check code is up-to-date
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -33,16 +34,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      GOVER: "1.22.2"
       GOPROXY: https://proxy.golang.org
       HELM_CHARTS_DIR: deploy/Chart
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GOVER }}
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
       - name: Setup NodeJS
         uses: actions/setup-node@v4
@@ -76,7 +77,7 @@ jobs:
       - name: Run linter
         uses: golangci/golangci-lint-action@v6
         with:
-          version: "v1.61.0"
+          version: "v1.64.6"
           args: --timeout=10m
           skip-cache: true
           install-mode: "binary"
