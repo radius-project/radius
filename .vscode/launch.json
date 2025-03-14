@@ -30,7 +30,7 @@
       "request": "launch",
       "mode": "auto",
       "preLaunchTask": "Build Radius (all)",
-      "program": "${workspaceFolder}/cmd/applications-rp/main.go",
+      "program": "${workspaceFolder}/cmd/applications-rp/main.go"
     },
     {
       "name": "Launch Dynamic RP",
@@ -38,7 +38,7 @@
       "request": "launch",
       "mode": "auto",
       "preLaunchTask": "Build Radius (all)",
-      "program": "${workspaceFolder}/cmd/dynamic-rp/main.go",
+      "program": "${workspaceFolder}/cmd/dynamic-rp/main.go"
     },
     {
       "name": "Launch UCP",
@@ -46,7 +46,7 @@
       "request": "launch",
       "mode": "auto",
       "preLaunchTask": "Build Radius (all)",
-      "program": "${workspaceFolder}/cmd/ucpd/main.go",
+      "program": "${workspaceFolder}/cmd/ucpd/main.go"
     },
     {
       "name": "Launch Controller",
@@ -55,10 +55,7 @@
       "mode": "auto",
       "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/controller/main.go",
-      "args": [
-        "--cert-dir",
-        ""
-      ],
+      "args": ["--cert-dir", ""]
     },
     {
       "name": "Launch Deployment Engine",
