@@ -252,7 +252,6 @@ func Test_Gateway_Timeout(t *testing.T) {
 func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-timeout-ber.bicep"
 	name := "corerp-resources-gateway-timeout-ber"
-	appNamespace := "default-corerp-resources-gateway-timeout-ber"
 
 	validateFn := step.ValidateAnyDetails("DeploymentFailed", []step.DeploymentErrorDetail{
 		{
