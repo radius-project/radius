@@ -5,9 +5,15 @@
 # Files in the root directory
 /go.mod @radius-project/on-call
 /go.sum @radius-project/on-call
-# Files in the `test/magpiego directory`
+# Files in the `test/magpiego` directory
 test/magpiego/go.mod @radius-project/on-call
 test/magpiego/go.sum @radius-project/on-call
 # Files in the `typespec` directory
-typespec/package-lock.json @radius-project/on-call
-typespec/package.json      @radius-project/on-call
+typespec/package*.json @radius-project/on-call
+# GitHub workflow files
+.github/*.yml  @radius-project/on-call
+.github/*.yaml @radius-project/on-call
+# Devcontainer files
+.devcontainer/devcontainer.json @radius-project/on-call
+# Radius bicep types generator files
+hack/bicep-types-radius/src/generator/package*.json @radius-project/on-call
