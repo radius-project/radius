@@ -26,7 +26,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
         destination: 'http://timeout-gtwy-front-ctnr:81'
         timeoutPolicy: {
           request: '30s'
-          backendrequest: '40s'
+          backendRequest: '40s'
         }
       }
     ]
