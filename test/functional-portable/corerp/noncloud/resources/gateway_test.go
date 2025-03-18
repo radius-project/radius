@@ -280,7 +280,7 @@ func Test_Gateway_Timeout_Invalid_Duration(t *testing.T) {
 
 	validateFn := step.ValidateAnyDetails("DeploymentFailed", []step.DeploymentErrorDetail{
 		{
-			Code: "ResourceDeploymentFailure",
+			Code: "HttpRequestPayloadAPISpecValidationFailed",
 			Details: []step.DeploymentErrorDetail{
 				{
 					Code:            "InvalidProperties",
