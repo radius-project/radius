@@ -266,7 +266,7 @@ func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
 	})
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployErrorExecutor(template, validateFn),
+			Executor:                               step.NewDeployErrorExecutor(template, validateFn, testutil.GetMagpieImage()),
 			SkipObjectValidation:                   true,
 			SkipKubernetesOutputResourceValidation: true,
 		},
@@ -292,7 +292,7 @@ func Test_Gateway_Timeout_Invalid_Duration(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployErrorExecutor(template, validateFn),
+			Executor:                               step.NewDeployErrorExecutor(template, validateFn, testutil.GetMagpieImage()),
 			SkipObjectValidation:                   true,
 			SkipKubernetesOutputResourceValidation: true,
 		},

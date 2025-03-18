@@ -336,9 +336,15 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 			if err != nil {
 				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("invalid request timeout duration")
 			}
-			backendRequestDuration, err := time.ParseDuration(route.TimeoutPolicy.BackendRequest)
-			if err != nil {
-				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("invalid backend request timeout duration")
+			var backendRequestDuration time.Duration
+			if route.TimeoutPolicy.BackendRequest != "" {
+				backendRequestDuration, err = time.ParseDuration(route.TimeoutPolicy.BackendRequest)
+				if err != nil {
+					return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("invalid backend request timeout duration")
+				}
+			} else {
+				// If the backend request timeout is not specified, default to the request timeout
+				backendRequestDuration = requestDuration
 			}
 			// Compare the 2 request durations and ensure that the request timeout is greater than the backend request timeout
 			if requestDuration < backendRequestDuration {

@@ -662,6 +662,65 @@ func Test_Render_WithTimeoutPolicy(t *testing.T) {
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
 }
 
+func Test_Render_WithUnsetBackendRequestTimeoutPolicy(t *testing.T) {
+	r := &Renderer{}
+
+	var routes []datamodel.GatewayRoute
+	path := "/"
+	route := datamodel.GatewayRoute{
+		Destination: "http://A",
+		Path:        path,
+		TimeoutPolicy: &datamodel.GatewayRouteTimeoutPolicy{
+			Request: "10s",
+		},
+	}
+	routes = append(routes, route)
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
+	}
+	resource := makeResource(properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
+	expectedURL := "http://" + expectedHostname
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
+
+	expectedIncludes := []contourv1.Include{
+		{
+			Name: kubernetes.NormalizeResourceName("A"),
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: path,
+				},
+			},
+		},
+	}
+
+	expectedGatewaySpec := &contourv1.HTTPProxySpec{
+		VirtualHost: &contourv1.VirtualHost{
+			Fqdn: expectedHostname,
+		},
+		Includes: expectedIncludes,
+	}
+
+	expectedTimoutPolicy := &contourv1.TimeoutPolicy{
+		Response: "10s",
+	}
+
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, expectedTimoutPolicy, false)
+
+	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
+	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
+}
+
 func Test_Render_WithInvalidTimeoutPolicy(t *testing.T) {
 	r := &Renderer{}
 
