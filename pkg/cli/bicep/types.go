@@ -74,7 +74,7 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	}
 
 	step := i.Output.BeginStep("Building %s...", filePath)
-	template, err := i.Build(filePath)
+	template, err := i.Build("--stdout", filePath)
 	if err != nil {
 		return nil, err
 	}
