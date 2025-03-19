@@ -1,0 +1,47 @@
+name: Test.Resources
+types:
+  userTypeAlpha:
+    capabilities: ["SupportsRecipes"]
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            capacity:
+              type: string
+              description: "The capacity of the API. Valid values: 'S', 'M', 'L'."
+            provisioningState:
+              type: string
+              description: The status of the asynchronous operation.
+              readOnly: true
+            status:
+              type: object
+              description: The status of the resource.
+              readOnly: true
+              properties:
+                binding:
+                  type: object
+                  description: The connection values and secrets of the resource.
+                  readOnly: true
+                  properties:
+                    apiKey:
+                      type: string
+                      description: The key that can be used to connect to the API.
+                    apiVersion:
+                      type: string
+                      description: The version of the OpenAI API.
+                    deployment:
+                      type: string
+                      description: The deployment name, used by the OpenAI SDK to connect to the API.
+                    endpoint:
+                      type: string
+                      description: The endpoint URL of the OpenAI API.
+          required:
+            - application
+            - environment

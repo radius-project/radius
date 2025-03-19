@@ -135,6 +135,7 @@ jobs:
             samples-noncloud,
             ucp-noncloud,
             datastoresrp-noncloud,
+            dynamicrp-noncloud,
           ]
     runs-on: ${{ matrix.os }}
     env:

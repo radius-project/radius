@@ -23,7 +23,7 @@ vendor/
 # Radius scaffolding
 app.bicep
 .rad/
-bicepconfig.json
+test/infra/azure/bicepconfig.json
 
 # Build Output
 bin/
@@ -69,3 +69,4 @@ hack/bicep-types-radius/generated/**/*.md
 
 # Bicep extensions
 *.tgz
+!test/functional-portable/dynamicrp/testdata/output_testresources.tgz
