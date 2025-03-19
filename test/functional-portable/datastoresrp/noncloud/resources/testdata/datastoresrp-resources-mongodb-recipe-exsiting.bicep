@@ -18,7 +18,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'mongodb-existing-app-ctnr'
+  name: 'mongo-ctnr-exst'
   location: 'global'
   properties: {
     application: app.id

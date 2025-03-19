@@ -147,7 +147,7 @@ func Test_MongoDB_Recipe_Existing(t *testing.T) {
 						App:  "dsrp-resources-mongodb-recipe-existing",
 					},
 					{
-						Name: "mongodb-existing-app-ctnr",
+						Name: "mongo-ctnr-exst",
 						Type: validation.ContainersResource,
 						App:  "dsrp-resources-mongodb-recipe-existing",
 					},
@@ -160,7 +160,7 @@ func Test_MongoDB_Recipe_Existing(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-existing-app-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mongo-ctnr-exst").ValidateLabels(false),
 					},
 				},
 			},
