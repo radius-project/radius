@@ -57,6 +57,9 @@ on:
     - cron: "0 */2 * * *"
 
 env:
+
+  GOPROXY: https://proxy.golang.org
+
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
   GOTESTSUM_VER: 1.12.0
 
