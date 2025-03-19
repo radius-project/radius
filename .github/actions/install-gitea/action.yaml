@@ -7,9 +7,6 @@ inputs:
   gitea-email:
     description: "Gitea admin email"
     required: true
-  gitea-password:
-    description: "Gitea admin password"
-    required: true
   gitea-access-token-name:
     description: "Gitea access token name"
     required: true
@@ -22,5 +19,7 @@ runs:
   steps:
     - name: Install Gitea
       shell: bash
+      env:
+        GITEA_PASSWORD: ${{ env.GITEA_PASSWORD }}
       run: |
-        .github/actions/install-gitea/install-gitea.sh ${{ inputs.gitea-username }} ${{ inputs.gitea-email }} ${{ inputs.gitea-password }} ${{ inputs.gitea-access-token-name }}
+        .github/actions/install-gitea/install-gitea.sh ${{ inputs.gitea-username }} ${{ inputs.gitea-email }} ${{ inputs.gitea-access-token-name }}

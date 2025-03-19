@@ -347,10 +347,11 @@ jobs:
       - name: Install Gitea
         id: install-gitea
         uses: ./.github/actions/install-gitea
+        env:
+          GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
         with:
           gitea-username: ${{ env.GITEA_USERNAME }}
           gitea-email: ${{ env.GITEA_EMAIL }}
-          gitea-password: ${{ secrets.GITEA_PASSWORD }}
           gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
 
       - name: Publish Terraform test recipes
