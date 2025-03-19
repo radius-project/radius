@@ -58,17 +58,13 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 
 	// Initialize the ParameterParser with the in-memory filesystem
 	parser := ParameterParser{
-		FileSystem: filesystem.NewMemMapFileSystem(
-			map[string]filesystem.MemFile{
-				"many.json": {
-					Data: []byte(`{ "parameters": { "key1": { "value": { "someValue": true } }, "key2": { "value": "overridden-value" } } }`),
-				},
-				"single.json": {
-					Data: []byte(`{ "someValue": "another-value" }`),
-				},
-			},
-		),
+		FileSystem: filesystem.NewMemMapFileSystem(nil),
 	}
+
+	parser.FileSystem.Create("many.json")
+	parser.FileSystem.WriteFile("many.json", []byte(`{ "parameters": { "key1": { "value": { "someValue": true } }, "key2": { "value": "overridden-value" } } }`), 0644)
+	parser.FileSystem.Create("single.json")
+	parser.FileSystem.WriteFile("single.json", []byte(`{ "someValue": "another-value" }`), 0644)
 
 	parameters, err := parser.Parse(inputs...)
 	require.NoError(t, err)
