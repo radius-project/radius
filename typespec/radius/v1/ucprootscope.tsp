@@ -17,7 +17,6 @@ limitations under the License.
 import "@typespec/openapi";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
-import "@azure-tools/typespec-providerhub";
 
 using OpenAPI;
 using TypeSpec.Http;
