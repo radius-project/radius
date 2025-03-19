@@ -28,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/test/k8sutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -99,6 +100,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -176,6 +178,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -239,6 +242,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -308,6 +312,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -397,6 +402,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)

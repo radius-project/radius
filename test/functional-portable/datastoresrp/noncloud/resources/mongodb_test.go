@@ -114,3 +114,58 @@ func Test_MongoDB_Recipe(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_MongoDB_Recipe_Existing(t *testing.T) {
+	envTemplate := "testdata/datastoresrp-resources-mongodb-recipe-and-env.bicep"
+	existingTemplate := "testdata/datastoresrp-resources-mongodb-recipe-exsiting.bicep"
+	name := "dsrp-resources-mongodb-recipe-and-env"
+	appNamespace := "dsrp-resources-mongodb-recipe-existing-app"
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(envTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "dsrp-resources-mongodb-recipe-and-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: "mongodb-db-existing",
+						Type: validation.MongoDatabasesResource,
+					},
+				},
+			},
+			SkipObjectValidation: true,
+		},
+		{
+			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "dsrp-resources-mongodb-recipe-existing",
+						Type: validation.ApplicationsResource,
+						App:  "dsrp-resources-mongodb-recipe-existing",
+					},
+					{
+						Name: "mongodb-existing-app-ctnr",
+						Type: validation.ContainersResource,
+						App:  "dsrp-resources-mongodb-recipe-existing",
+					},
+					{
+						Name: "mongodb-db-existing",
+						Type: validation.MongoDatabasesResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "mongodb-existing-app-ctnr").ValidateLabels(false),
+					},
+				},
+			},
+		},
+	})
+	test.Test(t)
+
+}
