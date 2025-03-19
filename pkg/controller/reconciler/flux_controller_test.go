@@ -41,13 +41,87 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
-type setupFluxControllerTestOptions struct {
-	archiveFetcher ArchiveFetcher
-	filesystem     filesystem.FileSystem
-	bicep          bicep.Interface
+func Test_FluxController_Basic(t *testing.T) {
+	testGitRepoName := "flux-basic-repo"
+	testGitRepoURL := fmt.Sprintf("https://github.com/radius-project/%s.git", testGitRepoName)
+	testGitRepoSHA := "sha256:1234"
+
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	setupOpts := setupFluxControllerTestOptions{
+		testGitRepoName,
+		testGitRepoURL,
+		testGitRepoSHA,
+		mctrl,
+	}
+
+	steps := []Step{
+		{
+			Path: "testdata/flux-basic",
+		},
+	}
+
+	runOpts := setupFluxControllerTest(t, setupOpts, steps)
+
+	runFluxControllerTest(t, runOpts, steps)
 }
 
-func SetupFluxControllerTest(t *testing.T, options setupFluxControllerTestOptions) k8sclient.Client {
+func Test_FluxController_Update(t *testing.T) {
+	testGitRepoName := "flux-update-repo"
+	testGitRepoURL := fmt.Sprintf("https://github.com/radius-project/%s.git", testGitRepoName)
+	testGitRepoSHA := "sha256:1234"
+
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	setupOpts := setupFluxControllerTestOptions{
+		testGitRepoName,
+		testGitRepoURL,
+		testGitRepoSHA,
+		mctrl,
+	}
+
+	steps := []Step{
+		{
+			Path: "testdata/flux-update/step-1",
+		},
+		{
+			Path: "testdata/flux-update/step-2",
+		},
+	}
+
+	runOpts := setupFluxControllerTest(t, setupOpts, steps)
+
+	runFluxControllerTest(t, runOpts, steps)
+}
+
+type Step struct {
+	Path            string
+	BicepFiles      []string
+	BicepParamFiles []string
+}
+
+type setupFluxControllerTestOptions struct {
+	testGitRepoName string
+	testGitRepoURL  string
+	testGitRepoSHA  string
+
+	mctrl *gomock.Controller
+}
+
+type runFluxControllerTestOptions struct {
+	testGitRepoName string
+	testGitRepoURL  string
+	testGitRepoSHA  string
+
+	archiveFetcher *MockArchiveFetcher
+	filesystem     *filesystem.MemMapFileSystem
+	bicep          *bicep.MockInterface
+	client         k8sclient.Client
+}
+
+func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, steps []Step) runFluxControllerTestOptions {
 	SkipWithoutEnvironment(t)
 
 	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
@@ -60,6 +134,10 @@ func SetupFluxControllerTest(t *testing.T, options setupFluxControllerTestOption
 	// Shut down the manager when the test exits.
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
+
+	fs := filesystem.NewMemMapFileSystem(nil)
+	archiveFetcher := NewMockArchiveFetcher(opts.mctrl)
+	bicep := bicep.NewMockInterface(opts.mctrl)
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
@@ -74,12 +152,11 @@ func SetupFluxControllerTest(t *testing.T, options setupFluxControllerTestOption
 	})
 	require.NoError(t, err)
 
-	// Set up FluxController.
 	fluxController := &FluxController{
 		Client:         mgr.GetClient(),
-		FileSystem:     options.filesystem,
-		Bicep:          options.bicep,
-		ArchiveFetcher: options.archiveFetcher,
+		FileSystem:     fs,
+		Bicep:          bicep,
+		ArchiveFetcher: archiveFetcher,
 	}
 	err = (fluxController).SetupWithManager(mgr)
 	require.NoError(t, err)
@@ -89,44 +166,12 @@ func SetupFluxControllerTest(t *testing.T, options setupFluxControllerTestOption
 		require.NoError(t, err)
 	}()
 
-	return mgr.GetClient()
-}
-
-type Step struct {
-	Path            string
-	BicepFiles      []string
-	BicepParamFiles []string
-}
-
-func RunFluxControllerTest(t *testing.T, steps []Step) {
-	ctx := testcontext.New(t)
-
-	// Set up mocks
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
-
-	fs := filesystem.NewMemMapFileSystem(nil)
-	archiveFetcher := NewMockArchiveFetcher(mctrl)
-	bicep := bicep.NewMockInterface(mctrl)
-
-	options := setupFluxControllerTestOptions{
-		archiveFetcher: archiveFetcher,
-		filesystem:     fs,
-		bicep:          bicep,
-	}
-
-	k8sClient := SetupFluxControllerTest(t, options)
-
-	testGitRepoName := "example-repo"
-	testGitRepoURL := "https://github.com/radius-project/example-repo.git"
-	testGitRepoSHA := "sha256:1234"
-
 	var archiveFetcherCalls []any
 	var bicepCalls []any
 	for _, step := range steps {
 		s := step // capture loop variable
 		call := archiveFetcher.EXPECT().
-			Fetch(testGitRepoURL, testGitRepoSHA, gomock.Any()).
+			Fetch(opts.testGitRepoURL, opts.testGitRepoSHA, gomock.Any()).
 			Return(nil).
 			Times(1).
 			Do(func(archiveURL, digest, dir string) {
@@ -198,6 +243,21 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 	gomock.InOrder(archiveFetcherCalls...)
 	gomock.InOrder(bicepCalls...)
 
+	return runFluxControllerTestOptions{
+		testGitRepoName: opts.testGitRepoName,
+		testGitRepoURL:  opts.testGitRepoURL,
+		testGitRepoSHA:  opts.testGitRepoSHA,
+
+		archiveFetcher: archiveFetcher,
+		filesystem:     fs,
+		bicep:          bicep,
+		client:         mgr.GetClient(),
+	}
+}
+
+func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, steps []Step) {
+	ctx := testcontext.New(t)
+
 	for stepIndex, step := range steps {
 		stepNumber := stepIndex + 1
 		radiusConfig, err := ParseRadiusGitOpsConfig(path.Join(step.Path, "radius-gitops-config.yaml"))
@@ -213,7 +273,7 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 			}
 
 			// Create a namespace if it does not exist
-			if err := k8sClient.Get(ctx, types.NamespacedName{Name: namespaceName}, &corev1.Namespace{}); err != nil {
+			if err := opts.client.Get(ctx, types.NamespacedName{Name: namespaceName}, &corev1.Namespace{}); err != nil {
 				if k8sclient.IgnoreNotFound(err) != nil {
 					require.NoError(t, err)
 				}
@@ -222,33 +282,42 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 						Name: namespaceName,
 					},
 				}
-				err := k8sClient.Create(ctx, namespace)
+				err := opts.client.Create(ctx, namespace)
 				require.NoError(t, err)
 			}
 
 			gitRepo := sourcev1.GitRepository{}
-			gitRepoNamespacedName := types.NamespacedName{Name: testGitRepoName, Namespace: namespaceName}
+			gitRepoNamespacedName := types.NamespacedName{Name: opts.testGitRepoName, Namespace: namespaceName}
 			if stepNumber == 1 {
 				// Create a GitRepository resource on the cluster
-				gitRepo = makeGitRepository(gitRepoNamespacedName, testGitRepoURL)
-				err = k8sClient.Create(ctx, &gitRepo)
+				gitRepo = makeGitRepository(gitRepoNamespacedName, opts.testGitRepoURL)
+				err = opts.client.Create(ctx, &gitRepo)
 				require.NoError(t, err)
+				defer func() {
+					// Clean up the GitRepository resource after the test
+					err := opts.client.Delete(ctx, &gitRepo)
+					if err != nil {
+						if k8sclient.IgnoreNotFound(err) != nil {
+							require.NoError(t, err)
+						}
+					}
+				}()
 
 				// Wait for the GitRepository to be created
-				err = waitForGitRepositoryToExistWithGeneration(ctx, k8sClient, gitRepoNamespacedName, &gitRepo, int64(stepNumber))
+				err = waitForGitRepositoryToExistWithGeneration(ctx, opts.client, gitRepoNamespacedName, &gitRepo, int64(stepNumber))
 				require.NoError(t, err, "GitRepository was not created successfully")
 			}
 
 			// Fetch the latest GitRepository object
-			err = k8sClient.Get(ctx, gitRepoNamespacedName, &gitRepo)
+			err = opts.client.Get(ctx, gitRepoNamespacedName, &gitRepo)
 			require.NoError(t, err)
 
 			// Update the Status subresource
 			updatedStatus := sourcev1.GitRepositoryStatus{
 				ObservedGeneration: int64(stepNumber),
 				Artifact: &sourcev1.Artifact{
-					URL:      testGitRepoURL,
-					Digest:   testGitRepoSHA,
+					URL:      opts.testGitRepoURL,
+					Digest:   opts.testGitRepoSHA,
 					Revision: fmt.Sprintf("v%d", stepNumber),
 					LastUpdateTime: metav1.Time{
 						Time: time.Now(),
@@ -267,45 +336,21 @@ func RunFluxControllerTest(t *testing.T, steps []Step) {
 				},
 			}
 			gitRepo.Status = updatedStatus
-			err = k8sClient.Status().Update(ctx, &gitRepo)
+			err = opts.client.Status().Update(ctx, &gitRepo)
 			require.NoError(t, err)
 
 			// Now, the FluxController should reconcile the GitRepository and create the DeploymentTemplate resource.
 			deploymentTemplateName := name
 			deploymentTemplateNamespacedName := types.NamespacedName{Name: deploymentTemplateName, Namespace: namespaceName}
 			deploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
-			err = waitForDeploymentTemplateToExistWithGeneration(ctx, k8sClient, deploymentTemplateNamespacedName, &deploymentTemplate, int64(stepNumber))
+			err = waitForDeploymentTemplateToExistWithGeneration(ctx, opts.client, deploymentTemplateNamespacedName, &deploymentTemplate, int64(stepNumber))
 			require.NoError(t, err)
 
 			// Fetch the latest DeploymentTemplate object
-			err = k8sClient.Get(ctx, deploymentTemplateNamespacedName, &deploymentTemplate)
+			err = opts.client.Get(ctx, deploymentTemplateNamespacedName, &deploymentTemplate)
 			require.NoError(t, err)
-
 		}
 	}
-}
-
-func Test_FluxController_Basic(t *testing.T) {
-	steps := []Step{
-		{
-			Path: "testdata/flux-basic",
-		},
-	}
-
-	RunFluxControllerTest(t, steps)
-}
-
-func Test_FluxController_Update(t *testing.T) {
-	steps := []Step{
-		{
-			Path: "testdata/flux-update/step-1",
-		},
-		{
-			Path: "testdata/flux-update/step-2",
-		},
-	}
-
-	RunFluxControllerTest(t, steps)
 }
 
 func makeGitRepository(namespacedName types.NamespacedName, url string) sourcev1.GitRepository {

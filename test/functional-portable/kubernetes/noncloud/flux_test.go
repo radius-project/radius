@@ -54,7 +54,7 @@ const (
 	testGitServerURLEnvVariableName = "GITEA_SERVER_URL"
 	testGitUsernameEnvVariableName  = "GITEA_USERNAME"
 	testGitEmailEnvVariableName     = "GITEA_EMAIL"
-	testGiteaTokenEnvVariableName   = "GITEA_ACCESS_TOKEN"
+	testGiteaTokenEnvVariableName   = "GITEA_ACCESS_TOKEN_NAME"
 )
 
 func Test_Flux_Basic(t *testing.T) {
