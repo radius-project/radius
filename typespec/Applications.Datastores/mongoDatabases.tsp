@@ -21,7 +21,6 @@ import "@typespec/openapi";
 import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
-import "@azure-tools/typespec-providerhub";
 
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
