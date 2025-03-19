@@ -270,8 +270,8 @@ jobs:
                  --set dynamicrp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }} \
                  --set controller.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller,controller.tag=${{ env.REL_VERSION }} \
                  --set ucp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
-                 --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}" \
-                 --set bicep.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/bicep,bicep.tag=${{ env.REL_VERSION }}
+                 --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
+                 --set bicep.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/bicep,bicep.tag=${{ env.REL_VERSION }}"
 
           if [ "${{ env.USE_CERT_FILE }}" = "true" ]; then
             RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt"

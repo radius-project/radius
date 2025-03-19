@@ -641,7 +641,7 @@ jobs:
             --set controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }} \
             --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
-            --set bicep.image=${{ env.CONTAINER_REGISTRY }}/bicep,bicep.tag=${{ env.REL_VERSION }}
+            --set bicep.image=${{ env.CONTAINER_REGISTRY }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
             --set global.azureWorkloadIdentity.enabled=true \
             --set global.aws.irsa.enabled=true 
           
