@@ -41,8 +41,8 @@ var _ Interface = (*Impl)(nil)
 
 // Impl is the implementation of Interface.
 type Impl struct {
-	filesystem filesystem.FileSystem
-	output     output.Interface
+	FileSystem filesystem.FileSystem
+	Output     output.Interface
 }
 
 // PrepareTemplate checks if the file is a .json or .bicep file, downloads Bicep if it is not installed, checks if the file
@@ -60,7 +60,7 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	}
 
 	if !ok {
-		i.output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
+		i.Output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
 		err = DownloadBicep()
 		if err != nil {
 			return nil, fmt.Errorf("failed to download rad-bicep: %w", err)
@@ -68,18 +68,18 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	}
 
 	// Check the file manually so we can control the error message.
-	_, err = i.filesystem.Stat(filePath)
+	_, err = i.FileSystem.Stat(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("could not find file: %w", err)
 	}
 
-	step := i.output.BeginStep("Building %s...", filePath)
+	step := i.Output.BeginStep("Building %s...", filePath)
 	template, err := i.Build(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	i.output.CompleteStep(step)
+	i.Output.CompleteStep(step)
 	return template, nil
 }
 

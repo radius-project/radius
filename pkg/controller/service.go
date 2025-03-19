@@ -147,7 +147,9 @@ func (s *Service) Run(ctx context.Context) error {
 		Client:         mgr.GetClient(),
 		ArchiveFetcher: reconciler.NewArchiveFetcher(),
 		FileSystem:     filesystem.NewOSFS(),
-		Bicep:          &bicep.Impl{},
+		Bicep: &bicep.Impl{
+			FileSystem: filesystem.NewOSFS(),
+		},
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)
