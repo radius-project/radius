@@ -134,6 +134,7 @@ func TestTimeoutPolicyGatewayConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "myprefix", *versioned.Properties.Hostname.Prefix)
 	require.Equal(t, "myreplaceprefix", *versioned.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "30s", *versioned.Properties.Routes[0].TimeoutPolicy.Request)
+	require.Equal(t, "20s", *versioned.Properties.Routes[0].TimeoutPolicy.BackendRequest)
 	require.False(t, *versioned.Properties.Routes[0].EnableWebsockets)
 	require.Equal(t, "mypath", *versioned.Properties.Routes[0].Path)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)

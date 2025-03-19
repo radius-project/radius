@@ -190,6 +190,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 
 	test.Test(t)
 }
+
 func Test_Gateway_Timeout(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-timeout.bicep"
 	name := "corerp-resources-gateway-timeout"
@@ -249,6 +250,7 @@ func Test_Gateway_Timeout(t *testing.T) {
 	})
 	test.Test(t)
 }
+
 func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-timeout-ber.bicep"
 	name := "corerp-resources-gateway-timeout-ber"
