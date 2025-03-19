@@ -33,11 +33,6 @@ if [ -z "$GITEA_EMAIL" ]; then
   exit 1
 fi
 
-if [ -z "$GITEA_PASSWORD" ]; then
-  echo "GITEA_PASSWORD is not set. Exiting..."
-  exit 1
-fi
-
 if [ -z "$GITEA_ACCESS_TOKEN_NAME" ]; then
   echo
   echo "GITEA_ACCESS_TOKEN_NAME is not set. Exiting..."
