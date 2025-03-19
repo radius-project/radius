@@ -59,7 +59,7 @@ func TestGitRepositoryRevisionChangePredicate_Create(t *testing.T) {
 					},
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &sourcev1.Artifact{
-							Path: "test-path",
+							Revision: "test-revision",
 						},
 					},
 				},
@@ -144,7 +144,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 					},
 				},
 			},
-			expected: true,
+			expected: false,
 		},
 		{
 			name: "Source ObjectNew and ObjectOld are the same",
@@ -155,7 +155,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 					},
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &sourcev1.Artifact{
-							Path: "test-path",
+							Revision: "test-revision",
 						},
 					},
 				},
@@ -165,15 +165,15 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 					},
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &sourcev1.Artifact{
-							Path: "test-path",
+							Revision: "test-revision",
 						},
 					},
 				},
 			},
-			expected: true,
+			expected: false,
 		},
 		{
-			name: "Source ObjectNew and ObjectOld are the different",
+			name: "Source ObjectNew and ObjectOld have different revisions",
 			event: event.UpdateEvent{
 				ObjectOld: &sourcev1.GitRepository{
 					ObjectMeta: metav1.ObjectMeta{
@@ -181,7 +181,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 					},
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &sourcev1.Artifact{
-							Path: "test-path",
+							Revision: "test-revision",
 						},
 					},
 				},
@@ -191,7 +191,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 					},
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &sourcev1.Artifact{
-							Path: "test-path-different",
+							Revision: "test-revision-different",
 						},
 					},
 				},
