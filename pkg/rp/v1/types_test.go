@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEqualLinkedResource(t *testing.T) {
+func Test_ScopesEqual(t *testing.T) {
 	parentResourceTests := []struct {
 		propA BasicResourceProperties
 		propB BasicResourceProperties
@@ -93,11 +93,11 @@ func TestEqualLinkedResource(t *testing.T) {
 	}
 
 	for _, tt := range parentResourceTests {
-		require.Equal(t, tt.propA.EqualLinkedResource(&tt.propB), tt.eq)
+		require.Equal(t, ScopesEqual(&tt.propA, &tt.propB), tt.eq)
 	}
 }
 
-func Test_isGlobalScopedResource(t *testing.T) {
+func Test_IsGlobalScopedResource(t *testing.T) {
 	tests := []struct {
 		desc                    string
 		basicResourceProperties BasicResourceProperties
@@ -125,8 +125,7 @@ func Test_isGlobalScopedResource(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			act := tt.basicResourceProperties.IsGlobalScopedResource()
-			require.Equal(t, act, tt.isGlobal)
+			require.Equal(t, IsGlobalScopedResource(&tt.basicResourceProperties), tt.isGlobal)
 		})
 	}
 

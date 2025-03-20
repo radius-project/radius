@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package backend
+package controller
 
 import (
 	"context"
@@ -22,24 +22,19 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 )
 
-// InertDeleteController is the async operation controller to perform DELETE processing on "inert" dynamic resources.
-type InertDeleteController struct {
+// InertPutController is the async operation controller to perform PUT processing on "inert" dynamic resources.
+type InertPutController struct {
 	ctrl.BaseController
 }
 
-// NewInertDeleteController creates a new InertDeleteController.
-func NewInertDeleteController(opts ctrl.Options) (ctrl.Controller, error) {
-	return &InertDeleteController{
+// NewInertPutController creates a new InertPutController.
+func NewInertPutController(opts ctrl.Options) (ctrl.Controller, error) {
+	return &InertPutController{
 		BaseController: ctrl.NewBaseAsyncController(opts),
 	}, nil
 }
 
 // Run implements the async controller interface.
-func (c *InertDeleteController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	err := c.DatabaseClient().Delete(ctx, request.ResourceID)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
+func (c *InertPutController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }

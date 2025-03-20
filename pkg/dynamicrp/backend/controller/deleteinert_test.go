@@ -14,27 +14,41 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package backend
+package controller
 
 import (
 	"testing"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
-func Test_InertPutController_Run(t *testing.T) {
-	setup := func() *InertPutController {
-		opts := ctrl.Options{}
-		controller, err := NewInertPutController(opts)
+func Test_InertDeleteController_Run(t *testing.T) {
+	setup := func() (*InertDeleteController, *database.MockClient) {
+		mockctrl := gomock.NewController(t)
+		databaseClient := database.NewMockClient(mockctrl)
+
+		opts := ctrl.Options{
+			DatabaseClient: databaseClient,
+		}
+
+		controller, err := NewInertDeleteController(opts)
 		require.NoError(t, err)
-		return controller.(*InertPutController)
+		return controller.(*InertDeleteController), databaseClient
 	}
 
-	controller := setup()
+	controller, databaseClient := setup()
 
-	request := &ctrl.Request{}
+	request := &ctrl.Request{
+		ResourceID: "/planes/radius/testing/resourceGroups/test-group/providers/Applications.Test/exampleResources/my-example",
+	}
+
+	// Controller needs to call delete on the resource.
+	databaseClient.EXPECT().Delete(gomock.Any(), request.ResourceID).Return(nil).Times(1)
+
 	result, err := controller.Run(testcontext.New(t), request)
 	require.NoError(t, err)
 	require.Equal(t, ctrl.Result{}, result)
