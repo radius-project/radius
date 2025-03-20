@@ -26,6 +26,9 @@ import (
 
 // RecipeDataModel should be implemented on the datamodel of types that support recipes.
 type RecipeDataModel interface {
-	// Recipe provides access to the user-specified recipe configuration. Can return nil.
-	Recipe() *portableresources.ResourceRecipe
+	// GetRecipe provides access to the user-specified recipe configuration. Can return nil.
+	GetRecipe() *portableresources.ResourceRecipe
+
+	// SetRecipe sets the recipe configuration for the resource.
+	SetRecipe(*portableresources.ResourceRecipe)
 }

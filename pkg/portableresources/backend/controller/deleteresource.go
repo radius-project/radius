@@ -78,12 +78,12 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 
 	// If we have a setup error (error before recipe and output resources are executed, we skip engine/driver deletion.
 	// If we have an execution error, we call engine/driver deletion.
-	if supportsRecipes && recipeDataModel.Recipe() != nil && recipeDataModel.Recipe().DeploymentStatus != util.RecipeSetupError {
+	if supportsRecipes && recipeDataModel.GetRecipe() != nil && recipeDataModel.GetRecipe().DeploymentStatus != util.RecipeSetupError {
 		recipeData := recipes.ResourceMetadata{
-			Name:          recipeDataModel.Recipe().Name,
-			EnvironmentID: data.ResourceMetadata().Environment,
-			ApplicationID: data.ResourceMetadata().Application,
-			Parameters:    recipeDataModel.Recipe().Parameters,
+			Name:          recipeDataModel.GetRecipe().Name,
+			EnvironmentID: data.ResourceMetadata().EnvironmentID(),
+			ApplicationID: data.ResourceMetadata().ApplicationID(),
+			Parameters:    recipeDataModel.GetRecipe().Parameters,
 			ResourceID:    id.String(),
 		}
 
@@ -102,7 +102,7 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 	}
 
 	// Load details about the runtime for the processor to access.
-	runtimeConfiguration, err := c.loadRuntimeConfiguration(ctx, data.ResourceMetadata().Environment, data.ResourceMetadata().Application, data.GetBaseResource().ID)
+	runtimeConfiguration, err := c.loadRuntimeConfiguration(ctx, data.ResourceMetadata().EnvironmentID(), data.ResourceMetadata().ApplicationID(), data.GetBaseResource().ID)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

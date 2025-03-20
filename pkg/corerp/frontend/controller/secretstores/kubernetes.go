@@ -205,7 +205,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	}
 
 	// resource property cannot be empty for global scoped resource.
-	if newResource.Properties.BasicResourceProperties.IsGlobalScopedResource() && ref == "" {
+	if rpv1.IsGlobalScopedResource(&newResource.Properties.BasicResourceProperties) && ref == "" {
 		return rest.NewBadRequestResponse("$.properties.resource cannot be empty for global scoped resource."), nil
 	}
 
@@ -241,9 +241,10 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	if apierrors.IsNotFound(err) {
 		// If resource in incoming request references resource, then the resource must exist for a application/environment scoped resource.
 		// For global scoped resource create the kubernetes resource if not exists.
-		if ref != "" && !newResource.Properties.BasicResourceProperties.IsGlobalScopedResource() {
+		if ref != "" && !rpv1.IsGlobalScopedResource(&newResource.Properties.BasicResourceProperties) {
 			return rest.NewBadRequestResponse(fmt.Sprintf("'%s' referenced resource does not exist.", ref)), nil
 		}
+
 		app, _ := resources.ParseResource(newResource.Properties.Application)
 		ksecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{

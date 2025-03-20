@@ -82,8 +82,8 @@ func (s *SecretStore) OutputResources() []rpv1.OutputResource {
 	return s.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the SecretStore instance.
-func (s *SecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the SecretStore resource.
+func (s *SecretStore) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &s.Properties.BasicResourceProperties
 }
 
@@ -144,6 +144,6 @@ func (s *SecretStoreListSecrets) OutputResources() []rpv1.OutputResource {
 }
 
 // ResourceMetadata returns nil for SecretStoreListSecrets.
-func (s *SecretStoreListSecrets) ResourceMetadata() *rpv1.BasicResourceProperties {
+func (s *SecretStoreListSecrets) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return nil
 }

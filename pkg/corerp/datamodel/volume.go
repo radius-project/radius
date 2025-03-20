@@ -58,8 +58,8 @@ func (h *VolumeResource) OutputResources() []rpv1.OutputResource {
 	return h.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the VolumeResource instance.
-func (h *VolumeResource) ResourceMetadata() *rpv1.BasicResourceProperties {
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the VolumeResource.
+func (h *VolumeResource) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &h.Properties.BasicResourceProperties
 }
 

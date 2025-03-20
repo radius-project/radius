@@ -29,11 +29,16 @@ import (
 
 // Recipe returns the ResourceRecipe associated with the SQL database instance if the ResourceProvisioning is not
 // set to Manual, otherwise it returns nil.
-func (sql *SqlDatabase) Recipe() *portableresources.ResourceRecipe {
+func (sql *SqlDatabase) GetRecipe() *portableresources.ResourceRecipe {
 	if sql.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &sql.Properties.Recipe
+}
+
+// SetRecipe sets the recipe information.
+func (r *SqlDatabase) SetRecipe(recipe *portableresources.ResourceRecipe) {
+	r.Properties.Recipe = *recipe
 }
 
 // SqlDatabase represents SQL database portable resource.
@@ -58,8 +63,8 @@ func (r *SqlDatabase) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the SQL database resource.
-func (r *SqlDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the SQL database resource.
+func (r *SqlDatabase) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
 

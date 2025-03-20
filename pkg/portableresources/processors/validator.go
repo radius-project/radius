@@ -66,6 +66,10 @@ func NewValidator(connectionValues *map[string]any, connectionSecrets *map[strin
 	*connectionSecrets = map[string]rpv1.SecretValueReference{}
 	*outputResources = []rpv1.OutputResource{}
 
+	if status == nil {
+		status = new(rpv1.RecipeStatus)
+	}
+
 	return &Validator{
 		ConnectionValues:  *connectionValues,
 		ConnectionSecrets: *connectionSecrets,

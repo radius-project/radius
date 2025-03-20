@@ -45,8 +45,8 @@ func (r *DaprConfigurationStore) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the Dapr ConfigurationStore resource i.e. application resources metadata.
-func (r *DaprConfigurationStore) ResourceMetadata() *rpv1.BasicResourceProperties {
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the Dapr ConfigurationStore resource.
+func (r *DaprConfigurationStore) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
 
@@ -56,11 +56,16 @@ func (r *DaprConfigurationStore) ResourceTypeName() string {
 }
 
 // Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.
-func (r *DaprConfigurationStore) Recipe() *portableresources.ResourceRecipe {
+func (r *DaprConfigurationStore) GetRecipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &r.Properties.Recipe
+}
+
+// SetRecipe sets the recipe information.
+func (r *DaprConfigurationStore) SetRecipe(recipe *portableresources.ResourceRecipe) {
+	r.Properties.Recipe = *recipe
 }
 
 // DaprConfigurationStoreProperties represents the properties of Dapr ConfigurationStore resource.

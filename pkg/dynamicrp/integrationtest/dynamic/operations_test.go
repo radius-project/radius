@@ -40,7 +40,7 @@ func Test_Dynamic_OperationResultAndStatus(t *testing.T) {
 	// Setup a plane & resource provider & location
 	plane := createRadiusPlane(ucp)
 	createResourceProvider(ucp)
-	createLocation(ucp)
+	createLocation(ucp, "testResources")
 
 	// Now we can make a request to the operation result/status endpoints.
 	operationName := uuid.New().String()
