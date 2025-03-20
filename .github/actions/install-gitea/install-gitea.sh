@@ -58,4 +58,4 @@ echo "$output"
 output=$(kubectl exec -it "$gitea_pod" -n gitea -- gitea admin user generate-access-token --username "$GITEA_USERNAME" --token-name "$GITEA_ACCESS_TOKEN_NAME"  --scopes "write:repository,write:user" --raw)
 echo "$output"
 
-echo "gitea-access-token=$output" >>"$GITHUB_OUTPUT"
+echo "gitea-access-token=$output" >> "$GITHUB_OUTPUT"

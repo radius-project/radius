@@ -18,6 +18,7 @@ runs:
   using: "composite"
   steps:
     - name: Install Gitea
+      id: export-token
       shell: bash
       env:
         GITEA_PASSWORD: ${{ env.GITEA_PASSWORD }}
