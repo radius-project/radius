@@ -51,11 +51,11 @@ kubectl wait --for=condition=available deployment/gitea -n gitea --timeout=120s
 gitea_pod=$(kubectl get pods -n gitea -l app=gitea -o jsonpath='{.items[0].metadata.name}')
 
 # Create a Gitea admin user
-output=$(kubectl exec -it $gitea_pod -n gitea -- gitea admin user create --admin --username $GITEA_USERNAME --email $GITEA_EMAIL --password $GITEA_PASSWORD --must-change-password=false)
-echo $output
+output=$(kubectl exec -it "$gitea_pod" -n gitea -- gitea admin user create --admin --username "$GITEA_USERNAME" --email "$GITEA_EMAIL" --password "$GITEA_PASSWORD" --must-change-password=false)
+echo "$output"
 
 # Generate an access token for the Gitea admin user
-output=$(kubectl exec -it $gitea_pod -n gitea -- gitea admin user generate-access-token --username $GITEA_USERNAME --token-name $GITEA_ACCESS_TOKEN_NAME  --scopes "write:repository,write:user" --raw)
-echo $output
+output=$(kubectl exec -it "$gitea_pod" -n gitea -- gitea admin user generate-access-token --username "$GITEA_USERNAME" --token-name "$GITEA_ACCESS_TOKEN_NAME"  --scopes "write:repository,write:user" --raw)
+echo "$output"
 
-echo "gitea-access-token=$output" >>$GITHUB_OUTPUT
+echo "gitea-access-token=$output" >>"$GITHUB_OUTPUT"

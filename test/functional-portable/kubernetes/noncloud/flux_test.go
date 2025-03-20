@@ -50,11 +50,11 @@ import (
 )
 
 const (
-	fluxSystemNamespace             = "flux-system"
-	testGitServerURLEnvVariableName = "GITEA_SERVER_URL"
-	testGitUsernameEnvVariableName  = "GITEA_USERNAME"
-	testGitEmailEnvVariableName     = "GITEA_EMAIL"
-	testGiteaTokenEnvVariableName   = "GITEA_ACCESS_TOKEN_NAME"
+	fluxSystemNamespace                 = "flux-system"
+	testGitServerURLEnvVariableName     = "GITEA_SERVER_URL"
+	testGitUsernameEnvVariableName      = "GITEA_USERNAME"
+	testGitEmailEnvVariableName         = "GITEA_EMAIL"
+	testGiteaAccessTokenEnvVariableName = "GITEA_ACCESS_TOKEN"
 )
 
 func Test_Flux_Basic(t *testing.T) {
@@ -121,7 +121,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 		gitServerURL := os.Getenv(testGitServerURLEnvVariableName)
 		gitUsername := os.Getenv(testGitUsernameEnvVariableName)
 		gitEmail := os.Getenv(testGitEmailEnvVariableName)
-		giteaToken := os.Getenv(testGiteaTokenEnvVariableName)
+		giteaToken := os.Getenv(testGiteaAccessTokenEnvVariableName)
 
 		// Create the Gitea client.
 		client, err := gitea.NewClient(gitServerURL, gitea.SetToken(giteaToken))
