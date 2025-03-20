@@ -17,7 +17,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Datastores/mongoDatabases': {
         mongoazure: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/mongodb-recipe-kubernetes:${version}'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/mongo-recipe-existing:${version}'
         }
       }
     }
