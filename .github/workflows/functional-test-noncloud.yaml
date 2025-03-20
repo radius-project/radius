@@ -353,7 +353,6 @@ jobs:
           curl -s https://fluxcd.io/install.sh | sudo bash
           flux install --namespace=flux-system --version=latest --components=source-controller
           kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
-          flux create secret git gitea-credentials --url http://gitea-http.gitea.svc.cluster.local:3000/testuser/testrepo.git --bearer-token 3iu4uyiuahfdjkdslbf
 
       - name: Publish Terraform test recipes
         run: |
