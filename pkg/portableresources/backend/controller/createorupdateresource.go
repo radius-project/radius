@@ -41,7 +41,6 @@ type CreateOrUpdateResource[P interface {
 	ctrl.BaseController
 	processor           processors.ResourceProcessor[P, T]
 	engine              engine.Engine
-	client              processors.ResourceClient
 	configurationLoader configloader.ConfigurationLoader
 }
 
@@ -50,12 +49,11 @@ type CreateOrUpdateResource[P interface {
 func NewCreateOrUpdateResource[P interface {
 	*T
 	rpv1.RadiusResourceModel
-}, T any](opts ctrl.Options, processor processors.ResourceProcessor[P, T], eng engine.Engine, client processors.ResourceClient, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
+}, T any](opts ctrl.Options, processor processors.ResourceProcessor[P, T], eng engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
 	return &CreateOrUpdateResource[P, T]{
 		ctrl.NewBaseAsyncController(opts),
 		processor,
 		eng,
-		client,
 		configurationLoader,
 	}, nil
 }
@@ -76,30 +74,25 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	// We will initialize the pointer with an empty recipe status object here and the actual value
-	// will be eventually populated by the processor.
-	if data.ResourceMetadata().Status.Recipe == nil {
-		data.ResourceMetadata().Status.Recipe = &rpv1.RecipeStatus{}
-	}
-
 	// Clone existing output resources so we can diff them later.
 	previousOutputResources := c.copyOutputResources(data)
 
 	// Load configuration
-	metadata := recipes.ResourceMetadata{EnvironmentID: data.ResourceMetadata().Environment, ApplicationID: data.ResourceMetadata().Application, ResourceID: data.GetBaseResource().ID}
+	metadata := recipes.ResourceMetadata{EnvironmentID: data.ResourceMetadata().EnvironmentID(), ApplicationID: data.ResourceMetadata().ApplicationID(), ResourceID: data.GetBaseResource().ID}
 	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Now we're ready to process recipes (if needed).
-	recipeDataModel := any(data).(datamodel.RecipeDataModel)
+
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data, previousOutputResources, config.Simulated)
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
 			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
 			// Set the deployment status to the recipe error code.
-			recipeDataModel.Recipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
+			recipeDataModel := any(data).(datamodel.RecipeDataModel)
+			recipeDataModel.GetRecipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
 			update := &database.Object{
 				Metadata: database.Metadata{
 					ID: req.ResourceID,
@@ -125,8 +118,17 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 			return ctrl.Result{}, err
 		}
 	}
-	if recipeDataModel.Recipe() != nil {
-		recipeDataModel.Recipe().DeploymentStatus = util.Success
+
+	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
+	if supportsRecipes {
+		recipeData := recipeDataModel.GetRecipe()
+		if recipeData != nil {
+			recipeData.DeploymentStatus = util.Success
+			recipeDataModel.SetRecipe(recipeData)
+		}
+		if recipeOutput != nil && recipeOutput.Status != nil {
+			setRecipeStatus(data, *recipeOutput.Status)
+		}
 	}
 
 	update := &database.Object{
@@ -158,15 +160,15 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		return nil, nil
 	}
 
-	input := recipeDataModel.Recipe()
+	input := recipeDataModel.GetRecipe()
 	if input == nil {
 		return nil, nil
 	}
 	request := recipes.ResourceMetadata{
 		Name:          input.Name,
 		Parameters:    input.Parameters,
-		EnvironmentID: data.ResourceMetadata().Environment,
-		ApplicationID: data.ResourceMetadata().Application,
+		EnvironmentID: data.ResourceMetadata().EnvironmentID(),
+		ApplicationID: data.ResourceMetadata().ApplicationID(),
 		ResourceID:    data.GetBaseResource().ID,
 	}
 
@@ -177,4 +179,14 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		PreviousState: prevState,
 		Simulated:     simulated,
 	})
+}
+
+// setRecipeStatus sets the recipe status for the given resource model.
+// It retrieves the resource metadata from the provided model, deep copies the current resource status,
+// updates the Recipe field with the supplied recipeStatus, and then applies the updated status back to the resource.
+func setRecipeStatus[P rpv1.RadiusResourceModel](data P, recipeStatus rpv1.RecipeStatus) {
+	rm := data.ResourceMetadata()
+	status := rm.GetResourceStatus().DeepCopyRecipeStatus()
+	status.Recipe = &recipeStatus
+	rm.SetResourceStatus(status)
 }

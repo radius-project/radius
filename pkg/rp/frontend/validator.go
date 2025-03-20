@@ -38,13 +38,12 @@ func PrepareRadiusResource[P interface {
 	oldProp := P(oldResource).ResourceMetadata()
 	newProp := P(newResource).ResourceMetadata()
 
-	if !oldProp.EqualLinkedResource(newProp) {
+	if !rpv1.ScopesEqual(oldProp, newProp) {
 		return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
 	}
 
-	// Keep outputresource from existing resource since the incoming request hasn't had an outputresource
-	// processed by the backend yet.
-	newProp.Status.DeepCopy(&oldProp.Status)
+	// Preserve the original resource status.
+	newProp.SetResourceStatus(oldProp.GetResourceStatus().DeepCopyRecipeStatus())
 
 	return nil, nil
 }

@@ -71,14 +71,19 @@ func (r *TestResource) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the BasicResourceProperties of the TestResource instance.
-func (r *TestResource) ResourceMetadata() *rpv1.BasicResourceProperties {
+// ResourceMetadata returns an adapter that provides standardized access to BasicResourceProperties of the TestResource instance.
+func (r *TestResource) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
 	return &r.Properties.BasicResourceProperties
 }
 
 // Recipe returns a pointer to the ResourceRecipe stored in the Properties field of the TestResource struct.
-func (t *TestResource) Recipe() *portableresources.ResourceRecipe {
+func (t *TestResource) GetRecipe() *portableresources.ResourceRecipe {
 	return &t.Properties.Recipe
+}
+
+// SetRecipe allows updating the recipe in the resource.
+func (t *TestResource) SetRecipe(r *portableresources.ResourceRecipe) {
+	t.Properties.Recipe = *r
 }
 
 type TestResourceProperties struct {
@@ -154,7 +159,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		{
 			"get-not-found",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 			},
 			&database.ErrNotFound{ID: TestResourceID},
 			false,
@@ -168,7 +173,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		{
 			"get-error",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 			},
 			&database.ErrInvalid{},
 			false,
@@ -182,7 +187,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		{
 			"conversion-failure",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 			},
 			nil,
 			true,
@@ -196,7 +201,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		{
 			"recipe-err",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -210,7 +215,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		{
 			"runtime-configuration-err",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -224,7 +229,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		{
 			"processor-err",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -238,7 +243,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		{
 			"save-err",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(options, successProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
+				return NewCreateOrUpdateResource(options, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -252,7 +257,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		{
 			"success",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(options, successProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
+				return NewCreateOrUpdateResource(options, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -267,7 +272,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.description, func(t *testing.T) {
-			msc, eng, client, cfg := setupTest()
+			msc, eng, _, cfg := setupTest()
 
 			req := &ctrl.Request{
 				OperationID:      uuid.New(),
@@ -416,9 +421,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			}
 
 			recipeCfg := &controllerconfig.RecipeControllerConfig{
-				Engine:         eng,
-				ResourceClient: client,
-				ConfigLoader:   cfg,
+				Engine:       eng,
+				ConfigLoader: cfg,
 			}
 
 			genCtrl, err := tt.factory(recipeCfg, opts)
