@@ -393,7 +393,8 @@ jobs:
             },
             "extensions": {
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest",
+              "testresources": "br:${{ env.BICEP_TYPES_REGISTRY }}/testresources:latest"
             }
           }
           EOF

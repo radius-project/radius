@@ -135,6 +135,7 @@ jobs:
             samples-noncloud,
             ucp-noncloud,
             datastoresrp-noncloud,
+            dynamicrp-noncloud,
           ]
     runs-on: ${{ matrix.os }}
     env:
@@ -358,7 +359,8 @@ jobs:
             },
             "extensions": {
               "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest",
+              "testresources": "br:${{ env.BICEP_TYPES_REGISTRY }}/testresources:latest"
             }
           }
           EOF
