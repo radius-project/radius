@@ -337,6 +337,12 @@ jobs:
         env:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
+      
+      - name: Install Flux Source Controller
+        run: |
+          curl -s https://fluxcd.io/install.sh | FLUX_VERSION=2.5.1 sudo bash
+          flux install --namespace=flux-system --version=v2.5.1 --components=source-controller
+          kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
 
       - name: Install Gitea
         id: install-gitea
@@ -347,12 +353,6 @@ jobs:
           gitea-username: ${{ env.GITEA_USERNAME }}
           gitea-email: ${{ env.GITEA_EMAIL }}
           gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
-      
-      - name: Install Flux Source Controller
-        run: |
-          curl -s https://fluxcd.io/install.sh | sudo bash
-          flux install --namespace=flux-system --version=latest --components=source-controller
-          kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
 
       - name: Publish Terraform test recipes
         run: |
