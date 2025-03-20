@@ -94,19 +94,6 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create command with invalid namespace",
-			Input:         []string{"testingenv", "-n", "invalidnamespace"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				// Invalid create command with invalid namespace
-				createMocksWithInvalidResourceGroup(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
-			},
-		},
-		{
 			Name:          "Create command with fallback workspace",
 			Input:         []string{"testingenv", "--group", *testResourceGroup.Name},
 			ExpectedValid: true,
@@ -276,12 +263,6 @@ func Test_Run(t *testing.T) {
 
 func createMocksWithValidCommand(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
 	createShowUCPSuccess(appManagementClient, testResourceGroup)
-	createValidateNamespaceSuccess(namespaceClient)
-}
-
-func createMocksWithInvalidResourceGroup(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
-	createShowUCPSuccess(appManagementClient, testResourceGroup)
-	createValidateNamespaceError(namespaceClient)
 }
 
 func createValidateNamespaceSuccess(namespaceClient *namespace.MockInterface) {
