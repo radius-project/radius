@@ -19,7 +19,6 @@ package create
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -263,18 +262,6 @@ func Test_Run(t *testing.T) {
 
 func createMocksWithValidCommand(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
 	createShowUCPSuccess(appManagementClient, testResourceGroup)
-}
-
-func createValidateNamespaceSuccess(namespaceClient *namespace.MockInterface) {
-	namespaceClient.EXPECT().
-		ValidateNamespace(gomock.Any(), "testingenv", gomock.Any()).
-		Return(nil).Times(1)
-}
-
-func createValidateNamespaceError(namespaceClient *namespace.MockInterface) {
-	namespaceClient.EXPECT().
-		ValidateNamespace(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(fmt.Errorf("failed to create namespace")).Times(1)
 }
 
 func createShowUCPSuccess(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
