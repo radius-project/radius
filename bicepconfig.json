@@ -3,7 +3,7 @@
 		"extensibility": true
 	},
 	"extensions": {
-		"radius": "br:biceptypes.azurecr.io/radius:0.44",
-		"aws": "br:biceptypes.azurecr.io/aws:0.44"
+		"radius": "br:biceptypes.azurecr.io/radius:latest",
+		"aws": "br:biceptypes.azurecr.io/aws:latest"
 	}
 }
