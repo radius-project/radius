@@ -337,13 +337,7 @@ jobs:
         env:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
-      
-      - name: Install Flux Source Controller
-        run: |
-          curl -s https://fluxcd.io/install.sh | sudo bash
-          flux install --namespace=flux-system --version=latest --components=source-controller
-          kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
-        
+
       - name: Install Gitea
         id: install-gitea
         uses: ./.github/actions/install-gitea
@@ -353,6 +347,13 @@ jobs:
           gitea-username: ${{ env.GITEA_USERNAME }}
           gitea-email: ${{ env.GITEA_EMAIL }}
           gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
+      
+      - name: Install Flux Source Controller
+        run: |
+          curl -s https://fluxcd.io/install.sh | sudo bash
+          flux install --namespace=flux-system --version=latest --components=source-controller
+          kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
+          flux create secret git gitea-credentials --url http://gitea-http.gitea.svc.cluster.local:3000/testuser/testrepo.git --bearer-token 3iu4uyiuahfdjkdslbf
 
       - name: Publish Terraform test recipes
         run: |
@@ -419,10 +420,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
-          GITEA_SERVER_URL: ${{ env.GITEA_SERVER_URL }}
           GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
-          GITEA_USERNAME: ${{ env.GITEA_USERNAME }}
-          GITEA_EMAIL: ${{ env.GITEA_EMAIL }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

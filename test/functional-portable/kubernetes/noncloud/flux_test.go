@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testcontext"
+	corev1 "k8s.io/api/core/v1"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 
 	gitea "code.gitea.io/sdk/gitea"
@@ -191,6 +192,22 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 		require.NoError(t, err)
 		t.Log(t, "Pushed changes successfully")
 
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      gitRepoName,
+				Namespace: fluxSystemNamespace,
+			},
+			Data: map[string][]byte{
+				"bearerToken": []byte(giteaToken),
+			},
+		}
+		err = opts.Client.Create(ctx, secret)
+		require.NoError(t, err)
+		defer func() {
+			err := opts.Client.Delete(ctx, secret)
+			require.NoError(t, err)
+		}()
+
 		fluxGitRepository := &sourcev1.GitRepository{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      gitRepoName,
@@ -199,7 +216,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			Spec: sourcev1.GitRepositorySpec{
 				URL: fmt.Sprintf("http://gitea-http.gitea.svc.cluster.local:3000/%s/%s.git", gitUsername, gitRepoName),
 				SecretRef: &meta.LocalObjectReference{
-					Name: "gitea",
+					Name: gitRepoName,
 				},
 			},
 		}

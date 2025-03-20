@@ -34,7 +34,6 @@ if [ -z "$GITEA_EMAIL" ]; then
 fi
 
 if [ -z "$GITEA_ACCESS_TOKEN_NAME" ]; then
-  echo
   echo "GITEA_ACCESS_TOKEN_NAME is not set. Exiting..."
   exit 1
 fi
@@ -44,7 +43,7 @@ helm repo add gitea-charts https://dl.gitea.io/charts/
 helm repo update
 
 # Install Gitea from Helm chart
-helm install gitea gitea-charts/gitea --namespace gitea --create-namespace -f .github/actions/install-gitea/gitea-config.yaml
+helm install gitea gitea-charts/gitea --version v11.0.0 --namespace gitea --create-namespace -f .github/actions/install-gitea/gitea-config.yaml
 kubectl wait --for=condition=available deployment/gitea -n gitea --timeout=120s
 
 # Get the Gitea pod name

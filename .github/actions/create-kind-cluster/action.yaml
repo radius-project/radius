@@ -105,6 +105,7 @@ runs:
       shell: bash
       run: |
         # Create the cluster with necessary configurations for the secure local registry
+        # and to expose 30080 port for Gitea
         cat <<EOF | kind create cluster --config=-
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4

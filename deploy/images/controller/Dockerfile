@@ -1,7 +1,7 @@
 # Use Ubuntu image to enable Bicep CLI.
 # Switch to something more lightweight when we can find a 
 # base image that supports running Bicep. 
-FROM ubuntu:latest
+FROM ubuntu:24.04
 
 # Argument for target architecture
 ARG TARGETARCH
