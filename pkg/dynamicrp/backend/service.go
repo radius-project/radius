@@ -22,11 +22,11 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/dynamicrp"
+	"github.com/radius-project/radius/pkg/dynamicrp/backend/controller"
+	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-
-	"github.com/radius-project/radius/pkg/dynamicrp"
-	"github.com/radius-project/radius/pkg/recipes/engine"
 )
 
 // Service runs the backend for the dynamic-rp.
@@ -101,6 +101,6 @@ func (w *Service) registerControllers() error {
 	}
 
 	return w.Service.Controllers().RegisterDefault(func(opts ctrl.Options) (ctrl.Controller, error) {
-		return NewDynamicResourceController(opts, ucp, w.recipes, w.options.Recipes.ConfigurationLoader)
+		return controller.NewDynamicResourceController(opts, ucp, w.recipes, w.options.Recipes.ConfigurationLoader)
 	}, options)
 }

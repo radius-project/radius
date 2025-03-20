@@ -18,6 +18,7 @@ package datamodel
 
 import (
 	"encoding/json"
+	"fmt"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
@@ -133,13 +134,13 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 	// This is the best we can do. We require all of the data we store to be JSON-marshallable.
 	bs, err := json.Marshal(deploymentOutput.DeployedOutputResources)
 	if err != nil {
-		panic("failed to marshal output resources: " + err.Error())
+		return fmt.Errorf("failed to marshal output resources: %w", err)
 	}
 
 	outputResources := []map[string]any{}
 	err = json.Unmarshal(bs, &outputResources)
 	if err != nil {
-		panic("failed to unmarshal output resources: " + err.Error())
+		return fmt.Errorf("failed to unmarshal output resources: %w", err)
 	}
 
 	status["outputResources"] = outputResources

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package backend
+package processor
 
 import (
 	"context"
@@ -24,19 +24,20 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
-var _ processors.ResourceProcessor[*datamodel.DynamicResource, datamodel.DynamicResource] = (*dynamicProcessor)(nil)
+var _ processors.ResourceProcessor[*datamodel.DynamicResource, datamodel.DynamicResource] = (*DynamicProcessor)(nil)
 
-type dynamicProcessor struct {
+// DynamicProcessor is a processor for dynamic resources. It implements the processors.ResourceProcessor interface.
+type DynamicProcessor struct {
 }
 
 // Delete implements the processors.Processor interface for dynamic resources.
 // Deletion of resources is handled in recipe_delete_controller.go and inert_delete_controller.go.
-func (d *dynamicProcessor) Delete(ctx context.Context, resource *datamodel.DynamicResource, options processors.Options) error {
+func (d *DynamicProcessor) Delete(ctx context.Context, resource *datamodel.DynamicResource, options processors.Options) error {
 	return nil
 }
 
 // Process validates resource properties, and applies output values from the recipe output.
-func (d *dynamicProcessor) Process(ctx context.Context, resource *datamodel.DynamicResource, options processors.Options) error {
+func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.DynamicResource, options processors.Options) error {
 	computedValues := map[string]any{}
 	secretValues := map[string]rpv1.SecretValueReference{}
 	outputResources := []rpv1.OutputResource{}

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package backend
+package controller
 
 import (
 	"context"
@@ -76,9 +76,9 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 		return nil, fmt.Errorf("invalid resource ID: %q", request.ResourceID)
 	}
 
-	resourceType, err := c.fetchResourceType(ctx, id)
+	resourceType, err := c.fetchResourceTypeDetails(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch resource type: %w", err)
+		return nil, fmt.Errorf("failed to fetch resource type for ID %q: %w", id.String(), err)
 	}
 
 	options := ctrl.Options{
@@ -91,14 +91,12 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 		if hasCapability(resourceType, datamodel.CapabilitySupportsRecipes) {
 			return NewRecipeDeleteController(options, c.engine, c.configurationLoader)
 		}
-
 		return NewInertDeleteController(options)
 
 	case v1.OperationPut:
 		if hasCapability(resourceType, datamodel.CapabilitySupportsRecipes) {
 			return NewRecipePutController(options, c.engine, c.configurationLoader)
 		}
-
 		return NewInertPutController(options)
 
 	default:
@@ -106,13 +104,16 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 	}
 }
 
-func (c *DynamicResourceController) fetchResourceType(ctx context.Context, id resources.ID) (*v20231001preview.ResourceTypeResource, error) {
-	unqualifiedTypeName := strings.TrimPrefix(id.Type(), id.ProviderNamespace()+resources.SegmentSeparator)
+// fetchResourceTypeDetails fetches the resource type details from the UCP API for the given resource ID.
+func (c *DynamicResourceController) fetchResourceTypeDetails(ctx context.Context, id resources.ID) (*v20231001preview.ResourceTypeResource, error) {
+	providerNamespace := id.ProviderNamespace()
+	planeName := id.ScopeSegments()[0].Name
+	resourceTypeName := strings.TrimPrefix(id.Type(), providerNamespace+resources.SegmentSeparator)
 	response, err := c.ucp.NewResourceTypesClient().Get(
 		ctx,
-		id.ScopeSegments()[0].Name,
-		id.ProviderNamespace(),
-		unqualifiedTypeName,
+		planeName,
+		providerNamespace,
+		resourceTypeName,
 		nil)
 	if err != nil {
 		return nil, err
@@ -121,6 +122,9 @@ func (c *DynamicResourceController) fetchResourceType(ctx context.Context, id re
 	return &response.ResourceTypeResource, nil
 }
 
+// hasCapability determines if a resource type has a specific capability.
+// It returns true when the given input capability string exists in the resource type's
+// capabilities list, false otherwise.
 func hasCapability(resourceType *v20231001preview.ResourceTypeResource, capability string) bool {
 	for _, c := range resourceType.Properties.Capabilities {
 		if c != nil && *c == capability {

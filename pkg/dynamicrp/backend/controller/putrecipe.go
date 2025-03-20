@@ -14,28 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package backend
+package controller
 
 import (
 	"context"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/dynamicrp/backend/processor"
 	recipecontroller "github.com/radius-project/radius/pkg/portableresources/backend/controller"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 )
 
-// RecipeDeleteController is the async operation controller to perform DELETE processing on "recipe" dynamic resources.
-type RecipeDeleteController struct {
+// RecipePutController is the async operation controller to perform PUT processing on "recipe" dynamic resources.
+type RecipePutController struct {
 	ctrl.BaseController
 	opts                ctrl.Options
 	engine              engine.Engine
 	configurationLoader configloader.ConfigurationLoader
 }
 
-// NewRecipeDeleteController creates a new RecipeDeleteController.
-func NewRecipeDeleteController(opts ctrl.Options, engine engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
-	return &RecipeDeleteController{
+// NewRecipePutController creates a new RecipePutController.
+func NewRecipePutController(opts ctrl.Options, engine engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
+	return &RecipePutController{
 		BaseController:      ctrl.NewBaseAsyncController(opts),
 		opts:                opts,
 		engine:              engine,
@@ -43,12 +44,13 @@ func NewRecipeDeleteController(opts ctrl.Options, engine engine.Engine, configur
 	}, nil
 }
 
-// Run implements the async controller interface.
-func (c *RecipeDeleteController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	wrapped, err := recipecontroller.NewDeleteResource(c.opts, &dynamicProcessor{}, c.engine, c.configurationLoader)
+// Run processes PUT operations for dynamic resources deployed using recipes.
+// It creates and delegates the request to CreateOrUpdateResource controller to handle the operation.
+func (c *RecipePutController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+	putController, err := recipecontroller.NewCreateOrUpdateResource(c.opts, &processor.DynamicProcessor{}, c.engine, c.configurationLoader)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	return wrapped.Run(ctx, request)
+	return putController.Run(ctx, request)
 }

@@ -14,27 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package backend
+package controller
 
 import (
-	"context"
+	"testing"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/test/testcontext"
+	"github.com/stretchr/testify/require"
 )
 
-// InertPutController is the async operation controller to perform PUT processing on "inert" dynamic resources.
-type InertPutController struct {
-	ctrl.BaseController
-}
+func Test_InertPutController_Run(t *testing.T) {
+	setup := func() *InertPutController {
+		opts := ctrl.Options{}
+		controller, err := NewInertPutController(opts)
+		require.NoError(t, err)
+		return controller.(*InertPutController)
+	}
 
-// NewInertPutController creates a new InertPutController.
-func NewInertPutController(opts ctrl.Options) (ctrl.Controller, error) {
-	return &InertPutController{
-		BaseController: ctrl.NewBaseAsyncController(opts),
-	}, nil
-}
+	controller := setup()
 
-// Run implements the async controller interface.
-func (c *InertPutController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	return ctrl.Result{}, nil
+	request := &ctrl.Request{}
+	result, err := controller.Run(testcontext.New(t), request)
+	require.NoError(t, err)
+	require.Equal(t, ctrl.Result{}, result)
 }

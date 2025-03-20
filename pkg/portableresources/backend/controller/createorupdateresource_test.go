@@ -212,7 +212,6 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			nil,
 			fmt.Errorf("could not find recipe %q in environment %q", "test-recipe", TestEnvironmentID),
 		},
-
 		{
 			"runtime-configuration-err",
 			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {

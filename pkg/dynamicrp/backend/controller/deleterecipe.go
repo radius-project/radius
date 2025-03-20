@@ -14,28 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package backend
+package controller
 
 import (
 	"context"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/dynamicrp/backend/processor"
 	recipecontroller "github.com/radius-project/radius/pkg/portableresources/backend/controller"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 )
 
-// RecipePutController is the async operation controller to perform PUT processing on "recipe" dynamic resources.
-type RecipePutController struct {
+// RecipeDeleteController is the async operation controller to perform DELETE processing on dynamic resources deployed using recipes.
+type RecipeDeleteController struct {
 	ctrl.BaseController
 	opts                ctrl.Options
 	engine              engine.Engine
 	configurationLoader configloader.ConfigurationLoader
 }
 
-// NewRecipePutController creates a new RecipePutController.
-func NewRecipePutController(opts ctrl.Options, engine engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
-	return &RecipePutController{
+// NewRecipeDeleteController creates a new RecipeDeleteController.
+func NewRecipeDeleteController(opts ctrl.Options, engine engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
+	return &RecipeDeleteController{
 		BaseController:      ctrl.NewBaseAsyncController(opts),
 		opts:                opts,
 		engine:              engine,
@@ -43,12 +44,13 @@ func NewRecipePutController(opts ctrl.Options, engine engine.Engine, configurati
 	}, nil
 }
 
-// Run implements the async controller interface.
-func (c *RecipePutController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	wrapped, err := recipecontroller.NewCreateOrUpdateResource(c.opts, &dynamicProcessor{}, c.engine, c.configurationLoader)
+// Run processes DELETE operations for dynamic resources deployed using recipes.
+// It creates and delegates the request to DeleteResource controller to handle the deletion.
+func (c *RecipeDeleteController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+	deleteController, err := recipecontroller.NewDeleteResource(c.opts, &processor.DynamicProcessor{}, c.engine, c.configurationLoader)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	return wrapped.Run(ctx, request)
+	return deleteController.Run(ctx, request)
 }

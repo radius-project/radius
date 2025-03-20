@@ -186,7 +186,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 // updates the Recipe field with the supplied recipeStatus, and then applies the updated status back to the resource.
 func setRecipeStatus[P rpv1.RadiusResourceModel](data P, recipeStatus rpv1.RecipeStatus) {
 	rm := data.ResourceMetadata()
-	status := rm.GetResourceStatus().DeepCopy()
+	status := rm.GetResourceStatus().DeepCopyRecipeStatus()
 	status.Recipe = &recipeStatus
 	rm.SetResourceStatus(status)
 }

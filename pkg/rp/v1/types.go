@@ -103,10 +103,11 @@ type ResourceStatus struct {
 	Recipe          *RecipeStatus    `json:"recipe,omitempty"`
 }
 
-// DeepCopy creates a copy of ResourceStatus.
-// This is not a complete deep copy; it only deep-copies the RecipeStatus field.
-// Other fields are copied by value.
-func (original ResourceStatus) DeepCopy() ResourceStatus {
+// DeepCopyRecipeStatus creates a copy of ResourceStatus.
+// It only deep-copies the Recipe field (if not nil).
+// Other fields (Compute and OutputResources) will reference
+// the same underlying data as the original.
+func (original ResourceStatus) DeepCopyRecipeStatus() ResourceStatus {
 	copy := original
 
 	if original.Recipe != nil {

@@ -43,7 +43,7 @@ func PrepareRadiusResource[P interface {
 	}
 
 	// Preserve the original resource status.
-	newProp.SetResourceStatus(oldProp.GetResourceStatus().DeepCopy())
+	newProp.SetResourceStatus(oldProp.GetResourceStatus().DeepCopyRecipeStatus())
 
 	return nil, nil
 }

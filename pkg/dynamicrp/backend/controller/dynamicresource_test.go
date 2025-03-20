@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package backend
+package controller
 
 import (
 	"context"
@@ -212,7 +212,7 @@ func Test_hasCapability(t *testing.T) {
 	}
 }
 
-func Test_DynamicResourceController_fetchResourceType(t *testing.T) {
+func Test_DynamicResourceController_fetchResourceTypeDetails(t *testing.T) {
 	setup := func() *DynamicResourceController {
 		ucp, err := testUCPClientFactory()
 		require.NoError(t, err)
@@ -251,7 +251,7 @@ func Test_DynamicResourceController_fetchResourceType(t *testing.T) {
 			id, err := resources.ParseResource(tt.resourceID)
 			require.NoError(t, err)
 
-			resourceType, err := controller.fetchResourceType(context.Background(), id)
+			resourceType, err := controller.fetchResourceTypeDetails(context.Background(), id)
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMessage)
