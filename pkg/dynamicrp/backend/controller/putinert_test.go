@@ -14,20 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package portableresources
+package controller
 
 import (
 	"testing"
 
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidPortableResourceType(t *testing.T) {
-	isValid := IsValidPortableResourceType("Applications.Datastores/mongoDatabases")
-	require.Equal(t, true, isValid)
-}
+func Test_InertPutController_Run(t *testing.T) {
+	setup := func() *InertPutController {
+		opts := ctrl.Options{}
+		controller, err := NewInertPutController(opts)
+		require.NoError(t, err)
+		return controller.(*InertPutController)
+	}
 
-func TestInvalidPortableResourceType(t *testing.T) {
-	isValid := IsValidPortableResourceType("Applications.Dapr/pubSubBroker")
-	require.Equal(t, false, isValid)
+	controller := setup()
+
+	request := &ctrl.Request{}
+	result, err := controller.Run(testcontext.New(t), request)
+	require.NoError(t, err)
+	require.Equal(t, ctrl.Result{}, result)
 }

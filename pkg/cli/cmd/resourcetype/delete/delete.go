@@ -42,7 +42,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "delete [resource type]",
-		Short: "Delete resource protypevider",
+		Short: "Delete resource type",
 		Long: `Delete resource type
 		
 Resource types are the entities that implement resource types such as 'Applications.Core/containers'. Each resource type can define multiple API versions, and each API version defines a schema that resource instances conform to. Resource providers can be created and deleted by users.

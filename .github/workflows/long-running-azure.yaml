@@ -60,8 +60,7 @@ on:
     - cron: "0 */2 * * *"
 
 env:
-  # Go version
-  GOVER: "1.22.2"
+
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
@@ -190,11 +189,12 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GOVER }}
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
       - name: Log the summary of build info for new version.
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
@@ -345,10 +345,11 @@ jobs:
           ref: refs/heads/edge
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: samples
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GOVER }}
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
       - name: Download rad CLI
         if: env.SKIP_BUILD != 'true'
@@ -628,6 +629,6 @@ jobs:
             github.rest.issues.create({
               ...context.repo,
               title: `Scheduled long running test failed - Run ID: ${context.runId}`,
-              labels: ['bug', 'test-failure'],
+              labels: ['test-failure'],
               body: `## Bug information \n\nThis issue is automatically generated if the scheduled long running test fails. The Radius long running test operates on a schedule of every 2 hours everyday. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })
