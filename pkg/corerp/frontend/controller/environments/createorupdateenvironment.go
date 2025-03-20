@@ -27,6 +27,11 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	corev1 "k8s.io/api/core/v1"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
@@ -51,6 +56,7 @@ func NewCreateOrUpdateEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 // Run checks if a resource with the same namespace already exists, and if not, updates the resource with the new values.
 // If a resource with the same namespace already exists, a conflict response is returned.
 func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)
 	if err != nil {
@@ -87,6 +93,16 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		if old == nil || env.ID != old.ID {
 			return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", env.ID, namespace)), nil
 		}
+	}
+
+	// Create environment namespace if it doesn't exist.
+	err = e.Options().KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
+	if apierrors.IsAlreadyExists(err) {
+		logger.Info("Using existing namespace", "namespace", namespace)
+	} else if err != nil {
+		return nil, err
+	} else {
+		logger.Info("Created the namespace", "namespace", namespace)
 	}
 
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
