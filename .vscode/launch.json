@@ -70,7 +70,9 @@
         "ASPNETCORE_URLS": "http://localhost:5017",
         "ASPNETCORE_ENVIRONMENT": "Development",
         "KUBERNETESBICEPEXTENSIBILITYURL": "http://localhost:5017/api",
-        "RADIUSBACKENDURI": "http://localhost:9000"
+        "RADIUSBACKENDURI": "http://localhost:9000",
+        "KUBECONFIG": "${env:HOME}/.kube/config",
+        "RAD_LOCAL_DEVELOPMENT": "true"
       }
     },
     {
