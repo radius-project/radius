@@ -334,6 +334,9 @@ func listResourcesWithSameOwner(ctx context.Context, c client.Client, namespace 
 		return nil, err
 	}
 
+	// TODO (willsmith): Problem: What we really want to do is filter the resources that
+	// actually contain the application or environment resource.
+
 	// Filter resources based on OwnerReference
 	var filteredResources []radappiov1alpha3.DeploymentResource
 	for _, dr := range deploymentResourceList.Items {

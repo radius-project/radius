@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/bicep"
@@ -115,11 +116,25 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}(tmpDir)
 
-	// Fetch the artifact from the Source Controller
+	// Fetch the artifact from the Source Controller with retry logic
 	logger.Info("Fetching artifact", "url", artifact.URL)
-	if err := r.ArchiveFetcher.Fetch(artifact.URL, artifact.Digest, tmpDir); err != nil {
-		logger.Error(err, "unable to fetch artifact")
-		return ctrl.Result{}, err
+	var fetchErr error
+	timeout := 15 * time.Second
+	retryInterval := 1 * time.Second
+	startTime := time.Now()
+	for {
+		fetchErr = r.ArchiveFetcher.Fetch(artifact.URL, artifact.Digest, tmpDir)
+		if fetchErr == nil {
+			break
+		}
+
+		if time.Since(startTime) >= timeout {
+			logger.Error(fetchErr, "unable to fetch artifact after retries")
+			return ctrl.Result{}, fetchErr
+		}
+
+		logger.Info("Retrying artifact fetch", "error", fetchErr.Error())
+		time.Sleep(retryInterval)
 	}
 
 	logger.Info("Fetched artifact", "url", artifact.URL)
@@ -210,24 +225,24 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		// specified in the git repository.
 		logger.Info("Creating or updating DeploymentTemplate", "name", bicepFile.Name)
 		parameters := convertFromARMJSONParameters(armJSONParameters)
-		r.createOrUpdateDeploymentTemplate(ctx, bicepFile.Name, namespace, template, string(marshalledProviderConfig), parameters)
+		r.createOrUpdateDeploymentTemplate(ctx, bicepFile.Name, namespace, template, string(marshalledProviderConfig), parameters, repository.Name)
 	}
 
 	// List all DeploymentTemplates on the cluster that are from the same git repository
 	deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
-	err = r.Client.List(ctx, deploymentTemplates, client.MatchingFields{deploymentTemplateRepositoryField: repository.Name})
+	err = r.Client.List(ctx, deploymentTemplates, client.MatchingFields{deploymentTemplateRepositoryField: repository.Name}, client.InNamespace(""))
 	if err != nil {
 		logger.Error(err, "unable to list deployment templates")
 		return ctrl.Result{}, err
 	}
 
+	logger.Info("Found DeploymentTemplates", "count", len(deploymentTemplates.Items))
+
 	// For all of the DeploymentTemplates on the cluster, check if the bicep file
-	// that it was created from is still present in the git repository. If not, delete the
-	// DeploymentTemplate from the cluster.
+	// that it was created from is still present in config. If not, delete the DeploymentTemplate.
 	for _, deploymentTemplate := range deploymentTemplates.Items {
-		if _, err := r.FileSystem.Stat(path.Join(tmpDir, deploymentTemplate.Name)); os.IsNotExist(err) {
-			// File does not exist in the git repository,
-			// delete the DeploymentTemplate from the cluster
+		if !isSpecifiedInConfig(deploymentTemplate.Name, radiusConfig.Config) {
+			// The DeploymentTemplate is not specified in the config, so we should delete it
 			logger.Info("Deleting DeploymentTemplate", "name", deploymentTemplate.Name)
 			if err := r.Client.Delete(ctx, &deploymentTemplate); err != nil {
 				logger.Error(err, "unable to delete deployment template")
@@ -235,9 +250,6 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 
 			logger.Info("Deleted DeploymentTemplate", "name", deploymentTemplate.Name)
-		} else if err != nil {
-			logger.Error(err, "failed to check if file exists")
-			return ctrl.Result{}, err
 		}
 	}
 
@@ -310,7 +322,7 @@ func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, file
 	return parameters, nil
 }
 
-func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string) {
+func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string, repository string) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	deploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
@@ -332,6 +344,7 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 				Template:       template,
 				Parameters:     parameters,
 				ProviderConfig: providerConfig,
+				Repository:     repository,
 			},
 		}
 		if err := r.Client.Create(ctx, deploymentTemplate); err != nil {
@@ -409,4 +422,14 @@ func (r *FluxController) parseAndValidateRadiusGitOpsConfigFromFile(dir, configF
 		}
 	}
 	return &radiusConfig, nil
+}
+
+func isSpecifiedInConfig(fileName string, config []BicepConfig) bool {
+	for _, bicepFile := range config {
+		if bicepFile.Name == fileName {
+			return true
+		}
+	}
+
+	return false
 }

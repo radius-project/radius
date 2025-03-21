@@ -18,7 +18,6 @@ package bicep
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -77,22 +76,6 @@ func runBicepRaw(args ...string) ([]byte, error) {
 	}
 
 	return bytes, nil
-}
-
-// runBicepJSON runs rad-bicep with the given args and returns the JSON output as a map.
-func runBicepJSON(args ...string) (map[string]any, error) {
-	bytes, err := runBicepRaw(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	template := map[string]any{}
-	err = json.Unmarshal(bytes, &template)
-	if err != nil {
-		return nil, err
-	}
-
-	return template, err
 }
 
 // Version() attempts to retrieve the version of Bicep by running the command "--version" and returns the version as a

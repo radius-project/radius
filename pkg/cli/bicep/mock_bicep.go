@@ -39,14 +39,14 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // Build mocks base method.
-func (m *MockInterface) Build(arg0 ...string) (map[string]any, error) {
+func (m *MockInterface) Build(arg0 ...string) ([]byte, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Build", varargs...)
-	ret0, _ := ret[0].(map[string]any)
+	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -64,32 +64,32 @@ type MockInterfaceBuildCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInterfaceBuildCall) Return(arg0 map[string]any, arg1 error) *MockInterfaceBuildCall {
+func (c *MockInterfaceBuildCall) Return(arg0 []byte, arg1 error) *MockInterfaceBuildCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInterfaceBuildCall) Do(f func(...string) (map[string]any, error)) *MockInterfaceBuildCall {
+func (c *MockInterfaceBuildCall) Do(f func(...string) ([]byte, error)) *MockInterfaceBuildCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceBuildCall) DoAndReturn(f func(...string) (map[string]any, error)) *MockInterfaceBuildCall {
+func (c *MockInterfaceBuildCall) DoAndReturn(f func(...string) ([]byte, error)) *MockInterfaceBuildCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // BuildParams mocks base method.
-func (m *MockInterface) BuildParams(arg0 ...string) (map[string]any, error) {
+func (m *MockInterface) BuildParams(arg0 ...string) ([]byte, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{}
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "BuildParams", varargs...)
-	ret0, _ := ret[0].(map[string]any)
+	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -107,19 +107,19 @@ type MockInterfaceBuildParamsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInterfaceBuildParamsCall) Return(arg0 map[string]any, arg1 error) *MockInterfaceBuildParamsCall {
+func (c *MockInterfaceBuildParamsCall) Return(arg0 []byte, arg1 error) *MockInterfaceBuildParamsCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInterfaceBuildParamsCall) Do(f func(...string) (map[string]any, error)) *MockInterfaceBuildParamsCall {
+func (c *MockInterfaceBuildParamsCall) Do(f func(...string) ([]byte, error)) *MockInterfaceBuildParamsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceBuildParamsCall) DoAndReturn(f func(...string) (map[string]any, error)) *MockInterfaceBuildParamsCall {
+func (c *MockInterfaceBuildParamsCall) DoAndReturn(f func(...string) ([]byte, error)) *MockInterfaceBuildParamsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

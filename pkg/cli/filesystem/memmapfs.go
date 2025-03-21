@@ -40,6 +40,7 @@ func (m *MemMapFileSystem) Create(name string) (fs.File, error) {
 		Data: []byte{},
 		Mode: fs.ModePerm,
 	}
+
 	m.InternalFileSystem[name] = file
 	return &file, nil
 }
@@ -49,6 +50,7 @@ func (m *MemMapFileSystem) Open(name string) (fs.File, error) {
 	if !exists {
 		return nil, fmt.Errorf("file %s does not exist", name)
 	}
+
 	return &file, nil
 }
 
@@ -57,6 +59,7 @@ func (m *MemMapFileSystem) Remove(name string) error {
 	if !exists {
 		return fmt.Errorf("file %s does not exist", name)
 	}
+
 	delete(m.InternalFileSystem, name)
 	return nil
 }
@@ -66,6 +69,7 @@ func (m *MemMapFileSystem) WriteFile(name string, data []byte, perm fs.FileMode)
 		Data: data,
 		Mode: perm,
 	}
+
 	return nil
 }
 
@@ -74,6 +78,7 @@ func (m *MemMapFileSystem) ReadFile(name string) ([]byte, error) {
 	if !exists {
 		return nil, fmt.Errorf("file %s does not exist", name)
 	}
+
 	return file.Data, nil
 }
 
@@ -82,6 +87,7 @@ func (m *MemMapFileSystem) Stat(name string) (fs.FileInfo, error) {
 	if !exists {
 		return nil, fmt.Errorf("file %s does not exist", name)
 	}
+
 	return &MemFileInfo{name: name, size: int64(len(file.Data)), mode: file.Mode}, nil
 }
 
@@ -95,10 +101,12 @@ func (m *MemMapFileSystem) MkdirTemp(dir string, pattern string) (string, error)
 	if _, exists := m.InternalFileSystem[tempDir]; exists {
 		return "", fmt.Errorf("directory %s already exists", tempDir)
 	}
+
 	m.InternalFileSystem[tempDir] = MemFile{
 		Data: nil,
 		Mode: fs.ModeDir | fs.ModePerm,
 	}
+
 	return tempDir, nil
 }
 
@@ -117,6 +125,7 @@ func (m *MemMapFileSystem) RemoveAll(path string) error {
 	if _, exists := m.InternalFileSystem[path]; !exists {
 		return fmt.Errorf("directory %s does not exist", path)
 	}
+
 	delete(m.InternalFileSystem, path)
 	return nil
 }

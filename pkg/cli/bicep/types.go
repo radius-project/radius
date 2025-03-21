@@ -17,6 +17,7 @@ limitations under the License.
 package bicep
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"regexp"
@@ -30,8 +31,8 @@ import (
 // Interface is the interface for interacting with Bicep.
 type Interface interface {
 	PrepareTemplate(filePath string) (map[string]any, error)
-	Build(args ...string) (map[string]any, error)
-	BuildParams(args ...string) (map[string]any, error)
+	Build(args ...string) ([]byte, error)
+	BuildParams(args ...string) ([]byte, error)
 	Version() string
 }
 
@@ -74,7 +75,14 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	}
 
 	step := i.Output.BeginStep("Building %s...", filePath)
-	template, err := i.Build("--stdout", filePath)
+	bytes, err := i.Build("--stdout", filePath)
+	if err != nil {
+		i.Output.CompleteStep(step)
+		return nil, fmt.Errorf("failed to build template: %w", err)
+	}
+
+	template := map[string]any{}
+	err = json.Unmarshal(bytes, &template)
 	if err != nil {
 		return nil, err
 	}
@@ -84,21 +92,21 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 }
 
 // Build runs `rad-bicep build` with the given arguments.
-func (i *Impl) Build(args ...string) (map[string]any, error) {
+func (i *Impl) Build(args ...string) ([]byte, error) {
 	buildArgs := make([]string, len(args)+1)
 	buildArgs[0] = "build"
 	copy(buildArgs[1:], args)
 
-	return runBicepJSON(buildArgs...)
+	return runBicepRaw(buildArgs...)
 }
 
 // BuildParams runs `rad-bicep build-params` with the given arguments.
-func (i *Impl) BuildParams(args ...string) (map[string]any, error) {
+func (i *Impl) BuildParams(args ...string) ([]byte, error) {
 	buildParamsArgs := make([]string, len(args)+1)
 	buildParamsArgs[0] = "build-params"
 	copy(buildParamsArgs[1:], args)
 
-	return runBicepJSON(buildParamsArgs...)
+	return runBicepRaw(buildParamsArgs...)
 }
 
 // Version returns the version of Bicep installed on the local machine,

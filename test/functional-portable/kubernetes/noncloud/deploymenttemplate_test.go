@@ -26,6 +26,7 @@ import (
 	"time"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
@@ -309,6 +310,47 @@ func waitForDeploymentTemplateReady(t *testing.T, ctx context.Context, name type
 	}
 }
 
+// waitForDeploymentTemplateReady watches the creation of the DeploymentTemplate object
+// and waits for it to be in the "Updating" state.
+func waitForDeploymentTemplateUpdating(t *testing.T, ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch, initialVersion string) (*radappiov1alpha3.DeploymentTemplate, error) {
+	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
+	lister := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
+			deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
+			err := client.List(ctx, deploymentTemplates, listOptions)
+			if err != nil {
+				return nil, err
+			}
+
+			return deploymentTemplates, nil
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
+			deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
+			return client.Watch(ctx, deploymentTemplates, listOptions)
+		},
+	}
+	watcher, err := watchtools.NewRetryWatcher(initialVersion, lister)
+	require.NoError(t, err)
+	defer watcher.Stop()
+
+	for {
+		event := <-watcher.ResultChan()
+		r, ok := event.Object.(*radappiov1alpha3.DeploymentTemplate)
+		if !ok {
+			// Not a deploymentTemplate, likely an event.
+			t.Logf("Received event: %+v", event)
+			continue
+		}
+
+		t.Logf("Received deploymentTemplate. Status: %+v", r.Status)
+		if r.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseUpdating {
+			return r, nil
+		}
+	}
+}
+
 // createParametersMap creates a map of parameters from a list of parameters
 // in the form of key=value.
 func createParametersMap(parameters []string) map[string]string {
@@ -335,5 +377,23 @@ func assertExpectedResourcesExist(t *testing.T, ctx context.Context, scope strin
 
 		_, err = client.Get(ctx, resourceName, nil)
 		require.NoError(t, err)
+	}
+}
+
+// assertExpectedResourcesToNotExist asserts that the expected resources do not exist
+// in Radius for the given scope. This is useful for testing cleanup after deletion.
+func assertExpectedResourcesToNotExist(t *testing.T, ctx context.Context, scope string, expectedResources [][]string, connection sdk.Connection) {
+	for _, resource := range expectedResources {
+		resourceType := resource[0]
+		resourceName := resource[1]
+
+		client, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
+		require.NoError(t, err)
+
+		_, err = client.Get(ctx, resourceName, nil)
+		require.Error(t, err, "Expected resource %s/%s to be not found, but was found", resourceType, resourceName)
+
+		clients.Is404Error(err)
+		require.True(t, clients.Is404Error(err), "Expected resource %s/%s to be not found, but instead got error: %v", resourceType, resourceName, err)
 	}
 }

@@ -15,7 +15,7 @@ resource fluxComplexEnv 'Applications.Core/environments@2023-10-01-preview' = {
 }
 
 resource fluxComplexApp 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'flux-complex-app-2'
+  name: 'flux-complex-app'
   properties: {
     environment: fluxComplexEnv.id
   }

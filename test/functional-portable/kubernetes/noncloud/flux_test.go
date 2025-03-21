@@ -19,9 +19,9 @@ package kubernetes_test
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -62,8 +62,16 @@ func Test_Flux_Basic(t *testing.T) {
 	testName := "flux-basic"
 	steps := []GitOpsTestStep{
 		{
-			path: "testdata/gitops/basic",
+			path:          "testdata/gitops/basic/step1",
+			resourceGroup: "flux-basic",
 			expectedResources: [][]string{
+				{"Applications.Core/environments", "flux-basic-env"},
+			},
+		},
+		{
+			path:          "testdata/gitops/basic/step2",
+			resourceGroup: "flux-basic",
+			expectedResourcesToNotExist: [][]string{
 				{"Applications.Core/environments", "flux-basic-env"},
 			},
 		},
@@ -76,7 +84,8 @@ func Test_Flux_Complex(t *testing.T) {
 	testName := "flux-complex"
 	steps := []GitOpsTestStep{
 		{
-			path: "testdata/gitops/complex/step1",
+			path:          "testdata/gitops/complex/step1",
+			resourceGroup: "flux-complex",
 			expectedResources: [][]string{
 				{"Applications.Core/environments", "flux-complex-env"},
 				{"Applications.Core/applications", "flux-complex-app"},
@@ -84,7 +93,8 @@ func Test_Flux_Complex(t *testing.T) {
 			},
 		},
 		{
-			path: "testdata/gitops/complex/step2",
+			path:          "testdata/gitops/complex/step2",
+			resourceGroup: "flux-complex",
 			expectedResources: [][]string{
 				{"Applications.Core/environments", "flux-complex-env"},
 				{"Applications.Core/applications", "flux-complex-app"},
@@ -92,18 +102,20 @@ func Test_Flux_Complex(t *testing.T) {
 			},
 		},
 		{
-			path: "testdata/gitops/complex/step3",
+			path:          "testdata/gitops/complex/step3",
+			resourceGroup: "flux-complex",
 			expectedResources: [][]string{
 				{"Applications.Core/environments", "flux-complex-env"},
-				{"Applications.Core/applications", "flux-complex-app-2"},
+				{"Applications.Core/applications", "flux-complex-app"},
 				{"Applications.Core/containers", "flux-complex-container-2"},
 			},
 		},
 		{
-			path: "testdata/gitops/complex/step3",
+			path:          "testdata/gitops/complex/step4",
+			resourceGroup: "flux-complex",
 			expectedResources: [][]string{
 				{"Applications.Core/environments", "flux-complex-env"},
-				{"Applications.Core/applications", "flux-complex-app-2"},
+				{"Applications.Core/applications", "flux-complex-app"},
 			},
 		},
 	}
@@ -116,47 +128,119 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 
+	gitRepoName := fmt.Sprintf("%s-repo", testName)
+	gitServerURL := os.Getenv(testGitServerURLEnvVariableName)
+	gitUsername := os.Getenv(testGitUsernameEnvVariableName)
+	gitEmail := os.Getenv(testGitEmailEnvVariableName)
+	giteaToken := os.Getenv(testGiteaAccessTokenEnvVariableName)
+
+	// Create the Gitea client.
+	client, err := gitea.NewClient(gitServerURL, gitea.SetToken(giteaToken))
+	require.NoError(t, err)
+
+	// Create a new Git repository, and delete it after the test.
+	_, _, err = client.CreateRepo(gitea.CreateRepoOption{
+		Name: gitRepoName,
+	})
+	defer func() {
+		_, err := client.DeleteRepo(gitUsername, gitRepoName)
+		require.NoError(t, err)
+	}()
+	require.NoError(t, err)
+
+	// Get the repository to ensure it exists.
+	_, _, err = client.GetRepo(gitUsername, gitRepoName)
+	require.NoError(t, err)
+
+	// Create a temp directory for the Git repository.
+	dir, err := os.MkdirTemp("", gitRepoName)
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	// Initialize a new Git repository in the temp directory.
+	r, err := git.PlainInit(dir, false)
+	require.NoError(t, err)
+
+	// Get the worktree of the repository.
+	w, err := r.Worktree()
+	require.NoError(t, err)
+
+	// Create the remote for the repository.
+	repoURL := fmt.Sprintf("%s/%s/%s.git", gitServerURL, gitUsername, gitRepoName)
+	_, err = r.CreateRemote(&config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{repoURL},
+	})
+	require.NoError(t, err)
+
+	// Create an initial commit to the repository.
+	commit, err := w.Commit("Initial commit", &git.CommitOptions{
+		AllowEmptyCommits: true,
+		Author: &gitobject.Signature{
+			Name:  gitUsername,
+			Email: gitEmail,
+			When:  time.Now(),
+		},
+	})
+	require.NoError(t, err)
+	t.Log(t, "Commit created:", commit)
+
+	// Push the initial commit back to the repository.
+	err = r.Push(&git.PushOptions{
+		RemoteName: "origin",
+		Auth: &githttp.BasicAuth{
+			Username: gitUsername,
+			Password: giteaToken,
+		},
+	})
+	require.NoError(t, err)
+	t.Log(t, "Pushed changes successfully")
+
+	// Create the secret for the Flux GitRepository.
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      gitRepoName,
+			Namespace: fluxSystemNamespace,
+		},
+		Data: map[string][]byte{
+			"bearerToken": []byte(giteaToken),
+		},
+	}
+	err = opts.Client.Create(ctx, secret)
+	defer func() {
+		err := opts.Client.Delete(ctx, secret)
+		require.NoError(t, err)
+	}()
+	require.NoError(t, err)
+
+	// Create the Flux GitRepository object.
+	fluxGitRepository := &sourcev1.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      gitRepoName,
+			Namespace: fluxSystemNamespace,
+		},
+		Spec: sourcev1.GitRepositorySpec{
+			URL: fmt.Sprintf("http://gitea-http.gitea.svc.cluster.local:3000/%s/%s.git", gitUsername, gitRepoName),
+			SecretRef: &meta.LocalObjectReference{
+				Name: gitRepoName,
+			},
+		},
+	}
+	err = opts.Client.Create(ctx, fluxGitRepository)
+	defer func() {
+		err := opts.Client.Delete(ctx, fluxGitRepository)
+		require.NoError(t, err)
+	}()
+	require.NoError(t, err)
+
+	// Wait for the GitRepository to be ready.
+	_, err = waitForGitRepositoryReady(t, ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, opts.Client, fluxGitRepository.ResourceVersion)
+	require.NoError(t, err)
+
 	for stepIndex, step := range steps {
 		stepNumber := stepIndex + 1
-		gitRepoName := fmt.Sprintf("%s-repo", testName)
-		gitServerURL := os.Getenv(testGitServerURLEnvVariableName)
-		gitUsername := os.Getenv(testGitUsernameEnvVariableName)
-		gitEmail := os.Getenv(testGitEmailEnvVariableName)
-		giteaToken := os.Getenv(testGiteaAccessTokenEnvVariableName)
 
-		// Create the Gitea client.
-		client, err := gitea.NewClient(gitServerURL, gitea.SetToken(giteaToken))
-		require.NoError(t, err)
-
-		// If this is the first step, create the repository.
-		if stepNumber == 1 {
-			_, _, err = client.CreateRepo(gitea.CreateRepoOption{
-				Name: gitRepoName,
-			})
-			require.NoError(t, err)
-
-			defer func() {
-				_, err := client.DeleteRepo(gitUsername, gitRepoName)
-				require.NoError(t, err)
-			}()
-		}
-
-		_, _, err = client.GetRepo(gitUsername, gitRepoName)
-		require.NoError(t, err)
-
-		// Create a temporary directory to clone the repository.
-		dir, err := os.MkdirTemp("", gitRepoName)
-		require.NoError(t, err)
-		defer os.RemoveAll(dir)
-
-		// Clone the repository.
-		r, err := git.PlainInit(dir, false)
-		require.NoError(t, err)
-
-		// Get the worktree for staging and committing changes.
-		w, err := r.Worktree()
-		require.NoError(t, err)
-
+		// Remove all files from the repository.
 		// Add all files from step.path to the repository.
 		err = addFilesToRepository(w, step.path, dir)
 		require.NoError(t, err)
@@ -172,15 +256,6 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 		require.NoError(t, err)
 		t.Log(t, "Commit created:", commit)
 
-		repoURL := fmt.Sprintf("%s/%s/%s.git", gitServerURL, gitUsername, gitRepoName)
-		_, err = r.CreateRemote(&config.RemoteConfig{
-			Name: "origin",
-			URLs: []string{repoURL},
-		})
-		if err != nil {
-			log.Fatalf("Failed to create remote: %v", err)
-		}
-
 		// Push the commit back to the repository.
 		err = r.Push(&git.PushOptions{
 			RemoteName: "origin",
@@ -192,42 +267,23 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 		require.NoError(t, err)
 		t.Log(t, "Pushed changes successfully")
 
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      gitRepoName,
-				Namespace: fluxSystemNamespace,
-			},
-			Data: map[string][]byte{
-				"bearerToken": []byte(giteaToken),
-			},
-		}
-		err = opts.Client.Create(ctx, secret)
+		// Reconcile the GitRepository
+		err = opts.Client.Get(ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, fluxGitRepository)
 		require.NoError(t, err)
-		defer func() {
-			err := opts.Client.Delete(ctx, secret)
-			require.NoError(t, err)
-		}()
 
-		fluxGitRepository := &sourcev1.GitRepository{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      gitRepoName,
-				Namespace: fluxSystemNamespace,
-			},
-			Spec: sourcev1.GitRepositorySpec{
-				URL: fmt.Sprintf("http://gitea-http.gitea.svc.cluster.local:3000/%s/%s.git", gitUsername, gitRepoName),
-				SecretRef: &meta.LocalObjectReference{
-					Name: gitRepoName,
-				},
-			},
+		// Update annotations
+		annotations := fluxGitRepository.GetAnnotations()
+		if annotations == nil {
+			annotations = make(map[string]string)
 		}
 
-		err = opts.Client.Create(ctx, fluxGitRepository)
-		require.NoError(t, err)
-		defer func() {
-			err := opts.Client.Delete(ctx, fluxGitRepository)
-			require.NoError(t, err)
-		}()
+		annotations["reconcile.fluxcd.io/requestedAt"] = strconv.FormatInt(time.Now().Unix(), 10)
+		fluxGitRepository.SetAnnotations(annotations)
 
+		err = opts.Client.Update(ctx, fluxGitRepository)
+		require.NoError(t, err)
+
+		// Wait for the GitRepository to be ready.
 		_, err = waitForGitRepositoryReady(t, ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, opts.Client, fluxGitRepository.ResourceVersion)
 		require.NoError(t, err)
 
@@ -235,23 +291,61 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 		require.NoError(t, err)
 
 		for _, configEntry := range radiusConfig.Config {
-			name, namespace, resourceGroup, _ := getValuesFromRadiusGitOpsConfig(configEntry)
-			scope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", resourceGroup)
+			name, namespace, _, _ := getValuesFromRadiusGitOpsConfig(configEntry)
 
-			deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{}
+			deploymentTemplate, err := waitForDeploymentTemplateToExist(ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client)
+			defer func() {
+				err := opts.Client.Delete(ctx, deploymentTemplate)
+				if controller_runtime.IgnoreNotFound(err) != nil {
+					t.Logf("Error deleting deployment template: %v", err)
+				}
+			}()
+			require.NoError(t, err)
+
+			// Problem: this part takes like 30 seconds
+			// time.Sleep(10 * time.Second)
+
+			_, err = waitForDeploymentTemplateUpdating(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
+			require.NoError(t, err)
+
+			// Get the DeploymentTemplate object.
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
 			require.NoError(t, err)
 
-			if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
-				t.Logf("DeploymentTemplate %s is already ready", name)
-			} else {
-				_, err = waitForDeploymentTemplateReady(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
-				require.NoError(t, err)
-			}
+			require.False(t, deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady, "DeploymentTemplate %s is already ready", name)
 
-			assertExpectedResourcesExist(t, ctx, scope, step.expectedResources, opts.Connection)
+			_, err = waitForDeploymentTemplateReady(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
+			require.NoError(t, err)
+		}
+
+		time.Sleep(5 * time.Second)
+		scope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", step.resourceGroup)
+		assertExpectedResourcesExist(t, ctx, scope, step.expectedResources, opts.Connection)
+
+		if len(step.expectedResourcesToNotExist) > 0 {
+			time.Sleep(5 * time.Second)
+			assertExpectedResourcesToNotExist(t, ctx, scope, step.expectedResourcesToNotExist, opts.Connection)
 		}
 	}
+}
+
+// waitForDeploymentTemplateToExist watches the creation of the DeploymentTemplate object
+// and waits for it to exist.
+// It returns the DeploymentTemplate object if it exists, or an error if it doesn't.
+func waitForDeploymentTemplateToExist(ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch) (*radappiov1alpha3.DeploymentTemplate, error) {
+	var deploymentTemplate *radappiov1alpha3.DeploymentTemplate
+	var err error
+
+	for range 60 {
+		deploymentTemplate = &radappiov1alpha3.DeploymentTemplate{}
+		err = client.Get(ctx, name, deploymentTemplate)
+		if err == nil {
+			return deploymentTemplate, nil
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	return nil, fmt.Errorf("deploymentTemplate %s not found after 60 seconds", name.Name)
 }
 
 // waitForGitRepositoryReady watches the creation of the GitRepository object

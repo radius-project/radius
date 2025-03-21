@@ -430,3 +430,50 @@ func waitForDeploymentTemplateToExistWithGeneration(ctx context.Context, k8sClie
 
 	return nil
 }
+
+func Test_isSpecifiedInConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		fileName string
+		config   []BicepConfig
+		expected bool
+	}{
+		{
+			name:     "File exists in config",
+			fileName: "example.bicep",
+			config: []BicepConfig{
+				{Name: "example.bicep"},
+				{Name: "another.bicep"},
+			},
+			expected: true,
+		},
+		{
+			name:     "File does not exist in config",
+			fileName: "missing.bicep",
+			config: []BicepConfig{
+				{Name: "example.bicep"},
+				{Name: "another.bicep"},
+			},
+			expected: false,
+		},
+		{
+			name:     "Empty config",
+			fileName: "example.bicep",
+			config:   []BicepConfig{},
+			expected: false,
+		},
+		{
+			name:     "Nil config",
+			fileName: "example.bicep",
+			config:   nil,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isSpecifiedInConfig(tt.fileName, tt.config)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

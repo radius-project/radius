@@ -33,14 +33,14 @@ func PullCRDs(pwd string) {
 	for directory, content := range crds {
 		if _, err := os.Stat(filepath.Join(pwd, directory)); os.IsNotExist(err) {
 			fmt.Printf("Directory %s does not exist. Please create it first.\n", directory)
-			os.Exit(1)
+			os.Exit(1) //nolint:forbidigo // this is OK inside of this tool, this is meant to be run from the command line
 		}
 
 		for fileName, url := range content {
 			destFilePath := filepath.Join(pwd, directory, fileName)
 			if err := downloadFile(url, destFilePath); err != nil {
 				fmt.Printf("Error downloading %s: %v\n", fileName, err)
-				os.Exit(1)
+				os.Exit(1) //nolint:forbidigo // this is OK inside of this tool, this is meant to be run from the command line
 			}
 			fmt.Printf("Downloaded %s -> %s\n", url, destFilePath)
 		}
