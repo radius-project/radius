@@ -17,3 +17,6 @@ typespec/package*.json @radius-project/on-call @radius-project/maintainers-radiu
 .devcontainer/devcontainer.json @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 # Radius bicep types generator files
 hack/bicep-types-radius/src/generator/package*.json @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Dockerfile
+test/*/Dockerfile          @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+deploy/images/*/Dockerfile @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
