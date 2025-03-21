@@ -302,9 +302,6 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			}()
 			require.NoError(t, err)
 
-			// Problem: this part takes like 30 seconds
-			// time.Sleep(10 * time.Second)
-
 			_, err = waitForDeploymentTemplateUpdating(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
 			require.NoError(t, err)
 
