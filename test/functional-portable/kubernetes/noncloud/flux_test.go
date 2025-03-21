@@ -118,6 +118,16 @@ func Test_Flux_Complex(t *testing.T) {
 				{"Applications.Core/applications", "flux-complex-app"},
 			},
 		},
+		{
+			path:          "testdata/gitops/complex/step5",
+			resourceGroup: "flux-complex",
+			expectedResourcesToNotExist: [][]string{
+				{"Applications.Core/environments", "flux-complex-env"},
+				{"Applications.Core/applications", "flux-complex-app"},
+				{"Applications.Core/containers", "flux-complex-container"},
+				{"Applications.Core/containers", "flux-complex-container-2"},
+			},
+		},
 	}
 
 	testFluxIntegration(t, testName, steps)
@@ -267,24 +277,16 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 		require.NoError(t, err)
 		t.Log(t, "Pushed changes successfully")
 
-		// Reconcile the GitRepository
+		// Reconcile the GitRepository by updating the reconcile.fluxcd.io/requestedAt annotation.
 		err = opts.Client.Get(ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, fluxGitRepository)
 		require.NoError(t, err)
-
-		// Update annotations
 		annotations := fluxGitRepository.GetAnnotations()
 		if annotations == nil {
 			annotations = make(map[string]string)
 		}
-
 		annotations["reconcile.fluxcd.io/requestedAt"] = strconv.FormatInt(time.Now().Unix(), 10)
 		fluxGitRepository.SetAnnotations(annotations)
-
 		err = opts.Client.Update(ctx, fluxGitRepository)
-		require.NoError(t, err)
-
-		// Wait for the GitRepository to be ready.
-		_, err = waitForGitRepositoryReady(t, ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, opts.Client, fluxGitRepository.ResourceVersion)
 		require.NoError(t, err)
 
 		radiusConfig, err := reconciler.ParseRadiusGitOpsConfig(path.Join(step.path, "radius-gitops-config.yaml"))
@@ -302,6 +304,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			}()
 			require.NoError(t, err)
 
+			// The GitRepository updating will trigger a reconcile of the DeploymentTemplate.
 			_, err = waitForDeploymentTemplateUpdating(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
 			require.NoError(t, err)
 
@@ -315,14 +318,30 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			require.NoError(t, err)
 		}
 
-		time.Sleep(5 * time.Second)
 		scope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", step.resourceGroup)
-		assertExpectedResourcesExist(t, ctx, scope, step.expectedResources, opts.Connection)
 
-		if len(step.expectedResourcesToNotExist) > 0 {
-			time.Sleep(5 * time.Second)
-			assertExpectedResourcesToNotExist(t, ctx, scope, step.expectedResourcesToNotExist, opts.Connection)
+		retryInterval := 1 * time.Second
+		retryTimeout := 30 * time.Second
+		start := time.Now()
+
+		for time.Since(start) < retryTimeout {
+			err = assertExpectedResourcesExist(ctx, scope, step.expectedResources, opts.Connection)
+			if err == nil {
+				break
+			}
+
+			err = assertExpectedResourcesToNotExist(ctx, scope, step.expectedResources, opts.Connection)
+			if err == nil {
+				break
+			}
+
+			time.Sleep(retryInterval)
 		}
+
+		if err != nil {
+			t.Fatalf("Error asserting expected resources exist: %v", err)
+		}
+		t.Logf("Successfully asserted expected resources exist in %s", scope)
 	}
 }
 
@@ -333,16 +352,19 @@ func waitForDeploymentTemplateToExist(ctx context.Context, name types.Namespaced
 	var deploymentTemplate *radappiov1alpha3.DeploymentTemplate
 	var err error
 
-	for range 60 {
+	var timeout time.Duration = 60 * time.Second
+	var interval time.Duration = 500 * time.Millisecond
+
+	for start := time.Now(); time.Since(start) < timeout; {
 		deploymentTemplate = &radappiov1alpha3.DeploymentTemplate{}
 		err = client.Get(ctx, name, deploymentTemplate)
 		if err == nil {
 			return deploymentTemplate, nil
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(interval)
 	}
 
-	return nil, fmt.Errorf("deploymentTemplate %s not found after 60 seconds", name.Name)
+	return nil, fmt.Errorf("deploymentTemplate %s not found after %f seconds", name.Name, timeout.Seconds())
 }
 
 // waitForGitRepositoryReady watches the creation of the GitRepository object
