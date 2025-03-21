@@ -1,19 +1,19 @@
 # General maintainers and approvers for the entire repository
 * @radius-project/maintainers-radius @radius-project/approvers-radius
 
-# Ownership for dependency-related files. Allow the on-call team to approve dependency version updates (e.g., from Dependabot PRs)
+# Ownership for dependency-related files. Allow the on-call team to approve dependency version updates (e.g., from Dependabot, Snyk PRs)
 # Files in the root directory
-/go.mod @radius-project/on-call
-/go.sum @radius-project/on-call
+/go.mod @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+/go.sum @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 # Files in the `test/magpiego` directory
-test/magpiego/go.mod @radius-project/on-call
-test/magpiego/go.sum @radius-project/on-call
+test/magpiego/go.mod @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+test/magpiego/go.sum @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 # Files in the `typespec` directory
-typespec/package*.json @radius-project/on-call
+typespec/package*.json @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 # GitHub workflow files
-.github/*.yml  @radius-project/on-call
-.github/*.yaml @radius-project/on-call
+.github/*.yml  @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+.github/*.yaml @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 # Devcontainer files
-.devcontainer/devcontainer.json @radius-project/on-call
+.devcontainer/devcontainer.json @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 # Radius bicep types generator files
-hack/bicep-types-radius/src/generator/package*.json @radius-project/on-call
+hack/bicep-types-radius/src/generator/package*.json @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
