@@ -52,6 +52,7 @@ Follow the steps below to create an RC release.
 1. In your local branch, update the `versions.yaml` file to add the new release candidate as a supported version that we would like to release. The `versions.yaml` file is a declarative version tracking file that the Radius community maintains ([Example](https://github.com/radius-project/radius/pull/6077/files)).
 
    Example:
+
    ```yaml
    supported:
    - channel: '0.41'
@@ -81,11 +82,11 @@ Follow the steps below to create an RC release.
 
 1. In the `radius-project/docs` repo, run the [Upmerge docs to edge](https://github.com/radius-project/docs/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
 
-   > This workflow will generate a PR which you will need to get approval and merge before proceeding.
+   > This workflow will generate a PR which you will need to get approval and merge before proceeding. The PR will not include changes to `docs/config.toml` and `docs/layouts/partials/hooks/body-end.html`, because those files are specific to the branch.
 
 1. In the `radius-project/samples` repo, run the [Upmerge samples to edge](https://github.com/radius-project/samples/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
 
-   > This workflow will generate a PR which you will need to get approval and merge before proceeding.
+   > This workflow will generate a PR which you will need to get approval and merge before proceeding. The PR will not include changes to `bicepconfig.json` because that file is specific to the branch.
 
 1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius RC release version number being released.
 
