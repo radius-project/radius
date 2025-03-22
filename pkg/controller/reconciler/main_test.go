@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,19 +57,23 @@ func TestMain(m *testing.M) {
 	}
 
 	env := &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "deploy", "Chart", "crds", "radius")},
+		CRDDirectoryPaths: []string{
+			filepath.Join("..", "..", "..", "deploy", "Chart", "crds", "radius"),
+			filepath.Join("..", "..", "..", "test", "crd", "flux"),
+		},
 		ErrorIfCRDPathMissing: true,
 	}
 
 	initializeWebhookInEnvironment(env)
 	cfg, err := env.Start()
 	if err != nil {
-		panic("failed to start envtest" + err.Error())
+		panic("failed to start envtest: " + err.Error())
 	}
 
 	s := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(s)
 	_ = radappiov1alpha3.AddToScheme(s)
+	_ = sourcev1.AddToScheme(s)
 
 	config = cfg
 	scheme = s

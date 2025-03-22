@@ -30,6 +30,9 @@ type DeploymentTemplateSpec struct {
 
 	// ProviderConfig specifies the scopes for resources.
 	ProviderConfig string `json:"providerConfig,omitempty"`
+
+	// Repository is the git repository that the Bicep manifests are stored in.
+	Repository string `json:"repository,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of a DeploymentTemplate resource.
