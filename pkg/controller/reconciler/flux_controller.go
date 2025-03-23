@@ -184,18 +184,13 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 
-		// If the bicepparams file exists, run bicep build-params on it
+		// If the bicepparams file is specified, run bicep build-params on it
 		var armJSONParameters map[string]any
 		if paramFileName != "" {
-			if !os.IsNotExist(err) {
-				logger.Info("Running bicep build-params", "name", paramFileName)
-				armJSONParameters, err = r.runBicepBuildParams(ctx, tmpDir, paramFileName)
-				if err != nil {
-					logger.Error(err, "failed to run bicep build-params")
-					return ctrl.Result{}, err
-				}
-			} else {
-				logger.Error(err, "failed to check if parameters file exists")
+			logger.Info("Running bicep build-params", "name", paramFileName)
+			armJSONParameters, err = r.runBicepBuildParams(ctx, tmpDir, paramFileName)
+			if err != nil {
+				logger.Error(err, "failed to run bicep build-params")
 				return ctrl.Result{}, err
 			}
 		}
@@ -359,6 +354,7 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 		Template:       template,
 		Parameters:     parameters,
 		ProviderConfig: providerConfig,
+		Repository:     repository,
 	}
 
 	// If the DeploymentTemplate already exists, update it

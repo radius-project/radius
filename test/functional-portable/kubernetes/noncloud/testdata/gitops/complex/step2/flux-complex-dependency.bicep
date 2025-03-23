@@ -5,7 +5,7 @@ param containerImage string
 param replicas string
 
 resource fluxComplexCtnr 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'flux-complex-container'
+  name: 'flux-complex-container-2'
   properties: {
     application: appId
     container: {

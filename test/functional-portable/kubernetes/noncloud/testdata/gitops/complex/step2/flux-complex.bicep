@@ -22,7 +22,7 @@ resource fluxComplexApp 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 module fluxComplexDependency 'flux-complex-dependency.bicep' = {
-  name: 'flux-complex-dependency'
+  name: 'flux-complex-dependency-2'
   params: {
     appId: fluxComplexApp.id
     replicas: replicas

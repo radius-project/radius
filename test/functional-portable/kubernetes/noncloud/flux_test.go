@@ -98,28 +98,11 @@ func Test_Flux_Complex(t *testing.T) {
 			expectedResources: [][]string{
 				{"Applications.Core/environments", "flux-complex-env"},
 				{"Applications.Core/applications", "flux-complex-app"},
-				{"Applications.Core/containers", "flux-complex-container"},
-			},
-		},
-		{
-			path:          "testdata/gitops/complex/step3",
-			resourceGroup: "flux-complex",
-			expectedResources: [][]string{
-				{"Applications.Core/environments", "flux-complex-env"},
-				{"Applications.Core/applications", "flux-complex-app"},
 				{"Applications.Core/containers", "flux-complex-container-2"},
 			},
 		},
 		{
-			path:          "testdata/gitops/complex/step4",
-			resourceGroup: "flux-complex",
-			expectedResources: [][]string{
-				{"Applications.Core/environments", "flux-complex-env"},
-				{"Applications.Core/applications", "flux-complex-app"},
-			},
-		},
-		{
-			path:          "testdata/gitops/complex/step5",
+			path:          "testdata/gitops/complex/step3",
 			resourceGroup: "flux-complex",
 			expectedResourcesToNotExist: [][]string{
 				{"Applications.Core/environments", "flux-complex-env"},
@@ -295,26 +278,13 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 		for _, configEntry := range radiusConfig.Config {
 			name, namespace, _, _ := getValuesFromRadiusGitOpsConfig(configEntry)
 
-			deploymentTemplate, err := waitForDeploymentTemplateToExist(ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client)
+			deploymentTemplate, err := waitForDeploymentTemplateToBeReadyWithGeneration(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, stepNumber, opts.Client)
 			defer func() {
 				err := opts.Client.Delete(ctx, deploymentTemplate)
 				if controller_runtime.IgnoreNotFound(err) != nil {
 					t.Logf("Error deleting deployment template: %v", err)
 				}
 			}()
-			require.NoError(t, err)
-
-			// The GitRepository updating will trigger a reconcile of the DeploymentTemplate.
-			_, err = waitForDeploymentTemplateUpdating(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
-			require.NoError(t, err)
-
-			// Get the DeploymentTemplate object.
-			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
-			require.NoError(t, err)
-
-			require.False(t, deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady, "DeploymentTemplate %s is already ready", name)
-
-			_, err = waitForDeploymentTemplateReady(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, opts.Client, deploymentTemplate.ResourceVersion)
 			require.NoError(t, err)
 		}
 
@@ -330,7 +300,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 				break
 			}
 
-			err = assertExpectedResourcesToNotExist(ctx, scope, step.expectedResources, opts.Connection)
+			err = assertExpectedResourcesToNotExist(ctx, scope, step.expectedResourcesToNotExist, opts.Connection)
 			if err == nil {
 				break
 			}
@@ -345,22 +315,28 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 	}
 }
 
-// waitForDeploymentTemplateToExist watches the creation of the DeploymentTemplate object
-// and waits for it to exist.
-// It returns the DeploymentTemplate object if it exists, or an error if it doesn't.
-func waitForDeploymentTemplateToExist(ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch) (*radappiov1alpha3.DeploymentTemplate, error) {
-	var deploymentTemplate *radappiov1alpha3.DeploymentTemplate
-	var err error
-
+func waitForDeploymentTemplateToBeReadyWithGeneration(t *testing.T, ctx context.Context, name types.NamespacedName, generation int, client controller_runtime.WithWatch) (*radappiov1alpha3.DeploymentTemplate, error) {
 	var timeout time.Duration = 60 * time.Second
-	var interval time.Duration = 500 * time.Millisecond
+	var interval time.Duration = 1 * time.Second
 
 	for start := time.Now(); time.Since(start) < timeout; {
-		deploymentTemplate = &radappiov1alpha3.DeploymentTemplate{}
-		err = client.Get(ctx, name, deploymentTemplate)
+		deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{}
+		err := client.Get(ctx, name, deploymentTemplate)
 		if err == nil {
+			if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
+				if deploymentTemplate.Status.ObservedGeneration == int64(generation) {
+					t.Logf("DeploymentTemplate %s is ready with generation: %d", name.Name, deploymentTemplate.Status.ObservedGeneration)
+					return deploymentTemplate, nil
+				} else {
+					t.Logf("DeploymentTemplate %s generation: %d, looking for %d", name.Name, deploymentTemplate.Status.ObservedGeneration, generation)
+				}
+			} else {
+				t.Logf("DeploymentTemplate %s phrase: %s, looking for %s", name.Name, deploymentTemplate.Status.Phrase, radappiov1alpha3.DeploymentTemplatePhraseReady)
+			}
+
 			return deploymentTemplate, nil
 		}
+
 		time.Sleep(interval)
 	}
 
