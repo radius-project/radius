@@ -12,9 +12,9 @@ param username string = 'admin'
 @secure()
 param password string = newGuid()
 
-resource mongo 'apps/Deployment@v1' = {
+resource mongoResource 'apps/Deployment@v1' = {
   metadata: {
-    name: 'mongo-recipe-existing'
+    name: 'mongo-recipe-existing-resource'
   }
   spec: {
     selector: {
@@ -69,9 +69,9 @@ resource mongo 'apps/Deployment@v1' = {
 
 resource svc 'core/Service@v1' = {
   metadata: {
-    name: 'mongo-recipe-svc-exst'
+    name: 'mongo-svc-existing-resource'
     labels: {
-      name: 'mongo-recipe-svc-exst'
+      name: 'mongo-svc-existing-resource'
     }
   }
   spec: {
@@ -94,7 +94,7 @@ output result object = {
   // Once this gap is addressed, users won't need to do this.
   resources: [
     '/planes/kubernetes/local/namespaces/${svc.metadata.namespace}/providers/core/Service/${svc.metadata.name}'
-    '/planes/kubernetes/local/namespaces/${mongo.metadata.namespace}/providers/apps/Deployment/${mongo.metadata.name}'
+    '/planes/kubernetes/local/namespaces/${mongoResource.metadata.namespace}/providers/apps/Deployment/${mongoResource.metadata.name}'
   ]
   values: {
     host: '${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local'

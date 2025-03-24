@@ -115,9 +115,9 @@ func Test_MongoDB_Recipe(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_MongoDB_Recipe_Existing(t *testing.T) {
+func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
 	envTemplate := "testdata/datastoresrp-resources-mongodb-recipe-and-env.bicep"
-	existingTemplate := "testdata/datastoresrp-resources-mongodb-recipe-exsiting.bicep"
+	existingTemplate := "testdata/datastoresrp-resources-mongodb-existing-env-scoped-resource"
 	name := "dsrp-resources-mongodb-recipe-and-env"
 	appNamespace := "dsrp-resources-mongodb-recipe-existing-app"
 	test := rp.NewRPTest(t, name, []rp.TestStep{
@@ -167,5 +167,4 @@ func Test_MongoDB_Recipe_Existing(t *testing.T) {
 		},
 	})
 	test.Test(t)
-
 }

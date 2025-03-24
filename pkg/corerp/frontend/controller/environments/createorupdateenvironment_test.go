@@ -29,6 +29,8 @@ import (
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/test/k8sutil"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -102,15 +104,15 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 				DatabaseClient: databaseClient,
 				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
-
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
-
 			if !tt.shouldFail {
+				err = opts.KubeClient.Get(ctx, client.ObjectKey{Name: envDataModel.Properties.Compute.KubernetesCompute.Namespace}, &corev1.Namespace{})
+				require.NoError(t, err)
 				actualOutput := &v20231001preview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
