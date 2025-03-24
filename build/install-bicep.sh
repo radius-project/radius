@@ -9,6 +9,7 @@
 
 REL_CHANNEL=$1
 OUTPUT_DIR=$2
+ARCH=$3
 
 # Radius Bicep types uses latest tag
 if [ "$REL_CHANNEL" = "edge" ]; then
@@ -36,7 +37,16 @@ cat <<EOF > $OUTPUT_DIR/bicepconfig.json
 }
 EOF
 
-# Install latest version of Bicep CLI
-curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-musl-x64
+BICEP_ARCH="x64"
+if [ "$ARCH" = "arm64" ]; then
+  BICEP_ARCH="arm64"
+fi
+
+curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-$BICEP_ARCH
+if [ $? -ne 0 ]; then
+  echo "Failed to download Bicep CLI. Please check your internet connection or the URL."
+  exit 1
+fi
+
 chmod +x bicep
 mv bicep "$OUTPUT_DIR"/bicep

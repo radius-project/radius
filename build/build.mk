@@ -165,7 +165,7 @@ define generateBicepBuildTarget
 build-bicep-$(1)-$(2):
 	$(eval BINS_OUT_DIR_$(1)_$(2) := $(OUT_DIR)/$(1)_$(2)/$(BUILDTYPE_DIR))
 	@echo "$(ARROW) Building bicep container on $(1)/$(2) to $(BINS_OUT_DIR_$(1)_$(2))/bicep"
-	./build/install-bicep.sh $(REL_CHANNEL) $(BINS_OUT_DIR_$(1)_$(2))/bicep
+	./build/install-bicep.sh $(REL_CHANNEL) $(BINS_OUT_DIR_$(1)_$(2))/bicep $(2)
 endef
 
 # Generate bicep build targets for each combination of OS and ARCH
