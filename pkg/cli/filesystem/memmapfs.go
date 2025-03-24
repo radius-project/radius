@@ -18,6 +18,7 @@ package filesystem
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"time"
 )
@@ -29,7 +30,7 @@ type MemMapFileSystem struct {
 
 var _ FileSystem = (*MemMapFileSystem)(nil)
 
-func NewMemMapFileSystem(internalFileSystem map[string]MemFile) *MemMapFileSystem {
+func NewMemMapFileSystem() *MemMapFileSystem {
 	return &MemMapFileSystem{
 		InternalFileSystem: make(map[string]MemFile),
 	}
@@ -48,7 +49,7 @@ func (m *MemMapFileSystem) Create(name string) (fs.File, error) {
 func (m *MemMapFileSystem) Open(name string) (fs.File, error) {
 	file, exists := m.InternalFileSystem[name]
 	if !exists {
-		return nil, fmt.Errorf("file %s does not exist", name)
+		return nil, fs.ErrNotExist
 	}
 
 	return &file, nil
@@ -57,7 +58,7 @@ func (m *MemMapFileSystem) Open(name string) (fs.File, error) {
 func (m *MemMapFileSystem) Remove(name string) error {
 	_, exists := m.InternalFileSystem[name]
 	if !exists {
-		return fmt.Errorf("file %s does not exist", name)
+		return fs.ErrNotExist
 	}
 
 	delete(m.InternalFileSystem, name)
@@ -76,7 +77,7 @@ func (m *MemMapFileSystem) WriteFile(name string, data []byte, perm fs.FileMode)
 func (m *MemMapFileSystem) ReadFile(name string) ([]byte, error) {
 	file, exists := m.InternalFileSystem[name]
 	if !exists {
-		return nil, fmt.Errorf("file %s does not exist", name)
+		return nil, fs.ErrNotExist
 	}
 
 	return file.Data, nil
@@ -85,7 +86,7 @@ func (m *MemMapFileSystem) ReadFile(name string) ([]byte, error) {
 func (m *MemMapFileSystem) Stat(name string) (fs.FileInfo, error) {
 	file, exists := m.InternalFileSystem[name]
 	if !exists {
-		return nil, fmt.Errorf("file %s does not exist", name)
+		return nil, fs.ErrNotExist
 	}
 
 	return &MemFileInfo{name: name, size: int64(len(file.Data)), mode: file.Mode}, nil
@@ -123,20 +124,15 @@ func (m *MemMapFileSystem) MkdirAll(path string, perm fs.FileMode) error {
 
 func (m *MemMapFileSystem) RemoveAll(path string) error {
 	if _, exists := m.InternalFileSystem[path]; !exists {
-		return fmt.Errorf("directory %s does not exist", path)
+		return fs.ErrNotExist
 	}
 
 	delete(m.InternalFileSystem, path)
 	return nil
 }
 
-type MemFileInfo struct {
-	name string
-	size int64
-	mode fs.FileMode
-}
-
 type MemFile struct {
+	Name string
 	Data []byte
 	Mode fs.FileMode
 }
@@ -146,11 +142,26 @@ func (f *MemFile) Close() error {
 }
 
 func (f *MemFile) Read(p []byte) (n int, err error) {
-	return 0, nil
+	if len(f.Data) == 0 {
+		return 0, io.EOF
+	}
+	n = copy(p, f.Data)
+	f.Data = f.Data[n:]
+	return n, nil
 }
 
 func (f *MemFile) Stat() (fs.FileInfo, error) {
-	return nil, nil
+	return &MemFileInfo{
+		name: f.Name,
+		size: int64(len(f.Data)),
+		mode: f.Mode,
+	}, nil
+}
+
+type MemFileInfo struct {
+	name string
+	size int64
+	mode fs.FileMode
 }
 
 func (f *MemFileInfo) Name() string       { return f.name }

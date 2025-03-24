@@ -3,12 +3,12 @@ package reconciler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/bicep"
@@ -17,7 +17,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -31,6 +31,7 @@ import (
 const (
 	deploymentTemplateRepositoryField = "spec.repository"
 	radiusConfigFileName              = "radius-gitops-config.yaml"
+	armJSONParametersKeyName          = "parameters"
 )
 
 // FluxController watches GitRepository objects for revision changes
@@ -116,33 +117,20 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}(tmpDir)
 
-	// Fetch the artifact from the Source Controller with retry logic
+	// Fetch the artifact from the Source Controller
 	logger.Info("Fetching artifact", "url", artifact.URL)
-	var fetchErr error
-	timeout := 15 * time.Second
-	retryInterval := 1 * time.Second
-	startTime := time.Now()
-	for {
-		fetchErr = r.ArchiveFetcher.Fetch(artifact.URL, artifact.Digest, tmpDir)
-		if fetchErr == nil {
-			break
-		}
-
-		if time.Since(startTime) >= timeout {
-			logger.Error(fetchErr, "unable to fetch artifact after retries")
-			return ctrl.Result{}, fetchErr
-		}
-
-		logger.Info("Retrying artifact fetch", "error", fetchErr.Error())
-		time.Sleep(retryInterval)
+	err = r.ArchiveFetcher.Fetch(artifact.URL, artifact.Digest, tmpDir)
+	if err != nil {
+		logger.Error(err, "Failed to fetch artifact", "url", artifact.URL)
+		return ctrl.Result{}, fmt.Errorf("failed to fetch artifact, error: %w", err)
 	}
 
-	logger.Info("Fetched artifact", "url", artifact.URL)
+	logger.Info("Successfully fetched artifact", "url", artifact.URL)
 
 	// Check if the radius-gitops-config.yaml file exists
 	_, err = r.FileSystem.Stat(filepath.Join(tmpDir, radiusConfigFileName))
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			// No radius-gitops-config.yaml found in the repository, safe to ignore
 			logger.Info(fmt.Sprintf("No radius-gitops-config.yaml found in the repository: %s", repository.Name))
 			return ctrl.Result{}, nil
@@ -164,16 +152,18 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		fileName := bicepFile.Name
 		paramFileName := bicepFile.Params
 		namespace := bicepFile.Namespace
+		nameBase := strings.TrimSuffix(fileName, path.Ext(fileName))
+
 		if namespace == "" {
 			// If the namespace is not set, use the name of the bicep file
 			// (without extension) as the namespace. e.g. "example.bicep" -> "example"
-			namespace = strings.TrimSuffix(fileName, path.Ext(fileName))
+			namespace = nameBase
 		}
 		resourceGroup := bicepFile.ResourceGroup
 		if resourceGroup == "" {
 			// If the resource group is not set, use the name of the bicep file
 			// (without extension) as the resource group. e.g. "example.bicep" -> "example"
-			resourceGroup = strings.TrimSuffix(fileName, path.Ext(fileName))
+			resourceGroup = nameBase
 		}
 
 		// Run bicep build on the bicep file
@@ -210,7 +200,7 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 
 		if err := r.Client.Create(ctx, namespaceObj); err != nil {
-			if !errors.IsAlreadyExists(err) {
+			if !k8serrors.IsAlreadyExists(err) {
 				logger.Error(err, "unable to create namespace")
 				return ctrl.Result{}, err
 			}
@@ -220,7 +210,13 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		// specified in the git repository.
 		logger.Info("Creating or updating DeploymentTemplate", "name", bicepFile.Name)
 		parameters := convertFromARMJSONParameters(armJSONParameters)
-		r.createOrUpdateDeploymentTemplate(ctx, bicepFile.Name, namespace, template, string(marshalledProviderConfig), parameters, repository.Name)
+		err = r.createOrUpdateDeploymentTemplate(ctx, bicepFile.Name, namespace, template, string(marshalledProviderConfig), parameters, repository.Name)
+		if err != nil {
+			logger.Error(err, "failed to create or update deployment template")
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("Successfully created or updated DeploymentTemplate", "name", bicepFile.Name)
 	}
 
 	// List all DeploymentTemplates on the cluster that are from the same git repository
@@ -303,30 +299,33 @@ func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, file
 		return nil, err
 	}
 
-	if params["parameters"] == nil {
+	if params[armJSONParametersKeyName] == nil {
 		return nil, fmt.Errorf("parameters field not found in bicep build-params output")
 	}
 
-	if _, ok := params["parameters"].(map[string]any); !ok {
-		typeGot := fmt.Sprintf("%T", params["parameters"])
+	if _, ok := params[armJSONParametersKeyName].(map[string]any); !ok {
+		typeGot := fmt.Sprintf("%T", params[armJSONParametersKeyName])
 		return nil, fmt.Errorf("unexpected format for parameters field in bicep build-params output, got %s", typeGot)
 	}
 
-	parameters := params["parameters"].(map[string]any)
+	parameters := params[armJSONParametersKeyName].(map[string]any)
 
 	return parameters, nil
 }
 
-func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string, repository string) {
+// createOrUpdateDeploymentTemplate creates or updates a DeploymentTemplate object in the cluster
+// with the given spec.
+func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string, repository string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	// Try to get the DeploymentTemplate object from the cluster
 	deploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
 	err := r.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: fileName}, &deploymentTemplate)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			// Error getting DeploymentTemplate
+			// Error getting the DeploymentTemplate object that is not a NotFound error
 			logger.Error(err, "unable to get deployment template")
-			return
+			return err
 		}
 
 		// If the DeploymentTemplate doesn't exist, create it
@@ -344,25 +343,26 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 		}
 		if err := r.Client.Create(ctx, deploymentTemplate); err != nil {
 			logger.Error(err, "unable to create deployment template")
+			return err
 		}
 
 		logger.Info("Created Deployment Template", "name", deploymentTemplate.Name)
-		return
+		return nil
 	}
 
+	// If the DeploymentTemplate already exists, update it
 	deploymentTemplate.Spec = radappiov1alpha3.DeploymentTemplateSpec{
 		Template:       template,
 		Parameters:     parameters,
 		ProviderConfig: providerConfig,
 		Repository:     repository,
 	}
-
-	// If the DeploymentTemplate already exists, update it
 	if err := r.Client.Update(ctx, &deploymentTemplate); err != nil {
 		logger.Error(err, "unable to update deployment template")
 	}
 
 	logger.Info("Updated Deployment Template", "name", deploymentTemplate.Name)
+	return nil
 }
 
 // parseAndValidateRadiusGitOpsConfigFromFile reads the radius-gitops-config.yaml file from the given directory
@@ -398,7 +398,7 @@ func (r *FluxController) parseAndValidateRadiusGitOpsConfigFromFile(dir, configF
 		// Validate that the file exists
 		_, err := r.FileSystem.Stat(path.Join(dir, bicepFile.Name))
 		if err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) {
 				return nil, fmt.Errorf("failed to find bicep file %s, error: %w", bicepFile.Name, err)
 			} else {
 				return nil, fmt.Errorf("failed to check if bicep file exists, error: %w", err)
@@ -409,7 +409,7 @@ func (r *FluxController) parseAndValidateRadiusGitOpsConfigFromFile(dir, configF
 		if bicepFile.Params != "" {
 			_, err := r.FileSystem.Stat(path.Join(dir, bicepFile.Params))
 			if err != nil {
-				if os.IsNotExist(err) {
+				if errors.Is(err, fs.ErrNotExist) {
 					return nil, fmt.Errorf("failed to find bicepparams file %s, error: %w", bicepFile.Params, err)
 				} else {
 					return nil, fmt.Errorf("failed to check if bicepparams file exists, error: %w", err)

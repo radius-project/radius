@@ -36,7 +36,7 @@ func Test_Parameters_Invalid(t *testing.T) {
 	}
 
 	parser := ParameterParser{
-		FileSystem: filesystem.NewMemMapFileSystem(nil),
+		FileSystem: filesystem.NewMemMapFileSystem(),
 	}
 
 	for _, input := range inputs {
@@ -58,7 +58,7 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 
 	// Initialize the ParameterParser with the in-memory filesystem
 	parser := ParameterParser{
-		FileSystem: filesystem.NewMemMapFileSystem(nil),
+		FileSystem: filesystem.NewMemMapFileSystem(),
 	}
 
 	_, err := parser.FileSystem.Create("many.json")
@@ -94,7 +94,7 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 
 func Test_ParseParameters_File(t *testing.T) {
 	parser := ParameterParser{
-		FileSystem: filesystem.NewMemMapFileSystem(nil),
+		FileSystem: filesystem.NewMemMapFileSystem(),
 	}
 
 	input, err := os.ReadFile(filepath.Join("testdata", "test-parameters.json"))

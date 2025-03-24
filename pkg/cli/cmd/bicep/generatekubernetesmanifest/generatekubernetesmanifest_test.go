@@ -174,7 +174,7 @@ func Test_Run(t *testing.T) {
 			Output:          outputSink,
 			FilePath:        bicepFilePath,
 			Parameters:      parametersMap,
-			FileSystem:      filesystem.NewMemMapFileSystem(nil),
+			FileSystem:      filesystem.NewMemMapFileSystem(),
 			DestinationFile: yamlFilePath,
 			Group:           resourceGroup,
 		}

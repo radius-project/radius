@@ -313,47 +313,6 @@ func waitForDeploymentTemplateReady(t *testing.T, ctx context.Context, name type
 	}
 }
 
-// waitForDeploymentTemplateReady watches the creation of the DeploymentTemplate object
-// and waits for it to be in the "Updating" state.
-func waitForDeploymentTemplateUpdating(t *testing.T, ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch, initialVersion string) (*radappiov1alpha3.DeploymentTemplate, error) {
-	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
-	lister := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
-			deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
-			err := client.List(ctx, deploymentTemplates, listOptions)
-			if err != nil {
-				return nil, err
-			}
-
-			return deploymentTemplates, nil
-		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
-			deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
-			return client.Watch(ctx, deploymentTemplates, listOptions)
-		},
-	}
-	watcher, err := watchtools.NewRetryWatcher(initialVersion, lister)
-	require.NoError(t, err)
-	defer watcher.Stop()
-
-	for {
-		event := <-watcher.ResultChan()
-		r, ok := event.Object.(*radappiov1alpha3.DeploymentTemplate)
-		if !ok {
-			// Not a deploymentTemplate, likely an event.
-			t.Logf("Received event: %+v", event)
-			continue
-		}
-
-		t.Logf("Received deploymentTemplate. Status: %+v", r.Status)
-		if r.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseUpdating {
-			return r, nil
-		}
-	}
-}
-
 // createParametersMap creates a map of parameters from a list of parameters
 // in the form of key=value.
 func createParametersMap(parameters []string) map[string]string {

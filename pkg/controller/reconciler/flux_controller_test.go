@@ -135,7 +135,7 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
 
-	fs := filesystem.NewMemMapFileSystem(nil)
+	fs := filesystem.NewMemMapFileSystem()
 	archiveFetcher := NewMockArchiveFetcher(opts.mctrl)
 	bicep := bicep.NewMockInterface(opts.mctrl)
 
