@@ -9,7 +9,7 @@
     "@azure-tools/typespec-azure-resource-manager": "~0.52.0",
     "@typespec/http": "~0.66.0",
     "@typespec/openapi": "~0.66.0",
-    "@typespec/rest": "~0.66.0",
+    "@typespec/rest": "~0.67.1",
     "@typespec/versioning": "~0.66.0"
   },
   "private": true,
