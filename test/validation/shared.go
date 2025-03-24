@@ -78,8 +78,17 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 
 		var respFromCtx *http.Response
 		ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+		t.Logf("about to delete environment: %s", resource.Name)
+		env, err := client.GetEnvironment(ctxWithResp, resource.Name)
+		if err != nil {
+			if respFromCtx.StatusCode == 404 {
+				output.LogInfo("Environment '%s' does not exist or has already been deleted.", resource.Name)
+				return nil
+			}
+		}
+		output.LogInfo("Environment '%s' exists, deleting...", env.ID)
 
-		_, err := client.DeleteEnvironment(ctxWithResp, resource.Name)
+		_, err = client.DeleteEnvironment(ctxWithResp, resource.Name)
 		if err != nil {
 			return err
 		}
