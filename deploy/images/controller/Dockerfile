@@ -3,23 +3,12 @@ FROM debian:bullseye-20250317-slim
 
 ARG TARGETARCH
 
-# Install required dependencies for Bicep CLI
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+
+# Install required dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        libicu67 \
-        libicu-dev \
         ca-certificates \
-        libssl-dev \
-        openssl \
-        libcurl4-openssl-dev \
-        curl \
-        gnupg \
-        wget \
-        netcat \
-        tzdata \
-        ntpdate \
-        apt-transport-https \
-    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
