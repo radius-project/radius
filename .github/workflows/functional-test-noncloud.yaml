@@ -388,6 +388,26 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
+        
+      - name: Runing kube commnds
+        run: |
+          # Get the list of all pods in the radius-system namespace
+          kubectl get pods -n radius-system
+
+          # Get all namespace
+          kubectl get ns
+
+          # Get all pods in applications namespace
+          kubectl get -all default-usertypealpha-recipe
+      
+      - name: run rad commands
+        run: |
+          # Get the list of all pods in the radius-system namespace
+          rad workspace list
+          rad group list
+          rad env list
+          rad app list
+          rad resource list Test.Resources/userTypeAlpha 
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
