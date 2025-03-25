@@ -8,12 +8,6 @@
 # Usage: ./install-bicep.sh <release-channel> <output-dir> <arch>
 # Example: ./install-bicep.sh edge ./output amd64
 
-# Also, the script accepts the following environment variables:
-# - RADIUS_BICEP_TYPES_REGISTRY: The registry for the Radius Bicep types. Default is "br:biceptypes.azurecr.io".
-# - RADIUS_BICEP_TYPES_VERSION: The version for the Radius Bicep types. Default is "latest".
-# - AWS_BICEP_TYPES_REGISTRY: The registry for the AWS Bicep types. Default is "br:biceptypes.azurecr.io".
-# - AWS_BICEP_TYPES_VERSION: The version for the AWS Bicep types. Default is "latest".
-
 REL_CHANNEL=$1
 OUTPUT_DIR=$2
 ARCH=$3
@@ -38,11 +32,6 @@ if [ "$REL_CHANNEL" = "edge" ]; then
   REL_CHANNEL="latest"
 fi
 
-RADIUS_BICEP_TYPES_REGISTRY=${RADIUS_BICEP_TYPES_REGISTRY:-"biceptypes.azurecr.io"}
-RADIUS_BICEP_TYPES_VERSION=${RADIUS_BICEP_TYPES_VERSION:-$REL_CHANNEL}
-AWS_BICEP_TYPES_REGISTRY=${AWS_BICEP_TYPES_REGISTRY:-"biceptypes.azurecr.io"}
-AWS_BICEP_TYPES_VERSION=${AWS_BICEP_TYPES_VERSION:-$REL_CHANNEL}
-
 # Check if curl is installed
 if ! command -v curl &> /dev/null
 then
@@ -58,8 +47,8 @@ cat <<EOF > $OUTPUT_DIR/bicepconfig.json
     "extensibility": true
   },
   "extensions": {
-    "radius": "br:${RADIUS_BICEP_TYPES_REGISTRY}/radius:${RADIUS_BICEP_TYPES_VERSION}",
-    "aws": "br:${AWS_BICEP_TYPES_REGISTRY}/aws:${AWS_BICEP_TYPES_VERSION}"
+    "radius": "br:biceptypes.azurecr.io/radius:${REL_CHANNEL}",
+    "aws": "br:biceptypes.azurecr.io/aws:${REL_CHANNEL}"
   }
 }
 EOF
