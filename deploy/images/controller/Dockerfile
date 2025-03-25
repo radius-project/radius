@@ -11,6 +11,10 @@ RUN apt-get update && \
         libssl-dev \
         openssl \
         libcurl4-openssl-dev \
+        curl \
+        gnupg \
+        wget \
+        apt-transport-https \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
