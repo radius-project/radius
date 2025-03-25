@@ -11,15 +11,15 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
-RUN useradd -m -s /bin/bash controlleruser && \
-    mkdir -p /home/controlleruser && \
-    chown -R controlleruser:controlleruser /home/controlleruser
+# RUN useradd -m -s /bin/bash controlleruser && \
+#     mkdir -p /home/controlleruser && \
+#     chown -R controlleruser:controlleruser /home/controlleruser
 
 # Copy the application binary
 COPY ./linux_${TARGETARCH:-amd64}/release/controller /
 
-# # Set the user to non-root
-USER controlleruser
+# Set the user to non-root
+# USER controlleruser
 
 # Set the working directory
 WORKDIR /
