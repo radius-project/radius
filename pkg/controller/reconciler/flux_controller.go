@@ -263,8 +263,8 @@ func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename s
 	}
 
 	// Run bicep build on the bicep file
-	logger.Info(fmt.Sprintf("Running command: bicep build %s --outfile %s --no-restore", bicepFile, outFile))
-	_, err = r.Bicep.Call("build", bicepFile, "--outfile", outFile, "--no-restore")
+	logger.Info(fmt.Sprintf("Running command: bicep build %s --outfile %s", bicepFile, outFile))
+	_, err = r.Bicep.Call("build", bicepFile, "--outfile", outFile)
 	if err != nil {
 		logger.Error(err, "failed to run bicep build")
 		return "", err
