@@ -17,12 +17,15 @@ limitations under the License.
 package resource_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Opt-out case for manual resource provisioning
@@ -117,7 +120,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 
 func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
 	envTemplate := "testdata/datastoresrp-resources-mongodb-recipe-and-env.bicep"
-	existingTemplate := "testdata/datastoresrp-resources-mongodb-existing-env-scoped-resource"
+	existingTemplate := "testdata/datastoresrp-resources-mongodb-existing-env-scoped-resource.bicep"
 	name := "dsrp-resources-mongodb-recipe-and-env"
 	appNamespace := "dsrp-resources-mongodb-recipe-existing-app"
 	test := rp.NewRPTest(t, name, []rp.TestStep{
@@ -163,6 +166,10 @@ func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
 						validation.NewK8sPodForResource(name, "mongo-ctnr-exst").ValidateLabels(false),
 					},
 				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				_, err := ct.Options.K8sClient.CoreV1().Namespaces().Get(context.Background(), name, metav1.GetOptions{})
+				require.NoError(t, err)
 			},
 		},
 	})
