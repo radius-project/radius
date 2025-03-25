@@ -20,7 +20,6 @@ RUN apt-get update && \
         ntpdate \
         apt-transport-https \
     && update-ca-certificates \
-    && ntpdate pool.ntp.org \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
