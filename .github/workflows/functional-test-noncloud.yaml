@@ -242,8 +242,6 @@ jobs:
         env:
           DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
-          RADIUS_BICEP_TYPES_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
-          RADIUS_BICEP_TYPES_TAG_VERSION: ${{ env.REL_VERSION }}
 
       - name: Install rad CLI
         run: |
@@ -293,7 +291,7 @@ jobs:
                  --chart ${{ env.RADIUS_CHART_LOCATION }} \
                  --set rp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
                  --set dynamicrp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }} \
-                 --set controller.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller,controller.tag=${{ env.REL_VERSION }} \
+                 --set controller.image=ghcr.io/willdavsmith/radius/controller,controller.tag=latest \
                  --set ucp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
                  --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
                  --set bicep.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/bicep,bicep.tag=${{ env.REL_VERSION }}"
