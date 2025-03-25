@@ -386,7 +386,7 @@ func waitForGitRepositoryReady(t *testing.T, ctx context.Context, name types.Nam
 	}
 }
 
-func getValuesFromRadiusGitOpsConfig(configEntry reconciler.BicepConfig) (name string, namespace string, resourceGroup string, params string) {
+func getValuesFromRadiusGitOpsConfig(configEntry reconciler.ConfigEntry) (name string, namespace string, resourceGroup string, params string) {
 	name = configEntry.Name
 	namespace = configEntry.Namespace
 	resourceGroup = configEntry.ResourceGroup

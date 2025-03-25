@@ -36,6 +36,7 @@ require (
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20240408110044-525ba71bb562
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.18.0
+	github.com/fluxcd/pkg/apis/meta v1.6.1
 	github.com/fluxcd/pkg/http/fetch v0.12.1
 	github.com/fluxcd/pkg/tar v0.8.1
 	github.com/fluxcd/source-controller/api v1.4.1
@@ -141,7 +142,6 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fluxcd/pkg/apis/acl v0.3.0 // indirect
-	github.com/fluxcd/pkg/apis/meta v1.6.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect

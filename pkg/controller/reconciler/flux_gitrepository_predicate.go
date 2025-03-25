@@ -20,23 +20,28 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 )
 
+// Based on: https://github.com/fluxcd/source-watcher/blob/main/controllers/gitrepository_predicate.go
+
 // GitRepositoryRevisionChangePredicate triggers an update event
 // when a GitRepository revision changes.
 type GitRepositoryRevisionChangePredicate struct {
 	predicate.Funcs
 }
 
-func (GitRepositoryRevisionChangePredicate) Create(e event.CreateEvent) bool {
-	src, ok := e.Object.(sourcev1.Source)
+func (*GitRepositoryRevisionChangePredicate) Create(e event.CreateEvent) bool {
+	if e.Object == nil {
+		return false
+	}
 
-	if !ok || src.GetArtifact() == nil {
+	src, ok := e.Object.(sourcev1.Source)
+	if !ok || src == nil || src.GetArtifact() == nil {
 		return false
 	}
 
 	return true
 }
 
-func (GitRepositoryRevisionChangePredicate) Update(e event.UpdateEvent) bool {
+func (*GitRepositoryRevisionChangePredicate) Update(e event.UpdateEvent) bool {
 	if e.ObjectOld == nil || e.ObjectNew == nil {
 		return false
 	}

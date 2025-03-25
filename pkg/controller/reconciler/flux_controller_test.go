@@ -210,7 +210,7 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 			outFile := fmt.Sprintf("%s.json", nameBase)
 
 			bicepRestoreCall := bicep.EXPECT().
-				Call("restore", "--force").
+				Call("restore", gomock.Cond(func(s string) bool { return strings.HasSuffix(s, ce.Name) }), "--force").
 				Return(nil, nil).
 				Times(1)
 			bicepCalls = append(bicepCalls, bicepRestoreCall)
@@ -445,13 +445,13 @@ func Test_isSpecifiedInConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		fileName string
-		config   []BicepConfig
+		config   []ConfigEntry
 		expected bool
 	}{
 		{
 			name:     "File exists in config",
 			fileName: "example.bicep",
-			config: []BicepConfig{
+			config: []ConfigEntry{
 				{Name: "example.bicep"},
 				{Name: "another.bicep"},
 			},
@@ -460,7 +460,7 @@ func Test_isSpecifiedInConfig(t *testing.T) {
 		{
 			name:     "File does not exist in config",
 			fileName: "missing.bicep",
-			config: []BicepConfig{
+			config: []ConfigEntry{
 				{Name: "example.bicep"},
 				{Name: "another.bicep"},
 			},
@@ -469,7 +469,7 @@ func Test_isSpecifiedInConfig(t *testing.T) {
 		{
 			name:     "Empty config",
 			fileName: "example.bicep",
-			config:   []BicepConfig{},
+			config:   []ConfigEntry{},
 			expected: false,
 		},
 		{

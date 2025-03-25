@@ -48,11 +48,11 @@ type FluxController struct {
 
 // RadiusGitOpsConfig is the configuration for Radius in a Git repository.
 type RadiusGitOpsConfig struct {
-	Config []BicepConfig `yaml:"config"`
+	Config []ConfigEntry `yaml:"config"`
 }
 
-// BicepConfig is the build configuration for a Bicep file in a Git repository.
-type BicepConfig struct {
+// ConfigEntry is the build configuration for a Bicep file in a Git repository.
+type ConfigEntry struct {
 	// Name is the name of the Bicep (.bicep) file.
 	Name string `yaml:"name"`
 	// Params is the name of the Bicep parameters (.bicepparam) file.
@@ -78,7 +78,7 @@ func (r *FluxController) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&sourcev1.GitRepository{}, builder.WithPredicates(GitRepositoryRevisionChangePredicate{})).
+		For(&sourcev1.GitRepository{}, builder.WithPredicates(&GitRepositoryRevisionChangePredicate{})).
 		Complete(r)
 }
 
@@ -255,10 +255,10 @@ func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename s
 
 	// Run bicep restore --force
 	// This is to prevent an issue where bicep build fails to restore the modules
-	logger.Info("Running bicep restore --force")
-	_, err = r.Bicep.Call("restore", "--force")
+	logger.Info(fmt.Sprintf("Running bicep restore %s --force", bicepFile))
+	out, err := r.Bicep.Call("restore", bicepFile, "--force")
 	if err != nil {
-		logger.Error(err, "failed to run bicep restore")
+		logger.Error(err, "failed to run bicep restore", "output", string(out))
 		return "", err
 	}
 
@@ -368,6 +368,7 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 	}
 	if err := r.Client.Update(ctx, &deploymentTemplate); err != nil {
 		logger.Error(err, "unable to update deployment template")
+		return err
 	}
 
 	logger.Info("Updated Deployment Template", "name", deploymentTemplate.Name)
@@ -429,7 +430,7 @@ func (r *FluxController) parseAndValidateRadiusGitOpsConfigFromFile(dir, configF
 	return &radiusConfig, nil
 }
 
-func isSpecifiedInConfig(fileName string, config []BicepConfig) bool {
+func isSpecifiedInConfig(fileName string, config []ConfigEntry) bool {
 	for _, bicepFile := range config {
 		if bicepFile.Name == fileName {
 			return true
