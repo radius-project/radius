@@ -7,6 +7,7 @@ ARG TARGETARCH
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libicu67 \
+        libicu-dev \
         ca-certificates \
         libssl-dev \
         openssl \
