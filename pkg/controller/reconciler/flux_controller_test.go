@@ -205,13 +205,23 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 
 		for _, configEntry := range radiusConfig.Config {
 			ce := configEntry // capture loop variable
+			name := ce.Name
+			nameBase := strings.TrimSuffix(name, path.Ext(name))
+			outFile := fmt.Sprintf("%s.json", nameBase)
+
+			bicepRestoreCall := bicep.EXPECT().
+				Call("restore", "--force").
+				Return(nil, nil).
+				Times(1)
+			bicepCalls = append(bicepCalls, bicepRestoreCall)
+
 			bicepBuildCall := bicep.EXPECT().
-				Build(gomock.Any(), "--outfile", gomock.Any()).
+				Call("build", gomock.Cond(func(s string) bool { return strings.HasSuffix(s, ce.Name) }), "--outfile", gomock.Cond(func(s string) bool { return strings.HasSuffix(s, outFile) })).
 				Return(nil, nil).
 				Times(1).
 				Do(func(args ...string) {
-					filePath := args[0]
-					outFilePath := args[2]
+					filePath := args[1]
+					outFilePath := args[3]
 					outFileName := filepath.Base(outFilePath)
 					localFilePath := s.Path
 					fileContent, err := os.ReadFile(path.Join(localFilePath, outFileName))
@@ -223,12 +233,12 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 
 			if ce.Params != "" {
 				bicepBuildParamsCall := bicep.EXPECT().
-					BuildParams(gomock.Any(), "--outfile", gomock.Any()).
+					Call("build-params", gomock.Any(), "--outfile", gomock.Any()).
 					Return(nil, nil).
 					Times(1).
 					Do(func(args ...string) {
-						filePath := args[0]
-						outFilePath := args[2]
+						filePath := args[1]
+						outFilePath := args[3]
 						outFileName := filepath.Base(outFilePath)
 						localFilePath := s.Path
 						fileContent, err := os.ReadFile(path.Join(localFilePath, outFileName))

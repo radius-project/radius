@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"regexp"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/filesystem"
@@ -31,9 +30,7 @@ import (
 // Interface is the interface for interacting with Bicep.
 type Interface interface {
 	PrepareTemplate(filePath string) (map[string]any, error)
-	Build(args ...string) ([]byte, error)
-	BuildParams(args ...string) ([]byte, error)
-	Version() string
+	Call(args ...string) ([]byte, error)
 }
 
 var _ Interface = (*Impl)(nil)
@@ -75,7 +72,7 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	}
 
 	step := i.Output.BeginStep("Building %s...", filePath)
-	bytes, err := i.Build("--stdout", filePath)
+	bytes, err := i.Call("build", "--stdout", filePath)
 	if err != nil {
 		i.Output.CompleteStep(step)
 		return nil, fmt.Errorf("failed to build template: %w", err)
@@ -91,37 +88,9 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	return template, nil
 }
 
-// Build runs `rad-bicep build` with the given arguments.
-func (i *Impl) Build(args ...string) ([]byte, error) {
-	buildArgs := make([]string, len(args)+1)
-	buildArgs[0] = "build"
-	copy(buildArgs[1:], args)
-
-	return runBicepRaw(buildArgs...)
-}
-
-// BuildParams runs `rad-bicep build-params` with the given arguments.
-func (i *Impl) BuildParams(args ...string) ([]byte, error) {
-	buildParamsArgs := make([]string, len(args)+1)
-	buildParamsArgs[0] = "build-params"
-	copy(buildParamsArgs[1:], args)
-
-	return runBicepRaw(buildParamsArgs...)
-}
-
-// Version returns the version of Bicep installed on the local machine,
-// or an error if Bicep cannot be found or is not a valid version.
-func (i *Impl) Version() string {
-	bytes, err := runBicepRaw("--version")
-	if err != nil {
-		return fmt.Sprintf("unknown (%s)", err)
-	}
-
-	version := regexp.MustCompile(SemanticVersionRegex).FindString(string(bytes))
-	if version == "" {
-		return fmt.Sprintf("unknown (failed to parse bicep version from %q)", string(bytes))
-	}
-	return version
+// Call runs `rad-bicep` with the given arguments.
+func (i *Impl) Call(args ...string) ([]byte, error) {
+	return runBicepRaw(args...)
 }
 
 // ConvertToMapStringInterface takes in a map of strings to maps of strings to any type and returns a map of strings to any

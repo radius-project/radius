@@ -253,9 +253,18 @@ func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename s
 	bicepFile := path.Join(filepath, filename)
 	outFile := path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json"))
 
+	// Run bicep restore --force
+	// This is to prevent an issue where bicep build fails to restore the modules
+	logger.Info("Running bicep restore --force")
+	_, err = r.Bicep.Call("restore", "--force")
+	if err != nil {
+		logger.Error(err, "failed to run bicep restore")
+		return "", err
+	}
+
 	// Run bicep build on the bicep file
 	logger.Info(fmt.Sprintf("Running command: bicep build %s --outfile %s", bicepFile, outFile))
-	_, err = r.Bicep.Build(bicepFile, "--outfile", outFile)
+	_, err = r.Bicep.Call("build", bicepFile, "--outfile", outFile)
 	if err != nil {
 		logger.Error(err, "failed to run bicep build")
 		return "", err
@@ -279,7 +288,7 @@ func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, file
 
 	// Run bicep build-params on the bicep file
 	logger.Info("Running bicep build-params on " + bicepParamsFile)
-	_, err := r.Bicep.BuildParams(bicepParamsFile, "--outfile", outfile)
+	_, err := r.Bicep.Call("build-params", bicepParamsFile, "--outfile", outfile)
 	if err != nil {
 		logger.Error(err, "failed to run bicep build-params")
 		return map[string]any{}, err
