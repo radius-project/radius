@@ -41,6 +41,22 @@ rules:
   - patch
   - update
   - watch
+
+# Integration with DE's API.
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  - replicasets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
