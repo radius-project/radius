@@ -392,6 +392,23 @@ jobs:
       - name: Runing kube commnds
         if: always()
         run: |
+          which rad || { echo "cannot find rad"; exit 1; }
+
+           echo "rad workspace list"
+          rad workspace list
+          echo "rad group list"
+          rad group list
+          echo "rad env list"
+          rad env list
+          echo "rad app list"
+          rad app list
+          echo "rad resource list"
+          rad resource list Test.Resources/userTypeAlpha 
+          echo "rad app show usertypealpha-recipe-app"
+          rad app show usertypealpha-recipe-app -o json
+          echo "rad resource show  Test.Resources/userTypeAlpha usertypealpha123 "
+          rad resource show Test.Resources/userTypeAlpha usertypealpha123  -o json
+
           echo "Get the list of all pods in the radius-system namespace"
           kubectl get pods -n radius-system
 
