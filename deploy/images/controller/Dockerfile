@@ -16,15 +16,15 @@ RUN apt-get update && \
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 # Create a non-root user
-# RUN useradd -m -s /bin/bash controlleruser && \
-#     mkdir -p /home/controlleruser && \
-#     chown -R controlleruser:controlleruser /home/controlleruser
+RUN useradd -m -s /bin/bash controlleruser && \
+    mkdir -p /home/controlleruser && \
+    chown -R controlleruser:controlleruser /home/controlleruser
 
 # Copy the application binary
 COPY ./linux_${TARGETARCH:-amd64}/release/controller /
 
 # Set the user to non-root
-# USER controlleruser
+USER controlleruser
 
 # Set the working directory
 WORKDIR /
