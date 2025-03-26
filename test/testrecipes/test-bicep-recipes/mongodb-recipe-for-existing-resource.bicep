@@ -82,7 +82,7 @@ resource svc 'core/Service@v1' = {
     }
     ports: [
       {
-        port: 27017
+        port: 27018
       }
     ]
   }
@@ -98,7 +98,7 @@ output result object = {
   ]
   values: {
     host: '${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local'
-    port: 27017
+    port: 27018
     database: context.resource.name
   }
   secrets: {
