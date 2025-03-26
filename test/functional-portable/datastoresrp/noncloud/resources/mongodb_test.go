@@ -123,13 +123,14 @@ func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
 	existingTemplate := "testdata/datastoresrp-resources-mongodb-existing-env-scoped-resource.bicep"
 	name := "dsrp-resources-mongodb-recipe-and-env"
 	appNamespace := "dsrp-resources-mongodb-recipe-existing-app"
+	appName := "dsrp-resources-mongodb-recipe-existing"
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(envTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "dsrp-resources-mongodb-recipe-and-env",
+						Name: name,
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -145,14 +146,14 @@ func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "dsrp-resources-mongodb-recipe-existing",
+						Name: appName,
 						Type: validation.ApplicationsResource,
-						App:  "dsrp-resources-mongodb-recipe-existing",
+						App:  appName,
 					},
 					{
 						Name: "mongo-ctnr-exst",
 						Type: validation.ContainersResource,
-						App:  "dsrp-resources-mongodb-recipe-existing",
+						App:  appName,
 					},
 					{
 						Name: "mongodb-db-existing",

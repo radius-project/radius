@@ -100,7 +100,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	if apierrors.IsAlreadyExists(err) {
 		logger.Info("Using existing namespace", "namespace", namespace)
 	} else if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create namespace for the environment: %w", err)
 	} else {
 		logger.Info("Created the namespace", "namespace", namespace)
 	}

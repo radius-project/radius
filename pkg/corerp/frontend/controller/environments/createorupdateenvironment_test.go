@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/test/k8sutil"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/google/uuid"
@@ -51,11 +52,13 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
+		existingNamespace  bool
 	}{
-		{"create-new-resource-no-if-match", "If-Match", "", "", 200, false},
-		{"create-new-resource-*-if-match", "If-Match", "*", "", 412, true},
-		{"create-new-resource-etag-if-match", "If-Match", "randome-etag", "", 412, true},
-		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", 200, false},
+		{"create-new-resource-no-if-match", "If-Match", "", "", 200, false, false},
+		{"create-new-resource-existing-namespace", "If-Match", "", "", 200, false, true},
+		{"create-new-resource-*-if-match", "If-Match", "*", "", 412, true, false},
+		{"create-new-resource-etag-if-match", "If-Match", "randome-etag", "", 412, true, false},
+		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", 200, false, false},
 	}
 
 	for _, tt := range createNewResourceCases {
@@ -103,6 +106,11 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
 				KubeClient:     k8sutil.NewFakeKubeClient(nil),
+			}
+
+			if tt.existingNamespace {
+				err = opts.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: envDataModel.Properties.Compute.KubernetesCompute.Namespace}})
+				require.NoError(t, err)
 			}
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)

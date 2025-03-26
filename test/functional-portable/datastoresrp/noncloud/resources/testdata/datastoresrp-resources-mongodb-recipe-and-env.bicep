@@ -15,7 +15,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
     }
     recipes: {
       'Applications.Datastores/mongoDatabases': {
-        mongoazure: {
+        mongokubernetes: {
           templateKind: 'bicep'
           templatePath: '${registry}/test/testrecipes/test-bicep-recipes/mongodb-recipe-for-existing-resource:${version}'
         }
@@ -30,7 +30,7 @@ resource mongodbEnvScoped 'Applications.Datastores/mongoDatabases@2023-10-01-pre
   properties: {
     environment: env.id
     recipe: {
-      name: 'mongoazure'
+      name: 'mongokubernetes'
     }
   }
 }
