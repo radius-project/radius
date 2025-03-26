@@ -37,7 +37,7 @@ resource mongoResource 'apps/Deployment@v1' = {
             image: 'ghcr.io/radius-project/mirror/mongo:4.2'
             ports: [
               {
-                containerPort: 27017
+                containerPort: 27018
               }
             ]
             env: [
