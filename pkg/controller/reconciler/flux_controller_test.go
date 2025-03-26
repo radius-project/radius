@@ -209,12 +209,6 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 			nameBase := strings.TrimSuffix(name, path.Ext(name))
 			outFile := fmt.Sprintf("%s.json", nameBase)
 
-			bicepRestoreCall := bicep.EXPECT().
-				Call("restore", gomock.Cond(func(s string) bool { return strings.HasSuffix(s, ce.Name) }), "--force").
-				Return(nil, nil).
-				Times(1)
-			bicepCalls = append(bicepCalls, bicepRestoreCall)
-
 			bicepBuildCall := bicep.EXPECT().
 				Call("build", gomock.Cond(func(s string) bool { return strings.HasSuffix(s, ce.Name) }), "--outfile", gomock.Cond(func(s string) bool { return strings.HasSuffix(s, outFile) })).
 				Return(nil, nil).

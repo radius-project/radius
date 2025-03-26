@@ -253,15 +253,6 @@ func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename s
 	bicepFile := path.Join(filepath, filename)
 	outFile := path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json"))
 
-	// Run bicep restore --force
-	// This is to prevent an issue where bicep build fails to restore the modules
-	logger.Info(fmt.Sprintf("Running bicep restore %s --force", bicepFile))
-	out, err := r.Bicep.Call("restore", bicepFile, "--force")
-	if err != nil {
-		logger.Error(err, "failed to run bicep restore", "output", string(out))
-		return "", err
-	}
-
 	// Run bicep build on the bicep file
 	logger.Info(fmt.Sprintf("Running command: bicep build %s --outfile %s", bicepFile, outFile))
 	_, err = r.Bicep.Call("build", bicepFile, "--outfile", outFile)
