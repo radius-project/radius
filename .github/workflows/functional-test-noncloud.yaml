@@ -399,7 +399,9 @@ jobs:
           kubectl get ns
 
           echo "Get all pods in applications namespace"
-          kubectl get --all -n default-usertypealpha-recipe
+          kubectl get all -n usertypealpha-recipe-app  
+
+          kubectl get all -n default-usertypealpha-recipe-usertypealpha-recipe-app
       
       - name: run rad commands
         run: |

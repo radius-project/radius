@@ -15,7 +15,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'default-usertypealpha-recipe'
+      namespace: 'usertypealpha-recipe-env'
     }
     recipes: {
       'Test.Resources/userTypeAlpha': {
