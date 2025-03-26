@@ -1,6 +1,6 @@
 extension radius
-param magpieimage string
-param environment string
+param magpieimage string = 'ghcr.io/radius-project/magpiego:latest'
+param environment string = 'default'
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dsrp-resources-redis-manual'
@@ -40,7 +40,7 @@ resource redisContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'rds-ctnr'
   location: 'global'
   properties: {
-    application: app.id
+    // application: app.id
     container: {
       image: 'ghcr.io/radius-project/mirror/redis:6.2'
       ports: {

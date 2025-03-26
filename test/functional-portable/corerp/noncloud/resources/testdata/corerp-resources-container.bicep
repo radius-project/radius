@@ -10,7 +10,7 @@ param magpieimage string
 param port int = 3000
 
 @description('Specifies the environment for resources.')
-param environment string
+param environment string = 'default'
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-container'

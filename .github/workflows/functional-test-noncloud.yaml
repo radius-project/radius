@@ -390,6 +390,7 @@ jobs:
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
         
       - name: Runing kube commnds
+        if: always()
         run: |
           # Get the list of all pods in the radius-system namespace
           kubectl get pods -n radius-system

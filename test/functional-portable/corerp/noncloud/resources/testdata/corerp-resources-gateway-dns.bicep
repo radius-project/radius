@@ -4,7 +4,7 @@ extension radius
 param location string = 'local'
 
 @description('Specifies the environment for resources.')
-param environment string
+param environment string = 'default'
 
 @description('Specifies the port for the container resource.')
 param port int = 3000
@@ -24,7 +24,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
 	name: 'http-gtwy-gtwy-dns'
 	location: location
 	properties: {
-		application: app.id
+		//application: app.id
 		routes: [
 			{
 				path: '/'
@@ -45,6 +45,9 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
 	}
 }
 
+https://github.com/radius-project/radius/actions/workflows/functional-test-cloud.yaml?query=workflow%3A+is%3Afailure+created%3A2025-02-02..2025-02-09+event%3Aschedule
+
+https://github.com/radius-project/radius/actions/workflows/functional-test-noncloud.yaml?query=workflow%3A+is%3Afailure+created%3A2025-02-02..2025-02-09+event%3Aschedule
 resource frontendcontainerdns 'Applications.Core/containers@2023-10-01-preview' = {
 	name: 'frontendcontainerdns'
 	location: location

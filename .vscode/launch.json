@@ -9,7 +9,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+    //  "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/rad/main.go",
       "cwd": "${workspaceFolder}",
       "args": []
@@ -19,7 +19,7 @@
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "preLaunchTask": "Build Radius (all)",
+    //  "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/rad",
       "args": "${input:cliArgs}",
       "console": "integratedTerminal"
@@ -29,31 +29,35 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
-      "program": "${workspaceFolder}/cmd/applications-rp/main.go"
+     // "preLaunchTask": "Build Radius (all)",
+      "program": "${workspaceFolder}/cmd/applications-rp/main.go",
     },
     {
       "name": "Launch Dynamic RP",
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
-      "program": "${workspaceFolder}/cmd/dynamic-rp/main.go"
+      //"preLaunchTask": "Build Radius (all)",
+      "program": "${workspaceFolder}/cmd/dynamic-rp/main.go",
+      "args": [
+        "--config-file",
+        "${workspaceFolder}/cmd/dynamic-rp/dynamicrp-dev.yaml",
+      ],
     },
     {
       "name": "Launch UCP",
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
-      "program": "${workspaceFolder}/cmd/ucpd/main.go"
+     // "preLaunchTask": "Build Radius (all)",
+      "program": "${workspaceFolder}/cmd/ucpd/main.go",
     },
     {
       "name": "Launch Controller",
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+    //  "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/controller/main.go",
       "args": ["--cert-dir", ""]
     },
@@ -97,7 +101,7 @@
         "Launch Applications RP",
         "Launch Dynamic RP",
         "Launch Controller",
-        "Launch Deployment Engine"
+    //    "Launch Deployment Engine"
       ],
       "stopAll": true
     }

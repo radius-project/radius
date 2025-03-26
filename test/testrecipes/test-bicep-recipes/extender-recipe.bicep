@@ -1,27 +1,27 @@
 extension kubernetes with {
   kubeConfig: ''
-  namespace: context.runtime.kubernetes.namespace
+  namespace: 'radius-testing'
 } as kubernetes
 
-param context object
+//param context object
 param containerImage string
 
 resource extender 'apps/Deployment@v1' = {
   metadata: {
-    name: 'extender-${uniqueString(context.resource.id)}'
+    name: 'extender-2345678909876543'
   }
   spec: {
     selector: {
       matchLabels: {
         app: 'extender'
-        resource: context.resource.name
+        resource: 'context.resource.name'
       }
     }
     template: {
       metadata: {
         labels: {
           app: 'extender'
-          resource: context.resource.name
+          resource: 'context.resource.name'
         }
       }
       spec: {
@@ -43,13 +43,13 @@ resource extender 'apps/Deployment@v1' = {
 
 resource svc 'core/Service@v1' = {
   metadata: {
-    name: 'extender-${uniqueString(context.resource.id)}'
+    name: 'extender-2345678909876543'
   }
   spec: {
     type: 'ClusterIP'
     selector: {
       app: 'extender'
-      resource: context.resource.name
+      resource: 'context.resource.name'
     }
     ports: [
       {
