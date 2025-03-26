@@ -122,7 +122,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 // This test verifies deployment of shared environment scoped resource using 'existing' keyword.
 // It has 2 steps:
 // 1. Deploy the environment and mongodb resource to the environment namespace.
-// 2. Deploy and app that uses the existing mongodb resource using the 'existing' keyword.
+// 2. Deploy an app that uses the existing mongodb resource using the 'existing' keyword.
 func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
 	envTemplate := "testdata/datastoresrp-resources-mongodb-recipe-and-env.bicep"
 	existingTemplate := "testdata/datastoresrp-resources-mongodb-existing-env-scoped-resource.bicep"
@@ -147,7 +147,7 @@ func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
 			SkipObjectValidation: true,
 		},
 		{
-			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", name)),
+			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetMagpieImage(), fmt.Sprintf("environment=/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/%s", name)),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
