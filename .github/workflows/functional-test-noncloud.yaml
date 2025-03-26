@@ -392,14 +392,14 @@ jobs:
       - name: Runing kube commnds
         if: always()
         run: |
-          # Get the list of all pods in the radius-system namespace
+          echo "Get the list of all pods in the radius-system namespace"
           kubectl get pods -n radius-system
 
-          # Get all namespace
+          echo "Get all namespace"
           kubectl get ns
 
-          # Get all pods in applications namespace
-          kubectl get -all default-usertypealpha-recipe
+          echo "Get all pods in applications namespace"
+          kubectl get --all -n default-usertypealpha-recipe
       
       - name: run rad commands
         run: |
