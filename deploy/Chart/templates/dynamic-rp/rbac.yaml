@@ -42,11 +42,12 @@ rules:
   - update
   - watch
 
-  # Permissions for managing deployments in the specified namespace.
 - apiGroups:
   - apps
   resources:
   - deployments
+  - statefulsets
+  - replicasets
   verbs:
   - create
   - delete
