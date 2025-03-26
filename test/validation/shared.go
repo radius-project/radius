@@ -88,14 +88,14 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 		}
 		output.LogInfo("Environment '%s' exists, deleting...", *env.ID)
 
-		// _, err = client.DeleteEnvironment(ctxWithResp, resource.Name)
-		// if err != nil {
-		// 	return err
-		// }
+		_, err = client.DeleteEnvironment(ctxWithResp, resource.Name)
+		if err != nil {
+			return err
+		}
 
-		// if respFromCtx.StatusCode == 204 {
-		// 	output.LogInfo("Environment '%s' does not exist or has already been deleted.", resource.Name)
-		// }
+		if respFromCtx.StatusCode == 204 {
+			output.LogInfo("Environment '%s' does not exist or has already been deleted.", resource.Name)
+		}
 
 		return nil
 
