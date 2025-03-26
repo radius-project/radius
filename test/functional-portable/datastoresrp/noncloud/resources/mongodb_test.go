@@ -18,7 +18,6 @@ package resource_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
@@ -147,7 +146,7 @@ func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
 			SkipObjectValidation: true,
 		},
 		{
-			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetMagpieImage(), fmt.Sprintf("environment=/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/%s", name)),
+			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetMagpieImage(), "environment=/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/dsrp-resources-mongodb-recipe-and-env"),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
