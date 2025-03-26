@@ -41,6 +41,20 @@ rules:
   - patch
   - update
   - watch
+
+  # Permissions for managing deployments in the specified namespace.
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
