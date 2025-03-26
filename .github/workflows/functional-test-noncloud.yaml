@@ -406,11 +406,21 @@ jobs:
       - name: run rad commands
         run: |
           # Get the list of all pods in the radius-system namespace
+          echo "rad workspace list"
           rad workspace list
+          echo "rad group list"
           rad group list
+          echo "rad env list"
           rad env list
+          echo "rad app list"
           rad app list
+          echo "rad resource list"
           rad resource list Test.Resources/userTypeAlpha 
+          echo "rad app show usertypealpha-recipe-app"
+          rad app show usertypealpha-recipe-app -o json
+          echo "rad resource show show Test.Resources/userTypeAlpha usertypealpha123 "
+          rad resource show Test.Resources/userTypeAlpha usertypealpha123  -o json
+
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
