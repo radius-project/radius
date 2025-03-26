@@ -13,6 +13,8 @@ RUN apt-get update && \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
 # Create a non-root user
 # RUN useradd -m -s /bin/bash controlleruser && \
 #     mkdir -p /home/controlleruser && \
