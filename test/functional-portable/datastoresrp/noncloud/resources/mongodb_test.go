@@ -146,7 +146,7 @@ func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
 			SkipObjectValidation: true,
 		},
 		{
-			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetMagpieImage(), "environment=/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/dsrp-resources-mongodb-recipe-and-env"),
+			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
