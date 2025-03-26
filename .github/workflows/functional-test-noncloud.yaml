@@ -404,6 +404,7 @@ jobs:
           kubectl get all -n default-usertypealpha-recipe-usertypealpha-recipe-app
       
       - name: run rad commands
+        if: always()
         run: |
           # Get the list of all pods in the radius-system namespace
           echo "rad workspace list"
@@ -418,7 +419,7 @@ jobs:
           rad resource list Test.Resources/userTypeAlpha 
           echo "rad app show usertypealpha-recipe-app"
           rad app show usertypealpha-recipe-app -o json
-          echo "rad resource show show Test.Resources/userTypeAlpha usertypealpha123 "
+          echo "rad resource show  Test.Resources/userTypeAlpha usertypealpha123 "
           rad resource show Test.Resources/userTypeAlpha usertypealpha123  -o json
 
 
