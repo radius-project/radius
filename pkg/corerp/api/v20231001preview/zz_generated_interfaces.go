@@ -13,15 +13,6 @@ type EnvironmentComputeClassification interface {
 	GetEnvironmentCompute() *EnvironmentCompute
 }
 
-// EnvironmentComputeUpdateClassification provides polymorphic access to related types.
-// Call the interface's GetEnvironmentComputeUpdate() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *AzureContainerInstanceComputeUpdate, *EnvironmentComputeUpdate, *KubernetesComputeUpdate
-type EnvironmentComputeUpdateClassification interface {
-	// GetEnvironmentComputeUpdate returns the EnvironmentComputeUpdate content of the underlying type.
-	GetEnvironmentComputeUpdate() *EnvironmentComputeUpdate
-}
-
 // ExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:

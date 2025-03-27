@@ -24,7 +24,7 @@ ifeq ($(GOOS),windows)
 endif
 
 .PHONY: generate
-generate: generate-containerinstance-client # generate-genericcliclient generate-rad-corerp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-genericcliclient generate-rad-corerp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller generate-containerinstance-client ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
@@ -127,7 +127,7 @@ generate-bicep-types: generate-node-installed ## Generate Bicep extensibility ty
 .PHONY: generate-containerinstance-client
 generate-containerinstance-client: generate-node-installed generate-autorest-installed  ## Generates the Container Instances SDK (Autorest).
 	autorest \
-		swagger/specification/containerinstance/resource-manager/readme.md \
+		pkg/sdk/aci-specification/containerinstance/resource-manager/readme.md \
 		--go \
 		--tag=package-preview-2024-11
 
