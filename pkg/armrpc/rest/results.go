@@ -526,6 +526,7 @@ func NewNotFoundMessageResponse(message string) Response {
 
 // NewNotFoundResponse creates a NotFoundResponse with resource id.
 func NewNotFoundResponse(id resources.ID) Response {
+	fmt.Println(id.String())
 	return &NotFoundResponse{
 		Body: v1.ErrorResponse{
 			Error: &v1.ErrorDetails{
