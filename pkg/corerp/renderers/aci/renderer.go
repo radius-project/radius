@@ -16,7 +16,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
-	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20240901preview"
+	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20241101preview"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
@@ -128,18 +128,23 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	containerPorts := []*ngroupsclient.ContainerPort{}
-	ipAddress := &ngroupsclient.IPAddress{Type: to.Ptr(ngroupsclient.ContainerGroupIPAddressTypePrivate)}
+	ipAddress := &ngroupsclient.IPAddress{
+		Type: to.Ptr(ngroupsclient.ContainerGroupIPAddressTypePrivate),
+	}
 
 	// Support only one port for now.
+	// port 80 has to be defined
 	firstPort := int32(80)
 	gatewayProvides := ""
 	for _, v := range properties.Container.Ports {
+		// exposed within container group for interacting with the container
 		containerPorts = append(containerPorts, &ngroupsclient.ContainerPort{
-			Port:     to.Ptr[int32](v.ContainerPort),
+			Port:     to.Ptr(v.ContainerPort),
 			Protocol: to.Ptr(ngroupsclient.ContainerNetworkProtocolTCP),
 		})
+		// ports exposed to communicate with the container group -- standard is port 80
 		ipAddress.Ports = append(ipAddress.Ports, &ngroupsclient.Port{
-			Port:     to.Ptr[int32](v.ContainerPort),
+			Port:     to.Ptr(v.ContainerPort),
 			Protocol: to.Ptr(ngroupsclient.ContainerGroupNetworkProtocolTCP),
 		})
 
@@ -151,6 +156,10 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	if len(containerPorts) > 0 {
 		firstPort = to.Int32(containerPorts[0].Port)
+	}
+	// todo: check test scenarios on this
+	if len(ipAddress.Ports) < 1 {
+		ipAddress = nil
 	}
 
 	nsgID := internalLBNSGID
@@ -348,12 +357,19 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	orResources = append(orResources, orProfile)
 
 	// TODO: rename to ngroup
-	scaleSet := &ngroupsclient.NGroup{
+	nGroup := &ngroupsclient.NGroup{
 		Name:     to.Ptr(resource.Name),
 		Location: to.Ptr(aciLocation),
+		Identity: &ngroupsclient.NGroupIdentity{
+			// TODO: update with user assigned identity
+			Type: to.Ptr(ngroupsclient.ResourceIdentityTypeUserAssigned),
+			UserAssignedIdentities: map[string]*ngroupsclient.UserAssignedIdentities{
+				"/subscriptions/<>/resourceGroups/<>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<>": {},
+			},
+		},
 		Properties: &ngroupsclient.NGroupProperties{
 			UpdateProfile: &ngroupsclient.UpdateProfile{
-				UpdateMode: to.Ptr(ngroupsclient.UpdateProfileUpdateModeRolling),
+				UpdateMode: to.Ptr(ngroupsclient.NGroupUpdateModeRolling),
 			},
 			ElasticProfile: &ngroupsclient.ElasticProfile{
 				DesiredCount: to.Ptr[int32](1),
@@ -380,19 +396,19 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		},
 	}
 
-	orScaleSet := rpv1.OutputResource{
-		LocalID: rpv1.LocalIDAzureCGScaleSet,
-		ID:      resources.MustParse(options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.ContainerInstance/containerScaleSets/" + resource.Name),
+	orNGroup := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureCGNGroups,
+		ID:      resources.MustParse(options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.ContainerInstance/nGroups/" + resource.Name),
 		CreateResource: &rpv1.Resource{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.ContainerInstance/containerScaleSets",
+				Type:     "Microsoft.ContainerInstance/nGroups",
 				Provider: resourcemodel.ProviderAzure,
 			},
-			Data:         scaleSet,
+			Data:         nGroup,
 			Dependencies: []string{rpv1.LocalIDAzureCGProfile},
 		},
 	}
-	orResources = append(orResources, orScaleSet)
+	orResources = append(orResources, orNGroup)
 
 	return renderers.RendererOutput{
 		Resources:      orResources,

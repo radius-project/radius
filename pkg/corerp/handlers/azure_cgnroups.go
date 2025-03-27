@@ -21,25 +21,30 @@ import (
 	"errors"
 	"fmt"
 
+	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	azruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20240901preview"
+	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20241101preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-func NewAzureCGScaleSetHandler(arm *armauth.ArmConfig) ResourceHandler {
-	return &azureCGScaleSetHandler{arm: arm}
+func NewAzureCGNGroupsHandler(arm *armauth.ArmConfig) ResourceHandler {
+	return &azureCGNGroupsHandler{arm: arm}
 }
 
-type azureCGScaleSetHandler struct {
+type azureCGNGroupsHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *azureCGScaleSetHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	cs2, ok := options.Resource.CreateResource.Data.(*ngroupsclient.NGroup)
+	nGroup, ok := options.Resource.CreateResource.Data.(*ngroupsclient.NGroup)
 	if !ok {
 		return nil, errors.New("cannot parse container group profile")
 	}
@@ -55,14 +60,16 @@ func (handler *azureCGScaleSetHandler) Put(ctx context.Context, options *PutOpti
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
 
-	cs2.Properties.ContainerGroupProfiles[0].Resource.ID = to.Ptr(cgpID)
-	cgp, err := ngroupsclient.NewNGroupsClient(subID, handler.arm.ClientOptions.Cred, nil)
+	nGroup.Properties.ContainerGroupProfiles[0].Resource.ID = to.Ptr(cgpID)
+	pl, err := armruntime.NewPipeline("github.com/radius-project/radius", "v0.0.1", handler.arm.ClientOptions.Cred, azruntime.PipelineOptions{}, &armpolicy.ClientOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Info("creating container scale set...")
-	poller, err := cgp.BeginCreateOrUpdate(ctx, resourceGroupName, *cs2.Name, *cs2, nil)
+	cgp := ngroupsclient.NewNGroupsClient(subID, pl)
+
+	logger.Info("creating NGroup...")
+	poller, err := cgp.BeginCreateOrUpdate(ctx, resourceGroupName, *nGroup.Name, *nGroup, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -76,18 +83,16 @@ func (handler *azureCGScaleSetHandler) Put(ctx context.Context, options *PutOpti
 	return map[string]string{}, nil
 }
 
-func (handler *azureCGScaleSetHandler) Delete(ctx context.Context, options *DeleteOptions) error {
+func (handler *azureCGNGroupsHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	subID := options.Resource.ID.FindScope("subscriptions")
 	resourceGroupName := options.Resource.ID.FindScope("resourceGroups")
 
-	cgp, err := ngroupsclient.NewNGroupsClient(subID, handler.arm.ClientOptions.Cred, nil)
-	if err != nil {
-		return err
-	}
+	pl := runtime.NewPipeline("github.com/radius-project/radius", "v0.0.1", runtime.PipelineOptions{}, &policy.ClientOptions{})
+	cgp := ngroupsclient.NewNGroupsClient(subID, pl)
 
-	logger.Info("deleting container scale set...")
+	logger.Info("deleting NGroup...")
 	poller, err := cgp.BeginDelete(ctx, resourceGroupName, options.Resource.ID.Name(), nil)
 	if err != nil {
 		return err
