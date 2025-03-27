@@ -29,12 +29,12 @@ MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 define generateDockerTargets
 ifeq ($(strip $(4)),go)
 .PHONY: docker-build-$(1)
-docker-build-$(1): build-$(1)-linux-arm64
+docker-build-$(1): build-$(1)-linux-amd64
 	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
 
 	cd $(OUT_DIR) && docker build $(2) -f ./Dockerfile-$(1) \
-		--platform darwin/arm64 \
+		--platform linux/amd64 \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \

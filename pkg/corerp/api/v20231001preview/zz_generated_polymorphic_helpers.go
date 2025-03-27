@@ -29,29 +29,6 @@ func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (Environm
 	return b, nil
 }
 
-func unmarshalEnvironmentComputeUpdateClassification(rawMsg json.RawMessage) (EnvironmentComputeUpdateClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]any
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b EnvironmentComputeUpdateClassification
-	switch m["kind"] {
-	case "aci":
-		b = &AzureContainerInstanceComputeUpdate{}
-	case "kubernetes":
-		b = &KubernetesComputeUpdate{}
-	default:
-		b = &EnvironmentComputeUpdate{}
-	}
-	if err := json.Unmarshal(rawMsg, b); err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
 func unmarshalExtensionClassification(rawMsg json.RawMessage) (ExtensionClassification, error) {
 	if rawMsg == nil || string(rawMsg) == "null" {
 		return nil, nil
