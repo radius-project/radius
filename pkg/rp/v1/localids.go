@@ -66,7 +66,7 @@ const (
 	LocalIDFederatedIdentity              = "FederatedIdentity"
 	LocalIDRoleAssignmentPrefix           = "RoleAssignment"
 	LocalIDAzureCGProfile                 = "AzureCGProfile"
-	LocalIDAzureCGScaleSet                = "AzureCGScaleSet"
+	LocalIDAzureCGNGroups                 = "AzureCGNGroups"
 	LocalIDAzureVirtualNetworkSubnet      = "AzureVirtualNetworkSubnet"
 	LocalIDAzureContainerLoadBalancer     = "AzureContainerLoadBalancer"
 	LocalIDAzurePublicIP                  = "AzurePublicIP"

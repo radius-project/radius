@@ -24,7 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/resourcemodel"
-	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20240901preview"
+	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20241101preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -59,7 +59,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 		case datamodel.ManualScaling:
 			for _, ores := range output.Resources {
 				resourceType := ores.GetResourceType()
-				if resourceType.Provider != resourcemodel.ProviderAzure || resourceType.Type != "Microsoft.ContainerInstance/containerScaleSets" {
+				if resourceType.Provider != resourcemodel.ProviderAzure || resourceType.Type != "Microsoft.ContainerInstance/nGroups" {
 					// Not a Kubernetes resource
 					continue
 				}
