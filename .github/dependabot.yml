@@ -20,10 +20,6 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-    groups:
-      all:
-        patterns:
-          - "*"
   - package-ecosystem: "gitsubmodule"
     directory: "/"
     schedule:
