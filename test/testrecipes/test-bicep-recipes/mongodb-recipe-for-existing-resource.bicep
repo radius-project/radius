@@ -37,7 +37,7 @@ resource mongoResource 'apps/Deployment@v1' = {
             image: 'ghcr.io/radius-project/mirror/mongo:4.2'
             ports: [
               {
-                containerPort: 27018
+                containerPort: 28017
               }
             ]
             env: [
@@ -82,7 +82,7 @@ resource svc 'core/Service@v1' = {
     }
     ports: [
       {
-        port: 27018
+        port: 28017
       }
     ]
   }
@@ -98,12 +98,12 @@ output result object = {
   ]
   values: {
     host: '${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local'
-    port: 27018
+    port: 28017
     database: context.resource.name
   }
   secrets: {
     #disable-next-line outputs-should-not-contain-secrets
-    connectionString: 'mongodb://${username}:${password}@${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local:27017'
+    connectionString: 'mongodb://${username}:${password}@${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local:28017'
     username: username
   #disable-next-line outputs-should-not-contain-secrets
     password: password
