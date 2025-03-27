@@ -129,16 +129,16 @@ type AuthConfig struct {
 
 // AzureContainerInstanceCompute - The Azure container instance compute configuration
 type AzureContainerInstanceCompute struct {
-	// REQUIRED; Discriminator property for EnvironmentCompute.
+// REQUIRED; Discriminator property for EnvironmentCompute.
 	Kind *string
 
-	// Configuration for supported external identity providers
+// Configuration for supported external identity providers
 	Identity *IdentitySettings
 
-	// The resource group to use for the environment.
+// The resource group to use for the environment.
 	ResourceGroup *string
 
-	// The resource id of the compute resource for application environment.
+// The resource id of the compute resource for application environment.
 	ResourceID *string
 }
 
@@ -151,36 +151,12 @@ func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentComp
 	}
 }
 
-// AzureContainerInstanceComputeUpdate - The Azure container instance compute configuration
-type AzureContainerInstanceComputeUpdate struct {
-	// REQUIRED; Discriminator property for EnvironmentCompute.
-	Kind *string
-
-	// Configuration for supported external identity providers
-	Identity *IdentitySettingsUpdate
-
-	// The resource group to use for the environment.
-	ResourceGroup *string
-
-	// The resource id of the compute resource for application environment.
-	ResourceID *string
-}
-
-// GetEnvironmentComputeUpdate implements the EnvironmentComputeUpdateClassification interface for type AzureContainerInstanceComputeUpdate.
-func (a *AzureContainerInstanceComputeUpdate) GetEnvironmentComputeUpdate() *EnvironmentComputeUpdate {
-	return &EnvironmentComputeUpdate{
-		Identity: a.Identity,
-		Kind: a.Kind,
-		ResourceID: a.ResourceID,
-	}
-}
-
 // AzureContainerInstanceExtension - Azure container instance resource group extension of a environment/application resource.
 type AzureContainerInstanceExtension struct {
-	// REQUIRED; Discriminator property for Extension.
+// REQUIRED; Discriminator property for Extension.
 	Kind *string
 
-	// REQUIRED; The resource group of the application environment.
+// REQUIRED; The resource group of the application environment.
 	ResourceGroup *string
 }
 
