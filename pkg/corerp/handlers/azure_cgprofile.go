@@ -21,8 +21,14 @@ import (
 	"errors"
 	"fmt"
 
+	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	azruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/azure/armauth"
-	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20240901preview"
+	cgclient "github.com/radius-project/radius/pkg/sdk/v20241101preview"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 func NewAzureCGProfileHandler(arm *armauth.ArmConfig) ResourceHandler {
@@ -34,7 +40,7 @@ type azureCGProfileHandler struct {
 }
 
 func (handler *azureCGProfileHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	profile, ok := options.Resource.CreateResource.Data.(*ngroupsclient.ContainerGroupProfile)
+	profile, ok := options.Resource.CreateResource.Data.(*cgclient.ContainerGroupProfile)
 	if !ok {
 		return nil, errors.New("cannot parse container group profile")
 	}
@@ -45,10 +51,12 @@ func (handler *azureCGProfileHandler) Put(ctx context.Context, options *PutOptio
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
 
-	cgp, err := ngroupsclient.NewContainerGroupProfileClient(subID, handler.arm.ClientOptions.Cred, nil)
+	pl, err := armruntime.NewPipeline("github.com/radius-project/radius", "v0.0.1", handler.arm.ClientOptions.Cred, azruntime.PipelineOptions{}, &armpolicy.ClientOptions{})
 	if err != nil {
 		return nil, err
 	}
+
+	cgp := cgclient.NewCGProfileClient(subID, pl)
 
 	resp, err := cgp.CreateOrUpdate(ctx, resourceGroupName, *profile.Name, *profile, nil)
 	if err != nil {
@@ -63,13 +71,24 @@ func (handler *azureCGProfileHandler) Put(ctx context.Context, options *PutOptio
 }
 
 func (handler *azureCGProfileHandler) Delete(ctx context.Context, options *DeleteOptions) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	subID := options.Resource.ID.FindScope("subscriptions")
 	resourceGroupName := options.Resource.ID.FindScope("resourceGroups")
 
-	cgp, err := ngroupsclient.NewContainerGroupProfileClient(subID, handler.arm.ClientOptions.Cred, nil)
+	pl := runtime.NewPipeline("github.com/radius-project/radius", "v0.0.1", runtime.PipelineOptions{}, &policy.ClientOptions{})
+	cgp := cgclient.NewCGProfileClient(subID, pl)
+
+	logger.Info("deleting container group profile...")
+	poller, err := cgp.BeginDelete(ctx, resourceGroupName, options.Resource.ID.Name(), nil)
 	if err != nil {
 		return err
 	}
-	_, err = cgp.Delete(ctx, resourceGroupName, options.Resource.ID.Name(), nil)
-	return err
+
+	_, err = poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("completed deleting container group profile...")
+	return nil
 }

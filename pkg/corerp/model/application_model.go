@@ -180,10 +180,10 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.ContainerInstance/containerScaleSets",
+				Type:     "Microsoft.ContainerInstance/nGroups",
 				Provider: resourcemodel.ProviderAzure,
 			},
-			ResourceHandler: handlers.NewAzureCGScaleSetHandler(arm),
+			ResourceHandler: handlers.NewAzureCGNGroupsHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{

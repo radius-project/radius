@@ -1,13 +1,13 @@
-import radius as radius
+extension radius
 
-param aciscope string = '<PUT_YOUR_RG_ID>'
+param aciscope string = '/subscriptions/<>/resourceGroups/<>'
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'aci-env'
   properties: {
     compute: {
       kind: 'aci'
-      resourceGroup: '<PUT_YOUR_RG_ID>'
+      resourceGroup: aciscope
     }
     recipes: {
       'Applications.Datastores/redisCaches':{
@@ -56,11 +56,15 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
   }
 }
 
-resource redis 'Applications.Datastores/redisCaches@2023-10-01-preview' = {
-  name: 'redis'
+resource redis 'Microsoft.Cache/redis@2022-06-01' = {
+  name: 'aci-redis'
+  location: 'global'
   properties: {
-    environment: env.id
-    application: app.id
+    sku: {
+      capacity: 0
+      family: 'C'
+      name: 'Basic'
+    }
   }
 }
 
