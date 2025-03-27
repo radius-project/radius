@@ -29,7 +29,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-     "preLaunchTask": "Build Radius (all)",
+      "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/applications-rp/main.go"
     },
     {
