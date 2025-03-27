@@ -13,7 +13,7 @@ RUN apk --no-cache add ca-certificates git && \
 WORKDIR /
 
 # Copy the application binary
-COPY ./linux_${TARGETARCH:-amd64}/release/applications-rp /
+COPY ./linux_${TARGETARCH:-arm64}/release/applications-rp /
 
 # Set the user to non-root
 USER rpuser
