@@ -8,7 +8,7 @@ ARG TARGETARCH
 WORKDIR /
 
 # Copy the application binary for the specified architecture
-COPY ./linux_${TARGETARCH:-arm64}/release/ucpd /
+COPY ./linux_${TARGETARCH:-amd64}/release/ucpd /
 
 # Copy the manifest files for the built-in providers
 COPY ./manifest/built-in-providers/ /manifest/built-in-providers/
