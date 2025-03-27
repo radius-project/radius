@@ -161,9 +161,6 @@
           "ContainerGroupsCreateOrUpdate": {
             "$ref": "./examples/ContainerGroupsCreateOrUpdate.json"
           },
-          "ContainerGroupsCreateOrUpdateSecretReference": {
-            "$ref": "./examples/ContainerGroupsCreateOrUpdateSecretReference.json"
-          },
           "ContainerGroupCreateWithExtensions": {
             "$ref": "./examples/ContainerGroupExtensions.json"
           },
@@ -983,7 +980,7 @@
             "$ref": "#/parameters/NGroupsNameParameter"
           },
           {
-            "name": "nGroup",
+            "name": "parameters",
             "in": "body",
             "required": true,
             "schema": {
@@ -1211,13 +1208,17 @@
         "description": "Gets a list of all nGroups under a resource group.",
         "parameters": [
           {
-            "$ref": "#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "#/parameters/ResourceGroupNameParameter"
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The name of the resource group."
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
           }
         ],
         "responses": {
@@ -1271,307 +1272,9 @@
           "nextLinkName": "nextLink"
         }
       }
-    },
-    "/subscriptions/{subscriptionId}/providers/Microsoft.ContainerInstance/containerGroupProfiles": {
-      "get": {
-        "operationId": "ContainerGroupProfile_ListBySubscription",
-        "x-ms-examples": {},
-        "summary": "Gets a list of all container group profiles under a subscription.",
-        "description": "Gets a list of all container group profiles under a subscription.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "#/parameters/ApiVersionParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/ContainerGroupProfileListResult"
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "#/definitions/CloudError"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ContainerInstance/containerGroupProfiles": {
-      "get": {
-        "operationId": "ContainerGroupProfile_ListByResourceGroup",
-        "x-ms-examples": {},
-        "summary": "Gets a list of all container group profiles under a resource group.",
-        "description": "Gets a list of all container group profiles under a resource group.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "#/parameters/ResourceGroupNameParameter"
-          },
-          {
-            "$ref": "#/parameters/ApiVersionParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/ContainerGroupProfileListResult"
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "#/definitions/CloudError"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ContainerInstance/containerGroupProfiles/{containerGroupProfileName}": {
-      "put": {
-        "operationId": "ContainerGroupProfile_CreateOrUpdate",
-        "x-ms-examples": {},
-        "summary": "Create or Update a ContainerGroupProfile",
-        "description": "Create a CGProfile if it doesn't exist or update an existing CGProfile.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "#/parameters/ResourceGroupNameParameter"
-          },
-          {
-            "$ref": "#/parameters/ContainerGroupProfileNameParameter"
-          },
-          {
-            "name": "ContainerGroupProfile",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ContainerGroupProfile"
-            },
-            "description": "The ContainerGroupProfile object."
-          },
-          {
-            "$ref": "#/parameters/ApiVersionParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "headers": {
-              "Azure-AsyncOperation": {
-                "type": "string"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/ContainerGroupProfile"
-            }
-          },
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/ContainerGroupProfile"
-            },
-            "headers": {
-              "Azure-AsyncOperation": {
-                "type": "string"
-              }
-            }
-          },
-          "202": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/ContainerGroupProfile"
-            },
-            "headers": {
-              "Azure-AsyncOperation": {
-                "type": "string"
-              }
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v6/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "patch": {
-        "operationId": "ContainerGroupProfile_Update",
-        "x-ms-examples": {},
-        "summary": "Update a specified ContainerGroupProfile.",
-        "description": "Update a specified container group profile.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "#/parameters/ResourceGroupNameParameter"
-          },
-          {
-            "$ref": "#/parameters/ContainerGroupProfileNameParameter"
-          },
-          {
-            "name": "ContainerGroupProfile",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ContainerGroupProfile"
-            },
-            "description": "The ContainerGroupProfile object."
-          },
-          {
-            "$ref": "#/parameters/ApiVersionParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/ContainerGroupProfile"
-            },
-            "headers": {
-              "x-ms-correlation-request-id": {
-                "type": "string"
-              }
-            }
-          },
-          "202": {
-            "description": "ContainerGroupProfile Updated",
-            "headers": {
-              "x-ms-correlation-request-id": {
-                "type": "string"
-              }
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v6/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "get": {
-        "operationId": "ContainerGroupProfile_Get",
-        "x-ms-examples": {},
-        "summary": "Display information about a specified ContainerGroupProfile.",
-        "description": "Get the properties of the specified container group profile.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/ResourceGroupNameParameter"
-          },
-          {
-            "$ref": "#/parameters/ContainerGroupProfileNameParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/ContainerGroupProfile"
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "#/definitions/CloudError"
-            }
-          }
-        }
-      },
-      "delete": {
-        "operationId": "ContainerGroupProfile_Delete",
-        "x-ms-examples": {},
-        "summary": "Delete a ContainerGroupProfile.",
-        "description": "Deletes a container group profile.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "#/parameters/ResourceGroupNameParameter"
-          },
-          {
-            "$ref": "#/parameters/ContainerGroupProfileNameParameter"
-          },
-          {
-            "$ref": "#/parameters/ApiVersionParameter"
-          }
-        ],
-        "responses": {
-          "202": {
-            "description": "Accepted",
-            "headers": {
-              "Azure-AsyncOperation": {
-                "type": "string"
-              },
-              "Location": {
-                "type": "string"
-              }
-            }
-          },
-          "204": {
-            "description": "No Content"
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v6/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
     }
   },
   "definitions": {
-    "SecretReference": {
-      "description": "A secret reference",
-      "type": "object",
-      "required": [
-        "name",
-        "identity",
-        "secretReferenceUri"
-      ],
-      "properties": {
-        "name": {
-          "description": "The identifier of the secret reference",
-          "type": "string"
-        },
-        "identity": {
-          "description": "The ARM resource id of the managed identity that has access to the secret in the key vault",
-          "type": "string",
-          "format": "arm-id"
-        },
-        "secretReferenceUri": {
-          "description": "The URI to the secret in key vault",
-          "type": "string",
-          "format": "uri"
-        }
-      }
-    },
     "Container": {
       "description": "A container instance.",
       "type": "object",
@@ -1932,10 +1635,6 @@
         "storageAccountKey": {
           "description": "The storage account access key used to access the Azure File share.",
           "type": "string"
-        },
-        "storageAccountKeyReference": {
-          "description": "The reference to the storage account access key used to access the Azure File share.",
-          "type": "string"
         }
       }
     },
@@ -1946,13 +1645,6 @@
     },
     "SecretVolume": {
       "description": "The secret volume.",
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
-    },
-    "SecretReferenceVolume": {
-      "description": "The secret reference volume.",
       "type": "object",
       "additionalProperties": {
         "type": "string"
@@ -2000,10 +1692,6 @@
         "secret": {
           "description": "The secret volume.",
           "$ref": "#/definitions/SecretVolume"
-        },
-        "secretReference": {
-          "description": "The secret reference volume.",
-          "$ref": "#/definitions/SecretReferenceVolume"
         },
         "gitRepo": {
           "description": "The git repo volume.",
@@ -2139,7 +1827,6 @@
     "ContainerGroupProperties": {
       "description": "The container group properties",
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "properties"
       ],
@@ -2152,22 +1839,11 @@
           "x-ms-client-flatten": true,
           "type": "object",
           "description": "The container group properties",
-          "additionalProperties": false,
           "properties": {
             "provisioningState": {
               "readOnly": true,
               "type": "string",
               "description": "The provisioning state of the container group. This only appears in the response."
-            },
-            "secretReferences": {
-              "type": "array",
-              "description": "The secret references that will be referenced within the container group.",
-              "items": {
-                "$ref": "#/definitions/SecretReference"
-              },
-              "x-ms-identifiers": [
-                "name"
-              ]
             },
             "containers": {
               "type": "array",
@@ -2190,16 +1866,33 @@
               ]
             },
             "restartPolicy": {
+              "type": "string",
               "description": "Restart policy for all containers within the container group. \n- `Always` Always restart\n- `OnFailure` Restart on failure\n- `Never` Never restart\n",
-              "$ref": "#/definitions/ContainerGroupRestartPolicy"
+              "enum": [
+                "Always",
+                "OnFailure",
+                "Never"
+              ],
+              "x-ms-enum": {
+                "name": "ContainerGroupRestartPolicy",
+                "modelAsString": true
+              }
             },
             "ipAddress": {
               "description": "The IP address type of the container group.",
               "$ref": "#/definitions/IpAddress"
             },
             "osType": {
+              "type": "string",
               "description": "The operating system type required by the containers in the container group.",
-              "$ref": "#/definitions/OSType"
+              "enum": [
+                "Windows",
+                "Linux"
+              ],
+              "x-ms-enum": {
+                "name": "OperatingSystemTypes",
+                "modelAsString": true
+              }
             },
             "volumes": {
               "type": "array",
@@ -2283,8 +1976,193 @@
               "$ref": "#/definitions/ConfidentialComputeProperties"
             },
             "priority": {
+              "type": "string",
               "description": "The priority of the container group.",
-              "$ref": "#/definitions/Priority"
+              "enum": [
+                "Regular",
+                "Spot"
+              ],
+              "x-ms-enum": {
+                "name": "ContainerGroupPriority",
+                "modelAsString": true
+              }
+            }
+          },
+          "required": [
+            "containers",
+            "osType"
+          ]
+        }
+      }
+    },
+    "ListResultContainerGroup": {
+      "description": "A container group part of the list result.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        },
+        {
+          "$ref": "#/definitions/ListResultContainerGroupProperties"
+        }
+      ]
+    },
+    "ListResultContainerGroupProperties": {
+      "description": "Properties of container group part of list result",
+      "type": "object",
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "identity": {
+          "$ref": "#/definitions/ContainerGroupIdentity",
+          "description": "The identity of the container group, if configured."
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "type": "object",
+          "description": "The container group properties",
+          "properties": {
+            "provisioningState": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The provisioning state of the container group. This only appears in the response.",
+              "enum": [
+                "NotSpecified",
+                "Accepted",
+                "Pending",
+                "Updating",
+                "Creating",
+                "Repairing",
+                "Unhealthy",
+                "Failed",
+                "Canceled",
+                "Succeeded",
+                "Deleting",
+                "NotAccessible",
+                "PreProvisioned"
+              ],
+              "x-ms-enum": {
+                "name": "ContainerGroupProvisioningState",
+                "modelAsString": true
+              }
+            },
+            "containers": {
+              "type": "array",
+              "description": "The containers within the container group.",
+              "items": {
+                "$ref": "#/definitions/Container"
+              },
+              "x-ms-identifiers": [
+                "name"
+              ]
+            },
+            "imageRegistryCredentials": {
+              "type": "array",
+              "description": "The image registry credentials by which the container group is created from.",
+              "items": {
+                "$ref": "#/definitions/ImageRegistryCredential"
+              },
+              "x-ms-identifiers": [
+                "username"
+              ]
+            },
+            "restartPolicy": {
+              "type": "string",
+              "description": "Restart policy for all containers within the container group. \n- `Always` Always restart\n- `OnFailure` Restart on failure\n- `Never` Never restart\n",
+              "enum": [
+                "Always",
+                "OnFailure",
+                "Never"
+              ],
+              "x-ms-enum": {
+                "name": "ContainerGroupRestartPolicy",
+                "modelAsString": true
+              }
+            },
+            "ipAddress": {
+              "description": "The IP address type of the container group.",
+              "$ref": "#/definitions/IpAddress"
+            },
+            "osType": {
+              "type": "string",
+              "description": "The operating system type required by the containers in the container group.",
+              "enum": [
+                "Windows",
+                "Linux"
+              ],
+              "x-ms-enum": {
+                "name": "OperatingSystemTypes",
+                "modelAsString": true
+              }
+            },
+            "volumes": {
+              "type": "array",
+              "description": "The list of volumes that can be mounted by containers in this container group.",
+              "items": {
+                "$ref": "#/definitions/Volume"
+              },
+              "x-ms-identifiers": [
+                "name"
+              ]
+            },
+            "diagnostics": {
+              "description": "The diagnostic information for a container group.",
+              "$ref": "#/definitions/ContainerGroupDiagnostics"
+            },
+            "subnetIds": {
+              "type": "array",
+              "description": "The subnet resource IDs for a container group.",
+              "items": {
+                "$ref": "#/definitions/ContainerGroupSubnetId"
+              }
+            },
+            "dnsConfig": {
+              "description": "The DNS config information for a container group.",
+              "$ref": "#/definitions/DnsConfiguration"
+            },
+            "sku": {
+              "description": "The SKU for a container group.",
+              "$ref": "#/definitions/ContainerGroupSku"
+            },
+            "encryptionProperties": {
+              "description": "The encryption properties for a container group.",
+              "$ref": "#/definitions/EncryptionProperties"
+            },
+            "initContainers": {
+              "type": "array",
+              "description": "The init containers for a container group.",
+              "items": {
+                "$ref": "#/definitions/InitContainerDefinition"
+              },
+              "x-ms-identifiers": [
+                "name"
+              ]
+            },
+            "extensions": {
+              "type": "array",
+              "description": "extensions used by virtual kubelet",
+              "items": {
+                "$ref": "#/definitions/DeploymentExtensionSpec"
+              },
+              "x-ms-identifiers": [
+                "name"
+              ]
+            },
+            "confidentialComputeProperties": {
+              "description": "The properties for confidential container group",
+              "$ref": "#/definitions/ConfidentialComputeProperties"
+            },
+            "priority": {
+              "type": "string",
+              "description": "The priority of the container group.",
+              "enum": [
+                "Regular",
+                "Spot"
+              ],
+              "x-ms-enum": {
+                "name": "ContainerGroupPriority",
+                "modelAsString": true
+              }
             }
           },
           "required": [
@@ -2403,10 +2281,6 @@
           "type": "string",
           "description": "The password for the private registry.",
           "x-ms-secret": true
-        },
-        "passwordReference": {
-          "type": "string",
-          "description": "The reference for the private registry password."
         },
         "identity": {
           "type": "string",
@@ -2620,10 +2494,6 @@
           "type": "string",
           "description": "The value of the secure environment variable.",
           "x-ms-secret": true
-        },
-        "secureValueReference": {
-          "type": "string",
-          "description": "The reference of the secure environment variable."
         }
       },
       "required": [
@@ -2772,7 +2642,7 @@
         "value": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ContainerGroup"
+            "$ref": "#/definitions/ListResultContainerGroup"
           },
           "description": "The list of container groups."
         },
@@ -3042,38 +2912,12 @@
       "description": "The container group SKU.",
       "type": "string",
       "enum": [
-        "NotSpecified",
         "Standard",
         "Dedicated",
         "Confidential"
       ],
       "x-ms-enum": {
         "name": "ContainerGroupSku",
-        "modelAsString": true
-      }
-    },
-    "ContainerGroupRestartPolicy": {
-      "type": "string",
-      "description": "Restart policy for all containers within the container group. \n- `Always` Always restart\n- `OnFailure` Restart on failure\n- `Never` Never restart\n",
-      "enum": [
-        "Always",
-        "OnFailure",
-        "Never"
-      ],
-      "x-ms-enum": {
-        "name": "ContainerGroupRestartPolicy",
-        "modelAsString": true
-      }
-    },
-    "OSType": {
-      "type": "string",
-      "description": "The operating system type required by the containers in the container group.",
-      "enum": [
-        "Windows",
-        "Linux"
-      ],
-      "x-ms-enum": {
-        "name": "OperatingSystemTypes",
         "modelAsString": true
       }
     },
@@ -3254,18 +3098,6 @@
         }
       }
     },
-    "Priority": {
-      "type": "string",
-      "description": "The priority of the container group.",
-      "enum": [
-        "Regular",
-        "Spot"
-      ],
-      "x-ms-enum": {
-        "name": "ContainerGroupPriority",
-        "modelAsString": true
-      }
-    },
     "NGroupsSkusList": {
       "description": "List of SKU definitions. NGroups offer a single sku",
       "type": "object",
@@ -3340,13 +3172,6 @@
           },
           "description": "The nGroups zones. NOTE: Availability zones can only be set when you create the scale set"
         },
-        "tags": {
-          "type": "object",
-          "description": "Tags is a dictionary where customer can provide flags to enable certain features. Eg: autoscale.enabled: true",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
         "location": {
           "type": "string",
           "x-ms-mutability": [
@@ -3379,7 +3204,7 @@
         },
         "type": {
           "type": "string",
-          "description": "The type of identity used for the nGroup. The type 'SystemAssigned, UserAssigned' includes both an implicitly created identity and a set of user assigned identities. The type 'None' will remove any identities from the nGroup.",
+          "description": "The type of identity used for the container scale set. The type 'SystemAssigned, UserAssigned' includes both an implicitly created identity and a set of user assigned identities. The type 'None' will remove any identities from the nGroup.",
           "enum": [
             "SystemAssigned",
             "UserAssigned",
@@ -3393,8 +3218,9 @@
         },
         "userAssignedIdentities": {
           "type": "object",
-          "description": "The list of user identities associated with the nGroups. The user identity dictionary key references will be ARM resource ids in the form: '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identityName}'.",
+          "description": "The list of user identities associated with the container scale set. The user identity dictionary key references will be ARM resource ids in the form: '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identityName}'.",
           "additionalProperties": {
+            "type": "object",
             "$ref": "../../../../../common-types/resource-management/v6/managedidentity.json#/definitions/UserAssignedIdentity"
           }
         }
@@ -3406,10 +3232,6 @@
         "elasticProfile": {
           "$ref": "#/definitions/ElasticProfile",
           "description": "The elastic profile."
-        },
-        "placementProfile": {
-          "$ref": "#/definitions/PlacementProfile",
-          "description": "Provides options w.r.t allocation and management w.r.t certain placement policies. These utilize capabilities provided by the underlying Azure infrastructure. They are typically used for high availability scenarios. E.g., distributing CGs across fault domains."
         },
         "containerGroupProfiles": {
           "type": "array",
@@ -3436,58 +3258,9 @@
             "name": "NGroupProvisioningState",
             "modelAsString": true
           }
-        },
-        "updateProfile": {
-          "$ref": "#/definitions/UpdateProfile",
-          "description": "Used by the customer to specify the way to update the Container Groups in NGroup."
         }
       },
-      "description": "Describes the properties of a nGroup."
-    },
-    "UpdateProfile": {
-      "type": "object",
-      "description": "Used by the customer to specify the way to update the Container Groups in NGroup.",
-      "properties": {
-        "updateMode": {
-          "type": "string",
-          "enum": [
-            "Manual",
-            "Rolling"
-          ]
-        },
-        "rollingUpdateProfile": {
-          "type": "object",
-          "description": "This profile allows the customers to customize the rolling update.",
-          "properties": {
-            "maxBatchPercent": {
-              "type": "integer",
-              "description": "Maximum percentage of total Container Groups which can be updated simultaneously by rolling update in one batch."
-            },
-            "maxUnhealthyPercent": {
-              "type": "integer",
-              "description": "Maximum percentage of the updated Container Groups which can be in unhealthy state after each batch is updated."
-            },
-            "pauseTimeBetweenBatches": {
-              "type": "string",
-              "description": "The wait time between batches after completing the one batch of the rolling update and starting the next batch. The time duration should be specified in ISO 8601 format for duration."
-            },
-            "inPlaceUpdate": {
-              "type": "boolean",
-              "description": "Default is false. If set to true, the CGs will be updated in-place instead of creating new CG and deleting old ones."
-            }
-          }
-        }
-      }
-    },
-    "PlacementProfile": {
-      "type": "object",
-      "description": "Provides options w.r.t allocation and management w.r.t certain placement policies. These utilize capabilities provided by the underlying Azure infrastructure. They are typically used for high availability scenarios. E.g., distributing CGs across fault domains.",
-      "properties": {
-        "faultDomainCount": {
-          "type": "integer",
-          "description": "The number of fault domains to be used to spread CGs in a nGroup. This can only be specified during nGroup creation and is immutable after that."
-        }
-      }
+      "description": "Describes the properties of a Container Scale Set."
     },
     "ElasticProfile": {
       "type": "object",
@@ -3495,233 +3268,18 @@
         "desiredCount": {
           "type": "integer",
           "format": "int32"
-        },
-        "maintainDesiredCount": {
-          "type": "boolean",
-          "description": "Flag that indicates whether desiredCount should be maintained when customer deletes SPECIFIC container groups (CGs) from the NGroups. In this case, new CGs will be created by NGroup to compensate for the specific deleted ones."
-        },
-        "containerGroupNamingPolicy": {
-          "type": "object",
-          "description": "Container Groups are named on a generic guid based naming scheme/policy. Customer can modify naming policy to add prefix to CG names during scale out operation.",
-          "properties": {
-            "guidNamingPolicy": {
-              "type": "object",
-              "properties": {
-                "prefix": {
-                  "description": "The prefix can be used when there are tooling limitations (e.g. on the Azure portal where CGs from multiple nGroups exist in the same RG). The prefix with the suffixed resource name must still follow Azure resource naming guidelines.",
-                  "type": "string"
-                }
-              }
-            }
-          }
         }
       },
-      "description": "Describes the elastic profile of the nGroup"
+      "description": "Describes the elastic profile of the Container Scale Set"
     },
     "ContainerGroupProfileStub": {
       "type": "object",
       "properties": {
         "resource": {
-          "$ref": "#/definitions/ApiEntityReference",
-          "description": "A reference to the container group profile ARM resource hosted in ACI RP."
-        },
-        "revision": {
-          "type": "integer",
-          "description": "The revision of the CG profile is an optional property. If customer does not to provide a revision then nGroups will pickup the latest revision of CGProfile."
-        },
-        "networkProfile": {
-          "$ref": "#/definitions/NetworkProfile",
-          "description": "A network profile for network settings of a ContainerGroupProfile."
-        },
-        "storageProfile": {
-          "$ref": "#/definitions/StorageProfile",
-          "description": "Storage profile for storage related settings of a container group profile."
-        },
-        "containerGroupProperties": {
-          "$ref": "#/definitions/NGroupContainerGroupProperties",
-          "description": " Container Group properties which can be set while creating or updating the nGroups."
+          "$ref": "#/definitions/ApiEntityReference"
         }
       },
-      "description": "The object that contains a reference to a Container Group Profile and it's other related properties."
-    },
-    "NGroupContainerGroupProperties": {
-      "type": "object",
-      "description": "Container Group properties which can be set while creating or updating the nGroups.",
-      "properties": {
-        "subnetIds": {
-          "type": "array",
-          "description": "Contains information about Virtual Network Subnet ARM Resource",
-          "items": {
-            "$ref": "#/definitions/ContainerGroupSubnetId"
-          }
-        },
-        "volumes": {
-          "type": "array",
-          "description": "Contains information about the volumes that can be mounted by Containers in the Container Groups.",
-          "items": {
-            "description": "The properties of the volume.",
-            "type": "object",
-            "required": [
-              "name"
-            ],
-            "properties": {
-              "name": {
-                "description": "The name of the volume.",
-                "type": "string"
-              },
-              "azureFile": {
-                "description": "The Azure File volume.",
-                "$ref": "#/definitions/AzureFileVolume"
-              }
-            }
-          }
-        },
-        "containers": {
-          "type": "array",
-          "description": "Contains information about Container which can be set while creating or updating the nGroups.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "description": "container name"
-              },
-              "properties": {
-                "type": "object",
-                "description": "container properties",
-                "properties": {
-                  "volumeMounts": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/definitions/VolumeMount"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "StorageProfile": {
-      "type": "object",
-      "description": "Storage profile for storage related settings of a container group profile.",
-      "properties": {
-        "fileShares": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/FileShare",
-            "description": "List of file shares that will be created and mounted on CGs."
-          }
-        }
-      }
-    },
-    "FileShare": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "resourceGroupName": {
-          "type": "string"
-        },
-        "storageAccountName": {
-          "type": "string"
-        },
-        "properties": {
-          "type": "object",
-          "properties": {
-            "shareAccessType": {
-              "type": "string",
-              "description": " Specifies how Container Groups can access the Azure file share i.e. all CG will share same Azure file share or going to have exclusive file share.",
-              "enum": [
-                "Shared",
-                "Exclusive"
-              ],
-              "x-ms-enum": {
-                "name": "AzureFileShareAccessType",
-                "modelAsString": false
-              }
-            },
-            "shareAccessTier": {
-              "type": "string",
-              "description": "learn more at: https://learn.microsoft.com/en-us/rest/api/storagerp/file-shares/create?tabs=HTTP#shareaccesstier",
-              "enum": [
-                "cool",
-                "hot",
-                "premium",
-                "transactionoptimized"
-              ],
-              "x-ms-enum": {
-                "name": "AzureFileShareAccessTier",
-                "modelAsString": false
-              }
-            }
-          }
-        }
-      }
-    },
-    "NetworkProfile": {
-      "type": "object",
-      "description": "A network profile for network settings of a ContainerGroupProfile. Used to manage load balancer and application gateway backend pools, specifically updating the IP addresses of CGs within the backend pool.",
-      "properties": {
-        "loadBalancer": {
-          "$ref": "#/definitions/LoadBalancer",
-          "description": "LoadBalancer the CG profile will use to interact with CGs in a backend pool"
-        },
-        "applicationGateway": {
-          "$ref": "#/definitions/ApplicationGateway",
-          "description": "Application Gateway the CG profile will use to interact with CGs in a backend pool"
-        }
-      }
-    },
-    "ApplicationGateway": {
-      "type": "object",
-      "description": "Application Gateway the CG profile will use to interact with CGs in a backend pool",
-      "properties": {
-        "resource": {
-          "type": "object",
-          "$ref": "#/definitions/ApiEntityReference"
-        },
-        "backendAddressPools": {
-          "type": "array",
-          "description": "List of Application Gateway Backend Address Pools.",
-          "items": {
-            "$ref": "#/definitions/ApplicationGatewayBackendAddressPool"
-          }
-        }
-      }
-    },
-    "LoadBalancer": {
-      "type": "object",
-      "description": "LoadBalancer the CG profile will use to interact with CGs in a backend pool",
-      "properties": {
-        "backendAddressPools": {
-          "type": "array",
-          "description": "List of Load Balancer Backend Address Pools.",
-          "items": {
-            "$ref": "#/definitions/LoadBalancerBackendAddressPool"
-          }
-        }
-      }
-    },
-    "LoadBalancerBackendAddressPool": {
-      "type": "object",
-      "properties": {
-        "resource": {
-          "type": "object",
-          "$ref": "#/definitions/ApiEntityReference"
-        }
-      }
-    },
-    "ApplicationGatewayBackendAddressPool": {
-      "type": "object",
-      "properties": {
-        "resource": {
-          "type": "object",
-          "$ref": "#/definitions/ApiEntityReference"
-        }
-      }
+      "description": "The object that contains a reference to a Container Group Profile"
     },
     "ApiEntityReference": {
       "type": "object",
@@ -3732,156 +3290,6 @@
         }
       },
       "description": "The API entity reference."
-    },
-    "ContainerGroupProfileListResult": {
-      "description": "The container group profile list response",
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ContainerGroupProfile"
-          },
-          "description": "The list of ContainerGroupProfiles under a subscription or resource group."
-        },
-        "nextLink": {
-          "type": "string",
-          "description": "The URI to fetch the next page of Container Group Profiles."
-        }
-      }
-    },
-    "ContainerGroupProfile": {
-      "type": "object",
-      "properties": {
-        "resourceType": {
-          "type": "string",
-          "description": "Gets the container group profile type - Microsoft.ContainerInstance/containerGroupProfiles"
-        },
-        "properties": {
-          "$ref": "#/definitions/ContainerGroupProfileProperties"
-        }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/Resource"
-        }
-      ]
-    },
-    "ContainerGroupProfileProperties": {
-      "type": "object",
-      "properties": {
-        "sku": {
-          "description": "The SKU for a container group.",
-          "$ref": "#/definitions/ContainerGroupSku"
-        },
-        "encryptionProperties": {
-          "description": "The encryption properties for a container group.",
-          "$ref": "#/definitions/EncryptionProperties"
-        },
-        "containers": {
-          "type": "array",
-          "description": "The containers within the container group.",
-          "items": {
-            "$ref": "#/definitions/Container"
-          },
-          "x-ms-identifiers": [
-            "name"
-          ]
-        },
-        "initContainers": {
-          "type": "array",
-          "description": "The init containers for a container group.",
-          "items": {
-            "$ref": "#/definitions/InitContainerDefinition"
-          },
-          "x-ms-identifiers": [
-            "name"
-          ]
-        },
-        "extensions": {
-          "type": "array",
-          "description": "extensions used by virtual kubelet",
-          "items": {
-            "$ref": "#/definitions/DeploymentExtensionSpec"
-          },
-          "x-ms-identifiers": [
-            "name"
-          ]
-        },
-        "imageRegistryCredentials": {
-          "type": "array",
-          "description": "The image registry credentials by which the container group is created from.",
-          "items": {
-            "$ref": "#/definitions/ImageRegistryCredential"
-          },
-          "x-ms-identifiers": [
-            "username"
-          ]
-        },
-        "restartPolicy": {
-          "description": "Restart policy for all containers within the container group. \n- `Always` Always restart\n- `OnFailure` Restart on failure\n- `Never` Never restart\n",
-          "$ref": "#/definitions/ContainerGroupRestartPolicy"
-        },
-        "shutdownGracePeriod": {
-          "description": "Shutdown grace period for containers in a container group.",
-          "type": "string",
-          "format": "date-time"
-        },
-        "ipAddress": {
-          "description": "The IP address type of the container group.",
-          "$ref": "#/definitions/IpAddress"
-        },
-        "timeToLive": {
-          "description": "Post completion time to live for containers of a CG",
-          "type": "string",
-          "format": "date-time"
-        },
-        "osType": {
-          "description": "The operating system type required by the containers in the container group.",
-          "$ref": "#/definitions/OSType"
-        },
-        "volumes": {
-          "type": "array",
-          "description": "The list of volumes that can be mounted by containers in this container group.",
-          "items": {
-            "$ref": "#/definitions/Volume"
-          },
-          "x-ms-identifiers": [
-            "name"
-          ]
-        },
-        "diagnostics": {
-          "description": "The diagnostic information for a container group.",
-          "$ref": "#/definitions/ContainerGroupDiagnostics"
-        },
-        "priority": {
-          "description": "The priority of the container group.",
-          "$ref": "#/definitions/Priority"
-        },
-        "confidentialComputeProperties": {
-          "description": "The properties for confidential container group",
-          "$ref": "#/definitions/ConfidentialComputeProperties"
-        },
-        "securityContext": {
-          "description": "The container security properties.",
-          "$ref": "#/definitions/SecurityContextDefinition"
-        },
-        "revision": {
-          "description": "Container group profile current revision number",
-          "type": "integer"
-        },
-        "registeredRevisions": {
-          "type": "array",
-          "items": {
-            "type": "integer"
-          },
-          "description": "Registered revisions are calculated at request time based off the records in the table logs."
-        },
-        "useKrypton": {
-          "type": "boolean",
-          "description": "Gets or sets Krypton use property."
-        }
-      }
     }
   },
   "parameters": {
@@ -3958,17 +3366,6 @@
       "minLength": 1,
       "maxLength": 63,
       "description": "The N Groups name.",
-      "x-ms-parameter-location": "method"
-    },
-    "ContainerGroupProfileNameParameter": {
-      "name": "containerGroupProfileName",
-      "in": "path",
-      "required": true,
-      "type": "string",
-      "pattern": "^[a-zA-Z0-9]$|^[a-zA-Z0-9][-_a-zA-Z0-9]{0,61}[a-zA-Z0-9]$",
-      "minLength": 1,
-      "maxLength": 63,
-      "description": "ContainerGroupProfile name.",
       "x-ms-parameter-location": "method"
     }
   }

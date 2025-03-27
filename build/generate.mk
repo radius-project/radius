@@ -127,7 +127,7 @@ generate-bicep-types: generate-node-installed ## Generate Bicep extensibility ty
 .PHONY: generate-containerinstance-client
 generate-containerinstance-client: generate-node-installed generate-autorest-installed  ## Generates the Container Instances SDK (Autorest).
 	autorest \
-		swagger/specification/containerinstance/resource-manager/Microsoft.ContainerInstance/readme.md \
+		swagger/specification/containerinstance/resource-manager/readme.md \
 		--go \
 		--tag=package-preview-2024-11
 

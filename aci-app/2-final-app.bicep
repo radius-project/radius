@@ -1,13 +1,13 @@
-import radius as radius
+extension radius
 
-param aciscope string
+param aciscope string = '/subscriptions/<>/resourceGroups/<>'
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'aci-env'
+  name: 'aci-environment'
   properties: {
     compute: {
       kind: 'aci'
-      resourceGroup: 'target resource group'
+      resourceGroup: aciscope
     }
     recipes: {
       'Applications.Datastores/redisCaches':{
@@ -27,7 +27,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
 }
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'aci-app'
+  name: 'aci-application'
   properties: {
     environment: env.id
   }
@@ -55,7 +55,7 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: 3000
-          provides: gateway.id
+          // provides: gateway.id
         }
       }
     }
