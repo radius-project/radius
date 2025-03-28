@@ -131,13 +131,6 @@ jobs:
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: radius
-      - name: Checkout radius-project/deployment-engine@main
-        uses: actions/checkout@v4
-        with:
-          repository: radius-project/deployment-engine
-          ref: main
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          path: deployment-engine
       - name: Checkout radius-project/recipes@main
         uses: actions/checkout@v4
         with:
@@ -210,10 +203,6 @@ jobs:
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh radius ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
-      - name: Release radius-project/deployment-engine version ${{ steps.get-version.outputs.release-version }}
-        if: success() && steps.release-branch-exists.outputs.result == 'false'
-        run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh deployment-engine ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
       - name: Release radius-project/recipes version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
@@ -226,3 +215,7 @@ jobs:
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types-aws ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
+      - name: Copy Deployment Engine container images to ghcr.io/radius-project
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-copy-de-images.sh ${{ env.REL_CHANNEL }}
