@@ -27,6 +27,15 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: controller
+      initContainers:
+      - name: bicep
+        image: "{{ .Values.bicep.image }}:{{ .Values.bicep.tag | default $appversion }}"
+        command: ['sh', '-c', 'mv /bicepconfig.json /bicepconfig/bicepconfig.json && mv /bicep /usr/local/bin/bicep']
+        volumeMounts:
+        - name: bicep
+          mountPath: /usr/local/bin
+        - name: bicepconfig
+          mountPath: /bicepconfig
       containers:
       - name: controller
         image: "{{ .Values.controller.image }}:{{ .Values.controller.tag | default $appversion }}"
@@ -39,6 +48,8 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
+        - name: RAD_BICEP
+          value: '/usr/local/bin/bicep'
         {{- if .Values.global.rootCA.cert }}
         # This is the environment variable to set the path to the intermediate root CA for outgoing connections.
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
@@ -62,6 +73,11 @@ spec:
         resources:{{ toYaml .Values.controller.resources | nindent 10 }}
         {{- end }}
         volumeMounts:
+        - name: bicep
+          mountPath: /usr/local/bin
+        - name: bicepconfig
+          mountPath: /bicepconfig.json
+          subPath: bicepconfig.json
         - name: config-volume
           mountPath: /etc/config
         - name: cert
@@ -73,6 +89,10 @@ spec:
           readOnly: true
         {{- end }}
       volumes:
+        - name: bicep
+          emptyDir: {}
+        - name: bicepconfig
+          emptyDir: {}
         - name: config-volume
           configMap:
             name: controller-config

@@ -18,7 +18,6 @@ package bicep
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -78,37 +77,6 @@ func runBicepRaw(args ...string) ([]byte, error) {
 
 	return bytes, nil
 }
-
-func runBicepJson(args ...string) (map[string]any, error) {
-	bytes, err := runBicepRaw(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	template := map[string]any{}
-	err = json.Unmarshal(bytes, &template)
-	if err != nil {
-		return nil, err
-	}
-
-	return template, err
-}
-
-// Build the provided `.bicep` file and returns the deployment template.
-//
-
-// Build() reads a Bicep file at the given file path and returns a map of the compiled output and an error if the
-// compilation fails.
-func Build(filePath string) (map[string]any, error) {
-	// rad-bicep is being told to output the template to stdout and we will capture it
-	// rad-bicep will output compilation errors to stderr which will go to the user's console
-	return runBicepJson("build", "--stdout", filePath)
-}
-
-// Return a Bicep version.
-//
-// In case we can't determine a version, output "unknown (<failure reason>)".
-//
 
 // Version() attempts to retrieve the version of Bicep by running the command "--version" and returns the version as a
 // string, or an error message if an error occurs.

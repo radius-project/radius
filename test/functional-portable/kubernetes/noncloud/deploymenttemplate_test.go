@@ -26,6 +26,7 @@ import (
 	"time"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
@@ -99,7 +100,8 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 			{"Applications.Core/environments", fmt.Sprintf("%s-env", name)},
 		}
 
-		assertExpectedResourcesExist(t, ctx, scope, expectedResources, opts.Connection)
+		err = assertExpectedResourcesExist(ctx, scope, expectedResources, opts.Connection)
+		require.NoError(t, err)
 	})
 
 	t.Run("Delete DeploymentTemplate", func(t *testing.T) {
@@ -166,7 +168,8 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 			{"Applications.Core/applications", fmt.Sprintf("%s-app", name)},
 		}
 
-		assertExpectedResourcesExist(t, ctx, scope, expectedResources, opts.Connection)
+		err = assertExpectedResourcesExist(ctx, scope, expectedResources, opts.Connection)
+		require.NoError(t, err)
 	})
 
 	t.Run("Delete DeploymentTemplate", func(t *testing.T) {
@@ -236,7 +239,8 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 			{"Applications.Datastores/redisCaches", fmt.Sprintf("%s-recipe", name)},
 		}
 
-		assertExpectedResourcesExist(t, ctx, scope, expectedResources, opts.Connection)
+		err = assertExpectedResourcesExist(ctx, scope, expectedResources, opts.Connection)
+		require.NoError(t, err)
 	})
 
 	t.Run("Delete DeploymentTemplate", func(t *testing.T) {
@@ -325,15 +329,46 @@ func createParametersMap(parameters []string) map[string]string {
 
 // assertExpectedResourcesExist asserts that the expected resources exist
 // in Radius for the given scope.
-func assertExpectedResourcesExist(t *testing.T, ctx context.Context, scope string, expectedResources [][]string, connection sdk.Connection) {
+func assertExpectedResourcesExist(ctx context.Context, scope string, expectedResources [][]string, connection sdk.Connection) error {
 	for _, resource := range expectedResources {
 		resourceType := resource[0]
 		resourceName := resource[1]
 
 		client, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		_, err = client.Get(ctx, resourceName, nil)
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
+}
+
+// assertExpectedResourcesToNotExist asserts that the expected resources do not exist
+// in Radius for the given scope. This is useful for testing cleanup after deletion.
+func assertExpectedResourcesToNotExist(ctx context.Context, scope string, expectedResources [][]string, connection sdk.Connection) error {
+	for _, resource := range expectedResources {
+		resourceType := resource[0]
+		resourceName := resource[1]
+
+		client, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
+		if err != nil {
+			return err
+		}
+
+		_, err = client.Get(ctx, resourceName, nil)
+		if err == nil {
+			return fmt.Errorf("expected resource %s/%s to be not found, but was found", resourceType, resourceName)
+		}
+
+		if !clients.Is404Error(err) {
+			return fmt.Errorf("Expected resource %s/%s to be not found, but instead got error: %v", resourceType, resourceName, err)
+		}
+	}
+
+	return nil
 }

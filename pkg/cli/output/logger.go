@@ -18,10 +18,6 @@ package output
 
 import "fmt"
 
-// Step represents a logical step that's being executed.
-type Step struct {
-}
-
 // LogInfo logs a message that is displayed to the user by default.
 func LogInfo(format string, v ...any) {
 	fmt.Printf(format, v...)

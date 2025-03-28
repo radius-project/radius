@@ -38,6 +38,49 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
+// Call mocks base method.
+func (m *MockInterface) Call(arg0 ...string) ([]byte, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Call", varargs...)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Call indicates an expected call of Call.
+func (mr *MockInterfaceMockRecorder) Call(arg0 ...any) *MockInterfaceCallCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*MockInterface)(nil).Call), arg0...)
+	return &MockInterfaceCallCall{Call: call}
+}
+
+// MockInterfaceCallCall wrap *gomock.Call
+type MockInterfaceCallCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceCallCall) Return(arg0 []byte, arg1 error) *MockInterfaceCallCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceCallCall) Do(f func(...string) ([]byte, error)) *MockInterfaceCallCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceCallCall) DoAndReturn(f func(...string) ([]byte, error)) *MockInterfaceCallCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // PrepareTemplate mocks base method.
 func (m *MockInterface) PrepareTemplate(arg0 string) (map[string]any, error) {
 	m.ctrl.T.Helper()

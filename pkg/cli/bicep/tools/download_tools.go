@@ -77,18 +77,12 @@ func getOverridePath(overrideEnvVarName string, binaryName string) (string, erro
 		return "", nil
 	}
 
-	// Since is a development-only setting, we're cool with being noisy about it.
-	fmt.Println("")
-
 	file, err := os.Stat(override)
 	if err != nil {
 		return "", fmt.Errorf("cannot locate %s on overridden path %s: %v", binaryName, override, err)
 	}
 
 	if !file.IsDir() {
-		// Since is a development-only setting, we're cool with being noisy about it.
-		fmt.Printf("%s overridden to %s", binaryName, override)
-		fmt.Println()
 		return override, nil
 	}
 
@@ -102,9 +96,6 @@ func getOverridePath(overrideEnvVarName string, binaryName string) (string, erro
 		return "override", fmt.Errorf("cannot locate %s on overridden path %s: %v", binaryName, override, err)
 	}
 
-	// Since is a development-only setting, we're cool with being noisy about it.
-	fmt.Printf("%s overridden to %s", binaryName, override)
-	fmt.Println()
 	return override, nil
 }
 

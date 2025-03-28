@@ -78,6 +78,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
@@ -218,7 +219,10 @@ func init() {
 
 func initSubCommands() {
 	framework := &framework.Impl{
-		Bicep:             &bicep.Impl{},
+		Bicep: &bicep.Impl{
+			FileSystem: filesystem.OSFileSystem{},
+			Output:     &output.OutputWriter{Writer: RootCmd.OutOrStdout()},
+		},
 		ConnectionFactory: connections.DefaultFactory,
 		ConfigHolder:      ConfigHolder,
 		Deploy:            &deploy.Impl{},

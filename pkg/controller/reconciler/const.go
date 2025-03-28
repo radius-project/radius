@@ -53,4 +53,7 @@ const (
 
 	// DeploymentResourceFinalizer is the name of the finalizer added to DeploymentResources.
 	DeploymentResourceFinalizer = "radapp.io/deployment-resource-finalizer"
+
+	// GitRepositoryHttpRetryCount is the number of times to retry GitRepository HTTP requests.
+	GitRepositoryHttpRetryCount = 9
 )
