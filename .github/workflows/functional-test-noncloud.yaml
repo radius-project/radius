@@ -45,8 +45,6 @@ on:
       - release/*
 
 env:
-  # Go version
-  GOVER: "1.22.5"
   # Helm version
   HELM_VER: "v3.15.3"
   # KinD cluster version
@@ -175,10 +173,11 @@ jobs:
           ref: refs/heads/edge
           path: samples
 
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GOVER }}
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
           cache: true
 
       - name: Setup Node.js
@@ -486,6 +485,6 @@ jobs:
             github.rest.issues.create({
               ...context.repo,
               title: `Scheduled functional test (noncloud) failed - Run ID: ${context.runId}`,
-              labels: ['bug', 'test-failure'],
+              labels: ['test-failure'],
               body: `## Bug information \n\nThis issue is automatically generated if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })

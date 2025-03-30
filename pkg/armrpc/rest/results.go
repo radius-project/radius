@@ -375,27 +375,27 @@ type BadRequestResponse struct {
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
-func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *rpv1.BasicResourceProperties, newProp *rpv1.BasicResourceProperties) Response {
+func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp rpv1.BasicResourcePropertiesAdapter, newProp rpv1.BasicResourcePropertiesAdapter) Response {
 	newAppEnv := ""
-	if newProp.Application != "" {
-		name := newProp.Application
-		if rid, err := resources.ParseResource(newProp.Application); err == nil {
+	if newProp.ApplicationID() != "" {
+		name := newProp.ApplicationID()
+		if rid, err := resources.ParseResource(newProp.ApplicationID()); err == nil {
 			name = rid.Name()
 		}
 		newAppEnv += fmt.Sprintf("'%s' application", name)
 	}
-	if newProp.Environment != "" {
+	if newProp.EnvironmentID() != "" {
 		if newAppEnv != "" {
 			newAppEnv += " and "
 		}
-		name := newProp.Environment
-		if rid, err := resources.ParseResource(newProp.Environment); err == nil {
+		name := newProp.EnvironmentID()
+		if rid, err := resources.ParseResource(newProp.EnvironmentID()); err == nil {
 			name = rid.Name()
 		}
 		newAppEnv += fmt.Sprintf("'%s' environment", name)
 	}
 
-	message := fmt.Sprintf(LinkedResourceUpdateErrorFormat, resourceID.Name(), resourceID.Name(), newAppEnv, oldProp.Application, oldProp.Environment, resourceID.Name())
+	message := fmt.Sprintf(LinkedResourceUpdateErrorFormat, resourceID.Name(), resourceID.Name(), newAppEnv, oldProp.ApplicationID(), oldProp.EnvironmentID(), resourceID.Name())
 	return &BadRequestResponse{
 		Body: v1.ErrorResponse{
 			Error: &v1.ErrorDetails{

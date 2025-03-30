@@ -306,7 +306,7 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 				Details: []step.DeploymentErrorDetail{
 					{
 						Code:            "InvalidTemplate",
-						MessageContains: "Deployment template validation failed: 'The template parameters 'a, b' in the parameters file are not valid; they are not present in the original template and can therefore not be provided at deployment time. The only supported parameters for this template are ''. Please see https://aka.ms/arm-pass-parameter-values for usage details.'.",
+						MessageContains: "Deployment template validation failed:",
 					},
 				},
 			},
@@ -397,7 +397,7 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 					// Instead of hardcoding values, we'll validate that the rest of the message is correct.
 					{
 						Code:            "DeploymentFailed",
-						MessageContains: "At least one resource deployment operation failed. Please see the details for the specific operation that failed.",
+						MessageContains: "At least one resource deployment operation failed.",
 						Details: []step.DeploymentErrorDetail{
 							{
 								Code:            "InvalidTemplate",
@@ -407,7 +407,7 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 					},
 					{
 						Code:            "DeploymentFailed",
-						MessageContains: "At least one resource deployment operation failed. Please see the details for the specific operation that failed.",
+						MessageContains: "At least one resource deployment operation failed.",
 						Details: []step.DeploymentErrorDetail{
 							{
 								Code:            "InvalidTemplate",
@@ -460,7 +460,7 @@ func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
 				Details: []step.DeploymentErrorDetail{
 					{
 						Code:            "DeploymentFailed",
-						MessageContains: "At least one resource deployment operation failed. Please see the details for the specific operation that failed.",
+						MessageContains: "At least one resource deployment operation failed.",
 						Details: []step.DeploymentErrorDetail{
 							{
 								Code:            "ResourceDeploymentFailure",

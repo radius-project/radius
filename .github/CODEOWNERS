@@ -1,2 +1,19 @@
-# These owners are the maintainers and approvers of this repo
-*       @radius-project/maintainers-radius @radius-project/approvers-radius
+# General maintainers and approvers for the entire repository
+* @radius-project/maintainers-radius @radius-project/approvers-radius
+
+# Ownership for dependency-related files. Allow the on-call team to approve dependency version updates (e.g., from Dependabot, Snyk PRs)
+# Files in the root directory
+/go.mod @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+/go.sum @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Files in the `test/magpiego` directory
+test/magpiego/go.mod @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+test/magpiego/go.sum @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Files in the `typespec` directory
+typespec/package*.json @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Devcontainer files
+.devcontainer/devcontainer.json @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Radius bicep types generator files
+hack/bicep-types-radius/src/generator/package*.json @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Dockerfile
+test/*/Dockerfile          @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+deploy/images/*/Dockerfile @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius

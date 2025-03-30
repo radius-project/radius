@@ -143,7 +143,7 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-postgres.bicep"
 	appName := "corerp-resources-terraform-pg-app"
 	envName := "corerp-resources-terraform-pg-env"
-	extenderName := "pgs-resources-terraform-pgsapp"
+	extenderName := "corerp-resources-terraform-pg"
 	secretName := "pgs-secretstore"
 	secretResourceName := appName + "/" + secretName
 	userName := "postgres"
@@ -196,7 +196,6 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
-			SkipResourceDeletion: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
 					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})

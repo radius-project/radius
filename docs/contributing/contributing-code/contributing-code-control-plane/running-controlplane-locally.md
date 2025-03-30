@@ -1,12 +1,8 @@
 # Running Radius control plane provider locally
 
-> 🚧🚧🚧 Under Construction 🚧🚧🚧
->
-> This guide refers to an internal repo that can only be accessed by the Radius team. This will be updated as we migrate to public resources (running deployment engine in a container).
-
 Radius consists of a few processes that get deployed inside a Kubernetes cluster.
 
- This includes:
+This includes:
 
 - Applications.Core RP / Portable Resources' Providers (applications-rp) - The resource provider that handles processing of core resources as well as recipes.
 - Universal Control Plane (ucp) - Acts as a proxy between the other services, also manages deployments of AWS resources.
@@ -27,13 +23,8 @@ If you need to manually test APIs you can reach them at the following endpoints 
 ## Prerequisites
 
 1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data.
-2. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other.
-3. Run `git submodule update --init` in the `deployment-engine` repo.
-4. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
-5. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
-6. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
-  
-> 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
+2. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
+
 > 💡 Radius will use your locally configured Azure or AWS credentials. If you are able to use the `az` or `aws` CLI then you don't need to do any additional setup.
 
 ## Setup Step 1: Run `rad init`
@@ -49,7 +40,6 @@ rad init --full
 ```
 
 This will install Radius and configure an environment for you. The database that's used **will NOT** be shared with your debug setup, so it mostly doesn't matter what choices you make.
-
 
 ## Setup Step 2: Modify config.yaml to point to your local RPs
 
@@ -71,9 +61,9 @@ workspaces:
       scope: /planes/radius/local/resourceGroups/default
 ```
 
-Make a copy of the `default` workspace called `dev` and set it as the default. Then add the `overrides` section from the example below. 
+Make a copy of the `default` workspace called `dev` and set it as the default. Then add the `overrides` section from the example below.
 
- This example adds a `dev` workspace:
+This example adds a `dev` workspace:
 
 ```yaml
 workspaces:
@@ -105,7 +95,71 @@ Run this command to create the namespace that will be used to store data.
 kubectl create namespace radius-testing
 ```
 
-## Setup Step 3: Create Resource Group and Environment
+## Setup Step 4: Setup Deployment Engine
+
+> 💡 This way of setting up deployment-engine is useful if you are an external contributor and do not have access to `radius-project/deployment-engine` repo.
+> 💡 If you have access to the deployment-engine repository and would like to debug it, you can omit this step and proceed to step 5.
+
+### Setup Docker
+
+If Docker is not already installed,
+
+- Download and install it from the [Docker Desktop download page](https://www.docker.com/products/docker-desktop).
+  Choose the installer that matches your operating system.
+- Open a terminal and run the following command to verify that Docker is installed and running:
+
+```sh
+docker --version
+```
+
+You should see the Docker version information.
+
+### Run Deployment Engine as a Docker container
+
+Run the following command to start the Deployment Engine in a Docker container with the necessary environment variables:
+
+```sh
+docker run \
+  -e RADIUSBACKENDURL=http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3 \
+  -p 5017:8080 \
+  ghcr.io/radius-project/deployment-engine:latest
+```
+
+`host.docker.internal` is a special DNS name provided by Docker that allows containers to access services running on the host machine
+
+### Update launch.json
+
+Open launch.json and comment out `Launch Deployment Engine` in `Launch Control Plane (all)`. The debug setup will use the Deployment Engine running as docker container.
+
+```json
+"compounds": [
+  {
+    "name": "Launch Control Plane (all)",
+    "configurations": [
+      "Launch UCP",
+      "Launch Applications RP",
+      "Launch Dynamic RP",
+      "Launch Controller",
+      // "Launch Deployment Engine"
+    ],
+    "stopAll": true
+  }
+],
+```
+
+## Setup Step 5 (optional): Setup Deployment Engine for debugging
+
+> 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
+
+If you have access to `radius-project/deployment-engine` repo, you can follow the steps below to set up Deployment Engine for debugging instead of running it in a docker container.
+
+1. Clone the `radius-project/radius` and `radius-project/deployment-engine` repos next to each other.
+2. Install .NET 8.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/8.0>.
+3. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
+4. Uncomment // "Launch Deployment Engine" in launch.json if it's commented out.
+5. Note: The context used by the active Radius workspace should also be the active Kubernetes context. Otherwise, you will get an error from the Deployment Engine.
+
+## Setup Step 6: Create Resource Group and Environment
 
 At this point Radius is working but you don't have a resource group or environment. You can launch Radius and then use the CLI to create these.
 
@@ -115,7 +169,13 @@ In VS Code:
 - Select `Launch Control Plane (all)` from the drop-down
 - Press Debug
 
-Wait for all 3 of these to start.
+Wait until all five debuggers have attached and their startup sequences have completed. You should see the following entries in the Debug Tab --> Call Stack window:
+
+- Deployment Engine
+- UCP
+- Applications RP
+- Dynamic RP
+- Controller
 
 Then at the command line run:
 
@@ -126,26 +186,16 @@ rad env create default
 
 At this point you're done with setup! Feel free to stop the debugger.
 
-## Debugging
-
-Now you can launch the Radius locally through the VSCode menu.
-
-- Open the Debug tab in VS Code
-- Select `Launch Control Plane (all)` from the drop-down
-- Press Debug
-- You're up and running!
-
 ## Troubleshooting
 
 ### I got an error saying I need to clone the deployment engine
 
 > The radius-project/deployment-engine is not cloned as a sibling to the Radius repo. Please clone the radius-project/deployment-engine repo next to the Radius repo and try again.
 
-You should be to successfully the following commands from the Radius repository root:
+You should be able to successfully the following commands from the Radius repository root:
 
 ```sh
 ls ../deployment-engine/src
-ls ../deployment-engine/submodules/bicep-extensibility/src
 ```
 
 If these commands fail, please re-read the prerequisites related to cloning the deployment engine.
@@ -168,18 +218,12 @@ If you run into issues here, please re-read the prerequisites related to install
 ### I got a "InvalidTemplate" error when deploying a bicep file
 
 > sample error message:
+
 ```json
 {
   "code": "InvalidTemplate",
-  "message": "Deployment template validation failed: 'The template language version '2.1-experimental' is not recognized.'.",
+  "message": "Deployment template validation failed: 'The template language version '2.1-experimental' is not recognized.'."
 }
-```
-
-Pull latest of the `radius-project/deployment-engine` project.
-Run submodule update to update bicep extensibility support for extensible resources:
-
-```bash
-git submodule update --init --recursive
 ```
 
 Build deployment-engine project
