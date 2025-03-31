@@ -65,10 +65,6 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	// HACKHACK: This is a temporary fix to avoid ARM initialization in the test environment.
 	cfg.Arm = options.Arm
 
-	// HACKHACK: This is a temporary fix to avoid ARM initialization in the test environment.
-	cfg.Arm = options.Arm
-
-	cfg.ResourceClient = processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.K8sClients.RuntimeClient, cfg.K8sClients.DiscoveryClient)
 	clientOptions := sdk.NewClientOptions(options.UCPConnection)
 
 	cfg.DeploymentEngineClient, err = clients.NewResourceDeploymentsClient(&clients.Options{

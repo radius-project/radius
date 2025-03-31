@@ -56,17 +56,8 @@ type Options struct {
 	// HACKHACK: This is a temporary hack to allow the controller to know the address of the RP.
 	Arm *armauth.ArmConfig
 
-	// HACKHACK: This is a temporary hack to allow the controller to know the address of the RP.
-	Arm *armauth.ArmConfig
-
 	// DatabaseClient is the database client.
 	DatabaseClient database.Client
-
-	// StorageClient is the data storage client.
-	StorageClient store.StorageClient
-
-	// DataProvider is the data storage provider.
-	DataProvider dataprovider.DataStorageProvider
 
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
