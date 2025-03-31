@@ -5,6 +5,9 @@ on:
     types:
       [opened, edited, deleted, closed, reopened, labeled, unlabeled, assigned]
 
+env:
+  FUNCTIONAL_TEST_APP_ID: 425843
+
 concurrency:
   group: issue-${{ github.event.issue.number }}
   cancel-in-progress: false
@@ -20,6 +23,12 @@ jobs:
     environment:
       name: issues
     steps:
+      - name: Get GitHub app token
+        uses: tibdex/github-app-token@v2
+        id: get_installation_token
+        with:
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       # Auth using Azure Service Principals was added as a part of v2.3
       # reference: https://github.com/danhellem/github-actions-issue-to-work-item/pull/143
       - name: Login to Azure
@@ -38,7 +47,7 @@ jobs:
         uses: danhellem/github-actions-issue-to-work-item@v2.4
         env:
           ado_token: ${{ env.ADO_TOKEN }}
-          github_token: '${{ secrets.GH_RAD_CI_BOT_PAT }}'
+          github_token: ${{ steps.get_installation_token.outputs.token }}
           ado_organization: 'azure-octo'
           ado_project: 'Incubations'
           ado_area_path: "Incubations\\Radius"
