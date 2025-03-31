@@ -1,5 +1,5 @@
 # see https://golangci-lint.run/usage/configuration/ for documentation
-version: "2.0"
+version: "2"
 
 linters:
   enable:
