@@ -57,6 +57,10 @@ spec:
               providerConfig:
                 description: ProviderConfig specifies the scopes for resources.
                 type: string
+              repository:
+                description: Repository is the git repository that the Bicep manifests
+                  are stored in.
+                type: string
               template:
                 description: Template is the ARM JSON manifest that defines the resources
                   to deploy.

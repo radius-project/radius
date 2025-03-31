@@ -1,0 +1,3 @@
+config:
+  - name: flux-update.bicep
+    params: flux-update.bicepparam
