@@ -74,7 +74,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource pgsapp 'Applications.Core/extenders@2023-10-01-preview' = {
-  name: 'corerp-resources-terraform-pg-2'
+  name: 'pgs-resources-terraform-pgsapp'
   properties: {
     application: app.id
     environment: env.id
