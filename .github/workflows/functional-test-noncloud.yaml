@@ -378,6 +378,7 @@ jobs:
           gitea-username: ${{ env.GITEA_USERNAME }}
           gitea-email: ${{ env.GITEA_EMAIL }}
           gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
+          gitea-config-name: gitea-config-kind.yaml
 
       - name: Publish Terraform test recipes
         run: |

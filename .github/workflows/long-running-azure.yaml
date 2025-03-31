@@ -100,6 +100,15 @@ env:
   # The current GitHub action link
   ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
+  # Gitea server URL
+  GITEA_SERVER_URL: "http://gitea-http.gitea.svc.cluster.local:3000"
+  # Gitea username
+  GITEA_USERNAME: "testuser"
+  # Gitea email
+  GITEA_EMAIL: "testuser@radapp.io"
+  # Gitea access token name
+  GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+
 jobs:
   build:
     name: Build Radius for test
@@ -521,6 +530,21 @@ jobs:
         if: failure()
         run: |
           echo ":x: Failed to install Radius for functional test." >> $GITHUB_STEP_SUMMARY
+      - name: Install Flux Source Controller
+        run: |
+          curl -s https://fluxcd.io/install.sh | FLUX_VERSION=2.5.1 sudo bash
+          flux install --namespace=flux-system --version=v2.5.1 --components=source-controller --network-policy=false
+          kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
+      - name: Install Gitea
+        id: install-gitea
+        uses: ./.github/actions/install-gitea
+        env:
+          GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
+        with:
+          gitea-username: ${{ env.GITEA_USERNAME }}
+          gitea-email: ${{ env.GITEA_EMAIL }}
+          gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
+          gitea-config-name: gitea-config-aks.yaml
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes

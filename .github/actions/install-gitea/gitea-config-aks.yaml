@@ -1,0 +1,12 @@
+redis-cluster:
+  enabled: false
+postgresql-ha:
+  enabled: false
+redis:
+  enabled: true
+postgresql:
+  enabled: true
+service:
+  ssh:
+    type: ClusterIP
+    port: 22

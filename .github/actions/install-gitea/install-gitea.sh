@@ -21,6 +21,7 @@ set -e
 GITEA_USERNAME=$1
 GITEA_EMAIL=$2
 GITEA_ACCESS_TOKEN_NAME=$3
+GITEA_CONFIG_NAME=$4
 # GITEA_PASSWORD should be set by environment variable
 
 if [ -z "$GITEA_USERNAME" ]; then
@@ -42,8 +43,14 @@ fi
 helm repo add gitea-charts https://dl.gitea.io/charts/
 helm repo update
 
+# If Gitea is already installed, uninstall it
+if helm list -n gitea | grep -q gitea; then
+  echo "Gitea is already installed. Uninstalling..."
+  helm uninstall gitea -n gitea
+fi
+
 # Install Gitea from Helm chart
-helm install gitea gitea-charts/gitea --version v11.0.0 --namespace gitea --create-namespace -f .github/actions/install-gitea/gitea-config.yaml
+helm install gitea gitea-charts/gitea --version v11.0.0 --namespace gitea --create-namespace -f .github/actions/install-gitea/$GITEA_CONFIG_NAME
 kubectl wait --for=condition=available deployment/gitea -n gitea --timeout=120s
 
 # Get the Gitea pod name
