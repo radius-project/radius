@@ -8,6 +8,12 @@ param moduleServer string
 @description('Name of the Radius Application.')
 param appName string
 
+@description('Client ID for Azure.')
+param clientID string
+
+@description('Tenant ID for Azure.')
+param tenantID string
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-resources-terraform-azrg-env'
   properties: {
@@ -20,6 +26,40 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       azure: {
         scope: resourceGroup().id
       }
+    }
+    recipeConfig: {
+      terraform: {
+        providers: {
+          azurerm: [ {
+              alias: 'azure-test'
+              features: {}
+              subscription_id: subscription().subscriptionId
+              use_oidc: true
+              oidc_token_file_path: '/var/run/secrets/azure/tokens/azure-identity-token'
+              use_cli: false
+              secrets: {
+                tenant_id: {
+                  source: secretstore.id
+                  key: 'tenantID'
+                }
+                client_id: {
+                  source: secretstore.id
+                  key: 'clientID'
+                }
+              }
+            } ]
+        }
+      }
+      // env: {
+      //   ARM_USE_AKS_WORKLOAD_IDENTITY: 'true'
+      //   ARM_USE_CLI: 'false'
+      // }
+      // envSecrets: {
+      //   ARM_CLIENT_ID: {
+      //     source: secretstore.id
+      //     key: 'clientID'
+      //   }
+      // }
     }
     recipes: {
       'Applications.Core/extenders': {
@@ -54,5 +94,21 @@ resource webapp 'Applications.Core/extenders@2023-10-01-preview' = {
   properties: {
     application: app.id
     environment: env.id
+  }
+}
+
+resource secretstore 'Applications.Core/secretStores@2023-10-01-preview' = {
+  name: 'corerp-resources-terraform-azrg-secretstore'
+  properties: {
+    resource: 'corerp-resources-terraform-azrg/secretstore'
+    type: 'generic'
+    data: {
+      tenantID: {
+        value: tenantID
+      }
+      clientID: {
+        value: clientID
+      }
+    }
   }
 }

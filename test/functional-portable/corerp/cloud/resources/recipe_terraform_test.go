@@ -50,9 +50,17 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 	appName := "corerp-resources-terraform-azrg-app"
 	envName := "corerp-resources-terraform-azrg-env"
 
+	// if os.Getenv("AZURE_CLIENT_ID") == "" || os.Getenv("AZURE_TENANT_ID") == "" {
+	// 	t.Error("AZURE_CLIENT_ID and AZURE_TENANT_ID environment variables must be set to run this test.")
+	// }
+	// clientID := os.Getenv("AZURE_CLIENT_ID")
+	// tenantID := os.Getenv("AZURE_TENANT_ID")
+	clientID := "03b9a63f-18de-4256-b063-a6b722ac80fc"
+	tenantID := "72f988bf-86f1-41af-91ab-2d7cd011db47"
+
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName),
+			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName, "clientID="+clientID, "tenantID="+tenantID),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
