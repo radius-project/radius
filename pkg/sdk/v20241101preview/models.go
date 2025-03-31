@@ -23,13 +23,13 @@ type ApplicationGateway struct {
 	BackendAddressPools []*ApplicationGatewayBackendAddressPool `json:"backendAddressPools,omitempty"`
 
 	// The Application Gateway ARM resource Id.
-	Resource *string `json:"resource,omitempty"`
+	Resource *APIEntityReference `json:"resource,omitempty"`
 }
 
 // ApplicationGatewayBackendAddressPool - NGroups application gateway backend address pool
 type ApplicationGatewayBackendAddressPool struct {
 	// The application gateway backend address pool ARM resource Id.
-	Resource *string `json:"resource,omitempty"`
+	Resource *APIEntityReference `json:"resource,omitempty"`
 }
 
 // AzureFileVolume - The properties of the Azure File volume. Azure File shares are mounted as volumes.
@@ -1090,7 +1090,7 @@ type LoadBalancer struct {
 // LoadBalancerBackendAddressPool - NGroups load balancer backend address pool
 type LoadBalancerBackendAddressPool struct {
 	// The Load Balancer backend address pool ARM resource Id.
-	Resource *string `json:"resource,omitempty"`
+	Resource *APIEntityReference `json:"resource,omitempty"`
 }
 
 // LocationClientListCachedImagesOptions contains the optional parameters for the LocationClient.ListCachedImages method.

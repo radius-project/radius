@@ -14,7 +14,7 @@ databaseProvider:
   provider: "apiserver"
   apiserver:
     context: ''
-    namespace: 'radius-system'
+    namespace: 'radius-testing'
 queueProvider:
   provider: "apiserver"
   name: radius
