@@ -171,6 +171,9 @@ jobs:
       - name: Generate ID for release
         id: gen-id
         run: |
+          echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
+          echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           if [[ "${{ steps.skip-build.outputs.SKIP_BUILD }}" != "true" ]]; then
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
             if [ "$GITHUB_EVENT_NAME" == "schedule" ] || [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
@@ -183,11 +186,8 @@ jobs:
             # Set output variables to be used in the other jobs
             echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
             echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
-            echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
-            echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
             echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
             echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
-            echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           else
             cat ./dist/cache/.buildenv >> $GITHUB_OUTPUT
             echo "## Radius functional test environment variables" >> $GITHUB_STEP_SUMMARY
