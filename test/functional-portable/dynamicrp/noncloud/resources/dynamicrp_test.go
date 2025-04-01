@@ -29,6 +29,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test_DynamicRP_Recipe tests creation of a resource using a user-defined type and its associated recipe.
+// The test consists of two main steps:
+//
+// 1. Resource Type Registration:
+//   - Registers a user-defined resource type "Test.Resources/userTypeAlpha"
+//   - Verifies the registration by checking if the resource type is listed in the CLI output
+//
+// 2. Resource Deployment:
+//   - Deploys a Bicep template that uses the registered resource type with a default recipe
+//   - Validates the creation of required Radius resources (environment and application)
+//   - Verifies the creation of Kubernetes objects (pod) in the specified namespace
+//   - Confirms the resource's status shows correct binding configuration
 func Test_DynamicRP_Recipe(t *testing.T) {
 	template := "testdata/usertypealpha-recipe.bicep"
 	name := "usertypealpha-recipe-app"
@@ -40,15 +52,19 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			// The first step in this test is to create/register a resource type using the CLI.
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				output, err := cli.ResourceProviderCreate(ctx, filepath)
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
 				require.NoError(t, err)
-				require.Contains(t, output, "Creating resource type "+resourceTypeName)
 			}),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", resourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, resourceTypeName)
+			},
 		},
 		{
 			// The next step is to deploy a bicep file using a default recipe for the resource type registered.
@@ -71,6 +87,14 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 						validation.NewK8sPodForResource(name, "usertypealpha").ValidateLabels(false),
 					},
 				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				usertypealpha, err := test.Options.ManagementClient.GetResource(ctx, "Test.Resources/userTypeAlpha", "usertypealpha123")
+				require.NoError(t, err)
+				require.NotNil(t, usertypealpha)
+				status := usertypealpha.Properties["status"].(map[string]any)
+				binding := status["binding"].(map[string]interface{})
+				require.Equal(t, "8080", binding["port"].(string))
 			},
 		},
 	})

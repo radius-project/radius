@@ -23,8 +23,7 @@ vendor/
 # Radius scaffolding
 app.bicep
 .rad/
-!bicepconfig.json
-test/infra/azure/bicepconfig.json
+bicepconfig.json
 
 # Build Output
 bin/
