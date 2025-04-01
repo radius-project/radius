@@ -26,6 +26,11 @@ GITEA_ACCESS_TOKEN_NAME=$4
 # This script should be run in a GitHub Actions workflow,
 # so GITHUB_OUTPUT is available.
 
+if [ -z "$GITEA_VERSION" ]; then
+  echo "GITEA_VERSION is not set. Exiting..."
+  exit 1
+fi
+
 if [ -z "$GITEA_USERNAME" ]; then
   echo "GITEA_USERNAME is not set. Exiting..."
   exit 1
