@@ -18,11 +18,13 @@
 
 set -e
 
-GITEA_USERNAME=$1
-GITEA_EMAIL=$2
-GITEA_ACCESS_TOKEN_NAME=$3
-GITEA_CONFIG_NAME=$4
+GITEA_VERSION=$1
+GITEA_USERNAME=$2
+GITEA_EMAIL=$3
+GITEA_ACCESS_TOKEN_NAME=$4
 # GITEA_PASSWORD should be set by environment variable
+# This script should be run in a GitHub Actions workflow,
+# so GITHUB_OUTPUT is available.
 
 if [ -z "$GITEA_USERNAME" ]; then
   echo "GITEA_USERNAME is not set. Exiting..."
@@ -47,10 +49,12 @@ helm repo update
 if helm list -n gitea | grep -q gitea; then
   echo "Gitea is already installed. Uninstalling..."
   helm uninstall gitea -n gitea
+  kubectl delete namespace gitea
+  echo "Gitea uninstalled."
 fi
 
 # Install Gitea from Helm chart
-helm install gitea gitea-charts/gitea --version v11.0.0 --namespace gitea --create-namespace -f .github/actions/install-gitea/$GITEA_CONFIG_NAME
+helm install gitea gitea-charts/gitea --version "$GITEA_VERSION" --namespace gitea --create-namespace -f .github/actions/install-gitea/gitea-config.yaml
 kubectl wait --for=condition=available deployment/gitea -n gitea --timeout=120s
 
 # Get the Gitea pod name

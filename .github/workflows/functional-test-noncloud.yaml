@@ -80,6 +80,8 @@ env:
   GITEA_EMAIL: "testuser@radapp.io"
   # Gitea access token name
   GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+  # Gitea version
+  GITEA_VERSION: "v11.0.0"
 
 jobs:
   build:
@@ -379,6 +381,7 @@ jobs:
           gitea-email: ${{ env.GITEA_EMAIL }}
           gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
           gitea-config-name: gitea-config-kind.yaml
+          gitea-version: ${{ env.GITEA_VERSION }}
 
       - name: Publish Terraform test recipes
         run: |

@@ -19,6 +19,7 @@ package kubernetes_test
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"strconv"
@@ -118,6 +119,10 @@ func Test_Flux_Complex(t *testing.T) {
 
 // testFluxIntegration is a helper function that runs a test for the integration of Radius and Flux.
 func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) {
+	if _, err := http.Get(testGitServerURLEnvVariableName); err != nil {
+		t.Skipf("Skipping test %s because %s is not set", testName, testGitServerURLEnvVariableName)
+	}
+
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 

@@ -10,8 +10,8 @@ inputs:
   gitea-access-token-name:
     description: "Gitea access token name"
     required: true
-  gitea-config-name:
-    description: "Gitea config name"
+  gitea-version:
+    description: "Gitea version"
     required: true
 outputs:
   gitea-access-token:
@@ -26,4 +26,4 @@ runs:
       env:
         GITEA_PASSWORD: ${{ env.GITEA_PASSWORD }}
       run: |
-        .github/actions/install-gitea/install-gitea.sh ${{ inputs.gitea-username }} ${{ inputs.gitea-email }} ${{ inputs.gitea-access-token-name }} ${{ inputs.gitea-config-name }}
+        .github/actions/install-gitea/install-gitea.sh ${{ inputs.gitea-version }} ${{ inputs.gitea-username }} ${{ inputs.gitea-email }} ${{ inputs.gitea-access-token-name }} 
