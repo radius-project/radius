@@ -606,6 +606,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
       - name: Collect Pod details
         if: always()
         run: |
