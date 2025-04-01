@@ -14,7 +14,7 @@ param password string = newGuid()
 
 resource mongoResource 'apps/Deployment@v1' = {
   metadata: {
-    name: 'mongo-recipe-existing-resource'
+    name: 'existing-mongo-resource'
   }
   spec: {
     selector: {
@@ -69,9 +69,9 @@ resource mongoResource 'apps/Deployment@v1' = {
 
 resource svc 'core/Service@v1' = {
   metadata: {
-    name: 'mongo-svc-existing-resource'
+    name: 'existing-mongo-svc-resource'
     labels: {
-      name: 'mongo-svc-existing-resource'
+      name: 'existing-mongo-svc-resource'
     }
   }
   spec: {

@@ -4,14 +4,14 @@ param magpieimage string
 
 param environment string
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'dsrp-resources-mongodb-recipe-existing'
+  name: 'mongodb-recipe-existing'
   location: 'global'
   properties: {
     environment: environment
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'dsrp-resources-mongodb-recipe-existing-app'
+        namespace: 'mongodb-recipe-existing-app'
       }
     ]
   }
@@ -44,5 +44,5 @@ resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
 }
 
 resource mongodbExisting 'Applications.Datastores/mongoDatabases@2023-10-01-preview' existing = {
-  name: 'mongodb-db-existing'
+  name: 'existing-mongodb'
 }

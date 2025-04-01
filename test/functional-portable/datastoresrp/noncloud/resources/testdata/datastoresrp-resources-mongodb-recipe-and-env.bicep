@@ -5,13 +5,13 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'dsrp-resources-mongodb-recipe-and-env'
+  name: 'mongodb-recipe-and-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'dsrp-resources-mongodb-recipe-and-env'
+      namespace: 'mongodb-recipe-and-env'
     }
     recipes: {
       'Applications.Datastores/mongoDatabases': {
@@ -25,7 +25,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
 }
 
 resource mongodbEnvScoped 'Applications.Datastores/mongoDatabases@2023-10-01-preview' = {
-  name: 'mongodb-db-existing'
+  name: 'existing-mongodb'
   location: 'global'
   properties: {
     environment: env.id
