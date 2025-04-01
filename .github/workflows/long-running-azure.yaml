@@ -152,18 +152,13 @@ jobs:
           fi
 
           echo "SKIP_BUILD=${SKIP_BUILD}" >> $GITHUB_OUTPUT
-      - name: Set up checkout target (scheduled)
-        if: github.event_name == 'schedule'
+      - name: Set up checkout target (scheduled, workflow_dispatch)
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
-      - name: Set up checkout target (workflow_dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
       - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'pull_request'
         run: |
           echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
@@ -186,8 +181,11 @@ jobs:
             # Set output variables to be used in the other jobs
             echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
             echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
+            echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
+            echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
             echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
             echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
+            echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           else
             cat ./dist/cache/.buildenv >> $GITHUB_OUTPUT
             echo "## Radius functional test environment variables" >> $GITHUB_STEP_SUMMARY
@@ -197,6 +195,7 @@ jobs:
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
       - name: Check out code
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/checkout@v4
         with:
           repository: ${{ env.CHECKOUT_REPO }}
