@@ -100,6 +100,17 @@ env:
   # The current GitHub action link
   ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
+  # Gitea server URL
+  GITEA_SERVER_URL: "http://localhost:30080"
+  # Gitea username
+  GITEA_USERNAME: "testuser"
+  # Gitea email
+  GITEA_EMAIL: "testuser@radapp.io"
+  # Gitea access token name
+  GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+  # Gitea version
+  GITEA_VERSION: "v11.0.0"
+
 jobs:
   build:
     name: Build Radius for test
@@ -141,7 +152,7 @@ jobs:
           fi
 
           echo "SKIP_BUILD=${SKIP_BUILD}" >> $GITHUB_OUTPUT
-      - name: Set up checkout target (scheduled)
+      - name: Set up checkout target (scheduled, workflow_dispatch)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
@@ -155,6 +166,9 @@ jobs:
       - name: Generate ID for release
         id: gen-id
         run: |
+          echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
+          echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           if [[ "${{ steps.skip-build.outputs.SKIP_BUILD }}" != "true" ]]; then
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
             if [ "$GITHUB_EVENT_NAME" == "schedule" ] || [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
@@ -521,6 +535,33 @@ jobs:
         if: failure()
         run: |
           echo ":x: Failed to install Radius for functional test." >> $GITHUB_STEP_SUMMARY
+      - name: Install Flux Source Controller
+        run: |
+          curl -s https://fluxcd.io/install.sh | FLUX_VERSION=2.5.1 sudo bash
+          flux install --namespace=flux-system --version=v2.5.1 --components=source-controller --network-policy=false
+          kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
+      - name: Install Gitea
+        id: install-gitea
+        uses: ./.github/actions/install-gitea
+        env:
+          GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
+        with:
+          gitea-username: ${{ env.GITEA_USERNAME }}
+          gitea-email: ${{ env.GITEA_EMAIL }}
+          gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
+          gitea-version: ${{ env.GITEA_VERSION }}
+      - name: Port-forward to Gitea
+        run: |
+          # Start port forwarding in the background
+          kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
+          
+          # Wait for port forwarding to be established
+          sleep 5
+          
+          # Test the connection to ensure port forwarding is working
+          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+          
+          echo "Port forwarding established successfully"
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
@@ -564,6 +605,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
       - name: Collect Pod details
         if: always()
         run: |
