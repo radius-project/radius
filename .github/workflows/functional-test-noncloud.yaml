@@ -382,6 +382,7 @@ jobs:
           gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
           gitea-version: ${{ env.GITEA_VERSION }}
       - name: Port-forward to Gitea
+        if: matrix.name == 'kubernetes-noncloud'
         run: |
           # Start port forwarding in the background
           kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
