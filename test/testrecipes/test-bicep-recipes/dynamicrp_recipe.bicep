@@ -50,6 +50,6 @@ output result object = {
     '/planes/kubernetes/local/namespaces/${usertypealpha.metadata.namespace}/providers/apps/Deployment/${usertypealpha.metadata.name}'
   ]
   values: {
-    port: 8080
+    port: '8080'
   }
 }
