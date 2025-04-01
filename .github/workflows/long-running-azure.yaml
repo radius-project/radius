@@ -153,12 +153,17 @@ jobs:
 
           echo "SKIP_BUILD=${SKIP_BUILD}" >> $GITHUB_OUTPUT
       - name: Set up checkout target (scheduled)
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        if: github.event_name == 'schedule'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+      - name: Set up checkout target (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
       - name: Set up checkout target (pull_request)
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request'
         run: |
           echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
@@ -192,7 +197,6 @@ jobs:
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
       - name: Check out code
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/checkout@v4
         with:
           repository: ${{ env.CHECKOUT_REPO }}
