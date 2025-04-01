@@ -19,21 +19,21 @@ resource mongoResource 'apps/Deployment@v1' = {
   spec: {
     selector: {
       matchLabels: {
-        app: 'mongo'
+        app: 'exs-mongo'
         resource: context.resource.name
       }
     }
     template: {
       metadata: {
         labels: {
-          app: 'mongo'
+          app: 'exs-mongo'
           resource: context.resource.name
         }
       }
       spec: {
         containers: [
           {
-            name: 'mongo'
+            name: 'exs-mongo'
             image: 'ghcr.io/radius-project/mirror/mongo:4.2'
             ports: [
               {
@@ -67,7 +67,7 @@ resource mongoResource 'apps/Deployment@v1' = {
   }
 }
 
-resource svc 'core/Service@v1' = {
+resource mongoSvc 'core/Service@v1' = {
   metadata: {
     name: 'existing-mongo-svc-resource'
     labels: {
@@ -77,7 +77,7 @@ resource svc 'core/Service@v1' = {
   spec: {
     type: 'ClusterIP'
     selector: {
-      app: 'mongo'
+      app: 'exs-mongo'
       resource: context.resource.name
     }
     ports: [
@@ -93,17 +93,17 @@ output result object = {
   //
   // Once this gap is addressed, users won't need to do this.
   resources: [
-    '/planes/kubernetes/local/namespaces/${svc.metadata.namespace}/providers/core/Service/${svc.metadata.name}'
+    '/planes/kubernetes/local/namespaces/${mongoSvc.metadata.namespace}/providers/core/Service/${mongoSvc.metadata.name}'
     '/planes/kubernetes/local/namespaces/${mongoResource.metadata.namespace}/providers/apps/Deployment/${mongoResource.metadata.name}'
   ]
   values: {
-    host: '${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local'
+    host: '${mongoSvc.metadata.name}.${mongoSvc.metadata.namespace}.svc.cluster.local'
     port: 27017
     database: context.resource.name
   }
   secrets: {
     #disable-next-line outputs-should-not-contain-secrets
-    connectionString: 'mongodb://${username}:${password}@${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local:27017'
+    connectionString: 'mongodb://${username}:${password}@${mongoSvc.metadata.name}.${mongoSvc.metadata.namespace}.svc.cluster.local:27017'
     username: username
   #disable-next-line outputs-should-not-contain-secrets
     password: password
