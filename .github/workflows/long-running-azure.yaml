@@ -101,7 +101,7 @@ env:
   ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   # Gitea server URL
-  GITEA_SERVER_URL: "http://gitea-http.gitea.svc.cluster.local:3000"
+  GITEA_SERVER_URL: "http://localhost:30080"
   # Gitea username
   GITEA_USERNAME: "testuser"
   # Gitea email

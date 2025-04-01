@@ -380,9 +380,19 @@ jobs:
           gitea-username: ${{ env.GITEA_USERNAME }}
           gitea-email: ${{ env.GITEA_EMAIL }}
           gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
-          gitea-config-name: gitea-config-kind.yaml
           gitea-version: ${{ env.GITEA_VERSION }}
-
+      - name: Port-forward to Gitea
+        run: |
+          # Start port forwarding in the background
+          kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
+          
+          # Wait for port forwarding to be established
+          sleep 5
+          
+          # Test the connection to ensure port forwarding is working
+          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+          
+          echo "Port forwarding established successfully"
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
