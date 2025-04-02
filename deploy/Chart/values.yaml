@@ -33,9 +33,9 @@ global:
       enabled: false
 
 controller:
-  image: ghcr.io/sk593/dev/controller
+  image: ghcr.io/sk593/merge/controller
   # Default tag uses Chart AppVersion.
-  tag: edge
+  tag: latest
   resources:
     requests:
       memory: "60Mi"
@@ -54,9 +54,9 @@ de:
       memory: "300Mi"
 
 ucp:
-  image: ghcr.io/sk593/dev/ucpd
+  image: ghcr.io/sk593/merge/ucpd
   # Default tag uses Chart AppVersion.
-  tag: edge
+  tag: latest
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -83,9 +83,9 @@ dynamicrp:
     path: "/terraform"
 
 rp:
-  image: ghcr.io/sk593/dev/applications-rp
+  image: ghcr.io/sk593/merge/applications-rp
   # Default tag uses Chart AppVersion.
-  tag: edge
+  tag: latest
   publicEndpointOverride: ""
   resources:
     requests:
