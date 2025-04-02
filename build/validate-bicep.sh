@@ -10,26 +10,20 @@ FILES=$(find . -type f -name "*.bicep")
 # Get the first bicep file with Radius and AWS extensions from the list to restore extensions
 FIRST_FILE_RAD=""
 FIRST_FILE_AWS=""
-FIRST_FILE_TESTRESOURCES=""
 for F in $FILES
 do
-    # Check if the file contains the string "extension radius"
+    # Check if the file contains the word "extension radius"
     if [ -z "$FIRST_FILE_RAD" ] && grep -q "extension radius" "$F"; then
         FIRST_FILE_RAD="$F"
     fi
-    # Check if the file contains the string "extension aws"
+    # Check if the file contains the word "extension aws"
     if [ -z "$FIRST_FILE_AWS" ] && grep -q "extension aws" "$F"; then
         FIRST_FILE_AWS="$F"
     fi
-    # Check if the file contains the string "extension testresources"
-    if [ -z "$FIRST_FILE_TESTRESOURCES" ] && grep -q "extension testresources" "$F"; then
-        FIRST_FILE_TESTRESOURCES="$F"
-    fi
-    # Break the loop if all three extensions are found
-    if [ -n "$FIRST_FILE_RAD" ] && [ -n "$FIRST_FILE_AWS" ] && [ -n "$FIRST_FILE_TESTRESOURCES" ]; then
+    # Break the loop if both files are found
+    if [ -n "$FIRST_FILE_RAD" ] && [ -n "$FIRST_FILE_AWS" ]; then
         break
     fi
-
 done
 
 # Restore the extensions once 
@@ -40,10 +34,6 @@ echo "Restoring Radius extension with response: $STDERR..."
 echo "running AWS: $BICEP_PATH build $FIRST_FILE_AWS"
 STDERR=$($BICEP_PATH build $FIRST_FILE_AWS --stdout 2>&1 1>/dev/null)
 echo "Restoring AWS extension with response: $STDERR..."
-
-echo "running TestResources: $BICEP_PATH build $FIRST_FILE_TESTRESOURCES"
-STDERR=$($BICEP_PATH build $FIRST_FILE_TESTRESOURCES --stdout 2>&1 1>/dev/null)
-echo "Restoring TestResources extension with response: $STDERR..."
 
 FAILURES=()
 WARNINGS=()
