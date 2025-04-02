@@ -44,7 +44,7 @@ var (
 
 func TestGetOrDefaultAsyncOperationTimeout(t *testing.T) {
 	var zeroDuration time.Duration
-	require.Equal(t, time.Duration(360)*time.Second, getOrDefaultAsyncOperationTimeout(zeroDuration))
+	require.Equal(t, time.Duration(120)*time.Second, getOrDefaultAsyncOperationTimeout(zeroDuration))
 	require.Equal(t, time.Duration(1)*time.Minute, getOrDefaultAsyncOperationTimeout(time.Duration(1)*time.Minute))
 }
 
