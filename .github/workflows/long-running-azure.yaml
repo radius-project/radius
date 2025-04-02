@@ -569,15 +569,12 @@ jobs:
         run: |
           echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_ENV
       - name: Restore Bicep artifacts before running functional tests
-      # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
-      # so we can restore all Bicep artifacts before the tests start.
+      # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension and 1 that uses the AWS extension so we can restore both Bicep artifacts before the tests start
         run: |
           # Restore Radius Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
           # Restore AWS Bicep types 
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep --force
-          # Restore UDT Test Bicep types
-          bicep restore ./test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha-recipe.bicep
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
