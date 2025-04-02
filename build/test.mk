@@ -20,7 +20,7 @@
 TEST_TIMEOUT ?=1h
 RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 REL_VERSION ?=latest
-DOCKER_REGISTRY ?=ghcr.io/radius-project/dev
+DOCKER_REGISTRY ?=ghcr.io/sk593/merge
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.30.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)

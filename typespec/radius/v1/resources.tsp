@@ -119,6 +119,15 @@ model KubernetesCompute extends EnvironmentCompute {
   `namespace`: string;
 }
 
+@doc("The Azure container instance compute configuration")
+model AzureContainerInstanceCompute extends EnvironmentCompute {
+  @doc("The Azure container instance compute kind")
+  kind: "aci";
+
+  @doc("The resource group to use for the environment.")
+  resourceGroup?: string;
+}
+
 @doc("Recipe status at deployment time for a resource.")
 model RecipeStatus {
   @doc("TemplateKind is the kind of the recipe template used by the portable resource upon deployment.")
