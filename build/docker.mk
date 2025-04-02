@@ -14,8 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-DOCKER_REGISTRY ?=ghcr.io/sk593/dev
-DOCKER_TAG_VERSION?=edge
+DOCKER_REGISTRY ?=ghcr.io/sk593/merge
+DOCKER_TAG_VERSION?=latest
 IMAGE_SRC?=https://github.com/sk593/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 

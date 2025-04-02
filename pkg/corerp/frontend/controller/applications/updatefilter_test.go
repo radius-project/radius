@@ -360,3 +360,51 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 		require.Equal(t, res.Body.Error.Message, "Updating an application's Kubernetes namespace from 'default-app0' to 'differentname' requires the application to be deleted and redeployed. Please delete your application and try again.")
 	})
 }
+
+func TestCreateAppScopedNamespace_non_kubernetes_compute(t *testing.T) {
+	tCtx := rpctest.NewControllerContext(t)
+
+	opts := ctrl.Options{
+		DatabaseClient: tCtx.MockSC,
+		KubeClient:     k8sutil.NewFakeKubeClient(nil),
+	}
+
+	t.Run("skips namespace creation for ACI compute", func(t *testing.T) {
+		// Set up environment with ACI compute
+		envdm := &datamodel.Environment{
+			Properties: datamodel.EnvironmentProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.ACIComputeKind,
+				},
+			},
+		}
+
+		// Expect to get the environment but no other calls
+		tCtx.MockSC.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			Return(rpctest.FakeStoreObject(envdm), nil)
+
+		// Create application resource
+		newResource := &datamodel.Application{
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
+					Environment: testEnvID,
+				},
+			},
+		}
+
+		id, err := resources.ParseResource(testAppID)
+		require.NoError(t, err)
+		armctx := &v1.ARMRequestContext{ResourceID: id}
+		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
+		// Call the function
+		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
+
+		// Verify it returns nil, nil and doesn't modify the resource
+		require.NoError(t, err)
+		require.Nil(t, resp)
+		require.Nil(t, newResource.Properties.Status.Compute, "Compute status should not be set for ACI compute kind")
+	})
+}
