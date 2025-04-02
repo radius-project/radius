@@ -2454,6 +2454,41 @@
         }
       ]
     },
+    "AzureContainerInstanceCompute": {
+      "type": "object",
+      "description": "The Azure container instance compute configuration",
+      "properties": {
+        "resourceGroup": {
+          "type": "string",
+          "description": "The resource group to use for the environment."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "aci"
+    },
+    "AzureContainerInstanceExtension": {
+      "type": "object",
+      "description": "Azure container instance resource group extension of a environment/application resource.",
+      "properties": {
+        "resourceGroup": {
+          "type": "string",
+          "description": "The resource group of the application environment."
+        }
+      },
+      "required": [
+        "resourceGroup"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Extension"
+        }
+      ],
+      "x-ms-discriminator-value": "aci"
+    },
     "AzureKeyVaultVolumeProperties": {
       "type": "object",
       "description": "Represents Azure Key Vault Volume properties",

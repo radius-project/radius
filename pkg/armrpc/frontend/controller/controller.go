@@ -26,6 +26,7 @@ import (
 	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/components/database"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,6 +52,9 @@ type Options struct {
 	// Code that needs to process the URL path should ignore the base path prefix when parsing the URL path.
 	// Code that needs to construct a URL path should use the base path prefix when constructing the URL path.
 	PathBase string
+
+	// HACKHACK: This is a temporary hack to allow the controller to know the address of the RP.
+	Arm *armauth.ArmConfig
 
 	// DatabaseClient is the database client.
 	DatabaseClient database.Client

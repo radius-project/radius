@@ -385,6 +385,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 
 	envOpts := renderers.EnvironmentOptions{
+		Resource:       resources.MustParse(env.ID),
 		CloudProviders: &env.Properties.Providers,
 	}
 
@@ -397,6 +398,16 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 			return renderers.EnvironmentOptions{}, errors.New("kubernetes' namespace is not specified")
 		}
 		envOpts.Namespace = kubeProp.Namespace
+
+	case rpv1.ACIComputeKind:
+		c := &env.Properties.Compute.ACICompute
+		if c.ResourceGroup == "" {
+			c.ResourceGroup = env.Properties.Providers.Azure.Scope
+		}
+		if c.ResourceGroup == "" {
+			return renderers.EnvironmentOptions{}, errors.New("resource group is not specified")
+		}
+		envOpts.Compute = &env.Properties.Compute
 
 	default:
 		return renderers.EnvironmentOptions{}, fmt.Errorf("%s is unsupported", env.Properties.Compute.Kind)

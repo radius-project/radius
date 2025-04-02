@@ -6,6 +6,30 @@ package v20231001preview
 
 import "time"
 
+// AzureContainerInstanceCompute - The Azure container instance compute configuration
+type AzureContainerInstanceCompute struct {
+// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+// Configuration for supported external identity providers
+	Identity *IdentitySettings
+
+// The resource group to use for the environment.
+	ResourceGroup *string
+
+// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type AzureContainerInstanceCompute.
+func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Identity: a.Identity,
+		Kind: a.Kind,
+		ResourceID: a.ResourceID,
+	}
+}
+
 // AzureResourceManagerCommonTypesTrackedResourceUpdate - The resource model definition for an Azure Resource Manager tracked
 // top level resource which has 'tags' and a 'location'
 type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
