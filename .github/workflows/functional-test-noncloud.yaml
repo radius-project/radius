@@ -145,6 +145,7 @@ jobs:
             samples-noncloud,
             ucp-noncloud,
             datastoresrp-noncloud,
+            dynamicrp-noncloud,
           ]
     runs-on: ${{ matrix.os }}
     env:
@@ -404,6 +405,39 @@ jobs:
           chmod +x ./bicep
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
+
+      - name: Publish bicep types 
+        run: | 
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
+
+      - name: Publish UDT types 
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha.yaml --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+
+      - name: Generate test bicepconfig.json
+        run: |
+          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+            RADIUS_VERSION="latest"
+          else
+            RADIUS_VERSION="${{ env.REL_VERSION }}"
+          fi
+          cat <<EOF > ./test/bicepconfig.json
+          {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true
+            },
+            "extensions": {
+              "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest",
+              "testresources": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:$RADIUS_VERSION"
+            }
+          }
+          EOF
+
+          # Copy to the dynamicrp resources test directory
+          cp -f ./test/bicepconfig.json ./test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json
 
       - name: Publish Bicep Test Recipes
         run: |
