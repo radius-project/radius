@@ -33,6 +33,11 @@ func TestRunner_Validate(t *testing.T) {
 			ExpectedValid: true,
 		},
 		{
+			Name:          "Valid with force flag",
+			Input:         []string{"--from-file", "testdata/valid.yaml", "--target", "./output.tgz", "--force"},
+			ExpectedValid: true,
+		},
+		{
 			Name:          "Invalid: invalid manifest",
 			Input:         []string{"--from-file", "testdata/invalid.yaml", "--target", "./output.tgz"},
 			ExpectedValid: false,
