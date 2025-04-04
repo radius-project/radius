@@ -309,21 +309,9 @@ jobs:
           chmod +x ./bin/rad
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha.yaml --target br:${{ env.BICEP_TYPES_REGISTRY }}/testresources:latest --force
-      - name: Publish Bicep Test Recipes
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
-        run: |
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH
-          which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
           rad version
           rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha.yaml --target br:${{ env.BICEP_TYPES_REGISTRY }}/testresources:latest --force
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
       - name: Publish Bicep Test Recipes
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
