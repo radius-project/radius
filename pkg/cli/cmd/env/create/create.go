@@ -141,11 +141,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = r.NamespaceInterface.ValidateNamespace(cmd.Context(), r.Namespace, *r.Workspace)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

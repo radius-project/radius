@@ -19,7 +19,6 @@ package create
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -91,19 +90,6 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				// Invalid resource group
 				createShowUCPError(mocks.ApplicationManagementClient, testResourceGroup)
-			},
-		},
-		{
-			Name:          "Create command with invalid namespace",
-			Input:         []string{"testingenv", "-n", "invalidnamespace"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				// Invalid create command with invalid namespace
-				createMocksWithInvalidResourceGroup(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
 			},
 		},
 		{
@@ -276,24 +262,6 @@ func Test_Run(t *testing.T) {
 
 func createMocksWithValidCommand(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
 	createShowUCPSuccess(appManagementClient, testResourceGroup)
-	createValidateNamespaceSuccess(namespaceClient)
-}
-
-func createMocksWithInvalidResourceGroup(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
-	createShowUCPSuccess(appManagementClient, testResourceGroup)
-	createValidateNamespaceError(namespaceClient)
-}
-
-func createValidateNamespaceSuccess(namespaceClient *namespace.MockInterface) {
-	namespaceClient.EXPECT().
-		ValidateNamespace(gomock.Any(), "testingenv", gomock.Any()).
-		Return(nil).Times(1)
-}
-
-func createValidateNamespaceError(namespaceClient *namespace.MockInterface) {
-	namespaceClient.EXPECT().
-		ValidateNamespace(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(fmt.Errorf("failed to create namespace")).Times(1)
 }
 
 func createShowUCPSuccess(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
