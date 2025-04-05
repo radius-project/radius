@@ -784,6 +784,8 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
