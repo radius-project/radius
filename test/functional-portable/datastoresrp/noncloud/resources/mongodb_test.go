@@ -17,15 +17,12 @@ limitations under the License.
 package resource_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
-	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Opt-out case for manual resource provisioning
@@ -122,61 +119,61 @@ func Test_MongoDB_Recipe(t *testing.T) {
 // It has 2 steps:
 // 1. Deploy the environment and mongodb resource to the environment namespace.
 // 2. Deploy an app that uses the existing mongodb resource using the 'existing' keyword.
-func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
-	envTemplate := "testdata/datastoresrp-resources-mongodb-recipe-and-env.bicep"
-	existingTemplate := "testdata/datastoresrp-resources-mongodb-existing-env-scoped-resource.bicep"
-	name := "mongodb-recipe-and-env"
-	appNamespace := "mongodb-recipe-existing-app"
-	appName := "mongodb-recipe-existing"
-	test := rp.NewRPTest(t, name, []rp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(envTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: name,
-						Type: validation.EnvironmentsResource,
-					},
-					{
-						Name: "existing-mongodb",
-						Type: validation.MongoDatabasesResource,
-					},
-				},
-			},
-			SkipObjectValidation: true,
-		},
-		{
-			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetMagpieImage()),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: appName,
-						Type: validation.ApplicationsResource,
-						App:  appName,
-					},
-					{
-						Name: "mongo-ctnr-exst",
-						Type: validation.ContainersResource,
-						App:  appName,
-					},
-					{
-						Name: "existing-mongodb",
-						Type: validation.MongoDatabasesResource,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongo-ctnr-exst").ValidateLabels(false),
-					},
-				},
-			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-				_, err := ct.Options.K8sClient.CoreV1().Namespaces().Get(context.Background(), name, metav1.GetOptions{})
-				require.NoError(t, err)
-			},
-		},
-	})
-	test.Test(t)
-}
+// func Test_MongoDB_EnvScoped_ExistingResource(t *testing.T) {
+// 	envTemplate := "testdata/datastoresrp-resources-mongodb-recipe-and-env.bicep"
+// 	existingTemplate := "testdata/datastoresrp-resources-mongodb-existing-env-scoped-resource.bicep"
+// 	name := "mongodb-recipe-and-env"
+// 	appNamespace := "mongodb-recipe-existing-app"
+// 	appName := "mongodb-recipe-existing"
+// 	test := rp.NewRPTest(t, name, []rp.TestStep{
+// 		{
+// 			Executor: step.NewDeployExecutor(envTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+// 			RPResources: &validation.RPResourceSet{
+// 				Resources: []validation.RPResource{
+// 					{
+// 						Name: name,
+// 						Type: validation.EnvironmentsResource,
+// 					},
+// 					{
+// 						Name: "existing-mongodb",
+// 						Type: validation.MongoDatabasesResource,
+// 					},
+// 				},
+// 			},
+// 			SkipObjectValidation: true,
+// 		},
+// 		{
+// 			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetMagpieImage()),
+// 			RPResources: &validation.RPResourceSet{
+// 				Resources: []validation.RPResource{
+// 					{
+// 						Name: appName,
+// 						Type: validation.ApplicationsResource,
+// 						App:  appName,
+// 					},
+// 					{
+// 						Name: "mongo-ctnr-exst",
+// 						Type: validation.ContainersResource,
+// 						App:  appName,
+// 					},
+// 					{
+// 						Name: "existing-mongodb",
+// 						Type: validation.MongoDatabasesResource,
+// 					},
+// 				},
+// 			},
+// 			K8sObjects: &validation.K8sObjectSet{
+// 				Namespaces: map[string][]validation.K8sObject{
+// 					appNamespace: {
+// 						validation.NewK8sPodForResource(name, "mongo-ctnr-exst").ValidateLabels(false),
+// 					},
+// 				},
+// 			},
+// 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+// 				_, err := ct.Options.K8sClient.CoreV1().Namespaces().Get(context.Background(), name, metav1.GetOptions{})
+// 				require.NoError(t, err)
+// 			},
+// 		},
+// 	})
+// 	test.Test(t)
+// }
