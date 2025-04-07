@@ -23,7 +23,7 @@ resource udtcntr 'Applications.Core/containers@2023-10-01-preview' = {
     properties: {
       application: udtapp.id
       container: {
-        image: 'ghcr.io/nithyatsu/todo:latest'
+        image: 'ghcr.io/radius-project/samples/demo:latest'
         ports: {
           web: {
             containerPort: 3000
