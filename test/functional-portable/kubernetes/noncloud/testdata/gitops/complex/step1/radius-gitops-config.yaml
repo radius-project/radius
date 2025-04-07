@@ -1,0 +1,4 @@
+config:
+  - name: flux-complex.bicep
+    params: flux-complex.bicepparam
+    namespace: flux-complex

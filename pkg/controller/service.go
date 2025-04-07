@@ -20,15 +20,17 @@ import (
 	"context"
 	"fmt"
 
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/pkg/sdk"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -45,6 +47,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radappiov1alpha3.AddToScheme(scheme))
+	utilruntime.Must(sourcev1.AddToScheme(scheme))
 }
 
 var _ hosting.Service = (*Service)(nil)
@@ -138,6 +141,18 @@ func (s *Service) Run(ctx context.Context) error {
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentResource", err)
+	}
+
+	err = (&reconciler.FluxController{
+		Client:         mgr.GetClient(),
+		ArchiveFetcher: reconciler.NewArchiveFetcher(),
+		FileSystem:     filesystem.NewOSFS(),
+		Bicep: &bicep.Impl{
+			FileSystem: filesystem.NewOSFS(),
+		},
+	}).SetupWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)
 	}
 
 	if s.TLSCertDir == "" {
