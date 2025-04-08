@@ -51,7 +51,7 @@
       },
       "tags": {
         "type": {
-          "$ref": "#/37"
+          "$ref": "#/38"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -65,7 +65,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/38"
+          "$ref": "#/39"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -106,7 +106,7 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/29"
         },
         "flags": 0,
         "description": "The secret values for the given MongoDatabase resource"
@@ -120,7 +120,7 @@
       },
       "port": {
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "Port value of the target Mongo database"
@@ -134,7 +134,7 @@
       },
       "resources": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "List of the resource IDs that support the MongoDB resource"
@@ -148,14 +148,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/33"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/37"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -236,14 +236,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/24"
+          "$ref": "#/25"
         },
         "flags": 2,
         "description": "Recipe status at deployment time for a resource."
       },
       "outputResources": {
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "Properties of an output resource"
@@ -272,10 +272,10 @@
     },
     "elements": {
       "aci": {
-        "$ref": "#/20"
+        "$ref": "#/21"
       },
       "kubernetes": {
-        "$ref": "#/22"
+        "$ref": "#/23"
       }
     }
   },
@@ -285,7 +285,7 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/19"
+          "$ref": "#/20"
         },
         "flags": 1,
         "description": "IdentitySettingKind is the kind of supported external identity setting"
@@ -303,6 +303,13 @@
         },
         "flags": 0,
         "description": "The resource ID of the provisioned identity"
+      },
+      "managedIdentity": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The name of the managed identity"
       }
     }
   },
@@ -315,6 +322,10 @@
     "value": "azure.com.workload"
   },
   {
+    "$type": "StringLiteralType",
+    "value": "managedIdentity"
+  },
+  {
     "$type": "UnionType",
     "elements": [
       {
@@ -322,6 +333,9 @@
       },
       {
         "$ref": "#/18"
+      },
+      {
+        "$ref": "#/19"
       }
     ]
   },
@@ -338,7 +352,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/21"
+          "$ref": "#/22"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -362,7 +376,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/24"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -420,7 +434,7 @@
       },
       "radiusManaged": {
         "type": {
-          "$ref": "#/26"
+          "$ref": "#/27"
         },
         "flags": 0,
         "description": "Determines whether Radius manages the lifecycle of the underlying resource."
@@ -433,7 +447,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/25"
+      "$ref": "#/26"
     }
   },
   {
@@ -475,7 +489,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/30"
+      "$ref": "#/31"
     }
   },
   {
@@ -491,7 +505,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/34"
         },
         "flags": 0,
         "description": "Any object"
@@ -513,10 +527,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/34"
+        "$ref": "#/35"
       },
       {
-        "$ref": "#/35"
+        "$ref": "#/36"
       }
     ]
   },
@@ -541,7 +555,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/43"
+          "$ref": "#/44"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -562,7 +576,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/48"
+          "$ref": "#/49"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -596,9 +610,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/39"
-      },
-      {
         "$ref": "#/40"
       },
       {
@@ -606,6 +617,9 @@
       },
       {
         "$ref": "#/42"
+      },
+      {
+        "$ref": "#/43"
       }
     ]
   },
@@ -629,9 +643,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/44"
-      },
-      {
         "$ref": "#/45"
       },
       {
@@ -639,6 +650,9 @@
       },
       {
         "$ref": "#/47"
+      },
+      {
+        "$ref": "#/48"
       }
     ]
   },
@@ -666,7 +680,7 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/49"
+      "$ref": "#/50"
     }
   },
   {
@@ -680,7 +694,7 @@
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/50"
+          "$ref": "#/51"
         },
         "description": "listSecrets"
       }
@@ -714,28 +728,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/52"
+          "$ref": "#/53"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/54"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/55"
+          "$ref": "#/56"
         },
         "flags": 1,
         "description": "RedisCache portable resource properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/70"
+          "$ref": "#/71"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -749,7 +763,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/38"
+          "$ref": "#/39"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -776,7 +790,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/64"
+          "$ref": "#/65"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -790,7 +804,7 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/66"
         },
         "flags": 0,
         "description": "The secret values for the given RedisCache resource"
@@ -804,7 +818,7 @@
       },
       "port": {
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "The port value of the target Redis cache"
@@ -818,28 +832,28 @@
       },
       "tls": {
         "type": {
-          "$ref": "#/26"
+          "$ref": "#/27"
         },
         "flags": 0,
         "description": "Specifies whether to enable SSL connections to the Redis cache"
       },
       "resources": {
         "type": {
-          "$ref": "#/66"
+          "$ref": "#/67"
         },
         "flags": 0,
         "description": "List of the resource IDs that support the Redis resource"
       },
       "recipe": {
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/33"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/69"
+          "$ref": "#/70"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -882,9 +896,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/56"
-      },
-      {
         "$ref": "#/57"
       },
       {
@@ -904,6 +915,9 @@
       },
       {
         "$ref": "#/63"
+      },
+      {
+        "$ref": "#/64"
       }
     ]
   },
@@ -937,7 +951,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/30"
+      "$ref": "#/31"
     }
   },
   {
@@ -952,10 +966,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/67"
+        "$ref": "#/68"
       },
       {
-        "$ref": "#/68"
+        "$ref": "#/69"
       }
     ]
   },
@@ -998,7 +1012,7 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/71"
+      "$ref": "#/72"
     }
   },
   {
@@ -1006,13 +1020,13 @@
     "name": "Applications.Datastores/redisCaches@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/54"
+      "$ref": "#/55"
     },
     "flags": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/72"
+          "$ref": "#/73"
         },
         "description": "listSecrets"
       }
@@ -1046,28 +1060,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/74"
+          "$ref": "#/75"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/75"
+          "$ref": "#/76"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/77"
+          "$ref": "#/78"
         },
         "flags": 1,
         "description": "SqlDatabase properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/92"
+          "$ref": "#/93"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1081,7 +1095,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/38"
+          "$ref": "#/39"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -1108,7 +1122,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/86"
+          "$ref": "#/87"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -1136,7 +1150,7 @@
       },
       "port": {
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "Port value of the target Sql database"
@@ -1150,28 +1164,28 @@
       },
       "resources": {
         "type": {
-          "$ref": "#/87"
+          "$ref": "#/88"
         },
         "flags": 0,
         "description": "List of the resource IDs that support the SqlDatabase resource"
       },
       "secrets": {
         "type": {
-          "$ref": "#/88"
+          "$ref": "#/89"
         },
         "flags": 0,
         "description": "The secret values for the given SqlDatabase resource"
       },
       "recipe": {
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/33"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/91"
+          "$ref": "#/92"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -1214,9 +1228,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/78"
-      },
-      {
         "$ref": "#/79"
       },
       {
@@ -1236,13 +1247,16 @@
       },
       {
         "$ref": "#/85"
+      },
+      {
+        "$ref": "#/86"
       }
     ]
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/30"
+      "$ref": "#/31"
     }
   },
   {
@@ -1277,10 +1291,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/89"
+        "$ref": "#/90"
       },
       {
-        "$ref": "#/90"
+        "$ref": "#/91"
       }
     ]
   },
@@ -1316,7 +1330,7 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/93"
+      "$ref": "#/94"
     }
   },
   {
@@ -1324,13 +1338,13 @@
     "name": "Applications.Datastores/sqlDatabases@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/76"
+      "$ref": "#/77"
     },
     "flags": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/94"
+          "$ref": "#/95"
         },
         "description": "listSecrets"
       }

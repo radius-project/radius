@@ -84,6 +84,8 @@ func fromIdentityKind(kind rpv1.IdentitySettingKind) *IdentitySettingKind {
 	switch kind {
 	case rpv1.AzureIdentityWorkload:
 		return to.Ptr(IdentitySettingKindAzureComWorkload)
+	case rpv1.ManagedIdentity:
+		return to.Ptr(IdentitySettingKindManagedIdentity)
 	default:
 		return nil
 	}
@@ -97,6 +99,8 @@ func toIdentityKindDataModel(kind *IdentitySettingKind) rpv1.IdentitySettingKind
 	switch *kind {
 	case IdentitySettingKindAzureComWorkload:
 		return rpv1.AzureIdentityWorkload
+	case IdentitySettingKindManagedIdentity:
+		return rpv1.ManagedIdentity
 	default:
 		return rpv1.IdentityNone
 	}

@@ -309,11 +309,20 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rpv1.En
 			return nil, err
 		}
 
+		var identity *rpv1.IdentitySettings
+		if v.Identity != nil {
+			identity = &rpv1.IdentitySettings{
+				Kind:            toIdentityKindDataModel(v.Identity.Kind),
+				ManagedIdentity: to.String(v.Identity.ManagedIdentity),
+			}
+		}
+
 		return &rpv1.EnvironmentCompute{
 			Kind: k,
 			ACICompute: rpv1.ACIComputeProperties{
 				ResourceGroup: to.String(v.ResourceGroup),
 			},
+			Identity: identity,
 		}, nil
 
 	default:
@@ -347,9 +356,17 @@ func fromEnvironmentComputeDataModel(envCompute *rpv1.EnvironmentCompute) Enviro
 		return compute
 
 	case rpv1.ACIComputeKind:
+		var identity *IdentitySettings
+		if envCompute.Identity != nil {
+			identity = &IdentitySettings{
+				Kind:            fromIdentityKind(envCompute.Identity.Kind),
+				ManagedIdentity: toStringPtr(envCompute.Identity.ManagedIdentity),
+			}
+		}
 		compute := &AzureContainerInstanceCompute{
 			Kind:          fromEnvironmentComputeKind(envCompute.Kind),
 			ResourceGroup: to.Ptr(envCompute.ACICompute.ResourceGroup),
+			Identity:      identity,
 		}
 		return compute
 
