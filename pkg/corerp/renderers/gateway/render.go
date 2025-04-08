@@ -348,7 +348,7 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 			}
 			// Compare the 2 request durations and ensure that the request timeout is greater than the backend request timeout
 			if requestDuration < backendRequestDuration {
-				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("request timeout must be greater than backend request timeout")
+				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("request timeout must be greater than or equal to backend request timeout")
 			}
 			timeoutPolicy = &contourv1.TimeoutPolicy{
 				Response: route.TimeoutPolicy.Request,
