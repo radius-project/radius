@@ -89,6 +89,9 @@ model IdentitySettings {
 
   @doc("The resource ID of the provisioned identity")
   resource?: string;
+
+  @doc("The name of the managed identity")
+  managedIdentity?: string;
 }
 
 @doc("IdentitySettingKind is the kind of supported external identity setting")
@@ -98,6 +101,9 @@ enum IdentitySettingKind {
 
   @doc("azure ad workload identity")
   `azure.com.workload`: "azure.com.workload",
+
+  @doc("User assigned managed identity")
+  managedIdentity: "managedIdentity",
 }
 
 @discriminator("kind")
