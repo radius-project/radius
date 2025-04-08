@@ -1,0 +1,20 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+  "name": "env0",
+  "type": "Applications.Core/environments",
+  "properties": {
+    "compute": {
+      "kind": "aci",
+      "resourceGroup": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "identity": {
+        "kind": "managedIdentity",
+        "managedIdentity": "test-mi"
+      }
+    },
+    "providers": {
+      "azure": {
+        "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
+      }
+    }
+  }
+}

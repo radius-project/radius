@@ -49,6 +49,8 @@ type IdentitySettingKind string
 const (
 // IdentitySettingKindAzureComWorkload - azure ad workload identity
 	IdentitySettingKindAzureComWorkload IdentitySettingKind = "azure.com.workload"
+// IdentitySettingKindManagedIdentity - User assigned managed identity
+	IdentitySettingKindManagedIdentity IdentitySettingKind = "managedIdentity"
 // IdentitySettingKindUndefined - undefined identity
 	IdentitySettingKindUndefined IdentitySettingKind = "undefined"
 )
@@ -57,6 +59,7 @@ const (
 func PossibleIdentitySettingKindValues() []IdentitySettingKind {
 	return []IdentitySettingKind{	
 		IdentitySettingKindAzureComWorkload,
+		IdentitySettingKindManagedIdentity,
 		IdentitySettingKindUndefined,
 	}
 }

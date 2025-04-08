@@ -331,6 +331,42 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 			err: nil,
 		},
 		{
+			filename: "environmentresource-with-acicompute.json",
+			expected: &datamodel.Environment{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: rpv1.EnvironmentCompute{
+						Kind: "aci",
+						ACICompute: rpv1.ACIComputeProperties{
+							ResourceGroup: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+						},
+						Identity: &rpv1.IdentitySettings{
+							Kind:            rpv1.ManagedIdentity,
+							ManagedIdentity: "test-mi",
+						},
+					},
+					Providers: datamodel.Providers{
+						Azure: datamodel.ProvidersAzure{
+							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			filename: "environmentresource-invalid-missing-namespace.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
 		},
@@ -522,6 +558,34 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "azure.com.workload", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Kind))
 	require.Equal(t, "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Resource))
 	require.Equal(t, "https://oidcurl/guid", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.OidcIssuer))
+	require.Equal(t, map[string][]*ProviderConfigProperties{}, versioned.Properties.RecipeConfig.Terraform.Providers)
+	require.Equal(t, map[string]*string{}, versioned.Properties.RecipeConfig.Env)
+}
+
+func TestConvertDataModelWithACIToVersioned(t *testing.T) {
+	// arrange
+	rawPayload := testutil.ReadFixture("environmentresourcedatamodel-with-aci.json")
+	r := &datamodel.Environment{}
+	err := json.Unmarshal(rawPayload, r)
+	require.NoError(t, err)
+
+	// act
+	versioned := &EnvironmentResource{}
+	err = versioned.ConvertFrom(r)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", string(*versioned.ID))
+	require.Equal(t, "env0", string(*versioned.Name))
+	require.Equal(t, "Applications.Core/environments", string(*versioned.Type))
+	require.Equal(t, "aci", string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
+	require.Equal(t, &IdentitySettings{
+		Kind:            to.Ptr(IdentitySettingKindManagedIdentity),
+		ManagedIdentity: to.Ptr("test-mi"),
+	}, versioned.Properties.Compute.GetEnvironmentCompute().Identity)
+	require.Equal(t, "managedIdentity", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Kind))
+	require.Equal(t, "test-mi", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.ManagedIdentity))
 	require.Equal(t, map[string][]*ProviderConfigProperties{}, versioned.Properties.RecipeConfig.Terraform.Providers)
 	require.Equal(t, map[string]*string{}, versioned.Properties.RecipeConfig.Env)
 }
