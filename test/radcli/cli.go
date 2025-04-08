@@ -287,6 +287,18 @@ func (cli *CLI) BicepPublish(ctx context.Context, file, target string) (string, 
 	return cli.RunCommand(ctx, args)
 }
 
+// ResourceProviderCreate runs a command to create or update a resource provider and it's associated resource types from a manifest file.
+// It returns the output string or an error if the command fails.
+func (cli *CLI) ResourceProviderCreate(ctx context.Context, manifestFilePath string) (string, error) {
+	args := []string{
+		"resource-provider",
+		"create",
+		"--from-file",
+		manifestFilePath,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 // Version runs the version command and returns the output as a string, or an error if the command fails.
 func (cli *CLI) Version(ctx context.Context) (string, error) {
 	args := []string{

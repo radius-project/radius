@@ -67,6 +67,8 @@ env:
   CONTAINER_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
+  # bicep-types ACR url for uploading UDT Bicep types
+  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -99,6 +101,17 @@ env:
 
   # The current GitHub action link
   ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  # Gitea server URL
+  GITEA_SERVER_URL: "http://localhost:30080"
+  # Gitea username
+  GITEA_USERNAME: "testuser"
+  # Gitea email
+  GITEA_EMAIL: "testuser@radapp.io"
+  # Gitea access token name
+  GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+  # Gitea version
+  GITEA_VERSION: "v11.0.0"
 
 jobs:
   build:
@@ -141,7 +154,7 @@ jobs:
           fi
 
           echo "SKIP_BUILD=${SKIP_BUILD}" >> $GITHUB_OUTPUT
-      - name: Set up checkout target (scheduled)
+      - name: Set up checkout target (scheduled, workflow_dispatch)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
@@ -155,6 +168,9 @@ jobs:
       - name: Generate ID for release
         id: gen-id
         run: |
+          echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
+          echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           if [[ "${{ steps.skip-build.outputs.SKIP_BUILD }}" != "true" ]]; then
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
             if [ "$GITHUB_EVENT_NAME" == "schedule" ] || [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
@@ -286,8 +302,13 @@ jobs:
         with:
           path: ./dist/cache
           key: radius-test-latest-${{ github.sha }}-${{ github.run_number }}
-      - name: Publish Bicep Test Recipes
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}    
+      - name: Publish UDT types
         run: |
           mkdir ./bin
           cp ./dist/linux_amd64/release/rad ./bin/rad
@@ -296,6 +317,18 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
           rad version
+          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha.yaml --target br:${{ env.BICEP_TYPES_REGISTRY }}/testresources:latest --force
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+      - name: Publish Bicep Test Recipes
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
           make publish-test-bicep-recipes
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
@@ -434,7 +467,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes --reinstall \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},dynamicrp.image=${{ env.CONTAINER_REGISTRY }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},dynamicrp.image=${{ env.CONTAINER_REGISTRY }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},bicep.image=${{ env.CONTAINER_REGISTRY }}/bicep,bicep.tag=${{ env.REL_VERSION }}
       - name: Verify manifests are registered
         if: env.SKIP_BUILD != 'true'
         run: |
@@ -521,6 +554,33 @@ jobs:
         if: failure()
         run: |
           echo ":x: Failed to install Radius for functional test." >> $GITHUB_STEP_SUMMARY
+      - name: Install Flux Source Controller
+        run: |
+          curl -s https://fluxcd.io/install.sh | FLUX_VERSION=2.5.1 sudo bash
+          flux install --namespace=flux-system --version=v2.5.1 --components=source-controller --network-policy=false
+          kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
+      - name: Install Gitea
+        id: install-gitea
+        uses: ./.github/actions/install-gitea
+        env:
+          GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
+        with:
+          gitea-username: ${{ env.GITEA_USERNAME }}
+          gitea-email: ${{ env.GITEA_EMAIL }}
+          gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
+          gitea-version: ${{ env.GITEA_VERSION }}
+      - name: Port-forward to Gitea
+        run: |
+          # Start port forwarding in the background
+          kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
+          
+          # Wait for port forwarding to be established
+          sleep 5
+          
+          # Test the connection to ensure port forwarding is working
+          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+          
+          echo "Port forwarding established successfully"
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
@@ -528,7 +588,8 @@ jobs:
         run: |
           echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_ENV
       - name: Restore Bicep artifacts before running functional tests
-      # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension and 1 that uses the AWS extension so we can restore both Bicep artifacts before the tests start
+      # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
+      # so we can restore all Bicep artifacts before the tests start.
         run: |
           # Restore Radius Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
@@ -564,6 +625,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
       - name: Collect Pod details
         if: always()
         run: |

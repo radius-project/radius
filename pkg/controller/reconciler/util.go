@@ -19,6 +19,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -30,6 +31,7 @@ import (
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"gopkg.in/yaml.v3"
 )
 
 func resolveDependencies(ctx context.Context, radius RadiusClient, scope string, environmentName string, applicationName string) (resourceGroupID string, environmentID string, applicationID string, err error) {
@@ -299,4 +301,39 @@ func convertToARMJSONParameters(parameters map[string]string) map[string]map[str
 		}
 	}
 	return armJSONParameters
+}
+
+func convertFromARMJSONParameters(armJSONParameters map[string]any) map[string]string {
+	parameters := make(map[string]string, len(armJSONParameters))
+	for key, value := range armJSONParameters {
+		if value == nil {
+			continue
+		}
+
+		if valueMap, ok := value.(map[string]any); ok {
+			if value, ok := valueMap["value"]; ok {
+				if valueStr, ok := value.(string); ok {
+					parameters[key] = valueStr
+				}
+			}
+		}
+	}
+	return parameters
+}
+
+// ParseRadiusGitOpsConfig parses the Radius GitOps configuration file at the given path
+// on the local filesystem.
+func ParseRadiusGitOpsConfig(configFilePath string) (*RadiusGitOpsConfig, error) {
+	radiusConfig := RadiusGitOpsConfig{}
+	b, err := os.ReadFile(configFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(b, &radiusConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &radiusConfig, nil
 }

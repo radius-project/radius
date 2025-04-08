@@ -17,19 +17,20 @@ limitations under the License.
 package bicep
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
 	"path"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/version"
 )
 
-// Interface is the interface for preparing Bicep or ARM-JSON templates for deployment. This interface
-// is designed to be called from the CLI and will print output to the console.
+// Interface is the interface for interacting with Bicep.
 type Interface interface {
 	PrepareTemplate(filePath string) (map[string]any, error)
+	Call(args ...string) ([]byte, error)
 }
 
 var _ Interface = (*Impl)(nil)
@@ -38,12 +39,13 @@ var _ Interface = (*Impl)(nil)
 
 // Impl is the implementation of Interface.
 type Impl struct {
+	FileSystem filesystem.FileSystem
+	Output     output.Interface
 }
 
 // PrepareTemplate checks if the file is a .json or .bicep file, downloads Bicep if it is not installed, checks if the file
-//
-//	exists, and builds the template if it does. It returns a map of strings to any and an error if one occurs.
-func (*Impl) PrepareTemplate(filePath string) (map[string]any, error) {
+// exists, and builds the template if it does. It returns a map of strings to any and an error if one occurs.
+func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	if strings.EqualFold(path.Ext(filePath), ".json") {
 		return ReadARMJSON(filePath)
 	} else if !strings.EqualFold(path.Ext(filePath), ".bicep") {
@@ -56,7 +58,7 @@ func (*Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	}
 
 	if !ok {
-		output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
+		i.Output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
 		err = DownloadBicep()
 		if err != nil {
 			return nil, fmt.Errorf("failed to download rad-bicep: %w", err)
@@ -64,24 +66,35 @@ func (*Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	}
 
 	// Check the file manually so we can control the error message.
-	_, err = os.Stat(filePath)
+	_, err = i.FileSystem.Stat(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("could not find file: %w", err)
 	}
 
-	step := output.BeginStep("Building %s...", filePath)
-	template, err := Build(filePath)
+	step := i.Output.BeginStep("Building %s...", filePath)
+	bytes, err := i.Call("build", "--stdout", filePath)
+	if err != nil {
+		i.Output.CompleteStep(step)
+		return nil, fmt.Errorf("failed to build template: %w", err)
+	}
+
+	template := map[string]any{}
+	err = json.Unmarshal(bytes, &template)
 	if err != nil {
 		return nil, err
 	}
 
-	output.CompleteStep(step)
+	i.Output.CompleteStep(step)
 	return template, nil
 }
 
+// Call runs `rad-bicep` with the given arguments.
+func (i *Impl) Call(args ...string) ([]byte, error) {
+	return runBicepRaw(args...)
+}
+
 // ConvertToMapStringInterface takes in a map of strings to maps of strings to any type and returns a map of strings to any
-//
-//	type, with the values of the inner maps being the values of the returned map. No errors are returned.
+// type, with the values of the inner maps being the values of the returned map. No errors are returned.
 func ConvertToMapStringInterface(in map[string]map[string]any) map[string]any {
 	result := make(map[string]any)
 	for k, v := range in {
