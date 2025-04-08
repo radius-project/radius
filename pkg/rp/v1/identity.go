@@ -26,6 +26,8 @@ const (
 	IdentityNone IdentitySettingKind = "None"
 	// AzureIdentityWorkload represents Azure Workload identity.
 	AzureIdentityWorkload IdentitySettingKind = "azure.com.workload"
+	// ManagedIdentity represents Azure User Assigned Managed Identity.
+	ManagedIdentity IdentitySettingKind = "managedidentity"
 )
 
 // IdentitySettings represents the identity info to access azure resource, such as Key vault.
@@ -36,6 +38,8 @@ type IdentitySettings struct {
 	OIDCIssuer string `json:"oidcIssuer,omitempty"`
 	// Resource represents the resource id of managed identity.
 	Resource string `json:"resource,omitempty"`
+	// ManagedIdentity represents the name of the managed identity.
+	ManagedIdentity string `json:"managedIdentity,omitempty"`
 }
 
 // Validate checks if the IdentitySettings struct is nil and if the Kind is AzureIdentityWorkload, checks if the OIDCIssuer

@@ -1786,7 +1786,8 @@
       "description": "IdentitySettingKind is the kind of supported external identity setting",
       "enum": [
         "undefined",
-        "azure.com.workload"
+        "azure.com.workload",
+        "managedIdentity"
       ],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
@@ -1801,6 +1802,11 @@
             "name": "azure.com.workload",
             "value": "azure.com.workload",
             "description": "azure ad workload identity"
+          },
+          {
+            "name": "managedIdentity",
+            "value": "managedIdentity",
+            "description": "User assigned managed identity"
           }
         ]
       }
@@ -1820,6 +1826,10 @@
         "resource": {
           "type": "string",
           "description": "The resource ID of the provisioned identity"
+        },
+        "managedIdentity": {
+          "type": "string",
+          "description": "The name of the managed identity"
         }
       },
       "required": [
