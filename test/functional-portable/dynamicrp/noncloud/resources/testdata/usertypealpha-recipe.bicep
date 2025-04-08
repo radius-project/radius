@@ -21,7 +21,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Test.Resources/userTypeAlpha': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'          
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
         }
       }
     }
