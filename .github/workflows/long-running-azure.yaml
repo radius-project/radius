@@ -595,8 +595,6 @@ jobs:
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
           # Restore AWS Bicep types 
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep --force
-          # Restore UDT Test Bicep types
-          bicep restore ./test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha-recipe.bicep --force
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
