@@ -33,7 +33,7 @@ global:
       enabled: false
 
 controller:
-  image: ghcr.io/sk593/merge/controller
+  image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.
   tag: latest
   resources:
@@ -54,7 +54,7 @@ de:
       memory: "300Mi"
 
 ucp:
-  image: ghcr.io/sk593/merge/ucpd
+  image: ghcr.io/radius-project/ucpd
   # Default tag uses Chart AppVersion.
   tag: latest
   resources:
@@ -83,7 +83,7 @@ dynamicrp:
     path: "/terraform"
 
 rp:
-  image: ghcr.io/sk593/merge/applications-rp
+  image: ghcr.io/radius-project/applications-rp
   # Default tag uses Chart AppVersion.
   tag: latest
   publicEndpointOverride: ""

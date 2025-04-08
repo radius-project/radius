@@ -14,9 +14,9 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-DOCKER_REGISTRY ?=ghcr.io/sk593/merge
+DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
-IMAGE_SRC?=https://github.com/sk593/radius
+IMAGE_SRC?=https://github.com/radius-project/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
 ##@ Docker Images
