@@ -103,6 +103,9 @@ type IdentitySettings struct {
 // REQUIRED; kind of identity setting
 	Kind *IdentitySettingKind
 
+// The name of the managed identity
+	ManagedIdentity *string
+
 // The URI for your compute platform's OIDC issuer
 	OidcIssuer *string
 

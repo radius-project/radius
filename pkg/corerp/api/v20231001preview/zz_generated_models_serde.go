@@ -2133,6 +2133,7 @@ func (i *IamProperties) UnmarshalJSON(data []byte) error {
 func (i IdentitySettings) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "kind", i.Kind)
+	populate(objectMap, "managedIdentity", i.ManagedIdentity)
 	populate(objectMap, "oidcIssuer", i.OidcIssuer)
 	populate(objectMap, "resource", i.Resource)
 	return json.Marshal(objectMap)
@@ -2149,6 +2150,9 @@ func (i *IdentitySettings) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "kind":
 				err = unpopulate(val, "Kind", &i.Kind)
+			delete(rawMsg, key)
+		case "managedIdentity":
+				err = unpopulate(val, "ManagedIdentity", &i.ManagedIdentity)
 			delete(rawMsg, key)
 		case "oidcIssuer":
 				err = unpopulate(val, "OidcIssuer", &i.OidcIssuer)
