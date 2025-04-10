@@ -28,11 +28,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/require"
-)
-
-const (
-	supportsRecipeCapability = "SupportsRecipe"
 )
 
 func TestRegisterDirectory(t *testing.T) {
@@ -240,7 +237,7 @@ func TestRegisterType(t *testing.T) {
 					require.Equal(t, to.Ptr(tt.expectedResourceProvider), rp.Name)
 
 					logOutput := logBuffer.String()
-					require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s with capabilities %s", tt.expectedResourceProvider, tt.expectedResourceTypeName, supportsRecipeCapability))
+					require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s with capabilities %s", tt.expectedResourceProvider, tt.expectedResourceTypeName, datamodel.CapabilitySupportsRecipes))
 					require.Contains(t, logOutput, fmt.Sprintf("Creating API Version %s/%s@%s", tt.expectedResourceProvider, tt.expectedResourceTypeName, tt.expectedAPIVersion))
 				}
 			}
