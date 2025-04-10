@@ -32,10 +32,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	supportsRecipeCapability = "SupportsRecipe"
-)
-
 func TestRegisterDirectory(t *testing.T) {
 	tests := []struct {
 		name                     string
