@@ -83,6 +83,64 @@ func TestGatewayConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 }
 
+func TestTimeoutPolicyGatewayConvertVersionedToDataModel(t *testing.T) {
+	// arrange
+	rawPayload := testutil.ReadFixture("gatewayresourcedatamodel-with-gatewaytimeout.json")
+	r := &GatewayResource{}
+	err := json.Unmarshal(rawPayload, r)
+	require.NoError(t, err)
+
+	// act
+	dm, err := r.ConvertTo()
+
+	// assert
+	require.NoError(t, err)
+	gw := dm.(*datamodel.Gateway)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/gateway0", gw.ID)
+	require.Equal(t, "gateway0", gw.Name)
+	require.Equal(t, "Applications.Core/gateways", gw.Type)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", gw.Properties.Application)
+	require.Equal(t, "myapp.mydomain.com", gw.Properties.Hostname.FullyQualifiedHostname)
+	require.Equal(t, "myprefix", gw.Properties.Hostname.Prefix)
+	require.Equal(t, "mydestination", gw.Properties.Routes[0].Destination)
+	require.Equal(t, "mypath", gw.Properties.Routes[0].Path)
+	require.Equal(t, "myreplaceprefix", gw.Properties.Routes[0].ReplacePrefix)
+	require.False(t, gw.Properties.Routes[0].EnableWebsockets)
+	require.Equal(t, "30s", gw.Properties.Routes[0].TimeoutPolicy.Request)
+	require.Equal(t, "20s", gw.Properties.Routes[0].TimeoutPolicy.BackendRequest)
+	require.Equal(t, "http://myprefix.myapp.mydomain.com", gw.Properties.URL)
+	require.Equal(t, []rpv1.OutputResource(nil), gw.Properties.Status.OutputResources)
+	require.Equal(t, "2023-10-01-preview", gw.InternalMetadata.UpdatedAPIVersion)
+}
+
+func TestTimeoutPolicyGatewayConvertDataModelToVersioned(t *testing.T) {
+	// arrange
+	rawPayload := testutil.ReadFixture("gatewayresourcedatamodel-with-gatewaytimeout.json")
+	r := &datamodel.Gateway{}
+	err := json.Unmarshal(rawPayload, r)
+	require.NoError(t, err)
+
+	// act
+	versioned := &GatewayResource{}
+	err = versioned.ConvertFrom(r)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/gateway0", *versioned.ID)
+	require.Equal(t, "gateway0", *versioned.Name)
+	require.Equal(t, "Applications.Core/gateways", *versioned.Type)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", *versioned.Properties.Application)
+	require.Equal(t, "myapp.mydomain.com", *versioned.Properties.Hostname.FullyQualifiedHostname)
+	require.Equal(t, "myprefix", *versioned.Properties.Hostname.Prefix)
+	require.Equal(t, "myreplaceprefix", *versioned.Properties.Routes[0].ReplacePrefix)
+	require.Equal(t, "30s", *versioned.Properties.Routes[0].TimeoutPolicy.Request)
+	require.Equal(t, "20s", *versioned.Properties.Routes[0].TimeoutPolicy.BackendRequest)
+	require.False(t, *versioned.Properties.Routes[0].EnableWebsockets)
+	require.Equal(t, "mypath", *versioned.Properties.Routes[0].Path)
+	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
+	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
+}
+
 func TestGatewaySSLPassthroughConvertVersionedToDataModel(t *testing.T) {
 	// arrange
 	rawPayload := testutil.ReadFixture("gatewayresource-with-sslpassthrough.json")

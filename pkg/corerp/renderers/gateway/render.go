@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -328,6 +329,32 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 			}
 		}
 
+		var timeoutPolicy *contourv1.TimeoutPolicy
+		if route.TimeoutPolicy != nil {
+			// Parse the timeout policy request durations and compare them
+			requestDuration, err := time.ParseDuration(route.TimeoutPolicy.Request)
+			if err != nil {
+				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("invalid request timeout duration")
+			}
+			var backendRequestDuration time.Duration
+			if route.TimeoutPolicy.BackendRequest != "" {
+				backendRequestDuration, err = time.ParseDuration(route.TimeoutPolicy.BackendRequest)
+				if err != nil {
+					return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("invalid backend request timeout duration")
+				}
+			} else {
+				// If the backend request timeout is not specified, default to the request timeout
+				backendRequestDuration = requestDuration
+			}
+			// Compare the 2 request durations and ensure that the request timeout is greater than the backend request timeout
+			if requestDuration < backendRequestDuration {
+				return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest("request timeout must be greater than or equal to backend request timeout")
+			}
+			timeoutPolicy = &contourv1.TimeoutPolicy{
+				Response: route.TimeoutPolicy.Request,
+			}
+		}
+
 		// If this route already exists, append to it
 		if object, exists := objects[localID]; exists {
 			if pathRewritePolicy != nil {
@@ -369,6 +396,7 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 							},
 						},
 						PathRewritePolicy: pathRewritePolicy,
+						TimeoutPolicy:     timeoutPolicy,
 						EnableWebsockets:  route.EnableWebsockets,
 					},
 				},
