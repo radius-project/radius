@@ -248,7 +248,12 @@ func CheckRadiusInstall(kubeContext string) (InstallState, error) {
 		return InstallState{}, err
 	}
 
-	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion, DaprInstalled: daprInstalled, DaprVersion: daprVersion}, nil
+	return InstallState{
+		RadiusInstalled: radiusInstalled,
+		RadiusVersion:   radiusVersion,
+		DaprInstalled:   daprInstalled,
+		DaprVersion:     daprVersion,
+	}, nil
 }
 
 // InstallState represents the state of the Radius helm chart installation on a Kubernetes cluster.
