@@ -173,7 +173,6 @@ func (r *Runner) writeVersionInfo(format string) error {
 	}
 
 	// Add Contour version if installed
-	// Add Dapr version if installed
 
 	r.Output.LogInfo("\nControl Plane Information:")
 	return r.Output.WriteFormatted(format, cpInfo, output.FormatterOptions{Columns: []output.Column{
