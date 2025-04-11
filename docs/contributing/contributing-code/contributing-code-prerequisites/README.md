@@ -99,7 +99,7 @@ This is the list of core dependencies to install for the most common tasks. In g
 - [Go](https://golang.org/doc/install)
 - [Node.js](https://nodejs.org/en/)
 - [Python](https://www.python.org/downloads/)
-- [Golangci-lint](https://golangci-lint.run/usage/install/#local-installation)
+- [Golangci-lint](https://golangci-lint.run/welcome/install/#local-installation)
 - [jq](https://jqlang.github.io/jq/download/)
 - Make
 
