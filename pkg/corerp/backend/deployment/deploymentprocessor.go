@@ -571,8 +571,40 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	default:
-		return ResourceData{}, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
+		//fmt.Print(resource)
+		obj := &UDT{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, map[string]any{}, map[string]rpv1.SecretValueReference{}, portableresources.RecipeData{})
+		//return ResourceData{}, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
+}
+
+type UDT struct {
+	v1.BaseResource
+
+	// Properties is the properties of the resource.
+	Properties UDTProperties `json:"properties"`
+}
+
+type UDTProperties struct {
+	Application string         `json:"application"`
+	Environment string         `json:"environment"`
+	Recipe      Recipe         `json:"recipe"`
+	Status      ResourceStatus `json:"status"`
+}
+type Recipe struct {
+	Name         string `json:"name"`
+	RecipeStatus string `json:"recipeStatus"`
+	TemplateKind string `json:"templateKind"`
+	TemplatePath string `json:"templatePath"`
+}
+
+type ResourceStatus struct {
+	Binding         map[string]any        `json:"binding"`
+	OutputResources []rpv1.OutputResource `json:"outputResources"`
+	Recipe          Recipe                `json:"recipe"`
 }
 
 func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData portableresources.RecipeData) (ResourceData, error) {

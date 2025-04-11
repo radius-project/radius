@@ -18,9 +18,11 @@ package applications
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/sdk"
@@ -28,6 +30,7 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	ucp_v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 var _ ctrl.Controller = (*GetGraph)(nil)
@@ -71,6 +74,39 @@ func (ctrl *GetGraph) Run(ctx context.Context, w http.ResponseWriter, req *http.
 	}
 
 	clientOptions := sdk.NewClientOptions(ctrl.connection)
+
+	clientFactory, err := ucp_v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return nil, fmt.Errorf("error creating client factory: %w", err)
+	}
+
+	rpc := clientFactory.NewResourceProvidersClient()
+
+	resourceProviders := rpc.NewListProviderSummariesPager("local", nil)
+
+	rpSummaries := []*ucp_v20231001preview.ResourceProviderSummary{}
+
+	// Get the list of all resource providers
+	//resourceProvidersList := make([]ucp_v20231001preview.ResourceProvidersClientListProviderSummariesResponse, 0)
+	for resourceProviders.More() {
+		page, err := resourceProviders.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting resource providers: %w", err)
+		}
+
+		rpSummaries = append(rpSummaries, page.Value...)
+	}
+
+	// Get the list of all resource providers
+	fmt.Print(rpSummaries)
+
+	// Get the list of all resource type in form rp/rt
+	for _, rpSummary := range rpSummaries {
+		for resourceType, _ := range rpSummary.ResourceTypes {
+			fmt.Printf("Resource Type: %s/%s\n", *rpSummary.Name, resourceType)
+
+		}
+	}
 
 	applicationResources, err := listAllResourcesByApplication(ctx, applicationID, clientOptions)
 	if err != nil {
