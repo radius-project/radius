@@ -108,7 +108,6 @@ func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 	// for the CRDs)
 
 	histClient := helm.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
 
 	// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
@@ -120,14 +119,45 @@ func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 			return false, fmt.Errorf("failed to run Radius Helm install, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
 	} else if options.Reinstall {
-		err = runHelmUpgrade(helmConf, options.ReleaseName, helmChart, options)
+		err = runHelmUpgrade(helmConf, helmChart, options)
 		if err != nil {
 			return false, fmt.Errorf("failed to run Radius Helm upgrade, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
 	} else if err == nil {
 		alreadyInstalled = true
 	}
+
 	return alreadyInstalled, err
+}
+
+// UpgradeHelmChart upgrades the Helm chart with the given options and returns an error if the upgrade fails.
+func UpgradeHelmChart(options ChartOptions, kubeContext string) error {
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &options.Namespace,
+		Context:   &kubeContext,
+	}
+
+	helmConf, err := HelmConfig(&strings.Builder{}, &flags)
+	if err != nil {
+		return fmt.Errorf("failed to get Helm config, err: %w", err)
+	}
+
+	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)
+	if err != nil {
+		return fmt.Errorf("failed to load Helm chart, err: %w", err)
+	}
+
+	err = AddValues(helmChart, &options)
+	if err != nil {
+		return fmt.Errorf("failed to add Radius values, err: %w", err)
+	}
+
+	err = runHelmUpgrade(helmConf, helmChart, options)
+	if err != nil {
+		return fmt.Errorf("failed to run Radius Helm upgrade, err: %w", err)
+	}
+
+	return nil
 }
 
 // AddValues parses the --set arguments in order and adds them to the helm chart values, returning an error if any of
@@ -172,12 +202,12 @@ func runHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, option
 	return runInstall(installClient, helmChart)
 }
 
-func runHelmUpgrade(helmConf *helm.Configuration, releaseName string, helmChart *chart.Chart, options ChartOptions) error {
+func runHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, options ChartOptions) error {
 	installClient := helm.NewUpgrade(helmConf)
 	installClient.Namespace = options.Namespace
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
-	installClient.Recreate = true //force recreating radius pods on adding or modfying azprovider
+	installClient.Recreate = true
 	return runUpgrade(installClient, options.ReleaseName, helmChart)
 }
 
