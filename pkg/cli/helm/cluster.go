@@ -245,6 +245,10 @@ func queryRelease(kubeContext, namespace, releaseName string) (bool, string, err
 		}
 	}
 
+	if latestRelease == nil {
+		return false, "", fmt.Errorf("no deployed release found for %s", releaseName)
+	}
+
 	return true, latestRelease.Chart.Metadata.Version, nil
 }
 

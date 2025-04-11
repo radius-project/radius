@@ -211,7 +211,7 @@ func runHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, option
 	installClient.Namespace = options.Namespace
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
-	installClient.Recreate = true //force recreating radius pods on adding or modfying azprovider
+	installClient.Recreate = true
 	return runUpgrade(installClient, options.ReleaseName, helmChart)
 }
 
