@@ -21,6 +21,8 @@ import (
 	"io"
 )
 
+//go:generate mockgen -typed -destination=./mock_writer.go -package=output -self_package github.com/radius-project/radius/pkg/cli/output github.com/radius-project/radius/pkg/cli/output Interface
+
 // Interface is a mockable interface for writing cli output
 type Interface interface {
 	// LogInfo logs a message that is displayed to the user by default.
