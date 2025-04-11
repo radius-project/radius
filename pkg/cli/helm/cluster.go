@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	helmaction "helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
@@ -100,6 +101,10 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 
 	if len(cliOptions.Radius.SetFileArgs) > 0 {
 		options.Radius.SetFileArgs = cliOptions.Radius.SetFileArgs
+	}
+
+	if cliOptions.Radius.ChartVersion != "" {
+		options.Radius.ChartVersion = cliOptions.Radius.ChartVersion
 	}
 
 	return options
@@ -180,6 +185,32 @@ func UninstallOnCluster(kubeContext string, clusterOptions ClusterOptions) error
 	return nil
 }
 
+// Upgrade takes in a context, clusterOptions and kubeContext and returns a boolean and an error. If an
+// error is encountered, it is returned.
+func Upgrade(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
+	err := UpgradeHelmChart(clusterOptions.Radius, kubeContext)
+	if err != nil {
+		return false, err
+	}
+	fmt.Println("Radius upgrade complete")
+
+	// Upgrade Dapr
+	err = UpgradeHelmChart(clusterOptions.Dapr, kubeContext)
+	if err != nil {
+		return false, err
+	}
+	fmt.Println("Dapr upgrade complete")
+
+	err = UpgradeContourHelmChart(clusterOptions.Contour, kubeContext)
+	if err != nil {
+		return false, err
+	}
+	fmt.Println("Contour upgrade complete")
+
+	// If all upgrades succeed, return true
+	return true, err
+}
+
 // queryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
 // If the release is found, it returns true and the version of the release. If the release is not found, it returns false.
 // If an error occurs, it returns an error.
@@ -196,7 +227,6 @@ func queryRelease(kubeContext, namespace, releaseName string) (bool, string, err
 		return false, "", fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 	histClient := helmaction.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
 
 	releases, err := histClient.Run(releaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
@@ -207,7 +237,19 @@ func queryRelease(kubeContext, namespace, releaseName string) (bool, string, err
 		return false, "", nil
 	}
 
-	return true, releases[0].Chart.Metadata.Version, nil
+	var latestRelease *release.Release
+	for _, release := range releases {
+		if release.Info.Status == "deployed" {
+			latestRelease = release
+			break
+		}
+	}
+
+	if latestRelease == nil {
+		return false, "", fmt.Errorf("no deployed release found for %s", releaseName)
+	}
+
+	return true, latestRelease.Chart.Metadata.Version, nil
 }
 
 // CheckRadiusInstall checks if the Radius release is installed in the given kubeContext and returns an InstallState object
@@ -219,13 +261,18 @@ func CheckRadiusInstall(kubeContext string) (InstallState, error) {
 		return InstallState{}, err
 	}
 
-	// Check is Dapr is installed
+	// Check if Dapr is installed
 	daprInstalled, daprVersion, err := queryRelease(kubeContext, DaprSystemNamespace, daprReleaseName)
 	if err != nil {
 		return InstallState{}, err
 	}
 
-	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion, DaprInstalled: daprInstalled, DaprVersion: daprVersion}, nil
+	return InstallState{
+		RadiusInstalled: radiusInstalled,
+		RadiusVersion:   radiusVersion,
+		DaprInstalled:   daprInstalled,
+		DaprVersion:     daprVersion,
+	}, nil
 }
 
 // InstallState represents the state of the Radius helm chart installation on a Kubernetes cluster.
@@ -255,6 +302,9 @@ type Interface interface {
 
 	// UninstallRadius uninstalls Radius from the cluster based on the specified Kubernetes context. Will succeed regardless of whether Radius is installed.
 	UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+
+	// UpgradeRadius upgrades Radius on the cluster, based on the specified Kubernetes context.
+	UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error)
 }
 
 type Impl struct {
@@ -273,4 +323,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 // UninstallRadius uninstalls RADIUS from the specified Kubernetes cluster, and returns an error if it fails.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	return UninstallOnCluster(kubeContext, clusterOptions)
+}
+
+// UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.
+func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
+	return Upgrade(ctx, clusterOptions, kubeContext)
 }
