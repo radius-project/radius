@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/bicep"
@@ -17,11 +18,14 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 
@@ -44,6 +48,7 @@ type FluxController struct {
 	Bicep          bicep.Interface
 	FileSystem     filesystem.FileSystem
 	ArchiveFetcher ArchiveFetcher
+	initialized    *atomic.Bool // Track if we've initialized the controller
 }
 
 // RadiusGitOpsConfig is the configuration for Radius in a Git repository.
@@ -73,13 +78,77 @@ func deploymentTemplateRepositoryIndexer(o client.Object) []string {
 }
 
 func (r *FluxController) SetupWithManager(mgr ctrl.Manager) error {
+	r.initialized = &atomic.Bool{}
+
+	// Register a controller for CustomResourceDefinition events.
+	// We want to watch for the GitRepository CRD to be created or updated.
+	err := ctrl.NewControllerManagedBy(mgr).
+		For(&apiextensionsv1.CustomResourceDefinition{}).
+		WithEventFilter(predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return r.registerFluxController(e.Object, mgr)
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				return r.registerFluxController(e.ObjectNew, mgr)
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return false
+			},
+			GenericFunc: func(e event.GenericEvent) bool {
+				return false
+			},
+		}).
+		Complete(r)
+
+	return err
+}
+
+// registerFluxController registers the FluxController with the manager
+// when the GitRepository CRD is created or updated.
+func (r *FluxController) registerFluxController(obj client.Object, mgr ctrl.Manager) bool {
+	// Only process if:
+	// 1. It's the GitRepository CRD
+	// 2. The controller isn't already initialized
+	// 3. The CRD is established (fully registered with the API server)
+	if !isGitRepositoryCRD(obj) || r.initialized.Load() {
+		return false
+	}
+
+	// Check if the CRD is established before setting up the controller
+	crd := obj.(*apiextensionsv1.CustomResourceDefinition)
+	for _, condition := range crd.Status.Conditions {
+		if condition.Type == apiextensionsv1.Established &&
+			condition.Status == apiextensionsv1.ConditionTrue {
+			// CRD is established, set up the GitRepository controller
+			err := r.setupFluxController(mgr)
+			if err != nil {
+				ucplog.FromContextOrDiscard(context.Background()).Error(
+					err, "failed to setup GitRepository controller")
+			}
+			return false // We don't need to reconcile CRDs
+		}
+	}
+
+	return false // Not established yet
+}
+
+// setupFluxController creates a new controller for GitRepository objects
+// and sets it up with the manager.
+func (r *FluxController) setupFluxController(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &radappiov1alpha3.DeploymentTemplate{}, deploymentTemplateRepositoryField, deploymentTemplateRepositoryIndexer); err != nil {
 		return err
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		For(&sourcev1.GitRepository{}, builder.WithPredicates(&GitRepositoryRevisionChangePredicate{})).
 		Complete(r)
+
+	if err != nil {
+		return err
+	}
+
+	r.initialized.Store(true)
+	return nil
 }
 
 // +kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
@@ -428,5 +497,28 @@ func isSpecifiedInConfig(fileName string, config []ConfigEntry) bool {
 		}
 	}
 
+	return false
+}
+
+// isGitRepositoryCRD checks if obj is a source.toolkit.fluxcd.io/v1/GitRepository CustomResourceDefinition
+func isGitRepositoryCRD(obj client.Object) bool {
+	crd, ok := obj.(*apiextensionsv1.CustomResourceDefinition)
+	if !ok {
+		return false
+	}
+
+	// Check if this is the GitRepository CRD
+	return crd.Spec.Group == "source.toolkit.fluxcd.io" &&
+		containsVersion(crd.Spec.Versions, "v1") &&
+		crd.Spec.Names.Kind == "GitRepository"
+}
+
+// containsVersion checks if the version list contains the target version
+func containsVersion(versions []apiextensionsv1.CustomResourceDefinitionVersion, targetVersion string) bool {
+	for _, v := range versions {
+		if v.Name == targetVersion {
+			return true
+		}
+	}
 	return false
 }
