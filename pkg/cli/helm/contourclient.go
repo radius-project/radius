@@ -68,7 +68,6 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	// for the CRDs)
 
 	histClient := helm.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
 
 	err = AddContourValues(helmChart, options)
 	if err != nil {
@@ -91,27 +90,49 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 
 // UpgradeContourHelmChart upgrades the Contour Helm chart with the given options and returns an error if the upgrade fails.
 func UpgradeContourHelmChart(options ContourOptions, kubeContext string) error {
+	// For capturing output from helm.
+	var helmOutput strings.Builder
+
 	namespace := RadiusSystemNamespace
 	flags := genericclioptions.ConfigFlags{
 		Namespace: &namespace,
 	}
 
-	helmConf, err := HelmConfig(&strings.Builder{}, &flags)
+	helmConf, err := HelmConfig(&helmOutput, &flags)
 	if err != nil {
-		return fmt.Errorf("failed to get helm config, err: %w", err)
+		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
 	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, contourHelmRepo, contourReleaseName)
 	if err != nil {
-		return fmt.Errorf("failed to load helm chart, err: %w", err)
+		return fmt.Errorf("failed to get contour chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
+
+	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
+	// TODO: Apply CRDs because Helm doesn't upgrade CRDs for you.
+	// https://github.com/radius-project/radius/issues/712
+	// We need the CRDs to be public to do this (or consider unpacking the chart
+	// for the CRDs)
+
+	histClient := helm.NewHistory(helmConf)
 
 	err = AddContourValues(helmChart, options)
 	if err != nil {
-		return fmt.Errorf("failed to add contour values, err: %w", err)
+		return err
 	}
 
-	return RunContourHelmUpgrade(helmConf, helmChart, options)
+	// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
+	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
+	// and invoke the install client.
+	_, err = histClient.Run(contourReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		err = RunContourHelmUpgrade(helmConf, helmChart)
+		if err != nil {
+			return fmt.Errorf("failed to run contour helm install, err: %w, helm output: %s", err, helmOutput.String())
+		}
+	}
+
+	return err
 }
 
 // // AddContourValues adds values to the helm chart to enable host networking for the Envoy pod, and sets the default
@@ -165,7 +186,6 @@ func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	installClient.ReleaseName = contourReleaseName
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.CreateNamespace = true
-
 	return runInstall(installClient, helmChart)
 }
 
@@ -185,10 +205,10 @@ func RunContourHelmUninstall(helmConf *helm.Configuration) error {
 }
 
 // RunContourHelmUpgrade upgrades the Contour Helm chart with the given options and returns an error if the upgrade fails.
-func RunContourHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, options ContourOptions) error {
+func RunContourHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	upgradeClient := helm.NewUpgrade(helmConf)
 	upgradeClient.Namespace = RadiusSystemNamespace
 	upgradeClient.Wait = true
-	upgradeClient.Timeout = installTimeout
+	upgradeClient.Timeout = upgradeTimeout
 	return runUpgrade(upgradeClient, contourReleaseName, helmChart)
 }

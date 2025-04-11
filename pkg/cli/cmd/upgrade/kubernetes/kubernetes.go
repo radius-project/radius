@@ -18,12 +18,13 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -136,39 +137,45 @@ func (r *Runner) Run(ctx context.Context) error {
 		return nil
 	}
 
-	// How can I check all available versions of the chart?
+	// Get Control Plane version (not CLI version)
+	currentControlPlaneVersion := state.RadiusVersion
+	r.Output.LogInfo("Current Control Plane version: %s", currentControlPlaneVersion)
 
-	currentVersion := version.Version()
+	// Determine desired version
 	desiredVersion := r.Version
 	if desiredVersion == "" {
-		// Default to latest value from the chart.
+		// Default to latest
 		desiredVersion = "latest"
-	}
-	if desiredVersion == currentVersion {
-		r.Output.LogInfo("Radius is already at the version %s.", desiredVersion)
-		return nil
-	}
-	// Print out the current version and the wanted version.
-	r.Output.LogInfo("Current version: %s, Wanted version: %s", currentVersion, desiredVersion)
+		r.Output.LogInfo("No version specified, upgrading to latest version")
+	} else {
+		// Validate the desired version is a valid upgrade
+		valid, message, err := r.isValidUpgradeVersion(currentControlPlaneVersion, desiredVersion)
+		if err != nil {
+			return fmt.Errorf("error validating version: %w", err)
+		}
 
-	// // --- Snapshot the current state before upgrade ---
-	// r.Output.LogInfo("Taking snapshot of the current installation...")
-	// snapshot, err := r.takeSnapshot(ctx)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to take snapshot before upgrade: %w", err)
-	// }
-	// r.Output.LogInfo("Snapshot created successfully.")
+		if !valid {
+			r.Output.LogInfo("Invalid upgrade version: %s", message)
+			return fmt.Errorf("invalid upgrade version: %s", message)
+		}
+	}
+
+	r.Output.LogInfo("Upgrading from version %s to %s", currentControlPlaneVersion, desiredVersion)
+
+	// Set the version in cluster options
+	if desiredVersion != "latest" {
+		cliOptions.Radius.ChartVersion = desiredVersion
+	}
+
+	// Take snapshot of the current state before upgrade
+	r.Output.LogInfo("Taking snapshot of the current installation...")
+	// Implement snapshot logic here
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 	_, err = r.Helm.UpgradeRadius(ctx, clusterOptions, r.KubeContext)
 	if err != nil {
-		// r.Output.LogError("Upgrade failed: %v", err)
-		// Attempt rollback using the snapshot.
 		r.Output.LogInfo("Rolling back to previous state...")
-		// rbErr := r.performRollback(ctx, snapshot)
-		// if rbErr != nil {
-		// 	// r.Output.LogError("Rollback failed: %v", rbErr)
-		// }
+		// Implement rollback logic here
 		return err
 	}
 
@@ -189,4 +196,59 @@ func (r *Runner) Run(ctx context.Context) error {
 // Validate runs any validations needed for the command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
+}
+
+// isValidUpgradeVersion checks if the target version is a valid upgrade from the current version
+func (r *Runner) isValidUpgradeVersion(currentVersion, targetVersion string) (bool, string, error) {
+	// Handle "latest" as a special case
+	if targetVersion == "latest" {
+		return true, "", nil
+	}
+
+	// Ensure both versions have 'v' prefix for semver parsing
+	if len(currentVersion) > 0 && currentVersion[0] != 'v' {
+		currentVersion = "v" + currentVersion
+	}
+	if len(targetVersion) > 0 && targetVersion[0] != 'v' {
+		targetVersion = "v" + targetVersion
+	}
+
+	// Parse versions using semver library
+	current, err := semver.NewVersion(currentVersion)
+	if err != nil {
+		return false, "", fmt.Errorf("invalid current version format: %w", err)
+	}
+
+	target, err := semver.NewVersion(targetVersion)
+	if err != nil {
+		return false, "", fmt.Errorf("invalid target version format: %w", err)
+	}
+
+	// Check if versions are the same
+	if current.Equal(target) {
+		return false, "Target version is the same as current version", nil
+	}
+
+	// Check if downgrade attempt
+	if target.LessThan(current) {
+		return false, "Downgrading is not supported", nil
+	}
+
+	// Get the next expected version (increment minor version)
+	expectedNextMinor := semver.New(current.Major(), current.Minor()+1, 0, "", "")
+
+	// Special case: major version increment (e.g., 0.x -> 1.0)
+	if target.Major() > current.Major() {
+		if target.Major() == current.Major()+1 && target.Minor() == 0 && target.Patch() == 0 {
+			return true, "", nil
+		}
+		return false, fmt.Sprintf("Skipping multiple major versions not supported. Expected next major version: %d.0.0", current.Major()+1), nil
+	}
+
+	// Allow increment of minor version by exactly 1
+	if target.Major() == current.Major() && target.Minor() == current.Minor()+1 {
+		return true, "", nil
+	}
+
+	return false, fmt.Sprintf("Only incremental version upgrades are supported. Expected next version: %s", expectedNextMinor), nil
 }

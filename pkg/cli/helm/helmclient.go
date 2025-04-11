@@ -112,7 +112,6 @@ func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 	// for the CRDs)
 
 	histClient := helm.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
 
 	// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually

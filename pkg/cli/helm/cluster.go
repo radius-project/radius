@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	helmaction "helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
@@ -31,8 +32,8 @@ import (
 )
 
 const (
-	ContourChartDefaultVersion = "19.5.10"
-	DaprChartDefaultVersion    = "1.15.4"
+	ContourChartDefaultVersion = "11.1.1"
+	DaprChartDefaultVersion    = "1.14.4"
 )
 
 type CLIClusterOptions struct {
@@ -100,6 +101,10 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 
 	if len(cliOptions.Radius.SetFileArgs) > 0 {
 		options.Radius.SetFileArgs = cliOptions.Radius.SetFileArgs
+	}
+
+	if cliOptions.Radius.ChartVersion != "" {
+		options.Radius.ChartVersion = cliOptions.Radius.ChartVersion
 	}
 
 	return options
@@ -187,17 +192,20 @@ func Upgrade(ctx context.Context, clusterOptions ClusterOptions, kubeContext str
 	if err != nil {
 		return false, err
 	}
+	fmt.Println("Radius upgrade complete")
 
 	// Upgrade Dapr
 	err = UpgradeHelmChart(clusterOptions.Dapr, kubeContext)
 	if err != nil {
 		return false, err
 	}
+	fmt.Println("Dapr upgrade complete")
 
 	err = UpgradeContourHelmChart(clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return false, err
 	}
+	fmt.Println("Contour upgrade complete")
 
 	// If all upgrades succeed, return true
 	return true, err
@@ -219,7 +227,6 @@ func queryRelease(kubeContext, namespace, releaseName string) (bool, string, err
 		return false, "", fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 	histClient := helmaction.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
 
 	releases, err := histClient.Run(releaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
@@ -230,7 +237,15 @@ func queryRelease(kubeContext, namespace, releaseName string) (bool, string, err
 		return false, "", nil
 	}
 
-	return true, releases[0].Chart.Metadata.Version, nil
+	var latestRelease *release.Release
+	for _, release := range releases {
+		if release.Info.Status == "deployed" {
+			latestRelease = release
+			break
+		}
+	}
+
+	return true, latestRelease.Chart.Metadata.Version, nil
 }
 
 // CheckRadiusInstall checks if the Radius release is installed in the given kubeContext and returns an InstallState object
