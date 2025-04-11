@@ -65,7 +65,7 @@ node_modules
 tmp-*
 
 # Auto-generated Bicep markdown files
-hack/bicep-types-radius/generated/**/*.md
+bicep-types-radius/generated/**/*.md
 
 # Bicep extensions
 *.tgz
