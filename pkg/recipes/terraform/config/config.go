@@ -95,6 +95,10 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
+	// Log the generated JSON for temporary debugging
+	logger.Info("Generated Terraform JSON config:")
+	logger.Info(buf.String()) // Log the JSON content
+
 	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getMainConfigFilePath(workingDir)))
 	if err := os.WriteFile(getMainConfigFilePath(workingDir), buf.Bytes(), modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
