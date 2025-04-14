@@ -37,6 +37,7 @@ import (
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	dsrp_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
+	dynamicrp_dm "github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
 	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
@@ -571,40 +572,14 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	default:
-		//fmt.Print(resource)
-		obj := &UDT{}
+		obj := &dynamicrp_dm.UDT{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		// At present, UDTs do not have support for secrets. So we pass in an empty map.
+		// This should change once we implement secret support for UDTs.
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, map[string]any{}, map[string]rpv1.SecretValueReference{}, portableresources.RecipeData{})
-		//return ResourceData{}, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
-}
-
-type UDT struct {
-	v1.BaseResource
-
-	// Properties is the properties of the resource.
-	Properties UDTProperties `json:"properties"`
-}
-
-type UDTProperties struct {
-	Application string         `json:"application"`
-	Environment string         `json:"environment"`
-	Recipe      Recipe         `json:"recipe"`
-	Status      ResourceStatus `json:"status"`
-}
-type Recipe struct {
-	Name         string `json:"name"`
-	RecipeStatus string `json:"recipeStatus"`
-	TemplateKind string `json:"templateKind"`
-	TemplatePath string `json:"templatePath"`
-}
-
-type ResourceStatus struct {
-	Binding         map[string]any        `json:"binding"`
-	OutputResources []rpv1.OutputResource `json:"outputResources"`
-	Recipe          Recipe                `json:"recipe"`
 }
 
 func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData portableresources.RecipeData) (ResourceData, error) {
