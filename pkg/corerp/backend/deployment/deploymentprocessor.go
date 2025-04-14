@@ -578,7 +578,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		}
 		// At present, UDTs do not have support for secrets. So we pass in an empty map.
 		// This should change once we implement secret support for UDTs.
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, map[string]any{}, map[string]rpv1.SecretValueReference{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.Properties.Status.Binding, map[string]rpv1.SecretValueReference{}, portableresources.RecipeData{})
 	}
 }
 
