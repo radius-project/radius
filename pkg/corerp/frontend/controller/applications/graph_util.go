@@ -51,7 +51,7 @@ type resolver func(any) (string, corerpv20231001preview.Direction, error)
 
 // listAllResourcesByApplication takes a context, applicationID and clientOptions
 // and returns a slice of GenericResources in the application and also an error if one occurs.
-func listAllResourcesByApplication(ctx context.Context, applicationID resources.ID, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+func listAllResourcesByApplication(ctx context.Context, applicationID resources.ID, resourceTypesList []string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	for _, resourceType := range resourceTypesList {
 		resourceList, err := listAllResourcesOfTypeInApplication(ctx, applicationID, resourceType, clientOptions)
@@ -132,7 +132,7 @@ func isResourceInApplication(resource generated.GenericResource, applicationName
 
 // listAllResourcesByEnvironment takes in a context, an environment ID and a
 // resource type and returns a slice of GenericResources and an error if one occurs.
-func listAllResourcesByEnvironment(ctx context.Context, environmentID resources.ID, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+func listAllResourcesByEnvironment(ctx context.Context, environmentID resources.ID, resourceTypesList []string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	for _, resourceType := range resourceTypesList {
 		resourceList, err := listAllResourcesOfTypeInEnvironment(ctx, environmentID, resourceType, clientOptions)
