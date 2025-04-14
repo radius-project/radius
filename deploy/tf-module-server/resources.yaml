@@ -15,7 +15,7 @@ spec:
         app.kubernetes.io/name: tf-module-server
     spec:
       containers:
-      - image: nginx:1.25
+      - image: mcr.microsoft.com/azurelinux/base/nginx:1.25
         name: nginx
         # nginx will serve files found in this directory.
         volumeMounts:
