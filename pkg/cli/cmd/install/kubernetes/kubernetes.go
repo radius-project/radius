@@ -75,9 +75,18 @@ rad install kubernetes --reinstall
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
 	cmd.Flags().BoolVar(&runner.Reinstall, "reinstall", false, "Specify to force reinstallation of Radius")
+
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to install Radius from")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
+
+	cmd.Flags().StringVar(&runner.ContourChart, "contour-chart", "", "Specify a local file path to a helm chart to install Contour from")
+	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
+
+	cmd.Flags().StringVar(&runner.DaprChart, "dapr-chart", "", "Specify a local file path to a helm chart to install Dapr from")
+	cmd.Flags().StringArrayVar(&runner.DaprSet, "dapr-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&runner.DaprSetFile, "dapr-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
 	return cmd, runner
 }
@@ -88,10 +97,23 @@ type Runner struct {
 	Output output.Interface
 
 	KubeContext string
-	Chart       string
-	Reinstall   bool
-	Set         []string
-	SetFile     []string
+
+	// Radius
+	Chart   string
+	Set     []string
+	SetFile []string
+
+	// Contour
+	ContourChart   string
+	ContourSet     []string
+	ContourSetFile []string
+
+	// Dapr
+	DaprChart   string
+	DaprSet     []string
+	DaprSetFile []string
+
+	Reinstall bool
 }
 
 // NewRunner creates an instance of the runner for the `rad install kubernetes` command.
@@ -124,6 +146,11 @@ func (r *Runner) Run(ctx context.Context) error {
 			ChartPath:   r.Chart,
 			SetArgs:     r.Set,
 			SetFileArgs: r.SetFile,
+		},
+		Contour: helm.ContourOptions{
+			ChartPath:   r.ContourChart,
+			SetArgs:     r.ContourSet,
+			SetFileArgs: r.ContourSetFile,
 		},
 	}
 
