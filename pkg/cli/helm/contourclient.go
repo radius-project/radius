@@ -20,11 +20,16 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/strvals"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -36,11 +41,15 @@ const (
 )
 
 type ContourOptions struct {
+	ChartRepo    string
+	ChartPath    string
 	ChartVersion string
 	HostNetwork  bool
+	SetArgs      []string
+	SetFileArgs  []string
 }
 
-// // ApplyContourHelmChart checks if a Contour Helm chart has been installed, and if not, installs it with the given
+// ApplyContourHelmChart checks if a Contour Helm chart has been installed, and if not, installs it with the given
 // options. If an error occurs, it returns an error with the Helm output.
 func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	// For capturing output from helm.
@@ -56,9 +65,24 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, contourHelmRepo, contourReleaseName)
-	if err != nil {
-		return fmt.Errorf("failed to get contour chart, err: %w, helm output: %s", err, helmOutput.String())
+	var helmChart *chart.Chart
+	if options.ChartPath == "" {
+		// Use provided repo URL if available, otherwise use default
+		repo := options.ChartRepo
+		if repo == "" {
+			repo = contourHelmRepo
+		}
+
+		helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, repo, contourReleaseName)
+		if err != nil {
+			return fmt.Errorf("failed to load contour chart, err: %w, helm output: %s", err, helmOutput.String())
+		}
+	} else {
+		// Load chart from local path
+		helmChart, err = loader.Load(options.ChartPath)
+		if err != nil {
+			return fmt.Errorf("failed to load contour chart, err: %w, helm output: %s", err, helmOutput.String())
+		}
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
@@ -93,10 +117,36 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 // LoadBalancer service ports to 8080 and 8443 so that they don't conflict with Envoy while using Host Networking. It
 // returns an error if any of the nodes in the chart values are not found.
 func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
+	values := helmChart.Values
+
+	// Parse --set arguments in order so that the last one wins.
+	for _, arg := range options.SetArgs {
+		err := strvals.ParseInto(arg, values)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, arg := range options.SetFileArgs {
+		if runtime.GOOS == "windows" {
+			arg = filepath.ToSlash(arg)
+		}
+
+		reader := func(rs []rune) (any, error) {
+			data, err := os.ReadFile(string(rs))
+			return string(data), err
+		}
+
+		err := strvals.ParseIntoFile(arg, values, reader)
+		if err != nil {
+			return err
+		}
+	}
+
 	if options.HostNetwork {
 		// https://projectcontour.io/docs/main/deploy-options/#host-networking
 		// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
-		envoyNode := helmChart.Values["envoy"].(map[string]any)
+		envoyNode := values["envoy"].(map[string]any)
 		if envoyNode == nil {
 			return fmt.Errorf("envoy node not found in chart values")
 		}

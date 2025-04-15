@@ -35,7 +35,8 @@ const (
 )
 
 type CLIClusterOptions struct {
-	Radius ChartOptions
+	Radius  ChartOptions
+	Contour ContourOptions
 }
 
 type ClusterOptions struct {
@@ -60,14 +61,15 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 
 	return ClusterOptions{
+		Contour: ContourOptions{
+			ChartVersion: ContourChartDefaultVersion,
+			ChartRepo:    contourHelmRepo,
+		},
 		Radius: ChartOptions{
 			ChartVersion: chartVersion,
 			Namespace:    RadiusSystemNamespace,
 			ReleaseName:  radiusReleaseName,
 			ChartRepo:    radiusHelmRepo,
-		},
-		Contour: ContourOptions{
-			ChartVersion: ContourChartDefaultVersion,
 		},
 	}
 }
@@ -77,7 +79,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions {
 	options := NewDefaultClusterOptions()
 
-	// If any of the CLI options are provided, override the default options.
+	// If any of the Radius CLI options are provided, override the default options.
 	if cliOptions.Radius.Reinstall {
 		options.Radius.Reinstall = cliOptions.Radius.Reinstall
 	}
@@ -86,12 +88,37 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.ChartPath = cliOptions.Radius.ChartPath
 	}
 
+	if cliOptions.Radius.ChartRepo != "" {
+		options.Radius.ChartRepo = cliOptions.Radius.ChartRepo
+	}
+
 	if len(cliOptions.Radius.SetArgs) > 0 {
 		options.Radius.SetArgs = cliOptions.Radius.SetArgs
 	}
 
 	if len(cliOptions.Radius.SetFileArgs) > 0 {
 		options.Radius.SetFileArgs = cliOptions.Radius.SetFileArgs
+	}
+
+	// Apply Contour overrides
+	if cliOptions.Contour.ChartVersion != "" {
+		options.Contour.ChartVersion = cliOptions.Contour.ChartVersion
+	}
+
+	if cliOptions.Contour.ChartRepo != "" {
+		options.Contour.ChartRepo = cliOptions.Contour.ChartRepo
+	}
+
+	if cliOptions.Contour.ChartPath != "" {
+		options.Contour.ChartPath = cliOptions.Contour.ChartPath
+	}
+
+	if len(cliOptions.Contour.SetArgs) > 0 {
+		options.Contour.SetArgs = cliOptions.Contour.SetArgs
+	}
+
+	if len(cliOptions.Contour.SetFileArgs) > 0 {
+		options.Contour.SetFileArgs = cliOptions.Contour.SetFileArgs
 	}
 
 	return options
