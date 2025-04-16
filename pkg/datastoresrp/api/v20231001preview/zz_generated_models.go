@@ -104,7 +104,7 @@ type IdentitySettings struct {
 	Kind *IdentitySettingKind
 
 // The name of the managed identity
-	ManagedIdentity *string
+	ManagedIdentity []*string
 
 // The URI for your compute platform's OIDC issuer
 	OidcIssuer *string

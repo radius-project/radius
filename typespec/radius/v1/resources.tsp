@@ -91,7 +91,7 @@ model IdentitySettings {
   resource?: string;
 
   @doc("The name of the managed identity")
-  managedIdentity?: string;
+  managedIdentity?: string[];
 }
 
 @doc("IdentitySettingKind is the kind of supported external identity setting")

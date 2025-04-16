@@ -51,7 +51,7 @@
       },
       "tags": {
         "type": {
-          "$ref": "#/40"
+          "$ref": "#/41"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -65,7 +65,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/42"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -113,7 +113,7 @@
       },
       "metadata": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
@@ -134,28 +134,28 @@
       },
       "auth": {
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/33"
         },
         "flags": 0,
         "description": "Authentication properties for a Dapr component object"
       },
       "resources": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/35"
         },
         "flags": 0,
         "description": "A collection of references to resources associated with the configuration store"
       },
       "recipe": {
         "type": {
-          "$ref": "#/35"
+          "$ref": "#/36"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/39"
+          "$ref": "#/40"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -236,14 +236,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/26"
         },
         "flags": 2,
         "description": "Recipe status at deployment time for a resource."
       },
       "outputResources": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/29"
         },
         "flags": 0,
         "description": "Properties of an output resource"
@@ -272,10 +272,10 @@
     },
     "elements": {
       "aci": {
-        "$ref": "#/21"
+        "$ref": "#/22"
       },
       "kubernetes": {
-        "$ref": "#/23"
+        "$ref": "#/24"
       }
     }
   },
@@ -306,7 +306,7 @@
       },
       "managedIdentity": {
         "type": {
-          "$ref": "#/0"
+          "$ref": "#/21"
         },
         "flags": 0,
         "description": "The name of the managed identity"
@@ -340,6 +340,12 @@
     ]
   },
   {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
     "$type": "ObjectType",
     "name": "AzureContainerInstanceCompute",
     "properties": {
@@ -352,7 +358,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/22"
+          "$ref": "#/23"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -376,7 +382,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/24"
+          "$ref": "#/25"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -434,7 +440,7 @@
       },
       "radiusManaged": {
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "Determines whether Radius manages the lifecycle of the underlying resource."
@@ -447,7 +453,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/26"
+      "$ref": "#/27"
     }
   },
   {
@@ -463,7 +469,7 @@
       },
       "secretKeyRef": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/31"
         },
         "flags": 0,
         "description": "A reference of a value in a secret store component."
@@ -495,7 +501,7 @@
     "name": "DaprConfigurationStorePropertiesMetadata",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/29"
+      "$ref": "#/30"
     }
   },
   {
@@ -527,7 +533,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/33"
+      "$ref": "#/34"
     }
   },
   {
@@ -543,7 +549,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/37"
         },
         "flags": 0,
         "description": "Any object"
@@ -565,10 +571,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/37"
+        "$ref": "#/38"
       },
       {
-        "$ref": "#/38"
+        "$ref": "#/39"
       }
     ]
   },
@@ -593,7 +599,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/46"
+          "$ref": "#/47"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -614,7 +620,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/51"
+          "$ref": "#/52"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -648,9 +654,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/42"
-      },
-      {
         "$ref": "#/43"
       },
       {
@@ -658,6 +661,9 @@
       },
       {
         "$ref": "#/45"
+      },
+      {
+        "$ref": "#/46"
       }
     ]
   },
@@ -681,9 +687,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/47"
-      },
-      {
         "$ref": "#/48"
       },
       {
@@ -691,6 +694,9 @@
       },
       {
         "$ref": "#/50"
+      },
+      {
+        "$ref": "#/51"
       }
     ]
   },
@@ -732,28 +738,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/54"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/54"
+          "$ref": "#/55"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/56"
+          "$ref": "#/57"
         },
         "flags": 1,
         "description": "Dapr PubSubBroker portable resource properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/71"
+          "$ref": "#/72"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -767,7 +773,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/42"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -794,7 +800,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/66"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -815,7 +821,7 @@
       },
       "metadata": {
         "type": {
-          "$ref": "#/66"
+          "$ref": "#/67"
         },
         "flags": 0,
         "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
@@ -836,28 +842,28 @@
       },
       "auth": {
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/33"
         },
         "flags": 0,
         "description": "Authentication properties for a Dapr component object"
       },
       "resources": {
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/68"
         },
         "flags": 0,
         "description": "A collection of references to resources associated with the pubSubBroker"
       },
       "recipe": {
         "type": {
-          "$ref": "#/35"
+          "$ref": "#/36"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/70"
+          "$ref": "#/71"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -900,9 +906,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/57"
-      },
-      {
         "$ref": "#/58"
       },
       {
@@ -922,6 +925,9 @@
       },
       {
         "$ref": "#/64"
+      },
+      {
+        "$ref": "#/65"
       }
     ]
   },
@@ -930,13 +936,13 @@
     "name": "DaprPubSubBrokerPropertiesMetadata",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/29"
+      "$ref": "#/30"
     }
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/33"
+      "$ref": "#/34"
     }
   },
   {
@@ -951,10 +957,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/68"
+        "$ref": "#/69"
       },
       {
-        "$ref": "#/69"
+        "$ref": "#/70"
       }
     ]
   },
@@ -971,7 +977,7 @@
     "name": "Applications.Dapr/pubSubBrokers@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/55"
+      "$ref": "#/56"
     },
     "flags": 0,
     "functions": {}
@@ -1004,28 +1010,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/73"
+          "$ref": "#/74"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/74"
+          "$ref": "#/75"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/76"
+          "$ref": "#/77"
         },
         "flags": 1,
         "description": "Dapr SecretStore portable resource properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/90"
+          "$ref": "#/91"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1039,7 +1045,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/42"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -1066,7 +1072,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/85"
+          "$ref": "#/86"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -1087,7 +1093,7 @@
       },
       "metadata": {
         "type": {
-          "$ref": "#/86"
+          "$ref": "#/87"
         },
         "flags": 0,
         "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
@@ -1108,14 +1114,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/35"
+          "$ref": "#/36"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/89"
+          "$ref": "#/90"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -1158,9 +1164,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/77"
-      },
-      {
         "$ref": "#/78"
       },
       {
@@ -1180,6 +1183,9 @@
       },
       {
         "$ref": "#/84"
+      },
+      {
+        "$ref": "#/85"
       }
     ]
   },
@@ -1188,7 +1194,7 @@
     "name": "DaprSecretStorePropertiesMetadata",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/29"
+      "$ref": "#/30"
     }
   },
   {
@@ -1203,10 +1209,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/87"
+        "$ref": "#/88"
       },
       {
-        "$ref": "#/88"
+        "$ref": "#/89"
       }
     ]
   },
@@ -1223,7 +1229,7 @@
     "name": "Applications.Dapr/secretStores@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/75"
+      "$ref": "#/76"
     },
     "flags": 0,
     "functions": {}
@@ -1256,28 +1262,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/92"
+          "$ref": "#/93"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/93"
+          "$ref": "#/94"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/95"
+          "$ref": "#/96"
         },
         "flags": 1,
         "description": "Dapr StateStore portable resource properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/110"
+          "$ref": "#/111"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1291,7 +1297,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/42"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -1318,7 +1324,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/104"
+          "$ref": "#/105"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -1339,7 +1345,7 @@
       },
       "metadata": {
         "type": {
-          "$ref": "#/105"
+          "$ref": "#/106"
         },
         "flags": 0,
         "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
@@ -1360,28 +1366,28 @@
       },
       "auth": {
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/33"
         },
         "flags": 0,
         "description": "Authentication properties for a Dapr component object"
       },
       "resources": {
         "type": {
-          "$ref": "#/106"
+          "$ref": "#/107"
         },
         "flags": 0,
         "description": "A collection of references to resources associated with the state store"
       },
       "recipe": {
         "type": {
-          "$ref": "#/35"
+          "$ref": "#/36"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/109"
+          "$ref": "#/110"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -1424,9 +1430,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/96"
-      },
-      {
         "$ref": "#/97"
       },
       {
@@ -1446,6 +1449,9 @@
       },
       {
         "$ref": "#/103"
+      },
+      {
+        "$ref": "#/104"
       }
     ]
   },
@@ -1454,13 +1460,13 @@
     "name": "DaprStateStorePropertiesMetadata",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/29"
+      "$ref": "#/30"
     }
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/33"
+      "$ref": "#/34"
     }
   },
   {
@@ -1475,10 +1481,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/107"
+        "$ref": "#/108"
       },
       {
-        "$ref": "#/108"
+        "$ref": "#/109"
       }
     ]
   },
@@ -1495,7 +1501,7 @@
     "name": "Applications.Dapr/stateStores@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/94"
+      "$ref": "#/95"
     },
     "flags": 0,
     "functions": {}
