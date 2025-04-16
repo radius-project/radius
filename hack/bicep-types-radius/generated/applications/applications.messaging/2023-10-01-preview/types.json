@@ -51,7 +51,7 @@
       },
       "tags": {
         "type": {
-          "$ref": "#/38"
+          "$ref": "#/39"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -65,7 +65,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/39"
+          "$ref": "#/40"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -106,7 +106,7 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "The connection secrets properties to the RabbitMQ instance"
@@ -127,7 +127,7 @@
       },
       "port": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/31"
         },
         "flags": 0,
         "description": "The port of the RabbitMQ instance. Defaults to 5672"
@@ -148,28 +148,28 @@
       },
       "resources": {
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/33"
         },
         "flags": 0,
         "description": "List of the resource IDs that support the rabbitMQ resource"
       },
       "tls": {
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
       },
       "recipe": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/34"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/37"
+          "$ref": "#/38"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -250,14 +250,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/26"
         },
         "flags": 2,
         "description": "Recipe status at deployment time for a resource."
       },
       "outputResources": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/29"
         },
         "flags": 0,
         "description": "Properties of an output resource"
@@ -286,10 +286,10 @@
     },
     "elements": {
       "aci": {
-        "$ref": "#/21"
+        "$ref": "#/22"
       },
       "kubernetes": {
-        "$ref": "#/23"
+        "$ref": "#/24"
       }
     }
   },
@@ -320,7 +320,7 @@
       },
       "managedIdentity": {
         "type": {
-          "$ref": "#/0"
+          "$ref": "#/21"
         },
         "flags": 0,
         "description": "The name of the managed identity"
@@ -354,6 +354,12 @@
     ]
   },
   {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
     "$type": "ObjectType",
     "name": "AzureContainerInstanceCompute",
     "properties": {
@@ -366,7 +372,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/22"
+          "$ref": "#/23"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -390,7 +396,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/24"
+          "$ref": "#/25"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -448,7 +454,7 @@
       },
       "radiusManaged": {
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "Determines whether Radius manages the lifecycle of the underlying resource."
@@ -461,7 +467,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/26"
+      "$ref": "#/27"
     }
   },
   {
@@ -503,7 +509,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/31"
+      "$ref": "#/32"
     }
   },
   {
@@ -519,7 +525,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/35"
         },
         "flags": 0,
         "description": "Any object"
@@ -541,10 +547,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/35"
+        "$ref": "#/36"
       },
       {
-        "$ref": "#/36"
+        "$ref": "#/37"
       }
     ]
   },
@@ -569,7 +575,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/44"
+          "$ref": "#/45"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -590,7 +596,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/49"
+          "$ref": "#/50"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -624,9 +630,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/40"
-      },
-      {
         "$ref": "#/41"
       },
       {
@@ -634,6 +637,9 @@
       },
       {
         "$ref": "#/43"
+      },
+      {
+        "$ref": "#/44"
       }
     ]
   },
@@ -657,9 +663,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/45"
-      },
-      {
         "$ref": "#/46"
       },
       {
@@ -667,6 +670,9 @@
       },
       {
         "$ref": "#/48"
+      },
+      {
+        "$ref": "#/49"
       }
     ]
   },
@@ -694,7 +700,7 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/50"
+      "$ref": "#/51"
     }
   },
   {
@@ -708,7 +714,7 @@
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/51"
+          "$ref": "#/52"
         },
         "description": "listSecrets"
       }

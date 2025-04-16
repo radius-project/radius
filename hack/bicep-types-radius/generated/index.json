@@ -1,49 +1,49 @@
 {
   "resources": {
     "Applications.Core/applications@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/59"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/60"
     },
     "Applications.Core/containers@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/131"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/132"
     },
     "Applications.Core/environments@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/172"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/173"
     },
     "Applications.Core/extenders@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/193"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/194"
     },
     "Applications.Core/gateways@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/215"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/216"
     },
     "Applications.Core/secretStores@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/251"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/252"
     },
     "Applications.Core/volumes@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/289"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/290"
     },
     "Applications.Dapr/configurationStores@2023-10-01-preview": {
-      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/52"
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/53"
     },
     "Applications.Dapr/pubSubBrokers@2023-10-01-preview": {
-      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/72"
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/73"
     },
     "Applications.Dapr/secretStores@2023-10-01-preview": {
-      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/91"
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/92"
     },
     "Applications.Dapr/stateStores@2023-10-01-preview": {
-      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/111"
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/112"
     },
     "Applications.Datastores/mongoDatabases@2023-10-01-preview": {
-      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/52"
+      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/53"
     },
     "Applications.Datastores/redisCaches@2023-10-01-preview": {
-      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/74"
+      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/75"
     },
     "Applications.Datastores/sqlDatabases@2023-10-01-preview": {
-      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/96"
+      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/97"
     },
     "Applications.Messaging/rabbitMQQueues@2023-10-01-preview": {
-      "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/52"
+      "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/53"
     }
   },
   "resourceFunctions": {},

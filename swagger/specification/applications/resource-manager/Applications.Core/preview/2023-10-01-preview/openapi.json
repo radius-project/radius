@@ -3715,8 +3715,11 @@
           "description": "The resource ID of the provisioned identity"
         },
         "managedIdentity": {
-          "type": "string",
-          "description": "The name of the managed identity"
+          "type": "array",
+          "description": "The name of the managed identity",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
