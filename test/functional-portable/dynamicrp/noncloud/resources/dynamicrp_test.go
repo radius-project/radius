@@ -149,8 +149,8 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
-						validation.NewK8sPodForResource(name, "postgresql").ValidateLabels(false),
+					name: {
+						validation.NewK8sPodForResource("postgresql", "postgresql").ValidateLabels(false),
 					},
 				},
 			},
