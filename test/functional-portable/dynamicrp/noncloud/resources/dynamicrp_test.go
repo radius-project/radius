@@ -147,7 +147,13 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: true,
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "postgresql").ValidateLabels(false),
+					},
+				},
+			},
 		},
 		{
 			Executor: step.NewDeployExecutor(existingTemplate),
@@ -177,6 +183,7 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				// Verify that the environment namespace is created.
 				_, err := ct.Options.K8sClient.CoreV1().Namespaces().Get(context.Background(), name, metav1.GetOptions{})
 				require.NoError(t, err)
 			},
