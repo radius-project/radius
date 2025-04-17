@@ -50,16 +50,17 @@ func (d *DynamicResource) Status() map[string]any {
 	// If users define the status as something other than a map[string]any, that just won't work.
 	//
 	// Therefore we overwrite it.
+	emptyStatus := map[string]any{}
 	obj, ok := d.Properties["status"]
 	if !ok {
-		d.Properties["status"] = map[string]any{}
-		return map[string]any{}
+		d.Properties["status"] = emptyStatus
+		return emptyStatus
 	}
 
 	status, ok := obj.(map[string]any)
 	if !ok {
-		d.Properties["status"] = map[string]any{}
-		return map[string]any{}
+		d.Properties["status"] = emptyStatus
+		return emptyStatus
 	}
 
 	return status
@@ -162,6 +163,30 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 	if len(binding) == 0 {
 		delete(status, "binding")
 	}
+
+	return nil
+}
+
+// ApplyRecipeStatus applies the recipe status to the resource.
+func (d *DynamicResource) ApplyRecipeStatus(recipeStatus rpv1.RecipeStatus) error {
+	if recipeStatus == (rpv1.RecipeStatus{}) {
+		return nil
+	}
+
+	bs, err := json.Marshal(recipeStatus)
+	if err != nil {
+		return fmt.Errorf("failed to marshal recipe status: %w", err)
+	}
+
+	recipe := map[string]any{}
+	err = json.Unmarshal(bs, &recipe)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal recipe status: %w", err)
+	}
+
+	// Update the status with the recipe status
+	resourceStatus := d.Status()
+	resourceStatus["recipe"] = recipe
 
 	return nil
 }
