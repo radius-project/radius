@@ -314,7 +314,58 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 	}
 
-	profile := &ngroupsclient.ContainerGroupProfile{
+	profile := createContainerGroupProfile(resource, env, containerPorts, ipAddress)
+	orProfile := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureCGProfile,
+		ID:      resources.MustParse(options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.ContainerInstance/containerGroupProfiles/" + resource.Name),
+		CreateResource: &rpv1.Resource{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     "Microsoft.ContainerInstance/containerGroupProfiles",
+				Provider: resourcemodel.ProviderAzure,
+			},
+			Data:         profile,
+			Dependencies: profileDep,
+		},
+	}
+	orResources = append(orResources, orProfile)
+
+	nGroup := createNGroup(resource, appSubnetID, networkprofile)
+	orNGroup := rpv1.OutputResource{
+		LocalID: rpv1.LocalIDAzureCGNGroups,
+		ID:      resources.MustParse(options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.ContainerInstance/nGroups/" + resource.Name),
+		CreateResource: &rpv1.Resource{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     "Microsoft.ContainerInstance/nGroups",
+				Provider: resourcemodel.ProviderAzure,
+			},
+			Data:         nGroup,
+			Dependencies: []string{rpv1.LocalIDAzureCGProfile},
+		},
+	}
+	orResources = append(orResources, orNGroup)
+
+	return renderers.RendererOutput{
+		Resources:      orResources,
+		RadiusResource: dm,
+		ComputedValues: map[string]rpv1.ComputedValueReference{
+			// Populate hostname for the frontend of load balancer.
+			"hostname": {
+				LocalID:           rpv1.LocalIDAzureContainerLoadBalancer,
+				PropertyReference: "hostname",
+			},
+			// // TODO: Add the computed values here
+			// "test_computed_value_key": {
+			// 	Value: "test_computed_value_value",
+			// },
+		},
+	}, nil
+}
+
+// createContainerGroupProfile creates a ContainerGroupProfile for ACI deployment
+func createContainerGroupProfile(resource *datamodel.ContainerResource, env []*ngroupsclient.EnvironmentVariable, containerPorts []*ngroupsclient.ContainerPort, ipAddress *ngroupsclient.IPAddress) *ngroupsclient.ContainerGroupProfile {
+	// if user specifies any runtime properties, we need to override the default CG profile that's created here
+	properties := resource.Properties
+	return &ngroupsclient.ContainerGroupProfile{
 		Location: to.Ptr(aciLocation),
 		Name:     to.Ptr(resource.Name),
 		Properties: &ngroupsclient.ContainerGroupProfileProperties{
@@ -322,7 +373,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 				{
 					Name: to.Ptr(resource.Name),
 					Properties: &ngroupsclient.ContainerProperties{
-						Image:                to.Ptr(resource.Properties.Container.Image),
+						Image:                to.Ptr(properties.Container.Image),
 						EnvironmentVariables: env,
 						Command:              to.SliceOfPtrs[string](properties.Container.Command...),
 						Ports:                containerPorts,
@@ -341,23 +392,15 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			SKU:       to.Ptr(ngroupsclient.ContainerGroupSKUStandard),
 		},
 	}
+}
 
-	orProfile := rpv1.OutputResource{
-		LocalID: rpv1.LocalIDAzureCGProfile,
-		ID:      resources.MustParse(options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.ContainerInstance/containerGroupProfiles/" + resource.Name),
-		CreateResource: &rpv1.Resource{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.ContainerInstance/containerGroupProfiles",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			Data:         profile,
-			Dependencies: profileDep,
-		},
-	}
-	orResources = append(orResources, orProfile)
-
-	// TODO: rename to ngroup
-	nGroup := &ngroupsclient.NGroup{
+// createNGroup creates an NGroup for ACI deployment
+func createNGroup(
+	resource *datamodel.ContainerResource,
+	appSubnetID string,
+	networkprofile *ngroupsclient.NetworkProfile,
+) *ngroupsclient.NGroup {
+	return &ngroupsclient.NGroup{
 		Name:     to.Ptr(resource.Name),
 		Location: to.Ptr(aciLocation),
 		Identity: &ngroupsclient.NGroupIdentity{
@@ -395,36 +438,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			},
 		},
 	}
-
-	orNGroup := rpv1.OutputResource{
-		LocalID: rpv1.LocalIDAzureCGNGroups,
-		ID:      resources.MustParse(options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.ContainerInstance/nGroups/" + resource.Name),
-		CreateResource: &rpv1.Resource{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.ContainerInstance/nGroups",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			Data:         nGroup,
-			Dependencies: []string{rpv1.LocalIDAzureCGProfile},
-		},
-	}
-	orResources = append(orResources, orNGroup)
-
-	return renderers.RendererOutput{
-		Resources:      orResources,
-		RadiusResource: dm,
-		ComputedValues: map[string]rpv1.ComputedValueReference{
-			// Populate hostname for the frontend of load balancer.
-			"hostname": {
-				LocalID:           rpv1.LocalIDAzureContainerLoadBalancer,
-				PropertyReference: "hostname",
-			},
-			// // TODO: Add the computed values here
-			// "test_computed_value_key": {
-			// 	Value: "test_computed_value_value",
-			// },
-		},
-	}, nil
 }
 
 type EnvVar struct {

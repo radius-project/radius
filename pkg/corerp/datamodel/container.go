@@ -101,10 +101,18 @@ type KubernetesRuntime struct {
 	Pod string `json:"pod,omitempty"`
 }
 
+// ACIRuntime represents the Kubernetes runtime configuration.
+type ACIRuntime struct {
+	// CGProfile represents the ACI Container Group Profile configuration. This can include punchthroughs and is stored as a JSON-encoded string.
+	ContainerGroupProfile string `json:"containerGroupProfile,omitempty"`
+}
+
 // RuntimeProperties represents the runtime configuration for the platform-specific functionalities.
 type RuntimeProperties struct {
 	// Kubernetes represents the Kubernetes runtime configuration.
 	Kubernetes *KubernetesRuntime `json:"kubernetes,omitempty"`
+
+	ACI *ACIRuntime `json:"aci,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.

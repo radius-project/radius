@@ -2234,6 +2234,16 @@
     }
   },
   "definitions": {
+    "ACIRuntimeProperties": {
+      "type": "object",
+      "description": "The runtime configuration properties for Kubernetes",
+      "properties": {
+        "containerGroupProfile": {
+          "$ref": "#/definitions/ContainerGroupProfile",
+          "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed."
+        }
+      }
+    },
     "ApplicationGraphConnection": {
       "type": "object",
       "description": "Describes the connection between two resources.",
@@ -2777,6 +2787,11 @@
       "required": [
         "image"
       ]
+    },
+    "ContainerGroupProfile": {
+      "type": "object",
+      "description": "A merge will be applied to the ContainerGroupProfile object when this container is being deployed.",
+      "additionalProperties": {}
     },
     "ContainerPortProperties": {
       "type": "object",
@@ -4299,6 +4314,9 @@
         "kubernetes": {
           "$ref": "#/definitions/KubernetesRuntimeProperties",
           "description": "The runtime configuration properties for Kubernetes"
+        },
+        "aci": {
+          "$ref": "#/definitions/ACIRuntimeProperties"
         }
       }
     },

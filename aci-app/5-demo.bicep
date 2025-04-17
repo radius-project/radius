@@ -1,6 +1,6 @@
 extension radius
 
-param aciscope string = '/subscriptions/<>/resourceGroups/<>'
+param aciscope string = '/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/shruthikumar'
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'radius-demo'
@@ -33,27 +33,27 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource redis 'Applications.Datastores/redisCaches@2023-10-01-preview' = {
-  name: 'redis'
-  properties: {
-    environment: env.id
-    application: app.id
-  }
-}
+// resource redis 'Applications.Datastores/redisCaches@2023-10-01-preview' = {
+//   name: 'redis'
+//   properties: {
+//     environment: env.id
+//     application: app.id
+//   }
+// }
 
 
-resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
-  name: 'gateway'
-  properties: {
-    application: app.id
-    routes: [
-      {
-        path: '/'
-        destination: 'http://frontend:3000'
-      }
-    ]
-  }
-}
+// resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
+//   name: 'gateway'
+//   properties: {
+//     application: app.id
+//     routes: [
+//       {
+//         path: '/'
+//         destination: 'http://frontend:3000'
+//       }
+//     ]
+//   }
+// }
 
 resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'frontend'
@@ -67,64 +67,11 @@ resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
         }
       }
     }
-    connections: {
-      redis: {
-        source: redis.id
+    runtimes: { 
+      aci: {
+        containerGroupProfile: {
+        }
       }
-      // backend1: {
-      //   source: backend1.id
-      // }
-      // backend2: {
-      //   source: backend2.id
-      // }
     }
-    extensions: [
-      {
-        kind:  'manualScaling'
-        replicas: 2
-      }
-    ]
   }
 }
-
-// resource backend1 'Applications.Core/containers@2023-10-01-preview' = {
-//   name: 'backend1'
-//   properties: {
-//     application: app.id
-//     container: {
-//       image: 'mcr.microsoft.com/azurelinux/base/nginx:1.25'
-//       ports: {
-//         api: {
-//           containerPort: 80
-//         }
-//       }
-//     }
-//     extensions: [
-//       {
-//         kind:  'manualScaling'
-//         replicas: 1
-//       }
-//     ]
-//   }
-// }
-
-// resource backend2 'Applications.Core/containers@2023-10-01-preview' = {
-//   name: 'backend2'
-//   properties: {
-//     application: app.id
-//     container: {
-//       image: 'mcr.microsoft.com/azurelinux/base/nginx:1.25'
-//       ports: {
-//         api: {
-//           containerPort: 80
-//         }
-//       }
-//     }
-//     extensions: [
-//       {
-//         kind:  'manualScaling'
-//         replicas: 2
-//       }
-//     ]
-//   }
-// }

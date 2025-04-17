@@ -101,6 +101,8 @@ enum RestartPolicy {
 model RuntimesProperties {
   @doc("The runtime configuration properties for Kubernetes")
   kubernetes?: KubernetesRuntimeProperties;
+
+  aci?: ACIRuntimeProperties;
 }
 
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
@@ -115,6 +117,17 @@ model KubernetesRuntimeProperties {
   #suppress "@azure-tools/typespec-azure-core/bad-record-type"
   @doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
   pod?: KubernetesPodSpec;
+}
+
+#suppress "@azure-tools/typespec-azure-core/bad-record-type"
+@doc("A merge will be applied to the ContainerGroupProfile object when this container is being deployed.")
+model ContainerGroupProfile is Record<unknown>;
+
+@doc("The runtime configuration properties for Kubernetes")
+model ACIRuntimeProperties {
+  #suppress "@azure-tools/typespec-azure-core/bad-record-type"
+  @doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
+  containerGroupProfile?: ContainerGroupProfile;
 }
 
 @doc("Specifies a listening port for the container")

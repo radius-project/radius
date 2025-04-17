@@ -11,6 +11,33 @@ import (
 	"reflect"
 )
 
+// MarshalJSON implements the json.Marshaller interface for type ACIRuntimeProperties.
+func (a ACIRuntimeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "containerGroupProfile", a.ContainerGroupProfile)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ACIRuntimeProperties.
+func (a *ACIRuntimeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "containerGroupProfile":
+				err = unpopulate(val, "ContainerGroupProfile", &a.ContainerGroupProfile)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type ApplicationGraphConnection.
 func (a ApplicationGraphConnection) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -3025,6 +3052,7 @@ func (r *ResourceStatus) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RuntimesProperties.
 func (r RuntimesProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "aci", r.Aci)
 	populate(objectMap, "kubernetes", r.Kubernetes)
 	return json.Marshal(objectMap)
 }
@@ -3038,6 +3066,9 @@ func (r *RuntimesProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "aci":
+				err = unpopulate(val, "Aci", &r.Aci)
+			delete(rawMsg, key)
 		case "kubernetes":
 				err = unpopulate(val, "Kubernetes", &r.Kubernetes)
 			delete(rawMsg, key)

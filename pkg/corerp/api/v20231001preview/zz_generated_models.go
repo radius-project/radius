@@ -6,6 +6,12 @@ package v20231001preview
 
 import "time"
 
+// ACIRuntimeProperties - The runtime configuration properties for Kubernetes
+type ACIRuntimeProperties struct {
+// A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.
+	ContainerGroupProfile map[string]any
+}
+
 // ApplicationGraphConnection - Describes the connection between two resources.
 type ApplicationGraphConnection struct {
 // REQUIRED; The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and
@@ -1282,6 +1288,9 @@ type ResourceStatus struct {
 
 // RuntimesProperties - The properties for runtime configuration
 type RuntimesProperties struct {
+// The runtime configuration properties for Kubernetes
+	Aci *ACIRuntimeProperties
+
 // The runtime configuration properties for Kubernetes
 	Kubernetes *KubernetesRuntimeProperties
 }
