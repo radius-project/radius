@@ -65,5 +65,10 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		return err
 	}
 
+	err = resource.ApplyRecipeStatus(status)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
