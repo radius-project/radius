@@ -28,6 +28,10 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/test/k8sutil"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -48,11 +52,13 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
+		existingNamespace  bool
 	}{
-		{"create-new-resource-no-if-match", "If-Match", "", "", 200, false},
-		{"create-new-resource-*-if-match", "If-Match", "*", "", 412, true},
-		{"create-new-resource-etag-if-match", "If-Match", "randome-etag", "", 412, true},
-		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", 200, false},
+		{"create-new-resource-no-if-match", "If-Match", "", "", 200, false, false},
+		{"create-new-resource-existing-namespace", "If-Match", "", "", 200, false, true},
+		{"create-new-resource-*-if-match", "If-Match", "*", "", 412, true, false},
+		{"create-new-resource-etag-if-match", "If-Match", "randome-etag", "", 412, true, false},
+		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", 200, false, false},
 	}
 
 	for _, tt := range createNewResourceCases {
@@ -99,16 +105,22 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
+			if tt.existingNamespace {
+				err = opts.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: envDataModel.Properties.Compute.KubernetesCompute.Namespace}})
+				require.NoError(t, err)
+			}
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
-
 			if !tt.shouldFail {
+				err = opts.KubeClient.Get(ctx, client.ObjectKey{Name: envDataModel.Properties.Compute.KubernetesCompute.Namespace}, &corev1.Namespace{})
+				require.NoError(t, err)
 				actualOutput := &v20231001preview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
@@ -176,6 +188,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -239,6 +252,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -308,6 +322,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -397,6 +412,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
