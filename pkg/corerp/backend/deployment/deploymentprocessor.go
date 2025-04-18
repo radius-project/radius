@@ -577,9 +577,12 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 
-		// At present, UDTs do not have support for secrets. So we pass in an empty map.
-		// This should change once we implement secret support for UDTs.
-		return dp.buildResourceDependency(resourceID, obj.ResourceMetadata().ApplicationID(), obj, obj.OutputResources(), obj.Status(), map[string]rpv1.SecretValueReference{}, portableresources.RecipeData{})
+		// At present, we combine secret data with computed values into bindings for UDT.
+		// UDTs also do not have support for secrets yet.
+		// We are for now passing in empty values for these two parameters here so that we can enable graph.
+		// This should change once we implement secret support for UDTs and also seperate secrets and computed
+		// values into their own structure.
+		return dp.buildResourceDependency(resourceID, obj.ResourceMetadata().ApplicationID(), obj, obj.OutputResources(), map[string]any{}, map[string]rpv1.SecretValueReference{}, portableresources.RecipeData{})
 	}
 }
 
