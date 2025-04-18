@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/portableresources"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -312,83 +311,6 @@ func Test_DynamicResourceBasicPropertiesAdapter_EnvironmentID(t *testing.T) {
 			adapter := &dynamicResourceBasicPropertiesAdapter{resource: &tt.resource}
 			got := adapter.EnvironmentID()
 			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TestDynamicResource_ApplyRecipeStatus(t *testing.T) {
-	tests := []struct {
-		name         string
-		resource     *DynamicResource
-		recipeStatus rpv1.RecipeStatus
-		expected     map[string]any
-		expectError  bool
-	}{
-		{
-			name:         "empty status",
-			resource:     &DynamicResource{},
-			recipeStatus: rpv1.RecipeStatus{},
-			expected:     map[string]any{},
-			expectError:  false,
-		},
-		{
-			name: "with properties nil",
-			resource: &DynamicResource{
-				Properties: nil,
-			},
-			recipeStatus: rpv1.RecipeStatus{
-				TemplateKind:    "bicep",
-				TemplatePath:    "path/to/template.bicep",
-				TemplateVersion: "1.0.0",
-			},
-			expected: map[string]any{
-				"recipe": map[string]any{
-					"templateKind":    "bicep",
-					"templatePath":    "path/to/template.bicep",
-					"templateVersion": "1.0.0",
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "with existing status",
-			resource: &DynamicResource{
-				Properties: map[string]any{
-					"status": map[string]any{
-						"existing": "value",
-					},
-				},
-			},
-			recipeStatus: rpv1.RecipeStatus{
-				TemplateKind:    "terraform",
-				TemplatePath:    "path/to/main.tf",
-				TemplateVersion: "2.1.0",
-			},
-			expected: map[string]any{
-				"existing": "value",
-				"recipe": map[string]any{
-					"templateKind":    "terraform",
-					"templatePath":    "path/to/main.tf",
-					"templateVersion": "2.1.0",
-				},
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.resource.ApplyRecipeStatus(tt.recipeStatus)
-			if tt.expectError {
-				require.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
-
-			// Get the actual status
-			actual := tt.resource.Status()
-			require.Equal(t, tt.expected, actual)
 		})
 	}
 }

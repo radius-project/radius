@@ -167,30 +167,6 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 	return nil
 }
 
-// ApplyRecipeStatus applies the recipe status to the resource.
-func (d *DynamicResource) ApplyRecipeStatus(recipeStatus rpv1.RecipeStatus) error {
-	if recipeStatus == (rpv1.RecipeStatus{}) {
-		return nil
-	}
-
-	bs, err := json.Marshal(recipeStatus)
-	if err != nil {
-		return fmt.Errorf("failed to marshal recipe status: %w", err)
-	}
-
-	recipe := map[string]any{}
-	err = json.Unmarshal(bs, &recipe)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal recipe status: %w", err)
-	}
-
-	// Update the status with the recipe status
-	resourceStatus := d.Status()
-	resourceStatus["recipe"] = recipe
-
-	return nil
-}
-
 // OutputResources implements v1.RadiusResourceModel.
 func (d *DynamicResource) OutputResources() []rpv1.OutputResource {
 	return d.ResourceMetadata().GetResourceStatus().OutputResources
