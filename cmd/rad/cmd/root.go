@@ -234,10 +234,12 @@ func initSubCommands() {
 		Prompter:            &prompt.Impl{},
 		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
 		KubernetesInterface: &kubernetes.Impl{},
-		HelmInterface:       &helm.Impl{},
-		NamespaceInterface:  &namespace.Impl{},
-		AWSClient:           aws.NewClient(),
-		AzureClient:         azure.NewClient(),
+		HelmInterface: &helm.Impl{
+			Helm: helm.NewHelmClient(),
+		},
+		NamespaceInterface: &namespace.Impl{},
+		AWSClient:          aws.NewClient(),
+		AzureClient:        azure.NewClient(),
 	}
 
 	deployCmd, _ := cmd_deploy.NewCommand(framework)

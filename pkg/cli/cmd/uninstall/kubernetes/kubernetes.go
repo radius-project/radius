@@ -98,16 +98,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Uninstalling Radius...")
-	err = r.Helm.UninstallRadius(ctx, helm.ClusterOptions{
-		Radius: helm.ChartOptions{
-			Namespace:   helm.RadiusSystemNamespace,
-			ReleaseName: helm.NewDefaultClusterOptions().Radius.ReleaseName,
-		},
-		Dapr: helm.ChartOptions{
-			Namespace:   helm.DaprSystemNamespace,
-			ReleaseName: helm.NewDefaultClusterOptions().Dapr.ReleaseName,
-		},
-	}, r.KubeContext)
+	err = r.Helm.UninstallRadius(ctx, helm.NewDefaultClusterOptions(), r.KubeContext)
 
 	if err != nil {
 		return err
