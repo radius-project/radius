@@ -40,3 +40,11 @@ func StringMapPtr(ms map[string]string) *map[string]*string {
 	}
 	return &msp
 }
+
+func ArrayofStringPtrs(s []string) []*string {
+	var ptrs []*string
+	for _, val := range s {
+		ptrs = append(ptrs, &val)
+	}
+	return ptrs
+}

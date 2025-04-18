@@ -39,7 +39,7 @@ type IdentitySettings struct {
 	// Resource represents the resource id of managed identity.
 	Resource string `json:"resource,omitempty"`
 	// ManagedIdentity represents the name of the managed identity.
-	ManagedIdentity string `json:"managedIdentity,omitempty"`
+	ManagedIdentity []string `json:"managedIdentity,omitempty"`
 }
 
 // Validate checks if the IdentitySettings struct is nil and if the Kind is AzureIdentityWorkload, checks if the OIDCIssuer
