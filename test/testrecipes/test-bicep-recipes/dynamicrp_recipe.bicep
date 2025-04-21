@@ -5,6 +5,9 @@ extension kubernetes with {
 
 param context object
 
+@description('Specifies the port the container listens on.')
+param port int
+
 resource usertypealpha 'apps/Deployment@v1' = {
   metadata: {
     name: 'usertypealpha-${uniqueString(context.resource.id)}'
@@ -30,7 +33,7 @@ resource usertypealpha 'apps/Deployment@v1' = {
             image: 'alpine:latest'
             ports: [
               {
-                containerPort: 8080
+                containerPort: port
               }
             ]
             command: ['/bin/sh']
@@ -50,6 +53,6 @@ output result object = {
     '/planes/kubernetes/local/namespaces/${usertypealpha.metadata.namespace}/providers/apps/Deployment/${usertypealpha.metadata.name}'
   ]
   values: {
-    port: '8080'
+    port: port
   }
 }
