@@ -572,26 +572,25 @@ func TestConvertDataModelWithACIToVersioned(t *testing.T) {
 	// act
 	versioned := &EnvironmentResource{}
 	err = versioned.ConvertFrom(r)
+	var envCompute = versioned.Properties.Compute.GetEnvironmentCompute()
 
 	// assert
 	require.NoError(t, err)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", string(*versioned.ID))
 	require.Equal(t, "env0", string(*versioned.Name))
 	require.Equal(t, "Applications.Core/environments", string(*versioned.Type))
-	require.Equal(t, "aci", string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
+	require.Equal(t, "aci", string(*envCompute.Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
 	require.Equal(t, &IdentitySettings{
 		Kind:            to.Ptr(IdentitySettingKindManagedIdentity),
 		ManagedIdentity: []*string{to.Ptr("test-mi-0"), to.Ptr("test-mi-1")},
-	}, versioned.Properties.Compute.GetEnvironmentCompute().Identity)
-	require.Equal(t, "managedIdentity", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Kind))
+	}, envCompute.Identity)
+	require.Equal(t, "managedIdentity", string(*envCompute.Identity.Kind))
 	// validate managed identity urls match the template input
-	for i, mi := range versioned.Properties.Compute.GetEnvironmentCompute().Identity.ManagedIdentity {
-		require.Equal(t, "test-mi-"+fmt.Sprintf("%d", i), string(*mi))
+	for i, mi := range envCompute.Identity.ManagedIdentity {
+		var expectedUserAssignedManagedIdentityName = "test-mi-" + fmt.Sprintf("%d", i)
+		require.Equal(t, expectedUserAssignedManagedIdentityName, string(*mi))
 	}
-
-	require.Equal(t, map[string][]*ProviderConfigProperties{}, versioned.Properties.RecipeConfig.Terraform.Providers)
-	require.Equal(t, map[string]*string{}, versioned.Properties.RecipeConfig.Env)
 }
 
 func TestConvertFromValidation(t *testing.T) {

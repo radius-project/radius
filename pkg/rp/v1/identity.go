@@ -27,7 +27,7 @@ const (
 	// AzureIdentityWorkload represents Azure Workload identity.
 	AzureIdentityWorkload IdentitySettingKind = "azure.com.workload"
 	// ManagedIdentity represents Azure User Assigned Managed Identity.
-	ManagedIdentity IdentitySettingKind = "managedidentity"
+	ManagedIdentity IdentitySettingKind = "managedIdentity"
 )
 
 // IdentitySettings represents the identity info to access azure resource, such as Key vault.
