@@ -27,25 +27,19 @@ types:
             application:
               type: string
               description: The resource ID of the application.
-            status:
-              type: object
-              properties:
-                binding:
-                  type: object
-                  properties:
-                    database:
-                      type: string
-                      description: The name of the database.
-                    host:
-                      type: string
-                      description: The host name of the database.
-                    port:
-                      type: string
-                      description: The port number of the database.
-                    username:
-                      type: string
-                      description: The username for the database.
-                    password:
-                      type: string
-                      description: The password for the database.
+            database:
+              type: string
+              description: The name of the database.
+            host:
+              type: string
+              description: The host name of the database.
+            port:
+              type: string
+              description: The port number of the database.
+            username:
+              type: string
+              description: The username for the database.
+            password:
+              type: string
+              description: The password for the database.
     capabilities: ["SupportsRecipes"]
