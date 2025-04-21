@@ -22,6 +22,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 // ResourceProcessor is responsible for processing the results of recipe execution or any
@@ -46,6 +47,8 @@ type Options struct {
 
 	// RecipeOutput represents the output of executing a recipe (may be nil).
 	RecipeOutput *recipes.RecipeOutput
+
+	UcpClient *v20231001preview.ClientFactory
 }
 
 // ValidationError represents a user-facing validation message reported by the processor.

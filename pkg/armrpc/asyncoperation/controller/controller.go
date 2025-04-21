@@ -22,6 +22,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -39,6 +40,8 @@ type Options struct {
 
 	// GetDeploymentProcessor is the factory function to create core rp DeploymentProcessor instance.
 	GetDeploymentProcessor func() deployment.DeploymentProcessor
+
+	UcpClient *v20231001preview.ClientFactory
 }
 
 // Validate validates that required fields are set on the options.
@@ -79,6 +82,10 @@ func NewBaseAsyncController(options Options) BaseController {
 // DatabaseClient gets database client for this controller.
 func (b *BaseController) DatabaseClient() database.Client {
 	return b.options.DatabaseClient
+}
+
+func (b *BaseController) UcpClient() *v20231001preview.ClientFactory {
+	return b.options.UcpClient
 }
 
 // KubeClient gets Kubernetes client for this controller.

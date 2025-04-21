@@ -32,19 +32,19 @@ resource udtcntr 'Applications.Core/containers@2023-10-01-preview' = {
   
         env: {
           CONNECTION_POSTGRES_HOST: {
-            value: udtpgexisting.properties.status.binding.host
+            value: udtpgexisting.properties.host
           }
           CONNECTION_POSTGRES_PORT: {
-            value: string(udtpgexisting.properties.status.binding.port)
+            value: string(udtpgexisting.properties.port)
           }
           CONNECTION_POSTGRES_USERNAME: {
-            value: udtpgexisting.properties.status.binding.username
+            value: udtpgexisting.properties.username
           }
           CONNECTION_POSTGRES_DATABASE: {
-            value: udtpgexisting.properties.status.binding.database
+            value: udtpgexisting.properties.database
           }
           CONNECTION_POSTGRES_PASSWORD: {
-            value: udtpgexisting.properties.status.binding.password
+            value: udtpgexisting.properties.password
           }
         }
     }

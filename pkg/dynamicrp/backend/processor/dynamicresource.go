@@ -18,6 +18,7 @@ package processor
 
 import (
 	"context"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -60,10 +61,48 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		return err
 	}
 
+	apiVersionResource, err := options.UcpClient.NewAPIVersionsClient().Get(ctx, "local", strings.Split(resource.Type, "/")[0], strings.Split(resource.Type, "/")[1], resource.InternalMetadata.UpdatedAPIVersion, nil)
+
+	if err != nil {
+		return err
+	}
+
+	resourceProps := []string{}
+	schema := apiVersionResource.APIVersionResource.Properties.Schema
+	if schema != nil {
+		if properties, ok := schema["properties"].(map[string]any); ok {
+			for key := range properties {
+				resourceProps = append(resourceProps, key)
+			}
+		}
+	}
+
+	for key := range computedValues {
+		if !contains(resourceProps, key) {
+			delete(computedValues, key)
+		}
+	}
+
+	for key := range secretValues {
+		if !contains(resourceProps, key) {
+			delete(secretValues, key)
+		}
+	}
+
 	err = resource.ApplyDeploymentOutput(rpv1.DeploymentOutput{DeployedOutputResources: outputResources, ComputedValues: computedValues, SecretValues: secretValues})
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// Helper function to check if a slice contains a specific string
+func contains(slice []string, item string) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
 }
