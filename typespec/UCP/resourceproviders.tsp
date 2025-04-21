@@ -121,7 +121,6 @@ model ApiVersionProperties {
 
   @doc("Schema is the schema for the resource type.")
   schema?: Record<unknown>;
-
 }
 
 @doc("The resource type for defining a location of the containing resource provider. The location resource represents a logical location where the resource provider operates.")
