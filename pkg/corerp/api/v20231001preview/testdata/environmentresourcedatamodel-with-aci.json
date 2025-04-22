@@ -21,7 +21,7 @@
 		},
 		"identity": {
 		  "kind": "managedIdentity",
-		  "managedIdentity": "test-mi"
+		  "managedIdentity": ["test-mi-0", "test-mi-1"]
 		}
 	  },
 	  "providers": {

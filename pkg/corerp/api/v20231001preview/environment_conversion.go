@@ -313,7 +313,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rpv1.En
 		if v.Identity != nil {
 			identity = &rpv1.IdentitySettings{
 				Kind:            toIdentityKindDataModel(v.Identity.Kind),
-				ManagedIdentity: to.String(v.Identity.ManagedIdentity),
+				ManagedIdentity: to.StringArray(v.Identity.ManagedIdentity),
 			}
 		}
 
@@ -360,7 +360,7 @@ func fromEnvironmentComputeDataModel(envCompute *rpv1.EnvironmentCompute) Enviro
 		if envCompute.Identity != nil {
 			identity = &IdentitySettings{
 				Kind:            fromIdentityKind(envCompute.Identity.Kind),
-				ManagedIdentity: toStringPtr(envCompute.Identity.ManagedIdentity),
+				ManagedIdentity: to.ArrayofStringPtrs(envCompute.Identity.ManagedIdentity),
 			}
 		}
 		compute := &AzureContainerInstanceCompute{

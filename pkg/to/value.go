@@ -28,6 +28,17 @@ func String(s *string) string {
 	return ""
 }
 
+// Map array of string pointers to an array of strings. If a value in the the array is nil then append empty string.
+func StringArray(s []*string) []string {
+	var values []string
+	for _, ptr := range s {
+		if ptr != nil {
+			values = append(values, *ptr)
+		}
+	}
+	return values
+}
+
 // StringSlice returns a string slice value for the passed string slice pointer. It returns a nil
 // slice if the pointer is nil.
 func StringSlice(s *[]string) []string {
