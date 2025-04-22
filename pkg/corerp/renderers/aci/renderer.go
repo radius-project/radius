@@ -361,11 +361,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		Name:     to.Ptr(resource.Name),
 		Location: to.Ptr(aciLocation),
 		Identity: &ngroupsclient.NGroupIdentity{
-			// TODO: update with user assigned identity
-			Type: to.Ptr(ngroupsclient.ResourceIdentityTypeUserAssigned),
-			UserAssignedIdentities: map[string]*ngroupsclient.UserAssignedIdentities{
-				"/subscriptions/<>/resourceGroups/<>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<>": {},
-			},
+			Type:                   to.Ptr(ngroupsclient.ResourceIdentityTypeUserAssigned),
+			UserAssignedIdentities: ConvertToUserAssignedIdentity(options.Environment.Compute.Identity.ManagedIdentity),
 		},
 		Properties: &ngroupsclient.NGroupProperties{
 			UpdateProfile: &ngroupsclient.UpdateProfile{
@@ -476,4 +473,14 @@ func getSortedKeys(env map[string]EnvVar) []string {
 
 	sort.Strings(keys)
 	return keys
+}
+
+func ConvertToUserAssignedIdentity(urls []string) map[string]*ngroupsclient.UserAssignedIdentities {
+	identities := make(map[string]*ngroupsclient.UserAssignedIdentities)
+
+	for _, url := range urls {
+		identities[url] = &ngroupsclient.UserAssignedIdentities{}
+	}
+
+	return identities
 }
