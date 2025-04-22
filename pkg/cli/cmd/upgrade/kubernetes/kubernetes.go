@@ -172,7 +172,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Implement snapshot logic here
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
-	_, err = r.Helm.UpgradeRadius(ctx, clusterOptions, r.KubeContext)
+	err = r.Helm.UpgradeRadius(ctx, clusterOptions, r.KubeContext)
 	if err != nil {
 		r.Output.LogInfo("Rolling back to previous state...")
 		// Implement rollback logic here
