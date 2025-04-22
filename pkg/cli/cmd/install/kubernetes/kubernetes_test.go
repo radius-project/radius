@@ -79,7 +79,7 @@ func Test_Run(t *testing.T) {
 			},
 		})
 		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
-			Return(true, nil).
+			Return(nil).
 			Times(1)
 
 		err := runner.Run(ctx)
@@ -150,7 +150,7 @@ func Test_Run(t *testing.T) {
 			},
 		})
 		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
-			Return(true, nil).
+			Return(nil).
 			Times(1)
 
 		err := runner.Run(ctx)

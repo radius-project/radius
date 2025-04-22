@@ -888,7 +888,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			helmInterface := helm.NewMockInterface(ctrl)
 			helmInterface.EXPECT().
 				InstallRadius(context.Background(), gomock.Any(), "kind-kind").
-				Return(true, nil).
+				Return(nil).
 				Times(1)
 
 			prompter := prompt.NewMockInterface(ctrl)

@@ -79,12 +79,11 @@ func (c *MockInterfaceCheckRadiusInstallCall) DoAndReturn(f func(string) (Instal
 }
 
 // InstallRadius mocks base method.
-func (m *MockInterface) InstallRadius(arg0 context.Context, arg1 ClusterOptions, arg2 string) (bool, error) {
+func (m *MockInterface) InstallRadius(arg0 context.Context, arg1 ClusterOptions, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InstallRadius", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // InstallRadius indicates an expected call of InstallRadius.
@@ -100,19 +99,19 @@ type MockInterfaceInstallRadiusCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInterfaceInstallRadiusCall) Return(arg0 bool, arg1 error) *MockInterfaceInstallRadiusCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockInterfaceInstallRadiusCall) Return(arg0 error) *MockInterfaceInstallRadiusCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInterfaceInstallRadiusCall) Do(f func(context.Context, ClusterOptions, string) (bool, error)) *MockInterfaceInstallRadiusCall {
+func (c *MockInterfaceInstallRadiusCall) Do(f func(context.Context, ClusterOptions, string) error) *MockInterfaceInstallRadiusCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceInstallRadiusCall) DoAndReturn(f func(context.Context, ClusterOptions, string) (bool, error)) *MockInterfaceInstallRadiusCall {
+func (c *MockInterfaceInstallRadiusCall) DoAndReturn(f func(context.Context, ClusterOptions, string) error) *MockInterfaceInstallRadiusCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -151,6 +150,44 @@ func (c *MockInterfaceUninstallRadiusCall) Do(f func(context.Context, ClusterOpt
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockInterfaceUninstallRadiusCall) DoAndReturn(f func(context.Context, ClusterOptions, string) error) *MockInterfaceUninstallRadiusCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// UpgradeRadius mocks base method.
+func (m *MockInterface) UpgradeRadius(arg0 context.Context, arg1 ClusterOptions, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpgradeRadius", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpgradeRadius indicates an expected call of UpgradeRadius.
+func (mr *MockInterfaceMockRecorder) UpgradeRadius(arg0, arg1, arg2 any) *MockInterfaceUpgradeRadiusCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpgradeRadius", reflect.TypeOf((*MockInterface)(nil).UpgradeRadius), arg0, arg1, arg2)
+	return &MockInterfaceUpgradeRadiusCall{Call: call}
+}
+
+// MockInterfaceUpgradeRadiusCall wrap *gomock.Call
+type MockInterfaceUpgradeRadiusCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceUpgradeRadiusCall) Return(arg0 error) *MockInterfaceUpgradeRadiusCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceUpgradeRadiusCall) Do(f func(context.Context, ClusterOptions, string) error) *MockInterfaceUpgradeRadiusCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceUpgradeRadiusCall) DoAndReturn(f func(context.Context, ClusterOptions, string) error) *MockInterfaceUpgradeRadiusCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
