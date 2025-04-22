@@ -31,7 +31,6 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -69,10 +68,19 @@ type ChartOptions struct {
 
 //go:generate mockgen -typed -destination=./mock_helmaction.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm HelmAction
 
+// HelmAction is an interface for performing actions on Helm charts.
 type HelmAction interface {
+	// HelmChartFromContainerRegistry downloads a helm chart (using helm pull) from a container registry and returns the chart object.
 	HelmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error)
-	ApplyHelmChart(helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, kubeContext string) (bool, error)
+
+	// ApplyHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the "Reinstall" option is set.
+	ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions) error
+
+	// QueryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
+	// Returns a bool indicating if the release is deployed, the version of the release, and an error if one occurs.
 	QueryRelease(kubeContext, namespace, releaseName string) (bool, string, error)
+
+	// LoadChart loads a helm chart from the specified path and returns the chart object.
 	LoadChart(chartPath string) (*chart.Chart, error)
 }
 
@@ -80,11 +88,12 @@ type HelmActionImpl struct {
 	HelmClient HelmClient
 }
 
+var _ HelmAction = &HelmActionImpl{}
+
 func NewHelmAction(helmClient HelmClient) *HelmActionImpl {
 	return &HelmActionImpl{HelmClient: helmClient}
 }
 
-// HelmChartFromContainerRegistry downloads a helm chart (using helm pull) from a container registry and returns the chart object.
 func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pullopts := []helm.PullOpt{
 		helm.WithConfig(config),
@@ -167,58 +176,45 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string,
 	return helmAction.LoadChart(chartPath)
 }
 
-// ApplyHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the
-// "Reinstall" option is set. It returns a boolean indicating if the chart was already installed and an error if one occurred.
-func (helmAction *HelmActionImpl) ApplyHelmChart(helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, kubeContext string) (bool, error) {
-	// For capturing output from helm.
-	var helmOutput strings.Builder
-
-	alreadyInstalled := false
-
-	_, err := helmAction.HelmClient.RunHelmHistory(helmConf, options.ReleaseName)
-	if errors.Is(err, driver.ErrReleaseNotFound) {
-		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart)
-		if err != nil {
-			return false, fmt.Errorf("failed to run Radius Helm install, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
-		}
-	} else if options.Reinstall {
-		_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, options.ReleaseName)
-		if err != nil {
-			return false, fmt.Errorf("failed to run Radius Helm upgrade, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
-		}
-	} else if err == nil {
-		alreadyInstalled = true
+func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions) error {
+	chartInstalled, _, err := helmAction.QueryRelease(kubeContext, options.ReleaseName, options.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to query Helm release, err: %w", err)
 	}
 
-	return alreadyInstalled, err
+	if !chartInstalled {
+		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, options.ReleaseName, options.Namespace)
+		if err != nil {
+			return fmt.Errorf("failed to run Helm install, err: %w", err)
+		}
+	} else if options.Reinstall {
+		_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, options.ReleaseName, options.Namespace)
+		if err != nil {
+			return fmt.Errorf("failed to run Helm upgrade, err: %w", err)
+		}
+	}
+
+	return nil
 }
 
-// QueryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
-// If the release is found, it returns true and the version of the release. If the release is not found, it returns false.
-// If an error occurs, it returns an error.
-func (helmAction *HelmActionImpl) QueryRelease(kubeContext, namespace, releaseName string) (bool, string, error) {
-	var helmOutput strings.Builder
-
+func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespace string) (bool, string, error) {
 	flags := genericclioptions.ConfigFlags{
 		Namespace: &namespace,
 		Context:   &kubeContext,
 	}
 
-	helmConf, err := initHelmConfig(&helmOutput, &flags)
+	helmConf, err := initHelmConfig(&flags)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+		return false, "", fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
 	releases, err := helmAction.HelmClient.RunHelmList(helmConf, releaseName, namespace)
 	if err != nil {
-		if errors.Is(err, driver.ErrReleaseNotFound) {
-			return false, "", nil
-		}
-		return false, "", err
+		return false, "", fmt.Errorf("failed to run helm list, err: %w", err)
 	}
 
 	if len(releases) == 0 {
-		return false, "", fmt.Errorf("no deployed releases found with the name: %s", releaseName)
+		return false, "", nil
 	}
 
 	if len(releases) > 1 {
@@ -230,14 +226,14 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, namespace, releaseNa
 	return true, latestRelease.Chart.Metadata.Version, nil
 }
 
-// LoadChart loads a helm chart from the specified path and returns the chart object.
 func (helmAction *HelmActionImpl) LoadChart(chartPath string) (*chart.Chart, error) {
 	return helmAction.HelmClient.LoadChart(chartPath)
 }
 
 // initHelmConfig initializes a helm configuration object and sets the backend storage driver to use kubernetes secrets,
 // returning the configuration object and an error if one occurs.
-func initHelmConfig(builder *strings.Builder, flags *genericclioptions.ConfigFlags) (*helm.Configuration, error) {
+func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, error) {
+	builder := strings.Builder{}
 	hc := helm.Configuration{}
 	// helmDriver is "secret" to make the backend storage driver
 	// use kubernetes secrets.

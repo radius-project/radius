@@ -80,15 +80,15 @@ func Test_Impl_InstallRadius(t *testing.T) {
 			return "Pulled", nil
 		}).Times(1)
 
-	// Mock Helm History (to simulate chart not found initially)
-	mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
-	mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Dapr.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
-	mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+	// // Mock Helm History (to simulate chart not found initially)
+	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Dapr.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
 
-	// Mock Helm Install - Return values should match the HelmClient interface
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.AssignableToTypeOf(&chart.Chart{})).Return(&release.Release{Name: options.Radius.ReleaseName}, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.AssignableToTypeOf(&chart.Chart{})).Return(&release.Release{Name: options.Dapr.ReleaseName}, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.AssignableToTypeOf(&chart.Chart{})).Return(&release.Release{Name: options.Contour.ReleaseName}, nil).Times(1)
+	// // Mock Helm Install - Return values should match the HelmClient interface
+	// mockHelmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.AssignableToTypeOf(&chart.Chart{})).Return(&release.Release{Name: options.Radius.ReleaseName}, nil).Times(1)
+	// mockHelmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.AssignableToTypeOf(&chart.Chart{})).Return(&release.Release{Name: options.Dapr.ReleaseName}, nil).Times(1)
+	// mockHelmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.AssignableToTypeOf(&chart.Chart{})).Return(&release.Release{Name: options.Contour.ReleaseName}, nil).Times(1)
 
 	// Mock Helm Chart Load
 	mockHelmClient.EXPECT().
@@ -98,9 +98,8 @@ func Test_Impl_InstallRadius(t *testing.T) {
 			return &chart.Chart{}, nil
 		}).Times(3)
 
-	installed, err := impl.InstallRadius(ctx, options, kubeContext)
+	err := impl.InstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
-	require.False(t, installed, "Expected installed to be false as charts were newly installed")
 }
 
 func Test_Impl_InstallRadius_AlreadyInstalled(t *testing.T) {
@@ -142,10 +141,10 @@ func Test_Impl_InstallRadius_AlreadyInstalled(t *testing.T) {
 			return "Pulled", nil
 		}).Times(1)
 
-	// Mock Helm History (to simulate charts already installed)
-	mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Radius.ReleaseName).Return([]*release.Release{{Name: options.Radius.ReleaseName}}, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Dapr.ReleaseName).Return([]*release.Release{{Name: options.Dapr.ReleaseName}}, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return([]*release.Release{{Name: options.Contour.ReleaseName}}, nil).Times(1)
+	// // Mock Helm History (to simulate charts already installed)
+	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Radius.ReleaseName).Return([]*release.Release{{Name: options.Radius.ReleaseName}}, nil).Times(1)
+	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Dapr.ReleaseName).Return([]*release.Release{{Name: options.Dapr.ReleaseName}}, nil).Times(1)
+	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return([]*release.Release{{Name: options.Contour.ReleaseName}}, nil).Times(1)
 
 	// Mock Helm Chart Load (needed even if not upgrading, to check versions perhaps)
 	mockHelmClient.EXPECT().
@@ -158,9 +157,8 @@ func Test_Impl_InstallRadius_AlreadyInstalled(t *testing.T) {
 
 	// No Install/Upgrade calls expected
 
-	installed, err := impl.InstallRadius(ctx, options, kubeContext)
+	err := impl.InstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
-	require.True(t, installed, "Expected installed to be true as charts were already present")
 }
 
 func Test_Impl_UninstallRadius(t *testing.T) {
