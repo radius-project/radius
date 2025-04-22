@@ -114,6 +114,7 @@ dashboard:
       memory: "300Mi"
 
 database:
+  enabled: false
   postgres_user: "radius"
   image: ghcr.io/radius-project/mirror/postgres
   tag: latest

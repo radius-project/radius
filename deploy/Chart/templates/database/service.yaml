@@ -1,3 +1,4 @@
+{{- if .Values.dashboard.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -14,3 +15,4 @@ spec:
       targetPort: 5432
   selector:
       app.kubernetes.io/name: database
+{{- end }}
