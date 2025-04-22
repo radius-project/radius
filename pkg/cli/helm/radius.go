@@ -21,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -42,7 +41,6 @@ type RadiusChartOptions struct {
 
 // TODO COMMENT
 func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeContext string) (*chart.Chart, *action.Configuration, error) {
-	helmOutput := strings.Builder{}
 	var helmChart *chart.Chart
 
 	flags := genericclioptions.ConfigFlags{
@@ -50,9 +48,9 @@ func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeC
 		Context:   &kubeContext,
 	}
 
-	helmConf, err := initHelmConfig(&helmOutput, &flags)
+	helmConf, err := initHelmConfig(&flags)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get Helm config, err: %w, Helm output: %s", err, helmOutput.String())
+		return nil, nil, fmt.Errorf("failed to get Helm config, err: %w", err)
 	}
 
 	if options.ChartPath == "" {
@@ -61,12 +59,12 @@ func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeC
 		helmChart, err = helmAction.LoadChart(options.ChartPath)
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load Helm chart, err: %w, Helm output: %s", err, helmOutput.String())
+		return nil, nil, fmt.Errorf("failed to load Helm chart, err: %w", err)
 	}
 
 	err = addArgsFromCLI(helmChart, &options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to add Radius values, err: %w, Helm output: %s", err, helmOutput.String())
+		return nil, nil, fmt.Errorf("failed to add Radius values, err: %w", err)
 	}
 
 	return helmChart, helmConf, nil

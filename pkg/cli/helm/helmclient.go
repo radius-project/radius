@@ -26,10 +26,9 @@ import (
 )
 
 const (
-	installTimeout   = time.Duration(600) * time.Second
-	uninstallTimeout = time.Duration(300) * time.Second
-	upgradeTimeout   = time.Duration(600) * time.Second
-	retryTimeout     = time.Duration(10) * time.Second
+	installTimeout   = time.Duration(5) * time.Minute
+	uninstallTimeout = time.Duration(5) * time.Minute
+	upgradeTimeout   = time.Duration(5) * time.Minute
 )
 
 //go:generate mockgen -typed -destination=./mock_helmclient.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm HelmClient
@@ -37,17 +36,20 @@ const (
 // HelmClient is an interface for interacting with Helm charts.
 type HelmClient interface {
 	// RunHelmInstall installs the Helm chart.
-	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) (*release.Release, error)
+	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string) (*release.Release, error)
+
 	// RunHelmUpgrade upgrades the Helm chart.
-	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName string) (*release.Release, error)
+	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string) (*release.Release, error)
+
 	// RunHelmUninstall uninstalls the Helm chart.
 	RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string) (*release.UninstallReleaseResponse, error)
+
 	// RunHelmList lists the Helm releases.
 	RunHelmList(helmConf *helm.Configuration, releaseName, namespace string) ([]*release.Release, error)
-	// RunHelmHistory gets the history of the Helm release.
-	RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error)
+
 	// RunHelmPull pulls the Helm chart.
 	RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error)
+
 	// LoadChart loads a Helm chart from the specified path.
 	LoadChart(chartPath string) (*chart.Chart, error)
 }
@@ -56,23 +58,27 @@ type HelmClient interface {
 // It uses the Helm go sdk to perform operations on Helm charts.
 type HelmClientImpl struct{}
 
+var _ HelmClient = &HelmClientImpl{}
+
 func NewHelmClient() HelmClient {
 	return &HelmClientImpl{}
 }
 
-func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) (*release.Release, error) {
+func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string) (*release.Release, error) {
 	installClient := helm.NewInstall(helmConf)
+	installClient.ReleaseName = releaseName
+	installClient.Namespace = namespace
 	installClient.CreateNamespace = true
-	installClient.Wait = true
 	installClient.Timeout = installTimeout
 
 	return installClient.Run(helmChart, helmChart.Values)
 }
 
-func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName string) (*release.Release, error) {
+func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string) (*release.Release, error) {
 	upgradeClient := helm.NewUpgrade(helmConf)
+	upgradeClient.Namespace = namespace
 	upgradeClient.Wait = true
-	upgradeClient.Timeout = installTimeout
+	upgradeClient.Timeout = upgradeTimeout
 	upgradeClient.Recreate = true
 
 	return upgradeClient.Run(releaseName, helmChart, helmChart.Values)
@@ -90,15 +96,9 @@ func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseN
 	listClient := helm.NewList(helmConf)
 	listClient.Filter = releaseName
 	listClient.Deployed = true
-	listClient.AllNamespaces = false
+	listClient.AllNamespaces = true
 
 	return listClient.Run()
-}
-
-func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
-	historyClient := helm.NewHistory(helmConf)
-
-	return historyClient.Run(releaseName)
 }
 
 func (client *HelmClientImpl) RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error) {

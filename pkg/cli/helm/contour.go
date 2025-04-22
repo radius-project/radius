@@ -18,7 +18,6 @@ package helm
 
 import (
 	"fmt"
-	"strings"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -38,7 +37,6 @@ type ContourChartOptions struct {
 }
 
 func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kubeContext string) (*chart.Chart, *action.Configuration, error) {
-	helmOutput := strings.Builder{}
 	var helmChart *chart.Chart
 
 	flags := genericclioptions.ConfigFlags{
@@ -46,9 +44,9 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 		Context:   &kubeContext,
 	}
 
-	helmConf, err := initHelmConfig(&helmOutput, &flags)
+	helmConf, err := initHelmConfig(&flags)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get Helm config, err: %w, Helm output: %s", err, helmOutput.String())
+		return nil, nil, fmt.Errorf("failed to get Helm config, err: %w", err)
 	}
 
 	if options.ChartPath == "" {
@@ -57,12 +55,12 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 		helmChart, err = helmAction.LoadChart(options.ChartPath)
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load Helm chart, err: %w, Helm output: %s", err, helmOutput.String())
+		return nil, nil, fmt.Errorf("failed to load Helm chart, err: %w", err)
 	}
 
 	err = addContourValues(helmChart, options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to add Contour values, err: %w, Helm output: %s", err, helmOutput.String())
+		return nil, nil, fmt.Errorf("failed to add Contour values, err: %w", err)
 	}
 
 	return helmChart, helmConf, nil
@@ -72,7 +70,7 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 // LoadBalancer service ports to 8080 and 8443 so that they don't conflict with Envoy while using Host Networking. It
 // returns an error if any of the nodes in the chart values are not found.
 func addContourValues(helmChart *chart.Chart, options ContourChartOptions) error {
-	if options.HostNetwork {
+	if true {
 		// https://projectcontour.io/docs/main/deploy-options/#host-networking
 		// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
 		envoyNode := helmChart.Values["envoy"].(map[string]any)
