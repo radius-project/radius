@@ -17,7 +17,6 @@ limitations under the License.
 package helm
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"net/http"
@@ -65,8 +64,6 @@ type ChartOptions struct {
 	// SetFileArgs specifies as set of additional "values" from file to pass it to helm.
 	SetFileArgs []string
 }
-
-//go:generate mockgen -typed -destination=./mock_helmaction.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm HelmAction
 
 // HelmAction is an interface for performing actions on Helm charts.
 type HelmAction interface {
@@ -223,6 +220,10 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 
 	// Get the latest deployed release (List returns sorted by revision number)
 	latestRelease := releases[0]
+	if latestRelease.Chart == nil || latestRelease.Chart.Metadata == nil {
+		return false, "", fmt.Errorf("failed to get chart version for release: %s", releaseName)
+	}
+
 	return true, latestRelease.Chart.Metadata.Version, nil
 }
 
