@@ -23,6 +23,8 @@ import (
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 var _ processors.ResourceProcessor[*datamodel.DynamicResource, datamodel.DynamicResource] = (*DynamicProcessor)(nil)
@@ -61,37 +63,55 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		return err
 	}
 
-	apiVersionResource, err := options.UcpClient.NewAPIVersionsClient().Get(ctx, "local", strings.Split(resource.Type, "/")[0], strings.Split(resource.Type, "/")[1], resource.InternalMetadata.UpdatedAPIVersion, nil)
-
+	err = resource.ApplyDeploymentOutput(rpv1.DeploymentOutput{DeployedOutputResources: outputResources, ComputedValues: computedValues, SecretValues: secretValues})
 	if err != nil {
 		return err
 	}
 
+	err = addOutputValuestoResourceProperties(ctx, options.UcpClient, resource, computedValues, secretValues)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resource *datamodel.DynamicResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
+
+	ID, err := resources.Parse(resource.ID)
+	if err != nil {
+		return err
+	}
+
+	plane := ID.PlaneNamespace()
+	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, strings.Split(plane, "/")[1], strings.Split(resource.Type, "/")[0], strings.Split(resource.Type, "/")[1], resource.InternalMetadata.UpdatedAPIVersion, nil)
+	if err != nil {
+		return err
+	}
+
+	keywordProperties := []string{"application", "environment", "status"}
 	resourceProps := []string{}
 	schema := apiVersionResource.APIVersionResource.Properties.Schema
 	if schema != nil {
 		if properties, ok := schema["properties"].(map[string]any); ok {
 			for key := range properties {
-				resourceProps = append(resourceProps, key)
+				if !contains(keywordProperties, key) {
+					resourceProps = append(resourceProps, key)
+				}
 			}
 		}
 	}
 
-	for key := range computedValues {
-		if !contains(resourceProps, key) {
-			delete(computedValues, key)
+	for key, value := range computedValues {
+		if contains(resourceProps, key) {
+			resource.Properties[key] = value
 		}
 	}
 
-	for key := range secretValues {
-		if !contains(resourceProps, key) {
-			delete(secretValues, key)
+	for key, value := range secretValues {
+		if contains(resourceProps, key) {
+			resource.Properties[key] = value.Value
 		}
-	}
-
-	err = resource.ApplyDeploymentOutput(rpv1.DeploymentOutput{DeployedOutputResources: outputResources, ComputedValues: computedValues, SecretValues: secretValues})
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -104,5 +124,6 @@ func contains(slice []string, item string) bool {
 			return true
 		}
 	}
+
 	return false
 }

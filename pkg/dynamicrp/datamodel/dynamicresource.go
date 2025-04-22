@@ -153,12 +153,10 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 	binding := map[string]any{}
 	for key, value := range deploymentOutput.ComputedValues {
 		binding[key] = value
-		d.Properties[key] = value
 	}
 
 	for key, value := range deploymentOutput.SecretValues {
 		binding[key] = value.Value
-		d.Properties[key] = value.Value
 	}
 
 	status["binding"] = binding
