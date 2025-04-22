@@ -77,10 +77,9 @@ func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmC
 func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string) (*release.Release, error) {
 	upgradeClient := helm.NewUpgrade(helmConf)
 	upgradeClient.Namespace = namespace
-	upgradeClient.Wait = true
+	// upgradeClient.Wait = true
 	upgradeClient.Timeout = upgradeTimeout
 	upgradeClient.Recreate = true
-
 	return upgradeClient.Run(releaseName, helmChart, helmChart.Values)
 }
 
