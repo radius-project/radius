@@ -38,6 +38,6 @@ func (r *APIVersion) ResourceTypeName() string {
 
 // APIVersion stores the properties of an API version.
 type APIVersionProperties struct {
-	// Empty for now.
+	// Schema is the schema for the resource type.
 	Schema map[string]any
 }

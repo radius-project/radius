@@ -154,7 +154,6 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 	for key, value := range deploymentOutput.ComputedValues {
 		binding[key] = value
 	}
-
 	for key, value := range deploymentOutput.SecretValues {
 		binding[key] = value.Value
 	}

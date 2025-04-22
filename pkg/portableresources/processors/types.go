@@ -48,6 +48,7 @@ type Options struct {
 	// RecipeOutput represents the output of executing a recipe (may be nil).
 	RecipeOutput *recipes.RecipeOutput
 
+	// UcpClient is the UCP client factory.
 	UcpClient *v20231001preview.ClientFactory
 }
 

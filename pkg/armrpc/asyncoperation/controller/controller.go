@@ -41,6 +41,7 @@ type Options struct {
 	// GetDeploymentProcessor is the factory function to create core rp DeploymentProcessor instance.
 	GetDeploymentProcessor func() deployment.DeploymentProcessor
 
+	// UcpClient is the UCP client factory.
 	UcpClient *v20231001preview.ClientFactory
 }
 

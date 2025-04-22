@@ -76,6 +76,8 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 	return nil
 }
 
+// addOutputValuestoResourceProperties adds the computed values and secret values to the resource properties.
+// It retrieves the schema of the resource type and filters out the values that are not part of the schema.
 func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resource *datamodel.DynamicResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
 
 	ID, err := resources.Parse(resource.ID)
@@ -89,6 +91,8 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 		return err
 	}
 
+	// Filter out the keyword properties from the resource properties
+	// This is to avoid overwriting the properties like application, environment etc when they are added as computed values or secret values.
 	keywordProperties := []string{"application", "environment", "status"}
 	resourceProps := []string{}
 	schema := apiVersionResource.APIVersionResource.Properties.Schema
@@ -102,12 +106,14 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 		}
 	}
 
+	// Add the computed values to the resource properties if they are part of the schema.
 	for key, value := range computedValues {
 		if contains(resourceProps, key) {
 			resource.Properties[key] = value
 		}
 	}
 
+	// Add the secret values to the resource properties if they are part of the schema.
 	for key, value := range secretValues {
 		if contains(resourceProps, key) {
 			resource.Properties[key] = value.Value
