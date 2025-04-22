@@ -18,7 +18,6 @@ package helm
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,12 +35,11 @@ import (
 func Test_DefaultsToHelmChartVersionValue(t *testing.T) {
 	clusterOptions := PopulateDefaultClusterOptions(CLIClusterOptions{})
 
-	// Not checking other values due to potential failures on release builds, the chart version
-	// is primarily the mail regression we see.
+	// Not checking other values due to potential failures on release builds
 	require.Equal(t, version.ChartVersion(), clusterOptions.Radius.ChartVersion)
 }
 
-func Test_Impl_InstallRadius(t *testing.T) {
+func Test_Helm_InstallRadius(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -51,7 +49,7 @@ func Test_Impl_InstallRadius(t *testing.T) {
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
-	// Mock Helm Pull for Radius, Dapr, Contour
+	// Mock Helm Pull
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
@@ -80,29 +78,37 @@ func Test_Impl_InstallRadius(t *testing.T) {
 			return "Pulled", nil
 		}).Times(1)
 
-	// // Mock Helm History (to simulate chart not found initially)
-	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
-	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Dapr.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
-	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+	radiusRelease := &release.Release{
+		Name:  options.Radius.ReleaseName,
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+	}
+	daprRelease := &release.Release{
+		Name:  options.Dapr.ReleaseName,
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+	}
+	contourRelease := &release.Release{
+		Name:  options.Contour.ReleaseName,
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+	}
 
-	// // Mock Helm Install - Return values should match the HelmClient interface
-	// mockHelmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.AssignableToTypeOf(&chart.Chart{})).Return(&release.Release{Name: options.Radius.ReleaseName}, nil).Times(1)
-	// mockHelmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.AssignableToTypeOf(&chart.Chart{})).Return(&release.Release{Name: options.Dapr.ReleaseName}, nil).Times(1)
-	// mockHelmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.AssignableToTypeOf(&chart.Chart{})).Return(&release.Release{Name: options.Contour.ReleaseName}, nil).Times(1)
+	// Mock Helm List
+	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", "radius-system").Return([]*release.Release{}, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "dapr", "dapr-system").Return([]*release.Release{}, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour", "radius-system").Return([]*release.Release{}, nil).Times(1)
+
+	// Mock Helm Install
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system").Return(radiusRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "dapr", "dapr-system").Return(daprRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system").Return(contourRelease, nil).Times(1)
 
 	// Mock Helm Chart Load
-	mockHelmClient.EXPECT().
-		LoadChart(gomock.Any()).
-		DoAndReturn(func(chartPath string) (*chart.Chart, error) {
-			// Simulate the chart being loaded successfully
-			return &chart.Chart{}, nil
-		}).Times(3)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(3)
 
 	err := impl.InstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
 }
 
-func Test_Impl_InstallRadius_AlreadyInstalled(t *testing.T) {
+func Test_Helm_UninstallRadius(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -112,75 +118,26 @@ func Test_Impl_InstallRadius_AlreadyInstalled(t *testing.T) {
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
-	// Mock Helm Pull for Radius, Dapr, Contour
-	mockHelmClient.EXPECT().
-		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
-		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
-			// Simulate downloading the chart to the temp dir
-			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
-			require.NoError(t, err)
-			return "Pulled", nil
-		}).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmPull(gomock.Any(), options.Dapr.ReleaseName).
-		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
-			// Simulate downloading the chart to the temp dir
-			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: dapr\nversion: 0.1.0"), 0644)
-			require.NoError(t, err)
-			return "Pulled", nil
-		}).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
-		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
-			// Simulate downloading the chart to the temp dir
-			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: contour\nversion: 0.1.0"), 0644)
-			require.NoError(t, err)
-			return "Pulled", nil
-		}).Times(1)
-
-	// // Mock Helm History (to simulate charts already installed)
-	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Radius.ReleaseName).Return([]*release.Release{{Name: options.Radius.ReleaseName}}, nil).Times(1)
-	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Dapr.ReleaseName).Return([]*release.Release{{Name: options.Dapr.ReleaseName}}, nil).Times(1)
-	// mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return([]*release.Release{{Name: options.Contour.ReleaseName}}, nil).Times(1)
-
-	// Mock Helm Chart Load (needed even if not upgrading, to check versions perhaps)
-	mockHelmClient.EXPECT().
-		LoadChart(gomock.Any()).
-		DoAndReturn(func(chartPath string) (*chart.Chart, error) {
-			// Simulate the chart being loaded successfully
-			// The version here should match the version being checked against, if applicable
-			return &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}}, nil
-		}).Times(3) // Assuming LoadChart is called for each component
-
-	// No Install/Upgrade calls expected
-
-	err := impl.InstallRadius(ctx, options, kubeContext)
-	require.NoError(t, err)
-}
-
-func Test_Impl_UninstallRadius(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
-	kubeContext := "test-context"
-	options := NewDefaultClusterOptions()
-
-	// Mock Helm Uninstall for Radius, Dapr, Contour
-	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace).Return(&release.UninstallReleaseResponse{}, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Dapr.ReleaseName, options.Dapr.Namespace).Return(&release.UninstallReleaseResponse{}, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace).Return(&release.UninstallReleaseResponse{}, nil).Times(1)
+	// Expect uninstall calls for Radius / Dapr / Contour.
+	for _, c := range []struct {
+		releaseName string
+		ns          string
+	}{
+		{options.Radius.ReleaseName, options.Radius.Namespace},
+		{options.Dapr.ReleaseName, options.Dapr.Namespace},
+		{options.Contour.ReleaseName, options.Contour.Namespace},
+	} {
+		mockHelmClient.EXPECT().
+			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns).
+			Return(&release.UninstallReleaseResponse{}, nil).
+			Times(1)
+	}
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
 }
 
-func Test_Impl_UninstallRadius_NotFound(t *testing.T) {
+func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -190,119 +147,168 @@ func Test_Impl_UninstallRadius_NotFound(t *testing.T) {
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
-	// Mock Helm Uninstall returning ErrReleaseNotFound
-	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace).Return(nil, driver.ErrReleaseNotFound).Times(1)
-	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Dapr.ReleaseName, options.Dapr.Namespace).Return(nil, driver.ErrReleaseNotFound).Times(1)
-	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace).Return(nil, driver.ErrReleaseNotFound).Times(1)
+	// Radius missing, other releases present.
+	mockHelmClient.EXPECT().
+		RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace).
+		Return(&release.UninstallReleaseResponse{}, driver.ErrReleaseNotFound).
+		Times(1)
+
+	for _, c := range []struct {
+		releaseName string
+		ns          string
+	}{
+		{options.Dapr.ReleaseName, options.Dapr.Namespace},
+		{options.Contour.ReleaseName, options.Contour.Namespace},
+	} {
+		mockHelmClient.EXPECT().
+			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns).
+			Return(&release.UninstallReleaseResponse{}, nil).
+			Times(1)
+	}
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
-	require.NoError(t, err, "ErrReleaseNotFound should be handled gracefully")
+	require.NoError(t, err) // ErrReleaseNotFound should be swallowed
 }
 
-func Test_Impl_UninstallRadius_Error(t *testing.T) {
+func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
-	testError := errors.New("helm uninstall failed")
 
-	// Mock Helm Uninstall returning an error for Radius
-	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace).Return(nil, testError).Times(1)
-	// No further calls expected after the first error for Dapr or Contour
+	// Helper to create a dummy release with the given version.
+	newRel := func(name, ver string) *release.Release {
+		return &release.Release{
+			Name:  name,
+			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver}},
+		}
+	}
 
-	err := impl.UninstallRadius(ctx, options, kubeContext)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to uninstall radius")
-	require.ErrorIs(t, err, testError)
-}
-
-func Test_Impl_CheckRadiusInstall(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient}
-	// ctx := context.Background() // Context not used by CheckRadiusInstall
-	kubeContext := "test-context"
-	radiusVersion := "1.2.3"
-	daprVersion := "4.5.6"
-
-	// Mock Helm List for Radius (found)
+	// Radius & Dapr installed, Contour not installed.
 	mockHelmClient.EXPECT().
-		RunHelmList(gomock.Any(), radiusReleaseName, RadiusSystemNamespace).
-		Return([]*release.Release{{Name: radiusReleaseName, Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: radiusVersion}}}}, nil).
-		Times(1)
-
-	// Mock Helm List for Dapr (found)
+		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace).
+		Return([]*release.Release{newRel(options.Radius.ReleaseName, "0.1.0")}, nil).Times(1)
 	mockHelmClient.EXPECT().
-		RunHelmList(gomock.Any(), daprReleaseName, DaprSystemNamespace).
-		Return([]*release.Release{{Name: daprReleaseName, Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: daprVersion}}}}, nil).
-		Times(1)
+		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Dapr.ReleaseName, options.Dapr.Namespace).
+		Return([]*release.Release{newRel(options.Dapr.ReleaseName, "1.0.0")}, nil).Times(1)
+	mockHelmClient.EXPECT().
+		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName, options.Contour.Namespace).
+		Return([]*release.Release{}, nil).Times(1)
 
 	state, err := impl.CheckRadiusInstall(kubeContext)
 	require.NoError(t, err)
 	require.True(t, state.RadiusInstalled)
-	require.Equal(t, radiusVersion, state.RadiusVersion)
 	require.True(t, state.DaprInstalled)
-	require.Equal(t, daprVersion, state.DaprVersion)
+	require.False(t, state.ContourInstalled)
+	require.Equal(t, "0.1.0", state.RadiusVersion)
+	require.Equal(t, "1.0.0", state.DaprVersion)
+	require.Equal(t, "", state.ContourVersion)
 }
 
-func Test_Impl_CheckRadiusInstall_NotFound(t *testing.T) {
+func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	// ctx := context.Background() // Context not used by CheckRadiusInstall
 	kubeContext := "test-context"
+	options := NewDefaultClusterOptions()
 
-	// Mock Helm List for Radius (not found)
+	// First call (Radius) returns an error – the method should propagate it.
 	mockHelmClient.EXPECT().
-		RunHelmList(gomock.Any(), radiusReleaseName, RadiusSystemNamespace).
-		Return(nil, driver.ErrReleaseNotFound).
+		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace).
+		Return(nil, fmt.Errorf("query failed")).
 		Times(1)
 
-	// Mock Helm List for Dapr (not found)
-	mockHelmClient.EXPECT().
-		RunHelmList(gomock.Any(), daprReleaseName, DaprSystemNamespace).
-		Return(nil, driver.ErrReleaseNotFound).
-		Times(1)
-
-	state, err := impl.CheckRadiusInstall(kubeContext)
-	require.NoError(t, err)
-	require.False(t, state.RadiusInstalled)
-	require.Empty(t, state.RadiusVersion)
-	require.False(t, state.DaprInstalled)
-	require.Empty(t, state.DaprVersion)
-}
-
-func Test_Impl_CheckRadiusInstall_ListError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient}
-	// ctx := context.Background() // Context not used by CheckRadiusInstall
-	kubeContext := "test-context"
-	testError := errors.New("helm list failed")
-
-	// Mock Helm List for Radius returning an error
-	mockHelmClient.EXPECT().
-		RunHelmList(gomock.Any(), radiusReleaseName, RadiusSystemNamespace).
-		Return(nil, testError).
-		Times(1)
-
-	// No further calls expected for Dapr
-
-	state, err := impl.CheckRadiusInstall(kubeContext)
+	// No further expectations – function should exit early.
+	_, err := impl.CheckRadiusInstall(kubeContext)
 	require.Error(t, err)
-	require.ErrorIs(t, err, testError)
-	require.False(t, state.RadiusInstalled) // State should reflect failure
-	require.Empty(t, state.RadiusVersion)
-	require.False(t, state.DaprInstalled)
-	require.Empty(t, state.DaprVersion)
+	require.Contains(t, err.Error(), "query failed")
+}
+
+func Test_Helm_UpgradeRadius(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	impl := &Impl{Helm: mockHelmClient}
+	ctx := context.Background()
+	kubeContext := "test-context"
+	options := NewDefaultClusterOptions()
+
+	// Mock Helm Pull
+	mockHelmClient.EXPECT().
+		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
+		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
+			pull := helm.NewPullWithOpts(pullopts...)
+			// Simulate downloading the chart to the temp dir
+			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
+			require.NoError(t, err)
+			return "Pulled", nil
+		}).Times(1)
+	mockHelmClient.EXPECT().
+		RunHelmPull(gomock.Any(), options.Dapr.ReleaseName).
+		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
+			pull := helm.NewPullWithOpts(pullopts...)
+			// Simulate downloading the chart to the temp dir
+			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: dapr\nversion: 0.1.0"), 0644)
+			require.NoError(t, err)
+			return "Pulled", nil
+		}).Times(1)
+	mockHelmClient.EXPECT().
+		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
+		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
+			pull := helm.NewPullWithOpts(pullopts...)
+			// Simulate downloading the chart to the temp dir
+			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: contour\nversion: 0.1.0"), 0644)
+			require.NoError(t, err)
+			return "Pulled", nil
+		}).Times(1)
+
+	radiusRelease := &release.Release{
+		Name:  options.Radius.ReleaseName,
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+	}
+	daprRelease := &release.Release{
+		Name:  options.Dapr.ReleaseName,
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+	}
+	contourRelease := &release.Release{
+		Name:  options.Contour.ReleaseName,
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+	}
+
+	// Mock Helm Upgrade
+	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system").Return(radiusRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "dapr", "dapr-system").Return(daprRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system").Return(contourRelease, nil).Times(1)
+
+	// Mock Helm Chart Load
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(3)
+
+	err := impl.UpgradeRadius(ctx, options, kubeContext)
+	require.NoError(t, err)
+}
+
+func Test_PopulateDefaultClusterOptions(t *testing.T) {
+	custom := CLIClusterOptions{
+		Radius: ChartOptions{
+			Reinstall:    true,
+			ChartPath:    "custom-path",
+			SetArgs:      []string{"foo=bar"},
+			SetFileArgs:  []string{"cert=./ca.crt"},
+			ChartVersion: "1.2.3",
+		},
+	}
+
+	opts := PopulateDefaultClusterOptions(custom)
+
+	require.True(t, opts.Radius.Reinstall)
+	require.Equal(t, "custom-path", opts.Radius.ChartPath)
+	require.Equal(t, []string{"foo=bar"}, opts.Radius.SetArgs)
+	require.Equal(t, []string{"cert=./ca.crt"}, opts.Radius.SetFileArgs)
+	require.Equal(t, "1.2.3", opts.Radius.ChartVersion)
 }

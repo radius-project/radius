@@ -70,7 +70,7 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 // LoadBalancer service ports to 8080 and 8443 so that they don't conflict with Envoy while using Host Networking. It
 // returns an error if any of the nodes in the chart values are not found.
 func addContourValues(helmChart *chart.Chart, options ContourChartOptions) error {
-	if true {
+	if options.HostNetwork {
 		// https://projectcontour.io/docs/main/deploy-options/#host-networking
 		// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
 		envoyNode := helmChart.Values["envoy"].(map[string]any)

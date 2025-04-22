@@ -41,7 +41,7 @@ func Test_isHelmGHCR403Error(t *testing.T) {
 	assert.False(t, result)
 }
 
-func Test_AddValues(t *testing.T) {
+func Test_addArgsFromCLI(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
 	options := &RadiusChartOptions{
