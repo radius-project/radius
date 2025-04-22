@@ -34,8 +34,6 @@ func StringArray(s []*string) []string {
 	for _, ptr := range s {
 		if ptr != nil {
 			values = append(values, *ptr)
-		} else {
-			values = append(values, "") // or handle nil however you'd like
 		}
 	}
 	return values
