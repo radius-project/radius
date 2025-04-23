@@ -356,10 +356,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				},
 			}
 
-			controller := &CreateOrUpdateResource[*TestResource, TestResource]{}
-			properties, err := controller.getPropertiesFromResource(testResource)
+			properties, err := GetPropertiesFromResource(testResource)
 			require.NoError(t, err)
-
 			recipeMetadata := recipes.ResourceMetadata{
 				Name:          "test-recipe",
 				EnvironmentID: TestEnvironmentID,
@@ -469,113 +467,4 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			}
 		})
 	}
-}
-
-// PropertiesTestResource is a test resource for testing of resource properties.
-type PropertiesTestResource struct {
-	v1.BaseResource
-	Properties map[string]any `json:"properties"`
-}
-
-func (p *PropertiesTestResource) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
-	return nil
-}
-
-func (p *PropertiesTestResource) ApplyDeploymentOutput(deploymentOutput rpv1.DeploymentOutput) error {
-	return nil
-}
-
-func (p *PropertiesTestResource) OutputResources() []rpv1.OutputResource {
-	return nil
-}
-
-func TestGetPropertiesFromResource2(t *testing.T) {
-	tests := []struct {
-		name        string
-		resource    *PropertiesTestResource
-		expected    map[string]any
-		expectError bool
-		errorMsg    string
-	}{
-		{
-			name: "Valid properties 2",
-			resource: &PropertiesTestResource{
-				Properties: map[string]any{
-					"Application": TestApplicationID,
-					"Environment": TestEnvironmentID,
-				},
-			},
-			expected: map[string]any{
-				"Application": TestApplicationID,
-				"Environment": TestEnvironmentID,
-			},
-			expectError: false,
-		},
-		{
-			name: "Empty properties",
-			resource: &PropertiesTestResource{
-				Properties: nil,
-			},
-			expected:    map[string]any{},
-			expectError: false,
-		},
-		{
-			name: "Invalid JSON",
-			resource: &PropertiesTestResource{
-				Properties: map[string]any{
-					"key": func() {}, // Functions cannot be marshaled to JSON
-				},
-			},
-			expected:    nil,
-			expectError: true,
-			errorMsg:    errMarshalResource,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			controller := &CreateOrUpdateResource[*PropertiesTestResource, PropertiesTestResource]{}
-			properties, err := controller.getPropertiesFromResource(tt.resource)
-
-			if tt.expectError {
-				require.Error(t, err)
-				require.Nil(t, properties)
-				require.Contains(t, err.Error(), tt.errorMsg)
-			} else {
-				require.NoError(t, err)
-				require.NotNil(t, properties)
-				require.Equal(t, tt.expected, properties)
-			}
-		})
-	}
-}
-
-// InvalidTestResource is a test resource with invalid properties type.
-type InvalidTestResource struct {
-	v1.BaseResource
-	Name string `json:"properties"`
-}
-
-func (p *InvalidTestResource) ResourceMetadata() rpv1.BasicResourcePropertiesAdapter {
-	return nil
-}
-
-func (p *InvalidTestResource) ApplyDeploymentOutput(deploymentOutput rpv1.DeploymentOutput) error {
-	return nil
-}
-
-func (p *InvalidTestResource) OutputResources() []rpv1.OutputResource {
-	return nil
-}
-
-func TestGetPropertiesFromResource_MissingProperties(t *testing.T) {
-	testResource := &InvalidTestResource{
-		Name: "test-resource",
-	}
-
-	controller := &CreateOrUpdateResource[*InvalidTestResource, InvalidTestResource]{}
-	properties, err := controller.getPropertiesFromResource(testResource)
-	require.Error(t, err)
-	require.Nil(t, properties)
-	require.Contains(t, err.Error(), errUnmarshalResourceProperties)
 }

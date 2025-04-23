@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -32,11 +31,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-)
-
-const (
-	errMarshalResource             = "failed to marshal resource"
-	errUnmarshalResourceProperties = "failed to unmarshal resource for properties"
 )
 
 // CreateOrUpdateResource is the async operation controller to create or update portable resources.
@@ -171,7 +165,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		return nil, nil
 	}
 
-	resourceProperties, err := c.getPropertiesFromResource(resource)
+	resourceProperties, err := GetPropertiesFromResource(resource)
 	if err != nil {
 		return nil, err
 	}
@@ -202,31 +196,4 @@ func setRecipeStatus[P rpv1.RadiusResourceModel](data P, recipeStatus rpv1.Recip
 	status := rm.GetResourceStatus().DeepCopyRecipeStatus()
 	status.Recipe = &recipeStatus
 	rm.SetResourceStatus(status)
-}
-
-// getPropertiesFromResource extracts the "properties" field from the resource
-// by serializing it to JSON and deserializing just the "properties" field.
-func (c *CreateOrUpdateResource[P, T]) getPropertiesFromResource(resource P) (map[string]any, error) {
-	// Serialize the resource to JSON
-	bytes, err := json.Marshal(resource)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errMarshalResource, err)
-	}
-
-	// Define a minimal struct to capture just the "properties" field
-	var partialResource struct {
-		Properties map[string]any `json:"properties"`
-	}
-
-	// Deserialize the JSON into the propertiesWrapper struct
-	if err := json.Unmarshal(bytes, &partialResource); err != nil {
-		return nil, fmt.Errorf("%s: %w", errUnmarshalResourceProperties, err)
-	}
-
-	// Return an empty map if properties is nil
-	if partialResource.Properties == nil {
-		return map[string]any{}, nil
-	}
-
-	return partialResource.Properties, nil
 }
