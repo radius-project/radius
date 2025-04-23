@@ -38,13 +38,13 @@ resource udtcntr 'Applications.Core/containers@2023-10-01-preview' = {
             value: string(udtpgexisting.properties.port)
           }
           CONNECTION_POSTGRES_USERNAME: {
-            value: udtpgexisting.properties.username
+            value: udtpgexisting.properties.status.binding.username
           }
           CONNECTION_POSTGRES_DATABASE: {
             value: udtpgexisting.properties.database
           }
           CONNECTION_POSTGRES_PASSWORD: {
-            value: udtpgexisting.properties.password
+            value: udtpgexisting.properties.status.binding.password
           }
         }
     }

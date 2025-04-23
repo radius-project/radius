@@ -36,10 +36,16 @@ types:
             port:
               type: string
               description: The port number of the database.
-            username:
-              type: string
-              description: The username for the database.
-            password:
-              type: string
-              description: The password for the database.
+            status:
+              type: object
+              properties:
+                binding:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                      description: The username for the database.
+                    password:
+                      type: string
+                      description: The password for the database.
     capabilities: ["SupportsRecipes"]
