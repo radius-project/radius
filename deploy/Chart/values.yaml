@@ -114,7 +114,7 @@ dashboard:
       memory: "300Mi"
 
 database:
-  enabled: false
+  enabled: false # Enable the Postgres database install
   postgres_user: "radius"
   image: ghcr.io/radius-project/mirror/postgres
   tag: latest
