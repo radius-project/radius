@@ -5,6 +5,9 @@ param registry string
 
 param version string
 
+@description('PostgreSQL password')
+param password string = 'P@ssword1234$$'
+
 resource udtenv 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'dynamicrp-postgres-env'
   location: 'global'
@@ -30,5 +33,6 @@ resource udtpg 'Test.Resources/postgres@2023-10-01-preview' = {
   location: 'global'
   properties: {
     environment: udtenv.id
+    password: password
   }
 }

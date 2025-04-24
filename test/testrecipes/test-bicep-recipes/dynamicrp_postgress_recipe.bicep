@@ -26,7 +26,7 @@ param user string = 'postgres'
 @description('PostgreSQL password')
 @secure()
 #disable-next-line secure-parameter-default
-param password string = 'P@ssword1234$$'
+param password string = context.resource.properties.password
 
 @description('Tag to pull for the postgres container image.')
 param tag string = '16-alpine'
