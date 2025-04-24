@@ -113,9 +113,11 @@ env:
   # Gitea version
   GITEA_VERSION: "v11.0.0"
 
-  # Dapr version
-  DAPR_VER: "1.15.4"
-  # Dapr Dashboard version
+  # Dapr CLI version
+  DAPR_CLI_VER: "1.15.1"
+  # Dapr runtime version
+  DAPR_RUNTIME_VER: "1.15.4"
+  # Dapr dashboard version
   DAPR_DASHBOARD_VER: "0.15.0"
 
 jobs:
@@ -589,10 +591,10 @@ jobs:
           curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
           
           echo "Port forwarding established successfully"
-      - name: Install dapr into cluster
+      - name: Install Dapr CLI and control plane
         run: |
-          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
-          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_VER }} --dashboard-version ${{ env.DAPR_DASHBOARD_VER }}
+          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
+          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_RUNTIME_VER }} --dashboard-version ${{ env.DAPR_DASHBOARD_VER }}
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
