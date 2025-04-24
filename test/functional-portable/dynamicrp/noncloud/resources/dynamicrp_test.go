@@ -276,7 +276,7 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 
 				found := false
 				for _, env := range targetContainer.Env {
-					if env.Name == "CONNECTION_UDTCONFIGMAP_DATA" {
+					if env.Name == "UDTCONFIGMAP_DATA" {
 						require.Equal(t, expected_env_value, env.Value)
 						found = true
 						break

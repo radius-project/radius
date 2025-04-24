@@ -37,7 +37,7 @@ resource externalresourcecntr 'Applications.Core/containers@2023-10-01-preview' 
         command: ['/bin/sh']
         args: ['-c', 'while true; do echo hello; sleep 10;done']
         env: {
-          CONNECTION_UDTCONFIGMAP_DATA: {
+          UDTCONFIGMAP_DATA: {
             value: externalresource.properties.configMap
           }          
         }
