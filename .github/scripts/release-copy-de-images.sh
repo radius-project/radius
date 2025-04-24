@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ------------------------------------------------------------
-# Copyright 2023 The Radius Authors.
+# Copyright 2025 The Radius Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,13 +27,6 @@ if [[ -z "$DOCKER_TAG_VERSION" ]]; then
   exit 1
 fi
 
-if ! command -v docker &> /dev/null
-then
-    echo "Docker could not be found. Please install Docker to proceed."
-    exit 1
-fi
-
-# TODO: probably doesn't have docker by default. Also need to login to ghcr.io
-docker pull ghcr.io/azure-octo/deployment-engine:"$DOCKER_TAG_VERSION"
-docker tag ghcr.io/azure-octo/deployment-engine:"$DOCKER_TAG_VERSION" ghcr.io/radius-project/deployment-engine:"$DOCKER_TAG_VERSION"
+docker pull radiusdeploymentengine.azurecr.io:"$DOCKER_TAG_VERSION"
+docker tag radiusdeploymentengine.azurecr.io:"$DOCKER_TAG_VERSION" ghcr.io/radius-project/deployment-engine:"$DOCKER_TAG_VERSION"
 docker push ghcr.io/radius-project/deployment-engine:"$DOCKER_TAG_VERSION"

@@ -218,4 +218,4 @@ jobs:
       - name: Copy Deployment Engine container images to ghcr.io/radius-project
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
-          ./radius/.github/scripts/release-copy-de-images.sh ${{ env.REL_CHANNEL }}
+          ./radius/.github/scripts/release-copy-de-images.sh ${{ steps.get-version.outputs.release-channel }}
