@@ -239,7 +239,7 @@ jobs:
       - name: Copy Deployment Engine images from ACR to GHCR
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
-          TAG=${{ steps.get-version.outputs.release-version }}
+          TAG=${{ steps.get-version.outputs.release-channel }}
           docker buildx imagetools create \
             --tag ghcr.io/radius-project/deployment-engine:${TAG} \
             radiusdeploymentengine.azurecr.io/deployment-engine:${TAG}
