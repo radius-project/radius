@@ -748,7 +748,7 @@ func Test_Render_WithInvalidTimeoutPolicy(t *testing.T) {
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
 	require.Equal(t, err.(*v1.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, err.(*v1.ErrClientRP).Message, "request timeout must be greater than backend request timeout")
+	require.Equal(t, err.(*v1.ErrClientRP).Message, "request timeout must be greater than or equal to backend request timeout")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)
