@@ -113,7 +113,7 @@ func Test_Process(t *testing.T) {
 	})
 
 	// test to check if the properties like environment, application , status etc are not overwritten if they are provided as part of the recipe output.
-	t.Run("do not overwite properties like environment ", func(t *testing.T) {
+	t.Run("do not overwite basic properties", func(t *testing.T) {
 		resource := &datamodel.DynamicResource{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
@@ -162,6 +162,33 @@ func Test_Process(t *testing.T) {
 
 		require.Equal(t, environment, properties["environment"])
 		require.Equal(t, application, properties["application"])
+	})
+
+	t.Run("invalid resource id", func(t *testing.T) {
+		resource := &datamodel.DynamicResource{}
+		options := processors.Options{
+			RecipeOutput: &recipes.RecipeOutput{
+				Resources: []string{
+					"/planes/kubernetes/local/namespaces/test-ns/providers/core/Service/test-svc",
+				},
+				Values: map[string]any{
+					"host":        hostname,
+					"port":        float64(port),
+					"database":    database,
+					"username":    username,
+					"environment": "overwrite-environment",
+					"application": "overwrite-application",
+				},
+				Secrets: map[string]any{
+					"password": password,
+				},
+			},
+			UcpClient: clientFactory,
+		}
+
+		err := processor.Process(context.Background(), resource, options)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "is not a valid resource id")
 	})
 }
 

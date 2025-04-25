@@ -25,6 +25,7 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"golang.org/x/exp/slices"
 )
 
 var _ processors.ResourceProcessor[*datamodel.DynamicResource, datamodel.DynamicResource] = (*DynamicProcessor)(nil)
@@ -91,15 +92,15 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 		return err
 	}
 
-	// Filter out the keyword properties from the resource properties
+	// Filter out the basic properties from the resource properties
 	// This is to avoid overwriting the properties like application, environment etc when they are added as computed values or secret values.
-	keywordProperties := []string{"application", "environment", "status"}
+	basicProperties := []string{"application", "environment", "status"}
 	resourceProps := []string{}
 	schema := apiVersionResource.APIVersionResource.Properties.Schema
 	if schema != nil {
 		if properties, ok := schema["properties"].(map[string]any); ok {
 			for key := range properties {
-				if !contains(keywordProperties, key) {
+				if !slices.Contains(basicProperties, key) {
 					resourceProps = append(resourceProps, key)
 				}
 			}
@@ -108,28 +109,17 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 
 	// Add the computed values to the resource properties if they are part of the schema.
 	for key, value := range computedValues {
-		if contains(resourceProps, key) {
+		if slices.Contains(resourceProps, key) {
 			resource.Properties[key] = value
 		}
 	}
 
 	// Add the secret values to the resource properties if they are part of the schema.
 	for key, value := range secretValues {
-		if contains(resourceProps, key) {
+		if slices.Contains(resourceProps, key) {
 			resource.Properties[key] = value.Value
 		}
 	}
 
 	return nil
-}
-
-// Helper function to check if a slice contains a specific string
-func contains(slice []string, item string) bool {
-	for _, v := range slice {
-		if v == item {
-			return true
-		}
-	}
-
-	return false
 }
