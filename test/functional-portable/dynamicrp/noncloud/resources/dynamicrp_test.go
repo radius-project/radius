@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Test_DynamicRP_Recipe tests creation of a resource using a user-defined type and its associated recipe.
@@ -99,5 +100,94 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 		},
 	})
 
+	test.Test(t)
+}
+
+// This test verifies deployment of shared environment scoped resource using 'existing' keyword.
+// It has 2 steps:
+// 1. Deploy the environment and postgres resource to the environment namespace.
+// 2. Deploy an app that uses the existing postgres resource using the 'existing' keyword.
+func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
+	envTemplate := "testdata/postgres-env-scoped-resource.bicep"
+	existingTemplate := "testdata/postgres-existing-and-cntr.bicep"
+	name := "dynamicrp-postgres-env"
+	appNamespace := "dynamicrp-postgres-existing-app"
+	appName := "dynamicrp-postgres-existing"
+	resourceTypeName := "Test.Resources/postgres"
+	filepath := "testdata/usertypealpha.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", resourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, resourceTypeName)
+			},
+		},
+		{
+			Executor: step.NewDeployExecutor(envTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: "existing-postgres",
+						Type: "test.resources/postgres",
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource("postgresql", "postgresql").ValidateLabels(false),
+					},
+				},
+			},
+		},
+		{
+			Executor: step.NewDeployExecutor(existingTemplate),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "postgres-cntr",
+						Type: validation.ContainersResource,
+						App:  appName,
+					},
+					{
+						Name: "existing-postgres",
+						Type: "test.resources/postgres",
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "postgres-cntr").ValidateLabels(false),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				// Verify that the environment namespace is created.
+				_, err := ct.Options.K8sClient.CoreV1().Namespaces().Get(context.Background(), name, metav1.GetOptions{})
+				require.NoError(t, err)
+			},
+		},
+	})
 	test.Test(t)
 }

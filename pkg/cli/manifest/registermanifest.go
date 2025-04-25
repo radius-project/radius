@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -229,17 +230,25 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return fmt.Errorf("type %s not found in manifest file %s", typeName, filePath)
 	}
 
-	logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, typeName)
-	resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, v20231001preview.ResourceTypeResource{
-		Properties: &v20231001preview.ResourceTypeProperties{
-			DefaultAPIVersion: resourceProvider.Types[typeName].DefaultAPIVersion,
-		},
-	}, nil)
-	if err != nil {
-		return err
-	}
+	logIfEnabled(logger, "Creating resource type %s/%s with capabilities %s ", resourceProvider.Name, typeName, strings.Join(resourceType.Capabilities, ","))
 
-	_, err = resourceTypePoller.PollUntilDone(ctx, nil)
+	err = retryOperation(ctx, func() error {
+		resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, v20231001preview.ResourceTypeResource{
+			Properties: &v20231001preview.ResourceTypeProperties{
+				Capabilities:      to.SliceOfPtrs(resourceType.Capabilities...),
+				DefaultAPIVersion: resourceType.DefaultAPIVersion,
+			},
+		}, nil)
+		if err != nil {
+			return err
+		}
+
+		_, err = resourceTypePoller.PollUntilDone(ctx, nil)
+		if err != nil {
+			return err
+		}
+		return nil
+	}, logger)
 	if err != nil {
 		return err
 	}
