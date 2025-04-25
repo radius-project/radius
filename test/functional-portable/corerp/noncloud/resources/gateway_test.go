@@ -261,7 +261,7 @@ func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
 			Details: []step.DeploymentErrorDetail{
 				{
 					Code:            "BadRequest",
-					MessageContains: "request timeout must be greater than backend request timeout",
+					MessageContains: "request timeout must be greater than or equal to backend request timeout",
 				},
 			},
 		},
