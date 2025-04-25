@@ -30,6 +30,11 @@ func TestNewContext(t *testing.T) {
 		ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+		Properties: map[string]any{
+			"throughput":               100,
+			"isZoneRedundant":          false,
+			"databaseAccountOfferType": "Standard",
+		},
 	}
 
 	ctxTests := []struct {
@@ -60,18 +65,19 @@ func TestNewContext(t *testing.T) {
 			out: &Context{
 				Resource: Resource{
 					ResourceInfo: ResourceInfo{
-						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 						Name: "mongo0",
+						ID:   testMetadata.ResourceID,
 					},
-					Type: "applications.datastores/mongodatabases",
+					Type:       "applications.datastores/mongodatabases",
+					Properties: testMetadata.Properties,
 				},
 				Application: ResourceInfo{
 					Name: "testApplication",
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					ID:   testMetadata.ApplicationID,
 				},
 				Environment: ResourceInfo{
 					Name: "env0",
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					ID:   testMetadata.EnvironmentID,
 				},
 				Runtime: recipes.RuntimeConfiguration{
 					Kubernetes: &recipes.KubernetesRuntime{
@@ -110,18 +116,19 @@ func TestNewContext(t *testing.T) {
 			out: &Context{
 				Resource: Resource{
 					ResourceInfo: ResourceInfo{
-						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 						Name: "mongo0",
+						ID:   testMetadata.ResourceID,
 					},
-					Type: "applications.datastores/mongodatabases",
+					Type:       "applications.datastores/mongodatabases",
+					Properties: testMetadata.Properties,
 				},
 				Application: ResourceInfo{
 					Name: "testApplication",
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					ID:   testMetadata.ApplicationID,
 				},
 				Environment: ResourceInfo{
 					Name: "env0",
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					ID:   testMetadata.EnvironmentID,
 				},
 				Runtime: recipes.RuntimeConfiguration{
 					Kubernetes: &recipes.KubernetesRuntime{
@@ -150,18 +157,19 @@ func TestNewContext(t *testing.T) {
 			out: &Context{
 				Resource: Resource{
 					ResourceInfo: ResourceInfo{
-						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 						Name: "mongo0",
+						ID:   testMetadata.ResourceID,
 					},
-					Type: "applications.datastores/mongodatabases",
+					Type:       "applications.datastores/mongodatabases",
+					Properties: testMetadata.Properties,
 				},
 				Application: ResourceInfo{
 					Name: "testApplication",
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					ID:   testMetadata.ApplicationID,
 				},
 				Environment: ResourceInfo{
 					Name: "env0",
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					ID:   testMetadata.EnvironmentID,
 				},
 				Runtime: recipes.RuntimeConfiguration{
 					Kubernetes: &recipes.KubernetesRuntime{

@@ -27,6 +27,9 @@ types:
             application:
               type: string
               description: The resource ID of the application.
+            password:
+              type: string
+              description: The password for the database.
             status:
               type: object
               properties:
