@@ -77,11 +77,10 @@ if [[ -z "$RELEASE_BRANCH_NAME" ]]; then
   exit 1
 fi
 
-
-# REL_CHANNEL is the release channel (e.g. 0.1, 0.1-rc1)
+# REL_CHANNEL is the release channel (e.g. 0.1, 0.1.0-rc1)
 REL_CHANNEL=""
 
-# If the release version is a release candidate (e.g. 0.1-rc1), use the full version as the channel
+# If the release version is a release candidate (e.g. 0.1.0-rc1), use the full version as the channel
 # Otherwise, use the major and minor version (e.g. 0.1)
 if [[ "$RELEASE_VERSION" == *"-rc"* ]]; then
   REL_CHANNEL=$RELEASE_VERSION

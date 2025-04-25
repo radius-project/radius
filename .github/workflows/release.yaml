@@ -123,6 +123,7 @@ jobs:
     name: Create a new Radius release
     if: github.repository == 'radius-project/radius' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment: release
     steps:
       - name: Checkout radius-project/radius@main
         uses: actions/checkout@v4
@@ -215,7 +216,30 @@ jobs:
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types-aws ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
-      - name: Copy Deployment Engine container images to ghcr.io/radius-project
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to ACR
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        shell: bash
+        run: |
+          az acr login --name radiusdeploymentengine
+      - name: Login to GitHub Container Registry
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: rad-ci-bot
+          password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+      - name: Copy Deployment Engine images from ACR to GHCR
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
-          ./radius/.github/scripts/release-copy-de-images.sh ${{ steps.get-version.outputs.release-channel }}
+          TAG=${{ steps.get-version.outputs.release-version }}
+          docker buildx imagetools create \
+            --tag ghcr.io/radius-project/deployment-engine:${TAG} \
+            radiusdeploymentengine.azurecr.io/deployment-engine:${TAG}
