@@ -205,16 +205,16 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 //   - Validates the environment variable in the container to ensure it contains the expected value
 func Test_DynamicRP_ExternalResource(t *testing.T) {
 	template := "testdata/externalresource.bicep"
-	name := "udt-externalresource-app"
+	appName := "udt-externalresource-app"
 	appNamespace := "udt-externalresource-env-udt-externalresource-app"
-	expected_env_value := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
+	expectedEnvValue := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
 	resourceTypeName := "Test.Resources/externalResource"
 	containerName := "externalresourcecntr"
 	filepath := "testdata/usertypealpha.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	test := rp.NewRPTest(t, name, []rp.TestStep{
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
 			// The first step in this test is to create/register a user-defined resource type using the CLI.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
@@ -231,7 +231,6 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 			},
 		},
 		{
-			// The next step is to deploy a bicep file using a default recipe for the resource type registered.
 			Executor: step.NewDeployExecutor(template),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
@@ -240,7 +239,7 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: name,
+						Name: appName,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -277,7 +276,7 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 				found := false
 				for _, env := range targetContainer.Env {
 					if env.Name == "UDTCONFIGMAP_DATA" {
-						require.Equal(t, expected_env_value, env.Value)
+						require.Equal(t, expectedEnvValue, env.Value)
 						found = true
 						break
 					}
