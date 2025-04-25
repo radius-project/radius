@@ -52,3 +52,23 @@ types:
                       type: string
                       description: The password for the database.
     capabilities: ["SupportsRecipes"]
+  externalResource:
+    capabilities: []
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            configMap:
+              type: string
+              description: The data contained in a config map.
+          required:
+            - application
+            - environment
+            - configMap 
