@@ -84,10 +84,6 @@ rad install kubernetes --reinstall
 	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
-	cmd.Flags().StringVar(&runner.DaprChart, "dapr-chart", "", "Specify a local file path to a helm chart to install Dapr from")
-	cmd.Flags().StringArrayVar(&runner.DaprSet, "dapr-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringArrayVar(&runner.DaprSetFile, "dapr-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
-
 	return cmd, runner
 }
 
@@ -107,11 +103,6 @@ type Runner struct {
 	ContourChart   string
 	ContourSet     []string
 	ContourSetFile []string
-
-	// Dapr
-	DaprChart   string
-	DaprSet     []string
-	DaprSetFile []string
 
 	Reinstall bool
 }
