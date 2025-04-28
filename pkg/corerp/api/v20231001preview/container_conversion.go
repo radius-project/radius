@@ -148,9 +148,10 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 
 	if src.Properties.Identity != nil {
 		converted.Properties.Identity = &rpv1.IdentitySettings{
-			Kind:       toIdentityKindDataModel(src.Properties.Identity.Kind),
-			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
-			Resource:   to.String(src.Properties.Identity.Resource),
+			Kind:            toIdentityKindDataModel(src.Properties.Identity.Kind),
+			OIDCIssuer:      to.String(src.Properties.Identity.OidcIssuer),
+			Resource:        to.String(src.Properties.Identity.Resource),
+			ManagedIdentity: to.StringArray(src.Properties.Identity.ManagedIdentity),
 		}
 	}
 	return converted, nil
@@ -295,9 +296,10 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	var identity *IdentitySettings
 	if c.Properties.Identity != nil {
 		identity = &IdentitySettings{
-			Kind:       fromIdentityKind(c.Properties.Identity.Kind),
-			Resource:   to.Ptr(c.Properties.Identity.Resource),
-			OidcIssuer: to.Ptr(c.Properties.Identity.OIDCIssuer),
+			Kind:            fromIdentityKind(c.Properties.Identity.Kind),
+			Resource:        to.Ptr(c.Properties.Identity.Resource),
+			OidcIssuer:      to.Ptr(c.Properties.Identity.OIDCIssuer),
+			ManagedIdentity: to.ArrayofStringPtrs(c.Properties.Identity.ManagedIdentity),
 		}
 	}
 
@@ -596,6 +598,11 @@ func toRuntimePropertiesDataModel(runtime *RuntimesProperties) *datamodel.Runtim
 			r.Kubernetes.Pod = string(serialiedPodPatch)
 		}
 	}
+	if runtime.Aci != nil {
+		r.ACI = &datamodel.ACIRuntime{
+			GatewayID: to.String(runtime.Aci.GatewayID),
+		}
+	}
 	return r
 }
 
@@ -614,6 +621,11 @@ func fromRuntimePropertiesDataModel(runtime *datamodel.RuntimeProperties) *Runti
 				return nil
 			}
 			r.Kubernetes.Pod = podPatch
+		}
+	}
+	if runtime.ACI != nil {
+		r.Aci = &ACIRuntimeProperties{
+			GatewayID: to.Ptr(runtime.ACI.GatewayID),
 		}
 	}
 	return r
