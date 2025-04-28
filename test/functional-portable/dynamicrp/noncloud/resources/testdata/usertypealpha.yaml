@@ -36,6 +36,9 @@ types:
             port:
               type: string
               description: The port number of the database.
+            password:
+              type: string
+              description: The password for the database.
             status:
               type: object
               properties:
@@ -45,7 +48,24 @@ types:
                     username:
                       type: string
                       description: The username for the database.
-                    password:
-                      type: string
-                      description: The password for the database.
     capabilities: ["SupportsRecipes"]
+  externalResource:
+    capabilities: []
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            configMap:
+              type: string
+              description: The data contained in a config map.
+          required:
+            - application
+            - environment
+            - configMap 

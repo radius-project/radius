@@ -588,7 +588,6 @@ jobs:
                   service-account-private-key-file: /etc/kubernetes/pki/sa.key
           EOF
 
-
       - name: Install Azure Keyvault CSI driver chart
         run: |
           helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts

@@ -38,10 +38,6 @@ const (
 	radiusReleaseName     = "radius"
 	radiusHelmRepo        = "oci://ghcr.io/radius-project/helm-chart"
 	RadiusSystemNamespace = "radius-system"
-
-	daprReleaseName     = "dapr"
-	daprHelmRepo        = "https://dapr.github.io/helm-charts"
-	DaprSystemNamespace = "dapr-system"
 )
 
 // ChartOptions describes the options for the a helm chart.

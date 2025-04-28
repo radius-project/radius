@@ -333,6 +333,31 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				data["type"] = 3 // This won't convert to our data model.
 			}
 
+			testResource := &TestResource{
+				Properties: TestResourceProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: TestApplicationID,
+						Environment: TestEnvironmentID,
+						Status: rpv1.ResourceStatus{
+							OutputResources: []rpv1.OutputResource{
+								{
+									ID: resources.MustParse(oldOutputResourceResourceID),
+								},
+							},
+						},
+					},
+					IsProcessed: false,
+					Recipe: portableresources.ResourceRecipe{
+						Name: "test-recipe",
+						Parameters: map[string]any{
+							"p1": "v1",
+						},
+					},
+				},
+			}
+
+			properties, err := GetPropertiesFromResource(testResource)
+			require.NoError(t, err)
 			recipeMetadata := recipes.ResourceMetadata{
 				Name:          "test-recipe",
 				EnvironmentID: TestEnvironmentID,
@@ -341,7 +366,9 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				Parameters: map[string]any{
 					"p1": "v1",
 				},
+				Properties: properties,
 			}
+
 			prevState := []string{
 				oldOutputResourceResourceID,
 			}
