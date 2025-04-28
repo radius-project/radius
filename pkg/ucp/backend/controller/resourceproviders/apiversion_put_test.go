@@ -105,7 +105,7 @@ func TestAPIVersionPutController_updateSummary(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			controller := &APIVersionPutController{}
-			updateFunc := controller.updateSummary(tt.id)
+			updateFunc := controller.updateSummary(tt.id, nil)
 			err := updateFunc(tt.initialSummary)
 			if tt.expectError {
 				require.Error(t, err)

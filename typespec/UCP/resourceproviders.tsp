@@ -185,7 +185,9 @@ model ResourceProviderSummaryResourceType {
 }
 
 @doc("The configuration of a resource type API version.")
-model ResourceTypeSummaryResultApiVersion {}
+model ResourceTypeSummaryResultApiVersion {
+  schema?: Record<unknown>;
+}
 
 model ResourceProviderBaseParameters<TResource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;

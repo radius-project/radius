@@ -4062,7 +4062,13 @@
     },
     "ResourceTypeSummaryResultApiVersion": {
       "type": "object",
-      "description": "The configuration of a resource type API version."
+      "description": "The configuration of a resource type API version.",
+      "properties": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      }
     }
   },
   "parameters": {

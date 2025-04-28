@@ -39,7 +39,12 @@ func (c *APIVersionPutController) Run(ctx context.Context, request *ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	err = updateResourceProviderSummaryWithETag(ctx, c.DatabaseClient(), summaryID, summaryNotFoundFail, c.updateSummary(id))
+	apiVersion, err := c.fetchAPIVersion(ctx, id)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = updateResourceProviderSummaryWithETag(ctx, c.DatabaseClient(), summaryID, summaryNotFoundFail, c.updateSummary(id, apiVersion))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -47,7 +52,22 @@ func (c *APIVersionPutController) Run(ctx context.Context, request *ctrl.Request
 	return ctrl.Result{}, nil
 }
 
-func (c *APIVersionPutController) updateSummary(id resources.ID) func(summary *datamodel.ResourceProviderSummary) error {
+func (c *APIVersionPutController) fetchAPIVersion(ctx context.Context, id resources.ID) (*datamodel.APIVersion, error) {
+	obj, err := c.DatabaseClient().Get(ctx, id.String())
+	if err != nil {
+		return nil, err
+	}
+
+	apiVersion := datamodel.APIVersion{}
+	err = obj.As(&apiVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	return &apiVersion, nil
+}
+
+func (c *APIVersionPutController) updateSummary(id resources.ID, apiVersion *datamodel.APIVersion) func(summary *datamodel.ResourceProviderSummary) error {
 	return func(summary *datamodel.ResourceProviderSummary) error {
 		if summary.Properties.ResourceTypes == nil {
 			summary.Properties.ResourceTypes = map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{}
@@ -68,6 +88,10 @@ func (c *APIVersionPutController) updateSummary(id resources.ID) func(summary *d
 		_, ok = resourceTypeEntry.APIVersions[apiVersionName]
 		if !ok {
 			resourceTypeEntry.APIVersions[apiVersionName] = datamodel.ResourceProviderSummaryPropertiesAPIVersion{}
+		} else {
+			resourceTypeEntry.APIVersions[apiVersionName] = datamodel.ResourceProviderSummaryPropertiesAPIVersion{
+				Schema: apiVersion.Properties.Schema,
+			}
 		}
 
 		summary.Properties.ResourceTypes[resourceTypeName] = resourceTypeEntry

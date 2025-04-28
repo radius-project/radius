@@ -727,7 +727,7 @@ type ResourceProviderSummary struct {
 // ResourceProviderSummaryResourceType - A resource type and its versions.
 type ResourceProviderSummaryResourceType struct {
 // REQUIRED; API versions supported by the resource type.
-	APIVersions map[string]map[string]any
+	APIVersions map[string]*ResourceTypeSummaryResultAPIVersion
 
 // The resource type capabilities.
 	Capabilities []*string
@@ -773,6 +773,12 @@ type ResourceTypeResourceListResult struct {
 
 // The link to the next page of items
 	NextLink *string
+}
+
+// ResourceTypeSummaryResultAPIVersion - The configuration of a resource type API version.
+type ResourceTypeSummaryResultAPIVersion struct {
+// Dictionary of
+	Schema map[string]any
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

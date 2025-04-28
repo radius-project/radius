@@ -73,7 +73,7 @@ func Test_Run(t *testing.T) {
 			Name: to.Ptr("MyCompany.Resources"),
 			ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
 				"testResources": &v20231001preview.ResourceProviderSummaryResourceType{
-					APIVersions: map[string]map[string]any{
+					APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
 						"2023-10-01-preview": {},
 					},
 					Capabilities: []*string{},
