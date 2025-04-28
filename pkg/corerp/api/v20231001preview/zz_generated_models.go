@@ -6,6 +6,12 @@ package v20231001preview
 
 import "time"
 
+// ACIRuntimeProperties - The runtime configuration properties for Kubernetes
+type ACIRuntimeProperties struct {
+// The ID of the gateway that is providing L7 traffic for the container
+	GatewayID *string
+}
+
 // ApplicationGraphConnection - Describes the connection between two resources.
 type ApplicationGraphConnection struct {
 // REQUIRED; The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and
@@ -1297,6 +1303,9 @@ type ResourceStatus struct {
 
 // RuntimesProperties - The properties for runtime configuration
 type RuntimesProperties struct {
+// The runtime configuration properties for ACI
+	Aci *ACIRuntimeProperties
+
 // The runtime configuration properties for Kubernetes
 	Kubernetes *KubernetesRuntimeProperties
 }

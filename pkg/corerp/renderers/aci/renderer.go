@@ -135,7 +135,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// Support only one port for now.
 	// port 80 has to be defined
 	firstPort := int32(80)
-	gatewayProvides := ""
+	gateway := resources.MustParse(resource.Properties.Runtimes.ACI.GatewayID).Name()
 	for _, v := range properties.Container.Ports {
 		// exposed within container group for interacting with the container
 		containerPorts = append(containerPorts, &ngroupsclient.ContainerPort{
@@ -163,8 +163,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	nsgID := internalLBNSGID
-	if gatewayProvides != "" {
-		nsgID = options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/networkSecurityGroups/" + resources.MustParse(gatewayProvides).Name() + "-nsg"
+	if gateway != "" {
+		nsgID = options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/networkSecurityGroups/" + gateway + "-nsg"
 	}
 
 	// Build Subnet for this container
@@ -205,7 +205,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	appSubnetID := vnetID + "/subnets/" + resource.Name
 
 	profileDep := []string{rpv1.LocalIDAzureVirtualNetworkSubnet}
-	if gatewayProvides == "" {
+	if gateway == "" {
 		internalSubnetID := vnetID + "/subnets/internal-lb"
 
 		frontendIPConfID := internalLBID + "/frontendIPConfigurations/" + resource.Name
@@ -297,7 +297,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		orResources = append(orResources, lbResource)
 		profileDep = append(profileDep, rpv1.LocalIDAzureContainerLoadBalancer)
 	} else {
-		appgwID := options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/applicationGateways/" + resources.MustParse(gatewayProvides).Name()
+		appgwID := options.Environment.Compute.ACICompute.ResourceGroup + "/providers/Microsoft.Network/applicationGateways/" + gateway
 		networkprofile = &ngroupsclient.NetworkProfile{
 			ApplicationGateway: &ngroupsclient.ApplicationGateway{
 				Resource: &ngroupsclient.APIEntityReference{
