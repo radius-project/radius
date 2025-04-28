@@ -138,6 +138,19 @@ func NewK8sSecretForResourceWithResourceName(resourceName string) K8sObject {
 	}
 }
 
+// NewK8sConfigMapForResource creates a K8sObject with input name.
+func NewK8sConfigMapForResource(resourceName string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "configmaps",
+		},
+		Kind:         "ConfigMap",
+		ResourceName: resourceName,
+	}
+}
+
 // SaveContainerLogs watches for all pods in the given namespace and saves their container logs to disk.
 func SaveContainerLogs(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) (watchk8s.Interface, error) {
 	return watchForPods(ctx, k8s, namespace, logPrefix, "")
