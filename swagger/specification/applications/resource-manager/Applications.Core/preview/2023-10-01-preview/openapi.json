@@ -2234,6 +2234,16 @@
     }
   },
   "definitions": {
+    "ACIRuntimeProperties": {
+      "type": "object",
+      "description": "The runtime configuration properties for Kubernetes",
+      "properties": {
+        "gatewayID": {
+          "type": "string",
+          "description": "The ID of the gateway that is providing L7 traffic for the container"
+        }
+      }
+    },
     "ApplicationGraphConnection": {
       "type": "object",
       "description": "Describes the connection between two resources.",
@@ -4332,6 +4342,10 @@
         "kubernetes": {
           "$ref": "#/definitions/KubernetesRuntimeProperties",
           "description": "The runtime configuration properties for Kubernetes"
+        },
+        "aci": {
+          "$ref": "#/definitions/ACIRuntimeProperties",
+          "description": "The runtime configuration properties for ACI"
         }
       }
     },

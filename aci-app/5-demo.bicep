@@ -2,8 +2,7 @@ extension radius
 
 param aciscope string = '/subscriptions/<>/resourceGroups/<>'
 
-param miname string
-
+param managedIdentity string = ''
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'radius-demo'
   properties: {
@@ -12,11 +11,11 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       resourceGroup: aciscope
       identity: {
         kind:'managedIdentity'
-        managedIdentity: miname
+        managedIdentity: [managedIdentity]
       }
     }
     recipes: {
-      'Applications.Datastores/redisCaches':{
+      'Applications.Datastores/redisCaches': {
         default: {
           templateKind: 'bicep'
           plainHttp: true
@@ -90,6 +89,11 @@ resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
         replicas: 2
       }
     ]
+    runtimes: {
+      aci: {
+        gatewayID: gateway.id
+      }
+    }
   }
 }
 
