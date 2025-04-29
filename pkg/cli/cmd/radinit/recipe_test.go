@@ -42,14 +42,14 @@ func Test_getRecipeProperties(t *testing.T) {
 				DevRecipe{
 					"mongodatabases",
 					ds_ctrl.MongoDatabasesResourceType,
-					RecipeRepositoryPrefix + "mongodatabases",
+					DefaultRecipeRepositoryPrefix + "mongodatabases",
 				},
 				"0.20",
 			},
 			map[string]corerp.RecipePropertiesClassification{
 				"default": &corerp.BicepRecipeProperties{
 					TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-					TemplatePath: to.Ptr(RecipeRepositoryPrefix + "mongodatabases:0.20"),
+					TemplatePath: to.Ptr(DefaultRecipeRepositoryPrefix + "mongodatabases:0.20"),
 				},
 			},
 		},

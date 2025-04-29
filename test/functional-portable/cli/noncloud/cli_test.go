@@ -774,7 +774,7 @@ func Test_DevRecipes(t *testing.T) {
 		tag = "latest"
 	}
 
-	for _, devRecipe := range radinit.AvailableDevRecipes() {
+	for _, devRecipe := range radinit.AvailableDevRecipes("") {
 		require.Regexp(t, devRecipe.ResourceType, output)
 		require.Regexp(t, devRecipe.RepoPath+":"+tag, output)
 	}
