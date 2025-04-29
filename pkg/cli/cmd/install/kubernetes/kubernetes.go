@@ -51,6 +51,9 @@ rad install kubernetes
 # Install Radius with default settings in specified Kubernetes context
 rad install kubernetes --kubecontext mycluster
 
+# Install Radius with Contour ingress controller
+rad install kubernetes --contour-enabled
+
 # Install Radius with overrides in the current Kubernetes context
 rad install kubernetes --set key=value
 
@@ -80,6 +83,7 @@ rad install kubernetes --reinstall
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
+	cmd.Flags().BoolVar(&runner.ContourEnabled, "contour-enabled", false, "Install Contour ingress controller (disabled by default)")
 	cmd.Flags().StringVar(&runner.ContourChart, "contour-chart", "", "Specify a local file path to a helm chart to install Contour from")
 	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
@@ -100,6 +104,7 @@ type Runner struct {
 	SetFile []string
 
 	// Contour
+	ContourEnabled bool
 	ContourChart   string
 	ContourSet     []string
 	ContourSetFile []string
@@ -139,6 +144,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			SetFileArgs: r.SetFile,
 		},
 		Contour: helm.ContourOptions{
+			Enabled:     r.ContourEnabled,
 			ChartPath:   r.ContourChart,
 			SetArgs:     r.ContourSet,
 			SetFileArgs: r.ContourSetFile,

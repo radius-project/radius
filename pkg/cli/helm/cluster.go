@@ -62,6 +62,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 
 	return ClusterOptions{
 		Contour: ContourOptions{
+			Enabled:      false,
 			ChartVersion: ContourChartDefaultVersion,
 			ChartRepo:    contourHelmRepo,
 		},
@@ -101,6 +102,8 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	}
 
 	// Apply Contour overrides
+	options.Contour.Enabled = cliOptions.Contour.Enabled
+
 	if cliOptions.Contour.ChartVersion != "" {
 		options.Contour.ChartVersion = cliOptions.Contour.ChartVersion
 	}
@@ -137,10 +140,13 @@ func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext str
 		return false, err
 	}
 
-	err = ApplyContourHelmChart(clusterOptions.Contour, kubeContext)
-	if err != nil {
-		return false, err
+	if clusterOptions.Contour.Enabled {
+		err = ApplyContourHelmChart(clusterOptions.Contour, kubeContext)
+		if err != nil {
+			return false, err
+		}
 	}
+
 	// If Radius is installed, return true
 	if radiusFound {
 		return true, err
