@@ -41,6 +41,7 @@ const (
 )
 
 type ContourOptions struct {
+	Enabled      bool
 	ChartRepo    string
 	ChartPath    string
 	ChartVersion string
