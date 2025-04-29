@@ -29,6 +29,12 @@ on:
       - 'release/*'
     paths:
       - 'versions.yaml'
+  
+permissions:
+  id-token: write
+  packages: write
+  pull-requests: write
+  contents: read
 
 env:
   GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
