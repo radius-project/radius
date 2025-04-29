@@ -55,24 +55,16 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 
 	return ClusterOptions{
-		Radius: RadiusChartOptions{
-			ChartOptions: ChartOptions{
-				ChartVersion: chartVersion,
-				Namespace:    RadiusSystemNamespace,
-				ReleaseName:  radiusReleaseName,
-				ChartRepo:    radiusHelmRepo,
-				Wait:         true,
-			},
+		Contour: ContourOptions{
+			Enabled:      false,
+			ChartVersion: ContourChartDefaultVersion,
+			ChartRepo:    contourHelmRepo,
 		},
-		Contour: ContourChartOptions{
-			ChartOptions: ChartOptions{
-				ChartVersion: ContourChartDefaultVersion,
-				Namespace:    RadiusSystemNamespace,
-				ReleaseName:  contourReleaseName,
-				ChartRepo:    contourHelmRepo,
-				Wait:         false,
-			},
-			HostNetwork: false,
+		Radius: ChartOptions{
+			ChartVersion: chartVersion,
+			Namespace:    RadiusSystemNamespace,
+			ReleaseName:  radiusReleaseName,
+			ChartRepo:    radiusHelmRepo,
 		},
 	}
 }
@@ -99,8 +91,27 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.SetFileArgs = cliOptions.Radius.SetFileArgs
 	}
 
-	if cliOptions.Radius.ChartVersion != "" {
-		options.Radius.ChartVersion = cliOptions.Radius.ChartVersion
+	// Apply Contour overrides
+	options.Contour.Enabled = cliOptions.Contour.Enabled
+
+	if cliOptions.Contour.ChartVersion != "" {
+		options.Contour.ChartVersion = cliOptions.Contour.ChartVersion
+	}
+
+	if cliOptions.Contour.ChartRepo != "" {
+		options.Contour.ChartRepo = cliOptions.Contour.ChartRepo
+	}
+
+	if cliOptions.Contour.ChartPath != "" {
+		options.Contour.ChartPath = cliOptions.Contour.ChartPath
+	}
+
+	if len(cliOptions.Contour.SetArgs) > 0 {
+		options.Contour.SetArgs = cliOptions.Contour.SetArgs
+	}
+
+	if len(cliOptions.Contour.SetFileArgs) > 0 {
+		options.Contour.SetFileArgs = cliOptions.Contour.SetFileArgs
 	}
 
 	return options
@@ -165,17 +176,19 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
 
-	// Install Contour
-	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
-	if err != nil {
-		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
-	}
-	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
-	if err != nil {
-		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
+	if clusterOptions.Contour.Enabled {
+		err = ApplyContourHelmChart(clusterOptions.Contour, kubeContext)
+		if err != nil {
+			return false, err
+		}
 	}
 
-	return nil
+	// If Radius is installed, return true
+	if radiusFound {
+		return true, err
+	} else {
+		return false, err
+	}
 }
 
 // UninstallRadius uninstalls Radius and its dependencies (Contour) from the cluster using the provided options.
