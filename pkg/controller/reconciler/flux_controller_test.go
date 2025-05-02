@@ -149,6 +149,8 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 		Metrics: server.Options{
 			BindAddress: "0",
 		},
+		// Disable leader election for tests to prevent timeout
+		LeaderElection: false,
 	})
 	require.NoError(t, err)
 
@@ -161,10 +163,34 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 	err = (fluxController).SetupWithManager(mgr)
 	require.NoError(t, err)
 
+	mgrCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	managerErr := make(chan error, 1)
 	go func() {
-		err := mgr.Start(ctx)
-		require.NoError(t, err)
+		if err := mgr.Start(mgrCtx); err != nil {
+			managerErr <- err
+		}
 	}()
+
+	t.Log("Waiting for cache to be ready")
+	waitCtx, waitCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer waitCancel()
+
+	err = wait.PollUntilContextTimeout(waitCtx, 100*time.Millisecond, 30*time.Second, true,
+		func(ctx context.Context) (bool, error) {
+			select {
+			case err := <-managerErr:
+				return false, fmt.Errorf("manager failed to start: %w", err)
+			default:
+				// No error, continue checking cache
+			}
+
+			return mgr.GetCache().WaitForCacheSync(ctx), nil
+		})
+
+	require.NoError(t, err, "timeout waiting for cache to be ready")
+	t.Log("Cache is ready")
 
 	var archiveFetcherCalls []any
 	var bicepCalls []any
