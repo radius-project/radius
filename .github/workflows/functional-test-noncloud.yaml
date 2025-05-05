@@ -426,7 +426,7 @@ jobs:
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha.yaml --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
       - name: Generate test bicepconfig.json
         run: |
