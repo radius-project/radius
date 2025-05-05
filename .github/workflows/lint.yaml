@@ -75,7 +75,7 @@ jobs:
           npx tsp format --check "**/*.tsp"
           popd
       - name: Run linter
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
           version: "v1.64.6"
           args: --timeout=10m
