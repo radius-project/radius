@@ -23,8 +23,6 @@ import (
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	azruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -89,7 +87,11 @@ func (handler *azureCGNGroupsHandler) Delete(ctx context.Context, options *Delet
 	subID := options.Resource.ID.FindScope("subscriptions")
 	resourceGroupName := options.Resource.ID.FindScope("resourceGroups")
 
-	pl := runtime.NewPipeline("github.com/radius-project/radius", "v0.0.1", runtime.PipelineOptions{}, &policy.ClientOptions{})
+	pl, err := armruntime.NewPipeline("github.com/radius-project/radius", "v0.0.1", handler.arm.ClientOptions.Cred, azruntime.PipelineOptions{}, &armpolicy.ClientOptions{})
+	if err != nil {
+		return err
+	}
+
 	cgp := ngroupsclient.NewNGroupsClient(subID, pl)
 
 	logger.Info("deleting NGroup...")
