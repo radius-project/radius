@@ -80,7 +80,7 @@ func (dw *deploymentWatcher) Run(ctx context.Context) error {
 	// Starting a watch will populate the current state as well as give us updates
 	//
 	// RetryWatcher wraps the normal watch functionality to trigger retries when a watch expires or errors.
-	watcher, err := watchtools.NewRetryWatcher("1", &cache.ListWatch{
+	watcher, err := watchtools.NewRetryWatcherWithContext(ctx, "1", &cache.ListWatch{
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			return pods.Watch(ctx, listOptions)
 		},
