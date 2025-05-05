@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	RadiusPlane = "/planes/radius/"
-	PlaneName   = "local"
+	radiusPlane = "/planes/radius/"
+	planeName   = "local"
 )
 
 var _ ctrl.Controller = (*GetGraph)(nil)
@@ -79,7 +79,7 @@ func (ctrl *GetGraph) Run(ctx context.Context, w http.ResponseWriter, req *http.
 	clientOptions := sdk.NewClientOptions(ctrl.connection)
 
 	ucpApplicationsManagementClient := &clients.UCPApplicationsManagementClient{
-		RootScope:     RadiusPlane + PlaneName,
+		RootScope:     radiusPlane + planeName,
 		ClientOptions: clientOptions,
 	}
 
