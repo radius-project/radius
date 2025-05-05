@@ -149,6 +149,7 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 		Metrics: server.Options{
 			BindAddress: "0",
 		},
+		LeaderElection: false,
 	})
 	require.NoError(t, err)
 
