@@ -143,7 +143,7 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-postgres.bicep"
 	appName := "corerp-resources-terraform-pg-app"
 	envName := "corerp-resources-terraform-pg-env"
-	extenderName := "corerp-resources-terraform-pg"
+	extenderName := "corerp-resources-terraform-pgsapp"
 	secretName := "pgs-secretstore"
 	secretResourceName := appName + "/" + secretName
 	userName := "postgres"

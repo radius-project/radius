@@ -75,16 +75,20 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 	}
 
 	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
-
 	// If we have a setup error (error before recipe and output resources are executed, we skip engine/driver deletion.
 	// If we have an execution error, we call engine/driver deletion.
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil && recipeDataModel.GetRecipe().DeploymentStatus != util.RecipeSetupError {
+		resourceProperties, err := GetPropertiesFromResource(data)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 		recipeData := recipes.ResourceMetadata{
 			Name:          recipeDataModel.GetRecipe().Name,
 			EnvironmentID: data.ResourceMetadata().EnvironmentID(),
 			ApplicationID: data.ResourceMetadata().ApplicationID(),
 			Parameters:    recipeDataModel.GetRecipe().Parameters,
 			ResourceID:    id.String(),
+			Properties:    resourceProperties,
 		}
 
 		err = c.engine.Delete(ctx, engine.DeleteOptions{

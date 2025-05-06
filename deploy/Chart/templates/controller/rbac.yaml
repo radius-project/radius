@@ -56,6 +56,28 @@ rules:
   - '*'
   verbs:
   - '*'
+- apiGroups:
+  - source.toolkit.fluxcd.io
+  resources:
+  - gitrepositories
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - source.toolkit.fluxcd.io
+  resources:
+  - gitrepositories/status
+  verbs:
+  - get
+- apiGroups:
+  - "*"
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - watch
+  - list
+  - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

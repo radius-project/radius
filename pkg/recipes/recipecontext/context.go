@@ -48,7 +48,8 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 				Name: parsedResource.Name(),
 				ID:   metadata.ResourceID,
 			},
-			Type: parsedResource.Type(),
+			Type:       parsedResource.Type(),
+			Properties: metadata.Properties,
 		},
 		Environment: ResourceInfo{
 			Name: parsedEnv.Name(),

@@ -32,7 +32,6 @@ import (
 
 const (
 	ContourChartDefaultVersion = "11.1.1"
-	DaprChartDefaultVersion    = "1.14.4"
 )
 
 type CLIClusterOptions struct {
@@ -40,9 +39,8 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
-	Contour ContourOptions
 	Radius  ChartOptions
-	Dapr    ChartOptions
+	Contour ContourOptions
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -62,20 +60,14 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 
 	return ClusterOptions{
-		Contour: ContourOptions{
-			ChartVersion: ContourChartDefaultVersion,
-		},
 		Radius: ChartOptions{
 			ChartVersion: chartVersion,
 			Namespace:    RadiusSystemNamespace,
 			ReleaseName:  radiusReleaseName,
 			ChartRepo:    radiusHelmRepo,
 		},
-		Dapr: ChartOptions{
-			ChartVersion: DaprChartDefaultVersion,
-			Namespace:    DaprSystemNamespace,
-			ReleaseName:  daprReleaseName,
-			ChartRepo:    daprHelmRepo,
+		Contour: ContourOptions{
+			ChartVersion: ContourChartDefaultVersion,
 		},
 	}
 }
@@ -118,18 +110,12 @@ func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext str
 		return false, err
 	}
 
-	// Install Dapr
-	daprFound, err := ApplyHelmChart(clusterOptions.Dapr, kubeContext)
-	if err != nil {
-		return false, err
-	}
-
 	err = ApplyContourHelmChart(clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return false, err
 	}
-	// If both Radius and Dapr are installed, return true
-	if radiusFound && daprFound {
+	// If Radius is installed, return true
+	if radiusFound {
 		return true, err
 	} else {
 		return false, err
@@ -158,21 +144,6 @@ func UninstallOnCluster(kubeContext string, clusterOptions ClusterOptions) error
 
 	// Uninstall Radius
 	err = RunHelmUninstall(helmConf, clusterOptions.Radius)
-	if err != nil {
-		return err
-	}
-
-	// Uninstall Dapr
-	daprFlags := genericclioptions.ConfigFlags{
-		Namespace: &clusterOptions.Dapr.Namespace,
-		Context:   &kubeContext,
-	}
-
-	daprHelmConf, err := HelmConfig(&helmOutput, &daprFlags)
-	if err != nil {
-		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
-	}
-	err = RunHelmUninstall(daprHelmConf, clusterOptions.Dapr)
 	if err != nil {
 		return err
 	}
@@ -219,13 +190,7 @@ func CheckRadiusInstall(kubeContext string) (InstallState, error) {
 		return InstallState{}, err
 	}
 
-	// Check is Dapr is installed
-	daprInstalled, daprVersion, err := queryRelease(kubeContext, DaprSystemNamespace, daprReleaseName)
-	if err != nil {
-		return InstallState{}, err
-	}
-
-	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion, DaprInstalled: daprInstalled, DaprVersion: daprVersion}, nil
+	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion}, nil
 }
 
 // InstallState represents the state of the Radius helm chart installation on a Kubernetes cluster.
@@ -235,12 +200,6 @@ type InstallState struct {
 
 	// RadiusVersion is the version of the Radius helm chart installed on the cluster. Will be blank if Radius is not installed.
 	RadiusVersion string
-
-	// DaprInstalled denotes whether the Dapr helm chart is installed on the cluster.
-	DaprInstalled bool
-
-	// DaprVersion is the version of the Dapr helm chart installed on the cluster. Will be blank if Dapr is not installed.
-	DaprVersion string
 }
 
 //go:generate mockgen -typed -destination=./mock_cluster.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm Interface

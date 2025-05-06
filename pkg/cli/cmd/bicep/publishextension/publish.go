@@ -66,6 +66,7 @@ bicep publish-extension ./Example.Provider.yaml --target br:ghcr.io/myregistry/e
 
 	cmd.Flags().StringVar(&runner.Target, "target", "", "The destination path file or OCI registry path. OCI registry paths use the format 'br:HOST/PATH:TAG'.")
 	_ = cmd.MarkFlagRequired("target")
+	cmd.Flags().BoolVar(&runner.Force, "force", false, "Overwrite the target extension if it exists.")
 	return cmd, runner
 }
 
@@ -76,6 +77,7 @@ type Runner struct {
 	ResourceProvider                 *manifest.ResourceProvider
 	ResourceProviderManifestFilePath string
 	Target                           string
+	Force                            bool
 }
 
 // NewRunner creates a new instance of the `rad bicep publish-extension` runner.
@@ -128,7 +130,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = publishExtension(ctx, temp, r.Target)
+	err = publishExtension(ctx, temp, r.Target, r.Force)
 	if err != nil {
 		return err
 	}
@@ -157,7 +159,7 @@ func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outp
 	return nil
 }
 
-func publishExtension(ctx context.Context, inputDirectoryPath string, target string) error {
+func publishExtension(ctx context.Context, inputDirectoryPath string, target string, force bool) error {
 	bicepFilePath, err := bicep.GetBicepFilePath()
 	if err != nil {
 		return err
@@ -169,6 +171,11 @@ func publishExtension(ctx context.Context, inputDirectoryPath string, target str
 		filepath.Join(inputDirectoryPath, "index.json"),
 		"--target", target,
 	}
+
+	if force {
+		args = append(args, "--force")
+	}
+
 	cmd := exec.CommandContext(ctx, bicepFilePath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

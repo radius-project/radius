@@ -36,6 +36,8 @@ When starting the release process, we first kick it off by creating an RC releas
 
 Follow the steps below to create an RC release.
 
+1. Run the [Deployment Engine Release Workflow](https://github.com/azure-octo/deployment-engine/actions/workflows/release.yaml) to create deployment engine container images for this release. Enter the release version number (x.y.z, x.y.z-rc1) that is being released.
+
 1. Clone the [radius-project/radius](https://github.com/radius-project/radius) repo locally, or use your existing local copy.
 
    ```bash
