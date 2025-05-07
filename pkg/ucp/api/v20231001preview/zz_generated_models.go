@@ -8,6 +8,9 @@ import "time"
 
 // APIVersionProperties - The properties of an API version.
 type APIVersionProperties struct {
+// Schema is the schema for the resource type.
+	Schema map[string]any
+
 // READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }

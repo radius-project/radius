@@ -39,7 +39,9 @@ func (src *APIVersionResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 	}
 
-	dst.Properties = datamodel.APIVersionProperties{}
+	dst.Properties = datamodel.APIVersionProperties{
+		Schema: src.Properties.Schema,
+	}
 
 	return dst, nil
 }
@@ -59,6 +61,7 @@ func (dst *APIVersionResource) ConvertFrom(src v1.DataModelInterface) error {
 
 	dst.Properties = &APIVersionProperties{
 		ProvisioningState: to.Ptr(ProvisioningState(dm.InternalMetadata.AsyncProvisioningState)),
+		Schema:            dm.Properties.Schema,
 	}
 
 	return nil

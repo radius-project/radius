@@ -113,7 +113,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		logger.Info("The recipe was executed in simulation mode. No resources were deployed.")
 	} else {
 		// Now we're ready to process the resource. This will handle the updates to any user-visible state.
-		err = c.processor.Process(ctx, resource, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: config.Runtime})
+		err = c.processor.Process(ctx, resource, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: config.Runtime, UcpClient: c.BaseController.UcpClient()})
 		if err != nil {
 			return ctrl.Result{}, err
 		}
