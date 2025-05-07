@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/sdk"
@@ -28,6 +29,11 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+)
+
+const (
+	radiusPlane = "/planes/radius/"
+	planeName   = "local"
 )
 
 var _ ctrl.Controller = (*GetGraph)(nil)
@@ -72,12 +78,22 @@ func (ctrl *GetGraph) Run(ctx context.Context, w http.ResponseWriter, req *http.
 
 	clientOptions := sdk.NewClientOptions(ctrl.connection)
 
-	applicationResources, err := listAllResourcesByApplication(ctx, applicationID, clientOptions)
+	ucpApplicationsManagementClient := &clients.UCPApplicationsManagementClient{
+		RootScope:     radiusPlane + planeName,
+		ClientOptions: clientOptions,
+	}
+
+	resourceTypes, err := ucpApplicationsManagementClient.ListAllResourceTypesNames(ctx, "local")
 	if err != nil {
 		return nil, err
 	}
 
-	environmentResources, err := listAllResourcesByEnvironment(ctx, environmentID, clientOptions)
+	applicationResources, err := listAllResourcesByApplication(ctx, applicationID, resourceTypes, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	environmentResources, err := listAllResourcesByEnvironment(ctx, environmentID, resourceTypes, clientOptions)
 	if err != nil {
 		return nil, err
 	}

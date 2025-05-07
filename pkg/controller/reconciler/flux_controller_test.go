@@ -15,6 +15,7 @@ package reconciler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -144,11 +145,10 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 		Controller: crconfig.Controller{
 			SkipNameValidation: to.Ptr(true),
 		},
-
-		// Suppress metrics in tests to avoid conflicts.
 		Metrics: server.Options{
 			BindAddress: "0",
 		},
+		LeaderElection: false,
 	})
 	require.NoError(t, err)
 
@@ -161,10 +161,41 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 	err = (fluxController).SetupWithManager(mgr)
 	require.NoError(t, err)
 
+	mgrCtx, mgrCancel := context.WithCancel(ctx)
+	t.Cleanup(mgrCancel)
+
+	managerErr := make(chan error, 1)
 	go func() {
-		err := mgr.Start(ctx)
-		require.NoError(t, err)
+		t.Log("Starting manager...")
+		if err := mgr.Start(mgrCtx); err != nil {
+			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+				managerErr <- fmt.Errorf("manager failed to start: %w", err)
+			}
+		}
+		t.Log("Manager stopped.")
 	}()
+
+	t.Log("Waiting for cache to be ready")
+	waitCtx, waitCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer waitCancel()
+
+	err = wait.PollUntilContextTimeout(waitCtx, 100*time.Millisecond, 30*time.Second, true,
+		func(pollCtx context.Context) (bool, error) {
+			select {
+			case err := <-managerErr:
+				return false, fmt.Errorf("manager failed to start: %w", err)
+			default:
+				// No immediate error, check cache
+			}
+
+			if mgr.GetCache().WaitForCacheSync(pollCtx) {
+				return true, nil
+			}
+			return false, nil
+		})
+
+	require.NoError(t, err, "timeout or error waiting for cache to be ready")
+	t.Log("Cache is ready")
 
 	var archiveFetcherCalls []any
 	var bicepCalls []any
