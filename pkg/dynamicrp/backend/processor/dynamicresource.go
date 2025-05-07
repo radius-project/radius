@@ -87,7 +87,10 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 	}
 
 	plane := ID.PlaneNamespace()
-	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, strings.Split(plane, "/")[1], strings.Split(resource.Type, "/")[0], strings.Split(resource.Type, "/")[1], resource.InternalMetadata.UpdatedAPIVersion, nil)
+	planeName := strings.Split(plane, "/")[1]
+	resourceProvider := strings.Split(resource.Type, "/")[0]
+	resourceType := strings.Split(resource.Type, "/")[1]
+	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, planeName, resourceProvider, resourceType, resource.InternalMetadata.UpdatedAPIVersion, nil)
 	if err != nil {
 		return err
 	}
