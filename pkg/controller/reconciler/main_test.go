@@ -24,6 +24,7 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -74,6 +75,7 @@ func TestMain(m *testing.M) {
 	_ = clientgoscheme.AddToScheme(s)
 	_ = radappiov1alpha3.AddToScheme(s)
 	_ = sourcev1.AddToScheme(s)
+	_ = apiextensionsv1.AddToScheme(s)
 
 	config = cfg
 	scheme = s

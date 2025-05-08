@@ -35,7 +35,6 @@ type CLIClusterOptions struct {
 
 type ClusterOptions struct {
 	Radius  RadiusChartOptions
-	Dapr    DaprChartOptions
 	Contour ContourChartOptions
 }
 
@@ -178,25 +177,14 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
 
-	// Install Dapr
-	daprHelmChart, daprHelmConf, err := prepareDaprChart(helmAction, clusterOptions.Dapr, kubeContext)
-	if err != nil {
-		return fmt.Errorf("failed to prepare dapr chart, err: %w", err)
-	}
-	err = helmAction.ApplyHelmChart(kubeContext, daprHelmChart, daprHelmConf, clusterOptions.Dapr.ChartOptions)
-	if err != nil {
-		return fmt.Errorf("failed to apply Dapr Helm chart, err: %w", err)
-	}
-
 	// Install Contour
 	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare contour chart, err: %w", err)
-	}
+  }
 	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
 	if err != nil {
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
-	}
 
 	return nil
 }
@@ -222,27 +210,17 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 		}
 	}
 
-	output.LogInfo("Uninstalling Dapr...")
-	daprFlags := genericclioptions.ConfigFlags{
-		Namespace: &clusterOptions.Dapr.Namespace,
-		Context:   &kubeContext,
-	}
-	daprHelmConf, err := initHelmConfig(&daprFlags)
-	if err != nil {
-		return fmt.Errorf("failed to get helm config, err: %w", err)
-	}
-	_, err = i.Helm.RunHelmUninstall(daprHelmConf, daprReleaseName, clusterOptions.Dapr.Namespace)
-	if err != nil {
-		if errors.Is(err, driver.ErrReleaseNotFound) {
-			output.LogInfo("%s not found", daprReleaseName)
-		} else {
-			return fmt.Errorf("failed to uninstall dapr, err: %w", err)
-		}
-	}
+	return nil
+}
 
-	output.LogInfo("Uninstalling Contour...")
-	contourFlags := genericclioptions.ConfigFlags{
-		Namespace: &clusterOptions.Contour.Namespace,
+// queryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
+// If the release is found, it returns true and the version of the release. If the release is not found, it returns false.
+// If an error occurs, it returns an error.
+func queryRelease(kubeContext, namespace, releaseName string) (bool, string, error) {
+	var helmOutput strings.Builder
+
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
 		Context:   &kubeContext,
 	}
 	contourHelmConf, err := initHelmConfig(&contourFlags)
@@ -273,26 +251,16 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 		return InstallState{}, err
 	}
 
-	// Check if Dapr is installed
-	daprInstalled, daprVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Dapr.ReleaseName, clusterOptions.Dapr.Namespace)
-	if err != nil {
-		return InstallState{}, err
-	}
+	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion}, nil
+}
 
-	// Check if Contour is installed
-	contourInstalled, contourVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace)
-	if err != nil {
-		return InstallState{}, err
-	}
+// InstallState represents the state of the Radius helm chart installation on a Kubernetes cluster.
+type InstallState struct {
+	// RadiusInstalled denotes whether the Radius helm chart is installed on the cluster.
+	RadiusInstalled bool
 
-	return InstallState{
-		RadiusInstalled:  radiusInstalled,
-		RadiusVersion:    radiusVersion,
-		DaprInstalled:    daprInstalled,
-		DaprVersion:      daprVersion,
-		ContourInstalled: contourInstalled,
-		ContourVersion:   contourVersion,
-	}, nil
+	// RadiusVersion is the version of the Radius helm chart installed on the cluster. Will be blank if Radius is not installed.
+	RadiusVersion string
 }
 
 // UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.

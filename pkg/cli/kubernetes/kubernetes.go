@@ -42,6 +42,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/kubeutil"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 
 	// Import kubernetes auth plugins
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -61,6 +62,7 @@ func init() {
 	_ = contourv1.AddToScheme(Scheme)
 	_ = radappiov1alpha3.AddToScheme(Scheme)
 	_ = sourcev1.AddToScheme(Scheme)
+	_ = apiextensionsv1.AddToScheme(Scheme)
 }
 
 // NewDynamicClient creates a new dynamic client by context name, otherwise returns an error.
