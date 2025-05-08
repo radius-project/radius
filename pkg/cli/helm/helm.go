@@ -40,6 +40,7 @@ const (
 	helmDriverSecret = "secret"
 	installTimeout   = time.Duration(600) * time.Second
 	uninstallTimeout = time.Duration(300) * time.Second
+	upgradeTimeout   = time.Duration(600) * time.Second
 	retryTimeout     = time.Duration(10) * time.Second
 	retries          = 5
 )

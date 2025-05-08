@@ -40,9 +40,50 @@ type ContourOptions struct {
 	HostNetwork  bool
 }
 
-// // ApplyContourHelmChart checks if a Contour Helm chart has been installed, and if not, installs it with the given
+// ApplyContourHelmChart checks if a Contour Helm chart has been installed, and if not, installs it with the given
 // options. If an error occurs, it returns an error with the Helm output.
 func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
+	// For capturing output from helm.
+	var helmOutput strings.Builder
+
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+	}
+
+	helmConf, err := HelmConfig(&helmOutput, &flags)
+	if err != nil {
+		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+	}
+
+	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, contourHelmRepo, contourReleaseName)
+	if err != nil {
+		return fmt.Errorf("failed to get contour chart, err: %w, helm output: %s", err, helmOutput.String())
+	}
+
+	histClient := helm.NewHistory(helmConf)
+
+	err = AddContourValues(helmChart, options)
+	if err != nil {
+		return err
+	}
+
+	// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
+	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
+	// and invoke the install client.
+	_, err = histClient.Run(contourReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		err = RunContourHelmInstall(helmConf, helmChart)
+		if err != nil {
+			return fmt.Errorf("failed to run contour helm install, err: %w, helm output: %s", err, helmOutput.String())
+		}
+	}
+
+	return err
+}
+
+// UpgradeContourHelmChart upgrades the Contour Helm chart with the given options and returns an error if the upgrade fails.
+func UpgradeContourHelmChart(options ContourOptions, kubeContext string) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -68,7 +109,6 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	// for the CRDs)
 
 	histClient := helm.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
 
 	err = AddContourValues(helmChart, options)
 	if err != nil {
@@ -80,7 +120,7 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	// and invoke the install client.
 	_, err = histClient.Run(contourReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		err = RunContourHelmInstall(helmConf, helmChart)
+		err = RunContourHelmUpgrade(helmConf, helmChart)
 		if err != nil {
 			return fmt.Errorf("failed to run contour helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
@@ -140,7 +180,6 @@ func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	installClient.ReleaseName = contourReleaseName
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.CreateNamespace = true
-
 	return runInstall(installClient, helmChart)
 }
 
@@ -157,4 +196,13 @@ func RunContourHelmUninstall(helmConf *helm.Configuration) error {
 		return nil
 	}
 	return err
+}
+
+// RunContourHelmUpgrade upgrades the Contour Helm chart with the given options and returns an error if the upgrade fails.
+func RunContourHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart) error {
+	upgradeClient := helm.NewUpgrade(helmConf)
+	upgradeClient.Namespace = RadiusSystemNamespace
+	upgradeClient.Wait = true
+	upgradeClient.Timeout = upgradeTimeout
+	return runUpgrade(upgradeClient, contourReleaseName, helmChart)
 }

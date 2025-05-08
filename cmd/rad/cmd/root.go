@@ -70,6 +70,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/run"
 	"github.com/radius-project/radius/pkg/cli/cmd/uninstall"
 	uninstall_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/uninstall/kubernetes"
+	upgrade "github.com/radius-project/radius/pkg/cli/cmd/upgrade"
+	upgrade_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/upgrade/kubernetes"
 	workspace_create "github.com/radius-project/radius/pkg/cli/cmd/workspace/create"
 	workspace_delete "github.com/radius-project/radius/pkg/cli/cmd/workspace/delete"
 	workspace_list "github.com/radius-project/radius/pkg/cli/cmd/workspace/list"
@@ -371,6 +373,12 @@ func initSubCommands() {
 
 	uninstallKubernetesCmd, _ := uninstall_kubernetes.NewCommand(framework)
 	uninstallCmd.AddCommand(uninstallKubernetesCmd)
+
+	upgradeCmd := upgrade.NewCommand()
+	RootCmd.AddCommand(upgradeCmd)
+
+	upgradeKubernetesCmd, _ := upgrade_kubernetes.NewCommand(framework)
+	upgradeCmd.AddCommand(upgradeKubernetesCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
