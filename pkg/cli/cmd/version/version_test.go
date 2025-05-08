@@ -47,206 +47,182 @@ func TestNewCommand(t *testing.T) {
 
 // TestValidate tests the Validate function behavior
 func TestValidate(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockHelmInterface := helm.NewMockInterface(ctrl)
-	mockOutput := &output.MockOutput{}
-
-	runner := &Runner{
-		Helm:   mockHelmInterface,
-		Output: mockOutput,
+	testCases := []struct {
+		name            string
+		outputFlag      string
+		cliFlag         string
+		expectedFormat  string
+		expectedCLIOnly bool
+	}{
+		{
+			name:            "Default values",
+			outputFlag:      "",
+			cliFlag:         "false",
+			expectedFormat:  "table",
+			expectedCLIOnly: false,
+		},
+		{
+			name:            "JSON output and CLI only",
+			outputFlag:      "json",
+			cliFlag:         "true",
+			expectedFormat:  "json",
+			expectedCLIOnly: true,
+		},
+		{
+			name:            "YAML output",
+			outputFlag:      "yaml",
+			cliFlag:         "false",
+			expectedFormat:  "yaml",
+			expectedCLIOnly: false,
+		},
 	}
 
-	cmd := &cobra.Command{}
-	cmd.Flags().Bool("cli", false, "")
-	cmd.Flags().String("output", "", "")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-	// Test default values
-	err := runner.Validate(cmd, []string{})
-	require.NoError(t, err)
-	require.Equal(t, "table", runner.Format)
-	require.False(t, runner.CLIOnly)
+			mockHelmInterface := helm.NewMockInterface(ctrl)
+			mockOutput := &output.MockOutput{}
 
-	// Test with output format set
-	cmd = &cobra.Command{}
-	cmd.Flags().Bool("cli", false, "")
-	cmd.Flags().String("output", "", "")
+			runner := &Runner{
+				Helm:   mockHelmInterface,
+				Output: mockOutput,
+			}
 
-	err = cmd.Flags().Set("output", "json")
-	require.NoError(t, err)
+			cmd := &cobra.Command{}
+			cmd.Flags().Bool("cli", false, "")
+			cmd.Flags().String("output", "", "")
 
-	err = cmd.Flags().Set("cli", "true")
-	require.NoError(t, err)
+			if tc.outputFlag != "" {
+				err := cmd.Flags().Set("output", tc.outputFlag)
+				require.NoError(t, err)
+			}
 
-	err = runner.Validate(cmd, []string{})
-	require.NoError(t, err)
-	require.Equal(t, "json", runner.Format)
-	require.True(t, runner.CLIOnly)
+			err := cmd.Flags().Set("cli", tc.cliFlag)
+			require.NoError(t, err)
+
+			err = runner.Validate(cmd, []string{})
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedFormat, runner.Format)
+			require.Equal(t, tc.expectedCLIOnly, runner.CLIOnly)
+		})
+	}
 }
 
 // TestWriteCliVersionOnly tests the writeCliVersionOnly method
 func TestWriteCliVersionOnly(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockOutput := output.NewMockInterface(ctrl)
-
-	runner := &Runner{
-		Output: mockOutput,
-	}
-
-	expectedCLIVersion := struct {
-		Release string `json:"release"`
-		Version string `json:"version"`
-		Bicep   string `json:"bicep"`
-		Commit  string `json:"commit"`
-	}{
-		version.Release(),
-		version.Version(),
-		bicep.Version(),
-		version.Commit(),
-	}
-
-	mockOutput.EXPECT().WriteFormatted(
-		"table",
-		gomock.Any(),
-		gomock.Any(),
-	).Do(func(format string, data any, options output.FormatterOptions) error {
-		actualData, ok := data.(struct {
-			Release string `json:"release"`
-			Version string `json:"version"`
-			Bicep   string `json:"bicep"`
-			Commit  string `json:"commit"`
-		})
-		require.True(t, ok)
-		require.Equal(t, expectedCLIVersion.Release, actualData.Release)
-		require.Equal(t, expectedCLIVersion.Version, actualData.Version)
-		require.Equal(t, expectedCLIVersion.Bicep, actualData.Bicep)
-		require.Equal(t, expectedCLIVersion.Commit, actualData.Commit)
-		return nil
-	}).Return(nil)
-
-	err := runner.writeCliVersionOnly("table")
-	require.NoError(t, err)
-}
-
-// TestWriteVersionInfoSuccess tests the writeVersionInfo method when Radius is installed
-func TestWriteVersionInfoSuccess(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockHelmInterface := helm.NewMockInterface(ctrl)
-	mockOutput := output.NewMockInterface(ctrl)
-
-	runner := &Runner{
-		Helm:   mockHelmInterface,
-		Output: mockOutput,
-	}
-
-	// Setup Control Plane version check
-	installState := helm.InstallState{
-		RadiusInstalled: true,
-		RadiusVersion:   "v0.45.0",
-		DaprVersion:     "1.9.5",
-	}
-
-	mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(installState, nil)
-
-	// Setup output expectations
-	mockOutput.EXPECT().LogInfo("CLI Version Information:")
-	mockOutput.EXPECT().WriteFormatted("table", gomock.Any(), gomock.Any()).Return(nil)
-	mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
-	mockOutput.EXPECT().WriteFormatted("table", gomock.Any(), gomock.Any()).Return(nil)
-
-	err := runner.writeVersionInfo("table")
-	require.NoError(t, err)
-}
-
-// TestWriteVersionInfoNotInstalled tests the writeVersionInfo method when Radius is not installed
-func TestWriteVersionInfoNotInstalled(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockHelmInterface := helm.NewMockInterface(ctrl)
-	mockOutput := output.NewMockInterface(ctrl)
-
-	runner := &Runner{
-		Helm:   mockHelmInterface,
-		Output: mockOutput,
-	}
-
-	// Setup Control Plane version check for not installed
-	installState := helm.InstallState{
-		RadiusInstalled: false,
-	}
-
-	mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(installState, nil)
-
-	// Setup output expectations
-	mockOutput.EXPECT().LogInfo("CLI Version Information:")
-	mockOutput.EXPECT().WriteFormatted("table", gomock.Any(), gomock.Any()).Return(nil)
-	mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
-	mockOutput.EXPECT().WriteFormatted("table", gomock.Any(), gomock.Any()).Do(
-		func(format string, data interface{}, options output.FormatterOptions) error {
-			// Verify that the control plane version is "Not installed"
-			cpInfo, ok := data.(struct {
-				Version     string `json:"version"`
-				DaprVersion string `json:"daprVersion"`
-			})
-			require.True(t, ok)
-			require.Equal(t, "Not installed", cpInfo.Version)
-			require.Equal(t, "Not installed", cpInfo.DaprVersion)
-			return nil
-		}).Return(nil)
-
-	err := runner.writeVersionInfo("table")
-	require.NoError(t, err)
-}
-
-// TestWriteVersionInfoHelmError tests the writeVersionInfo method when Helm client returns an error
-func TestWriteVersionInfoHelmError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockHelmInterface := helm.NewMockInterface(ctrl)
-	mockOutput := output.NewMockInterface(ctrl)
-
-	runner := &Runner{
-		Helm:   mockHelmInterface,
-		Output: mockOutput,
-	}
-
-	// Setup Helm client error
-	mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{}, fmt.Errorf("connection failed"))
-
-	// Setup output expectations
-	mockOutput.EXPECT().LogInfo("CLI Version Information:")
-	mockOutput.EXPECT().WriteFormatted("table", gomock.Any(), gomock.Any()).Return(nil)
-	mockOutput.EXPECT().LogInfo("Failed to check Radius control plane: %v", fmt.Errorf("connection failed"))
-	mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
-	mockOutput.EXPECT().WriteFormatted("table", gomock.Any(), gomock.Any()).Return(nil)
-
-	err := runner.writeVersionInfo("table")
-	require.NoError(t, err)
-}
-
-// TestRun tests the Run method with various flags
-func TestRun(t *testing.T) {
 	testCases := []struct {
-		name          string
-		cliOnly       bool
-		expectCLIOnly bool
+		name         string
+		format       string
+		expectedInfo CLIVersionInfo
 	}{
 		{
-			name:          "CLI and Control Plane versions",
-			cliOnly:       false,
-			expectCLIOnly: false,
+			name:   "Table format",
+			format: "table",
+			expectedInfo: CLIVersionInfo{
+				Release: version.Release(),
+				Version: version.Version(),
+				Bicep:   bicep.Version(),
+				Commit:  version.Commit(),
+			},
 		},
 		{
-			name:          "CLI version only",
-			cliOnly:       true,
-			expectCLIOnly: true,
+			name:   "JSON format",
+			format: "json",
+			expectedInfo: CLIVersionInfo{
+				Release: version.Release(),
+				Version: version.Version(),
+				Bicep:   bicep.Version(),
+				Commit:  version.Commit(),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockOutput := output.NewMockInterface(ctrl)
+			runner := &Runner{
+				Output: mockOutput,
+			}
+
+			mockOutput.EXPECT().WriteFormatted(
+				tc.format,
+				gomock.Any(),
+				gomock.Any(),
+			).Do(func(format string, data any, options output.FormatterOptions) error {
+				actualData, ok := data.(CLIVersionInfo)
+				require.True(t, ok)
+				require.Equal(t, tc.expectedInfo.Release, actualData.Release)
+				require.Equal(t, tc.expectedInfo.Version, actualData.Version)
+				require.Equal(t, tc.expectedInfo.Bicep, actualData.Bicep)
+				require.Equal(t, tc.expectedInfo.Commit, actualData.Commit)
+				return nil
+			}).Return(nil)
+
+			err := runner.writeCliVersionOnly(tc.format)
+			require.NoError(t, err)
+		})
+	}
+}
+
+// TestWriteVersionInfo tests the writeVersionInfo method with different scenarios
+func TestWriteVersionInfo(t *testing.T) {
+	testCases := []struct {
+		name            string
+		format          string
+		installState    helm.InstallState
+		helmError       error
+		expectedStatus  string
+		expectedVersion string
+		showHeaders     bool
+	}{
+		{
+			name:   "Radius installed - table format",
+			format: "table",
+			installState: helm.InstallState{
+				RadiusInstalled: true,
+				RadiusVersion:   "v0.45.0",
+			},
+			helmError:       nil,
+			expectedStatus:  "Installed",
+			expectedVersion: "v0.45.0",
+			showHeaders:     true,
+		},
+		{
+			name:   "Radius not installed - table format",
+			format: "table",
+			installState: helm.InstallState{
+				RadiusInstalled: false,
+			},
+			helmError:       nil,
+			expectedStatus:  "Not installed",
+			expectedVersion: "Not installed",
+			showHeaders:     true,
+		},
+		{
+			name:            "Connection error - table format",
+			format:          "table",
+			installState:    helm.InstallState{},
+			helmError:       fmt.Errorf("connection failed"),
+			expectedStatus:  "Not connected",
+			expectedVersion: "Not installed",
+			showHeaders:     true,
+		},
+		{
+			name:   "Radius installed - JSON format",
+			format: "json",
+			installState: helm.InstallState{
+				RadiusInstalled: true,
+				RadiusVersion:   "v0.45.0",
+			},
+			helmError:       nil,
+			expectedStatus:  "Installed",
+			expectedVersion: "v0.45.0",
+			showHeaders:     false,
 		},
 	}
 
@@ -258,36 +234,188 @@ func TestRun(t *testing.T) {
 			mockHelmInterface := helm.NewMockInterface(ctrl)
 			mockOutput := output.NewMockInterface(ctrl)
 
-			// Create test command with flag
-			cmd := &cobra.Command{}
-			cmd.Flags().Bool("cli", tc.cliOnly, "")
+			runner := &Runner{
+				Helm:   mockHelmInterface,
+				Output: mockOutput,
+				Format: tc.format,
+			}
+
+			mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(tc.installState, tc.helmError)
+
+			// Only expect headers for formats that show them
+			if tc.showHeaders {
+				mockOutput.EXPECT().LogInfo("CLI Version Information:")
+			}
+
+			mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
+
+			if tc.showHeaders {
+				mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
+			}
+
+			mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Do(
+				func(format string, data any, options output.FormatterOptions) error {
+					controlPlane, ok := data.(ControlPlaneVersionInfo)
+					require.True(t, ok)
+					require.Equal(t, tc.expectedStatus, controlPlane.Status)
+					require.Equal(t, tc.expectedVersion, controlPlane.Version)
+					return nil
+				}).Return(nil)
+
+			err := runner.writeVersionInfo(tc.format)
+			require.NoError(t, err)
+		})
+	}
+}
+
+// TestRun tests the Run method with various flags
+func TestRun(t *testing.T) {
+	testCases := []struct {
+		name          string
+		cliOnly       bool
+		format        string
+		expectCLIOnly bool
+	}{
+		{
+			name:          "CLI and Control Plane versions - table format",
+			cliOnly:       false,
+			format:        "table",
+			expectCLIOnly: false,
+		},
+		{
+			name:          "CLI version only - table format",
+			cliOnly:       true,
+			format:        "table",
+			expectCLIOnly: true,
+		},
+		{
+			name:          "CLI and Control Plane versions - JSON format",
+			cliOnly:       false,
+			format:        "json",
+			expectCLIOnly: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockHelmInterface := helm.NewMockInterface(ctrl)
+			mockOutput := output.NewMockInterface(ctrl)
 
 			runner := &Runner{
 				Helm:    mockHelmInterface,
 				Output:  mockOutput,
 				CLIOnly: tc.cliOnly,
-				Format:  "table",
+				Format:  tc.format,
 			}
 
 			if tc.expectCLIOnly {
-				mockOutput.EXPECT().WriteFormatted("table", gomock.Any(), gomock.Any()).Return(nil)
+				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
 			} else {
 				// Setup expected calls for full version info
-				mockOutput.EXPECT().LogInfo("CLI Version Information:")
-				mockOutput.EXPECT().WriteFormatted("table", gomock.Any(), gomock.Any()).Return(nil)
+				if tc.format != "json" && tc.format != "yaml" {
+					mockOutput.EXPECT().LogInfo("CLI Version Information:")
+				}
+				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
 
 				mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{
 					RadiusInstalled: true,
 					RadiusVersion:   "v0.45.0",
-					DaprVersion:     "1.9.5",
 				}, nil)
 
-				mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
-				mockOutput.EXPECT().WriteFormatted("table", gomock.Any(), gomock.Any()).Return(nil)
+				if tc.format != "json" && tc.format != "yaml" {
+					mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
+				}
+				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
 			}
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 		})
+	}
+}
+
+// TestGetControlPlaneVersionInfo tests the getControlPlaneVersionInfo method
+func TestGetControlPlaneVersionInfo(t *testing.T) {
+	testCases := []struct {
+		name            string
+		installState    helm.InstallState
+		helmError       error
+		expectedStatus  string
+		expectedVersion string
+	}{
+		{
+			name: "Radius installed",
+			installState: helm.InstallState{
+				RadiusInstalled: true,
+				RadiusVersion:   "v0.45.0",
+			},
+			helmError:       nil,
+			expectedStatus:  "Installed",
+			expectedVersion: "v0.45.0",
+		},
+		{
+			name: "Radius not installed",
+			installState: helm.InstallState{
+				RadiusInstalled: false,
+			},
+			helmError:       nil,
+			expectedStatus:  "Not installed",
+			expectedVersion: "Not installed",
+		},
+		{
+			name:            "Connection error",
+			installState:    helm.InstallState{},
+			helmError:       fmt.Errorf("connection failed"),
+			expectedStatus:  "Not connected",
+			expectedVersion: "Not installed",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockHelmInterface := helm.NewMockInterface(ctrl)
+
+			runner := &Runner{
+				Helm: mockHelmInterface,
+			}
+
+			mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(tc.installState, tc.helmError)
+
+			cpInfo := runner.getControlPlaneVersionInfo()
+
+			require.Equal(t, tc.expectedStatus, cpInfo.Status)
+			require.Equal(t, tc.expectedVersion, cpInfo.Version)
+		})
+	}
+}
+
+// TestGetControlPlaneFormatterOptions tests the formatter options for control plane info
+func TestGetControlPlaneFormatterOptions(t *testing.T) {
+	expectedColumns := []struct {
+		heading  string
+		jsonPath string
+	}{
+		{
+			heading:  "STATUS",
+			jsonPath: "{ .Status }",
+		},
+		{
+			heading:  "VERSION",
+			jsonPath: "{ .Version }",
+		},
+	}
+
+	options := getControlPlaneFormatterOptions()
+	require.Equal(t, len(expectedColumns), len(options.Columns))
+
+	for i, expected := range expectedColumns {
+		require.Equal(t, expected.heading, options.Columns[i].Heading)
+		require.Equal(t, expected.jsonPath, options.Columns[i].JSONPath)
 	}
 }
