@@ -85,13 +85,12 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	}
 
 	// Now we're ready to process recipes (if needed).
-
+	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, resource, previousOutputResources, config.Simulated)
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
 			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
 			// Set the deployment status to the recipe error code.
-			recipeDataModel := any(resource).(datamodel.RecipeDataModel)
 			recipeDataModel.GetRecipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
 			update := &database.Object{
 				Metadata: database.Metadata{
@@ -119,7 +118,6 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		}
 	}
 
-	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
 	if supportsRecipes {
 		recipeData := recipeDataModel.GetRecipe()
 		if recipeData != nil {
