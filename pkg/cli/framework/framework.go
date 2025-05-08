@@ -34,6 +34,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//go:generate mockgen -typed -destination=./mock_factory.go -package=framework -self_package github.com/radius-project/radius/pkg/cli/framework github.com/radius-project/radius/pkg/cli/framework Factory
+
 // Factory interface handles resources for interfacing with corerp and configs
 type Factory interface {
 	GetBicep() bicep.Interface
