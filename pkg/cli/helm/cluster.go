@@ -63,14 +63,6 @@ func NewDefaultClusterOptions() ClusterOptions {
 				ChartRepo:    radiusHelmRepo,
 			},
 		},
-		Dapr: DaprChartOptions{
-			ChartOptions: ChartOptions{
-				ChartVersion: DaprChartDefaultVersion,
-				Namespace:    DaprSystemNamespace,
-				ReleaseName:  daprReleaseName,
-				ChartRepo:    daprHelmRepo,
-			},
-		},
 		Contour: ContourChartOptions{
 			ChartOptions: ChartOptions{
 				ChartVersion: ContourChartDefaultVersion,
@@ -112,19 +104,13 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	return options
 }
 
-// InstallState represents the state of the Radius helm chart installation on a Kubernetes cluster.
+// InstallState represents the state of the Radius installation on a Kubernetes cluster.
 type InstallState struct {
 	// RadiusInstalled denotes whether the Radius helm chart is installed on the cluster.
 	RadiusInstalled bool
 
 	// RadiusVersion is the version of the Radius helm chart installed on the cluster. Will be blank if Radius is not installed.
 	RadiusVersion string
-
-	// DaprInstalled denotes whether the Dapr helm chart is installed on the cluster.
-	DaprInstalled bool
-
-	// DaprVersion is the version of the Dapr helm chart installed on the cluster. Will be blank if Dapr is not installed.
-	DaprVersion string
 
 	// ContourInstalled denotes whether the Contour helm chart is installed on the cluster.
 	ContourInstalled bool
@@ -157,7 +143,7 @@ type Impl struct {
 
 var _ Interface = &Impl{}
 
-// InstallRadius installs Radius and its dependencies (Dapr and Contour) on the cluster using the provided options.
+// InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
@@ -180,17 +166,17 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	// Install Contour
 	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
-		return fmt.Errorf("failed to prepare contour chart, err: %w", err)
-  }
+		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
+	}
 	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
 	if err != nil {
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
+	}
 
 	return nil
 }
 
-// UninstallRadius retrieves the Helm configuration and runs the Contour and Radius Helm uninstall commands to remove
-// the Helm releases from the cluster.
+// UninstallRadius uninstalls Radius and its dependencies (Contour) from the cluster using the provided options.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	output.LogInfo("Uninstalling Radius...")
 	radiusFlags := genericclioptions.ConfigFlags{
@@ -210,27 +196,19 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 		}
 	}
 
-	return nil
-}
-
-// queryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
-// If the release is found, it returns true and the version of the release. If the release is not found, it returns false.
-// If an error occurs, it returns an error.
-func queryRelease(kubeContext, namespace, releaseName string) (bool, string, error) {
-	var helmOutput strings.Builder
-
-	flags := genericclioptions.ConfigFlags{
-		Namespace: &namespace,
+	output.LogInfo("Uninstalling Contour...")
+	contourFlags := genericclioptions.ConfigFlags{
+		Namespace: &clusterOptions.Radius.Namespace,
 		Context:   &kubeContext,
 	}
 	contourHelmConf, err := initHelmConfig(&contourFlags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUninstall(contourHelmConf, contourReleaseName, clusterOptions.Contour.Namespace)
+	_, err = i.Helm.RunHelmUninstall(contourHelmConf, contourReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
 		if errors.Is(err, driver.ErrReleaseNotFound) {
-			output.LogInfo("%s not found", contourReleaseName)
+			output.LogInfo("%s not found", radiusReleaseName)
 		} else {
 			return fmt.Errorf("failed to uninstall contour, err: %w", err)
 		}
@@ -251,20 +229,16 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 		return InstallState{}, err
 	}
 
-	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion}, nil
-}
+	// Check if Contour is installed
+	contourInstalled, contourVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace)
+	if err != nil {
+		return InstallState{}, err
+	}
 
-// InstallState represents the state of the Radius helm chart installation on a Kubernetes cluster.
-type InstallState struct {
-	// RadiusInstalled denotes whether the Radius helm chart is installed on the cluster.
-	RadiusInstalled bool
-
-	// RadiusVersion is the version of the Radius helm chart installed on the cluster. Will be blank if Radius is not installed.
-	RadiusVersion string
+	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion, ContourInstalled: contourInstalled, ContourVersion: contourVersion}, nil
 }
 
 // UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.
-// It upgrades the Radius, Dapr, and Contour Helm charts in that order.
 func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	helmAction := NewHelmAction(i.Helm)
 
@@ -278,17 +252,6 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 	}
 	output.LogInfo("Radius upgrade complete")
-
-	output.LogInfo("Upgrading Dapr...")
-	daprHelmChart, daprHelmConf, err := prepareDaprChart(helmAction, clusterOptions.Dapr, kubeContext)
-	if err != nil {
-		return fmt.Errorf("failed to prepare Dapr Helm chart, err: %w", err)
-	}
-	_, err = i.Helm.RunHelmUpgrade(daprHelmConf, daprHelmChart, clusterOptions.Dapr.ReleaseName, clusterOptions.Dapr.Namespace)
-	if err != nil {
-		return fmt.Errorf("failed to upgrade Dapr, err: %w", err)
-	}
-	output.LogInfo("Dapr upgrade complete")
 
 	output.LogInfo("Upgrading Contour...")
 	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
