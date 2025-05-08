@@ -36,7 +36,10 @@ func NewNoOpRetryer() *Retryer {
 }
 
 // DefaultBackoffStrategy returns the default backoff strategy.
-// The default backoff strategy is an exponential backoff with a maximum duration and maximum retries.
+// The default backoff strategy is an exponential backoff with:
+// - 1 second initial interval
+// - 10 maximum retries
+// - 60 seconds maximum duration
 func DefaultBackoffStrategy() retry.Backoff {
 	b := retry.NewExponential(1 * time.Second)
 	b = retry.WithMaxDuration(defaultMaxDuration, b)

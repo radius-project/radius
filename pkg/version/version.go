@@ -80,8 +80,7 @@ func Version() string {
 	return version
 }
 
-// ChartVersion returns the version of the Helm Chart to be used by
-// Kubernetes, Dev, and potentially Azure environments
+// ChartVersion returns the version of the Helm Chart
 func ChartVersion() string {
 	return chartVersion
 }
