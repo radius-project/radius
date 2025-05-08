@@ -68,12 +68,13 @@ type ChartOptions struct {
 	SetFileArgs []string
 }
 
-// ApplyHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the
-// "Reinstall" option is set. It returns a boolean indicating if the chart was already installed and an error if one occurred.
 func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 	alreadyInstalled := false
+
+	output.LogInfo("Starting Helm operation for chart %s in namespace %s (context: %s)",
+		options.ReleaseName, options.Namespace, kubeContext)
 
 	flags := genericclioptions.ConfigFlags{
 		Namespace: &options.Namespace,
@@ -84,6 +85,12 @@ func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get Helm config, err: %w, Helm output: %s", err, helmOutput.String())
 	}
+
+	output.LogInfo("Loading chart %s (path: %s, version: %s, repo: %s)",
+		options.ReleaseName,
+		options.ChartPath,
+		options.ChartVersion,
+		options.ChartRepo)
 
 	var helmChart *chart.Chart
 	if options.ChartPath == "" {
@@ -96,6 +103,10 @@ func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 		return false, fmt.Errorf("failed to load Helm chart, err: %w, Helm output: %s", err, helmOutput.String())
 	}
 
+	output.LogInfo("Successfully loaded chart: %s (version: %s)",
+		helmChart.Metadata.Name,
+		helmChart.Metadata.Version)
+
 	err = AddValues(helmChart, &options)
 	if err != nil {
 		return false, fmt.Errorf("failed to add Radius values, err: %w, Helm output: %s", err, helmOutput.String())
@@ -107,6 +118,10 @@ func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 	// We need the CRDs to be public to do this (or consider unpacking the chart
 	// for the CRDs)
 
+	output.LogInfo("Checking if release %s already exists in namespace %s",
+		options.ReleaseName,
+		options.Namespace)
+
 	histClient := helm.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
@@ -115,16 +130,26 @@ func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
 	// and invoke the install client.
 	_, err = histClient.Run(options.ReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("Release %s not found. Installing chart...", options.ReleaseName)
 		err = runHelmInstall(helmConf, helmChart, options)
 		if err != nil {
 			return false, fmt.Errorf("failed to run Radius Helm install, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
+		output.LogInfo("Successfully installed chart %s to namespace %s",
+			options.ReleaseName,
+			options.Namespace)
 	} else if options.Reinstall {
+		output.LogInfo("Release %s found. Upgrading chart (reinstall=true)...", options.ReleaseName)
 		err = runHelmUpgrade(helmConf, options.ReleaseName, helmChart, options)
 		if err != nil {
 			return false, fmt.Errorf("failed to run Radius Helm upgrade, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
+		output.LogInfo("Successfully upgraded chart %s in namespace %s",
+			options.ReleaseName,
+			options.Namespace)
 	} else if err == nil {
+		output.LogInfo("Release %s already exists and reinstall not requested. Skipping installation.",
+			options.ReleaseName)
 		alreadyInstalled = true
 	}
 	return alreadyInstalled, err
