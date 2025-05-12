@@ -49,13 +49,16 @@ fi
 
 # Delete all test namespaces.
 echo "delete all test namespaces"
-namespaces=$(kubectl get namespace |
-    grep -E '^kubernetes-interop-tutorial.*|^corerp.*|^test.*|^default-.*|^radiusfunctionaltestbucket.*|^radius-test.*|^kubernetes-cli.*|^dpsb-.*|^dsrp-.*|^azstorage-workload.*|^dapr-serviceinvocation|^daprrp-rs-.*|^dapr-sts-.*|^mynamespace.*|^demo.*|^tutorial-demo.*|^ms.+' |
-    awk '{print $1}')
+namespaces=$(kubectl get namespace | grep -E '^kubernetes-interop-tutorial.*|^corerp.*|^test.*|^default-.*|^radiusfunctionaltestbucket.*|^radius-test.*|^kubernetes-cli.*|^dpsb-.*|^dsrp-.*|'\
+    '^azstorage-workload.*|^dapr-serviceinvocation|^daprrp-rs-.*|^dapr-sts-.*|^mynamespace.*|^demo.*|^tutorial-demo.*|^ms.+|^dt-.*|'\
+    '^daprrp-env-.*|^dcs-.*|^dynamicrp-.*|^flux-basic.*|^flux-complex.*|^invalid-env.*|^tutorial|'\
+    '^udt-externalresource.*|^udt-externalresource-.*|^usertypealpha-.*' | awk '{print $1}')
+
 for ns in $namespaces; do
     if [ -z "$ns" ]; then
         break
     fi
     echo "deleting namespaces: $ns"
     kubectl delete namespace $ns --ignore-not-found=true
+    echo "namespace $ns deleted successfully"
 done
