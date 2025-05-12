@@ -22,7 +22,6 @@ import (
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
-	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
@@ -33,14 +32,14 @@ func Test_ACI(t *testing.T) {
 	gatewayResourceName := "gateway"
 	template := "testdata/corerp-aci.bicep"
 
-	if os.Getenv("AZURE_MANAGED_IDENTITY") == "" {
-		t.Error("AZURE_MANAGED_IDENTITY environment variable must be set to run this test.")
+	if os.Getenv("AZURE_ACI_MANAGED_IDENTITY") == "" {
+		t.Error("AZURE_ACI_MANAGED_IDENTITY environment variable must be set to run this test.")
 	}
-	managedIdentity := "managedIdentity=" + os.Getenv("AZURE_MANAGED_IDENTITY")
+	managedIdentity := "managedIdentity=" + os.Getenv("AZURE_ACI_MANAGED_IDENTITY")
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), managedIdentity),
+			Executor: step.NewDeployExecutor(template, managedIdentity),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
