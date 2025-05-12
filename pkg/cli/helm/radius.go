@@ -39,7 +39,7 @@ type RadiusChartOptions struct {
 	ChartOptions
 }
 
-// TODO COMMENT
+// prepareRadiusChart prepares the Helm chart for Radius.
 func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeContext string) (*chart.Chart, *action.Configuration, error) {
 	var helmChart *chart.Chart
 

@@ -61,6 +61,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 				Namespace:    RadiusSystemNamespace,
 				ReleaseName:  radiusReleaseName,
 				ChartRepo:    radiusHelmRepo,
+				Wait:         true,
 			},
 		},
 		Contour: ContourChartOptions{
@@ -69,6 +70,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 				Namespace:    RadiusSystemNamespace,
 				ReleaseName:  contourReleaseName,
 				ChartRepo:    contourHelmRepo,
+				Wait:         false,
 			},
 			HostNetwork: false,
 		},
@@ -187,7 +189,7 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUninstall(radiusHelmConf, radiusReleaseName, clusterOptions.Radius.Namespace)
+	_, err = i.Helm.RunHelmUninstall(radiusHelmConf, radiusReleaseName, clusterOptions.Radius.Namespace, true)
 	if err != nil {
 		if errors.Is(err, driver.ErrReleaseNotFound) {
 			output.LogInfo("%s not found", radiusReleaseName)
@@ -205,7 +207,7 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUninstall(contourHelmConf, contourReleaseName, clusterOptions.Radius.Namespace)
+	_, err = i.Helm.RunHelmUninstall(contourHelmConf, contourReleaseName, clusterOptions.Radius.Namespace, true)
 	if err != nil {
 		if errors.Is(err, driver.ErrReleaseNotFound) {
 			output.LogInfo("%s not found", radiusReleaseName)
@@ -247,7 +249,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
+
+	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 	}
@@ -258,7 +261,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace)
+	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Contour, err: %w", err)
 	}

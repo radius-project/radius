@@ -83,8 +83,8 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour", "radius-system").Return([]*release.Release{}, nil).Times(1)
 
 	// Mock Helm Install
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system").Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system").Return(contourRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system", true).Return(radiusRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system", false).Return(contourRelease, nil).Times(1)
 
 	// Mock Helm Chart Load
 	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(2)
@@ -112,7 +112,7 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 		{options.Contour.ReleaseName, options.Contour.Namespace},
 	} {
 		mockHelmClient.EXPECT().
-			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns).
+			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns, true).
 			Return(&release.UninstallReleaseResponse{}, nil).
 			Times(1)
 	}
@@ -133,7 +133,7 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 
 	// Radius missing, other releases present.
 	mockHelmClient.EXPECT().
-		RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace).
+		RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace, true).
 		Return(&release.UninstallReleaseResponse{}, driver.ErrReleaseNotFound).
 		Times(1)
 
@@ -144,7 +144,7 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 		{options.Contour.ReleaseName, options.Contour.Namespace},
 	} {
 		mockHelmClient.EXPECT().
-			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns).
+			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns, true).
 			Return(&release.UninstallReleaseResponse{}, nil).
 			Times(1)
 	}
@@ -248,8 +248,8 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	}
 
 	// Mock Helm Upgrade
-	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system").Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system").Return(contourRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system", true).Return(radiusRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system", true).Return(contourRelease, nil).Times(1)
 
 	// Mock Helm Chart Load
 	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(2)

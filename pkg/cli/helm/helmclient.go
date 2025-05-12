@@ -36,13 +36,13 @@ const (
 // HelmClient is an interface for interacting with Helm charts.
 type HelmClient interface {
 	// RunHelmInstall installs the Helm chart.
-	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string) (*release.Release, error)
+	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error)
 
 	// RunHelmUpgrade upgrades the Helm chart.
-	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string) (*release.Release, error)
+	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error)
 
 	// RunHelmUninstall uninstalls the Helm chart.
-	RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string) (*release.UninstallReleaseResponse, error)
+	RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string, wait bool) (*release.UninstallReleaseResponse, error)
 
 	// RunHelmList lists the Helm releases.
 	RunHelmList(helmConf *helm.Configuration, releaseName, namespace string) ([]*release.Release, error)
@@ -64,30 +64,31 @@ func NewHelmClient() HelmClient {
 	return &HelmClientImpl{}
 }
 
-func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string) (*release.Release, error) {
+func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error) {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = releaseName
 	installClient.Namespace = namespace
 	installClient.CreateNamespace = true
 	installClient.Timeout = installTimeout
+	installClient.Wait = wait
 
 	return installClient.Run(helmChart, helmChart.Values)
 }
 
-func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string) (*release.Release, error) {
+func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error) {
 	upgradeClient := helm.NewUpgrade(helmConf)
 	upgradeClient.Namespace = namespace
-	upgradeClient.Wait = true
+	upgradeClient.Wait = wait
 	upgradeClient.Timeout = upgradeTimeout
 	upgradeClient.Recreate = true
 
 	return upgradeClient.Run(releaseName, helmChart, helmChart.Values)
 }
 
-func (client *HelmClientImpl) RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string) (*release.UninstallReleaseResponse, error) {
+func (client *HelmClientImpl) RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string, wait bool) (*release.UninstallReleaseResponse, error) {
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = uninstallTimeout
-	uninstallClient.Wait = true
+	uninstallClient.Wait = wait
 
 	return uninstallClient.Run(releaseName)
 }

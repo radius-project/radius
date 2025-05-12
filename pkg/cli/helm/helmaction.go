@@ -63,6 +63,9 @@ type ChartOptions struct {
 
 	// SetFileArgs specifies as set of additional "values" from file to pass it to helm.
 	SetFileArgs []string
+
+	// Wait specifies whether to wait for the chart to be ready.
+	Wait bool
 }
 
 // HelmAction is an interface for performing actions on Helm charts.
@@ -180,12 +183,12 @@ func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *
 	}
 
 	if !chartInstalled {
-		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, options.ReleaseName, options.Namespace)
+		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, options.ReleaseName, options.Namespace, options.Wait)
 		if err != nil {
 			return fmt.Errorf("failed to run Helm install, err: %w", err)
 		}
 	} else if options.Reinstall {
-		_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, options.ReleaseName, options.Namespace)
+		_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, options.ReleaseName, options.Namespace, options.Wait)
 		if err != nil {
 			return fmt.Errorf("failed to run Helm upgrade, err: %w", err)
 		}

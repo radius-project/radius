@@ -34,8 +34,11 @@ type ContourChartOptions struct {
 	ChartOptions
 	// HostNetwork specifies whether to use host networking for the Envoy pod.
 	HostNetwork bool
+	// Wait specifies whether to wait for the chart to be ready.
+	Wait bool
 }
 
+// prepareContourChart prepares the Helm chart for Contour.
 func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kubeContext string) (*chart.Chart, *action.Configuration, error) {
 	var helmChart *chart.Chart
 
