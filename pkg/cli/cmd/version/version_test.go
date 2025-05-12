@@ -31,7 +31,7 @@ func TestNewCommand(t *testing.T) {
 
 	// Verify command metadata
 	require.Equal(t, "version", cmd.Use)
-	require.Equal(t, "Prints the versions of the rad CLI and the Control Plane", cmd.Short)
+	require.Equal(t, "Prints the versions of the rad CLI and the Radius Control Plane", cmd.Short)
 
 	// Verify flags
 	cliOnly, err := cmd.Flags().GetBool("cli")

@@ -63,8 +63,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Prints the versions of the rad CLI and the Control Plane",
-		Long: `Display version information for the rad CLI and the Control Plane.
+		Short: "Prints the versions of the rad CLI and the Radius Control Plane",
+		Long: `Display version information for the rad CLI installed on your machine and the Radius Control Plane running on your cluster.
 By default this shows all available version information.`,
 		Example: `# Show all version information
 rad version
