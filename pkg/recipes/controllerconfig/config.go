@@ -62,7 +62,7 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 
 	cfg.UCPConnection = &options.UCPConnection
 
-	// HACKHACK: This is a temporary fix to avoid ARM initialization in the test environment.
+	// This is a temporary fix to avoid ARM initialization in the test environment.
 	cfg.Arm = options.Arm
 
 	clientOptions := sdk.NewClientOptions(options.UCPConnection)

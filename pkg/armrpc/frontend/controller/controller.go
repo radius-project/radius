@@ -53,7 +53,7 @@ type Options struct {
 	// Code that needs to construct a URL path should use the base path prefix when constructing the URL path.
 	PathBase string
 
-	// HACKHACK: This is a temporary hack to allow the controller to know the address of the RP.
+	// This is a temporary addition to allow the controller to know the address of the RP.
 	Arm *armauth.ArmConfig
 
 	// DatabaseClient is the database client.

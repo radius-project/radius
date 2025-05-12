@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
@@ -82,9 +83,15 @@ func (handler *azureCGProfileHandler) Delete(ctx context.Context, options *Delet
 	logger.Info("deleting container group profile...")
 	poller, err := cgp.BeginDelete(ctx, resourceGroupName, options.Resource.ID.Name(), nil)
 	if err != nil {
+		// if error indicates no response body, log and treat as success
+		if strings.Contains(err.Error(), "Response contained no body") {
+			logger.Info("delete completed (no response body received)")
+			return nil
+		}
 		return err
 	}
 
+	logger.Info("waiting for container group profile to delete...")
 	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
 		return err
