@@ -312,9 +312,8 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 				ResourceType: "Applications.Datastores/mongoDatabases",
 			},
 		},
-		PrevState: []string{},
 	}
-	actualResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, response, resources)
+	actualResponse, err := d.prepareRecipeResponse(opts.Definition.TemplatePath, response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -510,7 +509,7 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 		},
 		DeploymentStatus: "setupError",
 	}
-	expErr.ErrorDetails.Message = strings.Replace(expErr.ErrorDetails.Message, "<REPLACE_HOST>", ts.URL.Host, -1)
+	expErr.ErrorDetails.Message = strings.ReplaceAll(expErr.ErrorDetails.Message, "<REPLACE_HOST>", ts.URL.Host)
 	require.Equal(t, actualErr, &expErr)
 }
 

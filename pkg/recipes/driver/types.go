@@ -18,6 +18,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/recipes"
@@ -25,12 +26,37 @@ import (
 )
 
 const (
-	TerraformAzureProvider            = "registry.terraform.io/hashicorp/azurerm"
-	TerraformAWSProvider              = "registry.terraform.io/hashicorp/aws"
-	TerraformKubernetesProvider       = "registry.terraform.io/hashicorp/kubernetes"
+	DefaultTerraformRegistry           = "registry.terraform.io"
+	DefaultTerraformAzureProvider      = "hashicorp/azurerm"
+	DefaultTerraformAWSProvider        = "hashicorp/aws"
+	DefaultTerraformKubernetesProvider = "hashicorp/kubernetes"
+
 	PrivateRegistrySecretKey_Pat      = "pat"
 	PrivateRegistrySecretKey_Username = "username"
 )
+
+// GetTerraformProviderFullName returns the full provider name including registry
+func GetTerraformProviderFullName(registry, provider string) string {
+	return fmt.Sprintf("%s/%s", registry, provider)
+}
+
+// GetTerraformRegistry returns the registry to use based on configuration
+func GetTerraformRegistry(config recipes.Configuration) string {
+	if config.RecipeConfig.Terraform.Registry != nil && config.RecipeConfig.Terraform.Registry.Mirror != "" {
+		return config.RecipeConfig.Terraform.Registry.Mirror
+	}
+	return DefaultTerraformRegistry
+}
+
+// GetTerraformProviderName returns the provider name to use based on configuration
+func GetTerraformProviderName(config recipes.Configuration, defaultProvider, providerName string) string {
+	if config.RecipeConfig.Terraform.Registry != nil && config.RecipeConfig.Terraform.Registry.ProviderMappings != nil {
+		if mapping, exists := config.RecipeConfig.Terraform.Registry.ProviderMappings[defaultProvider]; exists {
+			return mapping
+		}
+	}
+	return providerName
+}
 
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
 //

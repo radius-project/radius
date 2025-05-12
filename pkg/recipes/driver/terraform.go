@@ -25,16 +25,13 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"golang.org/x/exp/slices"
-
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk"
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
 	awsresources "github.com/radius-project/radius/pkg/ucp/resources/aws"
@@ -42,7 +39,9 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util"
 
+	"github.com/google/uuid"
 	tfjson "github.com/hashicorp/terraform-json"
+	"golang.org/x/exp/slices"
 )
 
 var _ Driver = (*terraformDriver)(nil)
@@ -59,6 +58,9 @@ func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.S
 type TerraformOptions struct {
 	// Path is the path to the directory mounted to the container where terraform can be installed and executed.
 	Path string
+
+	// EnvConfig is the configuration for the environment.
+	EnvConfig recipes.Configuration
 }
 
 // terraformDriver represents a driver to interact with Terraform Recipe - deploy recipe, delete resources, etc.
@@ -82,6 +84,16 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 	defer func() {
 		if err := os.RemoveAll(requestDirPath); err != nil {
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
+		}
+	}()
+
+	if err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath); err != nil {
+		return nil, fmt.Errorf("failed to configure terraform registry: %w", err)
+	}
+	defer func() {
+		if err := CleanupTerraformRegistryConfig(ctx, requestDirPath); err != nil {
+			// Log the error but don't fail the operation
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform registry configuration: %s", err.Error()))
 		}
 	}()
 
@@ -114,7 +126,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.BaseOptions.Definition, tfState)
+	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.Definition, tfState)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -333,9 +345,17 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 		return recipeResources, nil
 	}
 
+	registry := GetTerraformRegistry(d.options.EnvConfig)
+	azureProvider := GetTerraformProviderFullName(registry,
+		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformAzureProvider, DefaultTerraformAzureProvider))
+	awsProvider := GetTerraformProviderFullName(registry,
+		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformAWSProvider, DefaultTerraformAWSProvider))
+	kubernetesProvider := GetTerraformProviderFullName(registry,
+		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformKubernetesProvider, DefaultTerraformKubernetesProvider))
+
 	for _, resource := range module.Resources {
 		switch resource.ProviderName {
-		case TerraformKubernetesProvider:
+		case kubernetesProvider:
 			var resourceType, resourceName, namespace, provider string
 			// For resource type "kubernetes_manifest" get the required details from the manifest property.
 			// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest
@@ -390,7 +410,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 				return []string{}, err
 			}
 			recipeResources = append(recipeResources, kubernetesResourceID)
-		case TerraformAzureProvider:
+		case azureProvider:
 			if resource.AttributeValues != nil {
 				if id, ok := resource.AttributeValues["id"].(string); ok {
 					_, err := resources.ParseResource(id)
@@ -402,7 +422,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 					}
 				}
 			}
-		case TerraformAWSProvider:
+		case awsProvider:
 			if resource.AttributeValues != nil {
 				if arn, ok := resource.AttributeValues["arn"].(string); ok {
 					awsResourceID, err := awsresources.ToUCPResourceID(arn)

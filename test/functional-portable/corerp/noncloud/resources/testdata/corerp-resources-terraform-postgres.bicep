@@ -25,7 +25,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
           postgresql: [ {
               alias: 'pgdb-test'
               sslmode: 'disable'
-              secrets: {               
+              secrets: {
                 username: {
                   source: pgsecretstore.id
                   key: 'username'

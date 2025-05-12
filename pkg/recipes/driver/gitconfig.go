@@ -134,7 +134,7 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 	paths := strings.Split(templatePath, "git::")
 	gitUrl := paths[len(paths)-1]
 
-	if !(len(strings.Split(gitUrl, "://")) > 1) {
+	if len(strings.Split(gitUrl, "://")) <= 1 {
 		gitUrl = fmt.Sprintf("https://%s", gitUrl)
 	}
 
