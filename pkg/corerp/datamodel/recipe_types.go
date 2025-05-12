@@ -40,6 +40,9 @@ type TerraformConfigProperties struct {
 
 	// Providers specifies the Terraform provider configurations. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs: https://developer.hashicorp.com/terraform/language/providers/configuration.// Providers specifies the Terraform provider configurations.
 	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
+
+	// Registry specifies the Terraform registry configuration.
+	Registry *TerraformRegistryConfig `json:"registry,omitempty"`
 }
 
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
@@ -98,4 +101,25 @@ type SecretReference struct {
 
 	// Key represents the key of the secret.
 	Key string `json:"key"`
+}
+
+// TerraformRegistryConfig - Configuration for Terraform Registry.
+type TerraformRegistryConfig struct {
+	// Mirror is the URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'.
+	Mirror string `json:"mirror,omitempty"`
+
+	// ProviderMappings is used to translate between official and custom provider identifiers.
+	ProviderMappings map[string]string `json:"providerMappings,omitempty"`
+
+	// Authentication configuration for accessing private Terraform registry mirrors.
+	Authentication RegistryAuthConfig `json:"authentication,omitempty"`
+}
+
+// RegistryAuthConfig - Authentication configuration for accessing private Terraform registry mirrors.
+type RegistryAuthConfig struct {
+	// Token is the token-based authentication for Terraform registry mirrors.
+	Token *SecretReference `json:"token,omitempty"`
+
+	// Credentials is the credentials-based authentication for Terraform registry mirrors.
+	Credentials *SecretConfig `json:"credentials,omitempty"`
 }

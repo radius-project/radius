@@ -109,7 +109,8 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, fmt.Errorf("error getting kubernetes client: %w", err)
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).
+		ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
 	} else if !backendExists {
@@ -386,9 +387,15 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 		[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState)})
 
+	// Set apply options to handle locks
+	applyOptions := []tfexec.ApplyOption{
+		tfexec.Lock(true),
+		tfexec.LockTimeout("60s"),
+	}
+
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
-	if err := tf.Apply(ctx); err != nil {
+	if err := tf.Apply(ctx, applyOptions...); err != nil {
 		return nil, fmt.Errorf("terraform apply failure: %w", err)
 	}
 

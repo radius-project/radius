@@ -107,6 +107,30 @@ model TerraformConfigProperties {
 
   @doc("Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration.")
   providers?: Record<Array<ProviderConfigProperties>>;
+
+  @doc("Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.")
+  registry?: TerraformRegistryConfig;
+}
+
+@doc("Configuration for Terraform provider registry mirroring.")
+model TerraformRegistryConfig {
+  @doc("Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'")
+  mirror?: string;
+
+  @doc("Provider mappings to translate between official and custom provider identifiers.")
+  providerMappings?: Record<string>;
+
+  @doc("Authentication configuration for accessing private Terraform registry mirrors.")
+  authentication?: RegistryAuthConfig;
+}
+
+@doc("Authentication configuration for private Terraform registry mirrors.")
+model RegistryAuthConfig {
+  @doc("Token-based authentication for Terraform registry mirrors.")
+  token?: SecretReference;
+
+  @doc("Credentials-based authentication for Terraform registry mirrors.")
+  credentials?: SecretConfig;
 }
 
 @doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")

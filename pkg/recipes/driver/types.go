@@ -18,19 +18,44 @@ package driver
 
 import (
 	"context"
-	"strings"
+	"fmt"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 const (
-	TerraformAzureProvider            = "registry.terraform.io/hashicorp/azurerm"
-	TerraformAWSProvider              = "registry.terraform.io/hashicorp/aws"
-	TerraformKubernetesProvider       = "registry.terraform.io/hashicorp/kubernetes"
+	DefaultTerraformRegistry           = "registry.terraform.io"
+	DefaultTerraformAzureProvider      = "hashicorp/azurerm"
+	DefaultTerraformAWSProvider        = "hashicorp/aws"
+	DefaultTerraformKubernetesProvider = "hashicorp/kubernetes"
+
 	PrivateRegistrySecretKey_Pat      = "pat"
 	PrivateRegistrySecretKey_Username = "username"
 )
+
+// GetTerraformProviderFullName returns the full provider name including registry
+func GetTerraformProviderFullName(registry, provider string) string {
+	return fmt.Sprintf("%s/%s", registry, provider)
+}
+
+// GetTerraformRegistry returns the registry to use based on configuration
+func GetTerraformRegistry(config recipes.Configuration) string {
+	if config.RecipeConfig.Terraform.Registry != nil && config.RecipeConfig.Terraform.Registry.Mirror != "" {
+		return config.RecipeConfig.Terraform.Registry.Mirror
+	}
+	return DefaultTerraformRegistry
+}
+
+// GetTerraformProviderName returns the provider name to use based on configuration
+func GetTerraformProviderName(config recipes.Configuration, defaultProvider, providerName string) string {
+	if config.RecipeConfig.Terraform.Registry != nil && config.RecipeConfig.Terraform.Registry.ProviderMappings != nil {
+		if mapping, exists := config.RecipeConfig.Terraform.Registry.ProviderMappings[defaultProvider]; exists {
+			return mapping
+		}
+	}
+	return providerName
+}
 
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
 //
@@ -98,18 +123,4 @@ type DeleteOptions struct {
 
 	// OutputResources is the list of output resources for the recipe.
 	OutputResources []rpv1.OutputResource
-}
-
-// GetPrivateGitRepoSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
-func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePath string) (string, error) {
-	if strings.HasPrefix(templatePath, "git::") {
-		url, err := GetGitURL(templatePath)
-		if err != nil {
-			return "", err
-		}
-
-		// get the secret store id associated with the git domain of the template path.
-		return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
-	}
-	return "", nil
 }

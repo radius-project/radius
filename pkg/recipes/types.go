@@ -45,6 +45,7 @@ type RuntimeConfiguration struct {
 type KubernetesRuntime struct {
 	// Namespace is set to the application namespace when the portable resource is application-scoped, and set to the environment namespace when it is environment scoped
 	Namespace string `json:"namespace,omitempty"`
+
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
 }
@@ -53,16 +54,22 @@ type KubernetesRuntime struct {
 type EnvironmentDefinition struct {
 	// Name represents the name of the recipe within the environment
 	Name string
+
 	// Driver represents the kind of infrastructure language used to define recipe.
 	Driver string
+
 	// ResourceType represents the type of the portable resource this recipe can be consumed by.
 	ResourceType string
+
 	// Parameters represents key/value pairs to pass into the recipe template for every resource using this recipe. Specified during recipe registration to environment. Can be overridden by the radius resource consuming this recipe.
 	Parameters map[string]any
+
 	// TemplatePath represents path to the template provided by the recipe.
 	TemplatePath string
+
 	// TemplateVersion represents the version of the terraform module provided by the recipe.
 	TemplateVersion string
+
 	// Allows insecure connections to registry without SSL check.
 	PlainHTTP bool
 }
@@ -71,14 +78,19 @@ type EnvironmentDefinition struct {
 type ResourceMetadata struct {
 	// Name represents the name of the recipe within the environment
 	Name string
+
 	// ApplicationID represents fully qualified resource ID for the application that the portable resource is consumed by
 	ApplicationID string
+
 	// EnvironmentID represents fully qualified resource ID for the environment that the portable resource is linked to
 	EnvironmentID string
+
 	// ResourceID represents fully qualified resource ID for the resource the recipe is deploying
 	ResourceID string
+
 	// Properties represents the properties of the resource that the recipe is deploying
 	Properties map[string]any
+
 	// Parameters represents key/value pairs to pass into the recipe template. Overrides any parameters set by the environment.
 	Parameters map[string]any
 }

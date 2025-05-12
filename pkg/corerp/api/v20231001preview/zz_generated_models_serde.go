@@ -2859,6 +2859,37 @@ func (r *RecipeStatus) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type RegistryAuthConfig.
+func (r RegistryAuthConfig) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "credentials", r.Credentials)
+	populate(objectMap, "token", r.Token)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RegistryAuthConfig.
+func (r *RegistryAuthConfig) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "credentials":
+				err = unpopulate(val, "Credentials", &r.Credentials)
+			delete(rawMsg, key)
+		case "token":
+				err = unpopulate(val, "Token", &r.Token)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type RegistrySecretConfig.
 func (r RegistrySecretConfig) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -3452,6 +3483,7 @@ func (t TerraformConfigProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "authentication", t.Authentication)
 	populate(objectMap, "providers", t.Providers)
+	populate(objectMap, "registry", t.Registry)
 	return json.Marshal(objectMap)
 }
 
@@ -3469,6 +3501,9 @@ func (t *TerraformConfigProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "providers":
 				err = unpopulate(val, "Providers", &t.Providers)
+			delete(rawMsg, key)
+		case "registry":
+				err = unpopulate(val, "Registry", &t.Registry)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -3508,6 +3543,41 @@ func (t *TerraformRecipeProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "templateVersion":
 				err = unpopulate(val, "TemplateVersion", &t.TemplateVersion)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", t, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type TerraformRegistryConfig.
+func (t TerraformRegistryConfig) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "authentication", t.Authentication)
+	populate(objectMap, "mirror", t.Mirror)
+	populate(objectMap, "providerMappings", t.ProviderMappings)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type TerraformRegistryConfig.
+func (t *TerraformRegistryConfig) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", t, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "authentication":
+				err = unpopulate(val, "Authentication", &t.Authentication)
+			delete(rawMsg, key)
+		case "mirror":
+				err = unpopulate(val, "Mirror", &t.Mirror)
+			delete(rawMsg, key)
+		case "providerMappings":
+				err = unpopulate(val, "ProviderMappings", &t.ProviderMappings)
 			delete(rawMsg, key)
 		}
 		if err != nil {

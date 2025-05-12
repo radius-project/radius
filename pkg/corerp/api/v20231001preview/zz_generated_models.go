@@ -1212,6 +1212,15 @@ type RecipeStatus struct {
 	TemplateVersion *string
 }
 
+// RegistryAuthConfig - Authentication configuration for private Terraform registry mirrors.
+type RegistryAuthConfig struct {
+// Credentials-based authentication for Terraform registry mirrors.
+	Credentials *SecretConfig
+
+// Token-based authentication for Terraform registry mirrors.
+	Token *SecretReference
+}
+
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
 type RegistrySecretConfig struct {
 // The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container
@@ -1451,6 +1460,9 @@ type TerraformConfigProperties struct {
 // other APIs. For more information, please see:
 // https://developer.hashicorp.com/terraform/language/providers/configuration.
 	Providers map[string][]*ProviderConfigProperties
+
+// Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.
+	Registry *TerraformRegistryConfig
 }
 
 // TerraformRecipeProperties - Represents Terraform recipe properties.
@@ -1476,6 +1488,18 @@ func (t *TerraformRecipeProperties) GetRecipeProperties() *RecipeProperties {
 		TemplateKind: t.TemplateKind,
 		TemplatePath: t.TemplatePath,
 	}
+}
+
+// TerraformRegistryConfig - Configuration for Terraform provider registry mirroring.
+type TerraformRegistryConfig struct {
+// Authentication configuration for accessing private Terraform registry mirrors.
+	Authentication *RegistryAuthConfig
+
+// Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'
+	Mirror *string
+
+// Provider mappings to translate between official and custom provider identifiers.
+	ProviderMappings map[string]*string
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'

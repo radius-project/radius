@@ -1108,3 +1108,192 @@ func Test_fromSecretReferenceDatamodel(t *testing.T) {
 		})
 	}
 }
+
+func Test_toFromTerraformRegistryConfigDatamodel(t *testing.T) {
+	tests := []struct {
+		name                string
+		configWithRegistry  *RecipeConfigProperties
+		expectedDataModel   *datamodel.TerraformRegistryConfig
+		expectedRegistryNil bool
+	}{
+		{
+			name: "Registry with token authentication",
+			configWithRegistry: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Registry: &TerraformRegistryConfig{
+						Mirror: to.Ptr("terraform.example.com"),
+						ProviderMappings: map[string]*string{
+							"hashicorp/azurerm": to.Ptr("mycompany/azurerm"),
+						},
+						Authentication: &RegistryAuthConfig{
+							Token: &SecretReference{
+								Source: to.Ptr("/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore"),
+								Key:    to.Ptr("registryToken"),
+							},
+						},
+					},
+				},
+			},
+			expectedDataModel: &datamodel.TerraformRegistryConfig{
+				Mirror: "terraform.example.com",
+				ProviderMappings: map[string]string{
+					"hashicorp/azurerm": "mycompany/azurerm",
+				},
+				Authentication: datamodel.RegistryAuthConfig{
+					Token: &datamodel.SecretReference{
+						Source: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore",
+						Key:    "registryToken",
+					},
+				},
+			},
+		},
+		{
+			name: "Registry with credentials authentication",
+			configWithRegistry: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Registry: &TerraformRegistryConfig{
+						Mirror: to.Ptr("terraform.example.com"),
+						Authentication: &RegistryAuthConfig{
+							Credentials: &SecretConfig{
+								Secret: to.Ptr("/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/credStore"),
+							},
+						},
+					},
+				},
+			},
+			expectedDataModel: &datamodel.TerraformRegistryConfig{
+				Mirror: "terraform.example.com",
+				Authentication: datamodel.RegistryAuthConfig{
+					Credentials: &datamodel.SecretConfig{
+						Secret: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/credStore",
+					},
+				},
+			},
+		},
+		{
+			name: "Registry without authentication",
+			configWithRegistry: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Registry: &TerraformRegistryConfig{
+						Mirror: to.Ptr("terraform.example.com"),
+						ProviderMappings: map[string]*string{
+							"hashicorp/azurerm": to.Ptr("mycompany/azurerm"),
+						},
+					},
+				},
+			},
+			expectedDataModel: &datamodel.TerraformRegistryConfig{
+				Mirror: "terraform.example.com",
+				ProviderMappings: map[string]string{
+					"hashicorp/azurerm": "mycompany/azurerm",
+				},
+			},
+		},
+		{
+			name: "No registry configuration",
+			configWithRegistry: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{},
+			},
+			expectedRegistryNil: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test conversion to datamodel
+			result := toRecipeConfigDatamodel(tt.configWithRegistry)
+
+			if tt.expectedRegistryNil {
+				require.Nil(t, result.Terraform.Registry, "Registry should be nil")
+			} else {
+				// Verify the registry configuration
+				require.NotNil(t, result.Terraform.Registry, "Registry should not be nil")
+				require.Equal(t, tt.expectedDataModel.Mirror, result.Terraform.Registry.Mirror)
+				require.Equal(t, tt.expectedDataModel.ProviderMappings, result.Terraform.Registry.ProviderMappings)
+
+				// Verify authentication details
+				if tt.expectedDataModel.Authentication.Token != nil {
+					require.NotNil(t, result.Terraform.Registry.Authentication.Token)
+					require.Equal(t, tt.expectedDataModel.Authentication.Token.Source, result.Terraform.Registry.Authentication.Token.Source)
+					require.Equal(t, tt.expectedDataModel.Authentication.Token.Key, result.Terraform.Registry.Authentication.Token.Key)
+				} else {
+					require.Nil(t, result.Terraform.Registry.Authentication.Token)
+				}
+
+				if tt.expectedDataModel.Authentication.Credentials != nil {
+					require.NotNil(t, result.Terraform.Registry.Authentication.Credentials)
+					require.Equal(t, tt.expectedDataModel.Authentication.Credentials.Secret, result.Terraform.Registry.Authentication.Credentials.Secret)
+				} else {
+					require.Nil(t, result.Terraform.Registry.Authentication.Credentials)
+				}
+			}
+
+			// Test round-trip conversion back to versioned model
+			versioned := fromRecipeConfigDatamodel(result)
+
+			if tt.expectedRegistryNil {
+				if versioned != nil && versioned.Terraform != nil {
+					require.Nil(t, versioned.Terraform.Registry, "Registry should be nil after round-trip conversion")
+				}
+			} else {
+				// Verify the registry configuration after round-trip
+				require.NotNil(t, versioned.Terraform.Registry, "Registry should not be nil after round-trip conversion")
+				require.Equal(t, tt.configWithRegistry.Terraform.Registry.Mirror, versioned.Terraform.Registry.Mirror)
+
+				// Verify provider mappings if present
+				if tt.configWithRegistry.Terraform.Registry.ProviderMappings != nil {
+					require.Equal(t, len(tt.configWithRegistry.Terraform.Registry.ProviderMappings), len(versioned.Terraform.Registry.ProviderMappings))
+					for k, v := range tt.configWithRegistry.Terraform.Registry.ProviderMappings {
+						require.Equal(t, v, versioned.Terraform.Registry.ProviderMappings[k])
+					}
+				}
+
+				// Verify authentication details after round-trip
+				if tt.configWithRegistry.Terraform.Registry.Authentication != nil {
+					require.NotNil(t, versioned.Terraform.Registry.Authentication)
+
+					if tt.configWithRegistry.Terraform.Registry.Authentication.Token != nil {
+						require.NotNil(t, versioned.Terraform.Registry.Authentication.Token)
+						require.Equal(t,
+							tt.configWithRegistry.Terraform.Registry.Authentication.Token.Source,
+							versioned.Terraform.Registry.Authentication.Token.Source)
+						require.Equal(t,
+							tt.configWithRegistry.Terraform.Registry.Authentication.Token.Key,
+							versioned.Terraform.Registry.Authentication.Token.Key)
+					}
+
+					if tt.configWithRegistry.Terraform.Registry.Authentication.Credentials != nil {
+						require.NotNil(t, versioned.Terraform.Registry.Authentication.Credentials)
+						require.Equal(t,
+							tt.configWithRegistry.Terraform.Registry.Authentication.Credentials.Secret,
+							versioned.Terraform.Registry.Authentication.Credentials.Secret)
+					}
+				} else {
+					require.Nil(t, versioned.Terraform.Registry.Authentication, "Authentication should be nil after round-trip")
+				}
+			}
+		})
+	}
+}
+
+func Test_toRecipeConfigDatamodel_NilAuthenticationHandling(t *testing.T) {
+	// This test specifically targets the nil pointer issue in the Registry.Authentication field
+	config := &RecipeConfigProperties{
+		Terraform: &TerraformConfigProperties{
+			Registry: &TerraformRegistryConfig{
+				Mirror: to.Ptr("terraform.example.com"),
+				// Authentication is intentionally nil
+			},
+		},
+	}
+
+	// This should not panic
+	result := toRecipeConfigDatamodel(config)
+
+	// Verify registry was properly initialized
+	require.NotNil(t, result.Terraform.Registry, "Registry should not be nil")
+	require.Equal(t, "terraform.example.com", result.Terraform.Registry.Mirror)
+
+	// Authentication should be zero value but not cause nil pointer dereference
+	require.Equal(t, datamodel.RegistryAuthConfig{}, result.Terraform.Registry.Authentication)
+}
