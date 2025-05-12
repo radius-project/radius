@@ -85,6 +85,7 @@ func (b *BaseController) DatabaseClient() database.Client {
 	return b.options.DatabaseClient
 }
 
+// UcpClient gets ucp client for this controller.
 func (b *BaseController) UcpClient() *v20231001preview.ClientFactory {
 	return b.options.UcpClient
 }
