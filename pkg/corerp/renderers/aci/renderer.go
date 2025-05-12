@@ -53,26 +53,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		}
 	}
 
-	// TODO: fix routing
-	// for _, port := range properties.Container.Ports {
-	// 	provides := port.Provides
-
-	// 	// if provides is empty, skip this port. A service for this port will be generated later on.
-	// 	if provides == "" {
-	// 		continue
-	// 	}
-
-	// 	resourceID, err := resources.ParseResource(provides)
-	// 	if err != nil {
-	// 		return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
-	// 	}
-
-	// 	if resources_radius.IsRadiusResource(resourceID) {
-	// 		radiusResourceIDs = append(radiusResourceIDs, resourceID)
-	// 		continue
-	// 	}
-	// }
-
 	return radiusResourceIDs, azureResourceIDs, nil
 }
 
@@ -147,11 +127,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			Port:     to.Ptr(v.ContainerPort),
 			Protocol: to.Ptr(ngroupsclient.ContainerGroupNetworkProtocolTCP),
 		})
-
-		// TODO: This is a hack to determine if this is a gateway container.
-		// if strings.Contains(strings.ToLower(v.Provides), "applications.core/gateways") {
-		// 	gatewayProvides = v.Provides
-		// }
 	}
 
 	if len(containerPorts) > 0 {
@@ -416,10 +391,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 				LocalID:           rpv1.LocalIDAzureContainerLoadBalancer,
 				PropertyReference: "hostname",
 			},
-			// // TODO: Add the computed values here
-			// "test_computed_value_key": {
-			// 	Value: "test_computed_value_value",
-			// },
 		},
 	}, nil
 }
