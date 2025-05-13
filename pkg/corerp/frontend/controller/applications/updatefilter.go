@@ -64,6 +64,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 	}
 	// We want to skip setting up a namespace for environments with non-Kubernetes compute
 	if env.Properties.Compute.Kind != rpv1.KubernetesComputeKind {
+		logger.Info("Skipping namespace creation for non-Kubernetes environment", "environment", newResource.Properties.Environment)
 		return nil, nil
 	}
 

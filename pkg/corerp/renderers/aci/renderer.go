@@ -117,7 +117,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	firstPort := int32(80)
 	// Set the gateway if it's defined on the container resource
 	gateway := ""
-	if properties.Runtimes.ACI.GatewayID != "" {
+	if properties.Runtimes != nil && properties.Runtimes.ACI != nil && properties.Runtimes.ACI.GatewayID != "" {
 		gateway = resources.MustParse(resource.Properties.Runtimes.ACI.GatewayID).Name()
 	}
 	for _, v := range properties.Container.Ports {
