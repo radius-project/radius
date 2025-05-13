@@ -83,9 +83,9 @@ REL_CHANNEL=""
 # If the release version is a release candidate (e.g. 0.1.0-rc1), use the full version as the channel
 # Otherwise, use the major and minor version (e.g. 0.1)
 if [[ "$RELEASE_VERSION" == *"-rc"* ]]; then
-  REL_CHANNEL=$RELEASE_VERSION
+  REL_CHANNEL=$(echo "$RELEASE_VERSION" | cut -d 'v' -f 2)
 else
-  REL_CHANNEL=$(echo "$RELEASE_VERSION" | cut -d '.' -f 1,2)
+  REL_CHANNEL=$(echo "$RELEASE_VERSION" | cut -d 'v' -f 2 | cut -d '.' -f 1,2)
 fi
 
 echo "Release version: ${RELEASE_VERSION}"

@@ -84,6 +84,7 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 	options := ctrl.Options{
 		DatabaseClient: c.DatabaseClient(),
 		ResourceType:   id.Type(),
+		UcpClient:      c.ucp,
 	}
 
 	switch ot.Method {
