@@ -1,0 +1,16 @@
+name: "Install Flux CLI and Source Controller"
+description: "Installs Flux CLI and Source Controller."
+inputs:
+  flux-version:
+    description: "Flux version"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install Flux
+      id: export-token
+      shell: bash
+      env:
+        GITEA_PASSWORD: ${{ env.GITEA_PASSWORD }}
+      run: |
+        .github/actions/install-flux/install-flux.sh ${{ inputs.flux-version }}
