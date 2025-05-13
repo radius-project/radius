@@ -115,7 +115,11 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// Support only one port for now.
 	// port 80 has to be defined
 	firstPort := int32(80)
-	gateway := resources.MustParse(resource.Properties.Runtimes.ACI.GatewayID).Name()
+	// Set the gateway if it's defined on the container resource
+	gateway := ""
+	if properties.Runtimes.ACI.GatewayID != "" {
+		gateway = resources.MustParse(resource.Properties.Runtimes.ACI.GatewayID).Name()
+	}
 	for _, v := range properties.Container.Ports {
 		// exposed within container group for interacting with the container
 		containerPorts = append(containerPorts, &ngroupsclient.ContainerPort{
