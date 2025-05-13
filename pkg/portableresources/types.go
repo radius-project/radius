@@ -68,38 +68,5 @@ type ResourceReference struct {
 	ID string `json:"id"`
 }
 
-// RecipeContext Recipe template authors can leverage the RecipeContext parameter to access portable resource properties to
-// generate name and properties that are unique for the resource calling the recipe.
-type RecipeContext struct {
-	Resource    Resource     `json:"resource,omitempty"`
-	Application ResourceInfo `json:"application,omitempty"`
-	Environment ResourceInfo `json:"environment,omitempty"`
-	Runtime     Runtime      `json:"runtime,omitempty"`
-}
-
-// Resource contains the information needed to deploy a recipe.
-// In the case the resource is a portable resource, it represents the resource's id, name and type.
-type Resource struct {
-	ResourceInfo
-	Type string `json:"type"`
-}
-
-// ResourceInfo name and id of the resource
-type ResourceInfo struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-}
-
-type Runtime struct {
-	Kubernetes Kubernetes `json:"kubernetes,omitempty"`
-}
-
 // ResourceProvisioning specifies how the resource should be managed
 type ResourceProvisioning string
-
-type Kubernetes struct {
-	// Namespace is set to the applicationNamespace when the portable resource is application-scoped, and set to the environmentNamespace when it is environment scoped
-	Namespace string `json:"namespace"`
-	// EnvironmentNamespace is set to environment namespace.
-	EnvironmentNamespace string `json:"environmentNamespace"`
-}

@@ -18,10 +18,14 @@ package processor
 
 import (
 	"context"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"golang.org/x/exp/slices"
 )
 
 var _ processors.ResourceProcessor[*datamodel.DynamicResource, datamodel.DynamicResource] = (*DynamicProcessor)(nil)
@@ -63,6 +67,61 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 	err = resource.ApplyDeploymentOutput(rpv1.DeploymentOutput{DeployedOutputResources: outputResources, ComputedValues: computedValues, SecretValues: secretValues})
 	if err != nil {
 		return err
+	}
+
+	err = addOutputValuestoResourceProperties(ctx, options.UcpClient, resource, computedValues, secretValues)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// addOutputValuestoResourceProperties adds the computed values and secret values to the resource properties.
+// It retrieves the schema of the resource type and filters out the values that are not part of the schema.
+func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resource *datamodel.DynamicResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
+
+	ID, err := resources.Parse(resource.ID)
+	if err != nil {
+		return err
+	}
+
+	plane := ID.PlaneNamespace()
+	planeName := strings.Split(plane, "/")[1]
+	resourceProvider := strings.Split(resource.Type, "/")[0]
+	resourceType := strings.Split(resource.Type, "/")[1]
+	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, planeName, resourceProvider, resourceType, resource.InternalMetadata.UpdatedAPIVersion, nil)
+	if err != nil {
+		return err
+	}
+
+	// Filter out the basic properties from the resource properties
+	// This is to avoid overwriting the properties like application, environment etc when they are added as computed values or secret values.
+	basicProperties := []string{"application", "environment", "status"}
+	resourceProps := []string{}
+	schema := apiVersionResource.APIVersionResource.Properties.Schema
+	if schema != nil {
+		if properties, ok := schema["properties"].(map[string]any); ok {
+			for key := range properties {
+				if !slices.Contains(basicProperties, key) {
+					resourceProps = append(resourceProps, key)
+				}
+			}
+		}
+	}
+
+	// Add the computed values to the resource properties if they are part of the schema.
+	for key, value := range computedValues {
+		if slices.Contains(resourceProps, key) {
+			resource.Properties[key] = value
+		}
+	}
+
+	// Add the secret values to the resource properties if they are part of the schema.
+	for key, value := range secretValues {
+		if slices.Contains(resourceProps, key) {
+			resource.Properties[key] = value.Value
+		}
 	}
 
 	return nil

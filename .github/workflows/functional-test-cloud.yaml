@@ -98,6 +98,8 @@ jobs:
     env:
       DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
       DE_TAG: "latest"
+      # Head branch, only populated for workflow_run dispatch.
+      HEAD_BRANCH: "${{ github.event.workflow_run.head_branch }}"
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -117,7 +119,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             echo "Triggered by workflow_run."
             echo "Ref: ${{ github.ref }}"
-            echo "Head Branch Name: ${{ github.event.workflow_run.head_branch }}"
+            echo "Head Branch Name: $HEAD_BRANCH"
             echo "SHA Value: ${{ github.event.workflow_run.head_sha }}"
             echo "Github Repository: ${{ github.repository }}"
             echo "Event Repository ID: ${{ github.event.workflow_run.repository.id }}"
@@ -588,7 +590,6 @@ jobs:
                   service-account-private-key-file: /etc/kubernetes/pki/sa.key
           EOF
 
-
       - name: Install Azure Keyvault CSI driver chart
         run: |
           helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
@@ -641,6 +642,7 @@ jobs:
             --set controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }} \
             --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
+            --set bicep.image=${{ env.CONTAINER_REGISTRY }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
             --set global.azureWorkloadIdentity.enabled=true \
             --set global.aws.irsa.enabled=true 
           

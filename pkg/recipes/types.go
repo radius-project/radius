@@ -67,7 +67,7 @@ type EnvironmentDefinition struct {
 	PlainHTTP bool
 }
 
-// ResourceMetadata represents recipe details provided while creating a portable resource.
+// ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
 type ResourceMetadata struct {
 	// Name represents the name of the recipe within the environment
 	Name string
@@ -77,6 +77,8 @@ type ResourceMetadata struct {
 	EnvironmentID string
 	// ResourceID represents fully qualified resource ID for the resource the recipe is deploying
 	ResourceID string
+	// Properties represents the properties of the resource that the recipe is deploying
+	Properties map[string]any
 	// Parameters represents key/value pairs to pass into the recipe template. Overrides any parameters set by the environment.
 	Parameters map[string]any
 }

@@ -103,10 +103,6 @@ func (r *Runner) Run(ctx context.Context) error {
 			Namespace:   helm.RadiusSystemNamespace,
 			ReleaseName: helm.NewDefaultClusterOptions().Radius.ReleaseName,
 		},
-		Dapr: helm.ChartOptions{
-			Namespace:   helm.DaprSystemNamespace,
-			ReleaseName: helm.NewDefaultClusterOptions().Dapr.ReleaseName,
-		},
 	}, r.KubeContext)
 
 	if err != nil {

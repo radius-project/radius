@@ -21,13 +21,26 @@ import (
 	"io"
 )
 
+//go:generate mockgen -typed -destination=./mock_writer.go -package=output -self_package github.com/radius-project/radius/pkg/cli/output github.com/radius-project/radius/pkg/cli/output Interface
+
 // Interface is a mockable interface for writing cli output
 type Interface interface {
 	// LogInfo logs a message that is displayed to the user by default.
 	LogInfo(format string, v ...any)
 
-	// Write
+	// WriteFormatted takes in a format string, an object of any type, and a FormatterOptions object, and calls
+	// the Write function with the given parameters, writing the output to the Writer field of the OutputWriter object.
 	WriteFormatted(format string, obj any, options FormatterOptions) error
+
+	// BeginStep starts execution of a step
+	BeginStep(format string, v ...any) Step
+
+	// CompleteStep ends execution of a step
+	CompleteStep(step Step)
+}
+
+// Step represents a logical step that's being executed.
+type Step struct {
 }
 
 type OutputWriter struct {
@@ -44,6 +57,16 @@ func (o *OutputWriter) LogInfo(format string, v ...any) {
 // the Write function with the given parameters, writing the output to the Writer field of the OutputWriter object.
 func (o *OutputWriter) WriteFormatted(format string, obj any, options FormatterOptions) error {
 	return Write(format, obj, o.Writer, options)
+}
+
+// BeginStep starts execution of a step
+func (o *OutputWriter) BeginStep(format string, v ...any) Step {
+	o.LogInfo(format, v...)
+	return Step{}
+}
+
+// CompleteStep ends execution of a step
+func (o *OutputWriter) CompleteStep(step Step) {
 }
 
 // Write takes in a format string, an object, a writer and formatter options and attempts to format the object according

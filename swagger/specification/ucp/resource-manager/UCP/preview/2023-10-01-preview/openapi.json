@@ -2902,6 +2902,11 @@
           "$ref": "#/definitions/ProvisioningState",
           "description": "The status of the asynchronous operation.",
           "readOnly": true
+        },
+        "schema": {
+          "type": "object",
+          "description": "Schema is the schema for the resource type.",
+          "additionalProperties": {}
         }
       }
     },

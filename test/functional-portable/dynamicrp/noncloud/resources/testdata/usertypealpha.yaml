@@ -1,0 +1,71 @@
+name: Test.Resources
+types:
+  userTypeAlpha:
+    capabilities: ["SupportsRecipes"]
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+          required:
+            - application
+            - environment
+  postgres:
+    apiVersions:
+      '2023-10-01-preview':
+        schema: 
+          type: object
+          properties:
+            environment:
+              type: string
+            application:
+              type: string
+              description: The resource ID of the application.
+            database:
+              type: string
+              description: The name of the database.
+            host:
+              type: string
+              description: The host name of the database.
+            port:
+              type: string
+              description: The port number of the database.
+            password:
+              type: string
+              description: The password for the database.
+            status:
+              type: object
+              properties:
+                binding:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                      description: The username for the database.
+    capabilities: ["SupportsRecipes"]
+  externalResource:
+    capabilities: []
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            configMap:
+              type: string
+              description: The data contained in a config map.
+          required:
+            - application
+            - environment
+            - configMap 

@@ -70,6 +70,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/run"
 	"github.com/radius-project/radius/pkg/cli/cmd/uninstall"
 	uninstall_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/uninstall/kubernetes"
+	version "github.com/radius-project/radius/pkg/cli/cmd/version"
 	workspace_create "github.com/radius-project/radius/pkg/cli/cmd/workspace/create"
 	workspace_delete "github.com/radius-project/radius/pkg/cli/cmd/workspace/delete"
 	workspace_list "github.com/radius-project/radius/pkg/cli/cmd/workspace/list"
@@ -78,6 +79,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
@@ -218,7 +220,10 @@ func init() {
 
 func initSubCommands() {
 	framework := &framework.Impl{
-		Bicep:             &bicep.Impl{},
+		Bicep: &bicep.Impl{
+			FileSystem: filesystem.OSFileSystem{},
+			Output:     &output.OutputWriter{Writer: RootCmd.OutOrStdout()},
+		},
 		ConnectionFactory: connections.DefaultFactory,
 		ConfigHolder:      ConfigHolder,
 		Deploy:            &deploy.Impl{},
@@ -367,6 +372,9 @@ func initSubCommands() {
 
 	uninstallKubernetesCmd, _ := uninstall_kubernetes.NewCommand(framework)
 	uninstallCmd.AddCommand(uninstallKubernetesCmd)
+
+	versionCmd, _ := version.NewCommand(framework)
+	RootCmd.AddCommand(versionCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

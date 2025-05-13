@@ -44,18 +44,34 @@ runs:
       shell: bash
       run: |
         # https://kind.sigs.k8s.io/docs/user/local-registry/
+        # Create the cluster with necessary configurations
+        # to expose 30080 port for Gitea
         cat <<EOF | kind create cluster --config=-
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          extraPortMappings:
+            - containerPort: 30080
+              hostPort: 30080
+              protocol: TCP
         EOF
 
     - name: Create a KinD cluster with an insecure local registry
       if: ${{ inputs.with-local-registry == 'true' && inputs.secure == 'false' }}
       shell: bash
       run: |
+        # Create the cluster with necessary configurations
+        # to expose 30080 port for Gitea
         cat <<EOF | kind create cluster --config=-
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          extraPortMappings:
+            - containerPort: 30080
+              hostPort: 30080
+              protocol: TCP
         containerdConfigPatches:
         - |-
           [plugins."io.containerd.grpc.v1.cri".registry]
@@ -93,6 +109,7 @@ runs:
       shell: bash
       run: |
         # Create the cluster with necessary configurations for the secure local registry
+        # and to expose 30080 port for Gitea
         cat <<EOF | kind create cluster --config=-
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4
@@ -101,6 +118,10 @@ runs:
           extraMounts:
             - containerPath: "/etc/containerd/certs.d/${{ inputs.registry-name }}"
               hostPath: "${{ inputs.temp-cert-dir }}/certs/${{ inputs.registry-server }}"
+          extraPortMappings:
+            - containerPort: 30080
+              hostPort: 30080
+              protocol: TCP
         containerdConfigPatches:
         - |-
           [plugins."io.containerd.grpc.v1.cri".registry]

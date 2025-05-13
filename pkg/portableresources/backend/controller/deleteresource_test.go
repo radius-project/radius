@@ -107,12 +107,25 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 				},
 			}
 
+			testResource := &TestResource{
+				Properties: TestResourceProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: TestApplicationID,
+						Environment: TestEnvironmentID,
+						Status:      status,
+					},
+				},
+			}
+			properties, err := GetPropertiesFromResource(testResource)
+			require.NoError(t, err)
+
 			recipeData := recipes.ResourceMetadata{
 				Name:          "",
 				EnvironmentID: TestEnvironmentID,
 				ApplicationID: TestApplicationID,
 				Parameters:    nil,
 				ResourceID:    resourceID,
+				Properties:    properties,
 			}
 
 			msc.EXPECT().
