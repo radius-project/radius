@@ -119,7 +119,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             echo "Triggered by workflow_run."
             echo "Ref: ${{ github.ref }}"
-            echo "Head Branch Name: ${{ env.HEAD_BRANCH }}"
+            echo "Head Branch Name: $HEAD_BRANCH"
             echo "SHA Value: ${{ github.event.workflow_run.head_sha }}"
             echo "Github Repository: ${{ github.repository }}"
             echo "Event Repository ID: ${{ github.event.workflow_run.repository.id }}"
