@@ -8,9 +8,6 @@ runs:
   using: "composite"
   steps:
     - name: Install Flux
-      id: export-token
       shell: bash
-      env:
-        GITEA_PASSWORD: ${{ env.GITEA_PASSWORD }}
       run: |
         .github/actions/install-flux/install-flux.sh ${{ inputs.flux-version }}
