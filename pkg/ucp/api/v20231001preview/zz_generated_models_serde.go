@@ -15,6 +15,7 @@ import (
 func (a APIVersionProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "provisioningState", a.ProvisioningState)
+	populate(objectMap, "schema", a.Schema)
 	return json.Marshal(objectMap)
 }
 
@@ -29,6 +30,9 @@ func (a *APIVersionProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
+			delete(rawMsg, key)
+		case "schema":
+				err = unpopulate(val, "Schema", &a.Schema)
 			delete(rawMsg, key)
 		}
 		if err != nil {

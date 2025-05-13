@@ -116,9 +116,12 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 		for apiVersionName := range resourceType.APIVersions {
 			logIfEnabled(logger, "Creating API Version %s/%s@%s", resourceProvider.Name, resourceTypeName, apiVersionName)
+			schema := resourceType.APIVersions[apiVersionName].Schema.(map[string]any)
 			err = retryOperation(ctx, func() error {
 				apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, resourceTypeName, apiVersionName, v20231001preview.APIVersionResource{
-					Properties: &v20231001preview.APIVersionProperties{},
+					Properties: &v20231001preview.APIVersionProperties{
+						Schema: schema,
+					},
 				}, nil)
 				if err != nil {
 					return err
@@ -254,9 +257,12 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 	}
 
 	for apiVersionName := range resourceType.APIVersions {
+		schema := resourceType.APIVersions[apiVersionName].Schema.(map[string]any)
 		logIfEnabled(logger, "Creating API Version %s/%s@%s", resourceProvider.Name, typeName, apiVersionName)
 		apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, apiVersionName, v20231001preview.APIVersionResource{
-			Properties: &v20231001preview.APIVersionProperties{},
+			Properties: &v20231001preview.APIVersionProperties{
+				Schema: schema,
+			},
 		}, nil)
 		if err != nil {
 			return err
