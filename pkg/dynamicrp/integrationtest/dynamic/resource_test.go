@@ -65,7 +65,7 @@ func Test_Dynamic_Resource_Inert_Lifecycle(t *testing.T) {
 	createRadiusPlane(ucp)
 	createResourceProvider(ucp)
 	createInertResourceType(ucp)
-	createAPIVersion(ucp, inertResourceTypeName)
+	createAPIVersion(ucp, inertResourceTypeName, nil)
 	createLocation(ucp, inertResourceTypeName)
 
 	// Setup a resource group where we can interact with the new resource type.
@@ -148,11 +148,18 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 		options.Recipes.ConfigurationLoader = mockConfigLoader
 	}))
 
+	schema := map[string]any{
+		"properties": map[string]any{
+			"hostname": map[string]any{},
+			"port":     map[string]any{},
+			"password": map[string]any{},
+		},
+	}
 	// Setup a resource provider (Applications.Test/exampleRecipeResources)
 	createRadiusPlane(ucp)
 	createResourceProvider(ucp)
 	createRecipeResourceType(ucp)
-	createAPIVersion(ucp, recipeResourceTypeName)
+	createAPIVersion(ucp, recipeResourceTypeName, schema)
 	createLocation(ucp, recipeResourceTypeName)
 
 	// Setup a resource group where we can interact with the new resource type.
@@ -220,6 +227,9 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 		"location": "global",
 		"name":     "my-recipe-example",
 		"properties": map[string]any{
+			"port":              float64(8080), // This is an artifact of the JSON unmarshal process. It's wierd but intended.
+			"hostname":          "example.com",
+			"password":          "v3ryS3cr3t", // TODO: See comments in dynamicresource.go
 			"foo":               "bar",
 			"provisioningState": "Succeeded",
 			"recipe": map[string]any{
@@ -350,11 +360,13 @@ func createRecipeResourceType(server *ucptesthost.TestHost) {
 	require.NoError(server.T(), err)
 }
 
-func createAPIVersion(server *ucptesthost.TestHost, resourceType string) {
+func createAPIVersion(server *ucptesthost.TestHost, resourceType string, schema map[string]any) {
 	ctx := context.Background()
 
 	apiVersionResource := v20231001preview.APIVersionResource{
-		Properties: &v20231001preview.APIVersionProperties{},
+		Properties: &v20231001preview.APIVersionProperties{
+			Schema: schema,
+		},
 	}
 
 	client := server.UCP().NewAPIVersionsClient()
