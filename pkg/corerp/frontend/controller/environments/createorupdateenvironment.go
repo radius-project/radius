@@ -95,7 +95,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 
 		// If a different resource has the same namespace, return a conflict
 		// Otherwise, continue and update the resource
-		if old == nil || env.ID != old.ID {
+		if (old == nil || env.ID != old.ID) && env.Properties.Compute.Kind != rpv1.ACIComputeKind {
 			return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", env.ID, namespace)), nil
 		}
 	}
