@@ -53,28 +53,28 @@ func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptio
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
 
-	for key, val := range options.DependencyProperties {
-		logger.Info("dependency property", "key", key, "value", val)
-	}
+	// for key, val := range options.DependencyProperties {
+	// 	logger.Info("dependency property", "key", key, "value", val)
+	// }
 
-	logger.Info("ngroup dependency property", "property", options.DependencyProperties[rpv1.LocalIDAzureCGProfile])
+	// logger.Info("ngroup dependency property", "property", options.DependencyProperties[rpv1.LocalIDAzureCGProfile])
 	cgpID, ok := options.DependencyProperties[rpv1.LocalIDAzureCGProfile]["containerGroupProfileID"]
 	if !ok {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
-
 	nGroup.Properties.ContainerGroupProfiles[0].Resource.ID = to.Ptr(cgpID)
-	logger.Info("ngroup ID from cgid: ", "key", cgpID)
-	logger.Info("ngroup ID from ngroup object: ", "key", nGroup.Properties.ContainerGroupProfiles[0].Resource.ID)
+	// logger.Info("ngroup ID from cgid: ", "key", cgpID)
+	// logger.Info("ngroup ID from ngroup object: ", "key", nGroup.Properties.ContainerGroupProfiles[0].Resource.ID)
 
 	pl, err := armruntime.NewPipeline("github.com/radius-project/radius", "v0.0.1", handler.arm.ClientOptions.Cred, azruntime.PipelineOptions{}, &armpolicy.ClientOptions{})
 	if err != nil {
 		return nil, err
 	}
-
 	cgp := ngroupsclient.NewNGroupsClient(subID, pl)
 
 	logger.Info("creating NGroup...")
+	logger.Info("complete nGroup object", "ngroup", fmt.Sprintf("%+v", *nGroup))
+	logger.Info("container profiles", "profiles", fmt.Sprintf("%+v", nGroup.Properties.ContainerGroupProfiles))
 	poller, err := cgp.BeginCreateOrUpdate(ctx, resourceGroupName, *nGroup.Name, *nGroup, nil)
 	if err != nil {
 		return nil, err
