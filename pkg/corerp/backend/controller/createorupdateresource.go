@@ -93,7 +93,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel, c.UcpClient())
+	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
