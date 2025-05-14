@@ -1,7 +1,7 @@
 extension radius
 
 @description('Specifies the scope of azure resources.')
-param aciScope string = '/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/shruthikumar'
+param aciScope string = resourceGroup().id
 @description('The managed identity to use to authenticate with NGroups.')
 param managedIdentity string 
 
