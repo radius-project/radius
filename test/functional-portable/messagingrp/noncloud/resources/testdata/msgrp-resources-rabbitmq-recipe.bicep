@@ -3,18 +3,19 @@ extension radius
 @description('Specifies the location for resources.')
 param location string = 'global'
 
-param magpieImage string 
+@description('Specifies the image for the container resource.')
+param magpieImage string
 
-//@description('Specifies the port for the container resource.')
+@description('Specifies the port for the container resource.')
 param magpiePort int = 3000
 
 @description('Specifies the RabbitMQ password.')
 @secure()
-param password string = 'guest'
+param password string
 
-// param registry string = 'ghcr.io/nithyatsu'
+param registry string
 
-//param version string
+param version string
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'msgrp-resources-environment-rabbitmq-recipe-env'
@@ -29,8 +30,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Messaging/rabbitMQQueues': {
         default: {
           templateKind: 'bicep'
-          //templatePath: 'ghcr.io/nithyatsu/rabbitmq:latest'
-          templatePath: 'vishwaradius.azurecr.io/rmq:latest'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/rabbitmq-recipe:${version}'
           parameters: {
             password: password
           }

@@ -18,9 +18,9 @@ param magpieimage string
 
 @description('Specifies tls cert secret values.')
 @secure()
-param tlscrt string = ''
+param tlscrt string
 @secure()
-param tlskey string = ''
+param tlskey string
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-gateway-sslpassthrough'
@@ -34,7 +34,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
   name: 'ssl-gtwy-gtwy'
   location: location
   properties: {
-    // application: app.id
+    application: app.id
     tls: { 
       sslPassthrough: true 
     } 
