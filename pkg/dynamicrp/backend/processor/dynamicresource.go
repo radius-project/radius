@@ -32,6 +32,8 @@ import (
 
 var _ processors.ResourceProcessor[*datamodel.DynamicResource, datamodel.DynamicResource] = (*DynamicProcessor)(nil)
 
+const connectedResourceOutputVariable = "connected-resource-environment-variable"
+
 // DynamicProcessor is a processor for dynamic resources. It implements the processors.ResourceProcessor interface.
 type DynamicProcessor struct {
 }
@@ -155,7 +157,7 @@ func addEnvironmentMappingToResourceProperties(resource *datamodel.DynamicResour
 					return fmt.Errorf("failed to assert type for attributes of property %q", key)
 				}
 
-				envVariableName, ok := attributes["connected-resource-environment-variable"].(string)
+				envVariableName, ok := attributes[connectedResourceOutputVariable].(string)
 				if !ok {
 					continue
 				}
