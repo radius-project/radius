@@ -30,7 +30,7 @@ const (
 	UnknownComputeKind EnvironmentComputeKind = "unknown"
 	// KubernetesComputeKind represents kubernetes compute resource type.
 	KubernetesComputeKind EnvironmentComputeKind = "kubernetes"
-
+	// ACIComputeKind represents ACI compute resource type.
 	ACIComputeKind EnvironmentComputeKind = "aci"
 )
 

@@ -53,6 +53,10 @@ func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptio
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
 
+	for key, val := range options.DependencyProperties {
+		logger.Info("dependency property: ", key, " = ", val)
+	}
+
 	logger.Info("ngroup dependency property: ", options.DependencyProperties[rpv1.LocalIDAzureCGProfile])
 	cgpID, ok := options.DependencyProperties[rpv1.LocalIDAzureCGProfile]["containerGroupProfileID"]
 	if !ok {
