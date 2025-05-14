@@ -48,10 +48,13 @@ on:
   workflow_dispatch:
     inputs:
       skip-build:
-        description: 'Skip build (true/false)'
+        description: 'Skip build (true/false). Setting to false will cause the tests to run with the latest changes from the main branch.'
         required: false
         default: 'true'
-        type: string
+        type: choice
+        options:
+          - 'true'
+          - 'false'
   schedule:
     # Run every 2 hours
     - cron: "0 */2 * * *"
