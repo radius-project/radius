@@ -105,6 +105,13 @@ func Test_Process(t *testing.T) {
 		binding, ok := status["binding"].(map[string]any)
 		require.True(t, ok)
 
+		outputVars, ok := status["outputVariables"].(map[string]any)
+		require.True(t, ok)
+
+		databaseName, ok := outputVars["PG_DB"].(string)
+		require.True(t, ok)
+		require.Equal(t, database, databaseName)
+
 		require.Equal(t, options.RecipeOutput.Values["host"], binding["host"])
 		require.Equal(t, options.RecipeOutput.Values["port"], binding["port"])
 		require.Equal(t, options.RecipeOutput.Values["database"], binding["database"])
@@ -192,6 +199,94 @@ func Test_Process(t *testing.T) {
 	})
 }
 
+// unit tests for addEnvironmentMappingToResourceProperties function which includes connectedResourceOutputVariable
+
+func Test_addEnvironmentMappingToResourceProperties(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+					Type: "Applications.Test/testRecipeResources",
+				},
+				InternalMetadata: v1.InternalMetadata{
+					UpdatedAPIVersion: "2024-01-01",
+				},
+			},
+			Properties: map[string]any{
+				"database": "test-db",
+				"status":   map[string]any{},
+			},
+		}
+
+		schema := map[string]any{
+			"properties": map[string]any{
+				"environment": map[string]any{},
+				"application": map[string]any{},
+				"host":        map[string]any{},
+				"database": map[string]any{
+					connectedResourceOutputVariable: "PG_DB",
+				},
+				"port":     map[string]any{},
+				"username": map[string]any{},
+			},
+		}
+		err := addEnvironmentMappingToResourceProperties(resource, schema)
+		require.NoError(t, err)
+
+		bs, err := json.Marshal(resource.Properties)
+		require.NoError(t, err)
+
+		properties := map[string]any{}
+		err = json.Unmarshal(bs, &properties)
+		require.NoError(t, err)
+
+		status, ok := properties["status"].(map[string]any)
+		require.True(t, ok)
+
+		outputVars, ok := status["outputVariables"].(map[string]any)
+		require.True(t, ok)
+
+		databaseName, ok := outputVars["PG_DB"].(string)
+		require.True(t, ok)
+		require.Equal(t, "test-db", databaseName)
+	})
+	t.Run("property does not exist", func(t *testing.T) {
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+					Type: "Applications.Test/testRecipeResources",
+				},
+				InternalMetadata: v1.InternalMetadata{
+					UpdatedAPIVersion: "2024-01-01",
+				},
+			},
+			Properties: map[string]any{
+				"status": map[string]any{},
+			},
+		}
+
+		schema := map[string]any{
+			"properties": map[string]any{
+				"environment": map[string]any{},
+				"application": map[string]any{},
+				"host":        map[string]any{},
+				"database": map[string]any{
+					connectedResourceOutputVariable: "PG_DB",
+				},
+				"port":     map[string]any{},
+				"username": map[string]any{},
+			},
+		}
+		err := addEnvironmentMappingToResourceProperties(resource, schema)
+		require.Error(t, err)
+
+		require.Contains(t, err.Error(), "property 'database' does not exist in resource properties")
+
+	})
+}
+
 func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 	apiVersionServer := fake.APIVersionsServer{
 		Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -203,9 +298,11 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 								"environment": map[string]any{},
 								"application": map[string]any{},
 								"host":        map[string]any{},
-								"database":    map[string]any{},
-								"port":        map[string]any{},
-								"username":    map[string]any{},
+								"database": map[string]any{
+									connectedResourceOutputVariable: "PG_DB",
+								},
+								"port":     map[string]any{},
+								"username": map[string]any{},
 							},
 						},
 					},
