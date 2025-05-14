@@ -80,13 +80,12 @@ func (d *DynamicResource) OutputVariables() map[string]any {
 	// Therefore we overwrite it.
 	outputVariables, ok := status["outputVariables"]
 	if !ok {
-		d.Properties["outputVariables"] = map[string]any{}
 		return map[string]any{}
 	}
 
 	outputVariables, ok = outputVariables.(map[string]any)
 	if !ok {
-		d.Properties["outputVariables"] = map[string]any{}
+		return map[string]any{}
 	}
 
 	return outputVariables.(map[string]any)
