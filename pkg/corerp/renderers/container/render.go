@@ -106,10 +106,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 
 		if resources_radius.IsRadiusResource(resourceID) {
 			radiusResourceIDs = append(radiusResourceIDs, resourceID)
-
-			// If the connection is a radius resource, we need to check if it is a dynamic resource.
-			// If it is, we need to retrive the resource's schema.
-
 			continue
 		}
 	}

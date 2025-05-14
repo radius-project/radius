@@ -41,7 +41,6 @@ import (
 	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
 	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
@@ -53,7 +52,7 @@ import (
 
 //go:generate mockgen -typed -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/radius-project/radius/pkg/corerp/backend/deployment github.com/radius-project/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
-	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface, ucpClient *v20231001preview.ClientFactory) (renderers.RendererOutput, error)
+	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error)
 	Delete(ctx context.Context, id resources.ID, outputResources []rpv1.OutputResource) error
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
@@ -77,11 +76,13 @@ type deploymentProcessor struct {
 }
 
 type ResourceData struct {
-	ID                   resources.ID // resource ID
-	Resource             v1.DataModelInterface
-	OutputResources      []rpv1.OutputResource
-	ComputedValues       map[string]any
-	EnvironmentVariables map[string]any
+	ID              resources.ID // resource ID
+	Resource        v1.DataModelInterface
+	OutputResources []rpv1.OutputResource
+	ComputedValues  map[string]any
+	// Output variables that are passed to the resource.
+	// These are used by UDT to pass on the output variables to the connecting resource.
+	OutputVariables map[string]any
 	SecretValues         map[string]rpv1.SecretValueReference
 	AppID                *resources.ID                // Application ID for which the resource is created
 	RecipeData           portableresources.RecipeData // Relevant only for portable resources created with recipes to find relevant connections created by that recipe
@@ -90,7 +91,7 @@ type ResourceData struct {
 // Render fetches the resource renderer, the application, environment and application options, and the dependencies of the
 // resource being deployed, and then renders the resource using the fetched data. It returns an error if any of the fetches
 // fail or if the output resource does not have a provider specified or if the provider is not configured.
-func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface, ucpClient *v20231001preview.ClientFactory) (renderers.RendererOutput, error) {
+func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
 	renderer, err := dp.getResourceRenderer(resourceID)
@@ -109,7 +110,6 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	// pass teh ucpclient to access the schema if any resource id is a udt
 	rendererDependencies, err := dp.fetchDependencies(ctx, requiredResources)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -632,7 +632,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 		OutputResources:      outputResources,
 		ComputedValues:       computedValues,
 		SecretValues:         secretValues,
-		EnvironmentVariables: environmentVariables,
+		OutputVariables: environmentVariables,
 		AppID:                appID,
 		RecipeData:           recipeData,
 	}, nil
@@ -668,7 +668,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 		Resource:        dependency.Resource,
 		ComputedValues:  computedValues,
 		OutputResources: outputResourceIDs,
-		OutputVariables: dependency.EnvironmentVariables,
+		OutputVariables: dependency.OutputVariables,
 	}
 
 	return rendererDependency, nil
