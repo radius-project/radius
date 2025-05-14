@@ -103,6 +103,10 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 
 		if resources_radius.IsRadiusResource(resourceID) {
 			radiusResourceIDs = append(radiusResourceIDs, resourceID)
+
+			// If the connection is a radius resource, we need to check if it is a dynamic resource.
+			// If it is, we need to retrive the resource's schema.
+
 			continue
 		}
 	}
@@ -729,6 +733,16 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				env[portKey] = corev1.EnvVar{Name: portKey, Value: port}
 
 				continue
+			}
+
+			for key, value := range properties.OutputVariables {
+				stringValue, ok := value.(string)
+				if !ok {
+					fmt.Printf("skipping env var %q, value is not a string\n", key)
+					continue
+				}
+				env_key := fmt.Sprintf("%s_%s", "CONNECTION", strings.ToUpper(key))
+				env[env_key] = corev1.EnvVar{Name: env_key, Value: stringValue}
 			}
 
 			// handles case where container has source field structured as a resourceID.
