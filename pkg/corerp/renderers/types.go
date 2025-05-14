@@ -59,7 +59,7 @@ type RendererDependency struct {
 	// OutputResources is a map of the output resource IDs of the dependency. The map is keyed on the LocalID of the output resource.
 	OutputResources map[string]resources.ID
 
-	// OutputVariables map[string]string
+	// OutputVariables is map of the output variables of the dependency. The map is keyed on the variable name of the output variable.
 	OutputVariables map[string]any
 }
 
