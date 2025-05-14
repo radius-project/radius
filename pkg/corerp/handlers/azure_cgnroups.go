@@ -53,6 +53,7 @@ func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptio
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
 
+	logger.Info("ngroup dependency property: ", options.DependencyProperties[rpv1.LocalIDAzureCGProfile])
 	cgpID, ok := options.DependencyProperties[rpv1.LocalIDAzureCGProfile]["containerGroupProfileID"]
 	if !ok {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
