@@ -731,6 +731,7 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				continue
 			}
 
+			// handles env variable injections for connections to UDT.
 			for key, value := range properties.OutputVariables {
 				stringValue, ok := value.(string)
 				if !ok {
