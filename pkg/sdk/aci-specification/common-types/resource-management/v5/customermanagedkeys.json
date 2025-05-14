@@ -12,10 +12,7 @@
       "properties": {
         "infrastructureEncryption": {
           "type": "string",
-          "enum": [
-            "enabled",
-            "disabled"
-          ],
+          "enum": ["enabled", "disabled"],
           "x-ms-enum": {
             "name": "InfrastructureEncryption",
             "modelAsString": true

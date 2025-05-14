@@ -4,9 +4,7 @@
     "api-version": "2024-11-01-preview",
     "resourceGroupName": "demo",
     "containerGroupName": "demo1",
-    "zones": [
-      "1"
-    ],
+    "zones": ["1"],
     "containerGroup": {
       "location": "west us",
       "identity": {
@@ -75,9 +73,7 @@
           }
         ],
         "dnsConfig": {
-          "nameServers": [
-            "1.1.1.1"
-          ],
+          "nameServers": ["1.1.1.1"],
           "searchDomains": "cluster.local svc.cluster.local",
           "options": "ndots:2"
         },
@@ -123,9 +119,7 @@
       "body": {
         "id": "/subscriptions/subid/resourceGroups/demo/providers/Microsoft.ContainerInstance/containerGroups/demo1",
         "location": "WestUs",
-        "zones": [
-          "1"
-        ],
+        "zones": ["1"],
         "name": "demo1",
         "properties": {
           "containers": [
@@ -176,9 +170,7 @@
             }
           },
           "dnsConfig": {
-            "nameServers": [
-              "1.1.1.1"
-            ],
+            "nameServers": ["1.1.1.1"],
             "searchDomains": "cluster.local svc.cluster.local",
             "options": "ndots:2"
           },
@@ -223,9 +215,7 @@
       "body": {
         "id": "/subscriptions/subid/resourceGroups/demo/providers/Microsoft.ContainerInstance/containerGroups/demo1",
         "location": "WestUs",
-        "zones": [
-          "1"
-        ],
+        "zones": ["1"],
         "name": "demo1",
         "properties": {
           "containers": [
@@ -271,9 +261,7 @@
             }
           ],
           "dnsConfig": {
-            "nameServers": [
-              "1.1.1.1"
-            ]
+            "nameServers": ["1.1.1.1"]
           },
           "imageRegistryCredentials": [],
           "ipAddress": {

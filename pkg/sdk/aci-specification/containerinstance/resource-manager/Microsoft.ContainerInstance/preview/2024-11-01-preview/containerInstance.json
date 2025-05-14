@@ -5,20 +5,12 @@
     "title": "ContainerInstanceManagementClient"
   },
   "host": "management.azure.com",
-  "schemes": [
-    "https"
-  ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "security": [
     {
-      "azure_auth": [
-        "user_impersonation"
-      ]
+      "azure_auth": ["user_impersonation"]
     }
   ],
   "securityDefinitions": {
@@ -435,9 +427,7 @@
     },
     "/providers/Microsoft.ContainerInstance/operations": {
       "get": {
-        "tags": [
-          "Operations"
-        ],
+        "tags": ["Operations"],
         "operationId": "Operations_List",
         "x-ms-examples": {
           "OperationsList": {
@@ -1616,11 +1606,7 @@
     "SecretReference": {
       "description": "A secret reference",
       "type": "object",
-      "required": [
-        "name",
-        "identity",
-        "secretReferenceUri"
-      ],
+      "required": ["name", "identity", "secretReferenceUri"],
       "properties": {
         "name": {
           "description": "The identifier of the secret reference",
@@ -1641,10 +1627,7 @@
     "Container": {
       "description": "A container instance.",
       "type": "object",
-      "required": [
-        "properties",
-        "name"
-      ],
+      "required": ["properties", "name"],
       "properties": {
         "name": {
           "description": "The user-provided name of the container instance.",
@@ -1660,10 +1643,7 @@
     "ContainerProperties": {
       "description": "The container instance properties.",
       "type": "object",
-      "required": [
-        "image",
-        "resources"
-      ],
+      "required": ["image", "resources"],
       "properties": {
         "image": {
           "description": "The name of the image used to create the container instance.",
@@ -1682,9 +1662,7 @@
           "items": {
             "$ref": "#/definitions/ContainerPort"
           },
-          "x-ms-identifiers": [
-            "port"
-          ]
+          "x-ms-identifiers": ["port"]
         },
         "environmentVariables": {
           "description": "The environment variables to set in the container instance.",
@@ -1692,9 +1670,7 @@
           "items": {
             "$ref": "#/definitions/EnvironmentVariable"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         },
         "instanceView": {
           "description": "The instance view of the container instance. Only valid in response.",
@@ -1724,10 +1700,7 @@
               "items": {
                 "$ref": "#/definitions/Event"
               },
-              "x-ms-identifiers": [
-                "name",
-                "type"
-              ]
+              "x-ms-identifiers": ["name", "type"]
             }
           }
         },
@@ -1741,9 +1714,7 @@
           "items": {
             "$ref": "#/definitions/VolumeMount"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         },
         "livenessProbe": {
           "description": "The liveness probe.",
@@ -1889,9 +1860,7 @@
     "ResourceRequirements": {
       "description": "The resource requirements.",
       "type": "object",
-      "required": [
-        "requests"
-      ],
+      "required": ["requests"],
       "properties": {
         "requests": {
           "description": "The resource requests of this container instance.",
@@ -1906,10 +1875,7 @@
     "ResourceRequests": {
       "description": "The resource requests.",
       "type": "object",
-      "required": [
-        "memoryInGB",
-        "cpu"
-      ],
+      "required": ["memoryInGB", "cpu"],
       "properties": {
         "memoryInGB": {
           "description": "The memory request in GB of this container instance.",
@@ -1950,10 +1916,7 @@
     "GpuResource": {
       "description": "The GPU resource.",
       "type": "object",
-      "required": [
-        "count",
-        "sku"
-      ],
+      "required": ["count", "sku"],
       "properties": {
         "count": {
           "description": "The count of the GPU resource.",
@@ -1963,11 +1926,7 @@
         "sku": {
           "type": "string",
           "description": "The SKU of the GPU resource.",
-          "enum": [
-            "K80",
-            "P100",
-            "V100"
-          ],
+          "enum": ["K80", "P100", "V100"],
           "x-ms-enum": {
             "name": "GpuSku",
             "modelAsString": true
@@ -1978,10 +1937,7 @@
     "AzureFileVolume": {
       "description": "The properties of the Azure File volume. Azure File shares are mounted as volumes.",
       "type": "object",
-      "required": [
-        "shareName",
-        "storageAccountName"
-      ],
+      "required": ["shareName", "storageAccountName"],
       "properties": {
         "shareName": {
           "description": "The name of the Azure File share to be mounted as a volume.",
@@ -2026,9 +1982,7 @@
     },
     "GitRepoVolume": {
       "description": "Represents a volume that is populated with the contents of a git repository",
-      "required": [
-        "repository"
-      ],
+      "required": ["repository"],
       "properties": {
         "directory": {
           "description": "Target directory name. Must not contain or start with '..'.  If '.' is supplied, the volume directory will be the git repository.  Otherwise, if specified, the volume will contain the git repository in the subdirectory with the given name.",
@@ -2047,9 +2001,7 @@
     "Volume": {
       "description": "The properties of the volume.",
       "type": "object",
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "description": "The name of the volume.",
@@ -2080,10 +2032,7 @@
     "VolumeMount": {
       "description": "The properties of the volume mount.",
       "type": "object",
-      "required": [
-        "name",
-        "mountPath"
-      ],
+      "required": ["name", "mountPath"],
       "properties": {
         "name": {
           "description": "The name of the volume mount.",
@@ -2128,10 +2077,7 @@
         "scheme": {
           "description": "The scheme.",
           "type": "string",
-          "enum": [
-            "http",
-            "https"
-          ],
+          "enum": ["http", "https"],
           "x-ms-enum": {
             "name": "Scheme",
             "modelAsString": true
@@ -2143,14 +2089,10 @@
           "items": {
             "$ref": "#/definitions/HttpHeader"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         }
       },
-      "required": [
-        "port"
-      ]
+      "required": ["port"]
     },
     "ContainerProbe": {
       "type": "object",
@@ -2205,9 +2147,7 @@
     "ContainerGroupProperties": {
       "description": "The container group properties",
       "type": "object",
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "properties": {
         "identity": {
           "$ref": "#/definitions/ContainerGroupIdentity",
@@ -2229,9 +2169,7 @@
               "items": {
                 "$ref": "#/definitions/SecretReference"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "containers": {
               "type": "array",
@@ -2239,9 +2177,7 @@
               "items": {
                 "$ref": "#/definitions/Container"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "imageRegistryCredentials": {
               "type": "array",
@@ -2249,18 +2185,12 @@
               "items": {
                 "$ref": "#/definitions/ImageRegistryCredential"
               },
-              "x-ms-identifiers": [
-                "username"
-              ]
+              "x-ms-identifiers": ["username"]
             },
             "restartPolicy": {
               "type": "string",
               "description": "Restart policy for all containers within the container group. \n- `Always` Always restart\n- `OnFailure` Restart on failure\n- `Never` Never restart\n",
-              "enum": [
-                "Always",
-                "OnFailure",
-                "Never"
-              ],
+              "enum": ["Always", "OnFailure", "Never"],
               "x-ms-enum": {
                 "name": "ContainerGroupRestartPolicy",
                 "modelAsString": true
@@ -2273,10 +2203,7 @@
             "osType": {
               "type": "string",
               "description": "The operating system type required by the containers in the container group.",
-              "enum": [
-                "Windows",
-                "Linux"
-              ],
+              "enum": ["Windows", "Linux"],
               "x-ms-enum": {
                 "name": "OperatingSystemTypes",
                 "modelAsString": true
@@ -2288,9 +2215,7 @@
               "items": {
                 "$ref": "#/definitions/Volume"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "instanceView": {
               "description": "The instance view of the container group. Only valid in response.",
@@ -2304,10 +2229,7 @@
                   "items": {
                     "$ref": "#/definitions/Event"
                   },
-                  "x-ms-identifiers": [
-                    "name",
-                    "type"
-                  ]
+                  "x-ms-identifiers": ["name", "type"]
                 },
                 "state": {
                   "readOnly": true,
@@ -2345,9 +2267,7 @@
               "items": {
                 "$ref": "#/definitions/InitContainerDefinition"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "extensions": {
               "type": "array",
@@ -2355,9 +2275,7 @@
               "items": {
                 "$ref": "#/definitions/DeploymentExtensionSpec"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "confidentialComputeProperties": {
               "description": "The properties for confidential container group",
@@ -2367,10 +2285,7 @@
               "type": "string",
               "description": "The priority of the container group.",
               "$ref": "#/definitions/Priority",
-              "enum": [
-                "Regular",
-                "Spot"
-              ],
+              "enum": ["Regular", "Spot"],
               "x-ms-enum": {
                 "name": "Priority",
                 "modelAsString": true
@@ -2381,10 +2296,7 @@
               "$ref": "#/definitions/IdentityAcls"
             }
           },
-          "required": [
-            "containers",
-            "osType"
-          ]
+          "required": ["containers", "osType"]
         }
       }
     },
@@ -2402,9 +2314,7 @@
     "ListResultContainerGroupProperties": {
       "description": "Properties of container group part of list result",
       "type": "object",
-      "required": [
-        "properties"
-      ],
+      "required": ["properties"],
       "properties": {
         "identity": {
           "$ref": "#/definitions/ContainerGroupIdentity",
@@ -2445,9 +2355,7 @@
               "items": {
                 "$ref": "#/definitions/SecretReference"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "containers": {
               "type": "array",
@@ -2455,9 +2363,7 @@
               "items": {
                 "$ref": "#/definitions/Container"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "imageRegistryCredentials": {
               "type": "array",
@@ -2465,18 +2371,12 @@
               "items": {
                 "$ref": "#/definitions/ImageRegistryCredential"
               },
-              "x-ms-identifiers": [
-                "username"
-              ]
+              "x-ms-identifiers": ["username"]
             },
             "restartPolicy": {
               "type": "string",
               "description": "Restart policy for all containers within the container group. \n- `Always` Always restart\n- `OnFailure` Restart on failure\n- `Never` Never restart\n",
-              "enum": [
-                "Always",
-                "OnFailure",
-                "Never"
-              ],
+              "enum": ["Always", "OnFailure", "Never"],
               "x-ms-enum": {
                 "name": "ContainerGroupRestartPolicy",
                 "modelAsString": true
@@ -2489,10 +2389,7 @@
             "osType": {
               "type": "string",
               "description": "The operating system type required by the containers in the container group.",
-              "enum": [
-                "Windows",
-                "Linux"
-              ],
+              "enum": ["Windows", "Linux"],
               "x-ms-enum": {
                 "name": "OperatingSystemTypes",
                 "modelAsString": true
@@ -2504,9 +2401,7 @@
               "items": {
                 "$ref": "#/definitions/Volume"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "diagnostics": {
               "description": "The diagnostic information for a container group.",
@@ -2537,9 +2432,7 @@
               "items": {
                 "$ref": "#/definitions/InitContainerDefinition"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "extensions": {
               "type": "array",
@@ -2547,9 +2440,7 @@
               "items": {
                 "$ref": "#/definitions/DeploymentExtensionSpec"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             },
             "confidentialComputeProperties": {
               "description": "The properties for confidential container group",
@@ -2559,10 +2450,7 @@
               "type": "string",
               "description": "The priority of the container group.",
               "$ref": "#/definitions/Priority",
-              "enum": [
-                "Regular",
-                "Spot"
-              ],
+              "enum": ["Regular", "Spot"],
               "x-ms-enum": {
                 "name": "Priority",
                 "modelAsString": true
@@ -2573,10 +2461,7 @@
               "$ref": "#/definitions/IdentityAcls"
             }
           },
-          "required": [
-            "containers",
-            "osType"
-          ]
+          "required": ["containers", "osType"]
         }
       }
     },
@@ -2610,15 +2495,10 @@
               "description": "Protected settings for the extension."
             }
           },
-          "required": [
-            "extensionType",
-            "version"
-          ]
+          "required": ["extensionType", "version"]
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "ContainerGroupIdentity": {
       "description": "Identity for the container group.",
@@ -2703,9 +2583,7 @@
           "description": "The identity URL for the private registry."
         }
       },
-      "required": [
-        "server"
-      ]
+      "required": ["server"]
     },
     "ContainerGroupDiagnostics": {
       "description": "Container group diagnostic information.",
@@ -2733,10 +2611,7 @@
         "logType": {
           "type": "string",
           "description": "The log type to be used.",
-          "enum": [
-            "ContainerInsights",
-            "ContainerInstanceLogs"
-          ],
+          "enum": ["ContainerInsights", "ContainerInstanceLogs"],
           "x-ms-enum": {
             "name": "LogAnalyticsLogType",
             "modelAsString": true
@@ -2755,10 +2630,7 @@
           "x-ms-secret": true
         }
       },
-      "required": [
-        "workspaceId",
-        "workspaceKey"
-      ]
+      "required": ["workspaceId", "workspaceKey"]
     },
     "ContainerGroupSubnetId": {
       "description": "Container group subnet information.",
@@ -2773,9 +2645,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "id"
-      ]
+      "required": ["id"]
     },
     "IpAddress": {
       "description": "IP address for the container group.",
@@ -2787,17 +2657,12 @@
           "items": {
             "$ref": "#/definitions/Port"
           },
-          "x-ms-identifiers": [
-            "port"
-          ]
+          "x-ms-identifiers": ["port"]
         },
         "type": {
           "type": "string",
           "description": "Specifies if the IP is exposed to the public internet or private VNET.",
-          "enum": [
-            "Public",
-            "Private"
-          ],
+          "enum": ["Public", "Private"],
           "x-ms-enum": {
             "name": "ContainerGroupIpAddressType",
             "modelAsString": true
@@ -2833,10 +2698,7 @@
           "description": "The FQDN for the IP."
         }
       },
-      "required": [
-        "ports",
-        "type"
-      ]
+      "required": ["ports", "type"]
     },
     "Port": {
       "description": "The port exposed on the container group.",
@@ -2845,10 +2707,7 @@
         "protocol": {
           "type": "string",
           "description": "The protocol associated with the port.",
-          "enum": [
-            "TCP",
-            "UDP"
-          ],
+          "enum": ["TCP", "UDP"],
           "x-ms-enum": {
             "name": "ContainerGroupNetworkProtocol",
             "modelAsString": true
@@ -2860,9 +2719,7 @@
           "format": "int32"
         }
       },
-      "required": [
-        "port"
-      ]
+      "required": ["port"]
     },
     "ContainerPort": {
       "description": "The port exposed on the container instance.",
@@ -2871,10 +2728,7 @@
         "protocol": {
           "type": "string",
           "description": "The protocol associated with the port.",
-          "enum": [
-            "TCP",
-            "UDP"
-          ],
+          "enum": ["TCP", "UDP"],
           "x-ms-enum": {
             "name": "ContainerNetworkProtocol",
             "modelAsString": true
@@ -2886,9 +2740,7 @@
           "description": "The port number exposed within the container group."
         }
       },
-      "required": [
-        "port"
-      ]
+      "required": ["port"]
     },
     "EnvironmentVariable": {
       "description": "The environment variable to set within the container instance.",
@@ -2912,9 +2764,7 @@
           "description": "The reference of the secure environment variable."
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "OperationListResult": {
       "description": "The operation list response that contains all operations for Azure Container Instance service.",
@@ -2925,9 +2775,7 @@
           "items": {
             "$ref": "#/definitions/Operation"
           },
-          "x-ms-identifiers": [
-            "name"
-          ],
+          "x-ms-identifiers": ["name"],
           "description": "The list of operations."
         },
         "nextLink": {
@@ -2974,20 +2822,14 @@
         "origin": {
           "type": "string",
           "description": "The intended executor of the operation.",
-          "enum": [
-            "User",
-            "System"
-          ],
+          "enum": ["User", "System"],
           "x-ms-enum": {
             "name": "ContainerInstanceOperationsOrigin",
             "modelAsString": true
           }
         }
       },
-      "required": [
-        "name",
-        "display"
-      ]
+      "required": ["name", "display"]
     },
     "UsageListResult": {
       "description": "The response containing the usage data",
@@ -3000,9 +2842,7 @@
           "items": {
             "$ref": "#/definitions/Usage"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         }
       }
     },
@@ -3151,9 +2991,7 @@
     "DnsConfiguration": {
       "description": "DNS configuration for the container group.",
       "type": "object",
-      "required": [
-        "nameServers"
-      ],
+      "required": ["nameServers"],
       "properties": {
         "nameServers": {
           "description": "The DNS servers for the container group.",
@@ -3221,9 +3059,7 @@
           "items": {
             "$ref": "#/definitions/cachedImages"
           },
-          "x-ms-identifiers": [
-            "image"
-          ],
+          "x-ms-identifiers": ["image"],
           "description": "The list of cached images."
         },
         "nextLink": {
@@ -3235,10 +3071,7 @@
     "cachedImages": {
       "description": "The cached image and OS type.",
       "type": "object",
-      "required": [
-        "osType",
-        "image"
-      ],
+      "required": ["osType", "image"],
       "properties": {
         "osType": {
           "type": "string",
@@ -3259,10 +3092,7 @@
           "items": {
             "$ref": "#/definitions/Capabilities"
           },
-          "x-ms-identifiers": [
-            "resourceType",
-            "location"
-          ],
+          "x-ms-identifiers": ["resourceType", "location"],
           "description": "The list of capabilities."
         },
         "nextLink": {
@@ -3327,12 +3157,7 @@
     "ContainerGroupSku": {
       "description": "The container group SKU.",
       "type": "string",
-      "enum": [
-        "NotSpecified",
-        "Standard",
-        "Dedicated",
-        "Confidential"
-      ],
+      "enum": ["NotSpecified", "Standard", "Dedicated", "Confidential"],
       "x-ms-enum": {
         "name": "ContainerGroupSku",
         "modelAsString": true
@@ -3341,11 +3166,7 @@
     "ContainerGroupRestartPolicy": {
       "type": "string",
       "description": "Restart policy for all containers within the container group. \n- `Always` Always restart\n- `OnFailure` Restart on failure\n- `Never` Never restart\n",
-      "enum": [
-        "Always",
-        "OnFailure",
-        "Never"
-      ],
+      "enum": ["Always", "OnFailure", "Never"],
       "x-ms-enum": {
         "name": "ContainerGroupRestartPolicy",
         "modelAsString": true
@@ -3354,10 +3175,7 @@
     "OSType": {
       "type": "string",
       "description": "The operating system type required by the containers in the container group.",
-      "enum": [
-        "Windows",
-        "Linux"
-      ],
+      "enum": ["Windows", "Linux"],
       "x-ms-enum": {
         "name": "OperatingSystemTypes",
         "modelAsString": true
@@ -3384,11 +3202,7 @@
           "description": "The keyvault managed identity."
         }
       },
-      "required": [
-        "vaultBaseUrl",
-        "keyName",
-        "keyVersion"
-      ]
+      "required": ["vaultBaseUrl", "keyName", "keyVersion"]
     },
     "InitContainerDefinition": {
       "description": "The init container definition.",
@@ -3404,10 +3218,7 @@
           "$ref": "#/definitions/InitContainerPropertiesDefinition"
         }
       },
-      "required": [
-        "name",
-        "properties"
-      ]
+      "required": ["name", "properties"]
     },
     "InitContainerPropertiesDefinition": {
       "description": "The init container definition properties.",
@@ -3430,9 +3241,7 @@
           "items": {
             "$ref": "#/definitions/EnvironmentVariable"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         },
         "instanceView": {
           "description": "The instance view of the init container. Only valid in response.",
@@ -3462,10 +3271,7 @@
               "items": {
                 "$ref": "#/definitions/Event"
               },
-              "x-ms-identifiers": [
-                "name",
-                "type"
-              ]
+              "x-ms-identifiers": ["name", "type"]
             }
           }
         },
@@ -3475,9 +3281,7 @@
           "items": {
             "$ref": "#/definitions/VolumeMount"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         },
         "securityContext": {
           "description": "The container security properties.",
@@ -3514,10 +3318,7 @@
           "items": {
             "$ref": "#/definitions/CloudErrorBody"
           },
-          "x-ms-identifiers": [
-            "message",
-            "target"
-          ],
+          "x-ms-identifiers": ["message", "target"],
           "description": "A list of additional details about the error."
         }
       },
@@ -3554,9 +3355,7 @@
           "items": {
             "$ref": "#/definitions/IdentityAccessControl"
           },
-          "x-ms-identifiers": [
-            "identity"
-          ]
+          "x-ms-identifiers": ["identity"]
         }
       }
     },
@@ -3578,11 +3377,7 @@
     "IdentityAccessLevel": {
       "description": "The access level of an identity.",
       "type": "string",
-      "enum": [
-        "All",
-        "System",
-        "User"
-      ],
+      "enum": ["All", "System", "User"],
       "x-ms-enum": {
         "name": "IdentityAccessLevel",
         "modelAsString": true
@@ -3591,10 +3386,7 @@
     "Priority": {
       "type": "string",
       "description": "The priority of the container group.",
-      "enum": [
-        "Regular",
-        "Spot"
-      ],
+      "enum": ["Regular", "Spot"],
       "x-ms-enum": {
         "name": "ContainerGroupPriority",
         "modelAsString": true
@@ -3610,9 +3402,7 @@
             "$ref": "#/definitions/NGroupSkus"
           },
           "description": "The list of NGroups SKUs.",
-          "x-ms-identifiers": [
-            "sku"
-          ]
+          "x-ms-identifiers": ["sku"]
         },
         "nextLink": {
           "type": "string",
@@ -3679,10 +3469,7 @@
         },
         "location": {
           "type": "string",
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ],
+          "x-ms-mutability": ["read", "create"],
           "description": "The geo-location where the resource lives"
         }
       },
@@ -3781,10 +3568,7 @@
       "properties": {
         "updateMode": {
           "type": "string",
-          "enum": [
-            "Manual",
-            "Rolling"
-          ],
+          "enum": ["Manual", "Rolling"],
           "x-ms-enum": {
             "name": "NGroupUpdateMode",
             "modelAsString": true
@@ -3900,9 +3684,7 @@
           "items": {
             "$ref": "#/definitions/NGroupCGPropertyVolume"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         },
         "containers": {
           "type": "array",
@@ -3910,9 +3692,7 @@
           "items": {
             "$ref": "#/definitions/NGroupCGPropertyContainer"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         }
       }
     },
@@ -3933,9 +3713,7 @@
               "items": {
                 "$ref": "#/definitions/VolumeMount"
               },
-              "x-ms-identifiers": [
-                "name"
-              ]
+              "x-ms-identifiers": ["name"]
             }
           }
         }
@@ -3944,9 +3722,7 @@
     "NGroupCGPropertyVolume": {
       "description": "Contains information about the volumes that can be mounted by Containers in the Container Groups.",
       "type": "object",
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "description": "The name of the volume.",
@@ -3968,9 +3744,7 @@
             "$ref": "#/definitions/FileShare",
             "description": "List of file shares that will be created and mounted on CGs."
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         }
       }
     },
@@ -3993,10 +3767,7 @@
             "shareAccessType": {
               "type": "string",
               "description": " Specifies how Container Groups can access the Azure file share i.e. all CG will share same Azure file share or going to have exclusive file share.",
-              "enum": [
-                "Shared",
-                "Exclusive"
-              ],
+              "enum": ["Shared", "Exclusive"],
               "x-ms-enum": {
                 "name": "AzureFileShareAccessType",
                 "modelAsString": false
@@ -4005,12 +3776,7 @@
             "shareAccessTier": {
               "type": "string",
               "description": "Access tier for specific share. GpV2 account can choose between TransactionOptimized (default), Hot, and Cool. FileStorage account can choose Premium. Learn more at: https://learn.microsoft.com/en-us/rest/api/storagerp/file-shares/create?tabs=HTTP#shareaccesstier",
-              "enum": [
-                "Cool",
-                "Hot",
-                "Premium",
-                "TransactionOptimized"
-              ],
+              "enum": ["Cool", "Hot", "Premium", "TransactionOptimized"],
               "default": "TransactionOptimized",
               "x-ms-enum": {
                 "name": "AzureFileShareAccessTier",
@@ -4049,9 +3815,7 @@
           "items": {
             "$ref": "#/definitions/ApplicationGatewayBackendAddressPool"
           },
-          "x-ms-identifiers": [
-            "resource"
-          ]
+          "x-ms-identifiers": ["resource"]
         }
       }
     },
@@ -4065,9 +3829,7 @@
           "items": {
             "$ref": "#/definitions/LoadBalancerBackendAddressPool"
           },
-          "x-ms-identifiers": [
-            "resource"
-          ]
+          "x-ms-identifiers": ["resource"]
         }
       }
     },
@@ -4168,9 +3930,7 @@
           "items": {
             "$ref": "#/definitions/Container"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         },
         "initContainers": {
           "type": "array",
@@ -4178,9 +3938,7 @@
           "items": {
             "$ref": "#/definitions/InitContainerDefinition"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         },
         "extensions": {
           "type": "array",
@@ -4188,9 +3946,7 @@
           "items": {
             "$ref": "#/definitions/DeploymentExtensionSpec"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         },
         "imageRegistryCredentials": {
           "type": "array",
@@ -4198,9 +3954,7 @@
           "items": {
             "$ref": "#/definitions/ImageRegistryCredential"
           },
-          "x-ms-identifiers": [
-            "username"
-          ]
+          "x-ms-identifiers": ["username"]
         },
         "restartPolicy": {
           "description": "Restart policy for all containers within the container group. \n- `Always` Always restart\n- `OnFailure` Restart on failure\n- `Never` Never restart\n",
@@ -4230,9 +3984,7 @@
           "items": {
             "$ref": "#/definitions/Volume"
           },
-          "x-ms-identifiers": [
-            "name"
-          ]
+          "x-ms-identifiers": ["name"]
         },
         "diagnostics": {
           "description": "The diagnostic information for a container group.",

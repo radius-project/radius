@@ -6,9 +6,7 @@
     "containerGroupProfileName": "demo1",
     "ContainerGroupProfile": {
       "location": "westeurope",
-      "zones": [
-        "1"
-      ],
+      "zones": ["1"],
       "properties": {
         "containers": [
           {
@@ -31,9 +29,7 @@
               "securityContext": {
                 "privileged": false,
                 "capabilities": {
-                  "add": [
-                    "CAP_NET_ADMIN"
-                  ]
+                  "add": ["CAP_NET_ADMIN"]
                 }
               }
             }
@@ -83,9 +79,7 @@
                 "securityContext": {
                   "privileged": false,
                   "capabilities": {
-                    "add": [
-                      "CAP_NET_ADMIN"
-                    ]
+                    "add": ["CAP_NET_ADMIN"]
                   }
                 }
               }
@@ -112,9 +106,7 @@
         "name": "demo1",
         "type": "Microsoft.ContainerInstance/containerGroupProfiles",
         "location": "westeurope",
-        "zones": [
-          "1"
-        ]
+        "zones": ["1"]
       }
     },
     "201": {
@@ -142,9 +134,7 @@
                 "securityContext": {
                   "privileged": false,
                   "capabilities": {
-                    "add": [
-                      "CAP_NET_ADMIN"
-                    ]
+                    "add": ["CAP_NET_ADMIN"]
                   }
                 }
               }
@@ -171,9 +161,7 @@
         "name": "demo1",
         "type": "Microsoft.ContainerInstance/containerGroupProfiles",
         "location": "westeurope",
-        "zones": [
-          "1"
-        ]
+        "zones": ["1"]
       }
     }
   }
