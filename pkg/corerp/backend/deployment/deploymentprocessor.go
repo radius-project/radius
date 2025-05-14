@@ -72,7 +72,6 @@ type deploymentProcessor struct {
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
 	k8sClientSet kubernetes.Interface
-	// UcpClient is the UCP client factory.
 }
 
 type ResourceData struct {
@@ -83,9 +82,9 @@ type ResourceData struct {
 	// Output variables that are passed to the resource.
 	// These are used by UDT to pass on the output variables to the connecting resource.
 	OutputVariables map[string]any
-	SecretValues         map[string]rpv1.SecretValueReference
-	AppID                *resources.ID                // Application ID for which the resource is created
-	RecipeData           portableresources.RecipeData // Relevant only for portable resources created with recipes to find relevant connections created by that recipe
+	SecretValues    map[string]rpv1.SecretValueReference
+	AppID           *resources.ID                // Application ID for which the resource is created
+	RecipeData      portableresources.RecipeData // Relevant only for portable resources created with recipes to find relevant connections created by that recipe
 }
 
 // Render fetches the resource renderer, the application, environment and application options, and the dependencies of the
@@ -592,27 +591,13 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 
-		status := obj.Status()
-		if status == nil {
-			return ResourceData{}, fmt.Errorf("resource %q does not have a valid status", resourceID.String())
-		}
-		outputVariables := map[string]any{}
-		if status["outputVariables"] != nil {
-			if val, ok := status["outputVariables"].(map[string]any); ok {
-				outputVariables = val
-			} else {
-				return ResourceData{}, fmt.Errorf("status[\"outputVariables\"] is not of type map[string]any")
-			}
-
-		}
-
 		// At present, we combine secret data with computed values into bindings for UDT.
 		// Note: UDTs currently do not have full support for secrets.
 		return dp.buildResourceDependency(resourceID, obj.ResourceMetadata().ApplicationID(), obj, obj.OutputResources(), obj.GetComputedValues(), obj.GetSecrets(), portableresources.RecipeData{})
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, environmentVariables map[string]any, recipeData portableresources.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, outputVariables map[string]any, recipeData portableresources.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	// Application id is mandatory for some of the core resource types and is a required field.
 	if applicationID != "" {
@@ -627,14 +612,14 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 	}
 
 	return ResourceData{
-		ID:                   resourceID,
-		Resource:             resource,
-		OutputResources:      outputResources,
-		ComputedValues:       computedValues,
-		SecretValues:         secretValues,
-		OutputVariables: environmentVariables,
-		AppID:                appID,
-		RecipeData:           recipeData,
+		ID:              resourceID,
+		Resource:        resource,
+		OutputResources: outputResources,
+		ComputedValues:  computedValues,
+		SecretValues:    secretValues,
+		OutputVariables: outputVariables,
+		AppID:           appID,
+		RecipeData:      recipeData,
 	}, nil
 }
 
