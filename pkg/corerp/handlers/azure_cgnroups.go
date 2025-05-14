@@ -54,10 +54,10 @@ func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptio
 	}
 
 	for key, val := range options.DependencyProperties {
-		logger.Info("dependency property: ", key, " = ", val)
+		logger.Info("dependency property", "key", key, "value", val)
 	}
 
-	logger.Info("ngroup dependency property: ", options.DependencyProperties[rpv1.LocalIDAzureCGProfile])
+	logger.Info("ngroup dependency property", "property", options.DependencyProperties[rpv1.LocalIDAzureCGProfile])
 	cgpID, ok := options.DependencyProperties[rpv1.LocalIDAzureCGProfile]["containerGroupProfileID"]
 	if !ok {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
