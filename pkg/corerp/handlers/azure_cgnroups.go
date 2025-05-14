@@ -59,6 +59,7 @@ func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptio
 	}
 
 	nGroup.Properties.ContainerGroupProfiles[0].Resource.ID = to.Ptr(cgpID)
+	logger.Info("ngroup ID: ", nGroup.Properties.ContainerGroupProfiles[0].Resource.ID)
 	pl, err := armruntime.NewPipeline("github.com/radius-project/radius", "v0.0.1", handler.arm.ClientOptions.Cred, azruntime.PipelineOptions{}, &armpolicy.ClientOptions{})
 	if err != nil {
 		return nil, err
