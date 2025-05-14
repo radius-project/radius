@@ -49,13 +49,16 @@ fi
 
 # Delete all test namespaces.
 echo "delete all test namespaces"
-namespaces=$(kubectl get namespace |
-    grep -E '^kubernetes-interop-tutorial.*|^corerp.*|^test.*|^default-.*|^radiusfunctionaltestbucket.*|^radius-test.*|^kubernetes-cli.*|^dpsb-.*|^dsrp-.*|^azstorage-workload.*|^dapr-serviceinvocation|^daprrp-rs-.*|^dapr-sts-.*|^mynamespace.*|^demo.*|^tutorial-demo.*|^ms.+' |
-    awk '{print $1}')
+namespace_whitelist=("cert-manager" "dapr-system" "default" "gatekeeper-system" "kube-node-lease" "kube-public" "kube-system" "radius-system")
+namespaces=$(kubectl get namespaces --no-headers -o custom-columns=":metadata.name")
 for ns in $namespaces; do
     if [ -z "$ns" ]; then
         break
     fi
-    echo "deleting namespaces: $ns"
-    kubectl delete namespace $ns --ignore-not-found=true
+    if [[ " ${namespace_whitelist[@]} " =~ " ${ns} " ]]; then
+        echo "skip deletion: $ns"
+    else
+        echo "deleting namespaces: $ns"
+        kubectl delete namespace $ns --ignore-not-found=true
+    fi
 done
