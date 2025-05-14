@@ -18,6 +18,7 @@ package processor
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
@@ -70,7 +71,17 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		return err
 	}
 
-	err = addOutputValuestoResourceProperties(ctx, options.UcpClient, resource, computedValues, secretValues)
+	schema, err := getAPIVersionResourceSchema(ctx, options.UcpClient, resource)
+	if err != nil {
+		return err
+	}
+
+	err = addOutputValuestoResourceProperties(resource, schema, computedValues, secretValues)
+	if err != nil {
+		return err
+	}
+
+	err = addEnvironmentMappingToResourceProperties(resource, schema)
 	if err != nil {
 		return err
 	}
@@ -78,13 +89,10 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 	return nil
 }
 
-// addOutputValuestoResourceProperties adds the computed values and secret values to the resource properties.
-// It retrieves the schema of the resource type and filters out the values that are not part of the schema.
-func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resource *datamodel.DynamicResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
-
+func getAPIVersionResourceSchema(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resource *datamodel.DynamicResource) (map[string]any, error) {
 	ID, err := resources.Parse(resource.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	plane := ID.PlaneNamespace()
@@ -93,13 +101,21 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 	resourceType := strings.Split(resource.Type, "/")[1]
 	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, planeName, resourceProvider, resourceType, resource.InternalMetadata.UpdatedAPIVersion, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	schema := apiVersionResource.APIVersionResource.Properties.Schema
+
+	return schema, nil
+}
+
+// addOutputValuestoResourceProperties adds the computed values and secret values to the resource properties.
+// It retrieves the schema of the resource type and filters out the values that are not part of the schema.
+func addOutputValuestoResourceProperties(resource *datamodel.DynamicResource, schema map[string]any, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
 	// Filter out the basic properties from the resource properties
 	// This is to avoid overwriting the properties like application, environment etc when they are added as computed values or secret values.
 	resourceProps := []string{}
-	schema := apiVersionResource.APIVersionResource.Properties.Schema
+
 	if schema != nil {
 		if properties, ok := schema["properties"].(map[string]any); ok {
 			for key := range properties {
@@ -122,6 +138,56 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 		if slices.Contains(resourceProps, key) {
 			resource.Properties[key] = value.Value
 		}
+	}
+
+	return nil
+}
+
+func addEnvironmentMappingToResourceProperties(resource *datamodel.DynamicResource, schema map[string]any) error {
+	if schema != nil {
+		status := resource.Status()
+		environmentVariables := map[string]string{}
+
+		if properties, ok := schema["properties"].(map[string]any); ok {
+			for key := range properties {
+				attributes, ok := properties[key].(map[string]any)
+				if !ok {
+					return fmt.Errorf("failed to assert type for attributes of property %q", key)
+				}
+
+				envVariableName, ok := attributes["connected-resource-environment-variable"].(string)
+				if !ok {
+					continue
+				}
+
+				if envVariableName != "" {
+					value, exists := resource.Properties[key]
+
+					if !exists {
+						return fmt.Errorf("property '%s' does not exist in resource properties", key)
+					}
+					if value != nil {
+						// Handle pointer dereference
+						if ptr, ok := value.(*interface{}); ok && ptr != nil {
+							// Dereference the pointer to get the actual value
+							actualValue := *ptr
+							// Convert the dereferenced value to string
+							environmentVariables[envVariableName] = fmt.Sprintf("%v", actualValue)
+						} else {
+							// If it's not a pointer or is a different type, convert directly
+							environmentVariables[envVariableName] = fmt.Sprintf("%v", value)
+						}
+					} else {
+						// Handle nil pointer case
+						fmt.Println("value is nil")
+					}
+				}
+			}
+		} else {
+			return fmt.Errorf("failed to assert type for 'properties' in schema")
+		}
+
+		status["outputVariables"] = environmentVariables
 	}
 
 	return nil
