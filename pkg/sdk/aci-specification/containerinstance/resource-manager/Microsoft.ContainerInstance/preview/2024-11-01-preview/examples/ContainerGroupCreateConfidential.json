@@ -4,9 +4,7 @@
     "api-version": "2024-11-01-preview",
     "resourceGroupName": "demo",
     "containerGroupName": "demo1",
-    "zones": [
-      "1"
-    ],
+    "zones": ["1"],
     "containerGroup": {
       "location": "westeurope",
       "properties": {
@@ -31,9 +29,7 @@
               "securityContext": {
                 "privileged": false,
                 "capabilities": {
-                  "add": [
-                    "CAP_NET_ADMIN"
-                  ]
+                  "add": ["CAP_NET_ADMIN"]
                 }
               }
             }
@@ -84,9 +80,7 @@
                 "securityContext": {
                   "privileged": false,
                   "capabilities": {
-                    "add": [
-                      "CAP_NET_ADMIN"
-                    ]
+                    "add": ["CAP_NET_ADMIN"]
                   }
                 }
               }
@@ -144,9 +138,7 @@
                 "securityContext": {
                   "privileged": false,
                   "capabilities": {
-                    "add": [
-                      "CAP_NET_ADMIN"
-                    ]
+                    "add": ["CAP_NET_ADMIN"]
                   }
                 }
               }

@@ -6,9 +6,7 @@
     "containerGroupProfileName": "demo1",
     "ContainerGroupProfile": {
       "location": "eastus2",
-      "zones": [
-        "1"
-      ],
+      "zones": ["1"],
       "properties": {
         "containers": [
           {
@@ -101,9 +99,7 @@
         "name": "demo1",
         "type": "Microsoft.ContainerInstance/containerGroupProfiles",
         "location": "eastus2",
-        "zones": [
-          "1"
-        ]
+        "zones": ["1"]
       }
     },
     "201": {
@@ -155,9 +151,7 @@
         "name": "demo1",
         "type": "Microsoft.ContainerInstance/containerGroupProfiles",
         "location": "eastus2",
-        "zones": [
-          "1"
-        ]
+        "zones": ["1"]
       }
     }
   }

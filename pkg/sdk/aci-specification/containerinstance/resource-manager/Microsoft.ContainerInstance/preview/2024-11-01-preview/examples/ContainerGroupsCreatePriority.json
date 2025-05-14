@@ -12,11 +12,7 @@
             "name": "test-container-001",
             "properties": {
               "image": "alpine:latest",
-              "command": [
-                "/bin/sh",
-                "-c",
-                "sleep 10"
-              ],
+              "command": ["/bin/sh", "-c", "sleep 10"],
               "resources": {
                 "requests": {
                   "memoryInGB": 1,
@@ -44,11 +40,7 @@
               "name": "test-container-001",
               "properties": {
                 "image": "alpine:latest",
-                "command": [
-                  "/bin/sh",
-                  "-c",
-                  "sleep 10"
-                ],
+                "command": ["/bin/sh", "-c", "sleep 10"],
                 "ports": [],
                 "environmentVariables": [],
                 "resources": {
@@ -85,11 +77,7 @@
               "name": "test-container-001",
               "properties": {
                 "image": "alpine:latest",
-                "command": [
-                  "/bin/sh",
-                  "-c",
-                  "sleep 10"
-                ],
+                "command": ["/bin/sh", "-c", "sleep 10"],
                 "ports": [],
                 "environmentVariables": [],
                 "resources": {

@@ -16,11 +16,7 @@
               "name": "test-container-001",
               "properties": {
                 "image": "alpine:latest",
-                "command": [
-                  "/bin/sh",
-                  "-c",
-                  "sleep 10"
-                ],
+                "command": ["/bin/sh", "-c", "sleep 10"],
                 "ports": [],
                 "environmentVariables": [],
                 "instanceView": {
