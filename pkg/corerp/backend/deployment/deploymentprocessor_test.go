@@ -218,6 +218,10 @@ func buildDynamicResourceWithRecipe() dynamicrp_dm.DynamicResource {
 					"connectionString": "Server=mydb;User=admin;",
 					"databaseName":     "testdb",
 				},
+				"outputVariables": map[string]any{
+					"var1": "value1",
+					"var2": "value2",
+				},
 			},
 		},
 	}
@@ -1091,7 +1095,7 @@ func Test_getResourceDataByID(t *testing.T) {
 		require.Equal(t, resourceData.RecipeData, mongoResource.RecipeData)
 	})
 
-	t.Run("Get outputresources from Dynamic Resource", func(t *testing.T) {
+	t.Run("Get outputresources and outputvariables from Dynamic Resource", func(t *testing.T) {
 		depId, _ := resources.ParseResource("/planes/radius/local/resourcegroups/default/providers/Test.Datastores/postgres/postgresudt")
 		postgresResource := buildDynamicResourceWithRecipe()
 
@@ -1107,6 +1111,28 @@ func Test_getResourceDataByID(t *testing.T) {
 		resourceData, err := dp.getResourceDataByID(ctx, depId)
 		require.NoError(t, err)
 		require.Equal(t, resourceData.OutputResources, postgresResource.OutputResources())
+		require.Equal(t, resourceData.OutputVariables, postgresResource.OutputVariables())
+
+	})
+
+	t.Run("outputresources and outputvariables populated in RendererDependency", func(t *testing.T) {
+		depId, _ := resources.ParseResource("/planes/radius/local/resourcegroups/default/providers/Test.Datastores/postgres/postgresudt")
+		postgresResource := buildDynamicResourceWithRecipe()
+
+		mr := database.Object{
+			Metadata: database.Metadata{
+				ID: postgresResource.ID,
+			},
+			Data: postgresResource,
+		}
+		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&mr, nil)
+
+		postgresResourceData, err := dp.getResourceDataByID(ctx, depId)
+		require.NoError(t, err)
+		rendererDependency, err := dp.getRendererDependency(ctx, postgresResourceData)
+		require.NoError(t, err)
+		require.Equal(t, rendererDependency.OutputVariables, postgresResource.OutputVariables())
+		require.Equal(t, rendererDependency.OutputResources, postgresResource.OutputResources())
 
 	})
 }
