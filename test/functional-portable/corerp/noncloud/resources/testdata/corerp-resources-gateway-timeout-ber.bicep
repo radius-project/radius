@@ -3,6 +3,15 @@ extension radius
 @description('Specifies the environment for resources.')
 param environment string
 
+@description('Name of the Radius Application.')
+param appName string
+
+@description('Name of the Gateway resource.')
+param name string
+
+@description('Name of the Container resource.')
+param ctnrName string
+
 @description('Specifies the port for the container resource.')
 param port int = 3000
 
@@ -10,14 +19,14 @@ param port int = 3000
 param magpieimage string
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'corerp-resources-gateway-timeout'
+  name: appName
   properties: {
     environment: environment
   }
 }
 
 resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
-  name: 'timeout-gtwy-gtwy'
+  name: name
   properties: {
     application: app.id
     routes: [
@@ -34,7 +43,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
 }
 
 resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'timeout-gtwy-front-ctnr'
+  name: ctnrName
   properties: {
     application: app.id
     container: {
