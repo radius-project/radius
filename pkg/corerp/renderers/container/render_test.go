@@ -21,12 +21,15 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
 	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	azrenderer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
 	azvolrenderer "github.com/radius-project/radius/pkg/corerp/renderers/volume/azure"
+	dynamicrp_dm "github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -36,8 +39,6 @@ import (
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
-
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,22 +46,25 @@ import (
 )
 
 const (
-	applicationName       = "test-app"
-	applicationResourceID = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
-	applicationPath       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
-	resourceName          = "test-container"
-	envVarName1           = "TEST_VAR_1"
-	envVarValue1          = "TEST_VALUE_1"
-	envVarName2           = "TEST_VAR_2"
-	envVarValue2          = "81"
-	envVarSource2         = "TEST_SOURCE_2"
-	envVarName3           = "TEST_VAR_3"
-	envVarSource3         = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/secretStores/test-secret"
-	envVarValue3          = "/planes/are/cool"
-	envVarName4           = "TEST_VAR_4"
-	envVarSource4         = "test_Namespace/TEST_SOURCE_4"
-	envVarValue4          = "TEST_VALUE_4"
-	secretName            = "test-container"
+	applicationName            = "test-app"
+	applicationResourceID      = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
+	applicationPath            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
+	resourceName               = "test-container"
+	envVarName1                = "TEST_VAR_1"
+	envVarValue1               = "TEST_VALUE_1"
+	envVarName2                = "TEST_VAR_2"
+	envVarValue2               = "81"
+	envVarSource2              = "TEST_SOURCE_2"
+	envVarName3                = "TEST_VAR_3"
+	envVarSource3              = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/secretStores/test-secret"
+	envVarValue3               = "/planes/are/cool"
+	envVarName4                = "TEST_VAR_4"
+	envVarSource4              = "test_Namespace/TEST_SOURCE_4"
+	envVarValue4               = "TEST_VALUE_4"
+	dynamicResourceEnvVar      = "VAR1"
+	dynamicResourceEnvVarValue = "value1"
+	secretName                 = "test-container"
+	dynamicResource            = "/radius/local/resourceGroups/test-resourcegroup/providers/Applications.Test/testType/test-resource"
 
 	tempVolName      = "TempVolume"
 	tempVolMountPath = "/tmpfs"
@@ -110,6 +114,27 @@ func makeResource(properties datamodel.ContainerProperties) *datamodel.Container
 		Properties: properties,
 	}
 	return &resource
+}
+
+func makeDynamicResource() *dynamicrp_dm.DynamicResource {
+	return &dynamicrp_dm.DynamicResource{
+		BaseResource: apiv1.BaseResource{
+			TrackedResource: apiv1.TrackedResource{
+				ID:   "/planes/radius/local/resourceGroups/test-resourcegroup/providers/Applications.Test/testType/test-resource",
+				Type: "Applications.Test/testType",
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: "2024-01-01",
+			},
+		},
+		Properties: map[string]any{
+			"status": map[string]any{
+				"outputVariables": map[string]any{
+					"var1": "value1",
+				},
+			},
+		},
+	}
 }
 
 func makeAzureResourceID(t *testing.T, resourceType string, resourceName string) resources.ID {
@@ -172,6 +197,9 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			"testNonRadiusConnectionWithoutIAM": {
 				Source: testAzureResourceID.String(),
 			},
+			"testDynamicResourceConnection": {
+				Source: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource").String(),
+			},
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
@@ -229,12 +257,13 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	renderer := Renderer{}
 	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.NoError(t, err)
-	require.Len(t, radiusResourceIDs, 3)
+	require.Len(t, radiusResourceIDs, 4)
 	require.Len(t, azureResourceIDs, 1)
 
 	expectedRadiusResourceIDs := []resources.ID{
 		makeRadiusResourceID(t, "Applications.Datastores/redisCaches", "A"),
 		makeRadiusResourceID(t, "Applications.Datastores/redisCaches", "B"),
+		makeRadiusResourceID(t, "Applications.Test/testType", "test-resource"),
 		resources.MustParse(envVarSource3),
 	}
 	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
@@ -623,6 +652,9 @@ func Test_Render_Connections(t *testing.T) {
 			"containerB": {
 				Source: fmt.Sprintf("%s://%s:%s", containerConnectionScheme, containerConnectionHostname, containerConnectionPort),
 			},
+			"dynamicResource": {
+				Source: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource").String(),
+			},
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
@@ -643,6 +675,13 @@ func Test_Render_Connections(t *testing.T) {
 			ComputedValues: map[string]any{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
+			},
+		},
+		dynamicResource: {
+			ResourceID: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource"),
+			Resource:   makeDynamicResource(),
+			OutputVariables: map[string]any{
+				dynamicResourceEnvVar: dynamicResourceEnvVarValue,
 			},
 		},
 	}
@@ -702,6 +741,7 @@ func Test_Render_Connections(t *testing.T) {
 				Name:  "CONNECTION_CONTAINERB_SCHEME",
 				Value: containerConnectionScheme,
 			},
+			{Name: "CONNECTION_DYNAMICRESOURCE_" + dynamicResourceEnvVar, Value: dynamicResourceEnvVarValue},
 			{Name: envVarName1, Value: envVarValue1},
 			{Name: envVarName2, Value: envVarValue2},
 		}
