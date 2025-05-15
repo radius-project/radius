@@ -18,6 +18,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -73,8 +74,9 @@ func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptio
 	cgp := ngroupsclient.NewNGroupsClient(subID, pl)
 
 	logger.Info("creating NGroup...")
-	logger.Info("complete nGroup object", "ngroup", fmt.Sprintf("%+v", *nGroup))
-	logger.Info("container profiles", "profiles", fmt.Sprintf("%+v", nGroup.Properties.ContainerGroupProfiles))
+	// Log the exact JSON payload before sending
+	jsonBytes, _ := json.MarshalIndent(nGroup, "", "  ")
+	logger.Info("Request payload", "json", string(jsonBytes))
 	poller, err := cgp.BeginCreateOrUpdate(ctx, resourceGroupName, *nGroup.Name, *nGroup, nil)
 	if err != nil {
 		return nil, err
