@@ -88,7 +88,7 @@ func Test_Run(t *testing.T) {
 		resourceType := common.ResourceType{
 			Name:                      "Applications.Test/exampleResources",
 			ResourceProviderNamespace: "Applications.Test",
-			APIVersions:               []string{"2023-10-01-preview"},
+			APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)

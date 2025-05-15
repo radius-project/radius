@@ -123,7 +123,7 @@ func Test_Run(t *testing.T) {
 				Obj: common.ResourceType{
 					Name:                      "MyCompany.Resources/testResources",
 					ResourceProviderNamespace: "MyCompany.Resources",
-					APIVersions:               []string{"2023-10-01-preview"},
+					APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
 				},
 				Options: output.FormatterOptions{
 					Columns: []output.Column{

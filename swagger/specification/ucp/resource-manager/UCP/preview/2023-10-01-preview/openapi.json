@@ -3990,6 +3990,10 @@
         "defaultApiVersion": {
           "type": "string",
           "description": "The default api version for the resource type."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the resource type."
         }
       },
       "required": [
@@ -4021,6 +4025,10 @@
         "defaultApiVersion": {
           "$ref": "#/definitions/ApiVersionNameString",
           "description": "The default api version for the resource type."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the resource type."
         }
       }
     },

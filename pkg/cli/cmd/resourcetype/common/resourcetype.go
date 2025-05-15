@@ -30,10 +30,21 @@ import (
 type ResourceType struct {
 	// Name is the fully-qualified name of the resource type.
 	Name string
+	// Description of the resource type.
+	Description string
 	// ResourceProviderNamespace is the namespace of the resource provider.
 	ResourceProviderNamespace string
 	// APIVersions is the list of API versions supported by the resource type.
-	APIVersions []string
+	APIVersions map[string]*APIVersionProperties
+}
+
+type APIVersionProperties struct {
+	Schema map[string]any
+}
+
+type ResourceTypeListOutputFormat struct {
+	ResourceType
+	APIVersionList []string
 }
 
 // ResourceTypesForProvider returns a list of resource types for a given provider.
@@ -45,8 +56,15 @@ func ResourceTypesForProvider(provider *v20231001preview.ResourceProviderSummary
 			ResourceProviderNamespace: *provider.Name,
 		}
 
-		for version := range resourceType.APIVersions {
-			rt.APIVersions = append(rt.APIVersions, version)
+		if resourceType.Description != nil {
+			rt.Description = *resourceType.Description
+		}
+
+		rt.APIVersions = make(map[string]*APIVersionProperties)
+		for apiVersion, properties := range resourceType.APIVersions {
+			rt.APIVersions[apiVersion] = &APIVersionProperties{
+				Schema: properties.Schema,
+			}
 		}
 
 		resourceTypes = append(resourceTypes, rt)
@@ -56,6 +74,17 @@ func ResourceTypesForProvider(provider *v20231001preview.ResourceProviderSummary
 
 // GetResourceTypeTableFormat returns the fields to output from a resource type object.
 func GetResourceTypeTableFormat() output.FormatterOptions {
+	formatterOptions := GetResourceTypeShowTableFormat()
+	formatterOptions.Columns = append(formatterOptions.Columns, output.Column{
+		Heading:  "APIVERSION",
+		JSONPath: "{ .APIVersionList }",
+	})
+
+	return formatterOptions
+}
+
+// GetResourceTypeTableFormat returns the fields to output from a resource type object for show command.
+func GetResourceTypeShowTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
@@ -65,10 +94,6 @@ func GetResourceTypeTableFormat() output.FormatterOptions {
 			{
 				Heading:  "NAMESPACE",
 				JSONPath: "{ .ResourceProviderNamespace }",
-			},
-			{
-				Heading:  "APIVERSION",
-				JSONPath: "{ .APIVersions }",
 			},
 		},
 	}

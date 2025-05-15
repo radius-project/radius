@@ -734,6 +734,9 @@ type ResourceProviderSummaryResourceType struct {
 
 // The default api version for the resource type.
 	DefaultAPIVersion *string
+
+// Description of the resource type.
+	Description *string
 }
 
 // ResourceTypeProperties - The properties of a resource type.
@@ -743,6 +746,9 @@ type ResourceTypeProperties struct {
 
 // The default api version for the resource type.
 	DefaultAPIVersion *string
+
+// Description of the resource type.
+	Description *string
 
 // READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState

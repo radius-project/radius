@@ -101,6 +101,9 @@ model ResourceTypeProperties {
 
   @doc("The default api version for the resource type.")
   defaultApiVersion?: ApiVersionNameString;
+
+  @doc("Description of the resource type.")
+  description?: string;
 }
 
 @doc("The resource type for defining an API version of a resource type supported by the containing resource provider.")
@@ -182,6 +185,9 @@ model ResourceProviderSummaryResourceType {
 
   @doc("The default api version for the resource type.")
   defaultApiVersion?: string;
+
+  @doc("Description of the resource type.")
+  description?: string;
 }
 
 @doc("The configuration of a resource type API version.")

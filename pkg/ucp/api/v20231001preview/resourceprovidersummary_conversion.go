@@ -59,6 +59,7 @@ func (dst *ResourceProviderSummary) ConvertFrom(src v1.DataModelInterface) error
 			Capabilities:      to.SliceOfPtrs(resourceType.Capabilities...),
 			DefaultAPIVersion: resourceType.DefaultAPIVersion,
 			APIVersions:       apiVersions,
+			Description:       resourceType.Description,
 		}
 	}
 

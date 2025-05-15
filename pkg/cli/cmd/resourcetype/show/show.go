@@ -107,9 +107,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeTableFormat())
+	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeShowTableFormat())
 	if err != nil {
 		return err
 	}
+	r.Output.LogInfo(display(&resourceTypeDetails))
 	return nil
 }

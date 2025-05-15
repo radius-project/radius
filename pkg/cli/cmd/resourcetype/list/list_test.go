@@ -93,17 +93,17 @@ func Test_Run(t *testing.T) {
 			{
 				Name:                      "Applications.Test1/exampleResources1",
 				ResourceProviderNamespace: "Applications.Test1",
-				APIVersions:               []string{"2023-10-01-preview"},
+				APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
 			},
 			{
 				Name:                      "Applications.Test2/exampleResources2",
 				ResourceProviderNamespace: "Applications.Test2",
-				APIVersions:               []string{"2023-10-01-preview"},
+				APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
 			},
 			{
 				Name:                      "Applications.Test2/exampleResources3",
 				ResourceProviderNamespace: "Applications.Test2",
-				APIVersions:               []string{"2023-10-01-preview"},
+				APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
 			},
 		}
 
