@@ -98,6 +98,8 @@ jobs:
     env:
       DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
       DE_TAG: "latest"
+      # Head branch, only populated for workflow_run dispatch.
+      HEAD_BRANCH: "${{ github.event.workflow_run.head_branch }}"
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -117,7 +119,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             echo "Triggered by workflow_run."
             echo "Ref: ${{ github.ref }}"
-            echo "Head Branch Name: ${{ github.event.workflow_run.head_branch }}"
+            echo "Head Branch Name: $HEAD_BRANCH"
             echo "SHA Value: ${{ github.event.workflow_run.head_sha }}"
             echo "Github Repository: ${{ github.repository }}"
             echo "Event Repository ID: ${{ github.event.workflow_run.repository.id }}"
