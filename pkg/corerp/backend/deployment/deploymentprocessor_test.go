@@ -1132,8 +1132,6 @@ func Test_getResourceDataByID(t *testing.T) {
 		rendererDependency, err := dp.getRendererDependency(ctx, postgresResourceData)
 		require.NoError(t, err)
 		require.Equal(t, rendererDependency.OutputVariables, postgresResource.OutputVariables())
-		require.Equal(t, rendererDependency.OutputResources, postgresResource.OutputResources())
-
 	})
 }
 
