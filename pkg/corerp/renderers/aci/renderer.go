@@ -180,7 +180,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 	orResources = append(orResources, vnetSubnet)
 
-	networkprofile := &ngroupsclient.NetworkProfile{}
+	var networkprofile *ngroupsclient.NetworkProfile
 	appSubnetID := vnetID + "/subnets/" + resource.Name
 
 	profileDep := []string{rpv1.LocalIDAzureVirtualNetworkSubnet}

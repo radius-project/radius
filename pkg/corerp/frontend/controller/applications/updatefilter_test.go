@@ -49,6 +49,17 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 	}
 
 	t.Run("override namespace", func(t *testing.T) {
+		envdm := &datamodel.Environment{
+			Properties: datamodel.EnvironmentProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.KubernetesComputeKind,
+					KubernetesCompute: rpv1.KubernetesComputeProperties{
+						Namespace: "default",
+					},
+				},
+			},
+		}
+
 		old := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
@@ -64,6 +75,11 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 				},
 			},
 		}
+
+		tCtx.MockSC.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			Return(rpctest.FakeStoreObject(envdm), nil)
 
 		tCtx.MockSC.
 			EXPECT().
@@ -124,7 +140,7 @@ func TestCreateAppScopedNamespace_valid_namespace(t *testing.T) {
 		tCtx.MockSC.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			Return(rpctest.FakeStoreObject(envdm), nil)
+			Return(rpctest.FakeStoreObject(envdm), nil).Times(2)
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
@@ -170,7 +186,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 		tCtx.MockSC.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			Return(rpctest.FakeStoreObject(envdm), nil)
+			Return(rpctest.FakeStoreObject(envdm), nil).Times(2)
 
 		newResource := &datamodel.Application{
 			Properties: datamodel.ApplicationProperties{
@@ -193,6 +209,19 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 	})
 
 	t.Run("invalid namespace", func(t *testing.T) {
+		envdm := &datamodel.Environment{
+			Properties: datamodel.EnvironmentProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.KubernetesComputeKind,
+				},
+			},
+		}
+
+		tCtx.MockSC.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			Return(rpctest.FakeStoreObject(envdm), nil)
+
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
@@ -238,6 +267,11 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 			},
 		}
 
+		tCtx.MockSC.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			Return(rpctest.FakeStoreObject(envdm), nil)
+
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
@@ -272,6 +306,19 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 	})
 
 	t.Run("conflicted namespace in the different application resource", func(t *testing.T) {
+		envdm := &datamodel.Environment{
+			Properties: datamodel.EnvironmentProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.KubernetesComputeKind,
+				},
+			},
+		}
+
+		tCtx.MockSC.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			Return(rpctest.FakeStoreObject(envdm), nil)
+
 		newResource := &datamodel.Application{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
@@ -344,6 +391,19 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 				},
 			},
 		}
+
+		envdm := &datamodel.Environment{
+			Properties: datamodel.EnvironmentProperties{
+				Compute: rpv1.EnvironmentCompute{
+					Kind: rpv1.KubernetesComputeKind,
+				},
+			},
+		}
+
+		tCtx.MockSC.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			Return(rpctest.FakeStoreObject(envdm), nil)
 
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
