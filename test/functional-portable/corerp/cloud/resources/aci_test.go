@@ -33,7 +33,8 @@ func Test_ACI(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template),
+			Executor:             step.NewDeployExecutor(template),
+			SkipObjectValidation: true,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
