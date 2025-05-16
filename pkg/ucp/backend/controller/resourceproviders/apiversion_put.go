@@ -86,12 +86,8 @@ func (c *APIVersionPutController) updateSummary(id resources.ID, apiVersion *dat
 
 		apiVersionName := id.Name()
 		_, ok = resourceTypeEntry.APIVersions[apiVersionName]
-		if !ok {
-			resourceTypeEntry.APIVersions[apiVersionName] = datamodel.ResourceProviderSummaryPropertiesAPIVersion{}
-		} else {
-			resourceTypeEntry.APIVersions[apiVersionName] = datamodel.ResourceProviderSummaryPropertiesAPIVersion{
-				Schema: apiVersion.Properties.Schema,
-			}
+		resourceTypeEntry.APIVersions[apiVersionName] = datamodel.ResourceProviderSummaryPropertiesAPIVersion{
+			Schema: apiVersion.Properties.Schema,
 		}
 
 		summary.Properties.ResourceTypes[resourceTypeName] = resourceTypeEntry

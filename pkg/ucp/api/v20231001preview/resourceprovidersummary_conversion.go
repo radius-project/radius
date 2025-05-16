@@ -45,10 +45,9 @@ func (dst *ResourceProviderSummary) ConvertFrom(src v1.DataModelInterface) error
 		dst.Locations[locationName] = map[string]any{}
 	}
 
-	apiVersions := map[string]*ResourceTypeSummaryResultAPIVersion{}
-
 	dst.ResourceTypes = map[string]*ResourceProviderSummaryResourceType{}
 	for resourceTypeName, resourceType := range dm.Properties.ResourceTypes {
+		apiVersions := map[string]*ResourceTypeSummaryResultAPIVersion{}
 		for k, v := range resourceType.APIVersions {
 			apiVersions[k] = &ResourceTypeSummaryResultAPIVersion{
 				Schema: v.Schema,

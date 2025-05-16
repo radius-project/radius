@@ -65,7 +65,15 @@ func TestAPIVersionPutController_updateSummary(t *testing.T) {
 					ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
 						"testResources": {
 							APIVersions: map[string]datamodel.ResourceProviderSummaryPropertiesAPIVersion{
-								"2025-01-01": {},
+								"2025-01-01": {
+									Schema: map[string]any{
+										"properties": map[string]any{
+											"name": map[string]any{
+												"type": "string",
+											},
+										},
+									},
+								},
 							},
 						},
 					},

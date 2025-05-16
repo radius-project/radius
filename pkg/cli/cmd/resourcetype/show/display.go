@@ -40,7 +40,6 @@ func display(resourceType *common.ResourceType) string {
 			for _, prop := range required {
 				requiredPropertiesKeys = append(requiredPropertiesKeys, prop.(string))
 			}
-
 		}
 
 		if properties.Schema["properties"] != nil {
@@ -59,30 +58,24 @@ func display(resourceType *common.ResourceType) string {
 			}
 		}
 
-		output.WriteString(indent("REQUIRED PROPERTIES:\n", indentSpaceCount))
-		for propName, prop := range requiredProperties {
-			prps := prop.(map[string]any)
-
-			output.WriteString(indent("- "+propName+" ("+prps["type"].(string)+") "+prps["description"].(string), indentSpaceCount+2) + "\n")
+		writeProperties := func(output *strings.Builder, title string, indentSpaceCount int, props map[string]any) {
+			output.WriteString(indent(title+":\n", indentSpaceCount))
+			for propName, prop := range props {
+				prps := prop.(map[string]any)
+				t := prps["type"].(string)
+				desc := ""
+				if ok := prps["description"]; ok != nil {
+					desc = prps["description"].(string)
+				}
+				output.WriteString(indent("- "+propName+" ("+t+") "+desc, indentSpaceCount+2) + "\n")
+			}
+			output.WriteString("\n")
 		}
 
-		output.WriteString("\n")
-		output.WriteString(indent("OPTIONAL PROPERTIES:\n", indentSpaceCount))
-		for propName, prop := range optionalProperties {
-			prps := prop.(map[string]any)
-			output.WriteString(indent("- "+propName+" ("+prps["type"].(string)+") "+prps["description"].(string), indentSpaceCount+2) + "\n")
-		}
-
-		output.WriteString("\n")
-		output.WriteString(indent("READONLY PROPERTIES:\n", indentSpaceCount))
-		for propName, prop := range readonlonlyProperties {
-			prps := prop.(map[string]any)
-			output.WriteString(indent("- "+propName+" ("+prps["type"].(string)+") "+prps["description"].(string), indentSpaceCount+2) + "\n")
-		}
-
-		output.WriteString("\n")
+		writeProperties(output, "REQUIRED PROPERTIES", indentSpaceCount, requiredProperties)
+		writeProperties(output, "OPTIONAL PROPERTIES", indentSpaceCount, optionalProperties)
+		writeProperties(output, "READONLY PROPERTIES", indentSpaceCount, readonlonlyProperties)
 		indentSpaceCount -= 2
-
 	}
 
 	return output.String()
