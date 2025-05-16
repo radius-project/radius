@@ -20,8 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -87,7 +85,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
 	for _, connection := range properties.Connections {
-		if isURL(connection.Source) {
+		if renderers.IsURL(connection.Source) {
 			continue
 		}
 
@@ -181,7 +179,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// check if connections are valid
 	for _, connection := range properties.Connections {
 		// if source is a URL, it is valid (example: 'http://containerx:3000').
-		if isURL(connection.Source) {
+		if renderers.IsURL(connection.Source) {
 			continue
 		}
 
@@ -715,9 +713,9 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 			}
 
 			// handles case where container has source field structured as a URL.
-			if isURL(source) {
+			if renderers.IsURL(source) {
 				// parse source into scheme, hostname, and port.
-				scheme, hostname, port, err := parseURL(source)
+				scheme, hostname, port, err := renderers.ParseURL(source)
 				if err != nil {
 					return map[string]corev1.EnvVar{}, map[string][]byte{}, fmt.Errorf("failed to parse source URL: %w", err)
 				}
@@ -944,31 +942,4 @@ func getSortedKeys(env map[string]corev1.EnvVar) []string {
 
 	sort.Strings(keys)
 	return keys
-}
-
-func isURL(input string) bool {
-	_, err := url.ParseRequestURI(input)
-
-	// if first character is a slash, it's not a URL. It's a path.
-	if input == "" || err != nil || input[0] == '/' {
-		return false
-	}
-	return true
-}
-
-func parseURL(sourceURL string) (scheme, hostname, port string, err error) {
-	u, err := url.Parse(sourceURL)
-	if err != nil {
-		return "", "", "", err
-	}
-
-	scheme = u.Scheme
-	host := u.Host
-
-	hostname, port, err = net.SplitHostPort(host)
-	if err != nil {
-		return "", "", "", err
-	}
-
-	return scheme, hostname, port, nil
 }

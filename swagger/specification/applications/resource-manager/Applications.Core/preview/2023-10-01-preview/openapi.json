@@ -2234,6 +2234,16 @@
     }
   },
   "definitions": {
+    "ACIRuntimeProperties": {
+      "type": "object",
+      "description": "The runtime configuration properties for Kubernetes",
+      "properties": {
+        "gatewayID": {
+          "type": "string",
+          "description": "The ID of the gateway that is providing L7 traffic for the container"
+        }
+      }
+    },
     "ApplicationGraphConnection": {
       "type": "object",
       "description": "Describes the connection between two resources.",
@@ -2453,6 +2463,41 @@
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/Resource"
         }
       ]
+    },
+    "AzureContainerInstanceCompute": {
+      "type": "object",
+      "description": "The Azure container instance compute configuration",
+      "properties": {
+        "resourceGroup": {
+          "type": "string",
+          "description": "The resource group to use for the environment."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "aci"
+    },
+    "AzureContainerInstanceExtension": {
+      "type": "object",
+      "description": "Azure container instance resource group extension of a environment/application resource.",
+      "properties": {
+        "resourceGroup": {
+          "type": "string",
+          "description": "The resource group of the application environment."
+        }
+      },
+      "required": [
+        "resourceGroup"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Extension"
+        }
+      ],
+      "x-ms-discriminator-value": "aci"
     },
     "AzureKeyVaultVolumeProperties": {
       "type": "object",
@@ -3638,7 +3683,10 @@
       "description": "IdentitySettingKind is the kind of supported external identity setting",
       "enum": [
         "undefined",
-        "azure.com.workload"
+        "azure.com.workload",
+        "userAssigned",
+        "systemAssigned",
+        "systemAssignedUserAssigned"
       ],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
@@ -3653,6 +3701,21 @@
             "name": "azure.com.workload",
             "value": "azure.com.workload",
             "description": "azure ad workload identity"
+          },
+          {
+            "name": "userAssigned",
+            "value": "userAssigned",
+            "description": "User assigned managed identity"
+          },
+          {
+            "name": "systemAssigned",
+            "value": "systemAssigned",
+            "description": "System assigned managed identity"
+          },
+          {
+            "name": "systemAssignedUserAssigned",
+            "value": "systemAssignedUserAssigned",
+            "description": "System assigned and user assigned managed identity"
           }
         ]
       }
@@ -3672,6 +3735,13 @@
         "resource": {
           "type": "string",
           "description": "The resource ID of the provisioned identity"
+        },
+        "managedIdentity": {
+          "type": "array",
+          "description": "The list of user assigned managed identities",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -4284,6 +4354,10 @@
         "kubernetes": {
           "$ref": "#/definitions/KubernetesRuntimeProperties",
           "description": "The runtime configuration properties for Kubernetes"
+        },
+        "aci": {
+          "$ref": "#/definitions/ACIRuntimeProperties",
+          "description": "The runtime configuration properties for ACI"
         }
       }
     },

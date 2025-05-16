@@ -89,6 +89,9 @@ model IdentitySettings {
 
   @doc("The resource ID of the provisioned identity")
   resource?: string;
+
+  @doc("The list of user assigned managed identities")
+  managedIdentity?: string[];
 }
 
 @doc("IdentitySettingKind is the kind of supported external identity setting")
@@ -98,6 +101,15 @@ enum IdentitySettingKind {
 
   @doc("azure ad workload identity")
   `azure.com.workload`: "azure.com.workload",
+
+  @doc("User assigned managed identity")
+  userAssigned: "userAssigned",
+
+  @doc("System assigned managed identity")
+  systemAssigned: "systemAssigned",
+
+  @doc("System assigned and user assigned managed identity")
+  systemAssignedUserAssigned: "systemAssignedUserAssigned",
 }
 
 @discriminator("kind")
@@ -117,6 +129,15 @@ model KubernetesCompute extends EnvironmentCompute {
 
   @doc("The namespace to use for the environment.")
   `namespace`: string;
+}
+
+@doc("The Azure container instance compute configuration")
+model AzureContainerInstanceCompute extends EnvironmentCompute {
+  @doc("The Azure container instance compute kind")
+  kind: "aci";
+
+  @doc("The resource group to use for the environment.")
+  resourceGroup?: string;
 }
 
 @doc("Recipe status at deployment time for a resource.")

@@ -1,0 +1,52 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0",
+  "name": "container0",
+  "type": "Applications.Core/containers",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
+    },
+    "provisioningState": "Succeeded",
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "connections": {
+      "inventory": {
+        "source": "inventory_route_id",
+        "disableDefaultEnvVars": true,
+        "iam": {
+          "kind": "azure",
+          "roles": ["read"]
+        }
+      }
+    },
+    "restartPolicy": "Always",
+    "container": {
+      "image": "ghcr.io/radius-project/webapptutorial-todoapp",
+      "livenessProbe": {
+        "kind": "tcp",
+        "failureThreshold": 5,
+        "initialDelaySeconds": 5,
+        "periodSeconds": 5,
+        "timeoutSeconds": 5,
+        "containerPort": 8080
+      },
+      "command": ["/bin/sh"],
+      "args": ["-c", "while true; do echo hello; sleep 10;done"],
+      "workingDir": "/app"
+    },
+    "extensions": [
+      {
+        "kind": "manualScaling",
+        "replicas": 2
+      }
+    ],
+    "runtimes": {
+      "aci": {
+        "gatewayID": "/subscriptions/00000000-0000/resourceGroups/testrg/providers/Microsoft.Network/applicationGateways/gateway"
+      }
+    }
+  }
+}

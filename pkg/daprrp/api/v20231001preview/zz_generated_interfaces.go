@@ -7,7 +7,7 @@ package v20231001preview
 // EnvironmentComputeClassification provides polymorphic access to related types.
 // Call the interface's GetEnvironmentCompute() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *EnvironmentCompute, *KubernetesCompute
+// - *AzureContainerInstanceCompute, *EnvironmentCompute, *KubernetesCompute
 type EnvironmentComputeClassification interface {
 	// GetEnvironmentCompute returns the EnvironmentCompute content of the underlying type.
 	GetEnvironmentCompute() *EnvironmentCompute

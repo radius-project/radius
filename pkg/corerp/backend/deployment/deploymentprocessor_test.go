@@ -1009,6 +1009,12 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 	dp := deploymentProcessor{mocks.model, nil, nil, nil}
 
 	env := &datamodel.Environment{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+				Name: "test-env",
+			},
+		},
 		Properties: datamodel.EnvironmentProperties{
 			Compute: rpv1.EnvironmentCompute{
 				Kind: rpv1.KubernetesComputeKind,

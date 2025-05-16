@@ -23,7 +23,9 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	cdm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	rp_kube "github.com/radius-project/radius/pkg/rp/kube"
@@ -55,6 +57,16 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+
+	env, err := getEnvironment(ctx, newResource.Properties.Environment, opt.DatabaseClient)
+	if err != nil {
+		return nil, err
+	}
+	// We want to skip setting up a namespace for environments with non-Kubernetes compute
+	if env.Properties.Compute.Kind != rpv1.KubernetesComputeKind {
+		logger.Info("Skipping namespace creation for non-Kubernetes environment", "environment", newResource.Properties.Environment)
+		return nil, nil
+	}
 
 	kubeNamespace := ""
 	ext := datamodel.FindExtension(newResource.Properties.Extensions, datamodel.KubernetesNamespaceExtension)
@@ -138,4 +150,17 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 	}
 
 	return nil, nil
+}
+
+// getEnvironment retrieves an environment resource from the database
+func getEnvironment(ctx context.Context, environmentID string, dbClient database.Client) (*cdm.Environment, error) {
+	env := &cdm.Environment{}
+	res, err := dbClient.Get(ctx, environmentID)
+	if err != nil {
+		return nil, err
+	}
+	if err = res.As(env); err != nil {
+		return nil, err
+	}
+	return env, nil
 }

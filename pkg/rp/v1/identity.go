@@ -26,6 +26,12 @@ const (
 	IdentityNone IdentitySettingKind = "None"
 	// AzureIdentityWorkload represents Azure Workload identity.
 	AzureIdentityWorkload IdentitySettingKind = "azure.com.workload"
+	// UserAssigned represents Azure User Assigned Managed Identity.
+	UserAssigned IdentitySettingKind = "userAssigned"
+	// SystemAssigned represents Azure System Assigned Managed Identity.
+	SystemAssigned IdentitySettingKind = "systemAssigned"
+	// SystemAssignedUserAssigned represents Azure System Assigned and User Assigned Managed Identity.
+	SystemAssignedUserAssigned IdentitySettingKind = "systemAssignedUserAssigned"
 )
 
 // IdentitySettings represents the identity info to access azure resource, such as Key vault.
@@ -36,6 +42,8 @@ type IdentitySettings struct {
 	OIDCIssuer string `json:"oidcIssuer,omitempty"`
 	// Resource represents the resource id of managed identity.
 	Resource string `json:"resource,omitempty"`
+	// ManagedIdentity represents the list of user assigned managed identities.
+	ManagedIdentity []string `json:"managedIdentity,omitempty"`
 }
 
 // Validate checks if the IdentitySettings struct is nil and if the Kind is AzureIdentityWorkload, checks if the OIDCIssuer
@@ -53,5 +61,18 @@ func (is *IdentitySettings) Validate() error {
 			return errors.New(".properties.resource is read-only property")
 		}
 	}
+
+	if is.Kind == UserAssigned || is.Kind == SystemAssignedUserAssigned {
+		if is.ManagedIdentity == nil {
+			return errors.New(".properties.managedIdentity is required for user assigned identity")
+		}
+	}
+
+	if is.Kind == SystemAssigned {
+		if is.ManagedIdentity != nil {
+			return errors.New("no managed identities can be set for system assigned identity")
+		}
+	}
+
 	return nil
 }
