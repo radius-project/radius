@@ -69,6 +69,3 @@ hack/bicep-types-radius/generated/**/*.md
 
 # Bicep extensions
 *.tgz
-
-# ACI generated modela
-pkg/sdk/v20241101preview/models.go
