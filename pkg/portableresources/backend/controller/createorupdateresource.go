@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
@@ -86,26 +87,12 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 
 	// Now we're ready to process recipes (if needed).
 	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
-	recipeOutput, err := c.executeRecipeIfNeeded(ctx, resource, previousOutputResources, config.Simulated)
-	if err != nil {
-		if recipeError, ok := err.(*recipes.RecipeError); ok {
-			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
-			// Set the deployment status to the recipe error code.
-			recipeDataModel.GetRecipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
-			update := &database.Object{
-				Metadata: database.Metadata{
-					ID: req.ResourceID,
-				},
-				Data: recipeDataModel.(rpv1.RadiusResourceModel),
-			}
-			// Save portable resource with updated deployment status to track errors during deletion.
-			err = c.DatabaseClient().Save(ctx, update, database.WithETag(storedResource.ETag))
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
+	var recipeOutput *recipes.RecipeOutput
+	if supportsRecipes && recipeDataModel.GetRecipe() != nil {
+		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated)
+		if err != nil {
+			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, storedResource.ETag, logger)
 		}
-		return ctrl.Result{}, err
 	}
 
 	if config.Simulated {
@@ -143,6 +130,31 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	return ctrl.Result{}, err
 }
 
+// handleRecipeError handles recipe execution errors: logs, updates status, persists, and returns the appropriate result.
+func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, err error, recipeDataModel datamodel.RecipeDataModel, resourceID string, etag string, logger logr.Logger) (ctrl.Result, error) {
+	var recipeErr *recipes.RecipeError
+	if errors.As(err, &recipeErr) {
+		logger.Error(recipeErr, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeErr.ErrorDetails.Target))
+
+		// Set the deployment status to the recipe error code
+		recipeDataModel.GetRecipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeErr.DeploymentStatus)
+		update := &database.Object{
+			Metadata: database.Metadata{ID: resourceID},
+			Data:     recipeDataModel.(rpv1.RadiusResourceModel),
+		}
+
+		// Save portable resource with updated deployment status to track errors during deletion.
+		err = c.DatabaseClient().Save(ctx, update, database.WithETag(etag))
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.NewFailedResult(recipeErr.ErrorDetails), nil
+	}
+
+	return ctrl.Result{}, err
+}
+
 func (c *CreateOrUpdateResource[P, T]) copyOutputResources(resource P) []string {
 	previousOutputResources := []string{}
 	for _, outputResource := range resource.OutputResources() {
@@ -151,17 +163,9 @@ func (c *CreateOrUpdateResource[P, T]) copyOutputResources(resource P) []string 
 	return previousOutputResources
 }
 
-func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, prevState []string, simulated bool) (*recipes.RecipeOutput, error) {
-	// 'any' is required here to convert to an interface type, only then can we use a type assertion.
-	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
-	if !supportsRecipes {
-		return nil, nil
-	}
-
+func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, prevState []string, simulated bool) (*recipes.RecipeOutput, error) {
+	// Caller ensures recipeDataModel supports recipes and has a non-nil recipe
 	recipe := recipeDataModel.GetRecipe()
-	if recipe == nil {
-		return nil, nil
-	}
 
 	resourceProperties, err := GetPropertiesFromResource(resource)
 	if err != nil {
