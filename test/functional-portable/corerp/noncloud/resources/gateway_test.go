@@ -196,11 +196,11 @@ func Test_Gateway_Timeout(t *testing.T) {
 	appName := "gateway-timeout-app"
 	appNamespace := "default-gateway-timeout-app"
 	gatewayName := "gateway-timeout"
-	ctnrName := "gateway-timeout-ctnr"
+	containerName := "gateway-timeout-ctnr"
 
-	test := rp.NewRPTest(t, gatewayName, []rp.TestStep{
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "appName="+appName, "name="+gatewayName, "ctnrName="+ctnrName),
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "appName="+appName, "gatewayName="+gatewayName, "containerName="+containerName),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -217,16 +217,16 @@ func Test_Gateway_Timeout(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(appName, ctnrName),
+						validation.NewK8sPodForResource(appName, containerName),
 						validation.NewK8sHTTPProxyForResource(appName, gatewayName),
-						validation.NewK8sHTTPProxyForResource(appName, ctnrName),
-						validation.NewK8sServiceForResource(appName, ctnrName),
+						validation.NewK8sHTTPProxyForResource(appName, containerName),
+						validation.NewK8sServiceForResource(appName, containerName),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Get hostname from root HTTPProxy in application namespace
-				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, gatewayName)
+				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, appName)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
 
@@ -256,7 +256,7 @@ func Test_Gateway_Timeout(t *testing.T) {
 func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-timeout-ber.bicep"
 	appName := "gateway-timeout-ber-app"
-	ctnrName := "gateway-timeout-ber-ctnr"
+	containerName := "gateway-timeout-ber-ctnr"
 	gatewayName := "gateway-timeout-ber"
 
 	validateFn := step.ValidateAnyDetails("DeploymentFailed", []step.DeploymentErrorDetail{
@@ -270,9 +270,9 @@ func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
 			},
 		},
 	})
-	test := rp.NewRPTest(t, gatewayName, []rp.TestStep{
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployErrorExecutor(template, validateFn, testutil.GetMagpieImage(), "appName="+appName, "name="+gatewayName, "ctnrName="+ctnrName),
+			Executor:                               step.NewDeployErrorExecutor(template, validateFn, testutil.GetMagpieImage(), "appName="+appName, "gatewayName="+gatewayName, "containerName="+containerName),
 			SkipObjectValidation:                   true,
 			SkipKubernetesOutputResourceValidation: true,
 		},
@@ -283,7 +283,7 @@ func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
 func Test_Gateway_Timeout_Invalid_Duration(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-timeout-invalid.bicep"
 	appName := "gateway-timeout-invalid-app"
-	ctnrName := "gateway-timeout-invalid-ctnr"
+	containerName := "gateway-timeout-invalid-ctnr"
 	gatewayName := "gateway-timeout-invalid"
 
 	validateFn := step.ValidateAnyDetails("DeploymentFailed", []step.DeploymentErrorDetail{
@@ -298,9 +298,9 @@ func Test_Gateway_Timeout_Invalid_Duration(t *testing.T) {
 		},
 	})
 
-	test := rp.NewRPTest(t, gatewayName, []rp.TestStep{
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployErrorExecutor(template, validateFn, testutil.GetMagpieImage(), "appName="+appName, "name="+gatewayName, "ctnrName="+ctnrName),
+			Executor:                               step.NewDeployErrorExecutor(template, validateFn, testutil.GetMagpieImage(), "appName="+appName, "gatewayName="+gatewayName, "containerName="+containerName),
 			SkipObjectValidation:                   true,
 			SkipKubernetesOutputResourceValidation: true,
 		},

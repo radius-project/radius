@@ -7,10 +7,10 @@ param environment string
 param appName string
 
 @description('Name of the Gateway resource.')
-param name string
+param gatewayName string
 
 @description('Name of the Container resource.')
-param ctnrName string
+param containerName string
 
 @description('Specifies the port for the container resource.')
 param port int = 3000
@@ -26,13 +26,13 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
-  name: name
+  name: gatewayName
   properties: {
     application: app.id
     routes: [
       {
         path: '/'
-        destination: 'http://timeout-gtwy-front-ctnr:81'
+        destination: 'http://${containerName}:81'
         timeoutPolicy: {
           request: '30s'
           backendRequest: '40s'
@@ -43,7 +43,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
 }
 
 resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
-  name: ctnrName
+  name: containerName
   properties: {
     application: app.id
     container: {
