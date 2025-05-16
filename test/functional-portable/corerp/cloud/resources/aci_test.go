@@ -17,7 +17,6 @@ limitations under the License.
 package resource_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
@@ -32,14 +31,9 @@ func Test_ACI(t *testing.T) {
 	gatewayResourceName := "gateway"
 	template := "testdata/corerp-aci.bicep"
 
-	if os.Getenv("AZURE_ACI_MANAGED_IDENTITY") == "" {
-		t.Error("AZURE_ACI_MANAGED_IDENTITY environment variable must be set to run this test.")
-	}
-	managedIdentity := "managedIdentity=" + os.Getenv("AZURE_ACI_MANAGED_IDENTITY")
-
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, managedIdentity),
+			Executor: step.NewDeployExecutor(template),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
