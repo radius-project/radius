@@ -22,6 +22,7 @@ import (
 type MockClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockClientMockRecorder
+	isgomock struct{}
 }
 
 // MockClientMockRecorder is the mock recorder for MockClient.
@@ -42,18 +43,18 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // GetCallerIdentity mocks base method.
-func (m *MockClient) GetCallerIdentity(arg0 context.Context) (*sts.GetCallerIdentityOutput, error) {
+func (m *MockClient) GetCallerIdentity(ctx context.Context) (*sts.GetCallerIdentityOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCallerIdentity", arg0)
+	ret := m.ctrl.Call(m, "GetCallerIdentity", ctx)
 	ret0, _ := ret[0].(*sts.GetCallerIdentityOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCallerIdentity indicates an expected call of GetCallerIdentity.
-func (mr *MockClientMockRecorder) GetCallerIdentity(arg0 any) *MockClientGetCallerIdentityCall {
+func (mr *MockClientMockRecorder) GetCallerIdentity(ctx any) *MockClientGetCallerIdentityCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCallerIdentity", reflect.TypeOf((*MockClient)(nil).GetCallerIdentity), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCallerIdentity", reflect.TypeOf((*MockClient)(nil).GetCallerIdentity), ctx)
 	return &MockClientGetCallerIdentityCall{Call: call}
 }
 
@@ -81,18 +82,18 @@ func (c *MockClientGetCallerIdentityCall) DoAndReturn(f func(context.Context) (*
 }
 
 // ListRegions mocks base method.
-func (m *MockClient) ListRegions(arg0 context.Context) (*ec2.DescribeRegionsOutput, error) {
+func (m *MockClient) ListRegions(ctx context.Context) (*ec2.DescribeRegionsOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRegions", arg0)
+	ret := m.ctrl.Call(m, "ListRegions", ctx)
 	ret0, _ := ret[0].(*ec2.DescribeRegionsOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRegions indicates an expected call of ListRegions.
-func (mr *MockClientMockRecorder) ListRegions(arg0 any) *MockClientListRegionsCall {
+func (mr *MockClientMockRecorder) ListRegions(ctx any) *MockClientListRegionsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRegions", reflect.TypeOf((*MockClient)(nil).ListRegions), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRegions", reflect.TypeOf((*MockClient)(nil).ListRegions), ctx)
 	return &MockClientListRegionsCall{Call: call}
 }
 

@@ -20,6 +20,7 @@ import (
 type MockClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockClientMockRecorder
+	isgomock struct{}
 }
 
 // MockClientMockRecorder is the mock recorder for MockClient.
@@ -40,10 +41,10 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockClient) Delete(arg0 context.Context, arg1 string, arg2 ...DeleteOptions) error {
+func (m *MockClient) Delete(ctx context.Context, id string, options ...DeleteOptions) error {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, id}
+	for _, a := range options {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Delete", varargs...)
@@ -52,9 +53,9 @@ func (m *MockClient) Delete(arg0 context.Context, arg1 string, arg2 ...DeleteOpt
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockClientMockRecorder) Delete(arg0, arg1 any, arg2 ...any) *MockClientDeleteCall {
+func (mr *MockClientMockRecorder) Delete(ctx, id any, options ...any) *MockClientDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, id}, options...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockClient)(nil).Delete), varargs...)
 	return &MockClientDeleteCall{Call: call}
 }
@@ -83,10 +84,10 @@ func (c *MockClientDeleteCall) DoAndReturn(f func(context.Context, string, ...De
 }
 
 // Get mocks base method.
-func (m *MockClient) Get(arg0 context.Context, arg1 string, arg2 ...GetOptions) (*Object, error) {
+func (m *MockClient) Get(ctx context.Context, id string, options ...GetOptions) (*Object, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, id}
+	for _, a := range options {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Get", varargs...)
@@ -96,9 +97,9 @@ func (m *MockClient) Get(arg0 context.Context, arg1 string, arg2 ...GetOptions) 
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockClientMockRecorder) Get(arg0, arg1 any, arg2 ...any) *MockClientGetCall {
+func (mr *MockClientMockRecorder) Get(ctx, id any, options ...any) *MockClientGetCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, id}, options...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockClient)(nil).Get), varargs...)
 	return &MockClientGetCall{Call: call}
 }
@@ -127,10 +128,10 @@ func (c *MockClientGetCall) DoAndReturn(f func(context.Context, string, ...GetOp
 }
 
 // Query mocks base method.
-func (m *MockClient) Query(arg0 context.Context, arg1 Query, arg2 ...QueryOptions) (*ObjectQueryResult, error) {
+func (m *MockClient) Query(ctx context.Context, query Query, options ...QueryOptions) (*ObjectQueryResult, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, query}
+	for _, a := range options {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Query", varargs...)
@@ -140,9 +141,9 @@ func (m *MockClient) Query(arg0 context.Context, arg1 Query, arg2 ...QueryOption
 }
 
 // Query indicates an expected call of Query.
-func (mr *MockClientMockRecorder) Query(arg0, arg1 any, arg2 ...any) *MockClientQueryCall {
+func (mr *MockClientMockRecorder) Query(ctx, query any, options ...any) *MockClientQueryCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, query}, options...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockClient)(nil).Query), varargs...)
 	return &MockClientQueryCall{Call: call}
 }
@@ -171,10 +172,10 @@ func (c *MockClientQueryCall) DoAndReturn(f func(context.Context, Query, ...Quer
 }
 
 // Save mocks base method.
-func (m *MockClient) Save(arg0 context.Context, arg1 *Object, arg2 ...SaveOptions) error {
+func (m *MockClient) Save(ctx context.Context, obj *Object, options ...SaveOptions) error {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, obj}
+	for _, a := range options {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Save", varargs...)
@@ -183,9 +184,9 @@ func (m *MockClient) Save(arg0 context.Context, arg1 *Object, arg2 ...SaveOption
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockClientMockRecorder) Save(arg0, arg1 any, arg2 ...any) *MockClientSaveCall {
+func (mr *MockClientMockRecorder) Save(ctx, obj any, options ...any) *MockClientSaveCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, obj}, options...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockClient)(nil).Save), varargs...)
 	return &MockClientSaveCall{Call: call}
 }

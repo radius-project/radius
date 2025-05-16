@@ -19,6 +19,7 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
+	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -39,10 +40,10 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // BeginStep mocks base method.
-func (m *MockInterface) BeginStep(arg0 string, arg1 ...any) Step {
+func (m *MockInterface) BeginStep(format string, v ...any) Step {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0}
-	for _, a := range arg1 {
+	varargs := []any{format}
+	for _, a := range v {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "BeginStep", varargs...)
@@ -51,9 +52,9 @@ func (m *MockInterface) BeginStep(arg0 string, arg1 ...any) Step {
 }
 
 // BeginStep indicates an expected call of BeginStep.
-func (mr *MockInterfaceMockRecorder) BeginStep(arg0 any, arg1 ...any) *MockInterfaceBeginStepCall {
+func (mr *MockInterfaceMockRecorder) BeginStep(format any, v ...any) *MockInterfaceBeginStepCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0}, arg1...)
+	varargs := append([]any{format}, v...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginStep", reflect.TypeOf((*MockInterface)(nil).BeginStep), varargs...)
 	return &MockInterfaceBeginStepCall{Call: call}
 }
@@ -82,15 +83,15 @@ func (c *MockInterfaceBeginStepCall) DoAndReturn(f func(string, ...any) Step) *M
 }
 
 // CompleteStep mocks base method.
-func (m *MockInterface) CompleteStep(arg0 Step) {
+func (m *MockInterface) CompleteStep(step Step) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "CompleteStep", arg0)
+	m.ctrl.Call(m, "CompleteStep", step)
 }
 
 // CompleteStep indicates an expected call of CompleteStep.
-func (mr *MockInterfaceMockRecorder) CompleteStep(arg0 any) *MockInterfaceCompleteStepCall {
+func (mr *MockInterfaceMockRecorder) CompleteStep(step any) *MockInterfaceCompleteStepCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteStep", reflect.TypeOf((*MockInterface)(nil).CompleteStep), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteStep", reflect.TypeOf((*MockInterface)(nil).CompleteStep), step)
 	return &MockInterfaceCompleteStepCall{Call: call}
 }
 
@@ -118,19 +119,19 @@ func (c *MockInterfaceCompleteStepCall) DoAndReturn(f func(Step)) *MockInterface
 }
 
 // LogInfo mocks base method.
-func (m *MockInterface) LogInfo(arg0 string, arg1 ...any) {
+func (m *MockInterface) LogInfo(format string, v ...any) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0}
-	for _, a := range arg1 {
+	varargs := []any{format}
+	for _, a := range v {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "LogInfo", varargs...)
 }
 
 // LogInfo indicates an expected call of LogInfo.
-func (mr *MockInterfaceMockRecorder) LogInfo(arg0 any, arg1 ...any) *MockInterfaceLogInfoCall {
+func (mr *MockInterfaceMockRecorder) LogInfo(format any, v ...any) *MockInterfaceLogInfoCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0}, arg1...)
+	varargs := append([]any{format}, v...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogInfo", reflect.TypeOf((*MockInterface)(nil).LogInfo), varargs...)
 	return &MockInterfaceLogInfoCall{Call: call}
 }
@@ -159,17 +160,17 @@ func (c *MockInterfaceLogInfoCall) DoAndReturn(f func(string, ...any)) *MockInte
 }
 
 // WriteFormatted mocks base method.
-func (m *MockInterface) WriteFormatted(arg0 string, arg1 any, arg2 FormatterOptions) error {
+func (m *MockInterface) WriteFormatted(format string, obj any, options FormatterOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteFormatted", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "WriteFormatted", format, obj, options)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteFormatted indicates an expected call of WriteFormatted.
-func (mr *MockInterfaceMockRecorder) WriteFormatted(arg0, arg1, arg2 any) *MockInterfaceWriteFormattedCall {
+func (mr *MockInterfaceMockRecorder) WriteFormatted(format, obj, options any) *MockInterfaceWriteFormattedCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteFormatted", reflect.TypeOf((*MockInterface)(nil).WriteFormatted), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteFormatted", reflect.TypeOf((*MockInterface)(nil).WriteFormatted), format, obj, options)
 	return &MockInterfaceWriteFormattedCall{Call: call}
 }
 

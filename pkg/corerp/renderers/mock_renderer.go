@@ -22,6 +22,7 @@ import (
 type MockRenderer struct {
 	ctrl     *gomock.Controller
 	recorder *MockRendererMockRecorder
+	isgomock struct{}
 }
 
 // MockRendererMockRecorder is the mock recorder for MockRenderer.
@@ -42,9 +43,9 @@ func (m *MockRenderer) EXPECT() *MockRendererMockRecorder {
 }
 
 // GetDependencyIDs mocks base method.
-func (m *MockRenderer) GetDependencyIDs(arg0 context.Context, arg1 v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (m *MockRenderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDependencyIDs", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetDependencyIDs", ctx, resource)
 	ret0, _ := ret[0].([]resources.ID)
 	ret1, _ := ret[1].([]resources.ID)
 	ret2, _ := ret[2].(error)
@@ -52,9 +53,9 @@ func (m *MockRenderer) GetDependencyIDs(arg0 context.Context, arg1 v1.DataModelI
 }
 
 // GetDependencyIDs indicates an expected call of GetDependencyIDs.
-func (mr *MockRendererMockRecorder) GetDependencyIDs(arg0, arg1 any) *MockRendererGetDependencyIDsCall {
+func (mr *MockRendererMockRecorder) GetDependencyIDs(ctx, resource any) *MockRendererGetDependencyIDsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDependencyIDs", reflect.TypeOf((*MockRenderer)(nil).GetDependencyIDs), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDependencyIDs", reflect.TypeOf((*MockRenderer)(nil).GetDependencyIDs), ctx, resource)
 	return &MockRendererGetDependencyIDsCall{Call: call}
 }
 
@@ -64,8 +65,8 @@ type MockRendererGetDependencyIDsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockRendererGetDependencyIDsCall) Return(arg0, arg1 []resources.ID, arg2 error) *MockRendererGetDependencyIDsCall {
-	c.Call = c.Call.Return(arg0, arg1, arg2)
+func (c *MockRendererGetDependencyIDsCall) Return(radiusResourceIDs, azureResourceIDs []resources.ID, err error) *MockRendererGetDependencyIDsCall {
+	c.Call = c.Call.Return(radiusResourceIDs, azureResourceIDs, err)
 	return c
 }
 
@@ -82,18 +83,18 @@ func (c *MockRendererGetDependencyIDsCall) DoAndReturn(f func(context.Context, v
 }
 
 // Render mocks base method.
-func (m *MockRenderer) Render(arg0 context.Context, arg1 v1.DataModelInterface, arg2 RenderOptions) (RendererOutput, error) {
+func (m *MockRenderer) Render(ctx context.Context, resource v1.DataModelInterface, options RenderOptions) (RendererOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Render", ctx, resource, options)
 	ret0, _ := ret[0].(RendererOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Render indicates an expected call of Render.
-func (mr *MockRendererMockRecorder) Render(arg0, arg1, arg2 any) *MockRendererRenderCall {
+func (mr *MockRendererMockRecorder) Render(ctx, resource, options any) *MockRendererRenderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Render", reflect.TypeOf((*MockRenderer)(nil).Render), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Render", reflect.TypeOf((*MockRenderer)(nil).Render), ctx, resource, options)
 	return &MockRendererRenderCall{Call: call}
 }
 
