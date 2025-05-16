@@ -20,7 +20,6 @@ import (
 type MockClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockClientMockRecorder
-	isgomock struct{}
 }
 
 // MockClientMockRecorder is the mock recorder for MockClient.
@@ -41,18 +40,18 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Dequeue mocks base method.
-func (m *MockClient) Dequeue(ctx context.Context, cfg QueueClientConfig) (*Message, error) {
+func (m *MockClient) Dequeue(arg0 context.Context, arg1 QueueClientConfig) (*Message, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Dequeue", ctx, cfg)
+	ret := m.ctrl.Call(m, "Dequeue", arg0, arg1)
 	ret0, _ := ret[0].(*Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Dequeue indicates an expected call of Dequeue.
-func (mr *MockClientMockRecorder) Dequeue(ctx, cfg any) *MockClientDequeueCall {
+func (mr *MockClientMockRecorder) Dequeue(arg0, arg1 any) *MockClientDequeueCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dequeue", reflect.TypeOf((*MockClient)(nil).Dequeue), ctx, cfg)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dequeue", reflect.TypeOf((*MockClient)(nil).Dequeue), arg0, arg1)
 	return &MockClientDequeueCall{Call: call}
 }
 
@@ -80,10 +79,10 @@ func (c *MockClientDequeueCall) DoAndReturn(f func(context.Context, QueueClientC
 }
 
 // Enqueue mocks base method.
-func (m *MockClient) Enqueue(ctx context.Context, msg *Message, opts ...EnqueueOptions) error {
+func (m *MockClient) Enqueue(arg0 context.Context, arg1 *Message, arg2 ...EnqueueOptions) error {
 	m.ctrl.T.Helper()
-	varargs := []any{ctx, msg}
-	for _, a := range opts {
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Enqueue", varargs...)
@@ -92,9 +91,9 @@ func (m *MockClient) Enqueue(ctx context.Context, msg *Message, opts ...EnqueueO
 }
 
 // Enqueue indicates an expected call of Enqueue.
-func (mr *MockClientMockRecorder) Enqueue(ctx, msg any, opts ...any) *MockClientEnqueueCall {
+func (mr *MockClientMockRecorder) Enqueue(arg0, arg1 any, arg2 ...any) *MockClientEnqueueCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, msg}, opts...)
+	varargs := append([]any{arg0, arg1}, arg2...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Enqueue", reflect.TypeOf((*MockClient)(nil).Enqueue), varargs...)
 	return &MockClientEnqueueCall{Call: call}
 }
@@ -123,17 +122,17 @@ func (c *MockClientEnqueueCall) DoAndReturn(f func(context.Context, *Message, ..
 }
 
 // ExtendMessage mocks base method.
-func (m *MockClient) ExtendMessage(ctx context.Context, msg *Message) error {
+func (m *MockClient) ExtendMessage(arg0 context.Context, arg1 *Message) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExtendMessage", ctx, msg)
+	ret := m.ctrl.Call(m, "ExtendMessage", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ExtendMessage indicates an expected call of ExtendMessage.
-func (mr *MockClientMockRecorder) ExtendMessage(ctx, msg any) *MockClientExtendMessageCall {
+func (mr *MockClientMockRecorder) ExtendMessage(arg0, arg1 any) *MockClientExtendMessageCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExtendMessage", reflect.TypeOf((*MockClient)(nil).ExtendMessage), ctx, msg)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExtendMessage", reflect.TypeOf((*MockClient)(nil).ExtendMessage), arg0, arg1)
 	return &MockClientExtendMessageCall{Call: call}
 }
 
@@ -161,17 +160,17 @@ func (c *MockClientExtendMessageCall) DoAndReturn(f func(context.Context, *Messa
 }
 
 // FinishMessage mocks base method.
-func (m *MockClient) FinishMessage(ctx context.Context, msg *Message) error {
+func (m *MockClient) FinishMessage(arg0 context.Context, arg1 *Message) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinishMessage", ctx, msg)
+	ret := m.ctrl.Call(m, "FinishMessage", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // FinishMessage indicates an expected call of FinishMessage.
-func (mr *MockClientMockRecorder) FinishMessage(ctx, msg any) *MockClientFinishMessageCall {
+func (mr *MockClientMockRecorder) FinishMessage(arg0, arg1 any) *MockClientFinishMessageCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinishMessage", reflect.TypeOf((*MockClient)(nil).FinishMessage), ctx, msg)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinishMessage", reflect.TypeOf((*MockClient)(nil).FinishMessage), arg0, arg1)
 	return &MockClientFinishMessageCall{Call: call}
 }
 

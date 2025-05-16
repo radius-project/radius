@@ -23,7 +23,6 @@ import (
 type MockApplicationsManagementClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockApplicationsManagementClientMockRecorder
-	isgomock struct{}
 }
 
 // MockApplicationsManagementClientMockRecorder is the mock recorder for MockApplicationsManagementClient.
@@ -44,17 +43,17 @@ func (m *MockApplicationsManagementClient) EXPECT() *MockApplicationsManagementC
 }
 
 // CreateApplicationIfNotFound mocks base method.
-func (m *MockApplicationsManagementClient) CreateApplicationIfNotFound(ctx context.Context, applicationNameOrID string, resource *v20231001preview.ApplicationResource) error {
+func (m *MockApplicationsManagementClient) CreateApplicationIfNotFound(arg0 context.Context, arg1 string, arg2 *v20231001preview.ApplicationResource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateApplicationIfNotFound", ctx, applicationNameOrID, resource)
+	ret := m.ctrl.Call(m, "CreateApplicationIfNotFound", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateApplicationIfNotFound indicates an expected call of CreateApplicationIfNotFound.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateApplicationIfNotFound(ctx, applicationNameOrID, resource any) *MockApplicationsManagementClientCreateApplicationIfNotFoundCall {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateApplicationIfNotFound(arg0, arg1, arg2 any) *MockApplicationsManagementClientCreateApplicationIfNotFoundCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateApplicationIfNotFound", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateApplicationIfNotFound), ctx, applicationNameOrID, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateApplicationIfNotFound", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateApplicationIfNotFound), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientCreateApplicationIfNotFoundCall{Call: call}
 }
 
@@ -82,18 +81,18 @@ func (c *MockApplicationsManagementClientCreateApplicationIfNotFoundCall) DoAndR
 }
 
 // CreateOrUpdateAPIVersion mocks base method.
-func (m *MockApplicationsManagementClient) CreateOrUpdateAPIVersion(ctx context.Context, planeName, providerNamespace, resourceTypeName, apiVersionName string, resource *v20231001preview0.APIVersionResource) (v20231001preview0.APIVersionResource, error) {
+func (m *MockApplicationsManagementClient) CreateOrUpdateAPIVersion(arg0 context.Context, arg1, arg2, arg3, arg4 string, arg5 *v20231001preview0.APIVersionResource) (v20231001preview0.APIVersionResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateAPIVersion", ctx, planeName, providerNamespace, resourceTypeName, apiVersionName, resource)
+	ret := m.ctrl.Call(m, "CreateOrUpdateAPIVersion", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(v20231001preview0.APIVersionResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateOrUpdateAPIVersion indicates an expected call of CreateOrUpdateAPIVersion.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateAPIVersion(ctx, planeName, providerNamespace, resourceTypeName, apiVersionName, resource any) *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateAPIVersion(arg0, arg1, arg2, arg3, arg4, arg5 any) *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateAPIVersion", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateAPIVersion), ctx, planeName, providerNamespace, resourceTypeName, apiVersionName, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateAPIVersion", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateAPIVersion), arg0, arg1, arg2, arg3, arg4, arg5)
 	return &MockApplicationsManagementClientCreateOrUpdateAPIVersionCall{Call: call}
 }
 
@@ -121,17 +120,17 @@ func (c *MockApplicationsManagementClientCreateOrUpdateAPIVersionCall) DoAndRetu
 }
 
 // CreateOrUpdateApplication mocks base method.
-func (m *MockApplicationsManagementClient) CreateOrUpdateApplication(ctx context.Context, applicationNameOrID string, resource *v20231001preview.ApplicationResource) error {
+func (m *MockApplicationsManagementClient) CreateOrUpdateApplication(arg0 context.Context, arg1 string, arg2 *v20231001preview.ApplicationResource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateApplication", ctx, applicationNameOrID, resource)
+	ret := m.ctrl.Call(m, "CreateOrUpdateApplication", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateOrUpdateApplication indicates an expected call of CreateOrUpdateApplication.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateApplication(ctx, applicationNameOrID, resource any) *MockApplicationsManagementClientCreateOrUpdateApplicationCall {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateApplication(arg0, arg1, arg2 any) *MockApplicationsManagementClientCreateOrUpdateApplicationCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateApplication), ctx, applicationNameOrID, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateApplication), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientCreateOrUpdateApplicationCall{Call: call}
 }
 
@@ -159,17 +158,17 @@ func (c *MockApplicationsManagementClientCreateOrUpdateApplicationCall) DoAndRet
 }
 
 // CreateOrUpdateEnvironment mocks base method.
-func (m *MockApplicationsManagementClient) CreateOrUpdateEnvironment(ctx context.Context, environmentNameOrID string, resource *v20231001preview.EnvironmentResource) error {
+func (m *MockApplicationsManagementClient) CreateOrUpdateEnvironment(arg0 context.Context, arg1 string, arg2 *v20231001preview.EnvironmentResource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateEnvironment", ctx, environmentNameOrID, resource)
+	ret := m.ctrl.Call(m, "CreateOrUpdateEnvironment", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateOrUpdateEnvironment indicates an expected call of CreateOrUpdateEnvironment.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateEnvironment(ctx, environmentNameOrID, resource any) *MockApplicationsManagementClientCreateOrUpdateEnvironmentCall {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateEnvironment(arg0, arg1, arg2 any) *MockApplicationsManagementClientCreateOrUpdateEnvironmentCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateEnvironment), ctx, environmentNameOrID, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateEnvironment), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientCreateOrUpdateEnvironmentCall{Call: call}
 }
 
@@ -197,18 +196,18 @@ func (c *MockApplicationsManagementClientCreateOrUpdateEnvironmentCall) DoAndRet
 }
 
 // CreateOrUpdateLocation mocks base method.
-func (m *MockApplicationsManagementClient) CreateOrUpdateLocation(ctx context.Context, planeName, providerNamespace, locationName string, resource *v20231001preview0.LocationResource) (v20231001preview0.LocationResource, error) {
+func (m *MockApplicationsManagementClient) CreateOrUpdateLocation(arg0 context.Context, arg1, arg2, arg3 string, arg4 *v20231001preview0.LocationResource) (v20231001preview0.LocationResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateLocation", ctx, planeName, providerNamespace, locationName, resource)
+	ret := m.ctrl.Call(m, "CreateOrUpdateLocation", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(v20231001preview0.LocationResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateOrUpdateLocation indicates an expected call of CreateOrUpdateLocation.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateLocation(ctx, planeName, providerNamespace, locationName, resource any) *MockApplicationsManagementClientCreateOrUpdateLocationCall {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateLocation(arg0, arg1, arg2, arg3, arg4 any) *MockApplicationsManagementClientCreateOrUpdateLocationCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateLocation", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateLocation), ctx, planeName, providerNamespace, locationName, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateLocation", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateLocation), arg0, arg1, arg2, arg3, arg4)
 	return &MockApplicationsManagementClientCreateOrUpdateLocationCall{Call: call}
 }
 
@@ -236,18 +235,18 @@ func (c *MockApplicationsManagementClientCreateOrUpdateLocationCall) DoAndReturn
 }
 
 // CreateOrUpdateResource mocks base method.
-func (m *MockApplicationsManagementClient) CreateOrUpdateResource(ctx context.Context, resourceType, resourceNameOrID string, resource *generated.GenericResource) (generated.GenericResource, error) {
+func (m *MockApplicationsManagementClient) CreateOrUpdateResource(arg0 context.Context, arg1, arg2 string, arg3 *generated.GenericResource) (generated.GenericResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateResource", ctx, resourceType, resourceNameOrID, resource)
+	ret := m.ctrl.Call(m, "CreateOrUpdateResource", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(generated.GenericResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateOrUpdateResource indicates an expected call of CreateOrUpdateResource.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResource(ctx, resourceType, resourceNameOrID, resource any) *MockApplicationsManagementClientCreateOrUpdateResourceCall {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResource(arg0, arg1, arg2, arg3 any) *MockApplicationsManagementClientCreateOrUpdateResourceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResource", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResource), ctx, resourceType, resourceNameOrID, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResource", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResource), arg0, arg1, arg2, arg3)
 	return &MockApplicationsManagementClientCreateOrUpdateResourceCall{Call: call}
 }
 
@@ -275,17 +274,17 @@ func (c *MockApplicationsManagementClientCreateOrUpdateResourceCall) DoAndReturn
 }
 
 // CreateOrUpdateResourceGroup mocks base method.
-func (m *MockApplicationsManagementClient) CreateOrUpdateResourceGroup(ctx context.Context, planeName, resourceGroupName string, resource *v20231001preview0.ResourceGroupResource) error {
+func (m *MockApplicationsManagementClient) CreateOrUpdateResourceGroup(arg0 context.Context, arg1, arg2 string, arg3 *v20231001preview0.ResourceGroupResource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateResourceGroup", ctx, planeName, resourceGroupName, resource)
+	ret := m.ctrl.Call(m, "CreateOrUpdateResourceGroup", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateOrUpdateResourceGroup indicates an expected call of CreateOrUpdateResourceGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResourceGroup(ctx, planeName, resourceGroupName, resource any) *MockApplicationsManagementClientCreateOrUpdateResourceGroupCall {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResourceGroup(arg0, arg1, arg2, arg3 any) *MockApplicationsManagementClientCreateOrUpdateResourceGroupCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResourceGroup), ctx, planeName, resourceGroupName, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResourceGroup), arg0, arg1, arg2, arg3)
 	return &MockApplicationsManagementClientCreateOrUpdateResourceGroupCall{Call: call}
 }
 
@@ -313,18 +312,18 @@ func (c *MockApplicationsManagementClientCreateOrUpdateResourceGroupCall) DoAndR
 }
 
 // CreateOrUpdateResourceProvider mocks base method.
-func (m *MockApplicationsManagementClient) CreateOrUpdateResourceProvider(ctx context.Context, planeName, providerNamespace string, resource *v20231001preview0.ResourceProviderResource) (v20231001preview0.ResourceProviderResource, error) {
+func (m *MockApplicationsManagementClient) CreateOrUpdateResourceProvider(arg0 context.Context, arg1, arg2 string, arg3 *v20231001preview0.ResourceProviderResource) (v20231001preview0.ResourceProviderResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateResourceProvider", ctx, planeName, providerNamespace, resource)
+	ret := m.ctrl.Call(m, "CreateOrUpdateResourceProvider", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(v20231001preview0.ResourceProviderResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateOrUpdateResourceProvider indicates an expected call of CreateOrUpdateResourceProvider.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResourceProvider(ctx, planeName, providerNamespace, resource any) *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResourceProvider(arg0, arg1, arg2, arg3 any) *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceProvider", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResourceProvider), ctx, planeName, providerNamespace, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceProvider", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResourceProvider), arg0, arg1, arg2, arg3)
 	return &MockApplicationsManagementClientCreateOrUpdateResourceProviderCall{Call: call}
 }
 
@@ -352,18 +351,18 @@ func (c *MockApplicationsManagementClientCreateOrUpdateResourceProviderCall) DoA
 }
 
 // CreateOrUpdateResourceType mocks base method.
-func (m *MockApplicationsManagementClient) CreateOrUpdateResourceType(ctx context.Context, planeName, providerNamespace, resourceTypeName string, resource *v20231001preview0.ResourceTypeResource) (v20231001preview0.ResourceTypeResource, error) {
+func (m *MockApplicationsManagementClient) CreateOrUpdateResourceType(arg0 context.Context, arg1, arg2, arg3 string, arg4 *v20231001preview0.ResourceTypeResource) (v20231001preview0.ResourceTypeResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateResourceType", ctx, planeName, providerNamespace, resourceTypeName, resource)
+	ret := m.ctrl.Call(m, "CreateOrUpdateResourceType", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(v20231001preview0.ResourceTypeResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateOrUpdateResourceType indicates an expected call of CreateOrUpdateResourceType.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResourceType(ctx, planeName, providerNamespace, resourceTypeName, resource any) *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateResourceType(arg0, arg1, arg2, arg3, arg4 any) *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResourceType), ctx, planeName, providerNamespace, resourceTypeName, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateOrUpdateResourceType), arg0, arg1, arg2, arg3, arg4)
 	return &MockApplicationsManagementClientCreateOrUpdateResourceTypeCall{Call: call}
 }
 
@@ -391,18 +390,18 @@ func (c *MockApplicationsManagementClientCreateOrUpdateResourceTypeCall) DoAndRe
 }
 
 // DeleteApplication mocks base method.
-func (m *MockApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationNameOrID string) (bool, error) {
+func (m *MockApplicationsManagementClient) DeleteApplication(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteApplication", ctx, applicationNameOrID)
+	ret := m.ctrl.Call(m, "DeleteApplication", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteApplication indicates an expected call of DeleteApplication.
-func (mr *MockApplicationsManagementClientMockRecorder) DeleteApplication(ctx, applicationNameOrID any) *MockApplicationsManagementClientDeleteApplicationCall {
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteApplication(arg0, arg1 any) *MockApplicationsManagementClientDeleteApplicationCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteApplication), ctx, applicationNameOrID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteApplication), arg0, arg1)
 	return &MockApplicationsManagementClientDeleteApplicationCall{Call: call}
 }
 
@@ -430,18 +429,18 @@ func (c *MockApplicationsManagementClientDeleteApplicationCall) DoAndReturn(f fu
 }
 
 // DeleteEnvironment mocks base method.
-func (m *MockApplicationsManagementClient) DeleteEnvironment(ctx context.Context, environmentNameOrID string) (bool, error) {
+func (m *MockApplicationsManagementClient) DeleteEnvironment(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteEnvironment", ctx, environmentNameOrID)
+	ret := m.ctrl.Call(m, "DeleteEnvironment", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteEnvironment indicates an expected call of DeleteEnvironment.
-func (mr *MockApplicationsManagementClientMockRecorder) DeleteEnvironment(ctx, environmentNameOrID any) *MockApplicationsManagementClientDeleteEnvironmentCall {
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteEnvironment(arg0, arg1 any) *MockApplicationsManagementClientDeleteEnvironmentCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteEnvironment), ctx, environmentNameOrID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteEnvironment), arg0, arg1)
 	return &MockApplicationsManagementClientDeleteEnvironmentCall{Call: call}
 }
 
@@ -469,18 +468,18 @@ func (c *MockApplicationsManagementClientDeleteEnvironmentCall) DoAndReturn(f fu
 }
 
 // DeleteResource mocks base method.
-func (m *MockApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType, resourceNameOrID string) (bool, error) {
+func (m *MockApplicationsManagementClient) DeleteResource(arg0 context.Context, arg1, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteResource", ctx, resourceType, resourceNameOrID)
+	ret := m.ctrl.Call(m, "DeleteResource", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteResource indicates an expected call of DeleteResource.
-func (mr *MockApplicationsManagementClientMockRecorder) DeleteResource(ctx, resourceType, resourceNameOrID any) *MockApplicationsManagementClientDeleteResourceCall {
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteResource(arg0, arg1, arg2 any) *MockApplicationsManagementClientDeleteResourceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResource", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResource), ctx, resourceType, resourceNameOrID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResource", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResource), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientDeleteResourceCall{Call: call}
 }
 
@@ -508,18 +507,18 @@ func (c *MockApplicationsManagementClientDeleteResourceCall) DoAndReturn(f func(
 }
 
 // DeleteResourceGroup mocks base method.
-func (m *MockApplicationsManagementClient) DeleteResourceGroup(ctx context.Context, planeName, resourceGroupName string) (bool, error) {
+func (m *MockApplicationsManagementClient) DeleteResourceGroup(arg0 context.Context, arg1, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteResourceGroup", ctx, planeName, resourceGroupName)
+	ret := m.ctrl.Call(m, "DeleteResourceGroup", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteResourceGroup indicates an expected call of DeleteResourceGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceGroup(ctx, planeName, resourceGroupName any) *MockApplicationsManagementClientDeleteResourceGroupCall {
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceGroup(arg0, arg1, arg2 any) *MockApplicationsManagementClientDeleteResourceGroupCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceGroup), ctx, planeName, resourceGroupName)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceGroup), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientDeleteResourceGroupCall{Call: call}
 }
 
@@ -547,18 +546,18 @@ func (c *MockApplicationsManagementClientDeleteResourceGroupCall) DoAndReturn(f 
 }
 
 // DeleteResourceProvider mocks base method.
-func (m *MockApplicationsManagementClient) DeleteResourceProvider(ctx context.Context, planeName, providerNamespace string) (bool, error) {
+func (m *MockApplicationsManagementClient) DeleteResourceProvider(arg0 context.Context, arg1, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteResourceProvider", ctx, planeName, providerNamespace)
+	ret := m.ctrl.Call(m, "DeleteResourceProvider", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteResourceProvider indicates an expected call of DeleteResourceProvider.
-func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceProvider(ctx, planeName, providerNamespace any) *MockApplicationsManagementClientDeleteResourceProviderCall {
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceProvider(arg0, arg1, arg2 any) *MockApplicationsManagementClientDeleteResourceProviderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceProvider", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceProvider), ctx, planeName, providerNamespace)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceProvider", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceProvider), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientDeleteResourceProviderCall{Call: call}
 }
 
@@ -586,18 +585,18 @@ func (c *MockApplicationsManagementClientDeleteResourceProviderCall) DoAndReturn
 }
 
 // DeleteResourceType mocks base method.
-func (m *MockApplicationsManagementClient) DeleteResourceType(ctx context.Context, planeName, providerNamespace, resourceTypeName string) (bool, error) {
+func (m *MockApplicationsManagementClient) DeleteResourceType(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteResourceType", ctx, planeName, providerNamespace, resourceTypeName)
+	ret := m.ctrl.Call(m, "DeleteResourceType", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteResourceType indicates an expected call of DeleteResourceType.
-func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceType(ctx, planeName, providerNamespace, resourceTypeName any) *MockApplicationsManagementClientDeleteResourceTypeCall {
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceType(arg0, arg1, arg2, arg3 any) *MockApplicationsManagementClientDeleteResourceTypeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceType), ctx, planeName, providerNamespace, resourceTypeName)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceType), arg0, arg1, arg2, arg3)
 	return &MockApplicationsManagementClientDeleteResourceTypeCall{Call: call}
 }
 
@@ -625,18 +624,18 @@ func (c *MockApplicationsManagementClientDeleteResourceTypeCall) DoAndReturn(f f
 }
 
 // GetApplication mocks base method.
-func (m *MockApplicationsManagementClient) GetApplication(ctx context.Context, applicationNameOrID string) (v20231001preview.ApplicationResource, error) {
+func (m *MockApplicationsManagementClient) GetApplication(arg0 context.Context, arg1 string) (v20231001preview.ApplicationResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetApplication", ctx, applicationNameOrID)
+	ret := m.ctrl.Call(m, "GetApplication", arg0, arg1)
 	ret0, _ := ret[0].(v20231001preview.ApplicationResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetApplication indicates an expected call of GetApplication.
-func (mr *MockApplicationsManagementClientMockRecorder) GetApplication(ctx, applicationNameOrID any) *MockApplicationsManagementClientGetApplicationCall {
+func (mr *MockApplicationsManagementClientMockRecorder) GetApplication(arg0, arg1 any) *MockApplicationsManagementClientGetApplicationCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetApplication), ctx, applicationNameOrID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetApplication), arg0, arg1)
 	return &MockApplicationsManagementClientGetApplicationCall{Call: call}
 }
 
@@ -664,18 +663,18 @@ func (c *MockApplicationsManagementClientGetApplicationCall) DoAndReturn(f func(
 }
 
 // GetApplicationGraph mocks base method.
-func (m *MockApplicationsManagementClient) GetApplicationGraph(ctx context.Context, applicationNameOrID string) (v20231001preview.ApplicationGraphResponse, error) {
+func (m *MockApplicationsManagementClient) GetApplicationGraph(arg0 context.Context, arg1 string) (v20231001preview.ApplicationGraphResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetApplicationGraph", ctx, applicationNameOrID)
+	ret := m.ctrl.Call(m, "GetApplicationGraph", arg0, arg1)
 	ret0, _ := ret[0].(v20231001preview.ApplicationGraphResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetApplicationGraph indicates an expected call of GetApplicationGraph.
-func (mr *MockApplicationsManagementClientMockRecorder) GetApplicationGraph(ctx, applicationNameOrID any) *MockApplicationsManagementClientGetApplicationGraphCall {
+func (mr *MockApplicationsManagementClientMockRecorder) GetApplicationGraph(arg0, arg1 any) *MockApplicationsManagementClientGetApplicationGraphCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplicationGraph", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetApplicationGraph), ctx, applicationNameOrID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplicationGraph", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetApplicationGraph), arg0, arg1)
 	return &MockApplicationsManagementClientGetApplicationGraphCall{Call: call}
 }
 
@@ -703,18 +702,18 @@ func (c *MockApplicationsManagementClientGetApplicationGraphCall) DoAndReturn(f 
 }
 
 // GetEnvironment mocks base method.
-func (m *MockApplicationsManagementClient) GetEnvironment(ctx context.Context, environmentNameOrID string) (v20231001preview.EnvironmentResource, error) {
+func (m *MockApplicationsManagementClient) GetEnvironment(arg0 context.Context, arg1 string) (v20231001preview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEnvironment", ctx, environmentNameOrID)
+	ret := m.ctrl.Call(m, "GetEnvironment", arg0, arg1)
 	ret0, _ := ret[0].(v20231001preview.EnvironmentResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetEnvironment indicates an expected call of GetEnvironment.
-func (mr *MockApplicationsManagementClientMockRecorder) GetEnvironment(ctx, environmentNameOrID any) *MockApplicationsManagementClientGetEnvironmentCall {
+func (mr *MockApplicationsManagementClientMockRecorder) GetEnvironment(arg0, arg1 any) *MockApplicationsManagementClientGetEnvironmentCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetEnvironment), ctx, environmentNameOrID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetEnvironment), arg0, arg1)
 	return &MockApplicationsManagementClientGetEnvironmentCall{Call: call}
 }
 
@@ -742,18 +741,18 @@ func (c *MockApplicationsManagementClientGetEnvironmentCall) DoAndReturn(f func(
 }
 
 // GetRecipeMetadata mocks base method.
-func (m *MockApplicationsManagementClient) GetRecipeMetadata(ctx context.Context, environmentNameOrID string, recipe v20231001preview.RecipeGetMetadata) (v20231001preview.RecipeGetMetadataResponse, error) {
+func (m *MockApplicationsManagementClient) GetRecipeMetadata(arg0 context.Context, arg1 string, arg2 v20231001preview.RecipeGetMetadata) (v20231001preview.RecipeGetMetadataResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipeMetadata", ctx, environmentNameOrID, recipe)
+	ret := m.ctrl.Call(m, "GetRecipeMetadata", arg0, arg1, arg2)
 	ret0, _ := ret[0].(v20231001preview.RecipeGetMetadataResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRecipeMetadata indicates an expected call of GetRecipeMetadata.
-func (mr *MockApplicationsManagementClientMockRecorder) GetRecipeMetadata(ctx, environmentNameOrID, recipe any) *MockApplicationsManagementClientGetRecipeMetadataCall {
+func (mr *MockApplicationsManagementClientMockRecorder) GetRecipeMetadata(arg0, arg1, arg2 any) *MockApplicationsManagementClientGetRecipeMetadataCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetRecipeMetadata), ctx, environmentNameOrID, recipe)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetRecipeMetadata), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientGetRecipeMetadataCall{Call: call}
 }
 
@@ -781,18 +780,18 @@ func (c *MockApplicationsManagementClientGetRecipeMetadataCall) DoAndReturn(f fu
 }
 
 // GetResource mocks base method.
-func (m *MockApplicationsManagementClient) GetResource(ctx context.Context, resourceType, resourceNameOrID string) (generated.GenericResource, error) {
+func (m *MockApplicationsManagementClient) GetResource(arg0 context.Context, arg1, arg2 string) (generated.GenericResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetResource", ctx, resourceType, resourceNameOrID)
+	ret := m.ctrl.Call(m, "GetResource", arg0, arg1, arg2)
 	ret0, _ := ret[0].(generated.GenericResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetResource indicates an expected call of GetResource.
-func (mr *MockApplicationsManagementClientMockRecorder) GetResource(ctx, resourceType, resourceNameOrID any) *MockApplicationsManagementClientGetResourceCall {
+func (mr *MockApplicationsManagementClientMockRecorder) GetResource(arg0, arg1, arg2 any) *MockApplicationsManagementClientGetResourceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResource", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResource), ctx, resourceType, resourceNameOrID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResource", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResource), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientGetResourceCall{Call: call}
 }
 
@@ -820,18 +819,18 @@ func (c *MockApplicationsManagementClientGetResourceCall) DoAndReturn(f func(con
 }
 
 // GetResourceGroup mocks base method.
-func (m *MockApplicationsManagementClient) GetResourceGroup(ctx context.Context, planeName, resourceGroupName string) (v20231001preview0.ResourceGroupResource, error) {
+func (m *MockApplicationsManagementClient) GetResourceGroup(arg0 context.Context, arg1, arg2 string) (v20231001preview0.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetResourceGroup", ctx, planeName, resourceGroupName)
+	ret := m.ctrl.Call(m, "GetResourceGroup", arg0, arg1, arg2)
 	ret0, _ := ret[0].(v20231001preview0.ResourceGroupResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetResourceGroup indicates an expected call of GetResourceGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) GetResourceGroup(ctx, planeName, resourceGroupName any) *MockApplicationsManagementClientGetResourceGroupCall {
+func (mr *MockApplicationsManagementClientMockRecorder) GetResourceGroup(arg0, arg1, arg2 any) *MockApplicationsManagementClientGetResourceGroupCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResourceGroup), ctx, planeName, resourceGroupName)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResourceGroup), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientGetResourceGroupCall{Call: call}
 }
 
@@ -859,18 +858,18 @@ func (c *MockApplicationsManagementClientGetResourceGroupCall) DoAndReturn(f fun
 }
 
 // GetResourceProvider mocks base method.
-func (m *MockApplicationsManagementClient) GetResourceProvider(ctx context.Context, planeName, providerNamespace string) (v20231001preview0.ResourceProviderResource, error) {
+func (m *MockApplicationsManagementClient) GetResourceProvider(arg0 context.Context, arg1, arg2 string) (v20231001preview0.ResourceProviderResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetResourceProvider", ctx, planeName, providerNamespace)
+	ret := m.ctrl.Call(m, "GetResourceProvider", arg0, arg1, arg2)
 	ret0, _ := ret[0].(v20231001preview0.ResourceProviderResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetResourceProvider indicates an expected call of GetResourceProvider.
-func (mr *MockApplicationsManagementClientMockRecorder) GetResourceProvider(ctx, planeName, providerNamespace any) *MockApplicationsManagementClientGetResourceProviderCall {
+func (mr *MockApplicationsManagementClientMockRecorder) GetResourceProvider(arg0, arg1, arg2 any) *MockApplicationsManagementClientGetResourceProviderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceProvider", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResourceProvider), ctx, planeName, providerNamespace)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceProvider", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResourceProvider), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientGetResourceProviderCall{Call: call}
 }
 
@@ -898,18 +897,18 @@ func (c *MockApplicationsManagementClientGetResourceProviderCall) DoAndReturn(f 
 }
 
 // GetResourceProviderSummary mocks base method.
-func (m *MockApplicationsManagementClient) GetResourceProviderSummary(ctx context.Context, planeName, providerNamespace string) (v20231001preview0.ResourceProviderSummary, error) {
+func (m *MockApplicationsManagementClient) GetResourceProviderSummary(arg0 context.Context, arg1, arg2 string) (v20231001preview0.ResourceProviderSummary, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetResourceProviderSummary", ctx, planeName, providerNamespace)
+	ret := m.ctrl.Call(m, "GetResourceProviderSummary", arg0, arg1, arg2)
 	ret0, _ := ret[0].(v20231001preview0.ResourceProviderSummary)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetResourceProviderSummary indicates an expected call of GetResourceProviderSummary.
-func (mr *MockApplicationsManagementClientMockRecorder) GetResourceProviderSummary(ctx, planeName, providerNamespace any) *MockApplicationsManagementClientGetResourceProviderSummaryCall {
+func (mr *MockApplicationsManagementClientMockRecorder) GetResourceProviderSummary(arg0, arg1, arg2 any) *MockApplicationsManagementClientGetResourceProviderSummaryCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceProviderSummary", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResourceProviderSummary), ctx, planeName, providerNamespace)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceProviderSummary", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetResourceProviderSummary), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientGetResourceProviderSummaryCall{Call: call}
 }
 
@@ -937,18 +936,18 @@ func (c *MockApplicationsManagementClientGetResourceProviderSummaryCall) DoAndRe
 }
 
 // ListAllResourceTypesNames mocks base method.
-func (m *MockApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
+func (m *MockApplicationsManagementClient) ListAllResourceTypesNames(arg0 context.Context, arg1 string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAllResourceTypesNames", ctx, planeName)
+	ret := m.ctrl.Call(m, "ListAllResourceTypesNames", arg0, arg1)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAllResourceTypesNames indicates an expected call of ListAllResourceTypesNames.
-func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourceTypesNames(ctx, planeName any) *MockApplicationsManagementClientListAllResourceTypesNamesCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourceTypesNames(arg0, arg1 any) *MockApplicationsManagementClientListAllResourceTypesNamesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourceTypesNames", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourceTypesNames), ctx, planeName)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourceTypesNames", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourceTypesNames), arg0, arg1)
 	return &MockApplicationsManagementClientListAllResourceTypesNamesCall{Call: call}
 }
 
@@ -976,18 +975,18 @@ func (c *MockApplicationsManagementClientListAllResourceTypesNamesCall) DoAndRet
 }
 
 // ListApplications mocks base method.
-func (m *MockApplicationsManagementClient) ListApplications(ctx context.Context) ([]v20231001preview.ApplicationResource, error) {
+func (m *MockApplicationsManagementClient) ListApplications(arg0 context.Context) ([]v20231001preview.ApplicationResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListApplications", ctx)
+	ret := m.ctrl.Call(m, "ListApplications", arg0)
 	ret0, _ := ret[0].([]v20231001preview.ApplicationResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListApplications indicates an expected call of ListApplications.
-func (mr *MockApplicationsManagementClientMockRecorder) ListApplications(ctx any) *MockApplicationsManagementClientListApplicationsCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListApplications(arg0 any) *MockApplicationsManagementClientListApplicationsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListApplications", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListApplications), ctx)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListApplications", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListApplications), arg0)
 	return &MockApplicationsManagementClientListApplicationsCall{Call: call}
 }
 
@@ -1015,18 +1014,18 @@ func (c *MockApplicationsManagementClientListApplicationsCall) DoAndReturn(f fun
 }
 
 // ListEnvironments mocks base method.
-func (m *MockApplicationsManagementClient) ListEnvironments(ctx context.Context) ([]v20231001preview.EnvironmentResource, error) {
+func (m *MockApplicationsManagementClient) ListEnvironments(arg0 context.Context) ([]v20231001preview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEnvironments", ctx)
+	ret := m.ctrl.Call(m, "ListEnvironments", arg0)
 	ret0, _ := ret[0].([]v20231001preview.EnvironmentResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEnvironments indicates an expected call of ListEnvironments.
-func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironments(ctx any) *MockApplicationsManagementClientListEnvironmentsCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironments(arg0 any) *MockApplicationsManagementClientListEnvironmentsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnvironments", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnvironments), ctx)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnvironments", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnvironments), arg0)
 	return &MockApplicationsManagementClientListEnvironmentsCall{Call: call}
 }
 
@@ -1054,18 +1053,18 @@ func (c *MockApplicationsManagementClientListEnvironmentsCall) DoAndReturn(f fun
 }
 
 // ListEnvironmentsAll mocks base method.
-func (m *MockApplicationsManagementClient) ListEnvironmentsAll(ctx context.Context) ([]v20231001preview.EnvironmentResource, error) {
+func (m *MockApplicationsManagementClient) ListEnvironmentsAll(arg0 context.Context) ([]v20231001preview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEnvironmentsAll", ctx)
+	ret := m.ctrl.Call(m, "ListEnvironmentsAll", arg0)
 	ret0, _ := ret[0].([]v20231001preview.EnvironmentResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEnvironmentsAll indicates an expected call of ListEnvironmentsAll.
-func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsAll(ctx any) *MockApplicationsManagementClientListEnvironmentsAllCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsAll(arg0 any) *MockApplicationsManagementClientListEnvironmentsAllCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnvironmentsAll", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnvironmentsAll), ctx)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnvironmentsAll", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnvironmentsAll), arg0)
 	return &MockApplicationsManagementClientListEnvironmentsAllCall{Call: call}
 }
 
@@ -1093,18 +1092,18 @@ func (c *MockApplicationsManagementClientListEnvironmentsAllCall) DoAndReturn(f 
 }
 
 // ListResourceGroups mocks base method.
-func (m *MockApplicationsManagementClient) ListResourceGroups(ctx context.Context, planeName string) ([]v20231001preview0.ResourceGroupResource, error) {
+func (m *MockApplicationsManagementClient) ListResourceGroups(arg0 context.Context, arg1 string) ([]v20231001preview0.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourceGroups", ctx, planeName)
+	ret := m.ctrl.Call(m, "ListResourceGroups", arg0, arg1)
 	ret0, _ := ret[0].([]v20231001preview0.ResourceGroupResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResourceGroups indicates an expected call of ListResourceGroups.
-func (mr *MockApplicationsManagementClientMockRecorder) ListResourceGroups(ctx, planeName any) *MockApplicationsManagementClientListResourceGroupsCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourceGroups(arg0, arg1 any) *MockApplicationsManagementClientListResourceGroupsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceGroups", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourceGroups), ctx, planeName)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceGroups", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourceGroups), arg0, arg1)
 	return &MockApplicationsManagementClientListResourceGroupsCall{Call: call}
 }
 
@@ -1132,18 +1131,18 @@ func (c *MockApplicationsManagementClientListResourceGroupsCall) DoAndReturn(f f
 }
 
 // ListResourceProviderSummaries mocks base method.
-func (m *MockApplicationsManagementClient) ListResourceProviderSummaries(ctx context.Context, planeName string) ([]v20231001preview0.ResourceProviderSummary, error) {
+func (m *MockApplicationsManagementClient) ListResourceProviderSummaries(arg0 context.Context, arg1 string) ([]v20231001preview0.ResourceProviderSummary, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourceProviderSummaries", ctx, planeName)
+	ret := m.ctrl.Call(m, "ListResourceProviderSummaries", arg0, arg1)
 	ret0, _ := ret[0].([]v20231001preview0.ResourceProviderSummary)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResourceProviderSummaries indicates an expected call of ListResourceProviderSummaries.
-func (mr *MockApplicationsManagementClientMockRecorder) ListResourceProviderSummaries(ctx, planeName any) *MockApplicationsManagementClientListResourceProviderSummariesCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourceProviderSummaries(arg0, arg1 any) *MockApplicationsManagementClientListResourceProviderSummariesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceProviderSummaries", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourceProviderSummaries), ctx, planeName)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceProviderSummaries", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourceProviderSummaries), arg0, arg1)
 	return &MockApplicationsManagementClientListResourceProviderSummariesCall{Call: call}
 }
 
@@ -1171,18 +1170,18 @@ func (c *MockApplicationsManagementClientListResourceProviderSummariesCall) DoAn
 }
 
 // ListResourceProviders mocks base method.
-func (m *MockApplicationsManagementClient) ListResourceProviders(ctx context.Context, planeName string) ([]v20231001preview0.ResourceProviderResource, error) {
+func (m *MockApplicationsManagementClient) ListResourceProviders(arg0 context.Context, arg1 string) ([]v20231001preview0.ResourceProviderResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourceProviders", ctx, planeName)
+	ret := m.ctrl.Call(m, "ListResourceProviders", arg0, arg1)
 	ret0, _ := ret[0].([]v20231001preview0.ResourceProviderResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResourceProviders indicates an expected call of ListResourceProviders.
-func (mr *MockApplicationsManagementClientMockRecorder) ListResourceProviders(ctx, planeName any) *MockApplicationsManagementClientListResourceProvidersCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourceProviders(arg0, arg1 any) *MockApplicationsManagementClientListResourceProvidersCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceProviders", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourceProviders), ctx, planeName)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceProviders", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourceProviders), arg0, arg1)
 	return &MockApplicationsManagementClientListResourceProvidersCall{Call: call}
 }
 
@@ -1210,18 +1209,18 @@ func (c *MockApplicationsManagementClientListResourceProvidersCall) DoAndReturn(
 }
 
 // ListResourcesInApplication mocks base method.
-func (m *MockApplicationsManagementClient) ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error) {
+func (m *MockApplicationsManagementClient) ListResourcesInApplication(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourcesInApplication", ctx, applicationNameOrID)
+	ret := m.ctrl.Call(m, "ListResourcesInApplication", arg0, arg1)
 	ret0, _ := ret[0].([]generated.GenericResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResourcesInApplication indicates an expected call of ListResourcesInApplication.
-func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesInApplication(ctx, applicationNameOrID any) *MockApplicationsManagementClientListResourcesInApplicationCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesInApplication(arg0, arg1 any) *MockApplicationsManagementClientListResourcesInApplicationCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesInApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesInApplication), ctx, applicationNameOrID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesInApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesInApplication), arg0, arg1)
 	return &MockApplicationsManagementClientListResourcesInApplicationCall{Call: call}
 }
 
@@ -1249,18 +1248,18 @@ func (c *MockApplicationsManagementClientListResourcesInApplicationCall) DoAndRe
 }
 
 // ListResourcesInEnvironment mocks base method.
-func (m *MockApplicationsManagementClient) ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error) {
+func (m *MockApplicationsManagementClient) ListResourcesInEnvironment(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourcesInEnvironment", ctx, environmentNameOrID)
+	ret := m.ctrl.Call(m, "ListResourcesInEnvironment", arg0, arg1)
 	ret0, _ := ret[0].([]generated.GenericResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResourcesInEnvironment indicates an expected call of ListResourcesInEnvironment.
-func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesInEnvironment(ctx, environmentNameOrID any) *MockApplicationsManagementClientListResourcesInEnvironmentCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesInEnvironment(arg0, arg1 any) *MockApplicationsManagementClientListResourcesInEnvironmentCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesInEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesInEnvironment), ctx, environmentNameOrID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesInEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesInEnvironment), arg0, arg1)
 	return &MockApplicationsManagementClientListResourcesInEnvironmentCall{Call: call}
 }
 
@@ -1288,18 +1287,18 @@ func (c *MockApplicationsManagementClientListResourcesInEnvironmentCall) DoAndRe
 }
 
 // ListResourcesOfType mocks base method.
-func (m *MockApplicationsManagementClient) ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
+func (m *MockApplicationsManagementClient) ListResourcesOfType(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourcesOfType", ctx, resourceType)
+	ret := m.ctrl.Call(m, "ListResourcesOfType", arg0, arg1)
 	ret0, _ := ret[0].([]generated.GenericResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResourcesOfType indicates an expected call of ListResourcesOfType.
-func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesOfType(ctx, resourceType any) *MockApplicationsManagementClientListResourcesOfTypeCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesOfType(arg0, arg1 any) *MockApplicationsManagementClientListResourcesOfTypeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesOfType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesOfType), ctx, resourceType)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesOfType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesOfType), arg0, arg1)
 	return &MockApplicationsManagementClientListResourcesOfTypeCall{Call: call}
 }
 
@@ -1327,18 +1326,18 @@ func (c *MockApplicationsManagementClientListResourcesOfTypeCall) DoAndReturn(f 
 }
 
 // ListResourcesOfTypeInApplication mocks base method.
-func (m *MockApplicationsManagementClient) ListResourcesOfTypeInApplication(ctx context.Context, applicationNameOrID, resourceType string) ([]generated.GenericResource, error) {
+func (m *MockApplicationsManagementClient) ListResourcesOfTypeInApplication(arg0 context.Context, arg1, arg2 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourcesOfTypeInApplication", ctx, applicationNameOrID, resourceType)
+	ret := m.ctrl.Call(m, "ListResourcesOfTypeInApplication", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]generated.GenericResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResourcesOfTypeInApplication indicates an expected call of ListResourcesOfTypeInApplication.
-func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesOfTypeInApplication(ctx, applicationNameOrID, resourceType any) *MockApplicationsManagementClientListResourcesOfTypeInApplicationCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesOfTypeInApplication(arg0, arg1, arg2 any) *MockApplicationsManagementClientListResourcesOfTypeInApplicationCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesOfTypeInApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesOfTypeInApplication), ctx, applicationNameOrID, resourceType)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesOfTypeInApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesOfTypeInApplication), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientListResourcesOfTypeInApplicationCall{Call: call}
 }
 
@@ -1366,18 +1365,18 @@ func (c *MockApplicationsManagementClientListResourcesOfTypeInApplicationCall) D
 }
 
 // ListResourcesOfTypeInEnvironment mocks base method.
-func (m *MockApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx context.Context, environmentNameOrID, resourceType string) ([]generated.GenericResource, error) {
+func (m *MockApplicationsManagementClient) ListResourcesOfTypeInEnvironment(arg0 context.Context, arg1, arg2 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResourcesOfTypeInEnvironment", ctx, environmentNameOrID, resourceType)
+	ret := m.ctrl.Call(m, "ListResourcesOfTypeInEnvironment", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]generated.GenericResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResourcesOfTypeInEnvironment indicates an expected call of ListResourcesOfTypeInEnvironment.
-func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesOfTypeInEnvironment(ctx, environmentNameOrID, resourceType any) *MockApplicationsManagementClientListResourcesOfTypeInEnvironmentCall {
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesOfTypeInEnvironment(arg0, arg1, arg2 any) *MockApplicationsManagementClientListResourcesOfTypeInEnvironmentCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesOfTypeInEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesOfTypeInEnvironment), ctx, environmentNameOrID, resourceType)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesOfTypeInEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesOfTypeInEnvironment), arg0, arg1, arg2)
 	return &MockApplicationsManagementClientListResourcesOfTypeInEnvironmentCall{Call: call}
 }
 

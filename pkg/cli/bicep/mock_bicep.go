@@ -19,7 +19,6 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
-	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -40,10 +39,10 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // Call mocks base method.
-func (m *MockInterface) Call(args ...string) ([]byte, error) {
+func (m *MockInterface) Call(arg0 ...string) ([]byte, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{}
-	for _, a := range args {
+	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Call", varargs...)
@@ -53,9 +52,9 @@ func (m *MockInterface) Call(args ...string) ([]byte, error) {
 }
 
 // Call indicates an expected call of Call.
-func (mr *MockInterfaceMockRecorder) Call(args ...any) *MockInterfaceCallCall {
+func (mr *MockInterfaceMockRecorder) Call(arg0 ...any) *MockInterfaceCallCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*MockInterface)(nil).Call), args...)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*MockInterface)(nil).Call), arg0...)
 	return &MockInterfaceCallCall{Call: call}
 }
 
@@ -83,18 +82,18 @@ func (c *MockInterfaceCallCall) DoAndReturn(f func(...string) ([]byte, error)) *
 }
 
 // PrepareTemplate mocks base method.
-func (m *MockInterface) PrepareTemplate(filePath string) (map[string]any, error) {
+func (m *MockInterface) PrepareTemplate(arg0 string) (map[string]any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PrepareTemplate", filePath)
+	ret := m.ctrl.Call(m, "PrepareTemplate", arg0)
 	ret0, _ := ret[0].(map[string]any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PrepareTemplate indicates an expected call of PrepareTemplate.
-func (mr *MockInterfaceMockRecorder) PrepareTemplate(filePath any) *MockInterfacePrepareTemplateCall {
+func (mr *MockInterfaceMockRecorder) PrepareTemplate(arg0 any) *MockInterfacePrepareTemplateCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareTemplate", reflect.TypeOf((*MockInterface)(nil).PrepareTemplate), filePath)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareTemplate", reflect.TypeOf((*MockInterface)(nil).PrepareTemplate), arg0)
 	return &MockInterfacePrepareTemplateCall{Call: call}
 }
 

@@ -21,7 +21,6 @@ import (
 type MockDiagnosticsClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockDiagnosticsClientMockRecorder
-	isgomock struct{}
 }
 
 // MockDiagnosticsClientMockRecorder is the mock recorder for MockDiagnosticsClient.
@@ -42,9 +41,9 @@ func (m *MockDiagnosticsClient) EXPECT() *MockDiagnosticsClientMockRecorder {
 }
 
 // Expose mocks base method.
-func (m *MockDiagnosticsClient) Expose(ctx context.Context, options ExposeOptions) (chan error, chan struct{}, chan os.Signal, error) {
+func (m *MockDiagnosticsClient) Expose(arg0 context.Context, arg1 ExposeOptions) (chan error, chan struct{}, chan os.Signal, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Expose", ctx, options)
+	ret := m.ctrl.Call(m, "Expose", arg0, arg1)
 	ret0, _ := ret[0].(chan error)
 	ret1, _ := ret[1].(chan struct{})
 	ret2, _ := ret[2].(chan os.Signal)
@@ -53,9 +52,9 @@ func (m *MockDiagnosticsClient) Expose(ctx context.Context, options ExposeOption
 }
 
 // Expose indicates an expected call of Expose.
-func (mr *MockDiagnosticsClientMockRecorder) Expose(ctx, options any) *MockDiagnosticsClientExposeCall {
+func (mr *MockDiagnosticsClientMockRecorder) Expose(arg0, arg1 any) *MockDiagnosticsClientExposeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Expose", reflect.TypeOf((*MockDiagnosticsClient)(nil).Expose), ctx, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Expose", reflect.TypeOf((*MockDiagnosticsClient)(nil).Expose), arg0, arg1)
 	return &MockDiagnosticsClientExposeCall{Call: call}
 }
 
@@ -65,8 +64,8 @@ type MockDiagnosticsClientExposeCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockDiagnosticsClientExposeCall) Return(failed chan error, stop chan struct{}, signals chan os.Signal, err error) *MockDiagnosticsClientExposeCall {
-	c.Call = c.Call.Return(failed, stop, signals, err)
+func (c *MockDiagnosticsClientExposeCall) Return(arg0 chan error, arg1 chan struct{}, arg2 chan os.Signal, arg3 error) *MockDiagnosticsClientExposeCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2, arg3)
 	return c
 }
 
@@ -83,18 +82,18 @@ func (c *MockDiagnosticsClientExposeCall) DoAndReturn(f func(context.Context, Ex
 }
 
 // GetPublicEndpoint mocks base method.
-func (m *MockDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options EndpointOptions) (*string, error) {
+func (m *MockDiagnosticsClient) GetPublicEndpoint(arg0 context.Context, arg1 EndpointOptions) (*string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPublicEndpoint", ctx, options)
+	ret := m.ctrl.Call(m, "GetPublicEndpoint", arg0, arg1)
 	ret0, _ := ret[0].(*string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPublicEndpoint indicates an expected call of GetPublicEndpoint.
-func (mr *MockDiagnosticsClientMockRecorder) GetPublicEndpoint(ctx, options any) *MockDiagnosticsClientGetPublicEndpointCall {
+func (mr *MockDiagnosticsClientMockRecorder) GetPublicEndpoint(arg0, arg1 any) *MockDiagnosticsClientGetPublicEndpointCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicEndpoint", reflect.TypeOf((*MockDiagnosticsClient)(nil).GetPublicEndpoint), ctx, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicEndpoint", reflect.TypeOf((*MockDiagnosticsClient)(nil).GetPublicEndpoint), arg0, arg1)
 	return &MockDiagnosticsClientGetPublicEndpointCall{Call: call}
 }
 
@@ -122,18 +121,18 @@ func (c *MockDiagnosticsClientGetPublicEndpointCall) DoAndReturn(f func(context.
 }
 
 // Logs mocks base method.
-func (m *MockDiagnosticsClient) Logs(ctx context.Context, options LogsOptions) ([]LogStream, error) {
+func (m *MockDiagnosticsClient) Logs(arg0 context.Context, arg1 LogsOptions) ([]LogStream, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Logs", ctx, options)
+	ret := m.ctrl.Call(m, "Logs", arg0, arg1)
 	ret0, _ := ret[0].([]LogStream)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Logs indicates an expected call of Logs.
-func (mr *MockDiagnosticsClientMockRecorder) Logs(ctx, options any) *MockDiagnosticsClientLogsCall {
+func (mr *MockDiagnosticsClientMockRecorder) Logs(arg0, arg1 any) *MockDiagnosticsClientLogsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logs", reflect.TypeOf((*MockDiagnosticsClient)(nil).Logs), ctx, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logs", reflect.TypeOf((*MockDiagnosticsClient)(nil).Logs), arg0, arg1)
 	return &MockDiagnosticsClientLogsCall{Call: call}
 }
 

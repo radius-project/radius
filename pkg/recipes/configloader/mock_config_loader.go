@@ -21,7 +21,6 @@ import (
 type MockConfigurationLoader struct {
 	ctrl     *gomock.Controller
 	recorder *MockConfigurationLoaderMockRecorder
-	isgomock struct{}
 }
 
 // MockConfigurationLoaderMockRecorder is the mock recorder for MockConfigurationLoader.
@@ -42,18 +41,18 @@ func (m *MockConfigurationLoader) EXPECT() *MockConfigurationLoaderMockRecorder 
 }
 
 // LoadConfiguration mocks base method.
-func (m *MockConfigurationLoader) LoadConfiguration(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.Configuration, error) {
+func (m *MockConfigurationLoader) LoadConfiguration(arg0 context.Context, arg1 recipes.ResourceMetadata) (*recipes.Configuration, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LoadConfiguration", ctx, recipe)
+	ret := m.ctrl.Call(m, "LoadConfiguration", arg0, arg1)
 	ret0, _ := ret[0].(*recipes.Configuration)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // LoadConfiguration indicates an expected call of LoadConfiguration.
-func (mr *MockConfigurationLoaderMockRecorder) LoadConfiguration(ctx, recipe any) *MockConfigurationLoaderLoadConfigurationCall {
+func (mr *MockConfigurationLoaderMockRecorder) LoadConfiguration(arg0, arg1 any) *MockConfigurationLoaderLoadConfigurationCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadConfiguration", reflect.TypeOf((*MockConfigurationLoader)(nil).LoadConfiguration), ctx, recipe)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadConfiguration", reflect.TypeOf((*MockConfigurationLoader)(nil).LoadConfiguration), arg0, arg1)
 	return &MockConfigurationLoaderLoadConfigurationCall{Call: call}
 }
 
@@ -81,18 +80,18 @@ func (c *MockConfigurationLoaderLoadConfigurationCall) DoAndReturn(f func(contex
 }
 
 // LoadRecipe mocks base method.
-func (m *MockConfigurationLoader) LoadRecipe(ctx context.Context, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
+func (m *MockConfigurationLoader) LoadRecipe(arg0 context.Context, arg1 *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LoadRecipe", ctx, recipe)
+	ret := m.ctrl.Call(m, "LoadRecipe", arg0, arg1)
 	ret0, _ := ret[0].(*recipes.EnvironmentDefinition)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // LoadRecipe indicates an expected call of LoadRecipe.
-func (mr *MockConfigurationLoaderMockRecorder) LoadRecipe(ctx, recipe any) *MockConfigurationLoaderLoadRecipeCall {
+func (mr *MockConfigurationLoaderMockRecorder) LoadRecipe(arg0, arg1 any) *MockConfigurationLoaderLoadRecipeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadRecipe", reflect.TypeOf((*MockConfigurationLoader)(nil).LoadRecipe), ctx, recipe)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadRecipe", reflect.TypeOf((*MockConfigurationLoader)(nil).LoadRecipe), arg0, arg1)
 	return &MockConfigurationLoaderLoadRecipeCall{Call: call}
 }
 

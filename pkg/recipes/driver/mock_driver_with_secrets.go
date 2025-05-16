@@ -21,7 +21,6 @@ import (
 type MockDriverWithSecrets struct {
 	ctrl     *gomock.Controller
 	recorder *MockDriverWithSecretsMockRecorder
-	isgomock struct{}
 }
 
 // MockDriverWithSecretsMockRecorder is the mock recorder for MockDriverWithSecrets.
@@ -42,17 +41,17 @@ func (m *MockDriverWithSecrets) EXPECT() *MockDriverWithSecretsMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockDriverWithSecrets) Delete(ctx context.Context, opts DeleteOptions) error {
+func (m *MockDriverWithSecrets) Delete(arg0 context.Context, arg1 DeleteOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, opts)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockDriverWithSecretsMockRecorder) Delete(ctx, opts any) *MockDriverWithSecretsDeleteCall {
+func (mr *MockDriverWithSecretsMockRecorder) Delete(arg0, arg1 any) *MockDriverWithSecretsDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDriverWithSecrets)(nil).Delete), ctx, opts)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDriverWithSecrets)(nil).Delete), arg0, arg1)
 	return &MockDriverWithSecretsDeleteCall{Call: call}
 }
 
@@ -80,18 +79,18 @@ func (c *MockDriverWithSecretsDeleteCall) DoAndReturn(f func(context.Context, De
 }
 
 // Execute mocks base method.
-func (m *MockDriverWithSecrets) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (m *MockDriverWithSecrets) Execute(arg0 context.Context, arg1 ExecuteOptions) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Execute", ctx, opts)
+	ret := m.ctrl.Call(m, "Execute", arg0, arg1)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Execute indicates an expected call of Execute.
-func (mr *MockDriverWithSecretsMockRecorder) Execute(ctx, opts any) *MockDriverWithSecretsExecuteCall {
+func (mr *MockDriverWithSecretsMockRecorder) Execute(arg0, arg1 any) *MockDriverWithSecretsExecuteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockDriverWithSecrets)(nil).Execute), ctx, opts)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockDriverWithSecrets)(nil).Execute), arg0, arg1)
 	return &MockDriverWithSecretsExecuteCall{Call: call}
 }
 
@@ -119,18 +118,18 @@ func (c *MockDriverWithSecretsExecuteCall) DoAndReturn(f func(context.Context, E
 }
 
 // FindSecretIDs mocks base method.
-func (m *MockDriverWithSecrets) FindSecretIDs(ctx context.Context, config recipes.Configuration, definition recipes.EnvironmentDefinition) (map[string][]string, error) {
+func (m *MockDriverWithSecrets) FindSecretIDs(arg0 context.Context, arg1 recipes.Configuration, arg2 recipes.EnvironmentDefinition) (map[string][]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindSecretIDs", ctx, config, definition)
+	ret := m.ctrl.Call(m, "FindSecretIDs", arg0, arg1, arg2)
 	ret0, _ := ret[0].(map[string][]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindSecretIDs indicates an expected call of FindSecretIDs.
-func (mr *MockDriverWithSecretsMockRecorder) FindSecretIDs(ctx, config, definition any) *MockDriverWithSecretsFindSecretIDsCall {
+func (mr *MockDriverWithSecretsMockRecorder) FindSecretIDs(arg0, arg1, arg2 any) *MockDriverWithSecretsFindSecretIDsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSecretIDs", reflect.TypeOf((*MockDriverWithSecrets)(nil).FindSecretIDs), ctx, config, definition)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSecretIDs", reflect.TypeOf((*MockDriverWithSecrets)(nil).FindSecretIDs), arg0, arg1, arg2)
 	return &MockDriverWithSecretsFindSecretIDsCall{Call: call}
 }
 
@@ -140,8 +139,8 @@ type MockDriverWithSecretsFindSecretIDsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockDriverWithSecretsFindSecretIDsCall) Return(secretIDs map[string][]string, err error) *MockDriverWithSecretsFindSecretIDsCall {
-	c.Call = c.Call.Return(secretIDs, err)
+func (c *MockDriverWithSecretsFindSecretIDsCall) Return(arg0 map[string][]string, arg1 error) *MockDriverWithSecretsFindSecretIDsCall {
+	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
@@ -158,18 +157,18 @@ func (c *MockDriverWithSecretsFindSecretIDsCall) DoAndReturn(f func(context.Cont
 }
 
 // GetRecipeMetadata mocks base method.
-func (m *MockDriverWithSecrets) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
+func (m *MockDriverWithSecrets) GetRecipeMetadata(arg0 context.Context, arg1 BaseOptions) (map[string]any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipeMetadata", ctx, opts)
+	ret := m.ctrl.Call(m, "GetRecipeMetadata", arg0, arg1)
 	ret0, _ := ret[0].(map[string]any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRecipeMetadata indicates an expected call of GetRecipeMetadata.
-func (mr *MockDriverWithSecretsMockRecorder) GetRecipeMetadata(ctx, opts any) *MockDriverWithSecretsGetRecipeMetadataCall {
+func (mr *MockDriverWithSecretsMockRecorder) GetRecipeMetadata(arg0, arg1 any) *MockDriverWithSecretsGetRecipeMetadataCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockDriverWithSecrets)(nil).GetRecipeMetadata), ctx, opts)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockDriverWithSecrets)(nil).GetRecipeMetadata), arg0, arg1)
 	return &MockDriverWithSecretsGetRecipeMetadataCall{Call: call}
 }
 

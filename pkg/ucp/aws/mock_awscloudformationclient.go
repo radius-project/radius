@@ -21,7 +21,6 @@ import (
 type MockAWSCloudFormationClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockAWSCloudFormationClientMockRecorder
-	isgomock struct{}
 }
 
 // MockAWSCloudFormationClientMockRecorder is the mock recorder for MockAWSCloudFormationClient.
@@ -42,10 +41,10 @@ func (m *MockAWSCloudFormationClient) EXPECT() *MockAWSCloudFormationClientMockR
 }
 
 // DescribeType mocks base method.
-func (m *MockAWSCloudFormationClient) DescribeType(ctx context.Context, params *cloudformation.DescribeTypeInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error) {
+func (m *MockAWSCloudFormationClient) DescribeType(arg0 context.Context, arg1 *cloudformation.DescribeTypeInput, arg2 ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{ctx, params}
-	for _, a := range optFns {
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "DescribeType", varargs...)
@@ -55,9 +54,9 @@ func (m *MockAWSCloudFormationClient) DescribeType(ctx context.Context, params *
 }
 
 // DescribeType indicates an expected call of DescribeType.
-func (mr *MockAWSCloudFormationClientMockRecorder) DescribeType(ctx, params any, optFns ...any) *MockAWSCloudFormationClientDescribeTypeCall {
+func (mr *MockAWSCloudFormationClientMockRecorder) DescribeType(arg0, arg1 any, arg2 ...any) *MockAWSCloudFormationClientDescribeTypeCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, params}, optFns...)
+	varargs := append([]any{arg0, arg1}, arg2...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeType", reflect.TypeOf((*MockAWSCloudFormationClient)(nil).DescribeType), varargs...)
 	return &MockAWSCloudFormationClientDescribeTypeCall{Call: call}
 }

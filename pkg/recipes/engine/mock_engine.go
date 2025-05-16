@@ -21,7 +21,6 @@ import (
 type MockEngine struct {
 	ctrl     *gomock.Controller
 	recorder *MockEngineMockRecorder
-	isgomock struct{}
 }
 
 // MockEngineMockRecorder is the mock recorder for MockEngine.
@@ -42,17 +41,17 @@ func (m *MockEngine) EXPECT() *MockEngineMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockEngine) Delete(ctx context.Context, opts DeleteOptions) error {
+func (m *MockEngine) Delete(arg0 context.Context, arg1 DeleteOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, opts)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockEngineMockRecorder) Delete(ctx, opts any) *MockEngineDeleteCall {
+func (mr *MockEngineMockRecorder) Delete(arg0, arg1 any) *MockEngineDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockEngine)(nil).Delete), ctx, opts)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockEngine)(nil).Delete), arg0, arg1)
 	return &MockEngineDeleteCall{Call: call}
 }
 
@@ -80,18 +79,18 @@ func (c *MockEngineDeleteCall) DoAndReturn(f func(context.Context, DeleteOptions
 }
 
 // Execute mocks base method.
-func (m *MockEngine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (m *MockEngine) Execute(arg0 context.Context, arg1 ExecuteOptions) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Execute", ctx, opts)
+	ret := m.ctrl.Call(m, "Execute", arg0, arg1)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Execute indicates an expected call of Execute.
-func (mr *MockEngineMockRecorder) Execute(ctx, opts any) *MockEngineExecuteCall {
+func (mr *MockEngineMockRecorder) Execute(arg0, arg1 any) *MockEngineExecuteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockEngine)(nil).Execute), ctx, opts)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockEngine)(nil).Execute), arg0, arg1)
 	return &MockEngineExecuteCall{Call: call}
 }
 
@@ -119,18 +118,18 @@ func (c *MockEngineExecuteCall) DoAndReturn(f func(context.Context, ExecuteOptio
 }
 
 // GetRecipeMetadata mocks base method.
-func (m *MockEngine) GetRecipeMetadata(ctx context.Context, opts GetRecipeMetadataOptions) (map[string]any, error) {
+func (m *MockEngine) GetRecipeMetadata(arg0 context.Context, arg1 GetRecipeMetadataOptions) (map[string]any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipeMetadata", ctx, opts)
+	ret := m.ctrl.Call(m, "GetRecipeMetadata", arg0, arg1)
 	ret0, _ := ret[0].(map[string]any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRecipeMetadata indicates an expected call of GetRecipeMetadata.
-func (mr *MockEngineMockRecorder) GetRecipeMetadata(ctx, opts any) *MockEngineGetRecipeMetadataCall {
+func (mr *MockEngineMockRecorder) GetRecipeMetadata(arg0, arg1 any) *MockEngineGetRecipeMetadataCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockEngine)(nil).GetRecipeMetadata), ctx, opts)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockEngine)(nil).GetRecipeMetadata), arg0, arg1)
 	return &MockEngineGetRecipeMetadataCall{Call: call}
 }
 

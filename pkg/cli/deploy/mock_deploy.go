@@ -21,7 +21,6 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
-	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -42,18 +41,18 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // DeployWithProgress mocks base method.
-func (m *MockInterface) DeployWithProgress(ctx context.Context, options Options) (clients.DeploymentResult, error) {
+func (m *MockInterface) DeployWithProgress(arg0 context.Context, arg1 Options) (clients.DeploymentResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeployWithProgress", ctx, options)
+	ret := m.ctrl.Call(m, "DeployWithProgress", arg0, arg1)
 	ret0, _ := ret[0].(clients.DeploymentResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeployWithProgress indicates an expected call of DeployWithProgress.
-func (mr *MockInterfaceMockRecorder) DeployWithProgress(ctx, options any) *MockInterfaceDeployWithProgressCall {
+func (mr *MockInterfaceMockRecorder) DeployWithProgress(arg0, arg1 any) *MockInterfaceDeployWithProgressCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeployWithProgress", reflect.TypeOf((*MockInterface)(nil).DeployWithProgress), ctx, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeployWithProgress", reflect.TypeOf((*MockInterface)(nil).DeployWithProgress), arg0, arg1)
 	return &MockInterfaceDeployWithProgressCall{Call: call}
 }
 

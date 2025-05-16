@@ -20,7 +20,6 @@ import (
 type MockResourceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockResourceClientMockRecorder
-	isgomock struct{}
 }
 
 // MockResourceClientMockRecorder is the mock recorder for MockResourceClient.
@@ -41,17 +40,17 @@ func (m *MockResourceClient) EXPECT() *MockResourceClientMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockResourceClient) Delete(ctx context.Context, id string) error {
+func (m *MockResourceClient) Delete(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockResourceClientMockRecorder) Delete(ctx, id any) *MockResourceClientDeleteCall {
+func (mr *MockResourceClientMockRecorder) Delete(arg0, arg1 any) *MockResourceClientDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockResourceClient)(nil).Delete), ctx, id)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockResourceClient)(nil).Delete), arg0, arg1)
 	return &MockResourceClientDeleteCall{Call: call}
 }
 

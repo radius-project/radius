@@ -20,7 +20,6 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
-	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -41,18 +40,18 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // CheckRadiusInstall mocks base method.
-func (m *MockInterface) CheckRadiusInstall(kubeContext string) (InstallState, error) {
+func (m *MockInterface) CheckRadiusInstall(arg0 string) (InstallState, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CheckRadiusInstall", kubeContext)
+	ret := m.ctrl.Call(m, "CheckRadiusInstall", arg0)
 	ret0, _ := ret[0].(InstallState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CheckRadiusInstall indicates an expected call of CheckRadiusInstall.
-func (mr *MockInterfaceMockRecorder) CheckRadiusInstall(kubeContext any) *MockInterfaceCheckRadiusInstallCall {
+func (mr *MockInterfaceMockRecorder) CheckRadiusInstall(arg0 any) *MockInterfaceCheckRadiusInstallCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckRadiusInstall", reflect.TypeOf((*MockInterface)(nil).CheckRadiusInstall), kubeContext)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckRadiusInstall", reflect.TypeOf((*MockInterface)(nil).CheckRadiusInstall), arg0)
 	return &MockInterfaceCheckRadiusInstallCall{Call: call}
 }
 
@@ -80,18 +79,18 @@ func (c *MockInterfaceCheckRadiusInstallCall) DoAndReturn(f func(string) (Instal
 }
 
 // InstallRadius mocks base method.
-func (m *MockInterface) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
+func (m *MockInterface) InstallRadius(arg0 context.Context, arg1 ClusterOptions, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InstallRadius", ctx, clusterOptions, kubeContext)
+	ret := m.ctrl.Call(m, "InstallRadius", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InstallRadius indicates an expected call of InstallRadius.
-func (mr *MockInterfaceMockRecorder) InstallRadius(ctx, clusterOptions, kubeContext any) *MockInterfaceInstallRadiusCall {
+func (mr *MockInterfaceMockRecorder) InstallRadius(arg0, arg1, arg2 any) *MockInterfaceInstallRadiusCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstallRadius", reflect.TypeOf((*MockInterface)(nil).InstallRadius), ctx, clusterOptions, kubeContext)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstallRadius", reflect.TypeOf((*MockInterface)(nil).InstallRadius), arg0, arg1, arg2)
 	return &MockInterfaceInstallRadiusCall{Call: call}
 }
 
@@ -119,17 +118,17 @@ func (c *MockInterfaceInstallRadiusCall) DoAndReturn(f func(context.Context, Clu
 }
 
 // UninstallRadius mocks base method.
-func (m *MockInterface) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+func (m *MockInterface) UninstallRadius(arg0 context.Context, arg1 ClusterOptions, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UninstallRadius", ctx, clusterOptions, kubeContext)
+	ret := m.ctrl.Call(m, "UninstallRadius", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UninstallRadius indicates an expected call of UninstallRadius.
-func (mr *MockInterfaceMockRecorder) UninstallRadius(ctx, clusterOptions, kubeContext any) *MockInterfaceUninstallRadiusCall {
+func (mr *MockInterfaceMockRecorder) UninstallRadius(arg0, arg1, arg2 any) *MockInterfaceUninstallRadiusCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UninstallRadius", reflect.TypeOf((*MockInterface)(nil).UninstallRadius), ctx, clusterOptions, kubeContext)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UninstallRadius", reflect.TypeOf((*MockInterface)(nil).UninstallRadius), arg0, arg1, arg2)
 	return &MockInterfaceUninstallRadiusCall{Call: call}
 }
 

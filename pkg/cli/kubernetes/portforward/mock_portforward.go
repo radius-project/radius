@@ -20,7 +20,6 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
-	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -41,17 +40,17 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // Run mocks base method.
-func (m *MockInterface) Run(ctx context.Context, options Options) error {
+func (m *MockInterface) Run(arg0 context.Context, arg1 Options) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Run", ctx, options)
+	ret := m.ctrl.Call(m, "Run", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Run indicates an expected call of Run.
-func (mr *MockInterfaceMockRecorder) Run(ctx, options any) *MockInterfaceRunCall {
+func (mr *MockInterfaceMockRecorder) Run(arg0, arg1 any) *MockInterfaceRunCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockInterface)(nil).Run), ctx, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockInterface)(nil).Run), arg0, arg1)
 	return &MockInterfaceRunCall{Call: call}
 }
 
