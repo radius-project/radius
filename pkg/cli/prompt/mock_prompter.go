@@ -13,6 +13,7 @@ import (
 	reflect "reflect"
 
 	tea "github.com/charmbracelet/bubbletea"
+	text "github.com/radius-project/radius/pkg/cli/prompt/text"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -20,7 +21,6 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
-	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -41,18 +41,18 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // GetListInput mocks base method.
-func (m *MockInterface) GetListInput(items []string, promptMsg string) (string, error) {
+func (m *MockInterface) GetListInput(arg0 []string, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetListInput", items, promptMsg)
+	ret := m.ctrl.Call(m, "GetListInput", arg0, arg1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetListInput indicates an expected call of GetListInput.
-func (mr *MockInterfaceMockRecorder) GetListInput(items, promptMsg any) *MockInterfaceGetListInputCall {
+func (mr *MockInterfaceMockRecorder) GetListInput(arg0, arg1 any) *MockInterfaceGetListInputCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetListInput", reflect.TypeOf((*MockInterface)(nil).GetListInput), items, promptMsg)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetListInput", reflect.TypeOf((*MockInterface)(nil).GetListInput), arg0, arg1)
 	return &MockInterfaceGetListInputCall{Call: call}
 }
 
@@ -80,18 +80,18 @@ func (c *MockInterfaceGetListInputCall) DoAndReturn(f func([]string, string) (st
 }
 
 // GetTextInput mocks base method.
-func (m *MockInterface) GetTextInput(prompt string, options TextInputOptions) (string, error) {
+func (m *MockInterface) GetTextInput(arg0 string, arg1 text.TextModelOptions) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTextInput", prompt, options)
+	ret := m.ctrl.Call(m, "GetTextInput", arg0, arg1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTextInput indicates an expected call of GetTextInput.
-func (mr *MockInterfaceMockRecorder) GetTextInput(prompt, options any) *MockInterfaceGetTextInputCall {
+func (mr *MockInterfaceMockRecorder) GetTextInput(arg0, arg1 any) *MockInterfaceGetTextInputCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTextInput", reflect.TypeOf((*MockInterface)(nil).GetTextInput), prompt, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTextInput", reflect.TypeOf((*MockInterface)(nil).GetTextInput), arg0, arg1)
 	return &MockInterfaceGetTextInputCall{Call: call}
 }
 
@@ -107,30 +107,30 @@ func (c *MockInterfaceGetTextInputCall) Return(arg0 string, arg1 error) *MockInt
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInterfaceGetTextInputCall) Do(f func(string, TextInputOptions) (string, error)) *MockInterfaceGetTextInputCall {
+func (c *MockInterfaceGetTextInputCall) Do(f func(string, text.TextModelOptions) (string, error)) *MockInterfaceGetTextInputCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceGetTextInputCall) DoAndReturn(f func(string, TextInputOptions) (string, error)) *MockInterfaceGetTextInputCall {
+func (c *MockInterfaceGetTextInputCall) DoAndReturn(f func(string, text.TextModelOptions) (string, error)) *MockInterfaceGetTextInputCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RunProgram mocks base method.
-func (m *MockInterface) RunProgram(program *tea.Program) (tea.Model, error) {
+func (m *MockInterface) RunProgram(arg0 *tea.Program) (tea.Model, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RunProgram", program)
+	ret := m.ctrl.Call(m, "RunProgram", arg0)
 	ret0, _ := ret[0].(tea.Model)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RunProgram indicates an expected call of RunProgram.
-func (mr *MockInterfaceMockRecorder) RunProgram(program any) *MockInterfaceRunProgramCall {
+func (mr *MockInterfaceMockRecorder) RunProgram(arg0 any) *MockInterfaceRunProgramCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunProgram", reflect.TypeOf((*MockInterface)(nil).RunProgram), program)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunProgram", reflect.TypeOf((*MockInterface)(nil).RunProgram), arg0)
 	return &MockInterfaceRunProgramCall{Call: call}
 }
 

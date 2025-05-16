@@ -20,7 +20,6 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
-	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -41,17 +40,17 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // Stream mocks base method.
-func (m *MockInterface) Stream(ctx context.Context, options Options) error {
+func (m *MockInterface) Stream(arg0 context.Context, arg1 Options) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stream", ctx, options)
+	ret := m.ctrl.Call(m, "Stream", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Stream indicates an expected call of Stream.
-func (mr *MockInterfaceMockRecorder) Stream(ctx, options any) *MockInterfaceStreamCall {
+func (mr *MockInterfaceMockRecorder) Stream(arg0, arg1 any) *MockInterfaceStreamCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stream", reflect.TypeOf((*MockInterface)(nil).Stream), ctx, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stream", reflect.TypeOf((*MockInterface)(nil).Stream), arg0, arg1)
 	return &MockInterfaceStreamCall{Call: call}
 }
 

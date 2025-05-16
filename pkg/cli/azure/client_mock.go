@@ -22,7 +22,6 @@ import (
 type MockClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockClientMockRecorder
-	isgomock struct{}
 }
 
 // MockClientMockRecorder is the mock recorder for MockClient.
@@ -43,18 +42,18 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // CheckResourceGroupExistence mocks base method.
-func (m *MockClient) CheckResourceGroupExistence(ctx context.Context, subscriptionID, resourceGroupName string) (bool, error) {
+func (m *MockClient) CheckResourceGroupExistence(arg0 context.Context, arg1, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CheckResourceGroupExistence", ctx, subscriptionID, resourceGroupName)
+	ret := m.ctrl.Call(m, "CheckResourceGroupExistence", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CheckResourceGroupExistence indicates an expected call of CheckResourceGroupExistence.
-func (mr *MockClientMockRecorder) CheckResourceGroupExistence(ctx, subscriptionID, resourceGroupName any) *MockClientCheckResourceGroupExistenceCall {
+func (mr *MockClientMockRecorder) CheckResourceGroupExistence(arg0, arg1, arg2 any) *MockClientCheckResourceGroupExistenceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckResourceGroupExistence", reflect.TypeOf((*MockClient)(nil).CheckResourceGroupExistence), ctx, subscriptionID, resourceGroupName)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckResourceGroupExistence", reflect.TypeOf((*MockClient)(nil).CheckResourceGroupExistence), arg0, arg1, arg2)
 	return &MockClientCheckResourceGroupExistenceCall{Call: call}
 }
 
@@ -82,17 +81,17 @@ func (c *MockClientCheckResourceGroupExistenceCall) DoAndReturn(f func(context.C
 }
 
 // CreateOrUpdateResourceGroup mocks base method.
-func (m *MockClient) CreateOrUpdateResourceGroup(ctx context.Context, subscriptionID, resourceGroupName, location string) error {
+func (m *MockClient) CreateOrUpdateResourceGroup(arg0 context.Context, arg1, arg2, arg3 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdateResourceGroup", ctx, subscriptionID, resourceGroupName, location)
+	ret := m.ctrl.Call(m, "CreateOrUpdateResourceGroup", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateOrUpdateResourceGroup indicates an expected call of CreateOrUpdateResourceGroup.
-func (mr *MockClientMockRecorder) CreateOrUpdateResourceGroup(ctx, subscriptionID, resourceGroupName, location any) *MockClientCreateOrUpdateResourceGroupCall {
+func (mr *MockClientMockRecorder) CreateOrUpdateResourceGroup(arg0, arg1, arg2, arg3 any) *MockClientCreateOrUpdateResourceGroupCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceGroup", reflect.TypeOf((*MockClient)(nil).CreateOrUpdateResourceGroup), ctx, subscriptionID, resourceGroupName, location)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateResourceGroup", reflect.TypeOf((*MockClient)(nil).CreateOrUpdateResourceGroup), arg0, arg1, arg2, arg3)
 	return &MockClientCreateOrUpdateResourceGroupCall{Call: call}
 }
 
@@ -120,18 +119,18 @@ func (c *MockClientCreateOrUpdateResourceGroupCall) DoAndReturn(f func(context.C
 }
 
 // Locations mocks base method.
-func (m *MockClient) Locations(ctx context.Context, subscriptionID string) ([]armsubscriptions.Location, error) {
+func (m *MockClient) Locations(arg0 context.Context, arg1 string) ([]armsubscriptions.Location, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Locations", ctx, subscriptionID)
+	ret := m.ctrl.Call(m, "Locations", arg0, arg1)
 	ret0, _ := ret[0].([]armsubscriptions.Location)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Locations indicates an expected call of Locations.
-func (mr *MockClientMockRecorder) Locations(ctx, subscriptionID any) *MockClientLocationsCall {
+func (mr *MockClientMockRecorder) Locations(arg0, arg1 any) *MockClientLocationsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Locations", reflect.TypeOf((*MockClient)(nil).Locations), ctx, subscriptionID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Locations", reflect.TypeOf((*MockClient)(nil).Locations), arg0, arg1)
 	return &MockClientLocationsCall{Call: call}
 }
 
@@ -159,18 +158,18 @@ func (c *MockClientLocationsCall) DoAndReturn(f func(context.Context, string) ([
 }
 
 // ResourceGroups mocks base method.
-func (m *MockClient) ResourceGroups(ctx context.Context, subscriptionID string) ([]armresources.ResourceGroup, error) {
+func (m *MockClient) ResourceGroups(arg0 context.Context, arg1 string) ([]armresources.ResourceGroup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ResourceGroups", ctx, subscriptionID)
+	ret := m.ctrl.Call(m, "ResourceGroups", arg0, arg1)
 	ret0, _ := ret[0].([]armresources.ResourceGroup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ResourceGroups indicates an expected call of ResourceGroups.
-func (mr *MockClientMockRecorder) ResourceGroups(ctx, subscriptionID any) *MockClientResourceGroupsCall {
+func (mr *MockClientMockRecorder) ResourceGroups(arg0, arg1 any) *MockClientResourceGroupsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResourceGroups", reflect.TypeOf((*MockClient)(nil).ResourceGroups), ctx, subscriptionID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResourceGroups", reflect.TypeOf((*MockClient)(nil).ResourceGroups), arg0, arg1)
 	return &MockClientResourceGroupsCall{Call: call}
 }
 
@@ -198,18 +197,18 @@ func (c *MockClientResourceGroupsCall) DoAndReturn(f func(context.Context, strin
 }
 
 // Subscriptions mocks base method.
-func (m *MockClient) Subscriptions(ctx context.Context) (*SubscriptionResult, error) {
+func (m *MockClient) Subscriptions(arg0 context.Context) (*SubscriptionResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Subscriptions", ctx)
+	ret := m.ctrl.Call(m, "Subscriptions", arg0)
 	ret0, _ := ret[0].(*SubscriptionResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Subscriptions indicates an expected call of Subscriptions.
-func (mr *MockClientMockRecorder) Subscriptions(ctx any) *MockClientSubscriptionsCall {
+func (mr *MockClientMockRecorder) Subscriptions(arg0 any) *MockClientSubscriptionsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscriptions", reflect.TypeOf((*MockClient)(nil).Subscriptions), ctx)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscriptions", reflect.TypeOf((*MockClient)(nil).Subscriptions), arg0)
 	return &MockClientSubscriptionsCall{Call: call}
 }
 

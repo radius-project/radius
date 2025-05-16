@@ -24,7 +24,6 @@ import (
 type MockDeploymentProcessor struct {
 	ctrl     *gomock.Controller
 	recorder *MockDeploymentProcessorMockRecorder
-	isgomock struct{}
 }
 
 // MockDeploymentProcessorMockRecorder is the mock recorder for MockDeploymentProcessor.
@@ -45,17 +44,17 @@ func (m *MockDeploymentProcessor) EXPECT() *MockDeploymentProcessorMockRecorder 
 }
 
 // Delete mocks base method.
-func (m *MockDeploymentProcessor) Delete(ctx context.Context, id resources.ID, outputResources []v10.OutputResource) error {
+func (m *MockDeploymentProcessor) Delete(arg0 context.Context, arg1 resources.ID, arg2 []v10.OutputResource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, id, outputResources)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockDeploymentProcessorMockRecorder) Delete(ctx, id, outputResources any) *MockDeploymentProcessorDeleteCall {
+func (mr *MockDeploymentProcessorMockRecorder) Delete(arg0, arg1, arg2 any) *MockDeploymentProcessorDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDeploymentProcessor)(nil).Delete), ctx, id, outputResources)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDeploymentProcessor)(nil).Delete), arg0, arg1, arg2)
 	return &MockDeploymentProcessorDeleteCall{Call: call}
 }
 
@@ -83,18 +82,18 @@ func (c *MockDeploymentProcessorDeleteCall) DoAndReturn(f func(context.Context, 
 }
 
 // Deploy mocks base method.
-func (m *MockDeploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (v10.DeploymentOutput, error) {
+func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (v10.DeploymentOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Deploy", ctx, id, rendererOutput)
+	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2)
 	ret0, _ := ret[0].(v10.DeploymentOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Deploy indicates an expected call of Deploy.
-func (mr *MockDeploymentProcessorMockRecorder) Deploy(ctx, id, rendererOutput any) *MockDeploymentProcessorDeployCall {
+func (mr *MockDeploymentProcessorMockRecorder) Deploy(arg0, arg1, arg2 any) *MockDeploymentProcessorDeployCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).Deploy), ctx, id, rendererOutput)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).Deploy), arg0, arg1, arg2)
 	return &MockDeploymentProcessorDeployCall{Call: call}
 }
 
@@ -122,18 +121,18 @@ func (c *MockDeploymentProcessorDeployCall) DoAndReturn(f func(context.Context, 
 }
 
 // FetchSecrets mocks base method.
-func (m *MockDeploymentProcessor) FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error) {
+func (m *MockDeploymentProcessor) FetchSecrets(arg0 context.Context, arg1 ResourceData) (map[string]any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FetchSecrets", ctx, resourceData)
+	ret := m.ctrl.Call(m, "FetchSecrets", arg0, arg1)
 	ret0, _ := ret[0].(map[string]any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FetchSecrets indicates an expected call of FetchSecrets.
-func (mr *MockDeploymentProcessorMockRecorder) FetchSecrets(ctx, resourceData any) *MockDeploymentProcessorFetchSecretsCall {
+func (mr *MockDeploymentProcessorMockRecorder) FetchSecrets(arg0, arg1 any) *MockDeploymentProcessorFetchSecretsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchSecrets", reflect.TypeOf((*MockDeploymentProcessor)(nil).FetchSecrets), ctx, resourceData)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchSecrets", reflect.TypeOf((*MockDeploymentProcessor)(nil).FetchSecrets), arg0, arg1)
 	return &MockDeploymentProcessorFetchSecretsCall{Call: call}
 }
 
@@ -161,18 +160,18 @@ func (c *MockDeploymentProcessorFetchSecretsCall) DoAndReturn(f func(context.Con
 }
 
 // Render mocks base method.
-func (m *MockDeploymentProcessor) Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
+func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 v1.DataModelInterface) (renderers.RendererOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Render", ctx, id, resource)
+	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
 	ret0, _ := ret[0].(renderers.RendererOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Render indicates an expected call of Render.
-func (mr *MockDeploymentProcessorMockRecorder) Render(ctx, id, resource any) *MockDeploymentProcessorRenderCall {
+func (mr *MockDeploymentProcessorMockRecorder) Render(arg0, arg1, arg2 any) *MockDeploymentProcessorRenderCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Render", reflect.TypeOf((*MockDeploymentProcessor)(nil).Render), ctx, id, resource)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Render", reflect.TypeOf((*MockDeploymentProcessor)(nil).Render), arg0, arg1, arg2)
 	return &MockDeploymentProcessorRenderCall{Call: call}
 }
 

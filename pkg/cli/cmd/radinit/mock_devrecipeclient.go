@@ -21,7 +21,6 @@ import (
 type MockDevRecipeClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockDevRecipeClientMockRecorder
-	isgomock struct{}
 }
 
 // MockDevRecipeClientMockRecorder is the mock recorder for MockDevRecipeClient.
@@ -42,18 +41,18 @@ func (m *MockDevRecipeClient) EXPECT() *MockDevRecipeClientMockRecorder {
 }
 
 // GetDevRecipes mocks base method.
-func (m *MockDevRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[string]v20231001preview.RecipePropertiesClassification, error) {
+func (m *MockDevRecipeClient) GetDevRecipes(arg0 context.Context) (map[string]map[string]v20231001preview.RecipePropertiesClassification, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDevRecipes", ctx)
+	ret := m.ctrl.Call(m, "GetDevRecipes", arg0)
 	ret0, _ := ret[0].(map[string]map[string]v20231001preview.RecipePropertiesClassification)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetDevRecipes indicates an expected call of GetDevRecipes.
-func (mr *MockDevRecipeClientMockRecorder) GetDevRecipes(ctx any) *MockDevRecipeClientGetDevRecipesCall {
+func (mr *MockDevRecipeClientMockRecorder) GetDevRecipes(arg0 any) *MockDevRecipeClientGetDevRecipesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDevRecipes", reflect.TypeOf((*MockDevRecipeClient)(nil).GetDevRecipes), ctx)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDevRecipes", reflect.TypeOf((*MockDevRecipeClient)(nil).GetDevRecipes), arg0)
 	return &MockDevRecipeClientGetDevRecipesCall{Call: call}
 }
 

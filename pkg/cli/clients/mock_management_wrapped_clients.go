@@ -24,7 +24,6 @@ import (
 type MockgenericResourceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockgenericResourceClientMockRecorder
-	isgomock struct{}
 }
 
 // MockgenericResourceClientMockRecorder is the mock recorder for MockgenericResourceClient.
@@ -203,7 +202,6 @@ func (c *MockgenericResourceClientNewListByRootScopePagerCall) DoAndReturn(f fun
 type MockapplicationResourceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockapplicationResourceClientMockRecorder
-	isgomock struct{}
 }
 
 // MockapplicationResourceClientMockRecorder is the mock recorder for MockapplicationResourceClient.
@@ -421,7 +419,6 @@ func (c *MockapplicationResourceClientNewListByScopePagerCall) DoAndReturn(f fun
 type MockenvironmentResourceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockenvironmentResourceClientMockRecorder
-	isgomock struct{}
 }
 
 // MockenvironmentResourceClientMockRecorder is the mock recorder for MockenvironmentResourceClient.
@@ -639,7 +636,6 @@ func (c *MockenvironmentResourceClientNewListByScopePagerCall) DoAndReturn(f fun
 type MockresourceGroupClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockresourceGroupClientMockRecorder
-	isgomock struct{}
 }
 
 // MockresourceGroupClientMockRecorder is the mock recorder for MockresourceGroupClient.
@@ -818,7 +814,6 @@ func (c *MockresourceGroupClientNewListPagerCall) DoAndReturn(f func(string, *v2
 type MockresourceProviderClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockresourceProviderClientMockRecorder
-	isgomock struct{}
 }
 
 // MockresourceProviderClientMockRecorder is the mock recorder for MockresourceProviderClient.
@@ -1074,7 +1069,6 @@ func (c *MockresourceProviderClientNewListProviderSummariesPagerCall) DoAndRetur
 type MockresourceTypeClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockresourceTypeClientMockRecorder
-	isgomock struct{}
 }
 
 // MockresourceTypeClientMockRecorder is the mock recorder for MockresourceTypeClient.
@@ -1176,7 +1170,6 @@ func (c *MockresourceTypeClientBeginDeleteCall) DoAndReturn(f func(context.Conte
 type MockapiVersionClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockapiVersionClientMockRecorder
-	isgomock struct{}
 }
 
 // MockapiVersionClientMockRecorder is the mock recorder for MockapiVersionClient.
@@ -1239,7 +1232,6 @@ func (c *MockapiVersionClientBeginCreateOrUpdateCall) DoAndReturn(f func(context
 type MocklocationClient struct {
 	ctrl     *gomock.Controller
 	recorder *MocklocationClientMockRecorder
-	isgomock struct{}
 }
 
 // MocklocationClientMockRecorder is the mock recorder for MocklocationClient.

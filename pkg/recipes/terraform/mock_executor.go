@@ -21,7 +21,6 @@ import (
 type MockTerraformExecutor struct {
 	ctrl     *gomock.Controller
 	recorder *MockTerraformExecutorMockRecorder
-	isgomock struct{}
 }
 
 // MockTerraformExecutorMockRecorder is the mock recorder for MockTerraformExecutor.
@@ -42,17 +41,17 @@ func (m *MockTerraformExecutor) EXPECT() *MockTerraformExecutorMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockTerraformExecutor) Delete(ctx context.Context, options Options) error {
+func (m *MockTerraformExecutor) Delete(arg0 context.Context, arg1 Options) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, options)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockTerraformExecutorMockRecorder) Delete(ctx, options any) *MockTerraformExecutorDeleteCall {
+func (mr *MockTerraformExecutorMockRecorder) Delete(arg0, arg1 any) *MockTerraformExecutorDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockTerraformExecutor)(nil).Delete), ctx, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockTerraformExecutor)(nil).Delete), arg0, arg1)
 	return &MockTerraformExecutorDeleteCall{Call: call}
 }
 
@@ -80,18 +79,18 @@ func (c *MockTerraformExecutorDeleteCall) DoAndReturn(f func(context.Context, Op
 }
 
 // Deploy mocks base method.
-func (m *MockTerraformExecutor) Deploy(ctx context.Context, options Options) (*tfjson.State, error) {
+func (m *MockTerraformExecutor) Deploy(arg0 context.Context, arg1 Options) (*tfjson.State, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Deploy", ctx, options)
+	ret := m.ctrl.Call(m, "Deploy", arg0, arg1)
 	ret0, _ := ret[0].(*tfjson.State)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Deploy indicates an expected call of Deploy.
-func (mr *MockTerraformExecutorMockRecorder) Deploy(ctx, options any) *MockTerraformExecutorDeployCall {
+func (mr *MockTerraformExecutorMockRecorder) Deploy(arg0, arg1 any) *MockTerraformExecutorDeployCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockTerraformExecutor)(nil).Deploy), ctx, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockTerraformExecutor)(nil).Deploy), arg0, arg1)
 	return &MockTerraformExecutorDeployCall{Call: call}
 }
 
@@ -119,18 +118,18 @@ func (c *MockTerraformExecutorDeployCall) DoAndReturn(f func(context.Context, Op
 }
 
 // GetRecipeMetadata mocks base method.
-func (m *MockTerraformExecutor) GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error) {
+func (m *MockTerraformExecutor) GetRecipeMetadata(arg0 context.Context, arg1 Options) (map[string]any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipeMetadata", ctx, options)
+	ret := m.ctrl.Call(m, "GetRecipeMetadata", arg0, arg1)
 	ret0, _ := ret[0].(map[string]any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRecipeMetadata indicates an expected call of GetRecipeMetadata.
-func (mr *MockTerraformExecutorMockRecorder) GetRecipeMetadata(ctx, options any) *MockTerraformExecutorGetRecipeMetadataCall {
+func (mr *MockTerraformExecutorMockRecorder) GetRecipeMetadata(arg0, arg1 any) *MockTerraformExecutorGetRecipeMetadataCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockTerraformExecutor)(nil).GetRecipeMetadata), ctx, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockTerraformExecutor)(nil).GetRecipeMetadata), arg0, arg1)
 	return &MockTerraformExecutorGetRecipeMetadataCall{Call: call}
 }
 
