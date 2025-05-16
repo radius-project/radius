@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      all:
+      github-actions:
         patterns:
           - "*"
   - package-ecosystem: "gomod"
@@ -13,7 +13,7 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      all:
+      golang:
         patterns:
           - "*"
   - package-ecosystem: "devcontainers"
