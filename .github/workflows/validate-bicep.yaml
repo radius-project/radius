@@ -72,7 +72,7 @@ jobs:
           mkdir tmp-testresources-bicep-extension
       - name: Publish bicep types 
         run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz 
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
       - name: Generate testresources extension index
         run: |
           npx @radius-project/manifest-to-bicep-extension@alpha generate ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml ./tmp-testresources-bicep-extension
