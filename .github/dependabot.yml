@@ -13,7 +13,7 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      golang:
+      go-dependencies:
         patterns:
           - "*"
   - package-ecosystem: "devcontainers"
