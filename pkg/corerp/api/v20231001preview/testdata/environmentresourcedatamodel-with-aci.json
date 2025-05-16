@@ -20,7 +20,7 @@
         "resourceGroup": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster"
       },
       "identity": {
-        "kind": "managedIdentity",
+        "kind": "userAssigned",
         "managedIdentity": ["test-mi-0", "test-mi-1"]
       }
     },

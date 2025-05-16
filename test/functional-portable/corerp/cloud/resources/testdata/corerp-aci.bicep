@@ -1,9 +1,7 @@
 extension radius
 
 @description('Specifies the scope of azure resources.')
-param aciScope string = resourceGroup().id
-@description('The managed identity to use to authenticate with NGroups.')
-param managedIdentity string 
+param aciScope string = '/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/shruthikumar'
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'aci-env'
@@ -12,8 +10,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       kind: 'aci'
       resourceGroup: aciScope
       identity: {
-        kind:'managedIdentity'
-        managedIdentity: [managedIdentity]
+        kind: 'systemAssigned'
       }
     }
     recipes: {
@@ -65,11 +62,11 @@ resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
         }
       }
     }
-    // connections: {
-    //   magpie: {
-    //     source: magpie.id
-    //   }
-    // }
+    connections: {
+      magpie: {
+        source: magpie.id
+      }
+    }
     extensions: [
       {
         kind:  'manualScaling'
@@ -84,17 +81,17 @@ resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
   }
 }
 
-// resource magpie 'Applications.Core/containers@2023-10-01-preview' = {
-//   name: 'magpie'
-//   properties: {
-//     application: app.id
-//     container: {
-//       image: 'ghcr.io/radius-project/magpiego:latest'
-//       env: {
-//         MAGPIE_PORT: {
-//           value: '8080'
-//         }
-//       }
-//     }
-//   }
-// }
+resource magpie 'Applications.Core/containers@2023-10-01-preview' = {
+  name: 'magpie'
+  properties: {
+    application: app.id
+    container: {
+      image: 'ghcr.io/radius-project/magpiego:latest'
+      env: {
+        MAGPIE_PORT: {
+          value: '8080'
+        }
+      }
+    }
+  }
+}

@@ -339,10 +339,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	nGroup := &ngroupsclient.NGroup{
 		Name:     to.Ptr(resource.Name),
 		Location: to.Ptr(aciLocation),
-		Identity: &ngroupsclient.NGroupIdentity{
-			Type:                   to.Ptr(ngroupsclient.ResourceIdentityTypeUserAssigned),
-			UserAssignedIdentities: ConvertToUserAssignedIdentity(options.Environment.Compute.Identity.ManagedIdentity),
-		},
+		Identity: ProcessNGroupIdentity(options.Environment),
 		Properties: &ngroupsclient.NGroupProperties{
 			UpdateProfile: &ngroupsclient.UpdateProfile{
 				UpdateMode: to.Ptr(ngroupsclient.NGroupUpdateModeRolling),
@@ -450,6 +447,17 @@ func getSortedKeys(env map[string]EnvVar) []string {
 	return keys
 }
 
+func ProcessNGroupIdentity(envOptions renderers.EnvironmentOptions) *ngroupsclient.NGroupIdentity {
+	identity := &ngroupsclient.NGroupIdentity{
+		Type: ConvertToManagedIdentityTypes(envOptions.Identity.Kind),
+	}
+
+	if envOptions.Compute.Identity.ManagedIdentity != nil {
+		identity.UserAssignedIdentities = ConvertToUserAssignedIdentity(envOptions.Compute.Identity.ManagedIdentity)
+	}
+	return identity
+}
+
 func ConvertToUserAssignedIdentity(urls []string) map[string]*ngroupsclient.UserAssignedIdentities {
 	identities := make(map[string]*ngroupsclient.UserAssignedIdentities)
 
@@ -458,4 +466,15 @@ func ConvertToUserAssignedIdentity(urls []string) map[string]*ngroupsclient.User
 	}
 
 	return identities
+}
+
+func ConvertToManagedIdentityTypes(kind rpv1.IdentitySettingKind) *ngroupsclient.ResourceIdentityType {
+	switch kind {
+	case rpv1.UserAssigned:
+		return to.Ptr(ngroupsclient.ResourceIdentityTypeUserAssigned)
+	case rpv1.SystemAssignedUserAssigned:
+		return to.Ptr(ngroupsclient.ResourceIdentityTypeSystemAssignedUserAssigned)
+	default:
+		return to.Ptr(ngroupsclient.ResourceIdentityTypeSystemAssigned) // default to SystemAssigned if no identity kind is set
+	}
 }

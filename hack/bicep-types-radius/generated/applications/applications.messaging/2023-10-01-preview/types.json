@@ -51,7 +51,7 @@
       },
       "tags": {
         "type": {
-          "$ref": "#/39"
+          "$ref": "#/41"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -65,7 +65,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/40"
+          "$ref": "#/42"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -106,7 +106,7 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "The connection secrets properties to the RabbitMQ instance"
@@ -127,7 +127,7 @@
       },
       "port": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/33"
         },
         "flags": 0,
         "description": "The port of the RabbitMQ instance. Defaults to 5672"
@@ -148,28 +148,28 @@
       },
       "resources": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/35"
         },
         "flags": 0,
         "description": "List of the resource IDs that support the rabbitMQ resource"
       },
       "tls": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
       },
       "recipe": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/36"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/38"
+          "$ref": "#/40"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -250,14 +250,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/26"
+          "$ref": "#/28"
         },
         "flags": 2,
         "description": "Recipe status at deployment time for a resource."
       },
       "outputResources": {
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/31"
         },
         "flags": 0,
         "description": "Properties of an output resource"
@@ -286,10 +286,10 @@
     },
     "elements": {
       "aci": {
-        "$ref": "#/22"
+        "$ref": "#/24"
       },
       "kubernetes": {
-        "$ref": "#/24"
+        "$ref": "#/26"
       }
     }
   },
@@ -299,7 +299,7 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/20"
+          "$ref": "#/22"
         },
         "flags": 1,
         "description": "IdentitySettingKind is the kind of supported external identity setting"
@@ -320,10 +320,10 @@
       },
       "managedIdentity": {
         "type": {
-          "$ref": "#/21"
+          "$ref": "#/23"
         },
         "flags": 0,
-        "description": "The name of the managed identity"
+        "description": "The list of user assigned managed identities"
       }
     }
   },
@@ -337,7 +337,15 @@
   },
   {
     "$type": "StringLiteralType",
-    "value": "managedIdentity"
+    "value": "userAssigned"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "systemAssigned"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "systemAssignedUserAssigned"
   },
   {
     "$type": "UnionType",
@@ -350,6 +358,12 @@
       },
       {
         "$ref": "#/19"
+      },
+      {
+        "$ref": "#/20"
+      },
+      {
+        "$ref": "#/21"
       }
     ]
   },
@@ -372,7 +386,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/25"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -396,7 +410,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/27"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -454,7 +468,7 @@
       },
       "radiusManaged": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "Determines whether Radius manages the lifecycle of the underlying resource."
@@ -467,7 +481,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/27"
+      "$ref": "#/29"
     }
   },
   {
@@ -509,7 +523,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/32"
+      "$ref": "#/34"
     }
   },
   {
@@ -525,7 +539,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/35"
+          "$ref": "#/37"
         },
         "flags": 0,
         "description": "Any object"
@@ -547,10 +561,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/36"
+        "$ref": "#/38"
       },
       {
-        "$ref": "#/37"
+        "$ref": "#/39"
       }
     ]
   },
@@ -575,7 +589,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/45"
+          "$ref": "#/47"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -596,7 +610,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/50"
+          "$ref": "#/52"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -630,16 +644,16 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/41"
-      },
-      {
-        "$ref": "#/42"
-      },
-      {
         "$ref": "#/43"
       },
       {
         "$ref": "#/44"
+      },
+      {
+        "$ref": "#/45"
+      },
+      {
+        "$ref": "#/46"
       }
     ]
   },
@@ -663,16 +677,16 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/46"
-      },
-      {
-        "$ref": "#/47"
-      },
-      {
         "$ref": "#/48"
       },
       {
         "$ref": "#/49"
+      },
+      {
+        "$ref": "#/50"
+      },
+      {
+        "$ref": "#/51"
       }
     ]
   },
@@ -700,7 +714,7 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/51"
+      "$ref": "#/53"
     }
   },
   {
@@ -714,7 +728,7 @@
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/52"
+          "$ref": "#/54"
         },
         "description": "listSecrets"
       }
