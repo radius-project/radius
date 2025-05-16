@@ -27,7 +27,7 @@ func display(resourceType *common.ResourceType) string {
 	output := &strings.Builder{}
 	indentSpaceCount := 0
 	output.WriteString("\n\nDESCRIPTION:\n")
-	output.WriteString(indent(resourceType.Description, indentSpaceCount+2) + "\n\n") // Add indentation to the description
+	output.WriteString(indent(resourceType.Description, indentSpaceCount+2) + "\n\n")
 	for name, properties := range resourceType.APIVersions {
 		output.WriteString("APIVERSION : " + name + "\n\n")
 		indentSpaceCount += 2

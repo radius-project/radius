@@ -38,12 +38,16 @@ type ResourceType struct {
 	APIVersions map[string]*APIVersionProperties
 }
 
+// APIVersionProperties is used to store the schema of the resource type for the api version.
 type APIVersionProperties struct {
+	// Schema is the schema of the resource type.
 	Schema map[string]any
 }
 
+// ResourceTypeListOutputFormat is used to format the output of the resource type list and create commands.
 type ResourceTypeListOutputFormat struct {
 	ResourceType
+	// APIVersionList is the list of API versions supported by the resource type.
 	APIVersionList []string
 }
 
