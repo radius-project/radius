@@ -21,6 +21,7 @@ import (
 type MockSecretsLoader struct {
 	ctrl     *gomock.Controller
 	recorder *MockSecretsLoaderMockRecorder
+	isgomock struct{}
 }
 
 // MockSecretsLoaderMockRecorder is the mock recorder for MockSecretsLoader.
@@ -41,18 +42,18 @@ func (m *MockSecretsLoader) EXPECT() *MockSecretsLoaderMockRecorder {
 }
 
 // LoadSecrets mocks base method.
-func (m *MockSecretsLoader) LoadSecrets(arg0 context.Context, arg1 map[string][]string) (map[string]recipes.SecretData, error) {
+func (m *MockSecretsLoader) LoadSecrets(ctx context.Context, secretStoreIDs map[string][]string) (map[string]recipes.SecretData, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LoadSecrets", arg0, arg1)
+	ret := m.ctrl.Call(m, "LoadSecrets", ctx, secretStoreIDs)
 	ret0, _ := ret[0].(map[string]recipes.SecretData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // LoadSecrets indicates an expected call of LoadSecrets.
-func (mr *MockSecretsLoaderMockRecorder) LoadSecrets(arg0, arg1 any) *MockSecretsLoaderLoadSecretsCall {
+func (mr *MockSecretsLoaderMockRecorder) LoadSecrets(ctx, secretStoreIDs any) *MockSecretsLoaderLoadSecretsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadSecrets", reflect.TypeOf((*MockSecretsLoader)(nil).LoadSecrets), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadSecrets", reflect.TypeOf((*MockSecretsLoader)(nil).LoadSecrets), ctx, secretStoreIDs)
 	return &MockSecretsLoaderLoadSecretsCall{Call: call}
 }
 
@@ -62,8 +63,8 @@ type MockSecretsLoaderLoadSecretsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSecretsLoaderLoadSecretsCall) Return(arg0 map[string]recipes.SecretData, arg1 error) *MockSecretsLoaderLoadSecretsCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockSecretsLoaderLoadSecretsCall) Return(secretData map[string]recipes.SecretData, err error) *MockSecretsLoaderLoadSecretsCall {
+	c.Call = c.Call.Return(secretData, err)
 	return c
 }
 

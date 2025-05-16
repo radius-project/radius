@@ -24,6 +24,7 @@ import (
 type MockStatusManager struct {
 	ctrl     *gomock.Controller
 	recorder *MockStatusManagerMockRecorder
+	isgomock struct{}
 }
 
 // MockStatusManagerMockRecorder is the mock recorder for MockStatusManager.
@@ -44,17 +45,17 @@ func (m *MockStatusManager) EXPECT() *MockStatusManagerMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockStatusManager) Delete(arg0 context.Context, arg1 resources.ID, arg2 uuid.UUID) error {
+func (m *MockStatusManager) Delete(ctx context.Context, id resources.ID, operationID uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Delete", ctx, id, operationID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockStatusManagerMockRecorder) Delete(arg0, arg1, arg2 any) *MockStatusManagerDeleteCall {
+func (mr *MockStatusManagerMockRecorder) Delete(ctx, id, operationID any) *MockStatusManagerDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockStatusManager)(nil).Delete), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockStatusManager)(nil).Delete), ctx, id, operationID)
 	return &MockStatusManagerDeleteCall{Call: call}
 }
 
@@ -82,18 +83,18 @@ func (c *MockStatusManagerDeleteCall) DoAndReturn(f func(context.Context, resour
 }
 
 // Get mocks base method.
-func (m *MockStatusManager) Get(arg0 context.Context, arg1 resources.ID, arg2 uuid.UUID) (*Status, error) {
+func (m *MockStatusManager) Get(ctx context.Context, id resources.ID, operationID uuid.UUID) (*Status, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Get", ctx, id, operationID)
 	ret0, _ := ret[0].(*Status)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockStatusManagerMockRecorder) Get(arg0, arg1, arg2 any) *MockStatusManagerGetCall {
+func (mr *MockStatusManagerMockRecorder) Get(ctx, id, operationID any) *MockStatusManagerGetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockStatusManager)(nil).Get), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockStatusManager)(nil).Get), ctx, id, operationID)
 	return &MockStatusManagerGetCall{Call: call}
 }
 
@@ -121,17 +122,17 @@ func (c *MockStatusManagerGetCall) DoAndReturn(f func(context.Context, resources
 }
 
 // QueueAsyncOperation mocks base method.
-func (m *MockStatusManager) QueueAsyncOperation(arg0 context.Context, arg1 *v1.ARMRequestContext, arg2 QueueOperationOptions) error {
+func (m *MockStatusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, options QueueOperationOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueueAsyncOperation", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "QueueAsyncOperation", ctx, sCtx, options)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // QueueAsyncOperation indicates an expected call of QueueAsyncOperation.
-func (mr *MockStatusManagerMockRecorder) QueueAsyncOperation(arg0, arg1, arg2 any) *MockStatusManagerQueueAsyncOperationCall {
+func (mr *MockStatusManagerMockRecorder) QueueAsyncOperation(ctx, sCtx, options any) *MockStatusManagerQueueAsyncOperationCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueueAsyncOperation", reflect.TypeOf((*MockStatusManager)(nil).QueueAsyncOperation), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueueAsyncOperation", reflect.TypeOf((*MockStatusManager)(nil).QueueAsyncOperation), ctx, sCtx, options)
 	return &MockStatusManagerQueueAsyncOperationCall{Call: call}
 }
 
@@ -159,17 +160,17 @@ func (c *MockStatusManagerQueueAsyncOperationCall) DoAndReturn(f func(context.Co
 }
 
 // Update mocks base method.
-func (m *MockStatusManager) Update(arg0 context.Context, arg1 resources.ID, arg2 uuid.UUID, arg3 v1.ProvisioningState, arg4 *time.Time, arg5 *v1.ErrorDetails) error {
+func (m *MockStatusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "Update", ctx, id, operationID, state, endTime, opError)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockStatusManagerMockRecorder) Update(arg0, arg1, arg2, arg3, arg4, arg5 any) *MockStatusManagerUpdateCall {
+func (mr *MockStatusManagerMockRecorder) Update(ctx, id, operationID, state, endTime, opError any) *MockStatusManagerUpdateCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockStatusManager)(nil).Update), arg0, arg1, arg2, arg3, arg4, arg5)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockStatusManager)(nil).Update), ctx, id, operationID, state, endTime, opError)
 	return &MockStatusManagerUpdateCall{Call: call}
 }
 

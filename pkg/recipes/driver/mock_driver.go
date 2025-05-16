@@ -21,6 +21,7 @@ import (
 type MockDriver struct {
 	ctrl     *gomock.Controller
 	recorder *MockDriverMockRecorder
+	isgomock struct{}
 }
 
 // MockDriverMockRecorder is the mock recorder for MockDriver.
@@ -41,17 +42,17 @@ func (m *MockDriver) EXPECT() *MockDriverMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockDriver) Delete(arg0 context.Context, arg1 DeleteOptions) error {
+func (m *MockDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret := m.ctrl.Call(m, "Delete", ctx, opts)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockDriverMockRecorder) Delete(arg0, arg1 any) *MockDriverDeleteCall {
+func (mr *MockDriverMockRecorder) Delete(ctx, opts any) *MockDriverDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDriver)(nil).Delete), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDriver)(nil).Delete), ctx, opts)
 	return &MockDriverDeleteCall{Call: call}
 }
 
@@ -79,18 +80,18 @@ func (c *MockDriverDeleteCall) DoAndReturn(f func(context.Context, DeleteOptions
 }
 
 // Execute mocks base method.
-func (m *MockDriver) Execute(arg0 context.Context, arg1 ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (m *MockDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Execute", arg0, arg1)
+	ret := m.ctrl.Call(m, "Execute", ctx, opts)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Execute indicates an expected call of Execute.
-func (mr *MockDriverMockRecorder) Execute(arg0, arg1 any) *MockDriverExecuteCall {
+func (mr *MockDriverMockRecorder) Execute(ctx, opts any) *MockDriverExecuteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockDriver)(nil).Execute), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockDriver)(nil).Execute), ctx, opts)
 	return &MockDriverExecuteCall{Call: call}
 }
 
@@ -118,18 +119,18 @@ func (c *MockDriverExecuteCall) DoAndReturn(f func(context.Context, ExecuteOptio
 }
 
 // GetRecipeMetadata mocks base method.
-func (m *MockDriver) GetRecipeMetadata(arg0 context.Context, arg1 BaseOptions) (map[string]any, error) {
+func (m *MockDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipeMetadata", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetRecipeMetadata", ctx, opts)
 	ret0, _ := ret[0].(map[string]any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRecipeMetadata indicates an expected call of GetRecipeMetadata.
-func (mr *MockDriverMockRecorder) GetRecipeMetadata(arg0, arg1 any) *MockDriverGetRecipeMetadataCall {
+func (mr *MockDriverMockRecorder) GetRecipeMetadata(ctx, opts any) *MockDriverGetRecipeMetadataCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockDriver)(nil).GetRecipeMetadata), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockDriver)(nil).GetRecipeMetadata), ctx, opts)
 	return &MockDriverGetRecipeMetadataCall{Call: call}
 }
 

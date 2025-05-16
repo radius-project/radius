@@ -21,6 +21,7 @@ import (
 type MockAuthClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockAuthClientMockRecorder
+	isgomock struct{}
 }
 
 // MockAuthClientMockRecorder is the mock recorder for MockAuthClient.
@@ -41,18 +42,18 @@ func (m *MockAuthClient) EXPECT() *MockAuthClientMockRecorder {
 }
 
 // GetAuthClient mocks base method.
-func (m *MockAuthClient) GetAuthClient(arg0 context.Context, arg1 string) (remote.Client, error) {
+func (m *MockAuthClient) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAuthClient", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetAuthClient", ctx, templatePath)
 	ret0, _ := ret[0].(remote.Client)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAuthClient indicates an expected call of GetAuthClient.
-func (mr *MockAuthClientMockRecorder) GetAuthClient(arg0, arg1 any) *MockAuthClientGetAuthClientCall {
+func (mr *MockAuthClientMockRecorder) GetAuthClient(ctx, templatePath any) *MockAuthClientGetAuthClientCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAuthClient", reflect.TypeOf((*MockAuthClient)(nil).GetAuthClient), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAuthClient", reflect.TypeOf((*MockAuthClient)(nil).GetAuthClient), ctx, templatePath)
 	return &MockAuthClientGetAuthClientCall{Call: call}
 }
 

@@ -21,6 +21,7 @@ import (
 type MockAWSCloudControlClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockAWSCloudControlClientMockRecorder
+	isgomock struct{}
 }
 
 // MockAWSCloudControlClientMockRecorder is the mock recorder for MockAWSCloudControlClient.
@@ -41,10 +42,10 @@ func (m *MockAWSCloudControlClient) EXPECT() *MockAWSCloudControlClientMockRecor
 }
 
 // CancelResourceRequest mocks base method.
-func (m *MockAWSCloudControlClient) CancelResourceRequest(arg0 context.Context, arg1 *cloudcontrol.CancelResourceRequestInput, arg2 ...func(*cloudcontrol.Options)) (*cloudcontrol.CancelResourceRequestOutput, error) {
+func (m *MockAWSCloudControlClient) CancelResourceRequest(ctx context.Context, params *cloudcontrol.CancelResourceRequestInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CancelResourceRequestOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "CancelResourceRequest", varargs...)
@@ -54,9 +55,9 @@ func (m *MockAWSCloudControlClient) CancelResourceRequest(arg0 context.Context, 
 }
 
 // CancelResourceRequest indicates an expected call of CancelResourceRequest.
-func (mr *MockAWSCloudControlClientMockRecorder) CancelResourceRequest(arg0, arg1 any, arg2 ...any) *MockAWSCloudControlClientCancelResourceRequestCall {
+func (mr *MockAWSCloudControlClientMockRecorder) CancelResourceRequest(ctx, params any, optFns ...any) *MockAWSCloudControlClientCancelResourceRequestCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, params}, optFns...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelResourceRequest", reflect.TypeOf((*MockAWSCloudControlClient)(nil).CancelResourceRequest), varargs...)
 	return &MockAWSCloudControlClientCancelResourceRequestCall{Call: call}
 }
@@ -85,10 +86,10 @@ func (c *MockAWSCloudControlClientCancelResourceRequestCall) DoAndReturn(f func(
 }
 
 // CreateResource mocks base method.
-func (m *MockAWSCloudControlClient) CreateResource(arg0 context.Context, arg1 *cloudcontrol.CreateResourceInput, arg2 ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
+func (m *MockAWSCloudControlClient) CreateResource(ctx context.Context, params *cloudcontrol.CreateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "CreateResource", varargs...)
@@ -98,9 +99,9 @@ func (m *MockAWSCloudControlClient) CreateResource(arg0 context.Context, arg1 *c
 }
 
 // CreateResource indicates an expected call of CreateResource.
-func (mr *MockAWSCloudControlClientMockRecorder) CreateResource(arg0, arg1 any, arg2 ...any) *MockAWSCloudControlClientCreateResourceCall {
+func (mr *MockAWSCloudControlClientMockRecorder) CreateResource(ctx, params any, optFns ...any) *MockAWSCloudControlClientCreateResourceCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, params}, optFns...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateResource", reflect.TypeOf((*MockAWSCloudControlClient)(nil).CreateResource), varargs...)
 	return &MockAWSCloudControlClientCreateResourceCall{Call: call}
 }
@@ -129,10 +130,10 @@ func (c *MockAWSCloudControlClientCreateResourceCall) DoAndReturn(f func(context
 }
 
 // DeleteResource mocks base method.
-func (m *MockAWSCloudControlClient) DeleteResource(arg0 context.Context, arg1 *cloudcontrol.DeleteResourceInput, arg2 ...func(*cloudcontrol.Options)) (*cloudcontrol.DeleteResourceOutput, error) {
+func (m *MockAWSCloudControlClient) DeleteResource(ctx context.Context, params *cloudcontrol.DeleteResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.DeleteResourceOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "DeleteResource", varargs...)
@@ -142,9 +143,9 @@ func (m *MockAWSCloudControlClient) DeleteResource(arg0 context.Context, arg1 *c
 }
 
 // DeleteResource indicates an expected call of DeleteResource.
-func (mr *MockAWSCloudControlClientMockRecorder) DeleteResource(arg0, arg1 any, arg2 ...any) *MockAWSCloudControlClientDeleteResourceCall {
+func (mr *MockAWSCloudControlClientMockRecorder) DeleteResource(ctx, params any, optFns ...any) *MockAWSCloudControlClientDeleteResourceCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, params}, optFns...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResource", reflect.TypeOf((*MockAWSCloudControlClient)(nil).DeleteResource), varargs...)
 	return &MockAWSCloudControlClientDeleteResourceCall{Call: call}
 }
@@ -173,10 +174,10 @@ func (c *MockAWSCloudControlClientDeleteResourceCall) DoAndReturn(f func(context
 }
 
 // GetResource mocks base method.
-func (m *MockAWSCloudControlClient) GetResource(arg0 context.Context, arg1 *cloudcontrol.GetResourceInput, arg2 ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+func (m *MockAWSCloudControlClient) GetResource(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetResource", varargs...)
@@ -186,9 +187,9 @@ func (m *MockAWSCloudControlClient) GetResource(arg0 context.Context, arg1 *clou
 }
 
 // GetResource indicates an expected call of GetResource.
-func (mr *MockAWSCloudControlClientMockRecorder) GetResource(arg0, arg1 any, arg2 ...any) *MockAWSCloudControlClientGetResourceCall {
+func (mr *MockAWSCloudControlClientMockRecorder) GetResource(ctx, params any, optFns ...any) *MockAWSCloudControlClientGetResourceCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, params}, optFns...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResource", reflect.TypeOf((*MockAWSCloudControlClient)(nil).GetResource), varargs...)
 	return &MockAWSCloudControlClientGetResourceCall{Call: call}
 }
@@ -217,10 +218,10 @@ func (c *MockAWSCloudControlClientGetResourceCall) DoAndReturn(f func(context.Co
 }
 
 // GetResourceRequestStatus mocks base method.
-func (m *MockAWSCloudControlClient) GetResourceRequestStatus(arg0 context.Context, arg1 *cloudcontrol.GetResourceRequestStatusInput, arg2 ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
+func (m *MockAWSCloudControlClient) GetResourceRequestStatus(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetResourceRequestStatus", varargs...)
@@ -230,9 +231,9 @@ func (m *MockAWSCloudControlClient) GetResourceRequestStatus(arg0 context.Contex
 }
 
 // GetResourceRequestStatus indicates an expected call of GetResourceRequestStatus.
-func (mr *MockAWSCloudControlClientMockRecorder) GetResourceRequestStatus(arg0, arg1 any, arg2 ...any) *MockAWSCloudControlClientGetResourceRequestStatusCall {
+func (mr *MockAWSCloudControlClientMockRecorder) GetResourceRequestStatus(ctx, params any, optFns ...any) *MockAWSCloudControlClientGetResourceRequestStatusCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, params}, optFns...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceRequestStatus", reflect.TypeOf((*MockAWSCloudControlClient)(nil).GetResourceRequestStatus), varargs...)
 	return &MockAWSCloudControlClientGetResourceRequestStatusCall{Call: call}
 }
@@ -261,10 +262,10 @@ func (c *MockAWSCloudControlClientGetResourceRequestStatusCall) DoAndReturn(f fu
 }
 
 // ListResourceRequests mocks base method.
-func (m *MockAWSCloudControlClient) ListResourceRequests(arg0 context.Context, arg1 *cloudcontrol.ListResourceRequestsInput, arg2 ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourceRequestsOutput, error) {
+func (m *MockAWSCloudControlClient) ListResourceRequests(ctx context.Context, params *cloudcontrol.ListResourceRequestsInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourceRequestsOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ListResourceRequests", varargs...)
@@ -274,9 +275,9 @@ func (m *MockAWSCloudControlClient) ListResourceRequests(arg0 context.Context, a
 }
 
 // ListResourceRequests indicates an expected call of ListResourceRequests.
-func (mr *MockAWSCloudControlClientMockRecorder) ListResourceRequests(arg0, arg1 any, arg2 ...any) *MockAWSCloudControlClientListResourceRequestsCall {
+func (mr *MockAWSCloudControlClientMockRecorder) ListResourceRequests(ctx, params any, optFns ...any) *MockAWSCloudControlClientListResourceRequestsCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, params}, optFns...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourceRequests", reflect.TypeOf((*MockAWSCloudControlClient)(nil).ListResourceRequests), varargs...)
 	return &MockAWSCloudControlClientListResourceRequestsCall{Call: call}
 }
@@ -305,10 +306,10 @@ func (c *MockAWSCloudControlClientListResourceRequestsCall) DoAndReturn(f func(c
 }
 
 // ListResources mocks base method.
-func (m *MockAWSCloudControlClient) ListResources(arg0 context.Context, arg1 *cloudcontrol.ListResourcesInput, arg2 ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourcesOutput, error) {
+func (m *MockAWSCloudControlClient) ListResources(ctx context.Context, params *cloudcontrol.ListResourcesInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourcesOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ListResources", varargs...)
@@ -318,9 +319,9 @@ func (m *MockAWSCloudControlClient) ListResources(arg0 context.Context, arg1 *cl
 }
 
 // ListResources indicates an expected call of ListResources.
-func (mr *MockAWSCloudControlClientMockRecorder) ListResources(arg0, arg1 any, arg2 ...any) *MockAWSCloudControlClientListResourcesCall {
+func (mr *MockAWSCloudControlClientMockRecorder) ListResources(ctx, params any, optFns ...any) *MockAWSCloudControlClientListResourcesCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, params}, optFns...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResources", reflect.TypeOf((*MockAWSCloudControlClient)(nil).ListResources), varargs...)
 	return &MockAWSCloudControlClientListResourcesCall{Call: call}
 }
@@ -349,10 +350,10 @@ func (c *MockAWSCloudControlClientListResourcesCall) DoAndReturn(f func(context.
 }
 
 // UpdateResource mocks base method.
-func (m *MockAWSCloudControlClient) UpdateResource(arg0 context.Context, arg1 *cloudcontrol.UpdateResourceInput, arg2 ...func(*cloudcontrol.Options)) (*cloudcontrol.UpdateResourceOutput, error) {
+func (m *MockAWSCloudControlClient) UpdateResource(ctx context.Context, params *cloudcontrol.UpdateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.UpdateResourceOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "UpdateResource", varargs...)
@@ -362,9 +363,9 @@ func (m *MockAWSCloudControlClient) UpdateResource(arg0 context.Context, arg1 *c
 }
 
 // UpdateResource indicates an expected call of UpdateResource.
-func (mr *MockAWSCloudControlClientMockRecorder) UpdateResource(arg0, arg1 any, arg2 ...any) *MockAWSCloudControlClientUpdateResourceCall {
+func (mr *MockAWSCloudControlClientMockRecorder) UpdateResource(ctx, params any, optFns ...any) *MockAWSCloudControlClientUpdateResourceCall {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, params}, optFns...)
 	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateResource", reflect.TypeOf((*MockAWSCloudControlClient)(nil).UpdateResource), varargs...)
 	return &MockAWSCloudControlClientUpdateResourceCall{Call: call}
 }

@@ -22,6 +22,7 @@ import (
 type MockConfigFileInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockConfigFileInterfaceMockRecorder
+	isgomock struct{}
 }
 
 // MockConfigFileInterfaceMockRecorder is the mock recorder for MockConfigFileInterface.
@@ -42,17 +43,17 @@ func (m *MockConfigFileInterface) EXPECT() *MockConfigFileInterfaceMockRecorder 
 }
 
 // ConfigFromContext mocks base method.
-func (m *MockConfigFileInterface) ConfigFromContext(arg0 context.Context) *viper.Viper {
+func (m *MockConfigFileInterface) ConfigFromContext(ctx context.Context) *viper.Viper {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConfigFromContext", arg0)
+	ret := m.ctrl.Call(m, "ConfigFromContext", ctx)
 	ret0, _ := ret[0].(*viper.Viper)
 	return ret0
 }
 
 // ConfigFromContext indicates an expected call of ConfigFromContext.
-func (mr *MockConfigFileInterfaceMockRecorder) ConfigFromContext(arg0 any) *MockConfigFileInterfaceConfigFromContextCall {
+func (mr *MockConfigFileInterfaceMockRecorder) ConfigFromContext(ctx any) *MockConfigFileInterfaceConfigFromContextCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigFromContext", reflect.TypeOf((*MockConfigFileInterface)(nil).ConfigFromContext), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigFromContext", reflect.TypeOf((*MockConfigFileInterface)(nil).ConfigFromContext), ctx)
 	return &MockConfigFileInterfaceConfigFromContextCall{Call: call}
 }
 
@@ -80,17 +81,17 @@ func (c *MockConfigFileInterfaceConfigFromContextCall) DoAndReturn(f func(contex
 }
 
 // DeleteWorkspace mocks base method.
-func (m *MockConfigFileInterface) DeleteWorkspace(arg0 context.Context, arg1 *viper.Viper, arg2 string) error {
+func (m *MockConfigFileInterface) DeleteWorkspace(ctx context.Context, config *viper.Viper, name string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteWorkspace", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DeleteWorkspace", ctx, config, name)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteWorkspace indicates an expected call of DeleteWorkspace.
-func (mr *MockConfigFileInterfaceMockRecorder) DeleteWorkspace(arg0, arg1, arg2 any) *MockConfigFileInterfaceDeleteWorkspaceCall {
+func (mr *MockConfigFileInterfaceMockRecorder) DeleteWorkspace(ctx, config, name any) *MockConfigFileInterfaceDeleteWorkspaceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWorkspace", reflect.TypeOf((*MockConfigFileInterface)(nil).DeleteWorkspace), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWorkspace", reflect.TypeOf((*MockConfigFileInterface)(nil).DeleteWorkspace), ctx, config, name)
 	return &MockConfigFileInterfaceDeleteWorkspaceCall{Call: call}
 }
 
@@ -118,17 +119,17 @@ func (c *MockConfigFileInterfaceDeleteWorkspaceCall) DoAndReturn(f func(context.
 }
 
 // EditWorkspaces mocks base method.
-func (m *MockConfigFileInterface) EditWorkspaces(arg0 context.Context, arg1 *viper.Viper, arg2 *workspaces.Workspace) error {
+func (m *MockConfigFileInterface) EditWorkspaces(ctx context.Context, config *viper.Viper, workspace *workspaces.Workspace) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EditWorkspaces", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "EditWorkspaces", ctx, config, workspace)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // EditWorkspaces indicates an expected call of EditWorkspaces.
-func (mr *MockConfigFileInterfaceMockRecorder) EditWorkspaces(arg0, arg1, arg2 any) *MockConfigFileInterfaceEditWorkspacesCall {
+func (mr *MockConfigFileInterfaceMockRecorder) EditWorkspaces(ctx, config, workspace any) *MockConfigFileInterfaceEditWorkspacesCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditWorkspaces", reflect.TypeOf((*MockConfigFileInterface)(nil).EditWorkspaces), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditWorkspaces", reflect.TypeOf((*MockConfigFileInterface)(nil).EditWorkspaces), ctx, config, workspace)
 	return &MockConfigFileInterfaceEditWorkspacesCall{Call: call}
 }
 
@@ -156,17 +157,17 @@ func (c *MockConfigFileInterfaceEditWorkspacesCall) DoAndReturn(f func(context.C
 }
 
 // SetDefaultWorkspace mocks base method.
-func (m *MockConfigFileInterface) SetDefaultWorkspace(arg0 context.Context, arg1 *viper.Viper, arg2 string) error {
+func (m *MockConfigFileInterface) SetDefaultWorkspace(ctx context.Context, config *viper.Viper, name string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetDefaultWorkspace", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "SetDefaultWorkspace", ctx, config, name)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetDefaultWorkspace indicates an expected call of SetDefaultWorkspace.
-func (mr *MockConfigFileInterfaceMockRecorder) SetDefaultWorkspace(arg0, arg1, arg2 any) *MockConfigFileInterfaceSetDefaultWorkspaceCall {
+func (mr *MockConfigFileInterfaceMockRecorder) SetDefaultWorkspace(ctx, config, name any) *MockConfigFileInterfaceSetDefaultWorkspaceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultWorkspace", reflect.TypeOf((*MockConfigFileInterface)(nil).SetDefaultWorkspace), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultWorkspace", reflect.TypeOf((*MockConfigFileInterface)(nil).SetDefaultWorkspace), ctx, config, name)
 	return &MockConfigFileInterfaceSetDefaultWorkspaceCall{Call: call}
 }
 

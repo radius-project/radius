@@ -1,9 +1,9 @@
 {
 	"experimentalFeaturesEnabled": {
-	  "extensibility": true
+		"extensibility": true
 	},
 	"extensions": {
-	  "radius": "br:biceptypes.azurecr.io/radius-aci:latest",
-	  "aws": "br:biceptypes.azurecr.io/aws:latest"
+		"radius": "br:biceptypes.azurecr.io/radius:latest",
+		"aws": "br:biceptypes.azurecr.io/aws:latest"
 	}
-  }
+}
