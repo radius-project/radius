@@ -92,13 +92,9 @@ func Test_Run(t *testing.T) {
 									"description": "The name of the database.",
 									"readOnly":    true,
 								},
-								"host": map[string]any{
-									"type":        "string",
-									"description": "The name of the host.",
-								},
 							},
 							"required": []any{
-								"application", "environment",
+								"environment",
 							},
 						},
 					},
@@ -131,13 +127,9 @@ func Test_Run(t *testing.T) {
 							"description": "The name of the database.",
 							"readOnly":    true,
 						},
-						"host": map[string]any{
-							"type":        "string",
-							"description": "The name of the host.",
-						},
 					},
 					"required": []any{
-						"application", "environment",
+						"environment",
 					},
 				},
 			}},
@@ -179,11 +171,10 @@ DESCRIPTION:
 APIVERSION : 2023-10-01-preview
 
   REQUIRED PROPERTIES:
-    - application (string) The name of the application.
     - environment (string) The name of the environment.
 
   OPTIONAL PROPERTIES:
-    - host (string) The name of the host.
+    - application (string) The name of the application.
 
   READONLY PROPERTIES:
     - database (string) The name of the database.
