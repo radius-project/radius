@@ -90,7 +90,7 @@ model IdentitySettings {
   @doc("The resource ID of the provisioned identity")
   resource?: string;
 
-  @doc("The name of the managed identity")
+  @doc("The list of user assigned managed identities")
   managedIdentity?: string[];
 }
 
@@ -103,7 +103,13 @@ enum IdentitySettingKind {
   `azure.com.workload`: "azure.com.workload",
 
   @doc("User assigned managed identity")
-  managedIdentity: "managedIdentity",
+  userAssigned: "userAssigned",
+
+  @doc("System assigned managed identity")
+  systemAssigned: "systemAssigned",
+
+  @doc("System assigned and user assigned managed identity")
+  systemAssignedUserAssigned: "systemAssignedUserAssigned",
 }
 
 @discriminator("kind")

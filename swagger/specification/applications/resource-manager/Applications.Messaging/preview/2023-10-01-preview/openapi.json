@@ -484,7 +484,9 @@
       "enum": [
         "undefined",
         "azure.com.workload",
-        "managedIdentity"
+        "userAssigned",
+        "systemAssigned",
+        "systemAssignedUserAssigned"
       ],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
@@ -501,9 +503,19 @@
             "description": "azure ad workload identity"
           },
           {
-            "name": "managedIdentity",
-            "value": "managedIdentity",
+            "name": "userAssigned",
+            "value": "userAssigned",
             "description": "User assigned managed identity"
+          },
+          {
+            "name": "systemAssigned",
+            "value": "systemAssigned",
+            "description": "System assigned managed identity"
+          },
+          {
+            "name": "systemAssignedUserAssigned",
+            "value": "systemAssignedUserAssigned",
+            "description": "System assigned and user assigned managed identity"
           }
         ]
       }
@@ -526,7 +538,7 @@
         },
         "managedIdentity": {
           "type": "array",
-          "description": "The name of the managed identity",
+          "description": "The list of user assigned managed identities",
           "items": {
             "type": "string"
           }

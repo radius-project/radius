@@ -353,7 +353,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							ResourceGroup: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
 						},
 						Identity: &rpv1.IdentitySettings{
-							Kind:            rpv1.ManagedIdentity,
+							Kind:            rpv1.SystemAssignedUserAssigned,
 							ManagedIdentity: []string{"test-mi"},
 						},
 					},
@@ -582,10 +582,10 @@ func TestConvertDataModelWithACIToVersioned(t *testing.T) {
 	require.Equal(t, "aci", string(*envCompute.Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
 	require.Equal(t, &IdentitySettings{
-		Kind:            to.Ptr(IdentitySettingKindManagedIdentity),
+		Kind:            to.Ptr(IdentitySettingKindUserAssigned),
 		ManagedIdentity: []*string{to.Ptr("test-mi-0"), to.Ptr("test-mi-1")},
 	}, envCompute.Identity)
-	require.Equal(t, "managedIdentity", string(*envCompute.Identity.Kind))
+	require.Equal(t, "userAssigned", string(*envCompute.Identity.Kind))
 	// validate managed identity urls match the template input
 	for i, mi := range envCompute.Identity.ManagedIdentity {
 		var expectedUserAssignedManagedIdentityName = "test-mi-" + fmt.Sprintf("%d", i)

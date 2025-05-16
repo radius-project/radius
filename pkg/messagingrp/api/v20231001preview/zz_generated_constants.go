@@ -49,18 +49,24 @@ type IdentitySettingKind string
 const (
 // IdentitySettingKindAzureComWorkload - azure ad workload identity
 	IdentitySettingKindAzureComWorkload IdentitySettingKind = "azure.com.workload"
-// IdentitySettingKindManagedIdentity - User assigned managed identity
-	IdentitySettingKindManagedIdentity IdentitySettingKind = "managedIdentity"
+// IdentitySettingKindSystemAssigned - System assigned managed identity
+	IdentitySettingKindSystemAssigned IdentitySettingKind = "systemAssigned"
+// IdentitySettingKindSystemAssignedUserAssigned - System assigned and user assigned managed identity
+	IdentitySettingKindSystemAssignedUserAssigned IdentitySettingKind = "systemAssignedUserAssigned"
 // IdentitySettingKindUndefined - undefined identity
 	IdentitySettingKindUndefined IdentitySettingKind = "undefined"
+// IdentitySettingKindUserAssigned - User assigned managed identity
+	IdentitySettingKindUserAssigned IdentitySettingKind = "userAssigned"
 )
 
 // PossibleIdentitySettingKindValues returns the possible values for the IdentitySettingKind const type.
 func PossibleIdentitySettingKindValues() []IdentitySettingKind {
 	return []IdentitySettingKind{	
 		IdentitySettingKindAzureComWorkload,
-		IdentitySettingKindManagedIdentity,
+		IdentitySettingKindSystemAssigned,
+		IdentitySettingKindSystemAssignedUserAssigned,
 		IdentitySettingKindUndefined,
+		IdentitySettingKindUserAssigned,
 	}
 }
 
