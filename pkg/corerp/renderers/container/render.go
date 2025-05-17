@@ -757,6 +757,17 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
 				}
 			}
+
+			// handles env variable injections for connections to UDT.
+			for key, value := range properties.OutputVariables {
+				stringValue, ok := value.(string)
+				if !ok {
+					fmt.Printf("skipping env var %q, value is not a string\n", key)
+					continue
+				}
+				env_key := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
+				env[env_key] = corev1.EnvVar{Name: env_key, Value: stringValue}
+			}
 		}
 	}
 

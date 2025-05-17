@@ -249,6 +249,7 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 						"radiusManaged": true,
 					},
 				},
+				"outputVariables": map[string]any{},
 				"recipe": map[string]any{
 					"templateKind":    "test",
 					"templatePath":    "test-path",
