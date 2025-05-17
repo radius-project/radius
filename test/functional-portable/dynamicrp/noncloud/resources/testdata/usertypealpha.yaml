@@ -13,6 +13,15 @@ types:
             environment:
               type: string
               description: The resource ID of the environment.
+            status:
+              type: object
+              properties:
+                binding:
+                  type: object
+                  properties:
+                    port:
+                      type: string
+                      description: The port the container listens on.
           required:
             - application
             - environment
