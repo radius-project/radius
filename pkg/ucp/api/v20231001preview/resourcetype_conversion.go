@@ -56,6 +56,8 @@ func (src *ResourceTypeResource) ConvertTo() (v1.DataModelInterface, error) {
 		DefaultAPIVersion: src.Properties.DefaultAPIVersion,
 	}
 
+	dst.Properties.Description = src.Properties.Description
+
 	return dst, nil
 }
 
@@ -76,6 +78,7 @@ func (dst *ResourceTypeResource) ConvertFrom(src v1.DataModelInterface) error {
 		ProvisioningState: to.Ptr(ProvisioningState(dm.InternalMetadata.AsyncProvisioningState)),
 		Capabilities:      to.SliceOfPtrs(dm.Properties.Capabilities...),
 		DefaultAPIVersion: dm.Properties.DefaultAPIVersion,
+		Description:       dm.Properties.Description,
 	}
 
 	return nil

@@ -49,7 +49,7 @@ var (
 						Name: to.Ptr("Applications.Test1"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resourceType1": {
-								APIVersions: map[string]map[string]any{
+								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 									version: {},
 								},
 								DefaultAPIVersion: to.Ptr(version),
@@ -63,7 +63,7 @@ var (
 						Name: to.Ptr("Applications.Test2"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resourceType2": {
-								APIVersions: map[string]map[string]any{
+								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 									version: {},
 								},
 								DefaultAPIVersion: to.Ptr(version),
@@ -84,7 +84,7 @@ var (
 						Name: to.Ptr("Applications.Test3"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resourceType3": {
-								APIVersions: map[string]map[string]any{
+								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 									version: {},
 								},
 								DefaultAPIVersion: to.Ptr(version),
@@ -98,7 +98,7 @@ var (
 						Name: to.Ptr("Applications.Core"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"environments": {
-								APIVersions: map[string]map[string]any{
+								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 									version: {},
 								},
 								DefaultAPIVersion: to.Ptr(version),
@@ -1074,7 +1074,7 @@ func Test_ResourceProvider(t *testing.T) {
 			Name: to.Ptr("Applications.Test1"),
 			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 				"resourceType1": {
-					APIVersions: map[string]map[string]any{
+					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 						version: {},
 					},
 					DefaultAPIVersion: to.Ptr(version),

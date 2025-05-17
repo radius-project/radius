@@ -46,4 +46,7 @@ type ResourceTypeProperties struct {
 
 	// DefaultAPIVersion is the default API version for this resource type.
 	DefaultAPIVersion *string `json:"defaultApiVersion"`
+
+	// Description of the resource type.
+	Description *string `json:"description,omitempty"`
 }

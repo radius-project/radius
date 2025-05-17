@@ -9,7 +9,18 @@
         "capabilities": ["SupportsRecipes"],
         "defaultApiVersion": "2025-01-01",
         "apiVersions": {
-          "2025-01-01": {}
+          "2025-01-01": {
+            "schema": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                }
+              }
+            }
+          }
         }
       }
     }
