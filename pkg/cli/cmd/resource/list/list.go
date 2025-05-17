@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +50,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 sample list of resourceType: Applications.Core/containers, Applications.Core/gateways, Applications.Dapr/daprPubSubBrokers, Applications.Core/extenders, Applications.Datastores/mongoDatabases, Applications.Messaging/rabbitMQMessageQueues, Applications.Datastores/redisCaches, Applications.Datastores/sqlDatabases, Applications.Dapr/daprStateStores, Applications.Dapr/daprSecretStores
 
 # list all resources of a specified type in the default environment
-
 rad resource list Applications.Core/containers
 rad resource list Applications.Core/gateways
 
@@ -58,8 +58,20 @@ rad resource list Applications.Core/containers --application icecream-store
 
 # list all resources of a specified type in an application (shorthand flag)
 rad resource list Applications.Core/containers -a icecream-store
+
+# list all resources of a specified type in an environment
+rad resource list Applications.Core/containers --environment dev-env
+
+# list all resources of a specified type in an environment (shorthand flag)
+rad resource list Applications.Core/containers -e dev-env
+
+# list all resources in an environment (no resource type specified)
+rad resource list --environment dev-env
+
+# list all resources in the default environment
+rad resource list
 `,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -67,6 +79,7 @@ rad resource list Applications.Core/containers -a icecream-store
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddEnvironmentNameFlag(cmd)
 
 	return cmd, runner
 }
@@ -78,6 +91,7 @@ type Runner struct {
 	Output                    output.Interface
 	Workspace                 *workspaces.Workspace
 	ApplicationName           string
+	EnvironmentName           string
 	Format                    string
 	ResourceType              string
 	ResourceTypeSuffix        string
@@ -118,11 +132,29 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.ApplicationName = applicationName
 
-	r.ResourceProviderNameSpace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
+	environmentName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return err
 	}
-	r.ResourceType = r.ResourceProviderNameSpace + "/" + r.ResourceTypeSuffix
+	
+	if environmentName == "" && workspace.Environment != "" {
+		id, err := resources.ParseResource(workspace.Environment)
+		if err != nil {
+			return err
+		}
+		environmentName = id.Name()
+	}
+	r.EnvironmentName = environmentName
+
+	// If we're listing all resources in an environment (no resource type specified),
+	// we don't need to validate the resource type
+	if len(args) > 0 {
+		r.ResourceProviderNameSpace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
+		if err != nil {
+			return err
+		}
+		r.ResourceType = r.ResourceProviderNameSpace + "/" + r.ResourceTypeSuffix
+	}
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -148,17 +180,33 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	var resourceList []generated.GenericResource
 
-	_, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNameSpace, r.ResourceTypeSuffix, client)
-	if err != nil {
-		return err
+	// If neither application name nor environment name is provided,
+	// and no resource type is specified, we can't list all resources
+	if r.ApplicationName == "" && r.EnvironmentName == "" && r.ResourceType == "" {
+		return clierrors.Message("Please specify a resource type, application name, or environment name")
 	}
 
-	if r.ApplicationName == "" {
-		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
+	// If no resource type is specified, but an environment name is provided,
+	// list all resources in the environment
+	if r.ResourceType == "" && r.EnvironmentName != "" {
+		resourceList, err = client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
 		if err != nil {
 			return err
 		}
-	} else {
+		return r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetGenericResourceTableFormat())
+	}
+
+	// If a resource type is specified, check if it's valid
+	if r.ResourceType != "" {
+		_, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNameSpace, r.ResourceTypeSuffix, client)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Handle standard flows now that we've handled the special cases
+	if r.ApplicationName != "" {
+		// List resources in the application
 		_, err = client.GetApplication(ctx, r.ApplicationName)
 		if clients.Is404Error(err) {
 			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
@@ -166,7 +214,23 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+		if r.ResourceType != "" {
+			resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+		} else {
+			resourceList, err = client.ListResourcesInApplication(ctx, r.ApplicationName)
+		}
+		if err != nil {
+			return err
+		}
+	} else if r.EnvironmentName != "" {
+		// List resources in the environment
+		resourceList, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
+		if err != nil {
+			return err
+		}
+	} else {
+		// List resources of type
+		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
 		if err != nil {
 			return err
 		}
