@@ -48,10 +48,6 @@ func TestAddConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			tmpdir := t.TempDir()
-			_, recipeMetadata, _ := buildTestInputs()
-			if tt.desc == "invalid resource id" {
-				recipeMetadata.EnvironmentID = "//planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env"
-			}
 			err := addSecretsToGitConfig(tmpdir, getSecretList(), tt.templatePath)
 			if tt.expectedErr == nil {
 				require.NoError(t, err)

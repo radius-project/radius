@@ -775,7 +775,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.Definition, tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})

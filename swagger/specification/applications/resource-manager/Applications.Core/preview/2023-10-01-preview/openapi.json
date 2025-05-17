@@ -4177,6 +4177,20 @@
         "templatePath"
       ]
     },
+    "RegistryAuthConfig": {
+      "type": "object",
+      "description": "Authentication configuration for private Terraform registry mirrors.",
+      "properties": {
+        "token": {
+          "$ref": "#/definitions/SecretReference",
+          "description": "Token-based authentication for Terraform registry mirrors."
+        },
+        "credentials": {
+          "$ref": "#/definitions/SecretConfig",
+          "description": "Credentials-based authentication for Terraform registry mirrors."
+        }
+      }
+    },
     "RegistrySecretConfig": {
       "type": "object",
       "description": "Registry Secret Configuration used to authenticate to private bicep registries.",
@@ -4667,6 +4681,10 @@
             "type": "array",
             "x-ms-identifiers": []
           }
+        },
+        "registry": {
+          "$ref": "#/definitions/TerraformRegistryConfig",
+          "description": "Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror."
         }
       }
     },
@@ -4685,6 +4703,27 @@
         }
       ],
       "x-ms-discriminator-value": "terraform"
+    },
+    "TerraformRegistryConfig": {
+      "type": "object",
+      "description": "Configuration for Terraform provider registry mirroring.",
+      "properties": {
+        "mirror": {
+          "type": "string",
+          "description": "Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'"
+        },
+        "providerMappings": {
+          "type": "object",
+          "description": "Provider mappings to translate between official and custom provider identifiers.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "authentication": {
+          "$ref": "#/definitions/RegistryAuthConfig",
+          "description": "Authentication configuration for accessing private Terraform registry mirrors."
+        }
+      }
     },
     "TlsMinVersion": {
       "type": "string",

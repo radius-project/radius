@@ -156,15 +156,15 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	)
 
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.Recipe.Name, opts.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
 	resp, err := poller.PollUntilDone(ctx, &clients.PollUntilDoneOptions{Frequency: pollFrequency})
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.Recipe.Name, opts.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareRecipeResponse(opts.Definition.TemplatePath, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}

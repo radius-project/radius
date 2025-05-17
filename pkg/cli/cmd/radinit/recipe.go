@@ -18,6 +18,7 @@ package radinit
 
 import (
 	"context"
+	"strings"
 
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
@@ -31,7 +32,7 @@ import (
 
 const (
 	// RecipeRepositoryPrefix is the prefix for the repository path.
-	RecipeRepositoryPrefix = "ghcr.io/radius-project/recipes/local-dev/"
+	DefaultRecipeRepositoryPrefix = "ghcr.io/radius-project/recipes/local-dev/"
 )
 
 type DevRecipe struct {
@@ -52,51 +53,58 @@ type DevRecipe struct {
 }
 
 // AvailableDevRecipes returns the list of available dev recipes.
-//
-// If we want to add a new recipe, we need to add it here.
-func AvailableDevRecipes() []DevRecipe {
+// If registryOverride is provided, it will use that as the base registry URL instead of the default.
+func AvailableDevRecipes(registryOverride string) []DevRecipe {
+	repoPrefix := DefaultRecipeRepositoryPrefix
+	if registryOverride != "" {
+		if !strings.HasSuffix(registryOverride, "/") {
+			registryOverride += "/"
+		}
+		repoPrefix = registryOverride
+	}
+
 	return []DevRecipe{
 		{
 			"mongodatabases",
 			ds_ctrl.MongoDatabasesResourceType,
-			RecipeRepositoryPrefix + "mongodatabases",
+			repoPrefix + "mongodatabases",
 		},
 		{
 			"rediscaches",
 			ds_ctrl.RedisCachesResourceType,
-			RecipeRepositoryPrefix + "rediscaches",
+			repoPrefix + "rediscaches",
 		},
 		{
 			"sqldatabases",
 			ds_ctrl.SqlDatabasesResourceType,
-			RecipeRepositoryPrefix + "sqldatabases",
+			repoPrefix + "sqldatabases",
 		},
 		{
 			"rabbitmqqueues",
 			msg_ctrl.RabbitMQQueuesResourceType,
-			RecipeRepositoryPrefix + "rabbitmqqueues",
+			repoPrefix + "rabbitmqqueues",
 		},
 		{
 			"pubsubbrokers",
 			dapr_ctrl.DaprPubSubBrokersResourceType,
-			RecipeRepositoryPrefix + "pubsubbrokers",
+			repoPrefix + "pubsubbrokers",
 		},
 		{
 			"secretstores",
 			dapr_ctrl.DaprSecretStoresResourceType,
-			RecipeRepositoryPrefix + "secretstores",
+			repoPrefix + "secretstores",
 		},
 		{
 			"statestores",
 			dapr_ctrl.DaprStateStoresResourceType,
-			RecipeRepositoryPrefix + "statestores",
+			repoPrefix + "statestores",
 		},
 	}
 }
 
 //go:generate mockgen -typed -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/radius-project/radius/pkg/cli/cmd/radinit github.com/radius-project/radius/pkg/cli/cmd/radinit DevRecipeClient
 type DevRecipeClient interface {
-	GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.RecipePropertiesClassification, error)
+	GetDevRecipes(ctx context.Context, registryOverride string) (map[string]map[string]corerp.RecipePropertiesClassification, error)
 }
 
 type devRecipeClient struct {
@@ -108,16 +116,20 @@ func NewDevRecipeClient() DevRecipeClient {
 }
 
 // GetDevRecipes is a function that queries a registry for recipes with a specific tag and returns a map of recipes.
+// If registryOverride is provided, it will use that as the base registry URL instead of the default.
 // If an error occurs, an error is returned.
-func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.RecipePropertiesClassification, error) {
+func (drc *devRecipeClient) GetDevRecipes(ctx context.Context, registryOverride string) (map[string]map[string]corerp.RecipePropertiesClassification, error) {
 	// The tag will be the major.minor version of the release.
 	tag := version.Channel()
 	if version.IsEdgeChannel() {
 		tag = "latest"
 	}
 
+	// Get available recipes with the registry override if provided
+	recipes := AvailableDevRecipes(registryOverride)
+
 	validDevRecipes := map[string]map[string]corerp.RecipePropertiesClassification{}
-	for _, devRecipe := range AvailableDevRecipes() {
+	for _, devRecipe := range recipes {
 		repo, err := remote.NewRepository(devRecipe.RepoPath)
 		if err != nil {
 			continue
