@@ -30,6 +30,11 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
+const (
+	retryCount = 5
+	retryDelay = 60 * time.Second
+)
+
 func NewAzureVirtualNetworkSubnetHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureVirtualNetworkSubnetHandler{arm: arm}
 }
@@ -62,7 +67,7 @@ func (handler *azureVirtualNetworkSubnetHandler) Put(ctx context.Context, option
 	orgPrefix := to.String(subnet.Properties.AddressPrefix)
 
 	var lastErr error
-	for retry := 0; retry < 5; retry++ {
+	for retry := 0; retry < retryCount; retry++ {
 		// if subnet.Properties.AddressPrefix is nil, we need to find an available subnet
 		if orgPrefix == "" {
 			// TODO: for loop until we find an available subnet
@@ -108,7 +113,7 @@ func (handler *azureVirtualNetworkSubnetHandler) Put(ctx context.Context, option
 			lastErr = err
 			logger.Info("failed to create subnet", "error", err, "retry", retry)
 			fmt.Printf("\n\n### failed to create subnet: %s, retry: %d, %s", err.Error(), retry, *subnet.Properties.AddressPrefix)
-			time.Sleep(60 * time.Second)
+			time.Sleep(retryDelay)
 			continue
 		}
 
@@ -117,7 +122,7 @@ func (handler *azureVirtualNetworkSubnetHandler) Put(ctx context.Context, option
 			lastErr = err
 			logger.Info("failed to poll subnet update", "error", err, "retry", retry)
 			fmt.Printf("\n\n### failed to poll subnet update: %s, retry: %d, %s", err.Error(), retry, *subnet.Properties.AddressPrefix)
-			time.Sleep(60 * time.Second)
+			time.Sleep(retryDelay)
 			continue
 		}
 

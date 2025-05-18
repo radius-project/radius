@@ -27,6 +27,7 @@ import (
 	azruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	cgclient "github.com/radius-project/radius/pkg/sdk/v20241101preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -49,6 +50,12 @@ func (handler *azureCGProfileHandler) Put(ctx context.Context, options *PutOptio
 	if subID == "" || resourceGroupName == "" {
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
+
+	location, err := GetResourceGroupLocation(ctx, handler.arm.ClientOptions, subID, resourceGroupName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find resource group location: %w", err)
+	}
+	profile.Location = to.Ptr(location)
 
 	pl, err := armruntime.NewPipeline("github.com/radius-project/radius", "v0.0.1", handler.arm.ClientOptions.Cred, azruntime.PipelineOptions{}, &armpolicy.ClientOptions{})
 	if err != nil {

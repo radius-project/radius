@@ -17,8 +17,12 @@ limitations under the License.
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"strings"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 )
 
 // ValidateResourceIDsForResource checks if the given properties map contains all the required keys and returns an error if
@@ -65,4 +69,19 @@ func GetMapValue[T any](collection any, key string) (T, error) {
 	default:
 		return defaultValue, fmt.Errorf("unsupported type: %T", c)
 	}
+}
+
+func GetResourceGroupLocation(ctx context.Context, options clientv2.Options, subscriptionID string, resourceGroupName string) (string, error) {
+	client, err := armresources.NewResourceGroupsClient(subscriptionID, options.Cred, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// Get resource group
+	rg, err := client.Get(ctx, resourceGroupName, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return *rg.Location, nil
 }

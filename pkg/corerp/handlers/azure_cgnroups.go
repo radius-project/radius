@@ -18,7 +18,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -54,18 +53,17 @@ func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptio
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
 
-	// for key, val := range options.DependencyProperties {
-	// 	logger.Info("dependency property", "key", key, "value", val)
-	// }
+	location, err := GetResourceGroupLocation(ctx, handler.arm.ClientOptions, subID, resourceGroupName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find resource group location: %w", err)
+	}
+	nGroup.Location = to.Ptr(location)
 
-	// logger.Info("ngroup dependency property", "property", options.DependencyProperties[rpv1.LocalIDAzureCGProfile])
 	cgpID, ok := options.DependencyProperties[rpv1.LocalIDAzureCGProfile]["containerGroupProfileID"]
 	if !ok {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
 	nGroup.Properties.ContainerGroupProfiles[0].Resource.ID = to.Ptr(cgpID)
-	// logger.Info("ngroup ID from cgid: ", "key", cgpID)
-	// logger.Info("ngroup ID from ngroup object: ", "key", nGroup.Properties.ContainerGroupProfiles[0].Resource.ID)
 
 	pl, err := armruntime.NewPipeline("github.com/radius-project/radius", "v0.0.1", handler.arm.ClientOptions.Cred, azruntime.PipelineOptions{}, &armpolicy.ClientOptions{})
 	if err != nil {
@@ -74,9 +72,6 @@ func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptio
 	cgp := ngroupsclient.NewNGroupsClient(subID, pl)
 
 	logger.Info("creating NGroup...")
-	// Log the exact JSON payload before sending
-	jsonBytes, _ := json.MarshalIndent(nGroup, "", "  ")
-	logger.Info("Request payload", "json", string(jsonBytes))
 	poller, err := cgp.BeginCreateOrUpdate(ctx, resourceGroupName, *nGroup.Name, *nGroup, nil)
 	if err != nil {
 		return nil, err

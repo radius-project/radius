@@ -23,6 +23,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/radius-project/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 func NewAzureAppGWHandler(arm *armauth.ArmConfig) ResourceHandler {
@@ -36,7 +37,7 @@ type azureAppGWHandler struct {
 func (handler *azureAppGWHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	appgw, ok := options.Resource.CreateResource.Data.(*armnetwork.ApplicationGateway)
 	if !ok {
-		return nil, errors.New("cannot parse subnet")
+		return nil, errors.New("cannot parse application gateway")
 	}
 
 	subID := options.Resource.ID.FindScope("subscriptions")
@@ -45,6 +46,12 @@ func (handler *azureAppGWHandler) Put(ctx context.Context, options *PutOptions) 
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
 
+	location, err := GetResourceGroupLocation(ctx, handler.arm.ClientOptions, subID, resourceGroupName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find resource group location: %w", err)
+	}
+	appgw.Location = to.Ptr(location)
+
 	networkClientFactory, err := armnetwork.NewClientFactory(subID, handler.arm.ClientOptions.Cred, nil)
 	if err != nil {
 		return nil, err
@@ -52,7 +59,6 @@ func (handler *azureAppGWHandler) Put(ctx context.Context, options *PutOptions) 
 	cli := networkClientFactory.NewApplicationGatewaysClient()
 
 	_, err = cli.Get(ctx, resourceGroupName, *appgw.Name, nil)
-	// TODO: needs to validate the properties of the existing resource to see if it needs to be updated. For now, we just create it.
 	if err != nil {
 		poller, err := cli.BeginCreateOrUpdate(ctx, resourceGroupName, *appgw.Name, *appgw, nil)
 		if err != nil {

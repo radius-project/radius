@@ -36,11 +36,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-const (
-	// hard-coded for PoC.
-	aciLocation = "West US 3"
-)
-
 type Renderer struct {
 }
 
@@ -73,7 +68,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	publicIP := &armnetwork.PublicIPAddress{
 		Name:     to.Ptr(gateway.Name),
-		Location: to.Ptr(aciLocation),
+		Location: to.Ptr(gateway.Location),
 		SKU: &armnetwork.PublicIPAddressSKU{
 			Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard),
 			Tier: to.Ptr(armnetwork.PublicIPAddressSKUTierRegional),
@@ -104,7 +99,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	nsgName := gateway.Name + "-nsg"
 	nsg := &armnetwork.SecurityGroup{
 		Name:     to.Ptr(nsgName),
-		Location: to.Ptr(aciLocation),
+		Location: to.Ptr(gateway.Location),
 		Properties: &armnetwork.SecurityGroupPropertiesFormat{
 			SecurityRules: []*armnetwork.SecurityRule{
 				{
@@ -222,7 +217,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	frontendPortName := fmt.Sprintf("port_%d", targetPort)
 	appgw := &armnetwork.ApplicationGateway{
 		Name:     to.Ptr(gateway.Name),
-		Location: to.Ptr(aciLocation),
+		Location: to.Ptr(gateway.Location),
 		Properties: &armnetwork.ApplicationGatewayPropertiesFormat{
 			SKU: &armnetwork.ApplicationGatewaySKU{
 				Name: to.Ptr(armnetwork.ApplicationGatewaySKUNameStandardV2),

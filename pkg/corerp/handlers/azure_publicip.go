@@ -37,7 +37,7 @@ type azurePublicIPHandler struct {
 func (handler *azurePublicIPHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	publicIP, ok := options.Resource.CreateResource.Data.(*armnetwork.PublicIPAddress)
 	if !ok {
-		return nil, errors.New("cannot parse subnet")
+		return nil, errors.New("cannot parse public IP address")
 	}
 
 	subID := options.Resource.ID.FindScope("subscriptions")
@@ -45,6 +45,12 @@ func (handler *azurePublicIPHandler) Put(ctx context.Context, options *PutOption
 	if subID == "" || resourceGroupName == "" {
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
+
+	location, err := GetResourceGroupLocation(ctx, handler.arm.ClientOptions, subID, resourceGroupName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find resource group location: %w", err)
+	}
+	publicIP.Location = to.Ptr(location)
 
 	networkClientFactory, err := armnetwork.NewClientFactory(subID, handler.arm.ClientOptions.Cred, nil)
 	if err != nil {

@@ -20,11 +20,6 @@ import (
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
-const (
-	// hard-coded for PoC.
-	aciLocation = "West US 3"
-)
-
 type Renderer struct {
 }
 
@@ -86,7 +81,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	// We build the environment variable list in a stable order for testability
-	envData, secretData, err := getEnvVarsAndSecretData(resource, properties.Application, options.Dependencies)
+	envData, secretData, err := getEnvVarsAndSecretData(resource, options.Dependencies)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("failed to obtain environment variables and secret data: %w", err)
 	}
@@ -217,7 +212,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						Name: to.Ptr(resource.Name),
 						Properties: &armnetwork.ProbePropertiesFormat{
 							Protocol:          to.Ptr(armnetwork.ProbeProtocolTCP),
-							Port:              to.Ptr[int32](firstPort),
+							Port:              to.Ptr(firstPort),
 							IntervalInSeconds: to.Ptr[int32](15),
 							NumberOfProbes:    to.Ptr[int32](2),
 						},
@@ -228,8 +223,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						Name: to.Ptr(resource.Name),
 						Properties: &armnetwork.LoadBalancingRulePropertiesFormat{
 							Protocol:       to.Ptr(armnetwork.TransportProtocolTCP),
-							FrontendPort:   to.Ptr[int32](firstPort),
-							BackendPort:    to.Ptr[int32](firstPort),
+							FrontendPort:   to.Ptr(firstPort),
+							BackendPort:    to.Ptr(firstPort),
 							EnableTCPReset: to.Ptr(true),
 							FrontendIPConfiguration: &armnetwork.SubResource{
 								ID: to.Ptr(frontendIPConfID),
@@ -294,7 +289,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	profile := &ngroupsclient.ContainerGroupProfile{
-		Location: to.Ptr(aciLocation),
+		Location: to.Ptr(resource.Location),
 		Name:     to.Ptr(resource.Name),
 		Properties: &ngroupsclient.ContainerGroupProfileProperties{
 			Containers: []*ngroupsclient.Container{
@@ -303,13 +298,13 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 					Properties: &ngroupsclient.ContainerProperties{
 						Image:                to.Ptr(resource.Properties.Container.Image),
 						EnvironmentVariables: env,
-						Command:              to.SliceOfPtrs[string](properties.Container.Command...),
+						Command:              to.SliceOfPtrs(properties.Container.Command...),
 						Ports:                containerPorts,
 						Resources: &ngroupsclient.ResourceRequirements{
 							// Hard-coded right now!
 							Requests: &ngroupsclient.ResourceRequests{
-								CPU:        to.Ptr[float64](1.0),
-								MemoryInGB: to.Ptr[float64](2.0),
+								CPU:        to.Ptr(1.0),
+								MemoryInGB: to.Ptr(2.0),
 							},
 						},
 					},
@@ -338,7 +333,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// TODO: rename to ngroup
 	nGroup := &ngroupsclient.NGroup{
 		Name:     to.Ptr(resource.Name),
-		Location: to.Ptr(aciLocation),
+		Location: to.Ptr(resource.Location),
 		Identity: ProcessNGroupIdentity(options.Environment),
 		Properties: &ngroupsclient.NGroupProperties{
 			UpdateProfile: &ngroupsclient.UpdateProfile{
@@ -401,7 +396,7 @@ type EnvVar struct {
 	Value string
 }
 
-func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationName string, dependencies map[string]renderers.RendererDependency) (map[string]EnvVar, map[string]EnvVar, error) {
+func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies map[string]renderers.RendererDependency) (map[string]EnvVar, map[string]EnvVar, error) {
 	env := map[string]EnvVar{}
 	secretData := map[string]EnvVar{}
 	properties := resource.Properties
@@ -449,10 +444,10 @@ func getSortedKeys(env map[string]EnvVar) []string {
 
 func ProcessNGroupIdentity(envOptions renderers.EnvironmentOptions) *ngroupsclient.NGroupIdentity {
 	identity := &ngroupsclient.NGroupIdentity{
-		Type: ConvertToManagedIdentityTypes(envOptions.Identity.Kind),
+		Type: ConvertToManagedIdentityTypes(envOptions.Identity),
 	}
 
-	if envOptions.Compute.Identity.ManagedIdentity != nil {
+	if envOptions.Compute.Identity != nil && envOptions.Compute.Identity.ManagedIdentity != nil {
 		identity.UserAssignedIdentities = ConvertToUserAssignedIdentity(envOptions.Compute.Identity.ManagedIdentity)
 	}
 	return identity
@@ -468,13 +463,18 @@ func ConvertToUserAssignedIdentity(urls []string) map[string]*ngroupsclient.User
 	return identities
 }
 
-func ConvertToManagedIdentityTypes(kind rpv1.IdentitySettingKind) *ngroupsclient.ResourceIdentityType {
-	switch kind {
-	case rpv1.UserAssigned:
-		return to.Ptr(ngroupsclient.ResourceIdentityTypeUserAssigned)
-	case rpv1.SystemAssignedUserAssigned:
-		return to.Ptr(ngroupsclient.ResourceIdentityTypeSystemAssignedUserAssigned)
-	default:
-		return to.Ptr(ngroupsclient.ResourceIdentityTypeSystemAssigned) // default to SystemAssigned if no identity kind is set
+func ConvertToManagedIdentityTypes(is *rpv1.IdentitySettings) *ngroupsclient.ResourceIdentityType {
+	identityType := ngroupsclient.ResourceIdentityTypeSystemAssigned
+
+	// Only override default if we have settings with a specific non-default kind
+	if is != nil {
+		switch is.Kind {
+		case rpv1.UserAssigned:
+			identityType = ngroupsclient.ResourceIdentityTypeUserAssigned
+		case rpv1.SystemAssignedUserAssigned:
+			identityType = ngroupsclient.ResourceIdentityTypeSystemAssignedUserAssigned
+		}
 	}
+
+	return to.Ptr(identityType)
 }

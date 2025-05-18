@@ -38,7 +38,7 @@ type azureNSGHandler struct {
 func (handler *azureNSGHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	nsg, ok := options.Resource.CreateResource.Data.(*armnetwork.SecurityGroup)
 	if !ok {
-		return nil, errors.New("cannot parse subnet")
+		return nil, errors.New("cannot parse network security group")
 	}
 
 	subID := options.Resource.ID.FindScope("subscriptions")
@@ -46,6 +46,12 @@ func (handler *azureNSGHandler) Put(ctx context.Context, options *PutOptions) (m
 	if subID == "" || resourceGroupName == "" {
 		return nil, fmt.Errorf("cannot find subscription or resource group in resource ID %s", options.Resource.ID)
 	}
+
+	location, err := GetResourceGroupLocation(ctx, handler.arm.ClientOptions, subID, resourceGroupName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find resource group location: %w", err)
+	}
+	nsg.Location = to.Ptr(location)
 
 	if options.Resource.LocalID == rpv1.LocalIDAzureAppGWNetworkSecurityGroup {
 		publicIP, ok := options.DependencyProperties[rpv1.LocalIDAzurePublicIP]["publicIPAddress"]
