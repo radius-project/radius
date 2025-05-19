@@ -13,15 +13,6 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
         kind: 'systemAssigned'
       }
     }
-    recipes: {
-      'Applications.Datastores/redisCaches': {
-        default: {
-          templateKind: 'bicep'
-          plainHttp: true
-          templatePath: 'ghcr.io/radius-project/recipes/azure/rediscaches:latest'
-        }
-      }
-    }
     providers: {
       azure: {
         scope: aciScope
