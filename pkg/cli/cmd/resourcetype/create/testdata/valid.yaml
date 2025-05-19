@@ -1,4 +1,4 @@
-name: MyCompany.Resources
+namespace: MyCompany.Resources
 types:
   testResources:
     apiVersions:

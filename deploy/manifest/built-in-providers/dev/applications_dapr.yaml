@@ -1,4 +1,4 @@
-name: Applications.Dapr
+namespace: Applications.Dapr
 location:
   global:
     "http://localhost:8080"
