@@ -14,7 +14,7 @@ Now you've got something to work on. Once you've developed and tested your chang
 
 ## One last check
 
-Before proceeding, make sure your changes pass all the unit tests as well as [golint](https://golangci-lint.run/usage/install/#local-installation).
+Before proceeding, make sure your changes pass all the unit tests as well as [golint](https://golangci-lint.run/welcome/install/#local-installation).
 
 ```sh
 make build lint test

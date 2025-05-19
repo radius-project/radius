@@ -117,7 +117,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Log("Waiting for deployment ready")
-		deployment, err = waitForDeploymentReady(t, types.NamespacedName{Name: "demo", Namespace: namespace}, opts.K8sClient, deployment.ResourceVersion)
+		deployment, err = waitForDeploymentReady(t, ctx, types.NamespacedName{Name: "demo", Namespace: namespace}, opts.K8sClient, deployment.ResourceVersion)
 		require.NoError(t, err)
 
 		// Doing a basic check that the Deployment has environment variables set.
@@ -227,7 +227,7 @@ func waitForRecipeReady(t *testing.T, ctx context.Context, name types.Namespaced
 			return client.Watch(ctx, recipes, listOptions)
 		},
 	}
-	watcher, err := watchtools.NewRetryWatcher(initialVersion, lister)
+	watcher, err := watchtools.NewRetryWatcherWithContext(ctx, initialVersion, lister)
 	require.NoError(t, err)
 	defer watcher.Stop()
 
@@ -247,9 +247,9 @@ func waitForRecipeReady(t *testing.T, ctx context.Context, name types.Namespaced
 	}
 }
 
-func waitForDeploymentReady(t *testing.T, name types.NamespacedName, client *kubernetes.Clientset, initialVersion string) (*appsv1.Deployment, error) {
+func waitForDeploymentReady(t *testing.T, ctx context.Context, name types.NamespacedName, client *kubernetes.Clientset, initialVersion string) (*appsv1.Deployment, error) {
 	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
-	watcher, err := watchtools.NewRetryWatcher(initialVersion, cache.NewFilteredListWatchFromClient(client.AppsV1().RESTClient(), "deployments", name.Namespace, func(options *metav1.ListOptions) {
+	watcher, err := watchtools.NewRetryWatcherWithContext(ctx, initialVersion, cache.NewFilteredListWatchFromClient(client.AppsV1().RESTClient(), "deployments", name.Namespace, func(options *metav1.ListOptions) {
 		options.FieldSelector = "metadata.name=" + name.Name
 	}))
 	require.NoError(t, err)
