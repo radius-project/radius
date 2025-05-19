@@ -32,6 +32,7 @@ import (
 
 const (
 	EnvironmentComputeKindKubernetes = "kubernetes"
+	EnvironmentComputeKindACI        = "aci"
 	invalidLocalModulePathFmt        = "local module paths are not supported with Terraform Recipes. The 'templatePath' '%s' was detected as a local module path because it begins with '/' or './' or '../'."
 )
 
@@ -301,6 +302,29 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rpv1.En
 			},
 			Identity: identity,
 		}, nil
+
+	case *AzureContainerInstanceCompute:
+		k, err := toEnvironmentComputeKindDataModel(*v.Kind)
+		if err != nil {
+			return nil, err
+		}
+
+		var identity *rpv1.IdentitySettings
+		if v.Identity != nil {
+			identity = &rpv1.IdentitySettings{
+				Kind:            toIdentityKindDataModel(v.Identity.Kind),
+				ManagedIdentity: to.StringArray(v.Identity.ManagedIdentity),
+			}
+		}
+
+		return &rpv1.EnvironmentCompute{
+			Kind: k,
+			ACICompute: rpv1.ACIComputeProperties{
+				ResourceGroup: to.String(v.ResourceGroup),
+			},
+			Identity: identity,
+		}, nil
+
 	default:
 		return nil, v1.ErrInvalidModelConversion
 	}
@@ -330,6 +354,22 @@ func fromEnvironmentComputeDataModel(envCompute *rpv1.EnvironmentCompute) Enviro
 			compute.ResourceID = to.Ptr(envCompute.KubernetesCompute.ResourceID)
 		}
 		return compute
+
+	case rpv1.ACIComputeKind:
+		var identity *IdentitySettings
+		if envCompute.Identity != nil {
+			identity = &IdentitySettings{
+				Kind:            fromIdentityKind(envCompute.Identity.Kind),
+				ManagedIdentity: to.ArrayofStringPtrs(envCompute.Identity.ManagedIdentity),
+			}
+		}
+		compute := &AzureContainerInstanceCompute{
+			Kind:          fromEnvironmentComputeKind(envCompute.Kind),
+			ResourceGroup: to.Ptr(envCompute.ACICompute.ResourceGroup),
+			Identity:      identity,
+		}
+		return compute
+
 	default:
 		return nil
 	}
@@ -339,6 +379,8 @@ func toEnvironmentComputeKindDataModel(kind string) (rpv1.EnvironmentComputeKind
 	switch kind {
 	case EnvironmentComputeKindKubernetes:
 		return rpv1.KubernetesComputeKind, nil
+	case EnvironmentComputeKindACI:
+		return rpv1.ACIComputeKind, nil
 	default:
 		return rpv1.UnknownComputeKind, &v1.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
 	}
@@ -349,6 +391,8 @@ func fromEnvironmentComputeKind(kind rpv1.EnvironmentComputeKind) *string {
 	switch kind {
 	case rpv1.KubernetesComputeKind:
 		k = EnvironmentComputeKindKubernetes
+	case rpv1.ACIComputeKind:
+		k = EnvironmentComputeKindACI
 	default:
 		k = EnvironmentComputeKindKubernetes // 2023-10-01-preview supports only kubernetes.
 	}
