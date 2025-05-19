@@ -24,15 +24,17 @@ const (
 	DaprSidecar                  ExtensionKind = "daprSidecar"
 	KubernetesMetadata           ExtensionKind = "kubernetesMetadata"
 	KubernetesNamespaceExtension ExtensionKind = "kubernetesNamespace"
+	ACIExtension                 ExtensionKind = "aci"
 )
 
 // Extension of a resource.
 type Extension struct {
-	Kind                ExtensionKind           `json:"kind,omitempty"`
-	ManualScaling       *ManualScalingExtension `json:"manualScaling,omitempty"`
-	DaprSidecar         *DaprSidecarExtension   `json:"daprSidecar,omitempty"`
-	KubernetesMetadata  *KubeMetadataExtension  `json:"kubernetesMetadata,omitempty"`
-	KubernetesNamespace *KubeNamespaceExtension `json:"kubernetesNamespace,omitempty"`
+	Kind                   ExtensionKind                    `json:"kind,omitempty"`
+	ManualScaling          *ManualScalingExtension          `json:"manualScaling,omitempty"`
+	DaprSidecar            *DaprSidecarExtension            `json:"daprSidecar,omitempty"`
+	KubernetesMetadata     *KubeMetadataExtension           `json:"kubernetesMetadata,omitempty"`
+	KubernetesNamespace    *KubeNamespaceExtension          `json:"kubernetesNamespace,omitempty"`
+	AzureContainerInstance *AzureContainerInstanceExtension `json:"aci,omitempty"`
 }
 
 // KubeMetadataExtension represents the extension of kubernetes resource.
@@ -44,6 +46,10 @@ type KubeMetadataExtension struct {
 // KubeNamespaceOverrideExtension represents the extension to override kubernetes namespace.
 type KubeNamespaceExtension struct {
 	Namespace string `json:"namespace,omitempty"`
+}
+
+type AzureContainerInstanceExtension struct {
+	ResourceGroup string `json:"resourceGroup"`
 }
 
 // FindExtension searches a slice of Extensions for one with a matching ExtensionKind.

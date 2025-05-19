@@ -70,8 +70,8 @@ env:
   CONTAINER_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
-  # bicep-types ACR url for uploading UDT Bicep types
-  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
+  # ACR url for uploading test UDT Bicep types
+  TEST_BICEP_TYPES_REGISTRY: 'testuserdefinedbiceptypes.azurecr.io'
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -323,7 +323,7 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
           rad version
-          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha.yaml --target br:${{ env.BICEP_TYPES_REGISTRY }}/testresources:latest --force
+          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:${{ env.TEST_BICEP_TYPES_REGISTRY}}/testresources:latest --force
       - name: Login to Azure
         uses: azure/login@v2
         with:
