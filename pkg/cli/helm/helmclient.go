@@ -17,181 +17,99 @@ limitations under the License.
 package helm
 
 import (
-	_ "embed"
-	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
+	"time"
 
-	"github.com/radius-project/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/strvals"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 const (
-	radiusReleaseName     = "radius"
-	radiusHelmRepo        = "oci://ghcr.io/radius-project/helm-chart"
-	RadiusSystemNamespace = "radius-system"
+	installTimeout   = time.Duration(5) * time.Minute
+	uninstallTimeout = time.Duration(5) * time.Minute
+	upgradeTimeout   = time.Duration(5) * time.Minute
 )
 
-// ChartOptions describes the options for the a helm chart.
-type ChartOptions struct {
-	// Target namespace for deployment
-	Namespace string
+//go:generate mockgen -typed -destination=./mock_helmclient.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm HelmClient
 
-	// ReleaseName specifies the release name for the helm chart.
-	ReleaseName string
+// HelmClient is an interface for interacting with Helm charts.
+type HelmClient interface {
+	// RunHelmInstall installs the Helm chart.
+	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error)
 
-	// ChartRepo specifies the helm chart repository.
-	ChartRepo string
+	// RunHelmUpgrade upgrades the Helm chart.
+	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error)
 
-	// Reinstall specifies whether to reinstall the chart (helm upgrade).
-	Reinstall bool
+	// RunHelmUninstall uninstalls the Helm chart.
+	RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string, wait bool) (*release.UninstallReleaseResponse, error)
 
-	// ChartPath specifies an override for the chart location.
-	ChartPath string
+	// RunHelmList lists the Helm releases.
+	RunHelmList(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error)
 
-	// ChartVersion specifies the chart version.
-	ChartVersion string
+	// RunHelmPull pulls the Helm chart.
+	RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error)
 
-	// SetArgs specifies as set of additional "values" to pass to helm. These are specified using the command-line syntax accepted
-	// by helm, in the order they appear on the command line (last one wins).
-	SetArgs []string
-
-	// SetFileArgs specifies as set of additional "values" from file to pass it to helm.
-	SetFileArgs []string
+	// LoadChart loads a Helm chart from the specified path.
+	LoadChart(chartPath string) (*chart.Chart, error)
 }
 
-// ApplyHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the
-// "Reinstall" option is set. It returns a boolean indicating if the chart was already installed and an error if one occurred.
-func ApplyHelmChart(options ChartOptions, kubeContext string) (bool, error) {
-	// For capturing output from helm.
-	var helmOutput strings.Builder
-	alreadyInstalled := false
+// HelmClientImpl is an implementation of the HelmClient interface.
+// It uses the Helm go sdk to perform operations on Helm charts.
+type HelmClientImpl struct{}
 
-	flags := genericclioptions.ConfigFlags{
-		Namespace: &options.Namespace,
-		Context:   &kubeContext,
-	}
+var _ HelmClient = &HelmClientImpl{}
 
-	helmConf, err := HelmConfig(&helmOutput, &flags)
-	if err != nil {
-		return false, fmt.Errorf("failed to get Helm config, err: %w, Helm output: %s", err, helmOutput.String())
-	}
-
-	var helmChart *chart.Chart
-	if options.ChartPath == "" {
-		helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)
-	} else {
-		helmChart, err = loader.Load(options.ChartPath)
-	}
-
-	if err != nil {
-		return false, fmt.Errorf("failed to load Helm chart, err: %w, Helm output: %s", err, helmOutput.String())
-	}
-
-	err = AddValues(helmChart, &options)
-	if err != nil {
-		return false, fmt.Errorf("failed to add Radius values, err: %w, Helm output: %s", err, helmOutput.String())
-	}
-
-	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
-	// TODO: Apply CRDs because Helm doesn't upgrade CRDs for you.
-	// https://github.com/radius-project/radius/issues/712
-	// We need the CRDs to be public to do this (or consider unpacking the chart
-	// for the CRDs)
-
-	histClient := helm.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
-
-	// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
-	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
-	// and invoke the install client.
-	_, err = histClient.Run(options.ReleaseName)
-	if errors.Is(err, driver.ErrReleaseNotFound) {
-		err = runHelmInstall(helmConf, helmChart, options)
-		if err != nil {
-			return false, fmt.Errorf("failed to run Radius Helm install, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
-		}
-	} else if options.Reinstall {
-		err = runHelmUpgrade(helmConf, options.ReleaseName, helmChart, options)
-		if err != nil {
-			return false, fmt.Errorf("failed to run Radius Helm upgrade, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
-		}
-	} else if err == nil {
-		alreadyInstalled = true
-	}
-	return alreadyInstalled, err
+func NewHelmClient() HelmClient {
+	return &HelmClientImpl{}
 }
 
-// AddValues parses the --set arguments in order and adds them to the helm chart values, returning an error if any of
-// the arguments are invalid.
-func AddValues(helmChart *chart.Chart, options *ChartOptions) error {
-	values := helmChart.Values
-
-	// Parse --set arguments in order so that the last one wins.
-	for _, arg := range options.SetArgs {
-		err := strvals.ParseInto(arg, values)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, arg := range options.SetFileArgs {
-		if runtime.GOOS == "windows" {
-			arg = filepath.ToSlash(arg)
-		}
-
-		reader := func(rs []rune) (any, error) {
-			data, err := os.ReadFile(string(rs))
-			return string(data), err
-		}
-
-		err := strvals.ParseIntoFile(arg, values, reader)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func runHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, options ChartOptions) error {
+func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error) {
 	installClient := helm.NewInstall(helmConf)
-	installClient.ReleaseName = options.ReleaseName
-	installClient.Namespace = options.Namespace
+	installClient.ReleaseName = releaseName
+	installClient.Namespace = namespace
 	installClient.CreateNamespace = true
-	installClient.Wait = true
 	installClient.Timeout = installTimeout
-	return runInstall(installClient, helmChart)
+	installClient.Wait = wait
+
+	return installClient.Run(helmChart, helmChart.Values)
 }
 
-func runHelmUpgrade(helmConf *helm.Configuration, releaseName string, helmChart *chart.Chart, options ChartOptions) error {
-	installClient := helm.NewUpgrade(helmConf)
-	installClient.Namespace = options.Namespace
-	installClient.Wait = true
-	installClient.Timeout = installTimeout
-	installClient.Recreate = true //force recreating radius pods on adding or modfying azprovider
-	return runUpgrade(installClient, options.ReleaseName, helmChart)
+func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error) {
+	upgradeClient := helm.NewUpgrade(helmConf)
+	upgradeClient.Namespace = namespace
+	upgradeClient.Wait = wait
+	upgradeClient.Timeout = upgradeTimeout
+	upgradeClient.Recreate = true
+
+	return upgradeClient.Run(releaseName, helmChart, helmChart.Values)
 }
 
-// RunRadiusHelmUninstall attempts to uninstall Radius from the Radius system namespace
-// using a helm configuration, and returns an error if the uninstall fails.
-func RunHelmUninstall(helmConf *helm.Configuration, options ChartOptions) error {
-	output.LogInfo("Uninstalling %s from namespace: %s", options.ReleaseName, options.Namespace)
+func (client *HelmClientImpl) RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string, wait bool) (*release.UninstallReleaseResponse, error) {
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = uninstallTimeout
-	uninstallClient.Wait = true
-	_, err := uninstallClient.Run(options.ReleaseName)
-	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("%s not found", options.ReleaseName)
-		return nil
-	}
-	return err
+	uninstallClient.Wait = wait
+
+	return uninstallClient.Run(releaseName)
+}
+
+func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
+	listClient := helm.NewList(helmConf)
+	listClient.Filter = releaseName
+	listClient.Deployed = true
+	listClient.AllNamespaces = true
+
+	return listClient.Run()
+}
+
+func (client *HelmClientImpl) RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error) {
+	pullClient := helm.NewPullWithOpts(
+		pullopts...,
+	)
+
+	return pullClient.Run(chartRef)
+}
+
+func (client *HelmClientImpl) LoadChart(chartPath string) (*chart.Chart, error) {
+	return loader.Load(chartPath)
 }
