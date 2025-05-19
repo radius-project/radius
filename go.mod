@@ -63,7 +63,7 @@ require (
 	github.com/hashicorp/hc-install v0.9.2
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20240607080351-271db412dbcb
 	github.com/hashicorp/terraform-exec v0.23.0
-	github.com/jackc/pgx/v5 v5.7.4
+	github.com/jackc/pgx/v5 v5.7.5
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/novln/docker-parser v1.0.0
