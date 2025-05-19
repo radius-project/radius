@@ -137,7 +137,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolTCP),
 						SourceAddressPrefix:      to.Ptr("Internet"),
 						SourcePortRange:          to.Ptr("*"),
-						DestinationAddressPrefix: to.Ptr("placeholder"),
+						DestinationAddressPrefix: to.Ptr("placeholder"), // This gets updated in the handler
 						DestinationPortRange:     to.Ptr(fmt.Sprintf("%d", targetPort)),
 						Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 						Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),

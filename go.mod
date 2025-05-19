@@ -96,11 +96,11 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.17.3
 	k8s.io/api v0.33.1
-	k8s.io/apiextensions-apiserver v0.33.0
+	k8s.io/apiextensions-apiserver v0.33.1
 	k8s.io/apimachinery v0.33.1
-	k8s.io/cli-runtime v0.33.0
+	k8s.io/cli-runtime v0.33.1
 	k8s.io/client-go v0.33.1
-	k8s.io/kubectl v0.33.0
+	k8s.io/kubectl v0.33.1
 	oras.land/oras-go/v2 v2.6.0
 	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/secrets-store-csi-driver v1.5.0
