@@ -71,8 +71,26 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Valid List Command with full environment flag",
+			Input:         []string{"Applications.Core/containers", "--environment", "test-env"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
 			Name:          "Valid List Command with environment only (no resource type)",
 			Input:         []string{"-e", "test-env"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Valid List Command with environment only (no resource type) using full environment flag",
+			Input:         []string{"--environment", "test-env"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -223,6 +241,7 @@ func Test_Run(t *testing.T) {
 			require.Equal(t, expected, outputSink.Writes)
 		})
 	})
+
 	t.Run("List resources by type without application", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -280,6 +299,7 @@ func Test_Run(t *testing.T) {
 			require.Equal(t, expected, outputSink.Writes)
 		})
 	})
+
 	t.Run("List resources by type in environment", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -338,6 +358,7 @@ func Test_Run(t *testing.T) {
 			require.Equal(t, expected, outputSink.Writes)
 		})
 	})
+
 	t.Run("List all resources in environment", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -357,13 +378,13 @@ func Test_Run(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			runner := &Runner{
-				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:                    outputSink,
-				Workspace:                 &workspaces.Workspace{},
-				ApplicationName:           "",
-				EnvironmentName:           "test-env",
-				ResourceType:              "",
-				Format:                    "table",
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{},
+				ApplicationName:   "",
+				EnvironmentName:   "test-env",
+				ResourceType:      "",
+				Format:            "table",
 			}
 
 			err := runner.Run(context.Background())
@@ -387,13 +408,13 @@ func Test_Run(t *testing.T) {
 		outputSink := &output.MockOutput{}
 
 		runner := &Runner{
-			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Output:                    outputSink,
-			Workspace:                 &workspaces.Workspace{},
-			ApplicationName:           "",
-			EnvironmentName:           "",
-			ResourceType:              "",
-			Format:                    "table",
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{},
+			ApplicationName:   "",
+			EnvironmentName:   "",
+			ResourceType:      "",
+			Format:            "table",
 		}
 
 		err := runner.Run(context.Background())
