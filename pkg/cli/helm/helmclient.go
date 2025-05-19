@@ -45,7 +45,7 @@ type HelmClient interface {
 	RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string, wait bool) (*release.UninstallReleaseResponse, error)
 
 	// RunHelmList lists the Helm releases.
-	RunHelmList(helmConf *helm.Configuration, releaseName, namespace string) ([]*release.Release, error)
+	RunHelmList(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error)
 
 	// RunHelmPull pulls the Helm chart.
 	RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error)
@@ -93,7 +93,7 @@ func (client *HelmClientImpl) RunHelmUninstall(helmConf *helm.Configuration, rel
 	return uninstallClient.Run(releaseName)
 }
 
-func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseName, namespace string) ([]*release.Release, error) {
+func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
 	listClient := helm.NewList(helmConf)
 	listClient.Filter = releaseName
 	listClient.Deployed = true

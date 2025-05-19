@@ -79,8 +79,8 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	}
 
 	// Mock Helm List
-	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", "radius-system").Return([]*release.Release{}, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour", "radius-system").Return([]*release.Release{}, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return([]*release.Release{}, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour").Return([]*release.Release{}, nil).Times(1)
 
 	// Mock Helm Install
 	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system", true).Return(radiusRelease, nil).Times(1)
@@ -172,10 +172,10 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 
 	// Radius is installed, Contour not installed.
 	mockHelmClient.EXPECT().
-		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace).
+		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
 		Return([]*release.Release{newRel(options.Radius.ReleaseName, "0.1.0")}, nil).Times(1)
 	mockHelmClient.EXPECT().
-		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName, options.Contour.Namespace).
+		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return([]*release.Release{}, nil).Times(1)
 
 	state, err := impl.CheckRadiusInstall(kubeContext)
@@ -197,7 +197,7 @@ func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
 
 	// First call (Radius) returns an error – the method should propagate it.
 	mockHelmClient.EXPECT().
-		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace).
+		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
 		Return(nil, fmt.Errorf("query failed")).
 		Times(1)
 

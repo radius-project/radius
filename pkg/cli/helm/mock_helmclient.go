@@ -120,18 +120,18 @@ func (c *MockHelmClientRunHelmInstallCall) DoAndReturn(f func(*action.Configurat
 }
 
 // RunHelmList mocks base method.
-func (m *MockHelmClient) RunHelmList(arg0 *action.Configuration, arg1, arg2 string) ([]*release.Release, error) {
+func (m *MockHelmClient) RunHelmList(arg0 *action.Configuration, arg1 string) ([]*release.Release, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RunHelmList", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "RunHelmList", arg0, arg1)
 	ret0, _ := ret[0].([]*release.Release)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RunHelmList indicates an expected call of RunHelmList.
-func (mr *MockHelmClientMockRecorder) RunHelmList(arg0, arg1, arg2 any) *MockHelmClientRunHelmListCall {
+func (mr *MockHelmClientMockRecorder) RunHelmList(arg0, arg1 any) *MockHelmClientRunHelmListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunHelmList", reflect.TypeOf((*MockHelmClient)(nil).RunHelmList), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunHelmList", reflect.TypeOf((*MockHelmClient)(nil).RunHelmList), arg0, arg1)
 	return &MockHelmClientRunHelmListCall{Call: call}
 }
 
@@ -147,13 +147,13 @@ func (c *MockHelmClientRunHelmListCall) Return(arg0 []*release.Release, arg1 err
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHelmClientRunHelmListCall) Do(f func(*action.Configuration, string, string) ([]*release.Release, error)) *MockHelmClientRunHelmListCall {
+func (c *MockHelmClientRunHelmListCall) Do(f func(*action.Configuration, string) ([]*release.Release, error)) *MockHelmClientRunHelmListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHelmClientRunHelmListCall) DoAndReturn(f func(*action.Configuration, string, string) ([]*release.Release, error)) *MockHelmClientRunHelmListCall {
+func (c *MockHelmClientRunHelmListCall) DoAndReturn(f func(*action.Configuration, string) ([]*release.Release, error)) *MockHelmClientRunHelmListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

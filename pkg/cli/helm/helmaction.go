@@ -78,7 +78,7 @@ type HelmAction interface {
 
 	// QueryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
 	// Returns a bool indicating if the release is deployed, the version of the release, and an error if one occurs.
-	QueryRelease(kubeContext, namespace, releaseName string) (bool, string, error)
+	QueryRelease(kubeContext, releaseName, namespace string) (bool, string, error)
 
 	// LoadChart loads a helm chart from the specified path and returns the chart object.
 	LoadChart(chartPath string) (*chart.Chart, error)
@@ -208,7 +208,7 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 		return false, "", fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
-	releases, err := helmAction.HelmClient.RunHelmList(helmConf, releaseName, namespace)
+	releases, err := helmAction.HelmClient.RunHelmList(helmConf, releaseName)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to run helm list, err: %w", err)
 	}
