@@ -145,7 +145,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
-	_, err = r.Helm.InstallRadius(ctx, clusterOptions, r.KubeContext)
+
+	err = r.Helm.InstallRadius(ctx, clusterOptions, r.KubeContext)
 	if err != nil {
 		return err
 	}

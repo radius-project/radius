@@ -62,8 +62,12 @@ type RendererDependency struct {
 
 // EnvironmentOptions represents the options for the linked environment resource.
 type EnvironmentOptions struct {
+	Resource resources.ID
 	// Namespace represents the Kubernetes namespace.
 	Namespace string
+
+	Compute *rpv1.EnvironmentCompute
+
 	// Providers represents the cloud provider's configurations.
 	CloudProviders *datamodel.Providers
 	// Gateway represents the gateway options.

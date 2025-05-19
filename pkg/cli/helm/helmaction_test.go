@@ -1,11 +1,11 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2025 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-	http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,23 +17,58 @@ limitations under the License.
 package helm
 
 import (
+	"errors"
+	"fmt"
+	"net/http"
 	"testing"
 
+	containerderrors "github.com/containerd/containerd/remotes/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart"
 )
 
-func Test_AddValues(t *testing.T) {
+func Test_isHelmGHCR403Error(t *testing.T) {
+	var err error
+	var result bool
+
+	err = errors.New("error")
+	result = isHelmGHCR403Error(err)
+	assert.False(t, result)
+
+	err = fmt.Errorf("%w: wrapped error", errors.New("error"))
+	result = isHelmGHCR403Error(err)
+	assert.False(t, result)
+
+	err = fmt.Errorf("%w: wrapped error", containerderrors.ErrUnexpectedStatus{})
+	result = isHelmGHCR403Error(err)
+	assert.False(t, result)
+
+	err = fmt.Errorf("%w: wrapped error", containerderrors.ErrUnexpectedStatus{StatusCode: http.StatusForbidden, RequestURL: "ghcr.io/myregistry"})
+	result = isHelmGHCR403Error(err)
+	assert.True(t, result)
+
+	err = containerderrors.ErrUnexpectedStatus{StatusCode: http.StatusForbidden, RequestURL: "ghcr.io/myregistry"}
+	result = isHelmGHCR403Error(err)
+	assert.True(t, result)
+
+	err = containerderrors.ErrUnexpectedStatus{StatusCode: http.StatusUnauthorized, RequestURL: "ghcr.io/myregistry"}
+	result = isHelmGHCR403Error(err)
+	assert.False(t, result)
+}
+
+func Test_addArgsFromCLI(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
-	options := &ChartOptions{
-		SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
-		SetFileArgs: []string{"global.rootCA.cert=./testdata/fake-ca-cert.crt"},
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{
+			SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
+			SetFileArgs: []string{"global.rootCA.cert=./testdata/fake-ca-cert.crt"},
+		},
 	}
 
-	err := AddValues(&helmChart, options)
-	require.Equal(t, err, nil)
+	err := addArgsFromCLI(&helmChart, options)
+	require.NoError(t, err)
 
 	values := helmChart.Values
 
@@ -62,12 +97,14 @@ func Test_AddValues(t *testing.T) {
 func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
-	options := &ChartOptions{
-		SetArgs: []string{"rp.image=ghcr.io/radius-project/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{
+			SetArgs: []string{"rp.image=ghcr.io/radius-project/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
+		},
 	}
 
-	err := AddValues(&helmChart, options)
-	require.Equal(t, err, nil)
+	err := addArgsFromCLI(&helmChart, options)
+	require.NoError(t, err)
 
 	values := helmChart.Values
 

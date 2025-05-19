@@ -5,6 +5,6 @@
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:latest",
 		"aws": "br:biceptypes.azurecr.io/aws:latest",
-		"testresources": "br:biceptypes.azurecr.io/testresources:latest"
+		"testresources": "br:testuserdefinedbiceptypes.azurecr.io/testresources:latest"
 	}
 }

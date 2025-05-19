@@ -1129,6 +1129,22 @@
         }
       ]
     },
+    "AzureContainerInstanceCompute": {
+      "type": "object",
+      "description": "The Azure container instance compute configuration",
+      "properties": {
+        "resourceGroup": {
+          "type": "string",
+          "description": "The resource group to use for the environment."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "aci"
+    },
     "EnvironmentCompute": {
       "type": "object",
       "description": "Represents backing compute resource",
@@ -1156,7 +1172,10 @@
       "description": "IdentitySettingKind is the kind of supported external identity setting",
       "enum": [
         "undefined",
-        "azure.com.workload"
+        "azure.com.workload",
+        "userAssigned",
+        "systemAssigned",
+        "systemAssignedUserAssigned"
       ],
       "x-ms-enum": {
         "name": "IdentitySettingKind",
@@ -1171,6 +1190,21 @@
             "name": "azure.com.workload",
             "value": "azure.com.workload",
             "description": "azure ad workload identity"
+          },
+          {
+            "name": "userAssigned",
+            "value": "userAssigned",
+            "description": "User assigned managed identity"
+          },
+          {
+            "name": "systemAssigned",
+            "value": "systemAssigned",
+            "description": "System assigned managed identity"
+          },
+          {
+            "name": "systemAssignedUserAssigned",
+            "value": "systemAssignedUserAssigned",
+            "description": "System assigned and user assigned managed identity"
           }
         ]
       }
@@ -1190,6 +1224,13 @@
         "resource": {
           "type": "string",
           "description": "The resource ID of the provisioned identity"
+        },
+        "managedIdentity": {
+          "type": "array",
+          "description": "The list of user assigned managed identities",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
