@@ -233,8 +233,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			},
 		}
 
-		// Install radius control plane
-		err := installRadius(ctx, r, cliOptions)
+		clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
+
+		err := r.HelmInterface.InstallRadius(ctx, clusterOptions, r.Options.Cluster.Context)
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to install Radius.")
 		}
@@ -359,16 +360,4 @@ func (r *Runner) getAWSCredential() (ucp.AwsCredentialResource, error) {
 	default:
 		return ucp.AwsCredentialResource{}, fmt.Errorf("unsupported AWS credential kind: %s", r.Options.CloudProviders.AWS.CredentialKind)
 	}
-}
-
-func installRadius(ctx context.Context, r *Runner, cliOptions helm.CLIClusterOptions) error {
-	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
-
-	// Ignore existing radius installation because we already asked the user whether to re-install or not
-	_, err := r.HelmInterface.InstallRadius(ctx, clusterOptions, r.Options.Cluster.Context)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

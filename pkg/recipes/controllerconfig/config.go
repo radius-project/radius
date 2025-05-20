@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/azure/armauth"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
@@ -36,6 +37,8 @@ import (
 
 // RecipeControllerConfig is the configuration for the controllers which uses recipe.
 type RecipeControllerConfig struct {
+	Arm *armauth.ArmConfig
+
 	// Kubernetes provides access to the Kubernetes clients.
 	Kubernetes *kubernetesclientprovider.KubernetesClientProvider
 
@@ -60,6 +63,9 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	cfg.Kubernetes = kubernetesclientprovider.FromConfig(options.K8sConfig)
 
 	cfg.UCPConnection = &options.UCPConnection
+
+	// This is a temporary fix to avoid ARM initialization in the test environment.
+	cfg.Arm = options.Arm
 
 	clientOptions := sdk.NewClientOptions(options.UCPConnection)
 

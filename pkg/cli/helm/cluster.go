@@ -17,31 +17,26 @@ limitations under the License.
 package helm
 
 import (
-	"context"
+	context "context"
 	"errors"
 	"fmt"
-	"strings"
 
-	helmaction "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/Masterminds/semver"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/version"
-)
-
-const (
-	ContourChartDefaultVersion = "11.1.1"
 )
 
 type CLIClusterOptions struct {
 	Radius  ChartOptions
-	Contour ContourOptions
+	Contour ChartOptions
 }
 
 type ClusterOptions struct {
-	Radius  ChartOptions
-	Contour ContourOptions
+	Radius  RadiusChartOptions
+	Contour ContourChartOptions
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -61,16 +56,24 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 
 	return ClusterOptions{
-		Contour: ContourOptions{
-			Enabled:      false,
-			ChartVersion: ContourChartDefaultVersion,
-			ChartRepo:    contourHelmRepo,
+		Radius: RadiusChartOptions{
+			ChartOptions: ChartOptions{
+				ChartVersion: chartVersion,
+				Namespace:    RadiusSystemNamespace,
+				ReleaseName:  radiusReleaseName,
+				ChartRepo:    radiusHelmRepo,
+				Wait:         true,
+			},
 		},
-		Radius: ChartOptions{
-			ChartVersion: chartVersion,
-			Namespace:    RadiusSystemNamespace,
-			ReleaseName:  radiusReleaseName,
-			ChartRepo:    radiusHelmRepo,
+		Contour: ContourChartOptions{
+			ChartOptions: ChartOptions{
+				ChartVersion: ContourChartDefaultVersion,
+				Namespace:    RadiusSystemNamespace,
+				ReleaseName:  contourReleaseName,
+				ChartRepo:    contourHelmRepo,
+				Wait:         false,
+			},
+			HostNetwork: false,
 		},
 	}
 }
@@ -101,8 +104,18 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.SetFileArgs = cliOptions.Radius.SetFileArgs
 	}
 
+	if cliOptions.Radius.ChartVersion != "" {
+		options.Radius.ChartVersion = cliOptions.Radius.ChartVersion
+	}
+
+	if cliOptions.Radius.ChartRepo != "" {
+		options.Radius.ChartRepo = cliOptions.Radius.ChartRepo
+	}
+
 	// Apply Contour overrides
-	options.Contour.Enabled = cliOptions.Contour.Enabled
+	if cliOptions.Contour.Disabled {
+		options.Contour.Disabled = cliOptions.Contour.Disabled
+	}
 
 	if cliOptions.Contour.ChartVersion != "" {
 		options.Contour.ChartVersion = cliOptions.Contour.ChartVersion
@@ -127,142 +140,173 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	return options
 }
 
-// Install takes in a context, clusterOptions and kubeContext and returns a boolean and an error. If an
-// error is encountered, it is returned.
-func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
-	// Do note: the namespace passed in to rad install kubernetes
-	// doesn't match the namespace where we deploy radius.
-	// The RPs and other resources are all deployed to the
-	// 'radius-system' namespace. The namespace passed in will be
-	// where pods/services/deployments will be put for rad deploy.
-	radiusFound, err := ApplyHelmChart(clusterOptions.Radius, kubeContext)
-	if err != nil {
-		return false, err
-	}
-
-	if clusterOptions.Contour.Enabled {
-		err = ApplyContourHelmChart(clusterOptions.Contour, kubeContext)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	// If Radius is installed, return true
-	if radiusFound {
-		return true, err
-	} else {
-		return false, err
-	}
-}
-
-// UninstallOnCluster retrieves the Helm configuration and runs the Contour and Radius Helm uninstall commands to remove
-// the Helm releases from the cluster.
-func UninstallOnCluster(kubeContext string, clusterOptions ClusterOptions) error {
-	var helmOutput strings.Builder
-
-	flags := genericclioptions.ConfigFlags{
-		Namespace: &clusterOptions.Radius.Namespace,
-		Context:   &kubeContext,
-	}
-
-	helmConf, err := HelmConfig(&helmOutput, &flags)
-	if err != nil {
-		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
-	}
-
-	err = RunContourHelmUninstall(helmConf)
-	if err != nil {
-		return err
-	}
-
-	// Uninstall Radius
-	err = RunHelmUninstall(helmConf, clusterOptions.Radius)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// queryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
-// If the release is found, it returns true and the version of the release. If the release is not found, it returns false.
-// If an error occurs, it returns an error.
-func queryRelease(kubeContext, namespace, releaseName string) (bool, string, error) {
-	var helmOutput strings.Builder
-
-	flags := genericclioptions.ConfigFlags{
-		Namespace: &namespace,
-		Context:   &kubeContext,
-	}
-
-	helmConf, err := HelmConfig(&helmOutput, &flags)
-	if err != nil {
-		return false, "", fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
-	}
-	histClient := helmaction.NewHistory(helmConf)
-	histClient.Max = 1 // Only need to check if at least 1 exists
-
-	releases, err := histClient.Run(releaseName)
-	if errors.Is(err, driver.ErrReleaseNotFound) {
-		return false, "", nil
-	} else if err != nil {
-		return false, "", err
-	} else if len(releases) == 0 {
-		return false, "", nil
-	}
-
-	return true, releases[0].Chart.Metadata.Version, nil
-}
-
-// CheckRadiusInstall checks if the Radius release is installed in the given kubeContext and returns an InstallState object
-// with the version of the release if installed, or an error if an error occurs while checking.
-func CheckRadiusInstall(kubeContext string) (InstallState, error) {
-	// Check if Radius is installed
-	radiusInstalled, radiusVersion, err := queryRelease(kubeContext, RadiusSystemNamespace, radiusReleaseName)
-	if err != nil {
-		return InstallState{}, err
-	}
-
-	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion}, nil
-}
-
-// InstallState represents the state of the Radius helm chart installation on a Kubernetes cluster.
+// InstallState represents the state of the Radius installation on a Kubernetes cluster.
 type InstallState struct {
 	// RadiusInstalled denotes whether the Radius helm chart is installed on the cluster.
 	RadiusInstalled bool
 
 	// RadiusVersion is the version of the Radius helm chart installed on the cluster. Will be blank if Radius is not installed.
 	RadiusVersion string
+
+	// ContourInstalled denotes whether the Contour helm chart is installed on the cluster.
+	ContourInstalled bool
+
+	// ContourVersion is the version of the Contour helm chart installed on the cluster. Will be blank if Contour is not installed.
+	ContourVersion string
 }
 
 //go:generate mockgen -typed -destination=./mock_cluster.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm Interface
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {
-	// CheckRadiusInstall checks whether Radius is installed on the cluster, based on the specified Kubernetes context.
-	CheckRadiusInstall(kubeContext string) (InstallState, error)
-
 	// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
-	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error)
+	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
 	// UninstallRadius uninstalls Radius from the cluster based on the specified Kubernetes context. Will succeed regardless of whether Radius is installed.
 	UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+
+	// UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.
+	UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+
+	// CheckRadiusInstall checks whether Radius is installed on the cluster, based on the specified Kubernetes context.
+	CheckRadiusInstall(kubeContext string) (InstallState, error)
 }
 
 type Impl struct {
+	// HelmClient is the Helm client used to interact with the Kubernetes cluster.
+	Helm HelmClient
 }
 
-// Checks if radius is installed based on kubeContext.
-func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
-	return CheckRadiusInstall(kubeContext)
+var _ Interface = &Impl{}
+
+// InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options.
+func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	// Do note: the namespace passed in to rad install kubernetes
+	// doesn't match the namespace where we deploy radius.
+	// The RPs and other resources are all deployed to the
+	// 'radius-system' namespace. The namespace passed in will be
+	// where pods/services/deployments will be put for rad deploy.
+
+	helmAction := NewHelmAction(i.Helm)
+
+	// Install Radius
+	radiusHelmChart, radiusHelmConf, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
+	if err != nil {
+		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
+	}
+	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions)
+	if err != nil {
+		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
+	}
+
+	if clusterOptions.Contour.Disabled {
+		output.LogInfo("Contour is disabled, skipping installation")
+		return nil
+	}
+
+	// Install Contour
+	output.LogInfo("Installing Contour...")
+	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
+	if err != nil {
+		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
+	}
+
+	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
+	if err != nil {
+		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
+	}
+
+	return nil
 }
 
-// Installs radius on a cluster based on kubeContext.
-func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
-	return Install(ctx, clusterOptions, kubeContext)
-}
-
-// UninstallRadius uninstalls RADIUS from the specified Kubernetes cluster, and returns an error if it fails.
+// UninstallRadius uninstalls Radius and its dependencies (Contour) from the cluster using the provided options.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
-	return UninstallOnCluster(kubeContext, clusterOptions)
+	output.LogInfo("Uninstalling Radius...")
+	radiusFlags := genericclioptions.ConfigFlags{
+		Namespace: &clusterOptions.Radius.Namespace,
+		Context:   &kubeContext,
+	}
+	radiusHelmConf, err := initHelmConfig(&radiusFlags)
+	if err != nil {
+		return fmt.Errorf("failed to get helm config, err: %w", err)
+	}
+	_, err = i.Helm.RunHelmUninstall(radiusHelmConf, radiusReleaseName, clusterOptions.Radius.Namespace, true)
+	if err != nil {
+		if errors.Is(err, driver.ErrReleaseNotFound) {
+			output.LogInfo("%s not found", radiusReleaseName)
+		} else {
+			return fmt.Errorf("failed to uninstall radius, err: %w", err)
+		}
+	}
+
+	output.LogInfo("Uninstalling Contour...")
+	contourFlags := genericclioptions.ConfigFlags{
+		Namespace: &clusterOptions.Radius.Namespace,
+		Context:   &kubeContext,
+	}
+	contourHelmConf, err := initHelmConfig(&contourFlags)
+	if err != nil {
+		return fmt.Errorf("failed to get helm config, err: %w", err)
+	}
+	_, err = i.Helm.RunHelmUninstall(contourHelmConf, contourReleaseName, clusterOptions.Radius.Namespace, true)
+	if err != nil {
+		if errors.Is(err, driver.ErrReleaseNotFound) {
+			output.LogInfo("%s not found", radiusReleaseName)
+		} else {
+			return fmt.Errorf("failed to uninstall contour, err: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// CheckRadiusInstall checks if the Radius release is installed in the given kubeContext and returns an InstallState object
+// with the version of the release if installed, or an error if an error occurs while checking.
+func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
+	clusterOptions := NewDefaultClusterOptions()
+	helmAction := NewHelmAction(i.Helm)
+
+	// Check if Radius is installed
+	radiusInstalled, radiusVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
+	if err != nil {
+		return InstallState{}, err
+	}
+
+	// Check if Contour is installed
+	contourInstalled, contourVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace)
+	if err != nil {
+		return InstallState{}, err
+	}
+
+	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion, ContourInstalled: contourInstalled, ContourVersion: contourVersion}, nil
+}
+
+// UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.
+func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	helmAction := NewHelmAction(i.Helm)
+
+	output.LogInfo("Upgrading Radius...")
+	radiusHelmChart, radiusHelmConf, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
+	if err != nil {
+		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
+	}
+
+	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
+	}
+	output.LogInfo("Radius upgrade complete")
+
+	output.LogInfo("Upgrading Contour...")
+	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
+	if err != nil {
+		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
+	}
+	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade Contour, err: %w", err)
+	}
+	output.LogInfo("Contour upgrade complete")
+
+	return nil
 }

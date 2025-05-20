@@ -364,7 +364,7 @@ func waitForGitRepositoryReady(t *testing.T, ctx context.Context, name types.Nam
 			return client.Watch(ctx, gitRepositories, listOptions)
 		},
 	}
-	watcher, err := watchtools.NewRetryWatcher(initialVersion, lister)
+	watcher, err := watchtools.NewRetryWatcherWithContext(ctx, initialVersion, lister)
 	require.NoError(t, err)
 	defer watcher.Stop()
 

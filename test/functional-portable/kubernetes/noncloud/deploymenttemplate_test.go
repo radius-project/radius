@@ -293,7 +293,7 @@ func waitForDeploymentTemplateReady(t *testing.T, ctx context.Context, name type
 			return client.Watch(ctx, deploymentTemplates, listOptions)
 		},
 	}
-	watcher, err := watchtools.NewRetryWatcher(initialVersion, lister)
+	watcher, err := watchtools.NewRetryWatcherWithContext(ctx, initialVersion, lister)
 	require.NoError(t, err)
 	defer watcher.Stop()
 

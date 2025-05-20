@@ -44,6 +44,20 @@ jobs:
     name: Validate Bicep Code
     runs-on: ubuntu-latest
     steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Verify npx installation
+        run: |
+          if ! command -v npx &> /dev/null; then
+            echo "npx not found, installing..."
+            npm install -g npx
+          else
+            echo "npx is already installed"
+          fi
+
       - name: Setup and verify bicep CLI
         run: |
           curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
@@ -53,17 +67,32 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
       - name: Create a temporary file system 
-        run:
+        run: |
           mkdir tmp-radius-bicep-extension
+          mkdir tmp-testresources-bicep-extension
       - name: Publish bicep types 
         run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz 
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
+      - name: Generate testresources extension index
+        run: |
+          npx @radius-project/manifest-to-bicep-extension@alpha generate ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml ./tmp-testresources-bicep-extension
+      - name: Publish testresources extension
+        run: |
+          bicep publish-extension ./tmp-testresources-bicep-extension/index.json --target ./tmp-testresources-bicep-extension/testresources.tgz --force
       - name: Install jq
         run: sudo apt-get install -y jq
       - name: Modify bicepconfig.json
         run: |
-          # Add credential preference to the bicepconfig.json file
-          jq '.extensions.radius = "./tmp-radius-bicep-extension/radius.tgz"' bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
+          # Update bicepconfig.json with paths for extensions
+          WORKDIR="${{ github.workspace }}"
+          jq \
+            --arg rad "$WORKDIR/tmp-radius-bicep-extension/radius.tgz" \
+            --arg test "$WORKDIR/tmp-testresources-bicep-extension/testresources.tgz" \
+            '.extensions.radius = $rad | .extensions.testresources = $test' \
+            bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
+
+           # Copy to the dynamicrp resources test directory so the .bicep files there can find it
+           cp -f bicepconfig.json ./test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json
       - name: Print updated bicepconfig.json
         run: cat bicepconfig.json
       - name: Verify Bicep files

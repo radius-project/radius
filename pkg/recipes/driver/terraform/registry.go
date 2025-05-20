@@ -93,6 +93,7 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 				if token, ok := secretData.Data[secretKey]; ok {
 					configContent.WriteString(fmt.Sprintf("credentials %q {\n  token = %q\n}\n\n", hostname, token))
 					hasAuth = true
+					os.Setenv("TF_MIRROR_TOKEN", string(token))
 				} else {
 					logger.Info("Secret key not found in secret store",
 						"secretKey", secretKey,
