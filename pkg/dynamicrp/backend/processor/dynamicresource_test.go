@@ -105,13 +105,6 @@ func Test_Process(t *testing.T) {
 		binding, ok := status["binding"].(map[string]any)
 		require.True(t, ok)
 
-		outputVars, ok := status["outputVariables"].(map[string]any)
-		require.True(t, ok)
-
-		databaseName, ok := outputVars["PG_DB"].(string)
-		require.True(t, ok)
-		require.Equal(t, database, databaseName)
-
 		require.Equal(t, options.RecipeOutput.Values["host"], binding["host"])
 		require.Equal(t, options.RecipeOutput.Values["port"], binding["port"])
 		require.Equal(t, options.RecipeOutput.Values["database"], binding["database"])
@@ -210,11 +203,9 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 								"environment": map[string]any{},
 								"application": map[string]any{},
 								"host":        map[string]any{},
-								"database": map[string]any{
-									connectedResourceOutputVariable: "PG_DB",
-								},
-								"port":     map[string]any{},
-								"username": map[string]any{},
+								"database":    map[string]any{},
+								"port":        map[string]any{},
+								"username":    map[string]any{},
 							},
 						},
 					},
