@@ -31,8 +31,6 @@ import (
 
 var _ processors.ResourceProcessor[*datamodel.DynamicResource, datamodel.DynamicResource] = (*DynamicProcessor)(nil)
 
-const connectedResourceOutputVariable = "connected-resource-environment-variable"
-
 // DynamicProcessor is a processor for dynamic resources. It implements the processors.ResourceProcessor interface.
 type DynamicProcessor struct {
 }
@@ -72,12 +70,7 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		return err
 	}
 
-	schema, err := getAPIVersionResourceSchema(ctx, options.UcpClient, resource)
-	if err != nil {
-		return err
-	}
-
-	err = addOutputValuestoResourceProperties(resource, schema, computedValues, secretValues)
+	err = addOutputValuestoResourceProperties(ctx, options.UcpClient, resource, computedValues, secretValues)
 	if err != nil {
 		return err
 	}
@@ -85,10 +78,13 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 	return nil
 }
 
-func getAPIVersionResourceSchema(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resource *datamodel.DynamicResource) (map[string]any, error) {
+// addOutputValuestoResourceProperties adds the computed values and secret values to the resource properties.
+// It retrieves the schema of the resource type and filters out the values that are not part of the schema.
+func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resource *datamodel.DynamicResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
+
 	ID, err := resources.Parse(resource.ID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	plane := ID.PlaneNamespace()
@@ -97,21 +93,13 @@ func getAPIVersionResourceSchema(ctx context.Context, ucpClient *v20231001previe
 	resourceType := strings.Split(resource.Type, "/")[1]
 	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, planeName, resourceProvider, resourceType, resource.InternalMetadata.UpdatedAPIVersion, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	schema := apiVersionResource.APIVersionResource.Properties.Schema
-
-	return schema, nil
-}
-
-// addOutputValuestoResourceProperties adds the computed values and secret values to the resource properties.
-// It retrieves the schema of the resource type and filters out the values that are not part of the schema.
-func addOutputValuestoResourceProperties(resource *datamodel.DynamicResource, schema map[string]any, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
 	// Filter out the basic properties from the resource properties
 	// This is to avoid overwriting the properties like application, environment etc when they are added as computed values or secret values.
 	resourceProps := []string{}
-
+	schema := apiVersionResource.APIVersionResource.Properties.Schema
 	if schema != nil {
 		if properties, ok := schema["properties"].(map[string]any); ok {
 			for key := range properties {
