@@ -218,10 +218,6 @@ func buildDynamicResourceWithRecipe() dynamicrp_dm.DynamicResource {
 					"connectionString": "Server=mydb;User=admin;",
 					"databaseName":     "testdb",
 				},
-				"outputVariables": map[string]any{
-					"var1": "value1",
-					"var2": "value2",
-				},
 			},
 		},
 	}
