@@ -9,7 +9,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-    //  "preLaunchTask": "Build Radius (all)",
+      "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/rad/main.go",
       "cwd": "${workspaceFolder}",
       "args": []
@@ -19,7 +19,7 @@
       "type": "go",
       "request": "launch",
       "mode": "debug",
-    //  "preLaunchTask": "Build Radius (all)",
+      "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/rad",
       "args": "${input:cliArgs}",
       "console": "integratedTerminal"
@@ -29,72 +29,50 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-     // "preLaunchTask": "Build Radius (all)",
-      "program": "${workspaceFolder}/cmd/applications-rp/main.go",
+      "preLaunchTask": "Build Radius (all)",
+      "program": "${workspaceFolder}/cmd/applications-rp/main.go"
     },
     {
       "name": "Launch Dynamic RP",
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      //"preLaunchTask": "Build Radius (all)",
-      "program": "${workspaceFolder}/cmd/dynamic-rp/main.go",
-      "args": [
-        "--config-file",
-        "${workspaceFolder}/cmd/dynamic-rp/dynamicrp-dev.yaml",
-      ],
+      "preLaunchTask": "Build Radius (all)",
+      "program": "${workspaceFolder}/cmd/dynamic-rp/main.go"
     },
     {
       "name": "Launch UCP",
       "type": "go",
       "request": "launch",
       "mode": "auto",
-     // "preLaunchTask": "Build Radius (all)",
-      "program": "${workspaceFolder}/cmd/ucpd/main.go",
+      "preLaunchTask": "Build Radius (all)",
+      "program": "${workspaceFolder}/cmd/ucpd/main.go"
     },
     {
       "name": "Launch Controller",
       "type": "go",
       "request": "launch",
       "mode": "auto",
-    //  "preLaunchTask": "Build Radius (all)",
+      "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/controller/main.go",
-      "args": ["--cert-dir", ""],
-      "showLog": false 
+      "args": ["--cert-dir", ""]
     },
-  
     {
       "name": "Launch Deployment Engine",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
-      "program": "${workspaceFolder}/src/DeploymentEngine/bin/Debug/net8.0/arm-de.dll",
-      "cwd": "${workspaceFolder}/src/DeploymentEngine",
+      "preLaunchTask": "Build Deployment Engine",
+      "program": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine/bin/Debug/net8.0/arm-de.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine",
       "stopAtEntry": false,
-      "console": "integratedTerminal",
-      "serverReadyAction": {
-        "action": "openExternally",
-        "uriFormat": "http://localhost:%s/swagger/index.html",
-        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
-      },
       "env": {
         "ASPNETCORE_URLS": "http://localhost:5017",
         "ASPNETCORE_ENVIRONMENT": "Development",
         "KUBERNETESBICEPEXTENSIBILITYURL": "http://localhost:5017/api",
-        "RADIUSBACKENDURI": "http://localhost:9000",
-        "KUBECONFIG": "${env:HOME}/.kube/config",
-        "RAD_LOCAL_DEVELOPMENT": "true"
-      },
-      "sourceFileMap": {
-        "/Views": "${workspaceFolder}/Views"
-      },
-      "symbolOptions": {
-        "searchMicrosoftSymbolServer": true,
-        "searchNuGetOrgSymbolServer": true
-      },
-      "justMyCode": false
+        "RADIUSBACKENDURI": "http://localhost:9000"
+      }
     },
-
     {
       "name": "Debug Bicep generator integration tests",
       "type": "node",
@@ -119,7 +97,7 @@
         "Launch Applications RP",
         "Launch Dynamic RP",
         "Launch Controller",
-     //   "Launch Deployment Engine"
+        "Launch Deployment Engine"
       ],
       "stopAll": true
     }
