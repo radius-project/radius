@@ -95,21 +95,26 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, options.RecipeOutput.Values["username"], properties["username"])
 
 		// password property is not defined in the schema but present as part of the recipe output.
-		// so, it is not added to the resource properties but instead available in  properties.status.binding map.
+		// so, it is not added to the resource properties but instead available in  properties.status.computedValues and properties.status.secrets maps.
 		_, ok := properties["password"]
 		require.False(t, ok)
 
 		status, ok := properties["status"].(map[string]any)
 		require.True(t, ok)
 
-		binding, ok := status["binding"].(map[string]any)
+		computedValues, ok := status["computedValues"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, options.RecipeOutput.Values["host"], computedValues["host"])
+		require.Equal(t, options.RecipeOutput.Values["port"], computedValues["port"])
+		require.Equal(t, options.RecipeOutput.Values["database"], computedValues["database"])
+		require.Equal(t, options.RecipeOutput.Values["username"], computedValues["username"])
+
+		secrets, ok := status["secrets"].(map[string]any)
 		require.True(t, ok)
 
-		require.Equal(t, options.RecipeOutput.Values["host"], binding["host"])
-		require.Equal(t, options.RecipeOutput.Values["port"], binding["port"])
-		require.Equal(t, options.RecipeOutput.Values["database"], binding["database"])
-		require.Equal(t, options.RecipeOutput.Values["username"], binding["username"])
-		require.Equal(t, options.RecipeOutput.Secrets["password"], binding["password"])
+		secretPassword, ok := secrets["password"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, options.RecipeOutput.Secrets["password"], secretPassword["Value"])
 	})
 
 	// test to check if the properties like environment, application , status etc are not overwritten if they are provided as part of the recipe output.

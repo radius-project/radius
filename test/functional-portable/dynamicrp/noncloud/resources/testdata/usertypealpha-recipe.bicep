@@ -52,7 +52,7 @@ resource usertypealphacntr 'Applications.Core/containers@2023-10-01-preview' = {
         args: ['-c', 'while true; do echo hello; sleep 10;done']
         env: {
           USERTYPEALPHA_PORT: {
-            value: string(usertypealpha.properties.status.binding.port)
+            value: string(usertypealpha.properties.status.computedValues.port)
           }
         }
       }
