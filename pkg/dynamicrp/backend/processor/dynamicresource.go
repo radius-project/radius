@@ -18,7 +18,6 @@ package processor
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
@@ -83,11 +82,6 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		return err
 	}
 
-	err = addEnvironmentMappingToResourceProperties(resource, schema)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -140,56 +134,6 @@ func addOutputValuestoResourceProperties(resource *datamodel.DynamicResource, sc
 		if slices.Contains(resourceProps, key) {
 			resource.Properties[key] = value.Value
 		}
-	}
-
-	return nil
-}
-
-func addEnvironmentMappingToResourceProperties(resource *datamodel.DynamicResource, schema map[string]any) error {
-	if schema != nil {
-		status := resource.Status()
-		environmentVariables := map[string]string{}
-
-		if properties, ok := schema["properties"].(map[string]any); ok {
-			for key := range properties {
-				attributes, ok := properties[key].(map[string]any)
-				if !ok {
-					return fmt.Errorf("failed to assert type for attributes of property %q", key)
-				}
-
-				envVariableName, ok := attributes[connectedResourceOutputVariable].(string)
-				if !ok {
-					continue
-				}
-
-				if envVariableName != "" {
-					value, exists := resource.Properties[key]
-
-					if !exists {
-						return fmt.Errorf("property '%s' does not exist in resource properties", key)
-					}
-					if value != nil {
-						// Handle pointer dereference
-						if ptr, ok := value.(*interface{}); ok && ptr != nil {
-							// Dereference the pointer to get the actual value
-							actualValue := *ptr
-							// Convert the dereferenced value to string
-							environmentVariables[envVariableName] = fmt.Sprintf("%v", actualValue)
-						} else {
-							// If it's not a pointer or is a different type, convert directly
-							environmentVariables[envVariableName] = fmt.Sprintf("%v", value)
-						}
-					} else {
-						// Handle nil pointer case
-						fmt.Println("value is nil")
-					}
-				}
-			}
-		} else {
-			return fmt.Errorf("failed to assert type for 'properties' in schema")
-		}
-
-		status["outputVariables"] = environmentVariables
 	}
 
 	return nil
