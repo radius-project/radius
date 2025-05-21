@@ -37,6 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
@@ -356,7 +357,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				},
 			}
 
-			properties, err := GetPropertiesFromResource(testResource)
+			properties, err := resourceutil.GetPropertiesFromResource(testResource)
 			require.NoError(t, err)
 			recipeMetadata := recipes.ResourceMetadata{
 				Name:          "test-recipe",
