@@ -23,12 +23,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/hashicorp/go-version"
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
 	"github.com/hashicorp/hc-install/src"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/metrics"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -42,7 +44,7 @@ const (
 // Install installs Terraform under /install in the provided Terraform root directory for the resource. It installs
 // the latest version of Terraform and returns the path to the installed Terraform executable. It returns an error
 // if the directory creation or Terraform installation fails.
-func Install(ctx context.Context, installer *install.Installer, tfDir string) (*tfexec.Terraform, error) {
+func Install(ctx context.Context, installer *install.Installer, tfDir string, terraformConfig datamodel.TerraformConfigProperties) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Create Terraform installation directory
@@ -54,14 +56,58 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
 
 	installStartTime := time.Now()
+
+	var terraformSource src.Source
+	if terraformConfig.Version.Version != "" {
+		logger.Info(fmt.Sprintf("Installing Terraform version: %s", terraformConfig.Version.Version))
+
+		version, err := version.NewVersion(terraformConfig.Version.Version)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse terraform version: %w", err)
+		}
+
+		if terraformConfig.Version.ReleasesAPIBaseURL != "" {
+			logger.Info(fmt.Sprintf("Using custom releases API base URL: %s", terraformConfig.Version.ReleasesAPIBaseURL))
+
+			terraformSource = &releases.ExactVersion{
+				Product:    product.Terraform,
+				InstallDir: installDir,
+				Version:    version,
+				ApiBaseURL: terraformConfig.Version.ReleasesAPIBaseURL,
+			}
+		} else {
+			logger.Info("Using default releases API base URL")
+
+			terraformSource = &releases.ExactVersion{
+				Product:    product.Terraform,
+				InstallDir: installDir,
+				Version:    version,
+			}
+		}
+	} else {
+		logger.Info("Installing latest version of Terraform")
+
+		if terraformConfig.Version.ReleasesAPIBaseURL != "" {
+			logger.Info(fmt.Sprintf("Using custom releases API base URL: %s", terraformConfig.Version.ReleasesAPIBaseURL))
+
+			terraformSource = &releases.LatestVersion{
+				Product:    product.Terraform,
+				InstallDir: installDir,
+				ApiBaseURL: terraformConfig.Version.ReleasesAPIBaseURL,
+			}
+		} else {
+			logger.Info("Using default releases API base URL")
+
+			terraformSource = &releases.LatestVersion{
+				Product:    product.Terraform,
+				InstallDir: installDir,
+			}
+		}
+	}
+
 	// Re-visit this: consider checking if an existing installation of same version of Terraform is available.
 	// For initial iteration we will always install Terraform for every execution of the recipe driver.
-	execPath, err := installer.Ensure(ctx, []src.Source{
-		&releases.LatestVersion{
-			Product:    product.Terraform,
-			InstallDir: installDir,
-		},
-	})
+	execPath, err := installer.Ensure(ctx, []src.Source{terraformSource})
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
 			[]attribute.KeyValue{

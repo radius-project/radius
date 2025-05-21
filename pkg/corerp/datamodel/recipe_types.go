@@ -43,6 +43,9 @@ type TerraformConfigProperties struct {
 
 	// Registry specifies the Terraform registry configuration.
 	Registry *TerraformRegistryConfig `json:"registry,omitempty"`
+
+	// Version specifies the Terraform binary version and the URL to download it from.
+	Version *TerraformVersionConfig `json:"version,omitempty"`
 }
 
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
@@ -122,4 +125,17 @@ type RegistryAuthConfig struct {
 
 	// Credentials is the credentials-based authentication for Terraform registry mirrors.
 	Credentials *SecretConfig `json:"credentials,omitempty"`
+}
+
+// TerraformVersionConfig - Configuration for Terraform binary.
+type TerraformVersionConfig struct {
+	// Version is the version of the Terraform binary to use. Example: '1.0.0'.
+	// If omitted, the system may default to the latest stable version.
+	Version string `json:"version,omitempty"`
+
+	// ReleasesAPIBaseURL is an optional base URL for a custom Terraform releases API.
+	// If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site.
+	// The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files).
+	// Example: 'https://my-terraform-mirror.example.com'
+	ReleasesAPIBaseURL string `json:"releasesApiBaseUrl,omitempty"`
 }

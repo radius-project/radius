@@ -1515,6 +1515,9 @@ type TerraformConfigProperties struct {
 
 // Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.
 	Registry *TerraformRegistryConfig
+
+// Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API.
+	Version *TerraformVersionConfig
 }
 
 // TerraformRecipeProperties - Represents Terraform recipe properties.
@@ -1552,6 +1555,19 @@ type TerraformRegistryConfig struct {
 
 // Provider mappings to translate between official and custom provider identifiers.
 	ProviderMappings map[string]*string
+}
+
+// TerraformVersionConfig - Configuration for Terraform binary installation. Allows specifying a version and an optional custom
+// base URL for the releases API.
+type TerraformVersionConfig struct {
+// Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead
+// of the default HashiCorp releases site. The directory structure of the custom URL
+// must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'
+	ReleasesAPIBaseURL *string
+
+// Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example:
+// '1.7.0'
+	Version *string
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'

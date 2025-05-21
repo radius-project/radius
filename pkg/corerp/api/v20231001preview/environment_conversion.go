@@ -243,6 +243,13 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 				recipeConfig.Terraform.Registry = registryConfig
 			}
 
+			if config.Terraform.Version != nil {
+				recipeConfig.Terraform.Version = &datamodel.TerraformVersionConfig{
+					Version:            to.String(config.Terraform.Version.Version),
+					ReleasesAPIBaseURL: to.String(config.Terraform.Version.ReleasesAPIBaseURL),
+				}
+			}
+
 			recipeConfig.Terraform.Providers = toRecipeConfigTerraformProvidersDatamodel(config)
 		}
 
@@ -327,6 +334,13 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 				}
 
 				recipeConfig.Terraform.Registry = registryConfig
+			}
+
+			if config.Terraform.Version != nil {
+				recipeConfig.Terraform.Version = &TerraformVersionConfig{
+					Version:            to.Ptr(config.Terraform.Version.Version),
+					ReleasesAPIBaseURL: to.Ptr(config.Terraform.Version.ReleasesAPIBaseURL),
+				}
 			}
 
 			recipeConfig.Terraform.Providers = fromRecipeConfigTerraformProvidersDatamodel(config)

@@ -5,8 +5,8 @@ terraform {
       version = ">= 2.0"
     }
     postgresql = {
-      source  = "cyrilgdn/postgresql"
-      version = "1.22.0"
+      source                = "cyrilgdn/postgresql"
+      version               = "1.22.0"
       configuration_aliases = [postgresql.pgdb-test]
     }
   }
@@ -70,12 +70,12 @@ resource "kubernetes_service" "postgres" {
 }
 
 resource "time_sleep" "wait_120_seconds" {
-  depends_on = [kubernetes_service.postgres]
+  depends_on      = [kubernetes_service.postgres]
   create_duration = "120s"
 }
 
-resource postgresql_database "pg_db_test" {
-  provider = postgresql.pgdb-test
+resource "postgresql_database" "pg_db_test" {
+  provider   = postgresql.pgdb-test
   depends_on = [time_sleep.wait_120_seconds]
-  name = "pg_db_test"
+  name       = "pg_db_test"
 }

@@ -3589,6 +3589,7 @@ func (t TerraformConfigProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "authentication", t.Authentication)
 	populate(objectMap, "providers", t.Providers)
 	populate(objectMap, "registry", t.Registry)
+	populate(objectMap, "version", t.Version)
 	return json.Marshal(objectMap)
 }
 
@@ -3609,6 +3610,9 @@ func (t *TerraformConfigProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "registry":
 				err = unpopulate(val, "Registry", &t.Registry)
+			delete(rawMsg, key)
+		case "version":
+				err = unpopulate(val, "Version", &t.Version)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -3683,6 +3687,37 @@ func (t *TerraformRegistryConfig) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "providerMappings":
 				err = unpopulate(val, "ProviderMappings", &t.ProviderMappings)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", t, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type TerraformVersionConfig.
+func (t TerraformVersionConfig) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "releasesApiBaseUrl", t.ReleasesAPIBaseURL)
+	populate(objectMap, "version", t.Version)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type TerraformVersionConfig.
+func (t *TerraformVersionConfig) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", t, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "releasesApiBaseUrl":
+				err = unpopulate(val, "ReleasesAPIBaseURL", &t.ReleasesAPIBaseURL)
+			delete(rawMsg, key)
+		case "version":
+				err = unpopulate(val, "Version", &t.Version)
 			delete(rawMsg, key)
 		}
 		if err != nil {

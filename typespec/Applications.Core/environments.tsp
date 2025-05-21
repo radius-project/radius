@@ -110,6 +110,9 @@ model TerraformConfigProperties {
 
   @doc("Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.")
   registry?: TerraformRegistryConfig;
+
+  @doc("Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API.")
+  version?: TerraformVersionConfig;
 }
 
 @doc("Configuration for Terraform provider registry mirroring.")
@@ -122,6 +125,15 @@ model TerraformRegistryConfig {
 
   @doc("Authentication configuration for accessing private Terraform registry mirrors.")
   authentication?: RegistryAuthConfig;
+}
+
+@doc("Configuration for Terraform binary installation. Allows specifying a version and an optional custom base URL for the releases API.")
+model TerraformVersionConfig {
+  @doc("Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example: '1.7.0'")
+  version?: string;
+
+  @doc("Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site. The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'")
+  releasesApiBaseUrl?: string;
 }
 
 @doc("Authentication configuration for private Terraform registry mirrors.")
