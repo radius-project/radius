@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/recipes/util"
+	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
@@ -78,7 +79,7 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 	// If we have a setup error (error before recipe and output resources are executed, we skip engine/driver deletion.
 	// If we have an execution error, we call engine/driver deletion.
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil && recipeDataModel.GetRecipe().DeploymentStatus != util.RecipeSetupError {
-		resourceProperties, err := GetPropertiesFromResource(data)
+		resourceProperties, err := resourceutil.GetPropertiesFromResource(data)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
