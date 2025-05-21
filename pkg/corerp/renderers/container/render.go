@@ -744,15 +744,37 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				env, secretData = updateEnvAndSecretData(name, resource.Name, partialResource, env, secretData)
 			}
 
-			// handles env variable injections for connections to UDT.
-			for key, value := range properties.OutputVariables {
-				stringValue, ok := value.(string)
-				if !ok {
-					fmt.Printf("skipping env var %q, value is not a string\n", key)
-					continue
+			if resources.IsBuiltInType(con.Source) {
+				partialResource, err := resourceutil.GetPropertiesFromResource(properties.Resource)
+				if err != nil {
+					return nil, nil, err
 				}
-				env_key := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
-				env[env_key] = corev1.EnvVar{Name: env_key, Value: stringValue}
+				// add condition for if UDT
+				for key, value := range partialResource {
+
+					name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
+
+					source := corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: kubernetes.NormalizeResourceName(resource.Name),
+							},
+							Key: name,
+						},
+					}
+					switch v := value.(type) {
+					case string:
+						secretData[name] = []byte(v)
+						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+					case float64:
+						secretData[name] = []byte(strconv.Itoa(int(v)))
+						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+					case int:
+						secretData[name] = []byte(strconv.Itoa(v))
+						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+					}
+
+				}
 			}
 		}
 	}
