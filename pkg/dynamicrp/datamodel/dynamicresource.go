@@ -67,30 +67,6 @@ func (d *DynamicResource) Status() map[string]any {
 	return status
 }
 
-// OutputVariables() returns the output variables of the resource.
-func (d *DynamicResource) OutputVariables() map[string]any {
-	status := d.Status()
-	if status == nil {
-		return map[string]any{}
-	}
-
-	// We make the assumption that the outputVariables is a map[string]any.
-	// If users define the outputVariables as something other than a map[string]any, that just won't work.
-	//
-	// Therefore we overwrite it.
-	outputVariables, ok := status["outputVariables"]
-	if !ok {
-		return map[string]any{}
-	}
-
-	outputVariables, ok = outputVariables.(map[string]any)
-	if !ok {
-		return map[string]any{}
-	}
-
-	return outputVariables.(map[string]any)
-}
-
 // GetRecipe implements datamodel.RecipeDataModel.
 func (d *DynamicResource) GetRecipe() *portableresources.ResourceRecipe {
 	defaultRecipe := &portableresources.ResourceRecipe{Name: portableresources.DefaultRecipeName}
