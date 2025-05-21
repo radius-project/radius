@@ -512,79 +512,79 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.GatewayResourceType):
 		obj := &corerp_dm.Gateway{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.VolumeResourceType):
 		obj := &corerp_dm.VolumeResource{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.SecretStoreResourceType):
 		obj := &corerp_dm.SecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(ds_ctrl.MongoDatabasesResourceType):
 		obj := &dsrp_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(ds_ctrl.SqlDatabasesResourceType):
 		obj := &dsrp_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(ds_ctrl.RedisCachesResourceType):
 		obj := &dsrp_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(msg_ctrl.RabbitMQQueuesResourceType):
 		obj := &msg_dm.RabbitMQQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.ExtenderResourceType):
 		obj := &corerp_dm.Extender{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(dapr_ctrl.DaprStateStoresResourceType):
 		obj := &dapr_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(dapr_ctrl.DaprSecretStoresResourceType):
 		obj := &dapr_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(dapr_ctrl.DaprPubSubBrokersResourceType):
 		obj := &dapr_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(dapr_ctrl.DaprConfigurationStoresResourceType):
 		obj := &dapr_dm.DaprConfigurationStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, map[string]any{}, portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	default:
 		obj := &dynamicrp_dm.DynamicResource{}
 		if err = resource.As(obj); err != nil {
@@ -596,11 +596,11 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		// We are for now passing in empty values for these two parameters here so that we can enable graph.
 		// This should change once we implement secret support for UDTs and also seperate secrets and computed
 		// values into their own structure.
-		return dp.buildResourceDependency(resourceID, obj.ResourceMetadata().ApplicationID(), obj, obj.OutputResources(), map[string]any{}, map[string]rpv1.SecretValueReference{}, obj.OutputVariables(), portableresources.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.ResourceMetadata().ApplicationID(), obj, obj.OutputResources(), map[string]any{}, map[string]rpv1.SecretValueReference{}, portableresources.RecipeData{})
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, outputVariables map[string]any, recipeData portableresources.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData portableresources.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	// Application id is mandatory for some of the core resource types and is a required field.
 	if applicationID != "" {
@@ -620,7 +620,6 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 		OutputResources: outputResources,
 		ComputedValues:  computedValues,
 		SecretValues:    secretValues,
-		OutputVariables: outputVariables,
 		AppID:           appID,
 		RecipeData:      recipeData,
 	}, nil
@@ -656,7 +655,6 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 		Resource:        dependency.Resource,
 		ComputedValues:  computedValues,
 		OutputResources: outputResourceIDs,
-		OutputVariables: dependency.OutputVariables,
 	}
 
 	return rendererDependency, nil
