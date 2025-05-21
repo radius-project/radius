@@ -79,9 +79,6 @@ type ResourceData struct {
 	Resource        v1.DataModelInterface
 	OutputResources []rpv1.OutputResource
 	ComputedValues  map[string]any
-	// Output variables that are passed to the resource.
-	// These are used by UDT to pass on the output variables to the connecting resource.
-	OutputVariables map[string]any
 	SecretValues    map[string]rpv1.SecretValueReference
 	AppID           *resources.ID                // Application ID for which the resource is created
 	RecipeData      portableresources.RecipeData // Relevant only for portable resources created with recipes to find relevant connections created by that recipe
