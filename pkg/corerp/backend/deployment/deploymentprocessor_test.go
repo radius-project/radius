@@ -1107,6 +1107,7 @@ func Test_getResourceDataByID(t *testing.T) {
 		resourceData, err := dp.getResourceDataByID(ctx, depId)
 		require.NoError(t, err)
 		require.Equal(t, resourceData.OutputResources, postgresResource.OutputResources())
+
 	})
 }
 
