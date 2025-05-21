@@ -1108,6 +1108,7 @@ func Test_getResourceDataByID(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resourceData.OutputResources, postgresResource.OutputResources())
 	})
+
 }
 
 func Test_fetchSecrets(t *testing.T) {
