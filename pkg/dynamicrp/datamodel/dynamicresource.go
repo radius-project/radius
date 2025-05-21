@@ -50,16 +50,17 @@ func (d *DynamicResource) Status() map[string]any {
 	// If users define the status as something other than a map[string]any, that just won't work.
 	//
 	// Therefore we overwrite it.
+	emptyStatus := map[string]any{}
 	obj, ok := d.Properties["status"]
 	if !ok {
-		d.Properties["status"] = map[string]any{}
-		return map[string]any{}
+		d.Properties["status"] = emptyStatus
+		return emptyStatus
 	}
 
 	status, ok := obj.(map[string]any)
 	if !ok {
-		d.Properties["status"] = map[string]any{}
-		return map[string]any{}
+		d.Properties["status"] = emptyStatus
+		return emptyStatus
 	}
 
 	return status
