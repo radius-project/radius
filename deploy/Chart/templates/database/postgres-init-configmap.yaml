@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    control-plane: database
+    app.kubernetes.io/name: database
+    app.kubernetes.io/part-of: radius
+data:
+  # Mount the initialization script from the external file
+  init-db.sh: |
+    #!/bin/bash
+    set -e
+    
+    SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+    
+    # Array of usernames
+    RESOURCE_PROVIDERS=("ucp" "applications_rp")
+    
+    # Create databases and users
+    for RESOURCE_PROVIDER in "${RESOURCE_PROVIDERS[@]}"; do
+        echo "Creating database and user for $RESOURCE_PROVIDER"
+        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+            CREATE USER $RESOURCE_PROVIDER WITH PASSWORD '$POSTGRES_PASSWORD';
+            CREATE DATABASE $RESOURCE_PROVIDER;
+            GRANT ALL PRIVILEGES ON DATABASE $RESOURCE_PROVIDER TO $RESOURCE_PROVIDER;
+    EOSQL
+    done
+    
+    # Create tables within those databases
+    for RESOURCE_PROVIDER in "${RESOURCE_PROVIDERS[@]}"; do
+        echo "Creating tables in database $RESOURCE_PROVIDER"
+        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$RESOURCE_PROVIDER" < $SCRIPT_DIR/db.sql.txt
+    done
+  
+  # Mount the SQL schema file
+  db.sql.txt: |
+    -- 'resources' is used to store all of our resources. See comments below for an explanation of the columns.
+    CREATE TABLE resources (
+        -- example: "/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app"
+        --
+        -- We use columns to break out the most important components of the resource id for optimal querying.
+        --
+        -- Since resource ids are case-insensitive we canonicalize these columns to lowercase.
+        -- We store the original resource id with the original casing so users can work with their preferred
+        -- naming/casing conventions.
+        --
+        -- We ensure a leading and trailing slash on the components of the resource id for ease of comparison.
+        --
+        -- id -> "/planes/radius/local/resourcegroups/rg1/providers/applications.core/applications/my-app/"
+        -- resource_type -> "/applications.core/applications/"
+        -- root_scope -> "/planes/radius/local/resourcegroups/rg1/"
+        -- routing_scope -> "/applications.core/applications/my-app/"
+    
+        -- resource id used as key.
+        id TEXT PRIMARY KEY NOT NULL,
+    
+        -- original_id is used to store the original id of the resource before any normalization occurs.
+        -- This is provided for compatability with the existing design of the store API, and can be removed
+        -- in the future.
+        original_id TEXT NOT NULL,
+    
+        -- resource type by queries to filter by type.
+        resource_type TEXT NOT NULL,
+    
+        -- root_scope used by queries to list resources by their scope.
+        root_scope TEXT NOT NULL,
+    
+        -- routing_scope used by queries to list resources when they are child resources.
+        routing_scope TEXT NOT NULL,
+        
+        -- etag used for optimistic concurrency control.
+        etag TEXT NOT NULL,
+    
+        -- timestamp is used to implement cursor-based pagination (see below).
+        created_at TIMESTAMP (6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+        -- resource_data stores the resource data.
+        resource_data JSONB NOT NULL
+    );
+    
+    -- idx_resource_query is an index for improving performance of queries.
+    --
+    -- Queries always list resources by their:
+    --  - resource_type, and root_scope OR
+    --  - resource_type, root_scope, and (LIKE) routing_scope
+    --
+    -- eg: "find all Applications.Core/applications resources in /planes/radius/local/resourceGroups/my-rg"
+    --
+    -- > "resource_type" = "/applications.core/applications/"
+    -- > "root_scope" = "/planes/radius/local/resourcegroups/my-rg"
+    -- > "routing_scope" = NULL
+    --
+    -- 'created_at' is used with ORDER BY to sort the output, so we can implement cursor-based pagination.
+    --
+    -- 1) For the initial query, we won't specify a cursor value.
+    -- 2) For the next query, we will specify the cursor value as the last created_at value from the previous
+    --    query, which allows us to skip the records that were already returned.
+    --
+    -- The index only contains resource_type and root_scope because these are usually specified exactly.
+    -- We don't really benefit from routing_scope being in the index because it's always used with LIKE.
+    -- We don't benefit from created_at being in the index because it's used for sorting.
+    CREATE INDEX idx_resource_query ON resources (resource_type, root_scope);
