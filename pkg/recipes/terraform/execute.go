@@ -382,7 +382,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
-		return nil, fmt.Errorf("terraform init failure: %w", err)
+		return nil, fmt.Errorf("terraform init failure during apply flow: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 		[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState)})
@@ -415,7 +415,7 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
-		return fmt.Errorf("terraform init failure: %w", err)
+		return fmt.Errorf("terraform init failure during destroy flow: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 

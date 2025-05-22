@@ -334,6 +334,15 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 		}
 	}
 
+	terraformRegistrySecrets := terraform.GetTerraformRegistrySecretIDs(envConfig)
+	for secretStoreID, keys := range terraformRegistrySecrets {
+		if _, ok := secretStoreIDResourceKeys[secretStoreID]; !ok {
+			secretStoreIDResourceKeys[secretStoreID] = keys
+		} else {
+			secretStoreIDResourceKeys[secretStoreID] = append(secretStoreIDResourceKeys[secretStoreID], keys...)
+		}
+	}
+
 	return secretStoreIDResourceKeys, nil
 }
 

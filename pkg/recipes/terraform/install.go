@@ -58,7 +58,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 	installStartTime := time.Now()
 
 	var terraformSource src.Source
-	if terraformConfig.Version.Version != "" {
+	if terraformConfig.Version != nil && terraformConfig.Version.Version != "" {
 		logger.Info(fmt.Sprintf("Installing Terraform version: %s", terraformConfig.Version.Version))
 
 		version, err := version.NewVersion(terraformConfig.Version.Version)
