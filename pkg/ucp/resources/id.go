@@ -41,10 +41,10 @@ const (
 )
 
 var builtInProviders = []string{
-	"Applications.Core",
-	"Applications.Dapr",
-	"Applications.Messaging",
-	"Applications.Datastores",
+	"applications.core",
+	"applications.dapr",
+	"applications.messaging",
+	"applications.datastores",
 }
 
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() or ParseXyz()
@@ -916,9 +916,6 @@ func IsBuiltInType(resourceID string) bool {
 	if err != nil {
 		return false
 	}
-	provider := ri.ProviderNamespace()
-	if slices.Contains(builtInProviders, provider) {
-		return true
-	}
-	return false
+	provider := strings.ToLower(ri.ProviderNamespace())
+	return slices.Contains(builtInProviders, provider)
 }
