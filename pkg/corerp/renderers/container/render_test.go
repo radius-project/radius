@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
 	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -39,6 +38,8 @@ import (
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
+
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -46,25 +47,22 @@ import (
 )
 
 const (
-	applicationName            = "test-app"
-	applicationResourceID      = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
-	applicationPath            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
-	resourceName               = "test-container"
-	envVarName1                = "TEST_VAR_1"
-	envVarValue1               = "TEST_VALUE_1"
-	envVarName2                = "TEST_VAR_2"
-	envVarValue2               = "81"
-	envVarSource2              = "TEST_SOURCE_2"
-	envVarName3                = "TEST_VAR_3"
-	envVarSource3              = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/secretStores/test-secret"
-	envVarValue3               = "/planes/are/cool"
-	envVarName4                = "TEST_VAR_4"
-	envVarSource4              = "test_Namespace/TEST_SOURCE_4"
-	envVarValue4               = "TEST_VALUE_4"
-	dynamicResourceEnvVar      = "VAR1"
-	dynamicResourceEnvVarValue = "value1"
-	secretName                 = "test-container"
-	dynamicResource            = "/radius/local/resourceGroups/test-resourcegroup/providers/Applications.Test/testType/test-resource"
+	applicationName       = "test-app"
+	applicationResourceID = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
+	applicationPath       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
+	resourceName          = "test-container"
+	envVarName1           = "TEST_VAR_1"
+	envVarValue1          = "TEST_VALUE_1"
+	envVarName2           = "TEST_VAR_2"
+	envVarValue2          = "81"
+	envVarSource2         = "TEST_SOURCE_2"
+	envVarName3           = "TEST_VAR_3"
+	envVarSource3         = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/secretStores/test-secret"
+	envVarValue3          = "/planes/are/cool"
+	envVarName4           = "TEST_VAR_4"
+	envVarSource4         = "test_Namespace/TEST_SOURCE_4"
+	envVarValue4          = "TEST_VALUE_4"
+	secretName            = "test-container"
 
 	tempVolName      = "TempVolume"
 	tempVolMountPath = "/tmpfs"
@@ -116,27 +114,6 @@ func makeResource(properties datamodel.ContainerProperties) *datamodel.Container
 	return &resource
 }
 
-func makeDynamicResource() *dynamicrp_dm.DynamicResource {
-	return &dynamicrp_dm.DynamicResource{
-		BaseResource: apiv1.BaseResource{
-			TrackedResource: apiv1.TrackedResource{
-				ID:   "/planes/radius/local/resourceGroups/test-resourcegroup/providers/Applications.Test/testType/test-resource",
-				Type: "Applications.Test/testType",
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: "2024-01-01",
-			},
-		},
-		Properties: map[string]any{
-			"status": map[string]any{
-				"outputVariables": map[string]any{
-					"var1": "value1",
-				},
-			},
-		},
-	}
-}
-
 func makeAzureResourceID(t *testing.T, resourceType string, resourceName string) resources.ID {
 	id, err := resources.ParseResource(resources.MakeRelativeID(
 		[]resources.ScopeSegment{
@@ -167,6 +144,26 @@ func makeRadiusResourceID(t *testing.T, resourceType string, resourceName string
 	require.NoError(t, err)
 
 	return id
+}
+
+func makeDynamicResource() *dynamicrp_dm.DynamicResource {
+	return &dynamicrp_dm.DynamicResource{
+		BaseResource: apiv1.BaseResource{
+			TrackedResource: apiv1.TrackedResource{
+				ID:   "/planes/radius/local/resourceGroups/test-resourcegroup/providers/Applications.Test/testType/test-resource",
+				Type: "Applications.Test/testType",
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: "2024-01-01",
+			},
+		},
+		Properties: map[string]any{
+			"property1": "value1",
+			"property2": 2,
+			"property3": 3.14,
+			"status":    map[string]any{},
+		},
+	}
 }
 
 func Test_GetDependencyIDs_Success(t *testing.T) {
@@ -677,12 +674,9 @@ func Test_Render_Connections(t *testing.T) {
 				"ComputedKey2": 82,
 			},
 		},
-		dynamicResource: {
+		(makeRadiusResourceID(t, "Applications.Test/testType", "test-resource").String()): {
 			ResourceID: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource"),
 			Resource:   makeDynamicResource(),
-			OutputVariables: map[string]any{
-				dynamicResourceEnvVar: dynamicResourceEnvVarValue,
-			},
 		},
 	}
 
@@ -741,7 +735,39 @@ func Test_Render_Connections(t *testing.T) {
 				Name:  "CONNECTION_CONTAINERB_SCHEME",
 				Value: containerConnectionScheme,
 			},
-			{Name: "CONNECTION_DYNAMICRESOURCE_" + dynamicResourceEnvVar, Value: dynamicResourceEnvVarValue},
+			{
+				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY1",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY1",
+					},
+				},
+			},
+			{
+				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY2",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY2",
+					},
+				},
+			},
+			{
+				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY3",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY3",
+					},
+				},
+			},
 			{Name: envVarName1, Value: envVarValue1},
 			{Name: envVarName2, Value: envVarValue2},
 		}
