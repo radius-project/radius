@@ -757,7 +757,7 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				}
 			}
 
-			if resources.IsBuiltInType(con.Source) {
+			if !resources.IsBuiltInType(con.Source) {
 				partialResource, err := resourceutil.GetPropertiesFromResource(properties.Resource)
 				if err != nil {
 					return nil, nil, err
