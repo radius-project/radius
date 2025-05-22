@@ -60,10 +60,27 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-		},
-		{
+		}, {
 			Name:          "Valid List Command with environment",
 			Input:         []string{"Applications.Core/containers", "-e", "test-env"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Valid List Command with both application and environment flags",
+			Input:         []string{"Applications.Core/containers", "-a", "test-app", "-e", "test-env"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Valid List Command with both application and environment using full flags",
+			Input:         []string{"Applications.Core/containers", "--application", "test-app", "--environment", "test-env"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -394,6 +411,91 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     resources,
+					Options: objectformats.GetGenericResourceTableFormat(),
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+		})
+	})
+	t.Run("List resources by type in both application and environment", func(t *testing.T) {
+		t.Run("Success", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			// Resources in application
+			appResources := []generated.GenericResource{
+				radcli.CreateResource("Applications.Core/containers", "A"),
+				radcli.CreateResource("Applications.Core/containers", "B"),
+				radcli.CreateResource("Applications.Core/containers", "C"),
+			}
+
+			// Resources in environment
+			envResources := []generated.GenericResource{
+				radcli.CreateResource("Applications.Core/containers", "B"),
+				radcli.CreateResource("Applications.Core/containers", "C"),
+				radcli.CreateResource("Applications.Core/containers", "D"),
+			}
+
+			// Expected result: intersection of app and env resources
+			expectedResources := []generated.GenericResource{
+				radcli.CreateResource("Applications.Core/containers", "B"),
+				radcli.CreateResource("Applications.Core/containers", "C"),
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetResourceProviderSummary(context.Background(), "local", "Applications.Core").
+				Return(ucp.ResourceProviderSummary{
+					Name: to.Ptr("Applications.Core"),
+					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+						"containers": {
+							APIVersions: map[string]map[string]any{
+								"2023-01-01": {},
+							},
+							DefaultAPIVersion: to.Ptr("2023-01-01"),
+						},
+					},
+					Locations: map[string]map[string]any{
+						"east": {},
+					},
+				}, nil).Times(1)
+
+			appManagementClient.EXPECT().
+				GetApplication(gomock.Any(), "test-app").
+				Return(v20231001preview.ApplicationResource{}, nil).Times(1)
+
+			appManagementClient.EXPECT().
+				GetEnvironment(gomock.Any(), "test-env").
+				Return(v20231001preview.EnvironmentResource{}, nil).Times(1)
+
+			appManagementClient.EXPECT().
+				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "Applications.Core/containers").
+				Return(appResources, nil).Times(1)
+
+			appManagementClient.EXPECT().
+				ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/containers").
+				Return(envResources, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                    outputSink,
+				Workspace:                 &workspaces.Workspace{},
+				ApplicationName:           "test-app",
+				EnvironmentName:           "test-env",
+				ResourceType:              "Applications.Core/containers",
+				Format:                    "table",
+				ResourceTypeSuffix:        "containers",
+				ResourceProviderNameSpace: "Applications.Core",
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []any{
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     expectedResources,
 					Options: objectformats.GetGenericResourceTableFormat(),
 				},
 			}

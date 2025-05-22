@@ -136,7 +136,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	if environmentName == "" && workspace.Environment != "" {
 		id, err := resources.ParseResource(workspace.Environment)
 		if err != nil {
@@ -168,17 +168,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad resource list` command.
 //
 
-// Run checks if an application name is provided and if so, checks if the application exists in the workspace, then
-// lists all resources of the specified type in the application, and finally writes the resources to the output in the
-// specified format. If no application name is provided, it lists all resources of the specified type. An error is
-// returned if the application does not exist in the workspace.
+// Run lists resources based on provided filters (application name, environment name, resource type).
+// Resources can be filtered by:
+// 1. Both application and environment (intersection of resources in both)
+// 2. Only application (all resources in the application)
+// 3. Only environment (all resources in the environment)
+// 4. Only resource type (all resources of that type)
+// The command requires at least one filter parameter to be provided.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
-
-	var resourceList []generated.GenericResource
 
 	// If neither application name nor environment name is provided,
 	// and no resource type is specified, we can't list all resources
@@ -186,17 +187,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return clierrors.Message("Please specify a resource type, application name, or environment name")
 	}
 
-	// If no resource type is specified, but an environment name is provided,
-	// list all resources in the environment
-	if r.ResourceType == "" && r.EnvironmentName != "" {
-		resourceList, err = client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
-		if err != nil {
-			return err
-		}
-		return r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetGenericResourceTableFormat())
-	}
-
-	// If a resource type is specified, check if it's valid
+	// If a resource type is specified, validate it
 	if r.ResourceType != "" {
 		_, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNameSpace, r.ResourceTypeSuffix, client)
 		if err != nil {
@@ -204,37 +195,135 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	// Handle standard flows now that we've handled the special cases
-	if r.ApplicationName != "" {
-		// List resources in the application
-		_, err = client.GetApplication(ctx, r.ApplicationName)
-		if clients.Is404Error(err) {
-			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
-		} else if err != nil {
+	// Special case optimization: If listing all resources in an environment (no resource type),
+	// we can use a direct API call
+	if r.ResourceType == "" && r.EnvironmentName != "" && r.ApplicationName == "" {
+		resourceList, err := client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+		if err != nil {
 			return err
 		}
+		return r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetGenericResourceTableFormat())
+	}
 
-		if r.ResourceType != "" {
-			resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
-		} else {
-			resourceList, err = client.ListResourcesInApplication(ctx, r.ApplicationName)
-		}
-		if err != nil {
-			return err
-		}
-	} else if r.EnvironmentName != "" {
-		// List resources in the environment
-		resourceList, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
-		if err != nil {
-			return err
-		}
-	} else {
-		// List resources of type
+	var resourceList []generated.GenericResource
+
+	// Handle different filter combinations
+	switch {
+	case r.ApplicationName != "" && r.EnvironmentName != "":
+		// Filter resources by both application and environment
+		resourceList, err = r.getResourcesInApplicationAndEnvironment(ctx, client)
+	case r.ApplicationName != "":
+		// Filter resources by application only
+		resourceList, err = r.getResourcesInApplication(ctx, client)
+	case r.EnvironmentName != "":
+		// Filter resources by environment only
+		resourceList, err = r.getResourcesInEnvironment(ctx, client)
+	default:
+		// Filter resources by resource type only
 		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
-		if err != nil {
-			return err
-		}
+	}
+
+	if err != nil {
+		return err
 	}
 
 	return r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetGenericResourceTableFormat())
+}
+
+// getResourcesInApplication retrieves resources in the specified application,
+// optionally filtered by resource type.
+func (r *Runner) getResourcesInApplication(ctx context.Context, client clients.ApplicationsManagementClient) ([]generated.GenericResource, error) {
+	// Verify application exists
+	_, err := client.GetApplication(ctx, r.ApplicationName)
+	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
+		}
+		return nil, err
+	}
+
+	// Get resources filtered by application and optionally by resource type
+	if r.ResourceType != "" {
+		return client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+	}
+	return client.ListResourcesInApplication(ctx, r.ApplicationName)
+}
+
+// getResourcesInEnvironment retrieves resources in the specified environment,
+// optionally filtered by resource type.
+func (r *Runner) getResourcesInEnvironment(ctx context.Context, client clients.ApplicationsManagementClient) ([]generated.GenericResource, error) {
+	// No need to verify environment exists as the API call will return an error if it doesn't
+	if r.ResourceType != "" {
+		return client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
+	}
+	return client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+}
+
+// getResourcesInApplicationAndEnvironment retrieves resources that belong to both
+// the specified application and environment.
+func (r *Runner) getResourcesInApplicationAndEnvironment(ctx context.Context, client clients.ApplicationsManagementClient) ([]generated.GenericResource, error) {
+	// Verify application exists
+	_, err := client.GetApplication(ctx, r.ApplicationName)
+	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
+		}
+		return nil, err
+	}
+
+	// Verify environment exists
+	_, err = client.GetEnvironment(ctx, r.EnvironmentName)
+	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, clierrors.Message("The environment %q could not be found in workspace %q. Make sure you specify the correct environment with '-e/--environment'.", r.EnvironmentName, r.Workspace.Name)
+		}
+		return nil, err
+	}
+
+	// Get resources in application (filtered by resource type if specified)
+	var appResources []generated.GenericResource
+	if r.ResourceType != "" {
+		appResources, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+	} else {
+		appResources, err = client.ListResourcesInApplication(ctx, r.ApplicationName)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Get resources in environment (filtered by resource type if specified)
+	var envResources []generated.GenericResource
+	if r.ResourceType != "" {
+		envResources, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
+	} else {
+		envResources, err = client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Find intersection: resources that belong to both application and environment
+	return findCommonResources(appResources, envResources), nil
+}
+
+// findCommonResources returns a list of resources that exist in both resource lists,
+// comparing them by resource ID.
+func findCommonResources(appResources, envResources []generated.GenericResource) []generated.GenericResource {
+	result := []generated.GenericResource{}
+
+	// Create a map of environment resource IDs for faster lookup
+	envResourceMap := make(map[string]bool)
+	for _, resource := range envResources {
+		if resource.ID != nil {
+			envResourceMap[*resource.ID] = true
+		}
+	}
+
+	// Filter application resources that are also in the environment
+	for _, resource := range appResources {
+		if resource.ID != nil && envResourceMap[*resource.ID] {
+			result = append(result, resource)
+		}
+	}
+	return result
 }
