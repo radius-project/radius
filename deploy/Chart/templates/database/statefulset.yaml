@@ -22,6 +22,21 @@ spec:
         app.kubernetes.io/part-of: radius
     spec:
       serviceAccountName: database
+      initContainers:
+      - name: init-scripts-setup
+        image: busybox:1.36
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Copying init SQL file to persistent volume..."
+          cp /tmp/init-scripts/init-db.sql /init-scripts/
+          echo "Init SQL file copied successfully."
+        volumeMounts:
+        - name: init-scripts-config
+          mountPath: /tmp/init-scripts
+        - name: init-scripts
+          mountPath: /init-scripts
       containers:
       - name: database
         securityContext:
@@ -60,7 +75,10 @@ spec:
           subPath: postgres
         - name: init-scripts
           mountPath: /docker-entrypoint-initdb.d
-        
+      volumes:
+      - name: init-scripts-config
+        configMap:
+          name: postgres-init-scripts  
   volumeClaimTemplates:
   - metadata:
       name: database
@@ -70,4 +88,13 @@ spec:
       resources:
         requests:
           storage: {{ .Values.database.storageSize }}
+  - metadata:
+      name: init-scripts
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      storageClassName: {{ .Values.database.storageClassName }}
+      resources:
+        requests:
+          storage: 1Gi
 {{- end }}
