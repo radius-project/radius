@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -71,7 +70,7 @@ rad resource list --environment dev-env
 # list all resources in the default environment
 rad resource list
 `,
-		Args: cobra.MaximumNArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -126,25 +125,24 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Scope = scope
 
-	applicationName, err := cli.ReadApplicationName(cmd, *workspace)
+	// Only set application name if explicitly provided via flag
+	applicationFlag, err := cmd.Flags().GetString("application")
 	if err != nil {
 		return err
 	}
-	r.ApplicationName = applicationName
+	if applicationFlag != "" {
+		r.ApplicationName = applicationFlag
+	}
 
+	// Only set environment name if explicitly provided via flag
 	environmentName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return err
 	}
 
-	if environmentName == "" && workspace.Environment != "" {
-		id, err := resources.ParseResource(workspace.Environment)
-		if err != nil {
-			return err
-		}
-		environmentName = id.Name()
+	if environmentName != "" {
+		r.EnvironmentName = environmentName
 	}
-	r.EnvironmentName = environmentName
 
 	// If we're listing all resources in an environment (no resource type specified),
 	// we don't need to validate the resource type
@@ -189,7 +187,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// If a resource type is specified, validate it
 	if r.ResourceType != "" {
-		_, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNameSpace, r.ResourceTypeSuffix, client)
+		_, err := common.GetResourceTypeDetails(ctx, r.ResourceProviderNameSpace, r.ResourceTypeSuffix, client)
 		if err != nil {
 			return err
 		}
@@ -220,7 +218,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		resourceList, err = r.getResourcesInEnvironment(ctx, client)
 	default:
 		// Filter resources by resource type only
-		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
+		resources, err := client.ListResourcesOfType(ctx, r.ResourceType)
+		if err != nil {
+			return err
+		}
+		resourceList = resources
 	}
 
 	if err != nil {
@@ -252,11 +254,29 @@ func (r *Runner) getResourcesInApplication(ctx context.Context, client clients.A
 // getResourcesInEnvironment retrieves resources in the specified environment,
 // optionally filtered by resource type.
 func (r *Runner) getResourcesInEnvironment(ctx context.Context, client clients.ApplicationsManagementClient) ([]generated.GenericResource, error) {
-	// No need to verify environment exists as the API call will return an error if it doesn't
-	if r.ResourceType != "" {
-		return client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
+	// Verify environment exists
+	_, err := client.GetEnvironment(ctx, r.EnvironmentName)
+	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, clierrors.Message("The environment %q could not be found in workspace %q. Make sure you specify the correct environment with '-e/--environment'.", r.EnvironmentName, r.Workspace.Name)
+		}
+		return nil, err
 	}
-	return client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+
+	var resources []generated.GenericResource
+	// Get resources filtered by environment and optionally by resource type
+	if r.ResourceType != "" {
+		resources, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		resources, err = client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resources, nil
 }
 
 // getResourcesInApplicationAndEnvironment retrieves resources that belong to both

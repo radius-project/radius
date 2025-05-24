@@ -98,7 +98,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Valid List Command with environment only (no resource type)",
-			Input:         []string{"-e", "test-env"},
+			Input:         []string{"Applications.Core/environments", "-e", "test-env"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -107,7 +107,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Valid List Command with environment only (no resource type) using full environment flag",
-			Input:         []string{"--environment", "test-env"},
+			Input:         []string{"Applications.Core/environments", "--environment", "test-env"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -135,7 +135,7 @@ func Test_Validate(t *testing.T) {
 		{
 			Name:          "List Command with no arguments",
 			Input:         []string{},
-			ExpectedValid: true,
+			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
@@ -343,6 +343,10 @@ func Test_Run(t *testing.T) {
 						"east": {},
 					},
 				}, nil).Times(1)
+
+			appManagementClient.EXPECT().
+				GetEnvironment(gomock.Any(), "test-env").
+				Return(v20231001preview.EnvironmentResource{}, nil).Times(1)
 
 			appManagementClient.EXPECT().
 				ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/containers").

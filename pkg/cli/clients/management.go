@@ -1022,9 +1022,35 @@ func isResourceInApplication(resource generated.GenericResource, applicationID s
 }
 
 func isResourceInEnvironment(resource generated.GenericResource, environmentID string) bool {
-	obj, found := resource.Properties["environment"]
-	// A resource may not have an environment associated with it.
+	obj, found := resource.Properties["environment"] // A resource may not have an environment associated with it.
 	if !found {
+		// Special case for environment resources themselves
+		if resource.Type != nil && strings.EqualFold(*resource.Type, "Applications.Core/environments") {
+			if resource.ID != nil {
+				// First try direct comparison
+				if strings.EqualFold(*resource.ID, environmentID) {
+					return true
+				}
+
+				// If no direct match, check if one is a shortname and the other is a full ID
+				shortNameEnv := environmentID
+				if strings.Contains(environmentID, "/") {
+					parts := strings.Split(environmentID, "/")
+					shortNameEnv = parts[len(parts)-1]
+				}
+
+				shortNameResource := *resource.ID
+				if strings.Contains(*resource.ID, "/") {
+					parts := strings.Split(*resource.ID, "/")
+					shortNameResource = parts[len(parts)-1]
+				}
+
+				if shortNameEnv != "" && shortNameResource != "" &&
+					strings.EqualFold(shortNameEnv, shortNameResource) {
+					return true
+				}
+			}
+		}
 		return false
 	}
 
@@ -1033,7 +1059,26 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 		return false
 	}
 
+	// Do case-insensitive comparison and also check for potential ID variations
 	if strings.EqualFold(associatedEnvId, environmentID) {
+		return true
+	}
+
+	// Check if one is a shortname and the other is a full ID
+	shortNameEnv := environmentID
+	if strings.Contains(environmentID, "/") {
+		parts := strings.Split(environmentID, "/")
+		shortNameEnv = parts[len(parts)-1]
+	}
+
+	shortNameAssociated := associatedEnvId
+	if strings.Contains(associatedEnvId, "/") {
+		parts := strings.Split(associatedEnvId, "/")
+		shortNameAssociated = parts[len(parts)-1]
+	}
+
+	if shortNameEnv != "" && shortNameAssociated != "" &&
+		strings.EqualFold(shortNameEnv, shortNameAssociated) {
 		return true
 	}
 

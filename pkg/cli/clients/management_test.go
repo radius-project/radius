@@ -263,8 +263,7 @@ func Test_Resource(t *testing.T) {
 		mock.EXPECT().
 			NewListByRootScopePager(gomock.Any()).
 			Return(pager(listPages))
-
-		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0], *listPages[0].Value[1]}
+		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0], *listPages[0].Value[1], *listPages[1].Value[0], *listPages[1].Value[1]}
 
 		resources, err := client.ListResourcesOfTypeInEnvironment(context.Background(), "test-environment", testResourceType)
 		require.NoError(t, err)
@@ -297,8 +296,7 @@ func Test_Resource(t *testing.T) {
 		mockResourceClient.EXPECT().
 			NewListByRootScopePager(gomock.Any()).
 			Return(pager(listPages)).AnyTimes()
-
-		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0], *listPages[0].Value[1]}
+		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0], *listPages[0].Value[1], *listPages[1].Value[0], *listPages[1].Value[1]}
 
 		resources, err := client.ListResourcesInEnvironment(context.Background(), "test-environment")
 		require.NoError(t, err)
@@ -1354,4 +1352,159 @@ func setCapture(ctx context.Context, response *http.Response) {
 
 func testCapture(ctx context.Context, capture **http.Response) context.Context {
 	return context.WithValue(ctx, holder{}, &holder{capture})
+}
+
+func Test_isResourceInEnvironment(t *testing.T) {
+	// Setup test cases
+	type testCase struct {
+		name          string
+		resource      generated.GenericResource
+		environmentID string
+		expected      bool
+	}
+
+	fullEnvID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/env1"
+	shortEnvID := "env1"
+	envType := "Applications.Core/environments"
+	otherType := "Applications.Core/containers"
+
+	tests := []testCase{
+		{
+			name: "direct match - full ID",
+			resource: generated.GenericResource{
+				Properties: map[string]interface{}{
+					"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/env1",
+				},
+			},
+			environmentID: fullEnvID,
+			expected:      true,
+		},
+		{
+			name: "direct match - short name",
+			resource: generated.GenericResource{
+				Properties: map[string]interface{}{
+					"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/env1",
+				},
+			},
+			environmentID: shortEnvID,
+			expected:      true,
+		},
+		{
+			name: "case-insensitive match",
+			resource: generated.GenericResource{
+				Properties: map[string]interface{}{
+					"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/ENV1",
+				},
+			},
+			environmentID: "env1",
+			expected:      true,
+		},
+		{
+			name: "short name vs full ID",
+			resource: generated.GenericResource{
+				Properties: map[string]interface{}{
+					"environment": "env1",
+				},
+			},
+			environmentID: fullEnvID,
+			expected:      true,
+		},
+		{
+			name: "no match",
+			resource: generated.GenericResource{
+				Properties: map[string]interface{}{
+					"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/env2",
+				},
+			},
+			environmentID: "env1",
+			expected:      false,
+		},
+		{
+			name: "no environment property",
+			resource: generated.GenericResource{
+				Properties: map[string]interface{}{
+					"otherProperty": "value",
+				},
+			},
+			environmentID: "env1",
+			expected:      false,
+		},
+		{
+			name: "environment resource itself - matching ID",
+			resource: generated.GenericResource{
+				Type: &envType,
+				ID:   &fullEnvID,
+				Properties: map[string]interface{}{
+					"otherProperty": "value",
+				},
+			},
+			environmentID: fullEnvID,
+			expected:      true,
+		},
+		{
+			name: "environment resource itself - matching short ID",
+			resource: generated.GenericResource{
+				Type: &envType,
+				ID:   &fullEnvID,
+				Properties: map[string]interface{}{
+					"otherProperty": "value",
+				},
+			},
+			environmentID: shortEnvID,
+			expected:      true,
+		},
+		{
+			name: "environment resource itself - non-matching ID",
+			resource: generated.GenericResource{
+				Type: &envType,
+				ID:   &fullEnvID,
+				Properties: map[string]interface{}{
+					"otherProperty": "value",
+				},
+			},
+			environmentID: "env2",
+			expected:      false,
+		},
+		{
+			name: "non-environment resource - no environment property",
+			resource: generated.GenericResource{
+				Type: &otherType,
+				Properties: map[string]interface{}{
+					"otherProperty": "value",
+				},
+			},
+			environmentID: "env1",
+			expected:      false,
+		},
+		{
+			name: "empty environment property",
+			resource: generated.GenericResource{
+				Properties: map[string]interface{}{
+					"environment": "",
+				},
+			},
+			environmentID: "env1",
+			expected:      false,
+		},
+		{
+			name: "non-string environment property",
+			resource: generated.GenericResource{
+				Properties: map[string]interface{}{
+					"environment": 123,
+				},
+			},
+			environmentID: "env1",
+			expected:      false,
+		},
+	}
+
+	// Run tests
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isResourceInEnvironment(tt.resource, tt.environmentID)
+			if result != tt.expected {
+				t.Errorf("isResourceInEnvironment() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
 }
