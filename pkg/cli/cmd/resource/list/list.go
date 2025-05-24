@@ -18,6 +18,7 @@ package list
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -70,7 +71,21 @@ rad resource list --environment dev-env
 # list all resources in the default environment
 rad resource list
 `,
-		Args: cobra.ExactArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			// If environment flag is provided, args are optional
+			if cmd.Flags().Changed("environment") || cmd.Flags().Changed("e") {
+				if len(args) > 1 {
+					return fmt.Errorf("accepts at most 1 arg when environment flag is provided, received %d", len(args))
+				}
+				return nil
+			}
+
+			// Otherwise, exactly 1 argument is required
+			if len(args) != 1 {
+				return fmt.Errorf("accepts 1 arg(s), received %d", len(args))
+			}
+			return nil
+		},
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -107,9 +122,7 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad resource list` command.
-//
-
-// Validate checks the command line args, workspace, scope, application name, resource type and output format, and
+//	// Validate checks the command line args, workspace, scope, application name, resource type and output format, and
 // returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
@@ -193,16 +206,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	// Special case optimization: If listing all resources in an environment (no resource type),
-	// we can use a direct API call
-	if r.ResourceType == "" && r.EnvironmentName != "" && r.ApplicationName == "" {
-		resourceList, err := client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
-		if err != nil {
-			return err
-		}
-		return r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetGenericResourceTableFormat())
-	}
-
 	var resourceList []generated.GenericResource
 
 	// Handle different filter combinations
@@ -215,7 +218,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		resourceList, err = r.getResourcesInApplication(ctx, client)
 	case r.EnvironmentName != "":
 		// Filter resources by environment only
-		resourceList, err = r.getResourcesInEnvironment(ctx, client)
+		if r.ResourceType != "" {
+			// Use helper method for consistent handling
+			resourceList, err = r.getResourcesInEnvironment(ctx, client)
+		} else {
+			resourceList, err = client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+		}
 	default:
 		// Filter resources by resource type only
 		resources, err := client.ListResourcesOfType(ctx, r.ResourceType)

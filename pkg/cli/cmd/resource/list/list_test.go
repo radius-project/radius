@@ -527,4 +527,179 @@ func Test_Run(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("Please specify a resource type, application name, or environment name"), err)
 	})
+	t.Run("List resources by type in environment using the getResourcesInEnvironment helper", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		resources := []generated.GenericResource{
+			radcli.CreateResource("Applications.Core/containers", "test-container"),
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+		// Expect resource type validation
+		appManagementClient.EXPECT().
+			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Core").
+			Return(ucp.ResourceProviderSummary{
+				Name: to.Ptr("Applications.Core"),
+				ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+					"containers": {
+						APIVersions: map[string]map[string]any{
+							"2023-01-01": {},
+						},
+						DefaultAPIVersion: to.Ptr("2023-01-01"),
+					},
+				},
+				Locations: map[string]map[string]any{
+					"east": {},
+				},
+			}, nil).Times(1)
+
+		// First the environment is verified to exist
+		appManagementClient.EXPECT().
+			GetEnvironment(gomock.Any(), "default").
+			Return(v20231001preview.EnvironmentResource{}, nil).Times(1)
+
+		// Then we should use our helper method
+		appManagementClient.EXPECT().
+			ListResourcesOfTypeInEnvironment(gomock.Any(), "default", "Applications.Core/containers").
+			Return(resources, nil).Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:                    outputSink,
+			Workspace:                 &workspaces.Workspace{},
+			ApplicationName:           "",
+			EnvironmentName:           "default",
+			ResourceType:              "Applications.Core/containers",
+			ResourceProviderNameSpace: "Applications.Core",
+			ResourceTypeSuffix:        "containers",
+			Format:                    "table",
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+	})
+}
+
+// Test_ResourceListEnvironmentComparison is a test that compares the behavior of the resource list command 
+// with and without the --environment flag to detect differences in filtering behavior
+func Test_ResourceListEnvironmentComparison(t *testing.T) {
+	t.Run("Compare resource list with and without environment flag", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		// Create test resources - same set used for both calls
+		resources := []generated.GenericResource{
+			createResourceWithEnvironment("Applications.Core/containers", "container1", "default"),
+			createResourceWithEnvironment("Applications.Core/containers", "container2", "default"),
+			createResourceWithEnvironment("Applications.Core/containers", "container3", "other-env"),
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		
+		// First test without environment flag
+		appManagementClient.EXPECT().
+			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Core").
+			Return(ucp.ResourceProviderSummary{
+				Name: to.Ptr("Applications.Core"),
+				ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+					"containers": {
+						APIVersions: map[string]map[string]any{
+							"2023-01-01": {},
+						},
+						DefaultAPIVersion: to.Ptr("2023-01-01"),
+					},
+				},
+				Locations: map[string]map[string]any{
+					"east": {},
+				},
+			}, nil).Times(2) // Called twice - once for each run
+
+		// Without environment flag - expect direct call to ListResourcesOfType
+		appManagementClient.EXPECT().
+			ListResourcesOfType(gomock.Any(), "Applications.Core/containers").
+			Return(resources, nil).Times(1)
+
+		// With environment flag - expect environment verification and then filtering
+		appManagementClient.EXPECT().
+			GetEnvironment(gomock.Any(), "default").
+			Return(v20231001preview.EnvironmentResource{}, nil).Times(1)
+		
+		// Expect a call to ListResourcesOfTypeInEnvironment
+		appManagementClient.EXPECT().
+			ListResourcesOfTypeInEnvironment(gomock.Any(), "default", "Applications.Core/containers").
+			Return([]generated.GenericResource{
+				resources[0],
+				resources[1],
+			}, nil).Times(1)
+
+		// First run without environment flag
+		outputWithoutEnv := &output.MockOutput{}
+		runnerWithoutEnv := &Runner{
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:                    outputWithoutEnv,
+			Workspace:                 &workspaces.Workspace{},
+			ApplicationName:           "",
+			EnvironmentName:           "",
+			ResourceType:              "Applications.Core/containers",
+			Format:                    "table",
+			ResourceTypeSuffix:        "containers",
+			ResourceProviderNameSpace: "Applications.Core",
+		}
+
+		err := runnerWithoutEnv.Run(context.Background())
+		require.NoError(t, err)
+
+		// Second run with environment flag
+		outputWithEnv := &output.MockOutput{}
+		runnerWithEnv := &Runner{
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:                    outputWithEnv,
+			Workspace:                 &workspaces.Workspace{},
+			ApplicationName:           "",
+			EnvironmentName:           "default",
+			ResourceType:              "Applications.Core/containers",
+			Format:                    "table",
+			ResourceTypeSuffix:        "containers",
+			ResourceProviderNameSpace: "Applications.Core",
+		}
+
+		err = runnerWithEnv.Run(context.Background())
+		require.NoError(t, err)
+
+		// Verify both outputs are equivalent
+		withoutEnvOutput, ok := outputWithoutEnv.Writes[0].(output.FormattedOutput)
+		require.True(t, ok)
+		
+		withEnvOutput, ok := outputWithEnv.Writes[0].(output.FormattedOutput)
+		require.True(t, ok)
+
+		// Check the number of resources
+		withoutEnvResources, ok := withoutEnvOutput.Obj.([]generated.GenericResource)
+		require.True(t, ok)
+		
+		withEnvResources, ok := withEnvOutput.Obj.([]generated.GenericResource)
+		require.True(t, ok)
+
+		// We expect the environment flag to filter out the resource not in the "default" environment
+		require.Len(t, withoutEnvResources, 3, "Without environment flag should show all resources")
+		require.Len(t, withEnvResources, 2, "With environment flag should only show resources in the specified environment")
+	})
+}
+
+// Helper function to create a test resource with an environment property
+func createResourceWithEnvironment(resourceType, name, environmentName string) generated.GenericResource {
+	resource := radcli.CreateResource(resourceType, name)
+	
+	if resource.Properties == nil {
+		resource.Properties = make(map[string]any)
+	}
+	
+	if environmentName != "" {
+		// Set the environment property directly as a string (matches the format in isResourceInEnvironment)
+		resource.Properties["environment"] = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/" + environmentName
+	}
+	
+	return resource
 }

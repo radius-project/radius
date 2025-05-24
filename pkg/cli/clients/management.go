@@ -1051,6 +1051,19 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 				}
 			}
 		}
+		
+		// Special handling for the default environment - resources without an explicit
+		// environment property are considered to be in the default environment
+		shortNameEnv := environmentID
+		if strings.Contains(environmentID, "/") {
+			parts := strings.Split(environmentID, "/")
+			shortNameEnv = parts[len(parts)-1]
+		}
+		
+		if strings.EqualFold(shortNameEnv, "default") {
+			return true
+		}
+		
 		return false
 	}
 
