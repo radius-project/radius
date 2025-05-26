@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # ------------------------------------------------------------
 # Copyright 2023 The Radius Authors.
 #
@@ -18,11 +19,11 @@
 set -euo pipefail
 
 # Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly NC='\033[0m' # No Color
 
 # Function to print colored output
 print_info() {
@@ -58,6 +59,13 @@ check_gh_cli() {
     if ! command -v gh &> /dev/null; then
         print_error "GitHub CLI (gh) is required but not installed."
         print_info "Please install it from: https://cli.github.com/"
+        exit 1
+    fi
+
+    # Check if jq is installed
+    if ! command -v jq &> /dev/null; then
+        print_error "jq is required but not installed."
+        print_info "Please install jq to parse JSON responses."
         exit 1
     fi
 
@@ -144,13 +152,15 @@ delete_all_runs() {
             echo "Deleting workflow run with ID: $id"
             # The gh CLI command show below is simpler but much slower than using curl
             # gh run delete --repo "$REPO" "$id"
-            curl -sL -X DELETE \
+            if ! curl -sL -X DELETE \
                 -H "Accept: application/vnd.github+json" \
                 -H "Authorization: Bearer $GITHUB_TOKEN" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
-                "https://api.github.com/repos/$REPO/actions/runs/$id"
+                "https://api.github.com/repos/$REPO/actions/runs/$id"; then
+                print_error "Failed to delete workflow run with ID: $id"
+            fi
         done
-        
+
         echo "Batch completed. Checking for more workflow runs..."
     done
 
@@ -159,8 +169,20 @@ delete_all_runs() {
 
 # Toggle workflows (enable or disable)
 toggle_workflows() {
+    
+    if [[ $# -ne 2 ]]; then
+        print_error "Usage: toggle_workflows <action> <repo>"
+        exit 1
+    fi
+
     local action="$1"
     local repo="$2"
+
+    if [[ "$action" != "enable" && "$action" != "disable" ]]; then
+        print_error "Invalid action: $action. Must be 'enable' or 'disable'"
+        exit 1
+    fi
+
     check_org_restriction "$action all workflows"
     
     local action_verb action_past_tense gh_command gh_state
@@ -175,12 +197,12 @@ toggle_workflows() {
         gh_command="disable"
         gh_state="active"
     fi
-    
-    print_info "$action_verb all workflows in repository: $repo"
-    
+
+    print_info "$action_verb all workflows in repository '$repo' with state '$gh_state'."
+
     # Get workflows with their current state
     local workflows
-    workflows=$(gh workflow list --all --json name,state | jq -r '.[] | select(.state == "'"$gh_state"'") | .name')
+    workflows=$(gh workflow list --repo "$repo" --all --json name,state | jq -r '.[] | select(.state == "'"$gh_state"'") | .name')
 
     if [[ -z "$workflows" ]]; then
         print_warning "No workflows found that need to be $action_past_tense."
