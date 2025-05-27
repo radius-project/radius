@@ -749,11 +749,8 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				if err != nil {
 					return nil, nil, err
 				}
-				// add condition for if UDT
 				for key, value := range partialResource {
-
 					name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
-
 					source := corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
@@ -773,7 +770,6 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 						secretData[name] = []byte(strconv.Itoa(v))
 						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
 					}
-
 				}
 			}
 		}
