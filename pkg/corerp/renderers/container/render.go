@@ -764,7 +764,8 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 						secretData[name] = []byte(v)
 						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
 					case float64:
-						secretData[name] = []byte(strconv.Itoa(int(v)))
+						strVal := strconv.FormatFloat(v, 'f', -1, 64)
+						secretData[name] = []byte(strVal)
 						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
 					case int:
 						secretData[name] = []byte(strconv.Itoa(v))
