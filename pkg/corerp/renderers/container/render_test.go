@@ -787,9 +787,12 @@ func Test_Render_Connections(t *testing.T) {
 		require.Empty(t, secret.Annotations)
 
 		require.Equal(t, outputResource.LocalID, rpv1.LocalIDSecret)
-		require.Len(t, secret.Data, 2)
+		require.Len(t, secret.Data, 5)
 		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_A_COMPUTEDKEY1"]))
 		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
+		require.Equal(t, "value1", string(secret.Data["CONNECTION_DYNAMICRESOURCE_PROPERTY1"]))
+		require.Equal(t, "2", string(secret.Data["CONNECTION_DYNAMICRESOURCE_PROPERTY2"]))
+		require.Equal(t, "3.14", string(secret.Data["CONNECTION_DYNAMICRESOURCE_PROPERTY3"]))
 	})
 	require.Len(t, output.Resources, 5)
 }
