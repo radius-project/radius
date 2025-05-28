@@ -153,3 +153,13 @@ oav-installed:
 test-ucp-spec-examples: oav-installed ## Validates UCP examples conform to UCP OpenAPI Spec
 	# @echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
 	# oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
+
+.PHONY: test-deploy-lrt-cluster
+test-deploy-lrt-cluster: ## Deploys long-running test cluster to Azure
+	@echo "$(ARROW) Deploying long-running test cluster to Azure..."
+	@bash ./build/test.sh deploy-lrt-cluster
+
+.PHONY: test-delete-lrt-cluster
+test-delete-lrt-cluster: ## Cleans up long-running test cluster from Azure
+	@echo "$(ARROW) Cleaning up long-running test cluster from Azure..."
+	@bash ./build/test.sh delete-lrt-cluster

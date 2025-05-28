@@ -98,7 +98,7 @@ module aksCluster './modules/akscluster.bicep' = {
     systemAgentPoolOsDiskType: 'Managed'
     systemAgentPoolOsSKU: 'AzureLinux'
     userAgentPoolName: 'userpool'
-    userAgentPoolVmSize: 'Standard_D4as_v5'
+    userAgentPoolVmSize: 'Standard_D8as_v5'
     userAgentPoolAvailabilityZones: []
     userAgentPoolOsDiskType: 'Managed'
     userAgentPoolOsSKU: 'AzureLinux'
