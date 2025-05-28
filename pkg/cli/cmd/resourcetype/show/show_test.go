@@ -163,23 +163,6 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		logOutput := `
-
-DESCRIPTION:
-  Resource type description
-
-APIVERSION : 2023-10-01-preview
-
-  REQUIRED PROPERTIES:
-    - environment (string) The name of the environment.
-
-  OPTIONAL PROPERTIES:
-    - application (string) The name of the application.
-
-  READONLY PROPERTIES:
-    - database (string) The name of the database.
-
-`
 		expected := []any{
 			output.FormattedOutput{
 				Format:  "table",
@@ -187,7 +170,45 @@ APIVERSION : 2023-10-01-preview
 				Options: common.GetResourceTypeShowTableFormat(),
 			},
 			output.LogOutput{
-				Format: logOutput,
+				Format: "API VERSION:%s\n",
+				Params: []any{"2023-10-01-preview"},
+			},
+			output.LogOutput{
+				Format: "%s\n",
+				Params: []any{""},
+			},
+			output.FormattedOutput{
+				Format:  "table",
+				Options: common.GetResourceTypeSchemaShowTableFormat(),
+				Obj: []FieldSchema{
+					{
+						Name:        "application",
+						Description: "The name of the application.",
+						Type:        "string",
+						IsRequired:  false,
+						IsReadOnly:  false,
+						Properties:  map[string]FieldSchema{},
+					},
+					{
+						Name:        "database",
+						Description: "The name of the database.",
+						Type:        "string",
+						IsRequired:  false,
+						IsReadOnly:  true,
+						Properties:  map[string]FieldSchema{},
+					},
+					{
+						Name:        "environment",
+						Description: "The name of the environment.",
+						Type:        "string",
+						IsRequired:  true,
+						IsReadOnly:  false,
+						Properties:  map[string]FieldSchema{},
+					},
+				},
+			},
+			output.LogOutput{
+				Format: "\n",
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)

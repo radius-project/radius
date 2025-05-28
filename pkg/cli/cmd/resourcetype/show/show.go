@@ -115,7 +115,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.Format != "json" {
-		r.Output.LogInfo(display(&resourceTypeDetails))
+		err = r.display(&resourceTypeDetails)
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }

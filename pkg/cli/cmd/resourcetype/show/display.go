@@ -17,78 +17,133 @@ limitations under the License.
 package show
 
 import (
+	"container/list"
+	"fmt"
 	"slices"
-	"strings"
+	"sort"
 
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 )
 
-func display(resourceType *common.ResourceType) string {
-	output := &strings.Builder{}
-	indentSpaceCount := 0
-	output.WriteString("\n\nDESCRIPTION:\n")
-	output.WriteString(indent(resourceType.Description, indentSpaceCount+2) + "\n\n")
-	for name, properties := range resourceType.APIVersions {
-		output.WriteString("APIVERSION : " + name + "\n\n")
-		indentSpaceCount += 2
-		requiredProperties := map[string]any{}
-		readonlonlyProperties := map[string]any{}
-		optionalProperties := map[string]any{}
-		requiredPropertiesKeys := []string{}
-		if properties.Schema["required"] != nil {
-			required := properties.Schema["required"].([]any)
-			for _, prop := range required {
-				requiredPropertiesKeys = append(requiredPropertiesKeys, prop.(string))
-			}
-		}
-
-		if properties.Schema["properties"] != nil {
-			for propName, prop := range properties.Schema["properties"].(map[string]any) {
-				prp, ok := prop.(map[string]any)
-				if ok {
-					if prp["readOnly"] == true {
-						readonlonlyProperties[propName] = prop
-					} else if slices.Contains(requiredPropertiesKeys, propName) {
-						requiredProperties[propName] = prop
-					} else {
-						optionalProperties[propName] = prop
-					}
-				}
-
-			}
-		}
-
-		writeProperties := func(output *strings.Builder, title string, indentSpaceCount int, props map[string]any) {
-			output.WriteString(indent(title+":\n", indentSpaceCount))
-			for propName, prop := range props {
-				prps := prop.(map[string]any)
-				t := prps["type"].(string)
-				desc := ""
-				if ok := prps["description"]; ok != nil {
-					desc = prps["description"].(string)
-				}
-				output.WriteString(indent("- "+propName+" ("+t+") "+desc, indentSpaceCount+2) + "\n")
-			}
-			output.WriteString("\n")
-		}
-
-		writeProperties(output, "REQUIRED PROPERTIES", indentSpaceCount, requiredProperties)
-		writeProperties(output, "OPTIONAL PROPERTIES", indentSpaceCount, optionalProperties)
-		writeProperties(output, "READONLY PROPERTIES", indentSpaceCount, readonlonlyProperties)
-		indentSpaceCount -= 2
-	}
-
-	return output.String()
+// HeadingToSchema holds a nested field path and its schema definition.
+type HeadingToSchema struct {
+	// Heading is the path to this field (e.g. ".database.server.name").
+	Heading string
+	// Schema contains the field's metadata, such as type and nested properties.
+	Schema FieldSchema
 }
 
-// Helper function to add indentation to each line of a string
-func indent(input string, spaceCount int) string {
-	indentStr := strings.Repeat(" ", spaceCount)
-	lines := strings.Split(input, "\n")
-	for i, line := range lines {
-		if line != "" {
-			lines[i] = indentStr + line
+// FieldSchema represents the schema of a field in a resource type.
+type FieldSchema struct {
+	// Name is the name of the field.
+	Name string
+	// Type is the type of the field (e.g. "string", "object", etc.).
+	Type string
+	// Description provides additional information about the field.
+	Description string
+	// IsRequired indicates if the field is required.
+	IsRequired bool
+	// IsReadOnly indicates if the field is read-only.
+	IsReadOnly bool
+	// Properties contains nested fields if the type is "object".
+	Properties map[string]FieldSchema
+}
+
+func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
+	for apiVersion, apiVersionProperties := range resourceTypeDetails.APIVersions {
+		r.Output.LogInfo("API VERSION:%s\n", apiVersion)
+		if apiVersionProperties.Schema != nil {
+			resourceTypeSchema := GetResourceTypeSchema(apiVersionProperties.Schema)
+			queue := list.New()
+			queue.PushBack(HeadingToSchema{
+				Schema: FieldSchema{
+					Properties: resourceTypeSchema,
+					Type:       "object",
+				},
+			})
+
+			for queue.Len() > 0 {
+				front := queue.Front()
+				queue.Remove(front)
+				schema := front.Value.(HeadingToSchema)
+				schemaList := []FieldSchema{}
+				for _, property := range schema.Schema.Properties {
+					if property.Type == "object" {
+						queue.PushBack(HeadingToSchema{
+							Heading: schema.Heading + "." + property.Name,
+							Schema:  property,
+						})
+					}
+					schemaList = append(schemaList, property)
+				}
+				sort.Slice(schemaList, func(i, j int) bool {
+					return schemaList[i].Name < schemaList[j].Name
+				})
+				r.Output.LogInfo("%s\n", schema.Heading)
+				err := r.Output.WriteFormatted(r.Format, schemaList, common.GetResourceTypeSchemaShowTableFormat())
+				if err != nil {
+					return err
+				}
+				r.Output.LogInfo("\n")
+			}
 		}
 	}
-	return strings.Join(lines, "\n")
+
+	return nil
+}
+
+// GetResourceTypeSchema extracts the field schema from each fields in the resource type schema.
+// It returns a map where the keys are property names and the values are FieldSchema objects.
+func GetResourceTypeSchema(schema map[string]any) map[string]FieldSchema {
+	fieldSchema := make(map[string]FieldSchema)
+	if schema == nil {
+		return fieldSchema
+	}
+	if properties, ok := schema["properties"].(map[string]any); ok {
+		requiredList := []string{}
+		if required, ok := schema["required"]; ok {
+			r, ok := required.([]any)
+			if ok {
+				for _, req := range r {
+					if reqStr, ok := req.(string); ok {
+						requiredList = append(requiredList, reqStr)
+					} else {
+						fmt.Println("Invalid required property:", req)
+					}
+				}
+			}
+		}
+		for propertyName, property := range properties {
+			prop, ok := property.(map[string]any)
+			if !ok {
+				continue
+			}
+			schemaType := prop["type"].(string)
+			description := ""
+			if desc, ok := prop["description"]; ok {
+				description = desc.(string)
+			}
+
+			isRequired := false
+			if slices.Contains(requiredList, propertyName) {
+				isRequired = true
+			}
+
+			isReadOnly := false
+			if readOnly, ok := prop["readOnly"]; ok && readOnly == true {
+				isReadOnly = true
+			}
+
+			fieldSchema[propertyName] = FieldSchema{
+				Name:        propertyName,
+				Type:        schemaType,
+				Description: description,
+				IsRequired:  isRequired,
+				IsReadOnly:  isReadOnly,
+				Properties:  GetResourceTypeSchema(prop),
+			}
+		}
+	}
+
+	return fieldSchema
 }
