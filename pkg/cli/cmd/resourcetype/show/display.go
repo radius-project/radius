@@ -49,11 +49,15 @@ type FieldSchema struct {
 	Properties map[string]FieldSchema
 }
 
+// PropertyTitleStatus defines the status of properties title in the output display.
 type PropertyTitleStatus string
 
 const (
-	PropertyTitleNone        PropertyTitleStatus = "None"
-	PropertyTitleTopLevel    PropertyTitleStatus = "TopLevelProperties"
+	// PropertyTitleNone indicates that no property title is displayed.
+	PropertyTitleNone PropertyTitleStatus = "None"
+	// PropertyTitleTopLevel indicates that the top-level properties are displayed.
+	PropertyTitleTopLevel PropertyTitleStatus = "TopLevelProperties"
+	// PropertyTitleObjectLevel indicates that object-level properties are displayed.
 	PropertyTitleObjectLevel PropertyTitleStatus = "ObjectLevelProperties"
 )
 
