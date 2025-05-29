@@ -87,7 +87,7 @@ func GetResourceTypeTableFormat() output.FormatterOptions {
 	return formatterOptions
 }
 
-// GetResourceTypeTableFormat returns the fields to output from a resource type object for show command.
+// GetResourceTypeShowTableFormat returns the fields to output from a resource type object for show command.
 func GetResourceTypeShowTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -107,7 +107,8 @@ func GetResourceTypeShowTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetResourceTypeSchemaShowTableFormat() output.FormatterOptions {
+// GetResourceTypeShowSchemaTableFormat returns the fields to output from a resource type schema object for show command.
+func GetResourceTypeShowSchemaTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{

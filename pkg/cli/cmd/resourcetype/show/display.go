@@ -49,6 +49,7 @@ type FieldSchema struct {
 	Properties map[string]FieldSchema
 }
 
+// display prints the resource type schema details for each APIVersion in a structured format.
 func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
 	for apiVersion, apiVersionProperties := range resourceTypeDetails.APIVersions {
 		r.Output.LogInfo("API VERSION:%s\n", apiVersion)
@@ -80,7 +81,7 @@ func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
 					return schemaList[i].Name < schemaList[j].Name
 				})
 				r.Output.LogInfo("%s\n", schema.Heading)
-				err := r.Output.WriteFormatted(r.Format, schemaList, common.GetResourceTypeSchemaShowTableFormat())
+				err := r.Output.WriteFormatted(r.Format, schemaList, common.GetResourceTypeShowSchemaTableFormat())
 				if err != nil {
 					return err
 				}

@@ -179,7 +179,7 @@ func Test_Run(t *testing.T) {
 			},
 			output.FormattedOutput{
 				Format:  "table",
-				Options: common.GetResourceTypeSchemaShowTableFormat(),
+				Options: common.GetResourceTypeShowSchemaTableFormat(),
 				Obj: []FieldSchema{
 					{
 						Name:        "application",
