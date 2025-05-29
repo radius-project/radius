@@ -113,10 +113,6 @@ env:
   GITEA_EMAIL: "testuser@radapp.io"
   # Gitea access token name
   GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
-  # Gitea version
-  GITEA_VERSION: "v11.0.0"
-  # Flux version
-  FLUX_VERSION: "2.5.1"
 
 jobs:
   build:
