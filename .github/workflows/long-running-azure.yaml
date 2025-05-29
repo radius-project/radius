@@ -562,10 +562,12 @@ jobs:
         if: failure()
         run: |
           echo ":x: Failed to install Radius for functional test." >> $GITHUB_STEP_SUMMARY
+      - name: Setup Flux CLI
+        uses: fluxcd/flux2/action@main
+        with:
+          version: '2.5.1'
       - name: Install Flux Source Controller
         uses: ./.github/actions/install-flux
-        with:
-          flux-version: ${{ env.FLUX_VERSION }}
       - name: Install Gitea
         id: install-gitea
         uses: ./.github/actions/install-gitea
@@ -575,7 +577,6 @@ jobs:
           gitea-username: ${{ env.GITEA_USERNAME }}
           gitea-email: ${{ env.GITEA_EMAIL }}
           gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
-          gitea-version: ${{ env.GITEA_VERSION }}
       - name: Port-forward to Gitea
         run: |
           # Start port forwarding in the background

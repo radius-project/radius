@@ -374,8 +374,7 @@ jobs:
       - name: Install Flux Source Controller
         if: matrix.name == 'kubernetes-noncloud'
         uses: ./.github/actions/install-flux
-        with:
-          flux-version: ${{ env.FLUX_VERSION }}
+
       - name: Install Gitea
         if: matrix.name == 'kubernetes-noncloud'
         id: install-gitea
@@ -386,7 +385,7 @@ jobs:
           gitea-username: ${{ env.GITEA_USERNAME }}
           gitea-email: ${{ env.GITEA_EMAIL }}
           gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
-          gitea-version: ${{ env.GITEA_VERSION }}
+ 
       - name: Port-forward to Gitea
         if: matrix.name == 'kubernetes-noncloud'
         run: |
