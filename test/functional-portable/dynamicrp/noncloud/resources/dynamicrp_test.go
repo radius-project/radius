@@ -39,20 +39,21 @@ import (
 //   - Verifies the registration by checking if the resource type is listed in the CLI output
 //
 // 2. Resource Deployment:
-//   - Deploys a Bicep template that uses the registered resource type with a default recipe
-//   - Validates the creation of required Radius resources (environment and application)
-//   - Verifies the creation of Kubernetes objects (pod) in the specified namespace
-//   - Confirms the resource's status shows correct binding configuration
+//   - Deploys a Bicep template that uses the registered resource type with a default recipe and a recipe parameter: port
+//   - Validates the creation of required resources (app, container, environment
+//     and the user-defined resource instance) in the Kubernetes cluster
+//   - Validates that the container can access port information from the user-defined resource via environment variables
 func Test_DynamicRP_Recipe(t *testing.T) {
 	template := "testdata/usertypealpha-recipe.bicep"
-	name := "usertypealpha-recipe-app"
-	appNamespace := "default-usertypealpha-recipe"
+	appName := "usertypealpha-recipe-app"
+	appNamespace := "usertypealpha-recipe-env-usertypealpha-recipe-app"
+	containerName := "usertypealphacntr"
 	resourceTypeName := "Test.Resources/userTypeAlpha"
-	filepath := "testdata/usertypealpha.yaml"
+	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	test := rp.NewRPTest(t, name, []rp.TestStep{
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
 			// The first step in this test is to create/register a user-defined resource type using the CLI.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
@@ -78,25 +79,50 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: name,
+						Name: appName,
 						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: containerName,
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "usertypealphainstance",
+						Type: resourceTypeName,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "usertypealpha").ValidateLabels(false),
+						validation.NewK8sPodForResource(appName, "usertypealpha").ValidateLabels(false),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				usertypealpha, err := test.Options.ManagementClient.GetResource(ctx, "Test.Resources/userTypeAlpha", "usertypealpha123")
+				// Verify environment variable in the container has expected value
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, containerName, metav1.GetOptions{})
 				require.NoError(t, err)
-				require.NotNil(t, usertypealpha)
-				status := usertypealpha.Properties["status"].(map[string]any)
-				binding := status["binding"].(map[string]interface{})
-				require.Equal(t, "8080", binding["port"].(string))
+
+				var targetContainer *corev1.Container
+				for i := range deploy.Spec.Template.Spec.Containers {
+					container := &deploy.Spec.Template.Spec.Containers[i]
+					if container.Name == containerName {
+						targetContainer = container
+						break
+					}
+				}
+				require.NotNil(t, targetContainer, "Container not found")
+
+				found := false
+				for _, env := range targetContainer.Env {
+					if env.Name == "USERTYPEALPHA_PORT" {
+						require.Equal(t, "8080", env.Value)
+						found = true
+						break
+					}
+				}
+				require.True(t, found, "Environment variable not found")
 			},
 		},
 	})
@@ -115,7 +141,7 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 	appNamespace := "dynamicrp-postgres-existing-app"
 	appName := "dynamicrp-postgres-existing"
 	resourceTypeName := "Test.Resources/postgres"
-	filepath := "testdata/usertypealpha.yaml"
+	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	test := rp.NewRPTest(t, name, []rp.TestStep{
@@ -210,7 +236,7 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 	expectedEnvValue := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
 	resourceTypeName := "Test.Resources/externalResource"
 	containerName := "externalresourcecntr"
-	filepath := "testdata/usertypealpha.yaml"
+	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 

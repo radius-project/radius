@@ -101,10 +101,18 @@ type KubernetesRuntime struct {
 	Pod string `json:"pod,omitempty"`
 }
 
+// ACIRuntime represents the ACI runtime configuration.
+type ACIRuntime struct {
+	// GatewayID represents the gateway resource ID that provides L7 traffic for the container
+	GatewayID string `json:"gatewayID,omitempty"`
+}
+
 // RuntimeProperties represents the runtime configuration for the platform-specific functionalities.
 type RuntimeProperties struct {
 	// Kubernetes represents the Kubernetes runtime configuration.
 	Kubernetes *KubernetesRuntime `json:"kubernetes,omitempty"`
+	// ACI represents the ACI runtime configuration.
+	ACI *ACIRuntime `json:"aci,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.

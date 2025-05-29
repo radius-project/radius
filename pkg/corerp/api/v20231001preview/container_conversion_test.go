@@ -32,9 +32,10 @@ import (
 
 func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	conversionTests := []struct {
-		filename string
-		err      error
-		emptyExt bool
+		filename   string
+		err        error
+		emptyExt   bool
+		aciCompute bool
 	}{
 		{
 			filename: "containerresource.json",
@@ -45,6 +46,11 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 			filename: "containerresource-runtimes.json",
 			err:      nil,
 			emptyExt: false,
+		},
+		{
+			filename:   "containerresource-runtimes-aci.json",
+			err:        nil,
+			aciCompute: true,
 		},
 		{
 			filename: "containerresourceemptyext.json",
@@ -125,7 +131,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, int32(8080), tcpProbe.TCP.ContainerPort)
 				require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 				require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)
-				require.Equal(t, 3, len(ct.Properties.Extensions))
+				require.NotNil(t, ct.Properties.Extensions)
 
 				require.Equal(t, []string{"/bin/sh"}, ct.Properties.Container.Command)
 				require.Equal(t, []string{"-c", "while true; do echo hello; sleep 10;done"}, ct.Properties.Container.Args)
@@ -133,15 +139,23 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "/app", ct.Properties.Container.WorkingDir)
 				if tt.emptyExt {
 					require.Equal(t, getTestContainerEmptyKubernetesMetadataExt(), ct.Properties.Extensions)
+				} else if tt.aciCompute {
+					require.Equal(t, getTestACIContainerExtensions(), ct.Properties.Extensions)
 				} else {
 					require.Equal(t, getTestContainerExtensions(), ct.Properties.Extensions)
 				}
 
 				if r.Properties.Runtimes != nil {
-					require.NotNil(t, ct.Properties.Runtimes.Kubernetes)
-					require.NotEmpty(t, ct.Properties.Runtimes.Kubernetes.Base)
-					require.Equal(t, *r.Properties.Runtimes.Kubernetes.Base, ct.Properties.Runtimes.Kubernetes.Base)
-					require.Equal(t, "{\"containers\":[{\"name\":\"sidecar\"}],\"hostNetwork\":true}", ct.Properties.Runtimes.Kubernetes.Pod)
+					if r.Properties.Runtimes.Kubernetes != nil {
+						require.NotNil(t, ct.Properties.Runtimes.Kubernetes)
+						require.NotEmpty(t, ct.Properties.Runtimes.Kubernetes.Base)
+						require.Equal(t, *r.Properties.Runtimes.Kubernetes.Base, ct.Properties.Runtimes.Kubernetes.Base)
+						require.Equal(t, "{\"containers\":[{\"name\":\"sidecar\"}],\"hostNetwork\":true}", ct.Properties.Runtimes.Kubernetes.Pod)
+					} else {
+						require.NotNil(t, ct.Properties.Runtimes.ACI)
+						require.NotEmpty(t, *r.Properties.Runtimes.Aci.GatewayID)
+						require.Equal(t, *r.Properties.Runtimes.Aci.GatewayID, ct.Properties.Runtimes.ACI.GatewayID)
+					}
 				}
 
 			}
@@ -160,6 +174,10 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 		},
 		{
 			filename: "containerresourcedatamodel-runtime.json",
+			err:      nil,
+		},
+		{
+			filename: "containerresourcedatamodel-runtime-aci.json",
 			err:      nil,
 		},
 		{
@@ -213,6 +231,10 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 					}, r.Properties.Container.Env)
 				}
 
+				if tt.filename != "containerresourcedatamodel-runtime-aci.json" {
+					require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[2].GetExtension().Kind)
+				}
+
 				val, ok := r.Properties.Connections["inventory"]
 				require.True(t, ok)
 				require.Equal(t, "inventory_route_id", val.Source)
@@ -220,24 +242,28 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "read", val.IAM.Roles[0])
 				require.Equal(t, "ghcr.io/radius-project/webapptutorial-todoapp", *versioned.Properties.Container.Image)
 				require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
-				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[2].GetExtension().Kind)
-				require.Equal(t, 3, len(versioned.Properties.Extensions))
+				require.NotNil(t, versioned.Properties.Extensions)
 				require.Equal(t, to.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
 				require.Equal(t, to.SliceOfPtrs([]string{"-c", "while true; do echo hello; sleep 10;done"}...), versioned.Properties.Container.Args)
 				require.Equal(t, to.Ptr("/app"), versioned.Properties.Container.WorkingDir)
 
 				if r.Properties.Runtimes != nil {
 					require.NotNil(t, versioned.Properties.Runtimes)
-					require.NotEmpty(t, *versioned.Properties.Runtimes.Kubernetes.Base)
-					require.Equal(t, r.Properties.Runtimes.Kubernetes.Base, *versioned.Properties.Runtimes.Kubernetes.Base)
-					require.Equal(t, map[string]any{
-						"containers": []any{
-							map[string]any{
-								"name": "sidecar",
+					if r.Properties.Runtimes.Kubernetes != nil {
+						require.NotEmpty(t, *versioned.Properties.Runtimes.Kubernetes.Base)
+						require.Equal(t, r.Properties.Runtimes.Kubernetes.Base, *versioned.Properties.Runtimes.Kubernetes.Base)
+						require.Equal(t, map[string]any{
+							"containers": []any{
+								map[string]any{
+									"name": "sidecar",
+								},
 							},
-						},
-						"hostNetwork": true,
-					}, versioned.Properties.Runtimes.Kubernetes.Pod)
+							"hostNetwork": true,
+						}, versioned.Properties.Runtimes.Kubernetes.Pod)
+					} else {
+						require.NotEmpty(t, *versioned.Properties.Runtimes.Aci.GatewayID)
+						require.Equal(t, r.Properties.Runtimes.ACI.GatewayID, *versioned.Properties.Runtimes.Aci.GatewayID)
+					}
 				}
 			}
 		})
@@ -326,6 +352,21 @@ func getTestContainerExtensions() []datamodel.Extension {
 					"foo/bar/team":    "credit",
 					"foo/bar/contact": "radiususer",
 				},
+			},
+		},
+	}
+
+	return extensions
+}
+
+func getTestACIContainerExtensions() []datamodel.Extension {
+	var replicavalue int32 = 2
+	ptrreplicaval := &replicavalue
+	extensions := []datamodel.Extension{
+		{
+			Kind: datamodel.ManualScaling,
+			ManualScaling: &datamodel.ManualScalingExtension{
+				Replicas: ptrreplicaval,
 			},
 		},
 	}

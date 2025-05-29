@@ -1,0 +1,33 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+  "name": "env0",
+  "type": "Applications.Core/environments",
+  "systemData": {
+    "createdBy": "fakeid@live.com",
+    "createdByType": "User",
+    "createdAt": "2021-09-24T19:09:54.2403864Z",
+    "lastModifiedBy": "fakeid@live.com",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  },
+  "tags": {
+    "env": "dev"
+  },
+  "properties": {
+    "compute": {
+      "kind": "aci",
+      "aci": {
+        "resourceGroup": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster"
+      },
+      "identity": {
+        "kind": "userAssigned",
+        "managedIdentity": ["test-mi-0", "test-mi-1"]
+      }
+    },
+    "providers": {
+      "azure": {
+        "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
+      }
+    }
+  }
+}
