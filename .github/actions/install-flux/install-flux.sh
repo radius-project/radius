@@ -26,7 +26,6 @@ if [ -z "$FLUX_VERSION" ]; then
 fi
 
 for i in 1 2 3; do
-  curl -s https://fluxcd.io/install.sh | FLUX_VERSION=$FLUX_VERSION sudo bash && \
   flux install --namespace=flux-system --version=v"$FLUX_VERSION" --components=source-controller --network-policy=false && \
   kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s && break
   echo "Attempt $i failed, retrying in 10 seconds..."
