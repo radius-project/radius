@@ -1025,33 +1025,31 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 	obj, found := resource.Properties["environment"] // A resource may not have an environment associated with it.
 	if !found {
 		// Special case for environment resources themselves
-		if resource.Type != nil && strings.EqualFold(*resource.Type, "Applications.Core/environments") {
-			if resource.ID != nil {
-				// First try direct comparison
-				if strings.EqualFold(*resource.ID, environmentID) {
-					return true
-				}
+		if resource.Type != nil && strings.EqualFold(*resource.Type, "Applications.Core/environments") && resource.ID != nil {
+			// First try direct comparison
+			if strings.EqualFold(*resource.ID, environmentID) {
+				return true
+			}
 
-				// If no direct match, check if one is a shortname and the other is a full ID
-				shortNameEnv := environmentID
-				if strings.Contains(environmentID, "/") {
-					parts := strings.Split(environmentID, "/")
-					shortNameEnv = parts[len(parts)-1]
-				}
+			// If no direct match, check if one is a shortname and the other is a full ID
+			shortNameEnv := environmentID
+			if strings.Contains(environmentID, "/") {
+				parts := strings.Split(environmentID, "/")
+				shortNameEnv = parts[len(parts)-1]
+			}
 
-				shortNameResource := *resource.ID
-				if strings.Contains(*resource.ID, "/") {
-					parts := strings.Split(*resource.ID, "/")
-					shortNameResource = parts[len(parts)-1]
-				}
+			shortNameResource := *resource.ID
+			if strings.Contains(*resource.ID, "/") {
+				parts := strings.Split(*resource.ID, "/")
+				shortNameResource = parts[len(parts)-1]
+			}
 
-				if shortNameEnv != "" && shortNameResource != "" &&
-					strings.EqualFold(shortNameEnv, shortNameResource) {
-					return true
-				}
+			if shortNameEnv != "" && shortNameResource != "" &&
+				strings.EqualFold(shortNameEnv, shortNameResource) {
+				return true
 			}
 		}
-		
+
 		// Special handling for the default environment - resources without an explicit
 		// environment property are considered to be in the default environment
 		shortNameEnv := environmentID
@@ -1059,11 +1057,11 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 			parts := strings.Split(environmentID, "/")
 			shortNameEnv = parts[len(parts)-1]
 		}
-		
+
 		if strings.EqualFold(shortNameEnv, "default") {
 			return true
 		}
-		
+
 		return false
 	}
 
@@ -1085,9 +1083,9 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 	}
 
 	shortNameAssociated := associatedEnvId
-	if strings.Contains(associatedEnvId, "/") {
-		parts := strings.Split(associatedEnvId, "/")
-		shortNameAssociated = parts[len(parts)-1]
+	parsedAssociatedID, err := resources.Parse(associatedEnvId)
+	if err == nil {
+		shortNameAssociated = parsedAssociatedID.Name()
 	}
 
 	if shortNameEnv != "" && shortNameAssociated != "" &&
