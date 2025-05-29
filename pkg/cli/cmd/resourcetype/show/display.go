@@ -49,10 +49,25 @@ type FieldSchema struct {
 	Properties map[string]FieldSchema
 }
 
+type PropertyTitleStatus string
+
+const (
+	PropertyTitleNone        PropertyTitleStatus = "None"
+	PropertyTitleTopLevel    PropertyTitleStatus = "TopLevelProperties"
+	PropertyTitleObjectLevel PropertyTitleStatus = "ObjectLevelProperties"
+)
+
 // display prints the resource type schema details for each APIVersion in a structured format.
 func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
+	err := r.Output.WriteFormatted(r.Format, *resourceTypeDetails, common.GetResourceTypeShowTableFormat())
+	if err != nil {
+		return err
+	}
+	r.Output.LogInfo("\nDESCRIPTION:")
+	r.Output.LogInfo("%s\n", resourceTypeDetails.Description)
 	for apiVersion, apiVersionProperties := range resourceTypeDetails.APIVersions {
-		r.Output.LogInfo("API VERSION:%s\n", apiVersion)
+		r.Output.LogInfo("API VERSION: %s\n", apiVersion)
+		propertyTitelStatus := PropertyTitleNone
 		if apiVersionProperties.Schema != nil {
 			resourceTypeSchema := GetResourceTypeSchema(apiVersionProperties.Schema)
 			queue := list.New()
@@ -70,8 +85,12 @@ func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
 				schemaList := []FieldSchema{}
 				for _, property := range schema.Schema.Properties {
 					if property.Type == "object" {
+						heading := property.Name
+						if propertyTitelStatus != PropertyTitleNone {
+							heading = schema.Heading + "." + property.Name
+						}
 						queue.PushBack(HeadingToSchema{
-							Heading: schema.Heading + "." + property.Name,
+							Heading: heading,
 							Schema:  property,
 						})
 					}
@@ -80,12 +99,23 @@ func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
 				sort.Slice(schemaList, func(i, j int) bool {
 					return schemaList[i].Name < schemaList[j].Name
 				})
-				r.Output.LogInfo("%s\n", schema.Heading)
+				if propertyTitelStatus == PropertyTitleNone {
+					propertyTitelStatus = PropertyTitleTopLevel
+					r.Output.LogInfo("TOP-LEVEL PROPERTIES:\n")
+				} else if propertyTitelStatus == PropertyTitleTopLevel {
+					propertyTitelStatus = PropertyTitleObjectLevel
+					r.Output.LogInfo("OBJECT PROPERTIES:\n")
+				}
+
+				if schema.Heading != "" {
+					r.Output.LogInfo("%s\n", schema.Heading)
+				}
+
 				err := r.Output.WriteFormatted(r.Format, schemaList, common.GetResourceTypeShowSchemaTableFormat())
 				if err != nil {
 					return err
 				}
-				r.Output.LogInfo("\n")
+				r.Output.LogInfo("")
 			}
 		}
 	}

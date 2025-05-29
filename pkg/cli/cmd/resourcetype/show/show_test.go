@@ -170,12 +170,18 @@ func Test_Run(t *testing.T) {
 				Options: common.GetResourceTypeShowTableFormat(),
 			},
 			output.LogOutput{
-				Format: "API VERSION:%s\n",
-				Params: []any{"2023-10-01-preview"},
+				Format: "\nDESCRIPTION:",
 			},
 			output.LogOutput{
 				Format: "%s\n",
-				Params: []any{""},
+				Params: []any{"Resource type description"},
+			},
+			output.LogOutput{
+				Format: "API VERSION: %s\n",
+				Params: []any{"2023-10-01-preview"},
+			},
+			output.LogOutput{
+				Format: "TOP-LEVEL PROPERTIES:\n",
 			},
 			output.FormattedOutput{
 				Format:  "table",
@@ -208,7 +214,7 @@ func Test_Run(t *testing.T) {
 				},
 			},
 			output.LogOutput{
-				Format: "\n",
+				Format: "",
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)

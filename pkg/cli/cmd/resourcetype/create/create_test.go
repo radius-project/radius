@@ -139,10 +139,6 @@ func Test_Run(t *testing.T) {
 							JSONPath: "{ .ResourceProviderNamespace }",
 						},
 						{
-							Heading:  "DESCRIPTION",
-							JSONPath: "{ .Description }",
-						},
-						{
 							Heading:  "APIVERSION",
 							JSONPath: "{ .APIVersionList }",
 						},

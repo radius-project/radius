@@ -99,10 +99,6 @@ func GetResourceTypeShowTableFormat() output.FormatterOptions {
 				Heading:  "NAMESPACE",
 				JSONPath: "{ .ResourceProviderNamespace }",
 			},
-			{
-				Heading:  "DESCRIPTION",
-				JSONPath: "{ .Description }",
-			},
 		},
 	}
 }
@@ -120,16 +116,16 @@ func GetResourceTypeShowSchemaTableFormat() output.FormatterOptions {
 				JSONPath: "{ .Type }",
 			},
 			{
-				Heading:  "DESCRIPTION",
-				JSONPath: "{ .Description }",
-			},
-			{
 				Heading:  "REQUIRED",
 				JSONPath: "{ .IsRequired }",
 			},
 			{
-				Heading:  "READONLY",
+				Heading:  "READ-ONLY",
 				JSONPath: "{ .IsReadOnly }",
+			},
+			{
+				Heading:  "DESCRIPTION",
+				JSONPath: "{ .Description }",
 			},
 		},
 	}
