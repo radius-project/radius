@@ -244,6 +244,7 @@ func TestRegisterType(t *testing.T) {
 		})
 	}
 }
+
 func TestRetryOperation(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -350,8 +351,16 @@ func TestRetryOperation(t *testing.T) {
 				require.Contains(t, logContent, "Got 409 conflict on attempt")
 
 				lines := strings.Split(strings.TrimSpace(logContent), "\n")
-				// We'll see one log line per retry. E.g. if attempts=3, that means 2 retries logged.
-				require.Equal(t, tt.attempts-1, len(lines), "expected retry log messages don't match attempts")
+				// Filter only the lines that are retry logs.
+				// We'll see one conflict log line per retry. E.g. if attempts=3, that means 2 retries logged.
+				var retryLines []string
+				for _, line := range lines {
+					if strings.Contains(line, "Got 409 conflict on attempt") {
+						retryLines = append(retryLines, line)
+					}
+				}
+
+				require.Equal(t, tt.attempts-1, len(retryLines), "expected retry log messages don't match attempts")
 			}
 		})
 	}

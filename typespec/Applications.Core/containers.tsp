@@ -101,6 +101,9 @@ enum RestartPolicy {
 model RuntimesProperties {
   @doc("The runtime configuration properties for Kubernetes")
   kubernetes?: KubernetesRuntimeProperties;
+
+  @doc("The runtime configuration properties for ACI")
+  aci?: ACIRuntimeProperties;
 }
 
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
@@ -115,6 +118,12 @@ model KubernetesRuntimeProperties {
   #suppress "@azure-tools/typespec-azure-core/bad-record-type"
   @doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
   pod?: KubernetesPodSpec;
+}
+
+@doc("The runtime configuration properties for Kubernetes")
+model ACIRuntimeProperties {
+  @doc("The ID of the gateway that is providing L7 traffic for the container")
+  gatewayID?: string;
 }
 
 @doc("Specifies a listening port for the container")

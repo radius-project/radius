@@ -325,12 +325,13 @@ func logIfEnabled(logger func(format string, args ...any), format string, args .
 func retryOperation(ctx context.Context, operation func() error, logger func(format string, args ...any)) error {
 	backoff := initialBackoff
 
+	var err error
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		err := operation()
+		err = operation()
 		if err != nil {
 			if is409ConflictError(err) {
 				if logger != nil {
-					logger("Got 409 conflict on attempt %d/%d. Retrying in %s...", attempt, maxRetries, backoff)
+					logger("Got 409 conflict on attempt %d/%d with error: %v. Retrying in %s...", attempt, maxRetries, err, backoff)
 				}
 				// Wait for either the context to be cancelled or the backoff duration to pass
 				select {
@@ -347,7 +348,7 @@ func retryOperation(ctx context.Context, operation func() error, logger func(for
 		}
 		return nil
 	}
-	return fmt.Errorf("exceeded %d retries", maxRetries)
+	return fmt.Errorf("exceeded %d retries, err: %w", maxRetries, err)
 }
 
 // is409ConflictError returns true if the error is a 409 Conflict error

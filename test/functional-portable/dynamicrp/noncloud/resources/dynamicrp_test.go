@@ -48,7 +48,7 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 	name := "usertypealpha-recipe-app"
 	appNamespace := "default-usertypealpha-recipe"
 	resourceTypeName := "Test.Resources/userTypeAlpha"
-	filepath := "testdata/usertypealpha.yaml"
+	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
@@ -115,7 +115,7 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 	appNamespace := "dynamicrp-postgres-existing-app"
 	appName := "dynamicrp-postgres-existing"
 	resourceTypeName := "Test.Resources/postgres"
-	filepath := "testdata/usertypealpha.yaml"
+	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	test := rp.NewRPTest(t, name, []rp.TestStep{
@@ -210,7 +210,7 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 	expectedEnvValue := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
 	resourceTypeName := "Test.Resources/externalResource"
 	containerName := "externalresourcecntr"
-	filepath := "testdata/usertypealpha.yaml"
+	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
