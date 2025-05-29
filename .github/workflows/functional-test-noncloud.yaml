@@ -369,10 +369,14 @@ jobs:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
       
+      - name: Setup Flux CLI
+        uses: fluxcd/flux2/action@main
+        with:
+          version: '2.5.1'
+  
       - name: Install Flux Source Controller
         if: matrix.name == 'kubernetes-noncloud'
         run: |
-          curl -s https://fluxcd.io/install.sh | FLUX_VERSION=2.5.1 sudo bash
           flux install --namespace=flux-system --version=v2.5.1 --components=source-controller --network-policy=false
           kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s
 
