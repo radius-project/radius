@@ -109,6 +109,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeShowTableFormat())
+	if err != nil {
+		return err
+	}
 	if r.Format != "json" {
 		err = r.display(&resourceTypeDetails)
 		if err != nil {

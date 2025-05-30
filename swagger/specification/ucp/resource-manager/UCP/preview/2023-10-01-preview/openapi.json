@@ -4074,6 +4074,7 @@
       "properties": {
         "schema": {
           "type": "object",
+          "description": "Schema holds the resource type definitions for this API version.",
           "additionalProperties": {}
         }
       }

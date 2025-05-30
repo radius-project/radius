@@ -173,7 +173,7 @@ func Test_Run(t *testing.T) {
 				Format: "\nDESCRIPTION:",
 			},
 			output.LogOutput{
-				Format: "%s\n",
+				Format: "%s",
 				Params: []any{"Resource type description"},
 			},
 			output.LogOutput{

@@ -192,6 +192,7 @@ model ResourceProviderSummaryResourceType {
 
 @doc("The configuration of a resource type API version.")
 model ResourceTypeSummaryResultApiVersion {
+  @doc("Schema holds the resource type definitions for this API version.")
   schema?: Record<unknown>;
 }
 

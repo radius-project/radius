@@ -25,8 +25,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 )
 
-// HeadingToSchema holds a nested field path and its schema definition.
-type HeadingToSchema struct {
+// PropertiesOutputFormat holds a nested field path as Heading and its schema definition.
+type PropertiesOutputFormat struct {
 	// Heading is the path to this field (e.g. ".database.server.name").
 	Heading string
 	// Schema contains the field's metadata, such as type and nested properties.
@@ -62,20 +62,56 @@ const (
 )
 
 // display prints the resource type schema details for each APIVersion in a structured format.
+// Example of an output format:
+// TYPE                          NAMESPACE
+// Test.Resources/userTypeAlpha  Test.Resources
+//
+// DESCRIPTION:
+// This is a user type that supports recipes.
+// It is designed to handle various resource configurations
+// and provides flexibility for managing application and environment
+// settings. The user type includes properties such as application,
+// environment, database, host, port, username, and password.
+// These properties are essential for defining the resource schema
+// and ensuring proper integration with the system.
+//
+// API VERSION : 2023-10-01-preview
+//
+// TOP-LEVEL PROPERTIES:
+//
+// NAME         TYPE      REQUIRED  READ-ONLY  DESCRIPTION
+// application  string    true      false      The resource ID of the application.
+// database     string    false     false      The name of the database.
+// environment  string    true      false      The resource ID of the environment.
+// host         string    false     true       The host name of the database.
+// password     string    false     false      The password for the database.
+// port         string    false     false      The port number of the database.
+// test         object    false     false      A test object for demonstration purposes.
+// username     string    false     false      The username for the database.
+//
+// OBJECT PROPERTIES:
+//
+// test
+//
+// NAME        TYPE      REQUIRED  READ-ONLY  DESCRIPTION
+// name        string    false     false      The name of the test object.
+// nestedType  object    false     false      A nested object within the test object.
+//
+// test.nestedType
+//
+// NAME            TYPE      REQUIRED  READ-ONLY  DESCRIPTION
+// nestedProperty  string    false     false      A property within the nested object.
+
 func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
-	err := r.Output.WriteFormatted(r.Format, *resourceTypeDetails, common.GetResourceTypeShowTableFormat())
-	if err != nil {
-		return err
-	}
 	r.Output.LogInfo("\nDESCRIPTION:")
-	r.Output.LogInfo("%s\n", resourceTypeDetails.Description)
+	r.Output.LogInfo("%s", resourceTypeDetails.Description)
 	for apiVersion, apiVersionProperties := range resourceTypeDetails.APIVersions {
 		r.Output.LogInfo("API VERSION: %s\n", apiVersion)
-		propertyTitelStatus := PropertyTitleNone
+		propertyTitleStatus := PropertyTitleNone
 		if apiVersionProperties.Schema != nil {
 			resourceTypeSchema := GetResourceTypeSchema(apiVersionProperties.Schema)
 			queue := list.New()
-			queue.PushBack(HeadingToSchema{
+			queue.PushBack(PropertiesOutputFormat{
 				Schema: FieldSchema{
 					Properties: resourceTypeSchema,
 					Type:       "object",
@@ -85,15 +121,15 @@ func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
 			for queue.Len() > 0 {
 				front := queue.Front()
 				queue.Remove(front)
-				schema := front.Value.(HeadingToSchema)
+				schema := front.Value.(PropertiesOutputFormat)
 				schemaList := []FieldSchema{}
 				for _, property := range schema.Schema.Properties {
 					if property.Type == "object" {
 						heading := property.Name
-						if propertyTitelStatus != PropertyTitleNone {
+						if propertyTitleStatus != PropertyTitleNone {
 							heading = schema.Heading + "." + property.Name
 						}
-						queue.PushBack(HeadingToSchema{
+						queue.PushBack(PropertiesOutputFormat{
 							Heading: heading,
 							Schema:  property,
 						})
@@ -103,11 +139,11 @@ func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
 				sort.Slice(schemaList, func(i, j int) bool {
 					return schemaList[i].Name < schemaList[j].Name
 				})
-				if propertyTitelStatus == PropertyTitleNone {
-					propertyTitelStatus = PropertyTitleTopLevel
+				if propertyTitleStatus == PropertyTitleNone {
+					propertyTitleStatus = PropertyTitleTopLevel
 					r.Output.LogInfo("TOP-LEVEL PROPERTIES:\n")
-				} else if propertyTitelStatus == PropertyTitleTopLevel {
-					propertyTitelStatus = PropertyTitleObjectLevel
+				} else if propertyTitleStatus == PropertyTitleTopLevel {
+					propertyTitleStatus = PropertyTitleObjectLevel
 					r.Output.LogInfo("OBJECT PROPERTIES:\n")
 				}
 

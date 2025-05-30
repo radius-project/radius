@@ -84,6 +84,6 @@ type ResourceProviderSummaryPropertiesResourceType struct {
 
 // ResourceProviderSummaryAPIVersion represents an API version available in a resource provider.
 type ResourceProviderSummaryPropertiesAPIVersion struct {
-	// Empty for now.
+	// Schema holds the resource type definitions for this API version.
 	Schema map[string]any `json:"schema,omitempty"`
 }

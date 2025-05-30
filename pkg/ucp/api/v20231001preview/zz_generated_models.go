@@ -783,7 +783,7 @@ type ResourceTypeResourceListResult struct {
 
 // ResourceTypeSummaryResultAPIVersion - The configuration of a resource type API version.
 type ResourceTypeSummaryResultAPIVersion struct {
-// Dictionary of
+// Schema holds the resource type definitions for this API version.
 	Schema map[string]any
 }
 
