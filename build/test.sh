@@ -57,12 +57,12 @@ check_azure_cli() {
 }
 
 # Deploy long-running test cluster
-deploy_lrt_cluster() {
+deploy_aks_cluster() {
     print_info "Deploying long-running test cluster to Azure..."
     
     # Default values (can be overridden by environment variables)
-    local location="${LRT_AZURE_LOCATION:-westus3}"
-    local resource_group="${LRT_RG:-$(whoami)-radius-lrt}"
+    local location="${TEST_AKS_AZURE_LOCATION:-westus3}"
+    local resource_group="${TEST_AKS_RG:-$(whoami)-radius-lrt}"
     
     print_info "Configuration:"
     print_info "  Subscription: $(az account show --query "[name,id]" --output tsv | paste -sd,)"
@@ -105,4 +105,4 @@ deploy_lrt_cluster() {
 }
 
 check_azure_cli
-deploy_lrt_cluster
+deploy_aks_cluster

@@ -100,6 +100,8 @@ module aksCluster './modules/akscluster.bicep' = {
     userAgentPoolName: 'userpool'
     userAgentPoolVmSize: 'Standard_D8as_v5'
     userAgentPoolAvailabilityZones: []
+    userAgentPoolMaxPods: 50
+    userAgentPoolMinCount: 4
     userAgentPoolOsDiskType: 'Managed'
     userAgentPoolOsSKU: 'AzureLinux'
     daprEnabled: true
