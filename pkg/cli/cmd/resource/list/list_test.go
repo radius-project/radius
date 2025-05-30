@@ -114,7 +114,7 @@ func Test_Run(t *testing.T) {
 					Name: to.Ptr("Applications.Core"),
 					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 						"containers": {
-							APIVersions: map[string]map[string]any{
+							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 								"2023-01-01": {},
 							},
 							DefaultAPIVersion: to.Ptr("2023-01-01"),
@@ -162,7 +162,7 @@ func Test_Run(t *testing.T) {
 					Name: to.Ptr("Applications.Core"),
 					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 						"containers": {
-							APIVersions: map[string]map[string]any{
+							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 								"2023-01-01": {},
 							},
 							DefaultAPIVersion: to.Ptr("2023-01-01"),
@@ -221,7 +221,7 @@ func Test_Run(t *testing.T) {
 					Name: to.Ptr("Applications.Core"),
 					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 						"containers": {
-							APIVersions: map[string]map[string]any{
+							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 								"2023-01-01": {},
 							},
 							DefaultAPIVersion: to.Ptr("2023-01-01"),
