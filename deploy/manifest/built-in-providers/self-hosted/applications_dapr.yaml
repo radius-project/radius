@@ -1,4 +1,4 @@
-name: Applications.Dapr
+namespace: Applications.Dapr
 location:
   global:
     "http://applications-rp.radius-system:5443"

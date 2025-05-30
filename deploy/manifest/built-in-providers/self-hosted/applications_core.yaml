@@ -1,4 +1,4 @@
-name: Applications.Core
+namespace: Applications.Core
 location:
   global:
     "http://applications-rp.radius-system:5443"

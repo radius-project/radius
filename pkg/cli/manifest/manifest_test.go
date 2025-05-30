@@ -24,7 +24,7 @@ import (
 
 func TestReadFileYAML(t *testing.T) {
 	expected := &ResourceProvider{
-		Name: "MyCompany.Resources",
+		Namespace: "MyCompany.Resources",
 		Location: map[string]string{
 			"global": "http://localhost:8080",
 		},
@@ -68,7 +68,7 @@ func TestReadFile_MissingRequiredFieldYAML(t *testing.T) {
 
 func TestReadFileJSON(t *testing.T) {
 	expected := &ResourceProvider{
-		Name: "MyCompany.Resources",
+		Namespace: "MyCompany.Resources",
 		Types: map[string]*ResourceType{
 			"testResources": {
 				APIVersions: map[string]*ResourceTypeAPIVersion{

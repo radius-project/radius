@@ -131,7 +131,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
+	response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Namespace, nil)
 	if err != nil {
 		return err
 	}

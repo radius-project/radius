@@ -1,4 +1,4 @@
-name: Test.Resources
+namespace: Test.Resources
 types:
   userTypeAlpha:
     capabilities: ["SupportsRecipes"]
