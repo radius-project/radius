@@ -17,6 +17,8 @@ limitations under the License.
 package objectformats
 
 import (
+	"strings"
+
 	"github.com/radius-project/radius/pkg/cli/output"
 )
 
@@ -67,9 +69,37 @@ func GetGenericResourceTableFormat() output.FormatterOptions {
 				Transformer: &ResourceIDToResourceGroupNameTransformer{},
 			},
 			{
+				Heading:     "ENVIRONMENT",
+				JSONPath:    "{ .Properties.environment }",
+				Transformer: &ResourceEnvironmentNameTransformer{},
+			},
+			{
 				Heading:  "STATE",
 				JSONPath: "{ .Properties.provisioningState }",
 			},
 		},
 	}
 }
+
+// ResourceEnvironmentNameTransformer extracts the environment name from a fully qualified environment path.
+type ResourceEnvironmentNameTransformer struct {
+}
+
+// Transform extracts the environment name from a fully qualified environment path.
+// The path is expected to be in the format '/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-env'
+// and this function will return 'test-env'.
+func (t *ResourceEnvironmentNameTransformer) Transform(value string) string {
+	if value == "" {
+		return "default"
+	}
+
+	// Extract just the environment name from the fully qualified path
+	parts := strings.Split(value, "/")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+
+	return "default"
+}
+
+// ResourceIDToResourceGroupNameTransformer extracts the resource group name from a resource ID.

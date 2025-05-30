@@ -52,6 +52,7 @@ func Test_GetGenericResourceTableFormat(t *testing.T) {
 		ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test"),
 		Properties: map[string]any{
 			"provisioningState": corerpv20231001preview.ProvisioningStateUpdating,
+			"environment":       "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
 		},
 	}
 
@@ -59,6 +60,39 @@ func Test_GetGenericResourceTableFormat(t *testing.T) {
 	err := output.Write(output.FormatTable, obj, buffer, GetGenericResourceTableFormat())
 	require.NoError(t, err)
 
-	expected := "RESOURCE  TYPE       GROUP       STATE\ntest      test-type  test-group  Updating\n"
+	expected := "RESOURCE  TYPE       GROUP       ENVIRONMENT  STATE\ntest      test-type  test-group  test-env     Updating\n"
 	require.Equal(t, expected, buffer.String())
+}
+
+func Test_ResourceEnvironmentNameTransformer(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "empty_input",
+			input:    "",
+			expected: "default",
+		},
+		{
+			name:     "valid_input",
+			input:    "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+			expected: "test-env",
+		},
+		{
+			name:     "just_name",
+			input:    "test-env",
+			expected: "test-env",
+		},
+	}
+
+	transformer := ResourceEnvironmentNameTransformer{}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := transformer.Transform(tc.input)
+			require.Equal(t, tc.expected, result)
+		})
+	}
 }
