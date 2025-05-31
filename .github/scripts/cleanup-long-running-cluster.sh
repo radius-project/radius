@@ -58,6 +58,23 @@ for ns in $namespaces; do
     if [[ " ${namespace_whitelist[@]} " =~ " ${ns} " ]]; then
         echo "skip deletion: $ns"
     else
+        echo "🔍 Scanning namespace '$NAMESPACE' for resources with finalizers."
+        resources=$(kubectl get all -n "$NAMESPACE" -o json | jq -r '
+            .items[] | 
+            select(.metadata.finalizers != null) | 
+            "\(.kind) \(.metadata.name)"
+        ')
+        if [ -z "$resources" ]; then
+            echo "No finalizers found in resources."
+        else
+            echo "Found resources with finalizers. Removing them"
+
+        while read -r kind name; do
+            echo "  ➤ Patching $kind/$name..."
+            kubectl patch "$kind" "$name" -n "$NAMESPACE" --type=json -p='[{"op": "remove", "path": "/metadata/finalizers"}]' 2>/dev/null
+        done <<< "$resources"
+        fi
+
         echo "deleting namespaces: $ns"
         kubectl delete namespace $ns --ignore-not-found=true
     fi
