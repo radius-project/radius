@@ -37,6 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -753,6 +754,36 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				case int:
 					secretData[name] = []byte(strconv.Itoa(v))
 					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+				}
+			}
+
+			if !resources.IsBuiltInType(con.Source) {
+				partialResource, err := resourceutil.GetPropertiesFromResource(properties.Resource)
+				if err != nil {
+					return nil, nil, err
+				}
+				for key, value := range partialResource {
+					name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
+					source := corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: kubernetes.NormalizeResourceName(resource.Name),
+							},
+							Key: name,
+						},
+					}
+					switch v := value.(type) {
+					case string:
+						secretData[name] = []byte(v)
+						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+					case float64:
+						strVal := strconv.FormatFloat(v, 'f', -1, 64)
+						secretData[name] = []byte(strVal)
+						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+					case int:
+						secretData[name] = []byte(strconv.Itoa(v))
+						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+					}
 				}
 			}
 		}

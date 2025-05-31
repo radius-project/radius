@@ -22,11 +22,13 @@ import (
 	"testing"
 
 	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	azrenderer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
 	azvolrenderer "github.com/radius-project/radius/pkg/corerp/renderers/volume/azure"
+	dynamicrp_dm "github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -144,6 +146,26 @@ func makeRadiusResourceID(t *testing.T, resourceType string, resourceName string
 	return id
 }
 
+func makeDynamicResource() *dynamicrp_dm.DynamicResource {
+	return &dynamicrp_dm.DynamicResource{
+		BaseResource: apiv1.BaseResource{
+			TrackedResource: apiv1.TrackedResource{
+				ID:   "/planes/radius/local/resourceGroups/test-resourcegroup/providers/Applications.Test/testType/test-resource",
+				Type: "Applications.Test/testType",
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: "2024-01-01",
+			},
+		},
+		Properties: map[string]any{
+			"property1": "value1",
+			"property2": 2,
+			"property3": 3.14,
+			"status":    map[string]any{},
+		},
+	}
+}
+
 func Test_GetDependencyIDs_Success(t *testing.T) {
 	testStorageResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 	testAzureResourceID := makeAzureResourceID(t, "Microsoft.ServiceBus/namespaces", "testAzureResource")
@@ -171,6 +193,9 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			},
 			"testNonRadiusConnectionWithoutIAM": {
 				Source: testAzureResourceID.String(),
+			},
+			"testDynamicResourceConnection": {
+				Source: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource").String(),
 			},
 		},
 		Container: datamodel.Container{
@@ -229,12 +254,13 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	renderer := Renderer{}
 	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.NoError(t, err)
-	require.Len(t, radiusResourceIDs, 3)
+	require.Len(t, radiusResourceIDs, 4)
 	require.Len(t, azureResourceIDs, 1)
 
 	expectedRadiusResourceIDs := []resources.ID{
 		makeRadiusResourceID(t, "Applications.Datastores/redisCaches", "A"),
 		makeRadiusResourceID(t, "Applications.Datastores/redisCaches", "B"),
+		makeRadiusResourceID(t, "Applications.Test/testType", "test-resource"),
 		resources.MustParse(envVarSource3),
 	}
 	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
@@ -623,6 +649,9 @@ func Test_Render_Connections(t *testing.T) {
 			"containerB": {
 				Source: fmt.Sprintf("%s://%s:%s", containerConnectionScheme, containerConnectionHostname, containerConnectionPort),
 			},
+			"dynamicResource": {
+				Source: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource").String(),
+			},
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
@@ -644,6 +673,10 @@ func Test_Render_Connections(t *testing.T) {
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
 			},
+		},
+		(makeRadiusResourceID(t, "Applications.Test/testType", "test-resource").String()): {
+			ResourceID: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource"),
+			Resource:   makeDynamicResource(),
 		},
 	}
 
@@ -702,6 +735,39 @@ func Test_Render_Connections(t *testing.T) {
 				Name:  "CONNECTION_CONTAINERB_SCHEME",
 				Value: containerConnectionScheme,
 			},
+			{
+				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY1",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY1",
+					},
+				},
+			},
+			{
+				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY2",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY2",
+					},
+				},
+			},
+			{
+				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY3",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY3",
+					},
+				},
+			},
 			{Name: envVarName1, Value: envVarValue1},
 			{Name: envVarName2, Value: envVarValue2},
 		}
@@ -721,9 +787,12 @@ func Test_Render_Connections(t *testing.T) {
 		require.Empty(t, secret.Annotations)
 
 		require.Equal(t, outputResource.LocalID, rpv1.LocalIDSecret)
-		require.Len(t, secret.Data, 2)
+		require.Len(t, secret.Data, 5)
 		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_A_COMPUTEDKEY1"]))
 		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
+		require.Equal(t, "value1", string(secret.Data["CONNECTION_DYNAMICRESOURCE_PROPERTY1"]))
+		require.Equal(t, "2", string(secret.Data["CONNECTION_DYNAMICRESOURCE_PROPERTY2"]))
+		require.Equal(t, "3.14", string(secret.Data["CONNECTION_DYNAMICRESOURCE_PROPERTY3"]))
 	})
 	require.Len(t, output.Resources, 5)
 }
