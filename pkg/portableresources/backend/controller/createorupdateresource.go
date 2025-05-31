@@ -79,7 +79,11 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	previousOutputResources := c.copyOutputResources(resource)
 
 	// Load configuration
-	metadata := recipes.ResourceMetadata{EnvironmentID: resource.ResourceMetadata().EnvironmentID(), ApplicationID: resource.ResourceMetadata().ApplicationID(), ResourceID: resource.GetBaseResource().ID}
+	metadata := recipes.ResourceMetadata{
+		EnvironmentID: resource.ResourceMetadata().EnvironmentID(),
+		ApplicationID: resource.ResourceMetadata().ApplicationID(),
+		ResourceID:    resource.GetBaseResource().ID,
+	}
 	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
 	if err != nil {
 		return ctrl.Result{}, err

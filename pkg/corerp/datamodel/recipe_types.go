@@ -40,6 +40,12 @@ type TerraformConfigProperties struct {
 
 	// Providers specifies the Terraform provider configurations. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs: https://developer.hashicorp.com/terraform/language/providers/configuration.// Providers specifies the Terraform provider configurations.
 	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
+
+	// Registry specifies the Terraform registry configuration.
+	Registry *TerraformRegistryConfig `json:"registry,omitempty"`
+
+	// Version specifies the Terraform binary version and the URL to download it from.
+	Version *TerraformVersionConfig `json:"version,omitempty"`
 }
 
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
@@ -98,4 +104,38 @@ type SecretReference struct {
 
 	// Key represents the key of the secret.
 	Key string `json:"key"`
+}
+
+// TerraformRegistryConfig - Configuration for Terraform Registry.
+type TerraformRegistryConfig struct {
+	// Mirror is the URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'.
+	Mirror string `json:"mirror,omitempty"`
+
+	// ProviderMappings is used to translate between official and custom provider identifiers.
+	ProviderMappings map[string]string `json:"providerMappings,omitempty"`
+
+	// Authentication configuration for accessing private Terraform registry mirrors.
+	Authentication RegistryAuthConfig `json:"authentication,omitempty"`
+}
+
+// RegistryAuthConfig - Authentication configuration for accessing private Terraform registry mirrors.
+type RegistryAuthConfig struct {
+	// Token is the token-based authentication for Terraform registry mirrors.
+	Token *SecretReference `json:"token,omitempty"`
+
+	// Credentials is the credentials-based authentication for Terraform registry mirrors.
+	Credentials *SecretConfig `json:"credentials,omitempty"`
+}
+
+// TerraformVersionConfig - Configuration for Terraform binary.
+type TerraformVersionConfig struct {
+	// Version is the version of the Terraform binary to use. Example: '1.0.0'.
+	// If omitted, the system may default to the latest stable version.
+	Version string `json:"version,omitempty"`
+
+	// ReleasesAPIBaseURL is an optional base URL for a custom Terraform releases API.
+	// If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site.
+	// The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files).
+	// Example: 'https://my-terraform-mirror.example.com'
+	ReleasesAPIBaseURL string `json:"releasesApiBaseUrl,omitempty"`
 }

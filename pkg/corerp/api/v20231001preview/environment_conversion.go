@@ -185,8 +185,11 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeConfigProperties {
 	if config != nil {
 		recipeConfig := datamodel.RecipeConfigProperties{}
+
 		if config.Terraform != nil {
 			recipeConfig.Terraform = datamodel.TerraformConfigProperties{}
+
+			// Terraform authentication
 			if config.Terraform.Authentication != nil {
 				recipeConfig.Terraform.Authentication = datamodel.AuthConfig{}
 				gitConfig := config.Terraform.Authentication.Git
@@ -201,6 +204,49 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 						}
 						recipeConfig.Terraform.Authentication.Git.PAT = p
 					}
+				}
+			}
+
+			if config.Terraform.Registry != nil {
+				registryConfig := &datamodel.TerraformRegistryConfig{
+					Mirror: to.String(config.Terraform.Registry.Mirror),
+				}
+
+				if config.Terraform.Registry.ProviderMappings != nil {
+					providerMappings := make(map[string]string)
+					for key, value := range config.Terraform.Registry.ProviderMappings {
+						providerMappings[key] = to.String(value)
+					}
+					registryConfig.ProviderMappings = providerMappings
+				}
+
+				// Handle authentication only if provided
+				if config.Terraform.Registry.Authentication != nil {
+					auth := config.Terraform.Registry.Authentication
+
+					// Handle token if provided
+					if auth.Token != nil {
+						registryConfig.Authentication.Token = &datamodel.SecretReference{
+							Source: to.String(auth.Token.Source),
+							Key:    to.String(auth.Token.Key),
+						}
+					}
+
+					// Handle credentials if provided
+					if auth.Credentials != nil {
+						registryConfig.Authentication.Credentials = &datamodel.SecretConfig{
+							Secret: to.String(auth.Credentials.Secret),
+						}
+					}
+				}
+
+				recipeConfig.Terraform.Registry = registryConfig
+			}
+
+			if config.Terraform.Version != nil {
+				recipeConfig.Terraform.Version = &datamodel.TerraformVersionConfig{
+					Version:            to.String(config.Terraform.Version.Version),
+					ReleasesAPIBaseURL: to.String(config.Terraform.Version.ReleasesAPIBaseURL),
 				}
 			}
 
@@ -234,6 +280,7 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 		recipeConfig := &RecipeConfigProperties{}
 		if !reflect.DeepEqual(config.Terraform, datamodel.TerraformConfigProperties{}) {
 			recipeConfig.Terraform = &TerraformConfigProperties{}
+
 			if !reflect.DeepEqual(config.Terraform.Authentication, datamodel.AuthConfig{}) {
 				recipeConfig.Terraform.Authentication = &AuthConfig{}
 				if !reflect.DeepEqual(config.Terraform.Authentication.Git, datamodel.GitAuthConfig{}) {
@@ -246,6 +293,53 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 							}
 						}
 					}
+				}
+			}
+
+			if config.Terraform.Registry != nil {
+				registryConfig := &TerraformRegistryConfig{
+					Mirror: to.Ptr(config.Terraform.Registry.Mirror),
+				}
+
+				// Only set ProviderMappings if it exists and is not empty
+				if len(config.Terraform.Registry.ProviderMappings) > 0 {
+					providerMappings := make(map[string]*string)
+					for key, value := range config.Terraform.Registry.ProviderMappings {
+						providerMappings[key] = to.Ptr(value)
+					}
+					registryConfig.ProviderMappings = providerMappings
+				}
+
+				// Handle token if provided
+				if config.Terraform.Registry.Authentication.Token != nil {
+					if registryConfig.Authentication == nil {
+						registryConfig.Authentication = &RegistryAuthConfig{}
+					}
+
+					registryConfig.Authentication.Token = &SecretReference{
+						Source: to.Ptr(config.Terraform.Registry.Authentication.Token.Source),
+						Key:    to.Ptr(config.Terraform.Registry.Authentication.Token.Key),
+					}
+				}
+
+				// Handle credentials if provided
+				if config.Terraform.Registry.Authentication.Credentials != nil {
+					if registryConfig.Authentication == nil {
+						registryConfig.Authentication = &RegistryAuthConfig{}
+					}
+
+					registryConfig.Authentication.Credentials = &SecretConfig{
+						Secret: to.Ptr(config.Terraform.Registry.Authentication.Credentials.Secret),
+					}
+				}
+
+				recipeConfig.Terraform.Registry = registryConfig
+			}
+
+			if config.Terraform.Version != nil {
+				recipeConfig.Terraform.Version = &TerraformVersionConfig{
+					Version:            to.Ptr(config.Terraform.Version.Version),
+					ReleasesAPIBaseURL: to.Ptr(config.Terraform.Version.ReleasesAPIBaseURL),
 				}
 			}
 

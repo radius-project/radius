@@ -111,6 +111,19 @@ func GetProviderEnvSecretIDs(envConfig recipes.Configuration) map[string][]strin
 	return providerSecretIDs
 }
 
+func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][]string {
+	registrySecretIDs := make(map[string][]string)
+	var mu sync.Mutex
+
+	if envConfig.RecipeConfig.Terraform.Registry != nil &&
+		envConfig.RecipeConfig.Terraform.Registry.Authentication.Token != nil {
+		token := envConfig.RecipeConfig.Terraform.Registry.Authentication.Token
+		addSecretKeys(registrySecretIDs, token.Source, token.Key, &mu)
+	}
+
+	return registrySecretIDs
+}
+
 // extractProviderSecrets extracts secrets from Terraform provider configurations
 func extractProviderSecretIDs(providers map[string][]dm.ProviderConfigProperties, secrets map[string][]string, mu *sync.Mutex) {
 	for _, config := range providers {

@@ -39,6 +39,10 @@ const (
 
 // ChartOptions describes the options for a Helm chart.
 type ChartOptions struct {
+	// Disabled specifies whether the chart should be disabled.
+	// Setting this to true will skip the chart installation.
+	Disabled bool
+
 	// Target namespace for deployment
 	Namespace string
 
