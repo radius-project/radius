@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -310,6 +311,135 @@ func Test_DynamicResourceBasicPropertiesAdapter_EnvironmentID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			adapter := &dynamicResourceBasicPropertiesAdapter{resource: &tt.resource}
 			got := adapter.EnvironmentID()
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_DynamicResource_GetComputedValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		resource DynamicResource
+		want     map[string]any
+	}{
+		{
+			name: "valid computedValues returns map",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{
+						"computedValues": map[string]any{
+							"foo": "bar",
+							"num": 42,
+						},
+					},
+				},
+			},
+			want: map[string]any{"foo": "bar", "num": 42},
+		},
+		{
+			name: "empty status returns empty map",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{},
+				},
+			},
+			want: map[string]any{},
+		},
+		{
+			name:     "nil properties returns empty map",
+			resource: DynamicResource{},
+			want:     map[string]any{},
+		},
+		{
+			name: "non-map computedValues returns empty map",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{
+						"computedValues": "invalid",
+					},
+				},
+			},
+			want: map[string]any{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.resource.GetComputedValues()
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_DynamicResource_GetSecrets(t *testing.T) {
+	tests := []struct {
+		name     string
+		resource DynamicResource
+		want     map[string]rpv1.SecretValueReference
+	}{
+		{
+			name: "valid secrets returns map",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{
+						"secrets": map[string]any{
+							"password": rpv1.SecretValueReference{Value: "s3cr3t"},
+							"token":    rpv1.SecretValueReference{Value: "tok123"},
+						},
+					},
+				},
+			},
+			want: map[string]rpv1.SecretValueReference{
+				"password": {Value: "s3cr3t"},
+				"token":    {Value: "tok123"},
+			},
+		},
+		{
+			name: "string secrets are ignored",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{
+						"secrets": map[string]any{
+							"password": "s3cr3t",
+							"token":    rpv1.SecretValueReference{Value: "tok123"},
+						},
+					},
+				},
+			},
+			want: map[string]rpv1.SecretValueReference{
+				"token": {Value: "tok123"},
+			},
+		},
+		{
+			name: "empty status returns empty map",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{},
+				},
+			},
+			want: map[string]rpv1.SecretValueReference{},
+		},
+		{
+			name:     "nil properties returns empty map",
+			resource: DynamicResource{},
+			want:     map[string]rpv1.SecretValueReference{},
+		},
+		{
+			name: "non-map secrets returns empty map",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{
+						"secrets": "invalid",
+					},
+				},
+			},
+			want: map[string]rpv1.SecretValueReference{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.resource.GetSecrets()
 			require.Equal(t, tt.want, got)
 		})
 	}
