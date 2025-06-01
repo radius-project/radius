@@ -103,13 +103,22 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, client)
 	if err != nil {
 		return err
 	}
-	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeTableFormat())
+
+	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeShowTableFormat())
 	if err != nil {
 		return err
 	}
+	if r.Format != "json" {
+		err = r.display(&resourceTypeDetails)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
