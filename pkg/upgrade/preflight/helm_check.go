@@ -23,9 +23,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/helm"
 )
 
-// Ensure HelmConnectivityCheck implements PreflightCheck interface
-var _ PreflightCheck = (*HelmConnectivityCheck)(nil)
-
 // HelmConnectivityCheck validates that Helm can connect to the cluster
 // and access the Radius release for upgrade operations.
 type HelmConnectivityCheck struct {
@@ -65,7 +62,9 @@ func (h *HelmConnectivityCheck) Run(ctx context.Context) (bool, string, error) {
 	message := fmt.Sprintf("Helm successfully connected to cluster and found Radius release (version: %s)", installState.RadiusVersion)
 
 	if installState.ContourInstalled {
-		message += fmt.Sprintf(", Contour installed (version: %s)", installState.ContourVersion)
+		message += fmt.Sprintf(", Contour dependency found (version: %s)", installState.ContourVersion)
+	} else {
+		message += ", Contour dependency not found"
 	}
 
 	return true, message, nil

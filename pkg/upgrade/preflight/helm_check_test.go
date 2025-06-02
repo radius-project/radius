@@ -27,8 +27,11 @@ import (
 )
 
 func TestHelmConnectivityCheck_Properties(t *testing.T) {
+<<<<<<< HEAD
 	t.Parallel()
 
+=======
+>>>>>>> fd799da65 (Adding Config and Helm Preflight checks)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -40,8 +43,11 @@ func TestHelmConnectivityCheck_Properties(t *testing.T) {
 }
 
 func TestHelmConnectivityCheck_Run(t *testing.T) {
+<<<<<<< HEAD
 	t.Parallel()
 
+=======
+>>>>>>> fd799da65 (Adding Config and Helm Preflight checks)
 	tests := []struct {
 		name          string
 		setupMock     func(*helm.MockInterface)
@@ -61,7 +67,11 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 			},
 			expectPass:    true,
+<<<<<<< HEAD
 			expectMessage: "Helm successfully connected to cluster and found Radius release (version: v0.47.0), Contour installed (version: v1.25.0)",
+=======
+			expectMessage: "Helm successfully connected to cluster and found Radius release (version: v0.47.0), Contour dependency found (version: v1.25.0)",
+>>>>>>> fd799da65 (Adding Config and Helm Preflight checks)
 			expectError:   false,
 		},
 		{
@@ -76,7 +86,11 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 			},
 			expectPass:    true,
+<<<<<<< HEAD
 			expectMessage: "Helm successfully connected to cluster and found Radius release (version: v0.47.0)",
+=======
+			expectMessage: "Helm successfully connected to cluster and found Radius release (version: v0.47.0), Contour dependency not found",
+>>>>>>> fd799da65 (Adding Config and Helm Preflight checks)
 			expectError:   false,
 		},
 		{
@@ -93,6 +107,7 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 			setupMock: func(mockHelm *helm.MockInterface) {
 				installState := helm.InstallState{
 					RadiusInstalled:  false,
+<<<<<<< HEAD
 					ContourInstalled: false,
 				}
 				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
@@ -109,6 +124,11 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 					RadiusVersion:    "",
 					ContourInstalled: true,
 					ContourVersion:   "v1.25.0",
+=======
+					RadiusVersion:    "",
+					ContourInstalled: false,
+					ContourVersion:   "",
+>>>>>>> fd799da65 (Adding Config and Helm Preflight checks)
 				}
 				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 			},
@@ -120,8 +140,11 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+<<<<<<< HEAD
 			t.Parallel()
 
+=======
+>>>>>>> fd799da65 (Adding Config and Helm Preflight checks)
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
