@@ -66,7 +66,7 @@ func Test_Run(t *testing.T) {
 				Name: to.Ptr("Applications.Test1"),
 				ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
 					"exampleResources1": {
-						APIVersions: map[string]map[string]any{
+						APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
 							"2023-10-01-preview": {},
 						},
 					},
@@ -76,12 +76,12 @@ func Test_Run(t *testing.T) {
 				Name: to.Ptr("Applications.Test2"),
 				ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
 					"exampleResources2": {
-						APIVersions: map[string]map[string]any{
+						APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
 							"2023-10-01-preview": {},
 						},
 					},
 					"exampleResources3": {
-						APIVersions: map[string]map[string]any{
+						APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
 							"2023-10-01-preview": {},
 						},
 					},
@@ -89,21 +89,30 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		resourceTypes := []common.ResourceType{
+		resourceTypes := []common.ResourceTypeListOutputFormat{
 			{
-				Name:                      "Applications.Test1/exampleResources1",
-				ResourceProviderNamespace: "Applications.Test1",
-				APIVersions:               []string{"2023-10-01-preview"},
+				ResourceType: common.ResourceType{
+					Name:                      "Applications.Test1/exampleResources1",
+					ResourceProviderNamespace: "Applications.Test1",
+					APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
+				},
+				APIVersionList: []string{"2023-10-01-preview"},
 			},
 			{
-				Name:                      "Applications.Test2/exampleResources2",
-				ResourceProviderNamespace: "Applications.Test2",
-				APIVersions:               []string{"2023-10-01-preview"},
+				ResourceType: common.ResourceType{
+					Name:                      "Applications.Test2/exampleResources2",
+					ResourceProviderNamespace: "Applications.Test2",
+					APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
+				},
+				APIVersionList: []string{"2023-10-01-preview"},
 			},
 			{
-				Name:                      "Applications.Test2/exampleResources3",
-				ResourceProviderNamespace: "Applications.Test2",
-				APIVersions:               []string{"2023-10-01-preview"},
+				ResourceType: common.ResourceType{
+					Name:                      "Applications.Test2/exampleResources3",
+					ResourceProviderNamespace: "Applications.Test2",
+					APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
+				},
+				APIVersionList: []string{"2023-10-01-preview"},
 			},
 		}
 
