@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+<<<<<<< HEAD
 // Ensure KubernetesResourceCheck implements PreflightCheck interface
 var _ PreflightCheck = (*KubernetesResourceCheck)(nil)
 
@@ -36,12 +37,22 @@ type KubernetesResourceCheck struct {
 }
 
 // NewKubernetesResourceCheck creates a new check that will create its own client.
+=======
+// KubernetesResourceCheck validates that the cluster has sufficient resources
+// (CPU, memory) to perform a rolling upgrade of Radius components.
+type KubernetesResourceCheck struct {
+	kubeContext string
+}
+
+// NewKubernetesResourceCheck creates a new Kubernetes resource check.
+>>>>>>> 24b6b693a (Adding Kubernetes resources Preflight Check)
 func NewKubernetesResourceCheck(kubeContext string) *KubernetesResourceCheck {
 	return &KubernetesResourceCheck{
 		kubeContext: kubeContext,
 	}
 }
 
+<<<<<<< HEAD
 // NewKubernetesResourceCheckWithClientset creates a new check with an existing client.
 func NewKubernetesResourceCheckWithClientset(kubeContext string, clientset kubernetes.Interface) *KubernetesResourceCheck {
 	return &KubernetesResourceCheck{
@@ -50,6 +61,8 @@ func NewKubernetesResourceCheckWithClientset(kubeContext string, clientset kuber
 	}
 }
 
+=======
+>>>>>>> 24b6b693a (Adding Kubernetes resources Preflight Check)
 // Name returns the name of this check.
 func (k *KubernetesResourceCheck) Name() string {
 	return "Kubernetes Resource Availability"
@@ -60,11 +73,30 @@ func (k *KubernetesResourceCheck) Severity() CheckSeverity {
 	return SeverityWarning // Warning level since this is an estimate
 }
 
+<<<<<<< HEAD
 // Run executes the resource availability check.
 func (k *KubernetesResourceCheck) Run(ctx context.Context) (bool, string, error) {
 	clientset, err := k.getClientset()
 	if err != nil {
 		return false, "", err
+=======
+// Run executes the Kubernetes resource availability check.
+func (k *KubernetesResourceCheck) Run(ctx context.Context) (bool, string, error) {
+	// Create Kubernetes client config
+	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
+		ContextName: k.kubeContext,
+		QPS:         kubeutil.DefaultCLIQPS,
+		Burst:       kubeutil.DefaultCLIBurst,
+	})
+	if err != nil {
+		return false, "", fmt.Errorf("failed to create Kubernetes client config: %w", err)
+	}
+
+	// Create Kubernetes clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to create Kubernetes client: %w", err)
+>>>>>>> 24b6b693a (Adding Kubernetes resources Preflight Check)
 	}
 
 	// Get cluster resource availability
@@ -116,6 +148,7 @@ func (k *KubernetesResourceCheck) Run(ctx context.Context) (bool, string, error)
 	), nil
 }
 
+<<<<<<< HEAD
 // getClientset returns the clientset, creating one if necessary.
 func (k *KubernetesResourceCheck) getClientset() (kubernetes.Interface, error) {
 	if k.clientset != nil {
@@ -139,6 +172,8 @@ func (k *KubernetesResourceCheck) getClientset() (kubernetes.Interface, error) {
 	return clientset, nil
 }
 
+=======
+>>>>>>> 24b6b693a (Adding Kubernetes resources Preflight Check)
 // ResourceQuota represents CPU and memory resource quantities.
 type ResourceQuota struct {
 	CPU    int64 // milliCPU

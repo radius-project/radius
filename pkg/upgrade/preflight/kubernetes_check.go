@@ -25,32 +25,16 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const (
-	// RadiusSystemNamespace is the namespace where Radius components are installed
-	RadiusSystemNamespace = "radius-system"
-)
-
-// Ensure KubernetesConnectivityCheck implements PreflightCheck interface
-var _ PreflightCheck = (*KubernetesConnectivityCheck)(nil)
-
-// KubernetesConnectivityCheck validates cluster connectivity and basic permissions.
+// KubernetesConnectivityCheck validates that kubectl can connect to the cluster
+// and that the user has sufficient permissions to perform upgrade operations.
 type KubernetesConnectivityCheck struct {
 	kubeContext string
-	clientset   kubernetes.Interface
 }
 
-// NewKubernetesConnectivityCheck creates a new check that will create its own client.
+// NewKubernetesConnectivityCheck creates a new Kubernetes connectivity check.
 func NewKubernetesConnectivityCheck(kubeContext string) *KubernetesConnectivityCheck {
 	return &KubernetesConnectivityCheck{
 		kubeContext: kubeContext,
-	}
-}
-
-// NewKubernetesConnectivityCheckWithClientset creates a new check with an existing client.
-func NewKubernetesConnectivityCheckWithClientset(kubeContext string, clientset kubernetes.Interface) *KubernetesConnectivityCheck {
-	return &KubernetesConnectivityCheck{
-		kubeContext: kubeContext,
-		clientset:   clientset,
 	}
 }
 
@@ -64,53 +48,39 @@ func (k *KubernetesConnectivityCheck) Severity() CheckSeverity {
 	return SeverityError
 }
 
-// Run executes the connectivity check.
+// Run executes the Kubernetes connectivity check.
 func (k *KubernetesConnectivityCheck) Run(ctx context.Context) (bool, string, error) {
-	clientset, err := k.getClientset()
-	if err != nil {
-		return false, "", err
-	}
-
-	// Check basic connectivity
-	serverVersion, err := clientset.Discovery().ServerVersion()
-	if err != nil {
-		return false, "Cannot connect to Kubernetes cluster", fmt.Errorf("failed to get server version: %w", err)
-	}
-
-	// Check namespace existence - required for upgrade
-	_, err = clientset.CoreV1().Namespaces().Get(ctx, RadiusSystemNamespace, metav1.GetOptions{})
-	if err != nil {
-		return false, fmt.Sprintf("Connected (version: %s) but %s namespace not found", serverVersion.GitVersion, RadiusSystemNamespace), nil
-	}
-
-	// Check deployment permissions
-	_, err = clientset.AppsV1().Deployments(RadiusSystemNamespace).List(ctx, metav1.ListOptions{Limit: 1})
-	if err != nil {
-		return false, fmt.Sprintf("Connected (version: %s) but insufficient permissions", serverVersion.GitVersion), nil
-	}
-
-	return true, fmt.Sprintf("Connected (version: %s) with sufficient permissions", serverVersion.GitVersion), nil
-}
-
-// getClientset returns the clientset, creating one if necessary.
-func (k *KubernetesConnectivityCheck) getClientset() (kubernetes.Interface, error) {
-	if k.clientset != nil {
-		return k.clientset, nil
-	}
-
+	// Create Kubernetes client config
 	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
 		ContextName: k.kubeContext,
 		QPS:         kubeutil.DefaultCLIQPS,
 		Burst:       kubeutil.DefaultCLIBurst,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client config: %w", err)
+		return false, "", fmt.Errorf("failed to create Kubernetes client config: %w", err)
 	}
 
+	// Create Kubernetes clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
+		return false, "", fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
 
-	return clientset, nil
+	// Test basic connectivity by trying to get cluster version
+	serverVersion, err := clientset.Discovery().ServerVersion()
+	if err != nil {
+		return false, "Cannot connect to Kubernetes cluster", fmt.Errorf("failed to get server version: %w", err)
+	}
+
+	_, err = clientset.CoreV1().Namespaces().Get(ctx, "radius-system", metav1.GetOptions{})
+	if err != nil {
+		return true, fmt.Sprintf("Connected to Kubernetes cluster (version: %s), radius-system namespace not found", serverVersion.String()), nil
+	}
+
+	_, err = clientset.AppsV1().Deployments("radius-system").List(ctx, metav1.ListOptions{Limit: 1})
+	if err != nil {
+		return false, fmt.Sprintf("Connected to Kubernetes cluster (version: %s) but insufficient permissions to list deployments in radius-system namespace", serverVersion.String()), nil
+	}
+
+	return true, fmt.Sprintf("Successfully connected to Kubernetes cluster (version: %s) with sufficient permissions", serverVersion.String()), nil
 }
