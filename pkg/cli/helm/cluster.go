@@ -20,6 +20,7 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -136,6 +137,9 @@ type Interface interface {
 
 	// CheckRadiusInstall checks whether Radius is installed on the cluster, based on the specified Kubernetes context.
 	CheckRadiusInstall(kubeContext string) (InstallState, error)
+
+	// GetLatestRadiusVersion gets the latest available version of the Radius chart from the Helm repository.
+	GetLatestRadiusVersion(ctx context.Context) (string, error)
 }
 
 type Impl struct {
@@ -268,4 +272,46 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	output.LogInfo("Contour upgrade complete")
 
 	return nil
+}
+
+// GetLatestRadiusVersion gets the latest available version of the Radius chart from the Helm repository.
+func (i *Impl) GetLatestRadiusVersion(ctx context.Context) (string, error) {
+	helmAction := NewHelmAction(i.Helm)
+
+	// Use the same repository configuration as we use for installation
+	clusterOptions := NewDefaultClusterOptions()
+	chartRepo := clusterOptions.Radius.ChartRepo
+	chartName := radiusReleaseName
+
+	// Create a minimal helm configuration for chart operations
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &clusterOptions.Radius.Namespace,
+	}
+	helmConf, err := initHelmConfig(&flags)
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize helm config: %w", err)
+	}
+
+	// Use the existing HelmChartFromContainerRegistry method with empty version
+	// to fetch the latest chart and extract its version
+	chart, err := helmAction.HelmChartFromContainerRegistry("", helmConf, chartRepo, chartName)
+	if err != nil {
+		// If we can't fetch the latest version, fall back to CLI version
+		output.LogInfo("Warning: Could not fetch latest chart version from repository, using CLI version as fallback")
+		return version.Version(), nil
+	}
+
+	// Extract version from chart metadata
+	if chart.Metadata == nil || chart.Metadata.Version == "" {
+		return "", fmt.Errorf("chart metadata does not contain version information")
+	}
+
+	latestVersion := chart.Metadata.Version
+
+	// Ensure version has 'v' prefix for consistency with Radius versioning
+	if !strings.HasPrefix(latestVersion, "v") {
+		latestVersion = "v" + latestVersion
+	}
+
+	return latestVersion, nil
 }
