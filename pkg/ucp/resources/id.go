@@ -911,6 +911,7 @@ func MakeRelativeID(scopes []ScopeSegment, resourceTypes []TypeSegment, extensio
 	return SegmentSeparator + strings.Join(segments, SegmentSeparator)
 }
 
+// IsBuiltInType checks if the resource ID refers to a built-in resource type.
 func IsBuiltInType(resourceID string) bool {
 	ri, err := Parse(resourceID)
 	if err != nil {

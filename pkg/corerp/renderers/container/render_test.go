@@ -2043,3 +2043,171 @@ func getAppSetup() *setupMaps {
 type setupMaps struct {
 	appKubeMetadataExt *datamodel.KubeMetadataExtension
 }
+
+func Test_updateEnvAndSecretData(t *testing.T) {
+	testCases := []struct {
+		name         string
+		conn         string
+		resName      string
+		vars         map[string]any
+		startEnv     map[string]corev1.EnvVar
+		startSecret  map[string][]byte
+		expectEnv    map[string]corev1.EnvVar
+		expectSecret map[string][]byte
+	}{
+		{
+			name:        "string value",
+			conn:        "db",
+			resName:     "myapp",
+			vars:        map[string]any{"user": "admin"},
+			startEnv:    map[string]corev1.EnvVar{},
+			startSecret: map[string][]byte{},
+			expectEnv: map[string]corev1.EnvVar{
+				"CONNECTION_DB_USER": {
+					Name: "CONNECTION_DB_USER",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: kubernetes.NormalizeResourceName("myapp")},
+							Key:                  "CONNECTION_DB_USER",
+						},
+					},
+				},
+			},
+			expectSecret: map[string][]byte{"CONNECTION_DB_USER": []byte("admin")},
+		},
+		{
+			name:        "int value",
+			conn:        "cache",
+			resName:     "svc",
+			vars:        map[string]any{"port": 6379},
+			startEnv:    map[string]corev1.EnvVar{},
+			startSecret: map[string][]byte{},
+			expectEnv: map[string]corev1.EnvVar{
+				"CONNECTION_CACHE_PORT": {
+					Name: "CONNECTION_CACHE_PORT",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: kubernetes.NormalizeResourceName("svc")},
+							Key:                  "CONNECTION_CACHE_PORT",
+						},
+					},
+				},
+			},
+			expectSecret: map[string][]byte{"CONNECTION_CACHE_PORT": []byte("6379")},
+		},
+		{
+			name:        "float64 value",
+			conn:        "api",
+			resName:     "svc",
+			vars:        map[string]any{"timeout": 3.14},
+			startEnv:    map[string]corev1.EnvVar{},
+			startSecret: map[string][]byte{},
+			expectEnv: map[string]corev1.EnvVar{
+				"CONNECTION_API_TIMEOUT": {
+					Name: "CONNECTION_API_TIMEOUT",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: kubernetes.NormalizeResourceName("svc")},
+							Key:                  "CONNECTION_API_TIMEOUT",
+						},
+					},
+				},
+			},
+			expectSecret: map[string][]byte{"CONNECTION_API_TIMEOUT": []byte("3.14")},
+		},
+		{
+			name:        "mixed types",
+			conn:        "mix",
+			resName:     "svc",
+			vars:        map[string]any{"a": "x", "b": 1, "c": 2.5},
+			startEnv:    map[string]corev1.EnvVar{},
+			startSecret: map[string][]byte{},
+			expectEnv: map[string]corev1.EnvVar{
+				"CONNECTION_MIX_A": {
+					Name: "CONNECTION_MIX_A",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: kubernetes.NormalizeResourceName("svc")},
+							Key:                  "CONNECTION_MIX_A",
+						},
+					},
+				},
+				"CONNECTION_MIX_B": {
+					Name: "CONNECTION_MIX_B",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: kubernetes.NormalizeResourceName("svc")},
+							Key:                  "CONNECTION_MIX_B",
+						},
+					},
+				},
+				"CONNECTION_MIX_C": {
+					Name: "CONNECTION_MIX_C",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: kubernetes.NormalizeResourceName("svc")},
+							Key:                  "CONNECTION_MIX_C",
+						},
+					},
+				},
+			},
+			expectSecret: map[string][]byte{
+				"CONNECTION_MIX_A": []byte("x"),
+				"CONNECTION_MIX_B": []byte("1"),
+				"CONNECTION_MIX_C": []byte("2.5"),
+			},
+		},
+		{
+			name:         "empty input",
+			conn:         "empty",
+			resName:      "svc",
+			vars:         map[string]any{},
+			startEnv:     map[string]corev1.EnvVar{"EXISTING": {Name: "EXISTING", Value: "foo"}},
+			startSecret:  map[string][]byte{"EXISTING": []byte("foo")},
+			expectEnv:    map[string]corev1.EnvVar{"EXISTING": {Name: "EXISTING", Value: "foo"}},
+			expectSecret: map[string][]byte{"EXISTING": []byte("foo")},
+		},
+		{
+			name:    "overwrite existing",
+			conn:    "db",
+			resName: "svc",
+			vars:    map[string]any{"user": "newuser"},
+			startEnv: map[string]corev1.EnvVar{
+				"CONNECTION_DB_USER": {Name: "CONNECTION_DB_USER", Value: "old"},
+			},
+			startSecret: map[string][]byte{
+				"CONNECTION_DB_USER": []byte("old"),
+			},
+			expectEnv: map[string]corev1.EnvVar{
+				"CONNECTION_DB_USER": {
+					Name: "CONNECTION_DB_USER",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: kubernetes.NormalizeResourceName("svc")},
+							Key:                  "CONNECTION_DB_USER",
+						},
+					},
+				},
+			},
+			expectSecret: map[string][]byte{"CONNECTION_DB_USER": []byte("newuser")},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Copy input maps to avoid mutation between tests
+			env := map[string]corev1.EnvVar{}
+			for k, v := range tc.startEnv {
+				env[k] = v
+			}
+			secret := map[string][]byte{}
+			for k, v := range tc.startSecret {
+				secret[k] = v
+			}
+
+			gotEnv, gotSecret := updateEnvAndSecretData(tc.conn, tc.resName, tc.vars, env, secret)
+			require.Equal(t, tc.expectEnv, gotEnv)
+			require.Equal(t, tc.expectSecret, gotSecret)
+		})
+	}
+}
