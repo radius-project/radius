@@ -73,7 +73,7 @@ func Test_Run(t *testing.T) {
 			Name: to.Ptr("MyCompany.Resources"),
 			ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
 				"testResources": &v20231001preview.ResourceProviderSummaryResourceType{
-					APIVersions: map[string]map[string]any{
+					APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
 						"2023-10-01-preview": {},
 					},
 					Capabilities: []*string{},
@@ -120,10 +120,13 @@ func Test_Run(t *testing.T) {
 			},
 			output.FormattedOutput{
 				Format: "table",
-				Obj: common.ResourceType{
-					Name:                      "MyCompany.Resources/testResources",
-					ResourceProviderNamespace: "MyCompany.Resources",
-					APIVersions:               []string{"2023-10-01-preview"},
+				Obj: common.ResourceTypeListOutputFormat{
+					ResourceType: common.ResourceType{
+						Name:                      "MyCompany.Resources/testResources",
+						ResourceProviderNamespace: "MyCompany.Resources",
+						APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
+					},
+					APIVersionList: []string{"2023-10-01-preview"},
 				},
 				Options: output.FormatterOptions{
 					Columns: []output.Column{
@@ -137,7 +140,7 @@ func Test_Run(t *testing.T) {
 						},
 						{
 							Heading:  "APIVERSION",
-							JSONPath: "{ .APIVersions }",
+							JSONPath: "{ .APIVersionList }",
 						},
 					},
 				},

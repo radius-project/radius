@@ -74,8 +74,30 @@ func Test_Run(t *testing.T) {
 		Name: to.Ptr("Applications.Test"),
 		ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
 			"exampleResources": {
-				APIVersions: map[string]map[string]any{
-					"2023-10-01-preview": {},
+				Description: to.Ptr("Resource type description"),
+				APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
+					"2023-10-01-preview": {
+						Schema: map[string]any{
+							"properties": map[string]any{
+								"application": map[string]any{
+									"type":        "string",
+									"description": "The name of the application.",
+								},
+								"environment": map[string]any{
+									"type":        "string",
+									"description": "The name of the environment.",
+								},
+								"database": map[string]any{
+									"type":        "string",
+									"description": "The name of the database.",
+									"readOnly":    true,
+								},
+							},
+							"required": []any{
+								"environment",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -88,7 +110,29 @@ func Test_Run(t *testing.T) {
 		resourceType := common.ResourceType{
 			Name:                      "Applications.Test/exampleResources",
 			ResourceProviderNamespace: "Applications.Test",
-			APIVersions:               []string{"2023-10-01-preview"},
+			Description:               "Resource type description",
+			APIVersions: map[string]*common.APIVersionProperties{"2023-10-01-preview": {
+				Schema: map[string]any{
+					"properties": map[string]any{
+						"application": map[string]any{
+							"type":        "string",
+							"description": "The name of the application.",
+						},
+						"environment": map[string]any{
+							"type":        "string",
+							"description": "The name of the environment.",
+						},
+						"database": map[string]any{
+							"type":        "string",
+							"description": "The name of the database.",
+							"readOnly":    true,
+						},
+					},
+					"required": []any{
+						"environment",
+					},
+				},
+			}},
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -123,10 +167,56 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     resourceType,
-				Options: common.GetResourceTypeTableFormat(),
+				Options: common.GetResourceTypeShowTableFormat(),
+			},
+			output.LogOutput{
+				Format: "\nDESCRIPTION:",
+			},
+			output.LogOutput{
+				Format: "%s",
+				Params: []any{"Resource type description"},
+			},
+			output.LogOutput{
+				Format: "API VERSION: %s\n",
+				Params: []any{"2023-10-01-preview"},
+			},
+			output.LogOutput{
+				Format: "TOP-LEVEL PROPERTIES:\n",
+			},
+			output.FormattedOutput{
+				Format:  "table",
+				Options: common.GetResourceTypeShowSchemaTableFormat(),
+				Obj: []FieldSchema{
+					{
+						Name:        "application",
+						Description: "The name of the application.",
+						Type:        "string",
+						IsRequired:  false,
+						IsReadOnly:  false,
+						Properties:  map[string]FieldSchema{},
+					},
+					{
+						Name:        "database",
+						Description: "The name of the database.",
+						Type:        "string",
+						IsRequired:  false,
+						IsReadOnly:  true,
+						Properties:  map[string]FieldSchema{},
+					},
+					{
+						Name:        "environment",
+						Description: "The name of the environment.",
+						Type:        "string",
+						IsRequired:  true,
+						IsReadOnly:  false,
+						Properties:  map[string]FieldSchema{},
+					},
+				},
+			},
+			output.LogOutput{
+				Format: "",
 			},
 		}
-
 		require.Equal(t, expected, outputSink.Writes)
 	})
 

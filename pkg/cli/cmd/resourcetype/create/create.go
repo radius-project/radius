@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
@@ -172,7 +173,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeTableFormat())
+
+	resourceTypeFormat := common.ResourceTypeListOutputFormat{
+		ResourceType:   resourceTypeDetails,
+		APIVersionList: maps.Keys(resourceTypeDetails.APIVersions),
+	}
+	err = r.Output.WriteFormatted(r.Format, resourceTypeFormat, common.GetResourceTypeTableFormat())
 	if err != nil {
 		return err
 	}
