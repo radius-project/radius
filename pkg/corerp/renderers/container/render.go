@@ -749,29 +749,7 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				if err != nil {
 					return nil, nil, err
 				}
-				for key, value := range partialResource {
-					name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
-					source := corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: kubernetes.NormalizeResourceName(resource.Name),
-							},
-							Key: name,
-						},
-					}
-					switch v := value.(type) {
-					case string:
-						secretData[name] = []byte(v)
-						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-					case float64:
-						strVal := strconv.FormatFloat(v, 'f', -1, 64)
-						secretData[name] = []byte(strVal)
-						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-					case int:
-						secretData[name] = []byte(strconv.Itoa(v))
-						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-					}
-				}
+				env, secretData = updateEnvAndSecretData(name, resource.Name, partialResource, env, secretData)
 			}
 		}
 	}
