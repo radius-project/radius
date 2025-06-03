@@ -732,64 +732,46 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				continue
 			}
 
-			// handles case where container has source field structured as a resourceID.
-			for key, value := range properties.ComputedValues {
-				name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
-
-				source := corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: kubernetes.NormalizeResourceName(resource.Name),
-						},
-						Key: name,
-					},
-				}
-				switch v := value.(type) {
-				case string:
-					secretData[name] = []byte(v)
-					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-				case float64:
-					secretData[name] = []byte(strconv.Itoa(int(v)))
-					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-				case int:
-					secretData[name] = []byte(strconv.Itoa(v))
-					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-				}
-			}
+			env, secretData = updateEnvAndSecretData(name, resource.Name, properties.ComputedValues, env, secretData)
 
 			if !resources.IsBuiltInType(con.Source) {
 				partialResource, err := resourceutil.GetPropertiesFromResource(properties.Resource)
 				if err != nil {
 					return nil, nil, err
 				}
-				for key, value := range partialResource {
-					name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
-					source := corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: kubernetes.NormalizeResourceName(resource.Name),
-							},
-							Key: name,
-						},
-					}
-					switch v := value.(type) {
-					case string:
-						secretData[name] = []byte(v)
-						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-					case float64:
-						strVal := strconv.FormatFloat(v, 'f', -1, 64)
-						secretData[name] = []byte(strVal)
-						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-					case int:
-						secretData[name] = []byte(strconv.Itoa(v))
-						env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-					}
-				}
+				env, secretData = updateEnvAndSecretData(name, resource.Name, partialResource, env, secretData)
 			}
 		}
 	}
 
 	return env, secretData, nil
+}
+
+func updateEnvAndSecretData(connName string, resourceName string, environmentVariablesInfo map[string]any, env map[string]corev1.EnvVar, secretData map[string][]byte) (updatedEnv map[string]corev1.EnvVar, updatedSecretData map[string][]byte) {
+	for key, value := range environmentVariablesInfo {
+		name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(connName), strings.ToUpper(key))
+		source := corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: kubernetes.NormalizeResourceName(resourceName),
+				},
+				Key: name,
+			},
+		}
+		switch v := value.(type) {
+		case string:
+			secretData[name] = []byte(v)
+			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+		case float64:
+			strVal := strconv.FormatFloat(v, 'f', -1, 64)
+			secretData[name] = []byte(strVal)
+			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+		case int:
+			secretData[name] = []byte(strconv.Itoa(v))
+			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+		}
+	}
+	return env, secretData
 }
 
 func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Probe, error) {
