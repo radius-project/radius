@@ -63,7 +63,7 @@ func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
 	// Now we'll iteratively add/remove elements and verify the summary is updated.
 	createResourceType(server)
 	expected.ResourceTypes[resourceTypeName] = &v20231001preview.ResourceProviderSummaryResourceType{
-		APIVersions:       map[string]map[string]any{},
+		APIVersions:       map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{},
 		Capabilities:      []*string{to.Ptr("SupportsRecipes")},
 		DefaultAPIVersion: to.Ptr("2025-01-01"),
 	}
@@ -72,7 +72,7 @@ func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
 	response.EqualsValue(200, expected)
 
 	createAPIVersion(server)
-	expected.ResourceTypes[resourceTypeName].APIVersions["2025-01-01"] = map[string]any{}
+	expected.ResourceTypes[resourceTypeName].APIVersions["2025-01-01"] = &v20231001preview.ResourceTypeSummaryResultAPIVersion{}
 
 	response = server.MakeRequest(http.MethodGet, resourceProviderSummaryURL, nil)
 	response.EqualsValue(200, expected)

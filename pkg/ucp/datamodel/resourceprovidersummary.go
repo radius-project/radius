@@ -75,11 +75,15 @@ type ResourceProviderSummaryPropertiesResourceType struct {
 	// Capabilities is the list of capabilities supported by the resource type.
 	Capabilities []string `json:"capabilities,omitempty"`
 
+	//Description of the resource type.
+	Description *string `json:"description,omitempty"`
+
 	// APIVersions is the list of API versions available for the resource type.
 	APIVersions map[string]ResourceProviderSummaryPropertiesAPIVersion `json:"apiVersions,omitempty"`
 }
 
 // ResourceProviderSummaryAPIVersion represents an API version available in a resource provider.
 type ResourceProviderSummaryPropertiesAPIVersion struct {
-	// Empty for now.
+	// Schema holds the resource type definitions for this API version.
+	Schema map[string]any `json:"schema,omitempty"`
 }

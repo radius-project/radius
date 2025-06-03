@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 // NewCommand creates an instance of the `rad resource-type list` command and runner.
@@ -101,12 +102,19 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	resourceTypes := []common.ResourceType{}
+	resourceTypes := []common.ResourceTypeListOutputFormat{}
 	for _, resourceProvider := range resourceProviders {
-		resourceTypes = append(resourceTypes, common.ResourceTypesForProvider(&resourceProvider)...)
+
+		for _, rt := range common.ResourceTypesForProvider(&resourceProvider) {
+			resourceType := common.ResourceTypeListOutputFormat{
+				ResourceType:   rt,
+				APIVersionList: maps.Keys(rt.APIVersions),
+			}
+			resourceTypes = append(resourceTypes, resourceType)
+		}
 	}
 
-	slices.SortFunc(resourceTypes, func(a common.ResourceType, b common.ResourceType) int {
+	slices.SortFunc(resourceTypes, func(a common.ResourceTypeListOutputFormat, b common.ResourceTypeListOutputFormat) int {
 		return strings.Compare(a.Name, b.Name)
 	})
 
