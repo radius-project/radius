@@ -1,4 +1,4 @@
-name: Applications.Datastores
+namespace: Applications.Datastores
 location:
   global:
     "http://applications-rp.radius-system:5443"
