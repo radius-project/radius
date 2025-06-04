@@ -743,14 +743,6 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				}
 				env, secretData = updateEnvAndSecretData(name, resource.Name, partialResource, env, secretData)
 			}
-
-			if !resources.IsBuiltInType(con.Source) {
-				partialResource, err := resourceutil.GetPropertiesFromResource(properties.Resource)
-				if err != nil {
-					return nil, nil, err
-				}
-				env, secretData = updateEnvAndSecretData(name, resource.Name, partialResource, env, secretData)
-			}
 		}
 	}
 
