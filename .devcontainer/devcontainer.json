@@ -10,7 +10,6 @@
     "ghcr.io/devcontainers/features/go:1": {},
     "ghcr.io/guiyomh/features/gotestsum:0.1.1": {},
     "ghcr.io/devcontainers/features/node:1": {},
-    "ghcr.io/devcontainers-contrib/features/typescript:2": {},
     "ghcr.io/devcontainers/features/python:1": {},
     //Container and K8s
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
@@ -38,7 +37,8 @@
         "ms-kubernetes-tools.vscode-kubernetes-tools",
         "ms-azuretools.vscode-dapr",
         "ms-vscode.makefile-tools",
-        "timonwong.shellcheck"
+        "timonwong.shellcheck",
+        "typespec.typespec-vscode"
       ]
     }
   },
