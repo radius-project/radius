@@ -750,6 +750,9 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 func updateEnvAndSecretData(connName string, resourceName string, environmentVariablesInfo map[string]any, env map[string]corev1.EnvVar, secretData map[string][]byte) (updatedEnv map[string]corev1.EnvVar, updatedSecretData map[string][]byte) {
 	for key, value := range environmentVariablesInfo {
 		name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(connName), strings.ToUpper(key))
+		if _, exists := env[name]; exists {
+			continue
+		}
 		source := corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
