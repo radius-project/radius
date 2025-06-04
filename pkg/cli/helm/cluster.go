@@ -140,6 +140,12 @@ type Interface interface {
 
 	// GetLatestRadiusVersion gets the latest available version of the Radius chart from the Helm repository.
 	GetLatestRadiusVersion(ctx context.Context) (string, error)
+
+	// RollbackRadius rolls back the Radius installation to the previous revision.
+	RollbackRadius(ctx context.Context, kubeContext string) error
+
+	// RollbackRadiusToRevision rolls back the Radius installation to a specific revision.
+	RollbackRadiusToRevision(ctx context.Context, kubeContext string, revision int) error
 }
 
 type Impl struct {
@@ -314,4 +320,168 @@ func (i *Impl) GetLatestRadiusVersion(ctx context.Context) (string, error) {
 	}
 
 	return latestVersion, nil
+}
+
+// RollbackRadius rolls back the Radius installation to the previous revision.
+func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
+	clusterOptions := NewDefaultClusterOptions()
+
+	// Initialize helm configuration
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &clusterOptions.Radius.Namespace,
+		Context:   &kubeContext,
+	}
+	helmConf, err := initHelmConfig(&flags)
+	if err != nil {
+		return fmt.Errorf("failed to initialize helm config: %w", err)
+	}
+
+	// Get release history to find the previous version
+	history, err := i.Helm.RunHelmHistory(helmConf, radiusReleaseName)
+	if err != nil {
+		return fmt.Errorf("failed to get release history: %w", err)
+	}
+
+	if len(history) < 2 {
+		return fmt.Errorf("no previous revision available for rollback. Current revision count: %d", len(history))
+	}
+
+	// Find the previous successful deployment with a different chart version
+	// History is returned in chronological order (oldest first)
+	var targetRevision int
+	var currentRevision int
+	var currentChartVersion string
+
+	// Find the current deployed revision
+	for i := len(history) - 1; i >= 0; i-- {
+		if history[i].Info.Status == "deployed" {
+			currentRevision = history[i].Version
+			if history[i].Chart != nil && history[i].Chart.Metadata != nil {
+				currentChartVersion = history[i].Chart.Metadata.Version
+			}
+			break
+		}
+	}
+
+	// Look for the most recent revision with an OLDER chart version
+	// We need to find a revision that's chronologically older than the current one
+	var currentRevisionIndex int = -1
+
+	// First, find the index of the current revision in the history
+	for i, release := range history {
+		if release.Version == currentRevision {
+			currentRevisionIndex = i
+			break
+		}
+	}
+
+	if currentRevisionIndex == -1 {
+		return fmt.Errorf("could not find current revision in history")
+	}
+
+	// Parse current version for comparison
+	currentSemver, err := semver.NewVersion(currentChartVersion)
+	if err != nil {
+		return fmt.Errorf("invalid current chart version format: %s", currentChartVersion)
+	}
+
+	// Look backwards from the current revision for an older chart version
+	for i := currentRevisionIndex - 1; i >= 0; i-- {
+		if history[i].Info.Status == "deployed" || history[i].Info.Status == "superseded" {
+			if history[i].Chart != nil && history[i].Chart.Metadata != nil {
+				candidateVersion := history[i].Chart.Metadata.Version
+				if candidateVersion != currentChartVersion {
+					// Parse candidate version and compare
+					candidateSemver, err := semver.NewVersion(candidateVersion)
+					if err != nil {
+						// Skip versions that can't be parsed
+						continue
+					}
+
+					// Only rollback to a semantically older version
+					if candidateSemver.LessThan(currentSemver) {
+						targetRevision = history[i].Version
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if targetRevision == 0 {
+		return fmt.Errorf("no older version found for rollback. Current version %s is the oldest available", currentChartVersion)
+	}
+
+	// Find the target version name for the output message
+	var targetChartVersion string
+	for _, release := range history {
+		if release.Version == targetRevision && release.Chart != nil && release.Chart.Metadata != nil {
+			targetChartVersion = release.Chart.Metadata.Version
+			break
+		}
+	}
+
+	output.LogInfo("Rolling back Radius from version %s to version %s...", currentChartVersion, targetChartVersion)
+
+	// Perform the rollback
+	err = i.Helm.RunHelmRollback(helmConf, radiusReleaseName, targetRevision, true)
+	if err != nil {
+		return fmt.Errorf("failed to rollback Radius: %w", err)
+	}
+
+	output.LogInfo("Radius rollback completed successfully!")
+	return nil
+}
+
+// RollbackRadiusToRevision rolls back the Radius installation to a specific revision.
+func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string, revision int) error {
+	clusterOptions := NewDefaultClusterOptions()
+
+	// Initialize helm configuration
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &clusterOptions.Radius.Namespace,
+		Context:   &kubeContext,
+	}
+	helmConf, err := initHelmConfig(&flags)
+	if err != nil {
+		return fmt.Errorf("failed to initialize helm config: %w", err)
+	}
+
+	// Get release history to validate the target revision exists
+	history, err := i.Helm.RunHelmHistory(helmConf, radiusReleaseName)
+	if err != nil {
+		return fmt.Errorf("failed to get release history: %w", err)
+	}
+
+	// Validate that the target revision exists
+	var targetFound bool
+	var targetChartVersion string
+	for _, release := range history {
+		if release.Version == revision {
+			targetFound = true
+			if release.Chart != nil && release.Chart.Metadata != nil {
+				targetChartVersion = release.Chart.Metadata.Version
+			}
+			break
+		}
+	}
+
+	if !targetFound {
+		return fmt.Errorf("revision %d not found in release history", revision)
+	}
+
+	if targetChartVersion != "" {
+		output.LogInfo("Rolling back Radius to revision %d (version %s)...", revision, targetChartVersion)
+	} else {
+		output.LogInfo("Rolling back Radius to revision %d...", revision)
+	}
+
+	// Perform the rollback
+	err = i.Helm.RunHelmRollback(helmConf, radiusReleaseName, revision, true)
+	if err != nil {
+		return fmt.Errorf("failed to rollback Radius to revision %d: %w", revision, err)
+	}
+
+	output.LogInfo("Radius rollback completed successfully!")
+	return nil
 }
