@@ -727,13 +727,16 @@ type ResourceProviderSummary struct {
 // ResourceProviderSummaryResourceType - A resource type and its versions.
 type ResourceProviderSummaryResourceType struct {
 // REQUIRED; API versions supported by the resource type.
-	APIVersions map[string]map[string]any
+	APIVersions map[string]*ResourceTypeSummaryResultAPIVersion
 
 // The resource type capabilities.
 	Capabilities []*string
 
 // The default api version for the resource type.
 	DefaultAPIVersion *string
+
+// Description of the resource type.
+	Description *string
 }
 
 // ResourceTypeProperties - The properties of a resource type.
@@ -743,6 +746,9 @@ type ResourceTypeProperties struct {
 
 // The default api version for the resource type.
 	DefaultAPIVersion *string
+
+// Description of the resource type.
+	Description *string
 
 // READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
@@ -773,6 +779,12 @@ type ResourceTypeResourceListResult struct {
 
 // The link to the next page of items
 	NextLink *string
+}
+
+// ResourceTypeSummaryResultAPIVersion - The configuration of a resource type API version.
+type ResourceTypeSummaryResultAPIVersion struct {
+// Schema holds the resource type definitions for this API version.
+	Schema map[string]any
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

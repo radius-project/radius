@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
@@ -140,10 +141,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
+	_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Namespace, nil)
 	if err != nil {
 		if clients.Is404Error(err) {
-			r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)
+			r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Namespace)
 			if registerErr := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
 				return registerErr
 			}
@@ -151,13 +152,13 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 	} else {
-		r.Output.LogInfo("Resource provider %q found. Registering resource type %q.", r.ResourceProvider.Name, r.ResourceTypeName)
+		r.Output.LogInfo("Resource provider %q found. Registering resource type %q.", r.ResourceProvider.Namespace, r.ResourceTypeName)
 		if registerErr := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger); err != nil {
 			return registerErr
 		}
 	}
 
-	_, err = r.UCPClientFactory.NewResourceTypesClient().Get(ctx, "local", r.ResourceProvider.Name, r.ResourceTypeName, nil)
+	_, err = r.UCPClientFactory.NewResourceTypesClient().Get(ctx, "local", r.ResourceProvider.Namespace, r.ResourceTypeName, nil)
 	if err != nil {
 		return err
 	}
@@ -168,11 +169,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Name, r.ResourceTypeName, client)
+	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Namespace, r.ResourceTypeName, client)
 	if err != nil {
 		return err
 	}
-	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeTableFormat())
+
+	resourceTypeFormat := common.ResourceTypeListOutputFormat{
+		ResourceType:   resourceTypeDetails,
+		APIVersionList: maps.Keys(resourceTypeDetails.APIVersions),
+	}
+	err = r.Output.WriteFormatted(r.Format, resourceTypeFormat, common.GetResourceTypeTableFormat())
 	if err != nil {
 		return err
 	}

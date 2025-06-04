@@ -1,9 +1,10 @@
-name: MyCompany.Resources
+namespace: MyCompany.Resources
 location:
   global:
     'http://localhost:8080'
 types:
   testResources:
+    description: This is a test resource type.
     apiVersions:
       '2025-01-01-preview':
         schema: {}

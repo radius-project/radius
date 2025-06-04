@@ -18,8 +18,8 @@ package manifest
 
 // ResourceProvider represents a resource provider manifest.
 type ResourceProvider struct {
-	// Name is the resource provider name. This is also the namespace of the types defined by the resource provider.
-	Name string `yaml:"name" validate:"required,resourceProviderNamespace"`
+	// Namespace is the resource provider name. This is also the namespace of the types defined by the resource provider.
+	Namespace string `yaml:"namespace" validate:"required,resourceProviderNamespace"`
 
 	// Location is a map of location name to address in the resource provider.
 	Location map[string]string `yaml:"location,omitempty"`
@@ -38,6 +38,9 @@ type ResourceType struct {
 
 	// APIVersions is a map of API versions for the resource type.
 	APIVersions map[string]*ResourceTypeAPIVersion `yaml:"apiVersions" validate:"dive,keys,apiVersion,endkeys,required"`
+
+	// Description of the resource type.
+	Description *string `yaml:"description,omitempty"`
 }
 
 type ResourceTypeAPIVersion struct {

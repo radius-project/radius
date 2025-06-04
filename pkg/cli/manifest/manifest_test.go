@@ -19,17 +19,19 @@ package manifest
 import (
 	"testing"
 
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
 func TestReadFileYAML(t *testing.T) {
 	expected := &ResourceProvider{
-		Name: "MyCompany.Resources",
+		Namespace: "MyCompany.Resources",
 		Location: map[string]string{
 			"global": "http://localhost:8080",
 		},
 		Types: map[string]*ResourceType{
 			"testResources": {
+				Description: to.Ptr("This is a test resource type."),
 				APIVersions: map[string]*ResourceTypeAPIVersion{
 					"2025-01-01-preview": {
 						Schema: map[string]any{},
@@ -68,7 +70,7 @@ func TestReadFile_MissingRequiredFieldYAML(t *testing.T) {
 
 func TestReadFileJSON(t *testing.T) {
 	expected := &ResourceProvider{
-		Name: "MyCompany.Resources",
+		Namespace: "MyCompany.Resources",
 		Types: map[string]*ResourceType{
 			"testResources": {
 				APIVersions: map[string]*ResourceTypeAPIVersion{
