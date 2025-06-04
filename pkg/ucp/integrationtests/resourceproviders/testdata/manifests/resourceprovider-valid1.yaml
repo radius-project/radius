@@ -1,4 +1,4 @@
-name: TestProvider.TestCompany
+namespace: TestProvider.TestCompany
 location:
   global:
     'http://localhost:8080'
