@@ -151,3 +151,23 @@ func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, re
 
 	return resourceTypes[idx], nil
 }
+
+func GetResourceTypeDetailsWithUCPClient(ctx context.Context, resourceProviderName string, resourceTypeName string, clientFactory *v20231001preview.ClientFactory) (ResourceType, error) {
+	response, err := clientFactory.NewResourceProvidersClient().GetProviderSummary(ctx, "local", resourceProviderName, nil)
+	if clients.Is404Error(err) {
+		return ResourceType{}, clierrors.Message("The resource provider %q was not found or has been deleted.", resourceProviderName)
+	} else if err != nil {
+		return ResourceType{}, err
+	}
+
+	resourceTypes := ResourceTypesForProvider(&response.ResourceProviderSummary)
+	idx := slices.IndexFunc(resourceTypes, func(rt ResourceType) bool {
+		return rt.Name == resourceProviderName+"/"+resourceTypeName
+	})
+
+	if idx < 0 {
+		return ResourceType{}, clierrors.Message("Resource type %q not found in resource provider %q.", resourceTypeName, *response.ResourceProviderSummary.Name)
+	}
+
+	return resourceTypes[idx], nil
+}

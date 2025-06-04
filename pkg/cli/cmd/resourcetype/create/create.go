@@ -24,7 +24,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -72,12 +71,11 @@ rad resource-type create myType --from-file /path/to/input.json
 
 // Runner is the Runner implementation for the `rad resource-type create` command.
 type Runner struct {
-	UCPClientFactory  *v20231001preview.ClientFactory
-	ConnectionFactory connections.Factory
-	ConfigHolder      *framework.ConfigHolder
-	Output            output.Interface
-	Format            string
-	Workspace         *workspaces.Workspace
+	UCPClientFactory *v20231001preview.ClientFactory
+	ConfigHolder     *framework.ConfigHolder
+	Output           output.Interface
+	Format           string
+	Workspace        *workspaces.Workspace
 
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
@@ -88,9 +86,8 @@ type Runner struct {
 // NewRunner creates an instance of the runner for the `rad resource-type create` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 		Logger: func(format string, args ...any) {
 			output.LogInfo(format, args...)
 		},
@@ -165,15 +162,10 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("")
 
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	resourceTypeDetails, err := common.GetResourceTypeDetailsWithUCPClient(ctx, r.ResourceProvider.Namespace, r.ResourceTypeName, r.UCPClientFactory)
 	if err != nil {
 		return err
 	}
-	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Namespace, r.ResourceTypeName, client)
-	if err != nil {
-		return err
-	}
-
 	resourceTypeFormat := common.ResourceTypeListOutputFormat{
 		ResourceType:   resourceTypeDetails,
 		APIVersionList: maps.Keys(resourceTypeDetails.APIVersions),

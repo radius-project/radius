@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
@@ -85,6 +86,44 @@ func Test_GetResourceTypeDetails(t *testing.T) {
 
 		_, err := GetResourceTypeDetails(context.Background(), "Applications.Test", "exampleResources", appManagementClient)
 
+		require.Error(t, err)
+	})
+}
+
+func Test_GetResourceTypeDetailsWithUCPClient(t *testing.T) {
+	t.Run("Get Resource Details Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
+
+		res, err := GetResourceTypeDetailsWithUCPClient(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
+		require.NoError(t, err)
+		require.Equal(t, "MyCompany.Resources/testResources", res.Name)
+
+	})
+
+	t.Run("Get Resource Details Failure - Resource Provider Not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNotFoundError)
+		require.NoError(t, err)
+
+		_, err = GetResourceTypeDetailsWithUCPClient(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
+		require.Error(t, err)
+		require.Equal(t, "The resource provider \"MyCompany.Resources\" was not found or has been deleted.", err.Error())
+	})
+
+	t.Run("Get Resource Details Failures Other Than Not Found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerInternalError)
+		require.NoError(t, err)
+
+		_, err = GetResourceTypeDetailsWithUCPClient(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
 		require.Error(t, err)
 	})
 }
