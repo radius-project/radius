@@ -1363,8 +1363,8 @@ func Test_isResourceInEnvironment(t *testing.T) {
 		expected      bool
 	}
 
-	fullEnvID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/env1"
-	shortEnvID := "env1"
+	envID1 := "/planes/radius/local/resourceGroups/my-rg/providers/Applications.Core/environments/env1"
+	envID2 := "/planes/radius/local/resourceGroups/my-rg/providers/Applications.Core/environments/env2"
 	envType := "Applications.Core/environments"
 	otherType := "Applications.Core/containers"
 
@@ -1373,50 +1373,30 @@ func Test_isResourceInEnvironment(t *testing.T) {
 			name: "direct match - full ID",
 			resource: generated.GenericResource{
 				Properties: map[string]interface{}{
-					"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/env1",
+					"environment": "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env1",
 				},
 			},
-			environmentID: fullEnvID,
-			expected:      true,
-		},
-		{
-			name: "direct match - short name",
-			resource: generated.GenericResource{
-				Properties: map[string]interface{}{
-					"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/env1",
-				},
-			},
-			environmentID: shortEnvID,
+			environmentID: envID1,
 			expected:      true,
 		},
 		{
 			name: "case-insensitive match",
 			resource: generated.GenericResource{
 				Properties: map[string]interface{}{
-					"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/ENV1",
+					"environment": "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/ENV1",
 				},
 			},
-			environmentID: "env1",
-			expected:      true,
-		},
-		{
-			name: "short name vs full ID",
-			resource: generated.GenericResource{
-				Properties: map[string]interface{}{
-					"environment": "env1",
-				},
-			},
-			environmentID: fullEnvID,
+			environmentID: envID1,
 			expected:      true,
 		},
 		{
 			name: "no match",
 			resource: generated.GenericResource{
 				Properties: map[string]interface{}{
-					"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/environments/env2",
+					"environment": "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env2",
 				},
 			},
-			environmentID: "env1",
+			environmentID: envID1,
 			expected:      false,
 		},
 		{
@@ -1426,43 +1406,31 @@ func Test_isResourceInEnvironment(t *testing.T) {
 					"otherProperty": "value",
 				},
 			},
-			environmentID: "env1",
+			environmentID: envID1,
 			expected:      false,
 		},
 		{
 			name: "environment resource itself - matching ID",
 			resource: generated.GenericResource{
 				Type: &envType,
-				ID:   &fullEnvID,
+				ID:   &envID1,
 				Properties: map[string]interface{}{
 					"otherProperty": "value",
 				},
 			},
-			environmentID: fullEnvID,
-			expected:      true,
-		},
-		{
-			name: "environment resource itself - matching short ID",
-			resource: generated.GenericResource{
-				Type: &envType,
-				ID:   &fullEnvID,
-				Properties: map[string]interface{}{
-					"otherProperty": "value",
-				},
-			},
-			environmentID: shortEnvID,
+			environmentID: envID1,
 			expected:      true,
 		},
 		{
 			name: "environment resource itself - non-matching ID",
 			resource: generated.GenericResource{
 				Type: &envType,
-				ID:   &fullEnvID,
+				ID:   &envID1,
 				Properties: map[string]interface{}{
 					"otherProperty": "value",
 				},
 			},
-			environmentID: "env2",
+			environmentID: envID2,
 			expected:      false,
 		},
 		{
@@ -1473,7 +1441,7 @@ func Test_isResourceInEnvironment(t *testing.T) {
 					"otherProperty": "value",
 				},
 			},
-			environmentID: "env1",
+			environmentID: envID1,
 			expected:      false,
 		},
 		{
@@ -1483,7 +1451,7 @@ func Test_isResourceInEnvironment(t *testing.T) {
 					"environment": "",
 				},
 			},
-			environmentID: "env1",
+			environmentID: envID1,
 			expected:      false,
 		},
 		{
@@ -1493,7 +1461,7 @@ func Test_isResourceInEnvironment(t *testing.T) {
 					"environment": 123,
 				},
 			},
-			environmentID: "env1",
+			environmentID: envID1,
 			expected:      false,
 		},
 	}

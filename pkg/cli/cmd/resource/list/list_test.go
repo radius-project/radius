@@ -333,7 +333,7 @@ func Test_Run(t *testing.T) {
 					Name: to.Ptr("Applications.Core"),
 					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 						"containers": {
-							APIVersions: map[string]map[string]any{
+							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 								"2023-01-01": {},
 							},
 							DefaultAPIVersion: to.Ptr("2023-01-01"),
@@ -452,7 +452,7 @@ func Test_Run(t *testing.T) {
 					Name: to.Ptr("Applications.Core"),
 					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 						"containers": {
-							APIVersions: map[string]map[string]any{
+							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 								"2023-01-01": {},
 							},
 							DefaultAPIVersion: to.Ptr("2023-01-01"),
@@ -543,7 +543,7 @@ func Test_Run(t *testing.T) {
 				Name: to.Ptr("Applications.Core"),
 				ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 					"containers": {
-						APIVersions: map[string]map[string]any{
+						APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 							"2023-01-01": {},
 						},
 						DefaultAPIVersion: to.Ptr("2023-01-01"),
@@ -583,7 +583,7 @@ func Test_Run(t *testing.T) {
 	})
 }
 
-// Test_ResourceListEnvironmentComparison is a test that compares the behavior of the resource list command 
+// Test_ResourceListEnvironmentComparison is a test that compares the behavior of the resource list command
 // with and without the --environment flag to detect differences in filtering behavior
 func Test_ResourceListEnvironmentComparison(t *testing.T) {
 	t.Run("Compare resource list with and without environment flag", func(t *testing.T) {
@@ -597,7 +597,7 @@ func Test_ResourceListEnvironmentComparison(t *testing.T) {
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		
+
 		// First test without environment flag
 		appManagementClient.EXPECT().
 			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Core").
@@ -605,7 +605,7 @@ func Test_ResourceListEnvironmentComparison(t *testing.T) {
 				Name: to.Ptr("Applications.Core"),
 				ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 					"containers": {
-						APIVersions: map[string]map[string]any{
+						APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 							"2023-01-01": {},
 						},
 						DefaultAPIVersion: to.Ptr("2023-01-01"),
@@ -625,7 +625,7 @@ func Test_ResourceListEnvironmentComparison(t *testing.T) {
 		appManagementClient.EXPECT().
 			GetEnvironment(gomock.Any(), "default").
 			Return(v20231001preview.EnvironmentResource{}, nil).Times(1)
-		
+
 		// Expect a call to ListResourcesOfTypeInEnvironment
 		appManagementClient.EXPECT().
 			ListResourcesOfTypeInEnvironment(gomock.Any(), "default", "Applications.Core/containers").
@@ -671,14 +671,14 @@ func Test_ResourceListEnvironmentComparison(t *testing.T) {
 		// Verify both outputs are equivalent
 		withoutEnvOutput, ok := outputWithoutEnv.Writes[0].(output.FormattedOutput)
 		require.True(t, ok)
-		
+
 		withEnvOutput, ok := outputWithEnv.Writes[0].(output.FormattedOutput)
 		require.True(t, ok)
 
 		// Check the number of resources
 		withoutEnvResources, ok := withoutEnvOutput.Obj.([]generated.GenericResource)
 		require.True(t, ok)
-		
+
 		withEnvResources, ok := withEnvOutput.Obj.([]generated.GenericResource)
 		require.True(t, ok)
 
@@ -691,15 +691,15 @@ func Test_ResourceListEnvironmentComparison(t *testing.T) {
 // Helper function to create a test resource with an environment property
 func createResourceWithEnvironment(resourceType, name, environmentName string) generated.GenericResource {
 	resource := radcli.CreateResource(resourceType, name)
-	
+
 	if resource.Properties == nil {
 		resource.Properties = make(map[string]any)
 	}
-	
+
 	if environmentName != "" {
 		// Set the environment property directly as a string (matches the format in isResourceInEnvironment)
 		resource.Properties["environment"] = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/" + environmentName
 	}
-	
+
 	return resource
 }

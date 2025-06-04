@@ -1032,11 +1032,7 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 			}
 
 			// If no direct match, check if one is a shortname and the other is a full ID
-			shortNameEnv := environmentID
-			if strings.Contains(environmentID, "/") {
-				parts := strings.Split(environmentID, "/")
-				shortNameEnv = parts[len(parts)-1]
-			}
+			shortNameEnv := getResourceShortName(environmentID)
 
 			shortNameResource := *resource.ID
 			if strings.Contains(*resource.ID, "/") {
@@ -1076,11 +1072,7 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 	}
 
 	// Check if one is a shortname and the other is a full ID
-	shortNameEnv := environmentID
-	if strings.Contains(environmentID, "/") {
-		parts := strings.Split(environmentID, "/")
-		shortNameEnv = parts[len(parts)-1]
-	}
+	shortNameEnv := getResourceShortName(environmentID)
 
 	shortNameAssociated := associatedEnvId
 	parsedAssociatedID, err := resources.Parse(associatedEnvId)
@@ -1102,4 +1094,13 @@ func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context,
 	}
 
 	return amc.capture(ctx, response)
+}
+
+func getResourceShortName(resourceID string) string {
+	shortName := resourceID
+	if strings.Contains(resourceID, "/") {
+		parts := strings.Split(resourceID, "/")
+		shortName = parts[len(parts)-1]
+	}
+	return shortName
 }
