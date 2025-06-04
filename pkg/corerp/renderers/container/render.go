@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -776,7 +777,42 @@ func updateEnvAndSecretData(connName string, resourceName string, environmentVar
 		case int:
 			secretData[name] = []byte(strconv.Itoa(v))
 			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+		case []string:
+			joinedValue := strings.Join(v, ",")
+			secretData[name] = []byte(joinedValue)
+			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+		case []int:
+			intValues := make([]string, len(v))
+			for i, val := range v {
+				intValues[i] = strconv.Itoa(val)
+			}
+			joinedValue := strings.Join(intValues, ",")
+			secretData[name] = []byte(joinedValue)
+			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+		case []float64:
+			floatValues := make([]string, len(v))
+			for i, val := range v {
+				floatValues[i] = strconv.FormatFloat(val, 'f', -1, 64)
+			}
+			joinedValue := strings.Join(floatValues, ",")
+			secretData[name] = []byte(joinedValue)
+			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+		case map[string]any:
+			// If the value is a map, we will convert it to a JSON string and store it in the secret.
+			jsonValue, err := json.Marshal(v)
+			if err != nil {
+				continue
+			}
+			secretData[name] = jsonValue
+			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
 		}
+		case []any:
+			jsonValue, err := json.Marshal(v)
+			if err != nil {
+				continue
+			}
+			secretData[name] = jsonValue
+			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}		
 	}
 	return env, secretData
 }
