@@ -26,6 +26,9 @@ const (
 	errUnmarshalResourceProperties = "failed to unmarshal resource for properties"
 )
 
+// BasicProperties is a list of common properties that are expected to be present in all resources
+var BasicProperties = []string{"application", "environment", "status"}
+
 // GetPropertiesFromResource extracts the "properties" field from the resource
 // by serializing it to JSON and deserializing just the "properties" field.
 func GetPropertiesFromResource[P any](resource P) (map[string]any, error) {
