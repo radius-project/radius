@@ -27,7 +27,7 @@ const (
 )
 
 // BasicProperties is a list of common properties that are expected to be present in all resources
-var BasicProperties = []string{"application", "environment", "status"}
+var BasicProperties = []string{"application", "environment", "status", "connections"}
 
 // GetPropertiesFromResource extracts the "properties" field from the resource
 // by serializing it to JSON and deserializing just the "properties" field.
