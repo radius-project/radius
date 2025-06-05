@@ -2116,79 +2116,79 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 			expectedSecretDataValues: map[string]string{
 				"CONNECTION_REDIS_ENDPOINTS": "endpoint1,endpoint2,endpoint3",
 			},
-		}, /*
-			{
-				name:         "slice of integers",
-				connName:     "database",
-				resourceName: "test-container",
-				environmentVariablesInfo: map[string]any{
-					"ports": []int{5432, 5433, 5434},
-				},
-				initialEnv:             map[string]corev1.EnvVar{},
-				initialSecretData:      map[string][]byte{},
-				expectedEnvKeys:        []string{"CONNECTION_DATABASE_PORTS"},
-				expectedSecretDataKeys: []string{"CONNECTION_DATABASE_PORTS"},
-				expectedSecretDataValues: map[string]string{
-					"CONNECTION_DATABASE_PORTS": "5432,5433,5434",
+		},
+		{
+			name:         "slice of integers",
+			connName:     "database",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"ports": []int{5432, 5433, 5434},
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_DATABASE_PORTS"},
+			expectedSecretDataKeys: []string{"CONNECTION_DATABASE_PORTS"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_DATABASE_PORTS": "5432,5433,5434",
+			},
+		},
+		{
+			name:         "slice of floats",
+			connName:     "metrics",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"thresholds": []float64{1.5, 2.7, 3.14},
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_METRICS_THRESHOLDS"},
+			expectedSecretDataKeys: []string{"CONNECTION_METRICS_THRESHOLDS"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_METRICS_THRESHOLDS": "1.5,2.7,3.14",
+			},
+		},
+		{
+			name:         "map to JSON",
+			connName:     "auth",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"credentials": map[string]any{
+					"username": "admin",
+					"port":     8080,
+					"enabled":  true,
 				},
 			},
-			{
-				name:         "slice of floats",
-				connName:     "metrics",
-				resourceName: "test-container",
-				environmentVariablesInfo: map[string]any{
-					"thresholds": []float64{1.5, 2.7, 3.14},
-				},
-				initialEnv:             map[string]corev1.EnvVar{},
-				initialSecretData:      map[string][]byte{},
-				expectedEnvKeys:        []string{"CONNECTION_METRICS_THRESHOLDS"},
-				expectedSecretDataKeys: []string{"CONNECTION_METRICS_THRESHOLDS"},
-				expectedSecretDataValues: map[string]string{
-					"CONNECTION_METRICS_THRESHOLDS": "1.5,2.7,3.14",
-				},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_AUTH_CREDENTIALS"},
+			expectedSecretDataKeys: []string{"CONNECTION_AUTH_CREDENTIALS"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_AUTH_CREDENTIALS": `{"enabled":true,"port":8080,"username":"admin"}`,
 			},
-			{
-				name:         "map to JSON",
-				connName:     "auth",
-				resourceName: "test-container",
-				environmentVariablesInfo: map[string]any{
-					"credentials": map[string]any{
-						"username": "admin",
-						"port":     8080,
-						"enabled":  true,
-					},
-				},
-				initialEnv:             map[string]corev1.EnvVar{},
-				initialSecretData:      map[string][]byte{},
-				expectedEnvKeys:        []string{"CONNECTION_AUTH_CREDENTIALS"},
-				expectedSecretDataKeys: []string{"CONNECTION_AUTH_CREDENTIALS"},
-				expectedSecretDataValues: map[string]string{
-					"CONNECTION_AUTH_CREDENTIALS": `{"enabled":true,"port":8080,"username":"admin"}`,
-				},
+		},
+		{
+			name:         "skip basic properties",
+			connName:     "test",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"application": "should-be-skipped", // Basic property
+				"environment": "should-be-skipped", // Basic property
+				"status":      "should-be-skipped", // Basic property
+				"connections": map[string]any{},    // Basic property
+				"validkey":    []string{"should", "be", "included"},
 			},
-			{
-				name:         "skip basic properties",
-				connName:     "test",
-				resourceName: "test-container",
-				environmentVariablesInfo: map[string]any{
-					"application": "should-be-skipped", // Basic property
-					"environment": "should-be-skipped", // Basic property
-					"status":      "should-be-skipped", // Basic property
-					"validkey":    []string{"should", "be", "included"},
-				},
-				initialEnv:             map[string]corev1.EnvVar{},
-				initialSecretData:      map[string][]byte{},
-				expectedEnvKeys:        []string{"CONNECTION_TEST_VALIDKEY"},
-				expectedSecretDataKeys: []string{"CONNECTION_TEST_VALIDKEY"},
-				expectedSecretDataValues: map[string]string{
-					"CONNECTION_TEST_VALIDKEY": "should,be,included",
-				},
-			},*/
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_TEST_VALIDKEY"},
+			expectedSecretDataKeys: []string{"CONNECTION_TEST_VALIDKEY"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_TEST_VALIDKEY": "should,be,included",
+			},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Make copies to avoid modifying the test case data
 			env := make(map[string]corev1.EnvVar)
 			for k, v := range tc.initialEnv {
 				env[k] = v
@@ -2206,7 +2206,6 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 				secretData,
 			)
 
-			// Check environment variable keys
 			actualEnvKeys := []string{}
 			for key := range updatedEnv {
 				actualEnvKeys = append(actualEnvKeys, key)
@@ -2215,7 +2214,6 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 			sort.Strings(tc.expectedEnvKeys)
 			require.Equal(t, tc.expectedEnvKeys, actualEnvKeys)
 
-			// Check secret data keys
 			actualSecretKeys := []string{}
 			for key := range updatedSecretData {
 				actualSecretKeys = append(actualSecretKeys, key)
@@ -2224,14 +2222,12 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 			sort.Strings(tc.expectedSecretDataKeys)
 			require.Equal(t, tc.expectedSecretDataKeys, actualSecretKeys)
 
-			// Check secret data values
 			for key, expectedValue := range tc.expectedSecretDataValues {
 				actualValue, exists := updatedSecretData[key]
 				require.True(t, exists, "Expected secret data key %s not found", key)
 				require.Equal(t, expectedValue, string(actualValue), "Secret data value mismatch for key %s", key)
 			}
 
-			// Check that environment variables have correct ValueFrom references
 			for _, key := range tc.expectedEnvKeys {
 				envVar, exists := updatedEnv[key]
 				require.True(t, exists, "Expected environment variable %s not found", key)
