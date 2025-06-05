@@ -109,7 +109,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.UCPClientFactory = clientFactory
 	}
 
-	resourceTypeDetails, err := common.GetResourceTypeDetailsWithUCPClient(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, r.UCPClientFactory)
+	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, r.UCPClientFactory)
 	if err != nil {
 		return err
 	}

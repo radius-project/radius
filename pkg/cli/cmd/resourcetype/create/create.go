@@ -161,7 +161,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("")
 
-	resourceTypeDetails, err := common.GetResourceTypeDetailsWithUCPClient(ctx, r.ResourceProvider.Namespace, r.ResourceTypeName, r.UCPClientFactory)
+	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Namespace, r.ResourceTypeName, r.UCPClientFactory)
 	if err != nil {
 		return err
 	}

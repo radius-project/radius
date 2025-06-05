@@ -25,7 +25,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func Test_GetResourceTypeDetailsWithUCPClient(t *testing.T) {
+func Test_GetResourceTypeDetails(t *testing.T) {
 	t.Run("Get Resource Details Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -33,7 +33,7 @@ func Test_GetResourceTypeDetailsWithUCPClient(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
-		res, err := GetResourceTypeDetailsWithUCPClient(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
+		res, err := GetResourceTypeDetails(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
 		require.NoError(t, err)
 		require.Equal(t, "MyCompany.Resources/testResources", res.Name)
 
@@ -46,7 +46,7 @@ func Test_GetResourceTypeDetailsWithUCPClient(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNotFoundError)
 		require.NoError(t, err)
 
-		_, err = GetResourceTypeDetailsWithUCPClient(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
+		_, err = GetResourceTypeDetails(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
 		require.Error(t, err)
 		require.Equal(t, "The resource provider \"MyCompany.Resources\" was not found or has been deleted.", err.Error())
 	})
@@ -58,7 +58,7 @@ func Test_GetResourceTypeDetailsWithUCPClient(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerInternalError)
 		require.NoError(t, err)
 
-		_, err = GetResourceTypeDetailsWithUCPClient(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
+		_, err = GetResourceTypeDetails(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
 		require.Error(t, err)
 	})
 }
