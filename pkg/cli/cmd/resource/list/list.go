@@ -23,6 +23,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -30,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
 )
 
@@ -74,6 +76,7 @@ rad resource list Applications.Core/containers -a icecream-store
 // Runner is the runner implementation for the `rad resource list` command.
 type Runner struct {
 	ConfigHolder              *framework.ConfigHolder
+	UCPClientFactory          *v20231001preview.ClientFactory
 	ConnectionFactory         connections.Factory
 	Output                    output.Interface
 	Workspace                 *workspaces.Workspace
@@ -81,7 +84,7 @@ type Runner struct {
 	Format                    string
 	ResourceType              string
 	ResourceTypeSuffix        string
-	ResourceProviderNameSpace string
+	ResourceProviderNamespace string
 }
 
 // NewRunner creates a new instance of the `rad resource list` runner.
@@ -118,11 +121,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.ApplicationName = applicationName
 
-	r.ResourceProviderNameSpace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
+	r.ResourceProviderNamespace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
 	if err != nil {
 		return err
 	}
-	r.ResourceType = r.ResourceProviderNameSpace + "/" + r.ResourceTypeSuffix
+	r.ResourceType = r.ResourceProviderNamespace + "/" + r.ResourceTypeSuffix
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -141,18 +144,26 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // specified format. If no application name is provided, it lists all resources of the specified type. An error is
 // returned if the application does not exist in the workspace.
 func (r *Runner) Run(ctx context.Context) error {
+	// Initialize the client factory if it hasn't been set externally.
+	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
+	if r.UCPClientFactory == nil {
+		clientFactory, err := cmd.InitializeClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.UCPClientFactory = clientFactory
+	}
+
+	_, err := common.GetResourceTypeDetailsWithUCPClient(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, r.UCPClientFactory)
+	if err != nil {
+		return err
+	}
+
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
-
 	var resourceList []generated.GenericResource
-
-	_, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNameSpace, r.ResourceTypeSuffix, client)
-	if err != nil {
-		return err
-	}
-
 	if r.ApplicationName == "" {
 		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
 		if err != nil {
