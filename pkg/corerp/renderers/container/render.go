@@ -766,53 +766,42 @@ func updateEnvAndSecretData(connName string, resourceName string, environmentVar
 				Key: name,
 			},
 		}
+
+		var secretValue []byte
+		var err error
+
 		switch v := value.(type) {
 		case string:
-			secretData[name] = []byte(v)
-			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+			secretValue = []byte(v)
 		case float64:
-			strVal := strconv.FormatFloat(v, 'f', -1, 64)
-			secretData[name] = []byte(strVal)
-			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+			secretValue = []byte(strconv.FormatFloat(v, 'f', -1, 64))
 		case int:
-			secretData[name] = []byte(strconv.Itoa(v))
-			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+			secretValue = []byte(strconv.Itoa(v))
 		case []string:
-			joinedValue := strings.Join(v, ",")
-			secretData[name] = []byte(joinedValue)
-			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+			secretValue = []byte(strings.Join(v, ","))
 		case []int:
 			intValues := make([]string, len(v))
 			for i, val := range v {
 				intValues[i] = strconv.Itoa(val)
 			}
-			joinedValue := strings.Join(intValues, ",")
-			secretData[name] = []byte(joinedValue)
-			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+			secretValue = []byte(strings.Join(intValues, ","))
 		case []float64:
 			floatValues := make([]string, len(v))
 			for i, val := range v {
 				floatValues[i] = strconv.FormatFloat(val, 'f', -1, 64)
 			}
-			joinedValue := strings.Join(floatValues, ",")
-			secretData[name] = []byte(joinedValue)
-			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-		case map[string]any:
-			// If the value is a map, we will convert it to a JSON string and store it in the secret.
-			jsonValue, err := json.Marshal(v)
+			secretValue = []byte(strings.Join(floatValues, ","))
+		default:
+			// Use JSON marshaling for all other types (arrays of objects, maps, structs, etc.)
+			secretValue, err = json.Marshal(v)
 			if err != nil {
+				// Skip this value if JSON marshaling fails
 				continue
 			}
-			secretData[name] = jsonValue
-			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
 		}
-		case []any:
-			jsonValue, err := json.Marshal(v)
-			if err != nil {
-				continue
-			}
-			secretData[name] = jsonValue
-			env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}		
+
+		secretData[name] = secretValue
+		env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
 	}
 	return env, secretData
 }
