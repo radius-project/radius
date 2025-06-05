@@ -19,18 +19,21 @@ package controller
 import (
 	"context"
 	"fmt"
+	"os"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/pkg/sdk"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/upgrade/preflight"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -155,6 +158,23 @@ func (s *Service) Run(ctx context.Context) error {
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)
+	}
+
+	// Setup preflight registry for Flux HelmRelease reconciler
+	preflightRegistry := preflight.NewRegistry(&output.OutputWriter{
+		Writer: os.Stderr,
+	})
+	// TODO: Add specific preflight checks to the registry as needed
+	// Example: preflightRegistry.AddCheck(&preflight.ConfigCheck{})
+
+	err = (&reconciler.FluxHelmReleaseReconciler{
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		EventRecorder:     mgr.GetEventRecorderFor("flux-helmrelease-controller"),
+		PreflightRegistry: preflightRegistry,
+	}).SetupWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to setup %s controller: %w", "FluxHelmReleaseReconciler", err)
 	}
 
 	if s.TLSCertDir == "" {
