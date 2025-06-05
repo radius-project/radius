@@ -22,18 +22,16 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
-
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -132,10 +130,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Initialize the client factory if it hasn't been set externally.
 	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
 	if r.UCPClientFactory == nil {
-		err := r.initializeClientFactory(ctx, r.Workspace)
+		clientFactory, err := cmd.InitializeClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
+		r.UCPClientFactory = clientFactory
 	}
 
 	_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Namespace, nil)
@@ -175,22 +174,5 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	return nil
-}
-
-func (r *Runner) initializeClientFactory(ctx context.Context, workspace *workspaces.Workspace) error {
-	connection, err := workspace.Connect(ctx)
-	if err != nil {
-		return err
-	}
-
-	clientOptions := sdk.NewClientOptions(connection)
-
-	clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, clientOptions)
-	if err != nil {
-		return err
-	}
-
-	r.UCPClientFactory = clientFactory
 	return nil
 }

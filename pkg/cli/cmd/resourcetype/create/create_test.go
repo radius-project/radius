@@ -101,8 +101,32 @@ func Test_Run(t *testing.T) {
 				Obj: common.ResourceTypeListOutputFormat{
 					ResourceType: common.ResourceType{
 						Name:                      "MyCompany.Resources/testResources",
+						Description:               "Resource type description",
 						ResourceProviderNamespace: "MyCompany.Resources",
-						APIVersions:               map[string]*common.APIVersionProperties{"2023-10-01-preview": {}},
+						APIVersions: map[string]*common.APIVersionProperties{
+							"2023-10-01-preview": {
+								Schema: map[string]any{
+									"properties": map[string]any{
+										"application": map[string]any{
+											"type":        "string",
+											"description": "The name of the application.",
+										},
+										"environment": map[string]any{
+											"type":        "string",
+											"description": "The name of the environment.",
+										},
+										"database": map[string]any{
+											"type":        "string",
+											"description": "The name of the database.",
+											"readOnly":    true,
+										},
+									},
+									"required": []any{
+										"environment",
+									},
+								},
+							},
+						},
 					},
 					APIVersionList: []string{"2023-10-01-preview"},
 				},

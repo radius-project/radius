@@ -97,8 +97,30 @@ func WithResourceProviderServerNoError() ucpfake.ResourceProvidersServer {
 					Name: to.Ptr(resourceProviderName),
 					ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
 						"testResources": {
+							Description: to.Ptr("Resource type description"),
 							APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
-								"2023-10-01-preview": {},
+								"2023-10-01-preview": {
+									Schema: map[string]any{
+										"properties": map[string]any{
+											"application": map[string]any{
+												"type":        "string",
+												"description": "The name of the application.",
+											},
+											"environment": map[string]any{
+												"type":        "string",
+												"description": "The name of the environment.",
+											},
+											"database": map[string]any{
+												"type":        "string",
+												"description": "The name of the database.",
+												"readOnly":    true,
+											},
+										},
+										"required": []any{
+											"environment",
+										},
+									},
+								},
 							},
 						},
 					},
