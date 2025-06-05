@@ -75,6 +75,11 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		return err
 	}
 
+	// at this point, the duynamic resource has all properties and output properties as properties.
+	// if another udt connects to it, we should retrieve all properties and pass it down to the recipe context of the connecting resource.
+	// enrich recipe context type
+	// while rendering the resource, we retrieve connected resource properties and pass it down to recipe engine through recipe context
+
 	return nil
 }
 
