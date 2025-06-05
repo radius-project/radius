@@ -18,77 +18,12 @@ package common
 
 import (
 	"context"
-	"errors"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/manifest"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
-
-func Test_GetResourceTypeDetails(t *testing.T) {
-	t.Run("Get Resource Details Success", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		resourceProvider := v20231001preview.ResourceProviderSummary{
-			Name: to.Ptr("Applications.Test"),
-			ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
-				"exampleResources": {
-					APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
-						"2023-10-01-preview": {},
-					},
-				},
-			},
-		}
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Test").
-			Return(resourceProvider, nil).
-			Times(1)
-
-		res, err := GetResourceTypeDetails(context.Background(), "Applications.Test", "exampleResources", appManagementClient)
-		require.NoError(t, err)
-		require.Equal(t, "Applications.Test/exampleResources", res.Name)
-
-	})
-
-	t.Run("Get Resource Details Failure - Resource Provider Not found", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Test").
-			Return(v20231001preview.ResourceProviderSummary{}, radcli.Create404Error()).
-			Times(1)
-
-		_, err := GetResourceTypeDetails(context.Background(), "Applications.Test", "exampleResources", appManagementClient)
-
-		require.Error(t, err)
-		require.Equal(t, "The resource provider \"Applications.Test\" was not found or has been deleted.", err.Error())
-	})
-
-	t.Run("Get Resource Details Failures Other Than Not Found", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Test").
-			Return(v20231001preview.ResourceProviderSummary{}, errors.New("some error occurred")).
-			Times(1)
-
-		_, err := GetResourceTypeDetails(context.Background(), "Applications.Test", "exampleResources", appManagementClient)
-
-		require.Error(t, err)
-	})
-}
 
 func Test_GetResourceTypeDetailsWithUCPClient(t *testing.T) {
 	t.Run("Get Resource Details Success", func(t *testing.T) {

@@ -131,27 +131,8 @@ func GetResourceTypeShowSchemaTableFormat() output.FormatterOptions {
 	}
 }
 
-// GetResourceTypeDetails fetches the details of a resource type from the resource provider.
-func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, resourceTypeName string, client clients.ApplicationsManagementClient) (ResourceType, error) {
-	resourceProvider, err := client.GetResourceProviderSummary(ctx, "local", resourceProviderName)
-	if clients.Is404Error(err) {
-		return ResourceType{}, clierrors.Message("The resource provider %q was not found or has been deleted.", resourceProviderName)
-	} else if err != nil {
-		return ResourceType{}, err
-	}
-
-	resourceTypes := ResourceTypesForProvider(&resourceProvider)
-	idx := slices.IndexFunc(resourceTypes, func(rt ResourceType) bool {
-		return rt.Name == resourceProviderName+"/"+resourceTypeName
-	})
-
-	if idx < 0 {
-		return ResourceType{}, clierrors.Message("Resource type %q not found in resource provider %q.", resourceTypeName, *resourceProvider.Name)
-	}
-
-	return resourceTypes[idx], nil
-}
-
+// GetResourceTypeDetailsWithUCPClient retrieves the details of a resource provider's resource type using the UCP client.
+// It returns the resource type details or an error if the resource type is not found.
 func GetResourceTypeDetailsWithUCPClient(ctx context.Context, resourceProviderName string, resourceTypeName string, clientFactory *v20231001preview.ClientFactory) (ResourceType, error) {
 	response, err := clientFactory.NewResourceProvidersClient().GetProviderSummary(ctx, "local", resourceProviderName, nil)
 	if clients.Is404Error(err) {
