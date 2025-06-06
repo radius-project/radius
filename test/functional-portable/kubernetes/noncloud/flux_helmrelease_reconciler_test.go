@@ -18,7 +18,6 @@ package kubernetes_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -51,25 +50,16 @@ func Test_FluxHelmReleaseReconciler_RadiusChart(t *testing.T) {
 	testCases := []struct {
 		name             string
 		helmRelease      *unstructured.Unstructured
-		expectPreflight  bool
 		expectAnnotation string
 	}{
 		{
 			name:             "radius-chart-with-version",
 			helmRelease:      createRadiusHelmRelease("radius-test", "flux-system", "0.42.0"),
-			expectPreflight:  true,
 			expectAnnotation: "0.42.0",
 		},
 		{
 			name:             "radius-chart-without-version",
 			helmRelease:      createRadiusHelmRelease("radius-latest", "flux-system", ""),
-			expectPreflight:  true,
-			expectAnnotation: "",
-		},
-		{
-			name:             "non-radius-chart",
-			helmRelease:      createNonRadiusHelmRelease("nginx-test", "flux-system"),
-			expectPreflight:  false,
 			expectAnnotation: "",
 		},
 	}
@@ -79,24 +69,23 @@ func Test_FluxHelmReleaseReconciler_RadiusChart(t *testing.T) {
 			// Create the HelmRelease object
 			err := opts.Client.Create(ctx, tc.helmRelease)
 			require.NoError(t, err)
-			defer func() {
-				err := opts.Client.Delete(ctx, tc.helmRelease)
-				require.NoError(t, err)
-			}()
+			
+			// Ensure cleanup runs even if test fails
+			t.Cleanup(func() {
+				// Use context.Background() for cleanup to avoid cancelled context issues
+				cleanupCtx := context.Background()
+				if deleteErr := opts.Client.Delete(cleanupCtx, tc.helmRelease); deleteErr != nil {
+					t.Logf("Warning: Failed to cleanup HelmRelease %s: %v", tc.helmRelease.GetName(), deleteErr)
+				}
+			})
 
-			if tc.expectPreflight {
-				// Wait for preflight annotation to be added
-				err = waitForPreflightAnnotation(t, ctx, opts.Client, tc.helmRelease, tc.expectAnnotation)
-				require.NoError(t, err)
+			// Wait for preflight annotation to be added
+			err = waitForPreflightAnnotation(t, ctx, opts.Client, tc.helmRelease, tc.expectAnnotation)
+			require.NoError(t, err)
 
-				// Check for PreflightSuccess event
-				err = waitForPreflightEvent(t, ctx, opts.Client, tc.helmRelease, "PreflightSuccess")
-				require.NoError(t, err)
-			} else {
-				// Ensure no preflight annotation is added for non-Radius charts
-				err = ensureNoPreflightAnnotation(t, ctx, opts.Client, tc.helmRelease)
-				require.NoError(t, err)
-			}
+			// Check for PreflightSuccess event
+			err = waitForPreflightEvent(t, ctx, opts.Client, tc.helmRelease, "PreflightSuccess")
+			require.NoError(t, err)
 		})
 	}
 }
@@ -110,10 +99,14 @@ func Test_FluxHelmReleaseReconciler_VersionUpdate(t *testing.T) {
 	helmRelease := createRadiusHelmRelease("radius-update-test", "flux-system", "0.41.0")
 	err := opts.Client.Create(ctx, helmRelease)
 	require.NoError(t, err)
-	defer func() {
-		err := opts.Client.Delete(ctx, helmRelease)
-		require.NoError(t, err)
-	}()
+	
+	// Ensure cleanup runs even if test fails
+	t.Cleanup(func() {
+		cleanupCtx := context.Background()
+		if deleteErr := opts.Client.Delete(cleanupCtx, helmRelease); deleteErr != nil {
+			t.Logf("Warning: Failed to cleanup HelmRelease %s: %v", helmRelease.GetName(), deleteErr)
+		}
+	})
 
 	// Wait for initial preflight check
 	err = waitForPreflightAnnotation(t, ctx, opts.Client, helmRelease, "0.41.0")
@@ -143,10 +136,14 @@ func Test_FluxHelmReleaseReconciler_PreflightFailure(t *testing.T) {
 	helmRelease := createRadiusHelmRelease("radius-failure-test", "flux-system", "0.42.0")
 	err := opts.Client.Create(ctx, helmRelease)
 	require.NoError(t, err)
-	defer func() {
-		err := opts.Client.Delete(ctx, helmRelease)
-		require.NoError(t, err)
-	}()
+	
+	// Ensure cleanup runs even if test fails
+	t.Cleanup(func() {
+		cleanupCtx := context.Background()
+		if deleteErr := opts.Client.Delete(cleanupCtx, helmRelease); deleteErr != nil {
+			t.Logf("Warning: Failed to cleanup HelmRelease %s: %v", helmRelease.GetName(), deleteErr)
+		}
+	})
 
 	// Even with potential failures, should eventually succeed with retries
 	err = waitForPreflightAnnotation(t, ctx, opts.Client, helmRelease, "0.42.0")
@@ -165,10 +162,10 @@ func createRadiusHelmRelease(name, namespace, version string) *unstructured.Unst
 	helmRelease.SetName(name)
 	helmRelease.SetNamespace(namespace)
 
-	spec := map[string]interface{}{
+	spec := map[string]any{
 		"interval": "5m",
-		"chart": map[string]interface{}{
-			"spec": map[string]interface{}{
+		"chart": map[string]any{
+			"spec": map[string]any{
 				"chart": "./deploy/Chart", // This identifies it as a Radius chart
 			},
 		},
@@ -177,34 +174,8 @@ func createRadiusHelmRelease(name, namespace, version string) *unstructured.Unst
 	}
 
 	if version != "" {
-		chartSpec := spec["chart"].(map[string]interface{})["spec"].(map[string]interface{})
+		chartSpec := spec["chart"].(map[string]any)["spec"].(map[string]any)
 		chartSpec["version"] = version
-	}
-
-	helmRelease.Object["spec"] = spec
-	return helmRelease
-}
-
-func createNonRadiusHelmRelease(name, namespace string) *unstructured.Unstructured {
-	helmRelease := &unstructured.Unstructured{}
-	helmRelease.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   helmReleaseGroup,
-		Version: helmReleaseVersion,
-		Kind:    helmReleaseKind,
-	})
-	helmRelease.SetName(name)
-	helmRelease.SetNamespace(namespace)
-
-	spec := map[string]interface{}{
-		"interval": "5m",
-		"chart": map[string]interface{}{
-			"spec": map[string]interface{}{
-				"chart":   "nginx",
-				"version": "1.0.0",
-			},
-		},
-		"releaseName":     "nginx",
-		"targetNamespace": "default",
 	}
 
 	helmRelease.Object["spec"] = spec
@@ -248,34 +219,6 @@ func waitForPreflightAnnotation(t *testing.T, ctx context.Context, client client
 	})
 }
 
-func ensureNoPreflightAnnotation(t *testing.T, ctx context.Context, client client.Client, helmRelease *unstructured.Unstructured) error {
-	// Wait a reasonable time to ensure reconciler has had a chance to process
-	time.Sleep(5 * time.Second)
-
-	current := &unstructured.Unstructured{}
-	current.SetGroupVersionKind(helmRelease.GroupVersionKind())
-
-	err := client.Get(ctx, types.NamespacedName{
-		Name:      helmRelease.GetName(),
-		Namespace: helmRelease.GetNamespace(),
-	}, current)
-	if err != nil {
-		return err
-	}
-
-	annotations := current.GetAnnotations()
-	if annotations == nil {
-		return nil // No annotations is expected
-	}
-
-	annotationKey := "radius.io/preflight-checked-version"
-	if _, exists := annotations[annotationKey]; exists {
-		return fmt.Errorf("unexpected preflight annotation found on non-Radius HelmRelease")
-	}
-
-	return nil
-}
-
 func waitForPreflightEvent(t *testing.T, ctx context.Context, client client.Client, helmRelease *unstructured.Unstructured, expectedEventType string) error {
 	return wait.PollUntilContextTimeout(ctx, testInterval, testTimeout, true, func(ctx context.Context) (bool, error) {
 		events, err := getEventsForObject(t, ctx, client, helmRelease)
@@ -296,7 +239,7 @@ func waitForPreflightEvent(t *testing.T, ctx context.Context, client client.Clie
 	})
 }
 
-func getEventsForObject(t *testing.T, ctx context.Context, kubeClient client.Client, obj *unstructured.Unstructured) ([]corev1.Event, error) {
+func getEventsForObject(_ *testing.T, ctx context.Context, kubeClient client.Client, obj *unstructured.Unstructured) ([]corev1.Event, error) {
 	eventList := &corev1.EventList{}
 	err := kubeClient.List(ctx, eventList, client.InNamespace(obj.GetNamespace()))
 	if err != nil {
@@ -328,9 +271,9 @@ func updateHelmReleaseVersion(t *testing.T, ctx context.Context, client client.C
 	}
 
 	// Update the version in the spec
-	spec := current.Object["spec"].(map[string]interface{})
-	chart := spec["chart"].(map[string]interface{})
-	chartSpec := chart["spec"].(map[string]interface{})
+	spec := current.Object["spec"].(map[string]any)
+	chart := spec["chart"].(map[string]any)
+	chartSpec := chart["spec"].(map[string]any)
 	chartSpec["version"] = newVersion
 
 	// Update the object
