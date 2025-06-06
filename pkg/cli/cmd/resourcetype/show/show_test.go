@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
@@ -207,7 +208,7 @@ func Test_Run(t *testing.T) {
 
 		err = runner.Run(context.Background())
 		require.Error(t, err)
-		require.Equal(t, "The resource provider \"Applications.AnotherTest\" was not found or has been deleted.", err.Error())
+		require.Equal(t, clierrors.Message("The resource provider \"Applications.AnotherTest\" was not found or has been deleted."), err)
 
 		require.Empty(t, outputSink.Writes)
 	})
@@ -239,7 +240,7 @@ func Test_Run(t *testing.T) {
 
 		err = runner.Run(context.Background())
 		require.Error(t, err)
-		require.Equal(t, "Resource type \"anotherResources\" not found in resource provider \"Applications.Test\".", err.Error())
+		require.Equal(t, clierrors.Message("Resource type \"anotherResources\" not found in resource provider \"Applications.Test\"."), err)
 
 		require.Empty(t, outputSink.Writes)
 	})
