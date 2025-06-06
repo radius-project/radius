@@ -42,6 +42,11 @@ func (r *Registry) AddCheck(check PreflightCheck) {
 	r.checks = append(r.checks, check)
 }
 
+// GetOutput returns the output interface used by this registry.
+func (r *Registry) GetOutput() output.Interface {
+	return r.output
+}
+
 // RunChecks executes all registered preflight checks and returns the results.
 // If any Error severity check fails, the function returns an error immediately.
 func (r *Registry) RunChecks(ctx context.Context) ([]CheckResult, error) {

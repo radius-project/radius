@@ -164,8 +164,6 @@ func (s *Service) Run(ctx context.Context) error {
 	preflightRegistry := preflight.NewRegistry(&output.OutputWriter{
 		Writer: os.Stderr,
 	})
-	// TODO: Add specific preflight checks to the registry as needed
-	// Example: preflightRegistry.AddCheck(&preflight.ConfigCheck{})
 
 	err = (&reconciler.FluxHelmReleaseReconciler{
 		Client:            mgr.GetClient(),
