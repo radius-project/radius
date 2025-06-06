@@ -145,18 +145,21 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		// If we get here, the operation is complete.
 		resp, err := poller.Result(ctx)
 		if err != nil {
-			// Operation failed, reset state and retry.
+			// Operation failed, reset state and schedule delayed retry.
 			r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
 			logger.Error(err, "Update failed.")
 
 			deploymentTemplate.Status.Operation = nil
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-			err = r.Client.Status().Update(ctx, deploymentTemplate)
-			if err != nil {
-				return ctrl.Result{}, err
+			statusErr := r.Client.Status().Update(ctx, deploymentTemplate)
+			if statusErr != nil {
+				return ctrl.Result{}, statusErr
 			}
 
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			// Schedule a delayed retry (5 minutes)
+			retryDelay := 5 * time.Minute
+			logger.Info("Scheduling delayed retry for failed operation", "retryAfter", retryDelay)
+			return ctrl.Result{Requeue: true, RequeueAfter: retryDelay}, nil
 		}
 
 		logger.Info("Creating output resources.")
@@ -252,6 +255,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.StatusHash = hash
+		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
+
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -298,13 +303,17 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
 		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
+
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-		err = r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
+		statusErr := r.Client.Status().Update(ctx, deploymentTemplate)
+		if statusErr != nil {
+			return ctrl.Result{}, statusErr
 		}
 
-		return ctrl.Result{}, err
+		// Schedule a delayed retry (5 minutes)
+		retryDelay := 5 * time.Minute
+		logger.Info("Scheduling delayed retry for failed deployment", "retryAfter", retryDelay)
+		return ctrl.Result{Requeue: true, RequeueAfter: retryDelay}, nil
 	} else if updatePoller != nil {
 		// We've successfully started an operation. Update the status and requeue.
 		token, err := updatePoller.ResumeToken()
@@ -374,8 +383,9 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 		// Trigger deletion of owned resources
 		for _, resource := range ownedResources {
 			err := r.Client.Delete(ctx, &resource)
-			if err != nil {
-				return ctrl.Result{}, err
+			if err != nil && !apierrors.IsNotFound(err) {
+				logger.Error(err, "Failed to delete owned resource, continuing with other resources", "resourceName", resource.Name)
+				// Continue with other resources rather than failing completely
 			}
 		}
 
