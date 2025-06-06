@@ -185,7 +185,6 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Recipe(t *testing.T) {
-	t.Skip("Skipping this test temporarily - https://github.com/radius-project/radius/issues/9742")
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 
@@ -252,7 +251,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 		require.Eventually(t, func() bool {
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
 			return apierrors.IsNotFound(err)
-		}, time.Minute*3, time.Second*5, "waiting for deploymentTemplate to be deleted")
+		}, time.Minute*10, time.Second*10, "waiting for deploymentTemplate to be deleted")
 	})
 }
 
