@@ -19,6 +19,8 @@ package resourceutil
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (
@@ -54,4 +56,39 @@ func GetPropertiesFromResource[P any](resource P) (map[string]any, error) {
 	}
 
 	return partialResource.Properties, nil
+}
+
+// GetConnectionNameandSourceIDs extracts the connected resource IDs from the resource's properties.
+// It returns a map where the keys are connection names and the values are the corresponding connected resource's IDs.
+func GetConnectionNameandSourceIDs[P any](resource P) (map[string]string, error) {
+	connectionNamesAndSourceIDs := map[string]string{}
+	resourceProperties, err := GetPropertiesFromResource(resource)
+	if err != nil {
+		return nil, err
+	}
+
+	if resourceProperties != nil && resourceProperties["connections"] != nil {
+		connections, ok := resourceProperties["connections"].(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("failed to get connections from resource properties: %w", err)
+		}
+
+		for connectionName, connectionProperties := range connections {
+			if source, ok := connectionProperties.(map[string]interface{})["source"]; ok {
+				if resourceID, ok := source.(string); ok {
+					_, err := resources.Parse(resourceID) // Validate the resource ID format
+					if err != nil {
+						return nil, fmt.Errorf("invalid resource ID in connection %s: %w", connectionName, err)
+					}
+					connectionNamesAndSourceIDs[connectionName] = resourceID
+				} else {
+					return nil, fmt.Errorf("source in connection %s is not a string: %w", connectionName, err)
+				}
+			} else {
+				return nil, fmt.Errorf("source not found in connection %s: %w", connectionName, err)
+			}
+		}
+	}
+
+	return connectionNamesAndSourceIDs, nil
 }
