@@ -1,0 +1,29 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: radius-test
+  namespace: flux-system
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./deploy/Chart
+      version: "0.42.0"
+      sourceRef:
+        kind: GitRepository
+        name: radius-repo
+        namespace: flux-system
+      interval: 1m
+  targetNamespace: radius-system
+  releaseName: radius
+  values:
+    global:
+    controller:
+      image: ghcr.io/willdavsmith/radius/controller
+      tag: latest
+    applications:
+      image: ghcr.io/willdavsmith/radius/applications-rp
+      tag: latest
+    ucp:
+      image: ghcr.io/willdavsmith/radius/ucpd
+      tag: latest
