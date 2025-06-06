@@ -120,8 +120,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	}
 
 	//update the recipe context with connected resources properties
-	connectedResourcesProperties := opts.Recipe.ConnectedResourcesProperties
-	recipeContext.Resource.Connections = connectedResourcesProperties
+	recipeContext.Resource.Connections = opts.Recipe.ConnectedResourcesProperties
 
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment

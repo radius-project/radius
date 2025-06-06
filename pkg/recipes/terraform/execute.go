@@ -323,6 +323,11 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 			return "", err
 		}
 
+		//update the recipe context with connected resources properties
+		if options.ResourceRecipe != nil {
+			recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
+		}
+
 		if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
 			return "", err
 		}
