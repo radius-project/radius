@@ -1261,6 +1261,15 @@ type RecipeStatus struct {
 	TemplateVersion *string
 }
 
+// RegistryAuthConfig - Authentication configuration for private Terraform registry mirrors.
+type RegistryAuthConfig struct {
+// Credentials-based authentication for Terraform registry mirrors.
+	Credentials *SecretConfig
+
+// Token-based authentication for Terraform registry mirrors.
+	Token *SecretReference
+}
+
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
 type RegistrySecretConfig struct {
 // The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container
@@ -1503,6 +1512,12 @@ type TerraformConfigProperties struct {
 // other APIs. For more information, please see:
 // https://developer.hashicorp.com/terraform/language/providers/configuration.
 	Providers map[string][]*ProviderConfigProperties
+
+// Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.
+	Registry *TerraformRegistryConfig
+
+// Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API.
+	Version *TerraformVersionConfig
 }
 
 // TerraformRecipeProperties - Represents Terraform recipe properties.
@@ -1528,6 +1543,31 @@ func (t *TerraformRecipeProperties) GetRecipeProperties() *RecipeProperties {
 		TemplateKind: t.TemplateKind,
 		TemplatePath: t.TemplatePath,
 	}
+}
+
+// TerraformRegistryConfig - Configuration for Terraform provider registry mirroring.
+type TerraformRegistryConfig struct {
+// Authentication configuration for accessing private Terraform registry mirrors.
+	Authentication *RegistryAuthConfig
+
+// Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'
+	Mirror *string
+
+// Provider mappings to translate between official and custom provider identifiers.
+	ProviderMappings map[string]*string
+}
+
+// TerraformVersionConfig - Configuration for Terraform binary installation. Allows specifying a version and an optional custom
+// base URL for the releases API.
+type TerraformVersionConfig struct {
+// Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead
+// of the default HashiCorp releases site. The directory structure of the custom URL
+// must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'
+	ReleasesAPIBaseURL *string
+
+// Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example:
+// '1.7.0'
+	Version *string
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'

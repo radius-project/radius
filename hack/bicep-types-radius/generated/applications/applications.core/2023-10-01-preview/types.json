@@ -1762,7 +1762,7 @@
       },
       "tags": {
         "type": {
-          "$ref": "#/175"
+          "$ref": "#/179"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1831,7 +1831,7 @@
       },
       "extensions": {
         "type": {
-          "$ref": "#/174"
+          "$ref": "#/178"
         },
         "flags": 0,
         "description": "The environment extension."
@@ -2051,21 +2051,21 @@
       },
       "bicep": {
         "type": {
-          "$ref": "#/169"
+          "$ref": "#/173"
         },
         "flags": 0,
         "description": "Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment."
       },
       "env": {
         "type": {
-          "$ref": "#/172"
+          "$ref": "#/176"
         },
         "flags": 0,
         "description": "The environment variables injected during Terraform Recipe execution for the recipes in the environment."
       },
       "envSecrets": {
         "type": {
-          "$ref": "#/173"
+          "$ref": "#/177"
         },
         "flags": 0,
         "description": "Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource."
@@ -2089,6 +2089,20 @@
         },
         "flags": 0,
         "description": "Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration."
+      },
+      "registry": {
+        "type": {
+          "$ref": "#/169"
+        },
+        "flags": 0,
+        "description": "Configuration for Terraform provider registry mirroring."
+      },
+      "version": {
+        "type": {
+          "$ref": "#/172"
+        },
+        "flags": 0,
+        "description": "Configuration for Terraform binary installation. Allows specifying a version and an optional custom base URL for the releases API."
       }
     }
   },
@@ -2179,11 +2193,86 @@
   },
   {
     "$type": "ObjectType",
+    "name": "TerraformRegistryConfig",
+    "properties": {
+      "mirror": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'"
+      },
+      "providerMappings": {
+        "type": {
+          "$ref": "#/170"
+        },
+        "flags": 0,
+        "description": "Provider mappings to translate between official and custom provider identifiers."
+      },
+      "authentication": {
+        "type": {
+          "$ref": "#/171"
+        },
+        "flags": 0,
+        "description": "Authentication configuration for private Terraform registry mirrors."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformRegistryConfigProviderMappings",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RegistryAuthConfig",
+    "properties": {
+      "token": {
+        "type": {
+          "$ref": "#/83"
+        },
+        "flags": 0,
+        "description": "This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data."
+      },
+      "credentials": {
+        "type": {
+          "$ref": "#/163"
+        },
+        "flags": 0,
+        "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformVersionConfig",
+    "properties": {
+      "version": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example: '1.7.0'"
+      },
+      "releasesApiBaseUrl": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site. The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'"
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
     "name": "BicepConfigProperties",
     "properties": {
       "authentication": {
         "type": {
-          "$ref": "#/171"
+          "$ref": "#/175"
         },
         "flags": 0,
         "description": "Authentication information used to access private bicep registries, which is a map of registry hostname to secret config that contains credential information."
@@ -2208,7 +2297,7 @@
     "name": "BicepConfigPropertiesAuthentication",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/170"
+      "$ref": "#/174"
     }
   },
   {
@@ -2279,28 +2368,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/177"
+          "$ref": "#/181"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/178"
+          "$ref": "#/182"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/180"
+          "$ref": "#/184"
         },
         "flags": 1,
         "description": "ExtenderResource portable resource properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/194"
+          "$ref": "#/198"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2341,7 +2430,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/189"
+          "$ref": "#/193"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -2362,14 +2451,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/190"
+          "$ref": "#/194"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/193"
+          "$ref": "#/197"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -2415,18 +2504,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/181"
-      },
-      {
-        "$ref": "#/182"
-      },
-      {
-        "$ref": "#/183"
-      },
-      {
-        "$ref": "#/184"
-      },
-      {
         "$ref": "#/185"
       },
       {
@@ -2437,6 +2514,18 @@
       },
       {
         "$ref": "#/188"
+      },
+      {
+        "$ref": "#/189"
+      },
+      {
+        "$ref": "#/190"
+      },
+      {
+        "$ref": "#/191"
+      },
+      {
+        "$ref": "#/192"
       }
     ]
   },
@@ -2472,10 +2561,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/191"
+        "$ref": "#/195"
       },
       {
-        "$ref": "#/192"
+        "$ref": "#/196"
       }
     ]
   },
@@ -2499,7 +2588,7 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/195"
+      "$ref": "#/199"
     }
   },
   {
@@ -2507,13 +2596,13 @@
     "name": "Applications.Core/extenders@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/179"
+      "$ref": "#/183"
     },
     "flags": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/196"
+          "$ref": "#/200"
         },
         "description": "listSecrets"
       }
@@ -2547,28 +2636,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/198"
+          "$ref": "#/202"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/199"
+          "$ref": "#/203"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/201"
+          "$ref": "#/205"
         },
         "flags": 1,
         "description": "Gateway properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/219"
+          "$ref": "#/223"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2609,7 +2698,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/210"
+          "$ref": "#/214"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -2630,21 +2719,21 @@
       },
       "hostname": {
         "type": {
-          "$ref": "#/211"
+          "$ref": "#/215"
         },
         "flags": 0,
         "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io."
       },
       "routes": {
         "type": {
-          "$ref": "#/214"
+          "$ref": "#/218"
         },
         "flags": 1,
         "description": "Routes attached to this Gateway"
       },
       "tls": {
         "type": {
-          "$ref": "#/215"
+          "$ref": "#/219"
         },
         "flags": 0,
         "description": "TLS configuration definition for Gateway resource."
@@ -2694,18 +2783,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/202"
-      },
-      {
-        "$ref": "#/203"
-      },
-      {
-        "$ref": "#/204"
-      },
-      {
-        "$ref": "#/205"
-      },
-      {
         "$ref": "#/206"
       },
       {
@@ -2716,6 +2793,18 @@
       },
       {
         "$ref": "#/209"
+      },
+      {
+        "$ref": "#/210"
+      },
+      {
+        "$ref": "#/211"
+      },
+      {
+        "$ref": "#/212"
+      },
+      {
+        "$ref": "#/213"
       }
     ]
   },
@@ -2773,7 +2862,7 @@
       },
       "timeoutPolicy": {
         "type": {
-          "$ref": "#/213"
+          "$ref": "#/217"
         },
         "flags": 0,
         "description": "Gateway route timeout policy"
@@ -2803,7 +2892,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/212"
+      "$ref": "#/216"
     }
   },
   {
@@ -2819,7 +2908,7 @@
       },
       "minimumProtocolVersion": {
         "type": {
-          "$ref": "#/218"
+          "$ref": "#/222"
         },
         "flags": 0,
         "description": "TLS minimum protocol version (defaults to 1.2)."
@@ -2845,10 +2934,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/216"
+        "$ref": "#/220"
       },
       {
-        "$ref": "#/217"
+        "$ref": "#/221"
       }
     ]
   },
@@ -2865,7 +2954,7 @@
     "name": "Applications.Core/gateways@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/200"
+      "$ref": "#/204"
     },
     "flags": 0,
     "functions": {}
@@ -2898,28 +2987,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/221"
+          "$ref": "#/225"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/222"
+          "$ref": "#/226"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/224"
+          "$ref": "#/228"
         },
         "flags": 1,
         "description": "The properties of SecretStore"
       },
       "tags": {
         "type": {
-          "$ref": "#/246"
+          "$ref": "#/250"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2960,7 +3049,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/233"
+          "$ref": "#/237"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -2974,14 +3063,14 @@
       },
       "type": {
         "type": {
-          "$ref": "#/239"
+          "$ref": "#/243"
         },
         "flags": 0,
         "description": "The type of SecretStore data"
       },
       "data": {
         "type": {
-          "$ref": "#/245"
+          "$ref": "#/249"
         },
         "flags": 1,
         "description": "An object to represent key-value type secrets"
@@ -3031,18 +3120,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/225"
-      },
-      {
-        "$ref": "#/226"
-      },
-      {
-        "$ref": "#/227"
-      },
-      {
-        "$ref": "#/228"
-      },
-      {
         "$ref": "#/229"
       },
       {
@@ -3053,6 +3130,18 @@
       },
       {
         "$ref": "#/232"
+      },
+      {
+        "$ref": "#/233"
+      },
+      {
+        "$ref": "#/234"
+      },
+      {
+        "$ref": "#/235"
+      },
+      {
+        "$ref": "#/236"
       }
     ]
   },
@@ -3080,19 +3169,19 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/234"
-      },
-      {
-        "$ref": "#/235"
-      },
-      {
-        "$ref": "#/236"
-      },
-      {
-        "$ref": "#/237"
-      },
-      {
         "$ref": "#/238"
+      },
+      {
+        "$ref": "#/239"
+      },
+      {
+        "$ref": "#/240"
+      },
+      {
+        "$ref": "#/241"
+      },
+      {
+        "$ref": "#/242"
       }
     ]
   },
@@ -3102,7 +3191,7 @@
     "properties": {
       "encoding": {
         "type": {
-          "$ref": "#/243"
+          "$ref": "#/247"
         },
         "flags": 0,
         "description": "The type of SecretValue Encoding"
@@ -3116,7 +3205,7 @@
       },
       "valueFrom": {
         "type": {
-          "$ref": "#/244"
+          "$ref": "#/248"
         },
         "flags": 0,
         "description": "The Secret value source properties"
@@ -3135,10 +3224,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/241"
+        "$ref": "#/245"
       },
       {
-        "$ref": "#/242"
+        "$ref": "#/246"
       }
     ]
   },
@@ -3167,7 +3256,7 @@
     "name": "SecretStorePropertiesData",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/240"
+      "$ref": "#/244"
     }
   },
   {
@@ -3184,14 +3273,14 @@
     "properties": {
       "type": {
         "type": {
-          "$ref": "#/253"
+          "$ref": "#/257"
         },
         "flags": 2,
         "description": "The type of SecretStore data"
       },
       "data": {
         "type": {
-          "$ref": "#/254"
+          "$ref": "#/258"
         },
         "flags": 2,
         "description": "An object to represent key-value type secrets"
@@ -3222,19 +3311,19 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/248"
-      },
-      {
-        "$ref": "#/249"
-      },
-      {
-        "$ref": "#/250"
-      },
-      {
-        "$ref": "#/251"
-      },
-      {
         "$ref": "#/252"
+      },
+      {
+        "$ref": "#/253"
+      },
+      {
+        "$ref": "#/254"
+      },
+      {
+        "$ref": "#/255"
+      },
+      {
+        "$ref": "#/256"
       }
     ]
   },
@@ -3243,14 +3332,14 @@
     "name": "SecretStoreListSecretsResultData",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/240"
+      "$ref": "#/244"
     }
   },
   {
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/247"
+      "$ref": "#/251"
     }
   },
   {
@@ -3258,13 +3347,13 @@
     "name": "Applications.Core/secretStores@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/223"
+      "$ref": "#/227"
     },
     "flags": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/255"
+          "$ref": "#/259"
         },
         "description": "listSecrets"
       }
@@ -3298,28 +3387,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/257"
+          "$ref": "#/261"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/258"
+          "$ref": "#/262"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/260"
+          "$ref": "#/264"
         },
         "flags": 1,
         "description": "Volume properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/293"
+          "$ref": "#/297"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -3361,7 +3450,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/269"
+          "$ref": "#/273"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -3376,7 +3465,7 @@
     },
     "elements": {
       "azure.com.keyvault": {
-        "$ref": "#/270"
+        "$ref": "#/274"
       }
     }
   },
@@ -3416,18 +3505,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/261"
-      },
-      {
-        "$ref": "#/262"
-      },
-      {
-        "$ref": "#/263"
-      },
-      {
-        "$ref": "#/264"
-      },
-      {
         "$ref": "#/265"
       },
       {
@@ -3438,6 +3515,18 @@
       },
       {
         "$ref": "#/268"
+      },
+      {
+        "$ref": "#/269"
+      },
+      {
+        "$ref": "#/270"
+      },
+      {
+        "$ref": "#/271"
+      },
+      {
+        "$ref": "#/272"
       }
     ]
   },
@@ -3447,14 +3536,14 @@
     "properties": {
       "certificates": {
         "type": {
-          "$ref": "#/283"
+          "$ref": "#/287"
         },
         "flags": 0,
         "description": "The KeyVault certificates that this volume exposes"
       },
       "keys": {
         "type": {
-          "$ref": "#/285"
+          "$ref": "#/289"
         },
         "flags": 0,
         "description": "The KeyVault keys that this volume exposes"
@@ -3468,14 +3557,14 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/291"
+          "$ref": "#/295"
         },
         "flags": 0,
         "description": "The KeyVault secrets that this volume exposes"
       },
       "kind": {
         "type": {
-          "$ref": "#/292"
+          "$ref": "#/296"
         },
         "flags": 1,
         "description": "Discriminator property for VolumeProperties."
@@ -3495,14 +3584,14 @@
       },
       "encoding": {
         "type": {
-          "$ref": "#/275"
+          "$ref": "#/279"
         },
         "flags": 0,
         "description": "Encoding format. Default utf-8"
       },
       "format": {
         "type": {
-          "$ref": "#/278"
+          "$ref": "#/282"
         },
         "flags": 0,
         "description": "Represents certificate formats"
@@ -3516,7 +3605,7 @@
       },
       "certType": {
         "type": {
-          "$ref": "#/282"
+          "$ref": "#/286"
         },
         "flags": 0,
         "description": "Represents certificate types"
@@ -3546,13 +3635,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/272"
+        "$ref": "#/276"
       },
       {
-        "$ref": "#/273"
+        "$ref": "#/277"
       },
       {
-        "$ref": "#/274"
+        "$ref": "#/278"
       }
     ]
   },
@@ -3568,10 +3657,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/276"
+        "$ref": "#/280"
       },
       {
-        "$ref": "#/277"
+        "$ref": "#/281"
       }
     ]
   },
@@ -3591,13 +3680,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/279"
+        "$ref": "#/283"
       },
       {
-        "$ref": "#/280"
+        "$ref": "#/284"
       },
       {
-        "$ref": "#/281"
+        "$ref": "#/285"
       }
     ]
   },
@@ -3606,7 +3695,7 @@
     "name": "AzureKeyVaultVolumePropertiesCertificates",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/271"
+      "$ref": "#/275"
     }
   },
   {
@@ -3641,7 +3730,7 @@
     "name": "AzureKeyVaultVolumePropertiesKeys",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/284"
+      "$ref": "#/288"
     }
   },
   {
@@ -3657,7 +3746,7 @@
       },
       "encoding": {
         "type": {
-          "$ref": "#/290"
+          "$ref": "#/294"
         },
         "flags": 0,
         "description": "Encoding format. Default utf-8"
@@ -3694,13 +3783,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/287"
+        "$ref": "#/291"
       },
       {
-        "$ref": "#/288"
+        "$ref": "#/292"
       },
       {
-        "$ref": "#/289"
+        "$ref": "#/293"
       }
     ]
   },
@@ -3709,7 +3798,7 @@
     "name": "AzureKeyVaultVolumePropertiesSecrets",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/286"
+      "$ref": "#/290"
     }
   },
   {
@@ -3729,7 +3818,7 @@
     "name": "Applications.Core/volumes@2023-10-01-preview",
     "scopeType": 0,
     "body": {
-      "$ref": "#/259"
+      "$ref": "#/263"
     },
     "flags": 0,
     "functions": {}

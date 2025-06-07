@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver
+package terraform
 
 import (
 	"errors"
@@ -129,12 +129,12 @@ func unsetGitConfigForDir(workingDirectory string, secrets map[string]string, te
 }
 
 // GetGitURL returns git url from generic git module source.
-// git::https://exmaple.com/project/module -> https://exmaple.com/project/module
+// git::https://example.com/project/module -> https://exmaple.com/project/module
 func GetGitURL(templatePath string) (*url.URL, error) {
 	paths := strings.Split(templatePath, "git::")
 	gitUrl := paths[len(paths)-1]
 
-	if !(len(strings.Split(gitUrl, "://")) > 1) {
+	if len(strings.Split(gitUrl, "://")) <= 1 {
 		gitUrl = fmt.Sprintf("https://%s", gitUrl)
 	}
 
