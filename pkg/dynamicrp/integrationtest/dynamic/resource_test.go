@@ -237,10 +237,14 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 				"recipeStatus": "success",
 			},
 			"status": map[string]any{
-				"binding": map[string]any{
+				"computedValues": map[string]any{
 					"port":     float64(8080), // This is an artifact of the JSON unmarshal process. It's wierd but intended.
 					"hostname": "example.com",
-					"password": "v3ryS3cr3t", // TODO: See comments in dynamicresource.go
+				},
+				"secrets": map[string]any{
+					"password": map[string]any{
+						"Value": "v3ryS3cr3t",
+					},
 				},
 				"outputResources": []any{
 					map[string]any{
