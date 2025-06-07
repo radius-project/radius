@@ -132,3 +132,23 @@ test-ucp-spec-examples: oav-installed ## Validates UCP examples conform to UCP O
 	# oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
 
 
+.PHONY: bats-installed
+bats-installed:
+	@echo "$(ARROW) Detecting bats-core..."
+	@which bats > /dev/null || { echo "$(ARROW) bats-core not found. Install with:"; \
+			echo "    brew install bats-core    # macOS"; \
+			echo "    apt-get install bats-core # Ubuntu/Debian"; \
+			echo "For more information: https://bats-core.readthedocs.io/en/stable/installation.html"; exit 1; }
+	@echo "$(ARROW) bats-core OK"
+
+.PHONY: test-scripts
+test-scripts: bats-installed
+	@echo "$(ARROW) Running bash script tests..."
+	@if [ -d ".github/scripts/tests" ]; then \
+		cd .github/scripts/tests; \
+		bats *.test.bats; \
+		cd ../..; \
+		echo "$(ARROW) Finished running bash script tests"; \
+	else \
+		echo "$(ARROW) No script tests found in .github/scripts/tests"; \
+	fi
