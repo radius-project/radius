@@ -25,12 +25,11 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
-	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -162,40 +161,26 @@ func Test_Run(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
 			appManagementClient.EXPECT().
-				GetResourceProviderSummary(context.Background(), "local", "Applications.Core").
-				Return(ucp.ResourceProviderSummary{
-					Name: to.Ptr("Applications.Core"),
-					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-						"containers": {
-							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
-								"2023-01-01": {},
-							},
-							DefaultAPIVersion: to.Ptr("2023-01-01"),
-						},
-					},
-					Locations: map[string]map[string]any{
-						"east": {},
-					},
-				}, nil).Times(1)
-
-			appManagementClient.EXPECT().
 				GetApplication(gomock.Any(), "test-app").
 				Return(v20231001preview.ApplicationResource{}, radcli.Create404Error()).Times(1)
 
 			outputSink := &output.MockOutput{}
 
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			require.NoError(t, err)
 			runner := &Runner{
 				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:          clientFactory,
 				Output:                    outputSink,
 				Workspace:                 &workspaces.Workspace{Name: radcli.TestWorkspaceName},
 				ApplicationName:           "test-app",
-				ResourceType:              "Applications.Core/containers",
+				ResourceType:              "MyCompany.Resources/testResources",
 				Format:                    "table",
-				ResourceTypeSuffix:        "containers",
-				ResourceProviderNameSpace: "Applications.Core",
+				ResourceTypeSuffix:        "testResources",
+				ResourceProviderNamespace: "MyCompany.Resources",
 			}
 
-			err := runner.Run(context.Background())
+			err = runner.Run(context.Background())
 			require.Error(t, err)
 			require.IsType(t, err, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", "test-app", radcli.TestWorkspaceName))
 		})
@@ -204,48 +189,35 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			resources := []generated.GenericResource{
-				radcli.CreateResource("containers", "A"),
-				radcli.CreateResource("containers", "B"),
+				radcli.CreateResource("testResources", "A"),
+				radcli.CreateResource("testResources", "B"),
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				GetResourceProviderSummary(context.Background(), "local", "Applications.Core").
-				Return(ucp.ResourceProviderSummary{
-					Name: to.Ptr("Applications.Core"),
-					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-						"containers": {
-							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
-								"2023-01-01": {},
-							},
-							DefaultAPIVersion: to.Ptr("2023-01-01"),
-						},
-					},
-					Locations: map[string]map[string]any{
-						"east": {},
-					},
-				}, nil).Times(1)
-			appManagementClient.EXPECT().
 				GetApplication(gomock.Any(), "test-app").
 				Return(v20231001preview.ApplicationResource{}, nil).Times(1)
 			appManagementClient.EXPECT().
-				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "Applications.Core/containers").
+				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "MyCompany.Resources/testResources").
 				Return(resources, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			require.NoError(t, err)
 			runner := &Runner{
 				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:          clientFactory,
 				Output:                    outputSink,
 				Workspace:                 &workspaces.Workspace{},
 				ApplicationName:           "test-app",
-				ResourceType:              "Applications.Core/containers",
+				ResourceType:              "MyCompany.Resources/testResources",
 				Format:                    "table",
-				ResourceTypeSuffix:        "containers",
-				ResourceProviderNameSpace: "Applications.Core",
+				ResourceTypeSuffix:        "testResources",
+				ResourceProviderNamespace: "MyCompany.Resources",
 			}
 
-			err := runner.Run(context.Background())
+			err = runner.Run(context.Background())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -264,46 +236,41 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			resources := []generated.GenericResource{
-				radcli.CreateResource("Applications.Core/containers", "A"),
-				radcli.CreateResource("Applications.Core/containers", "B"),
+				radcli.CreateResource("MyCompany.Resources/testResources", "A"),
+				radcli.CreateResource("MyCompany.Resources/testResources", "B"),
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().
-				GetResourceProviderSummary(context.Background(), "local", "Applications.Core").
-				Return(ucp.ResourceProviderSummary{
-					Name: to.Ptr("Applications.Core"),
-					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-						"containers": {
-							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
-								"2023-01-01": {},
-							},
-							DefaultAPIVersion: to.Ptr("2023-01-01"),
-						},
-					},
-					Locations: map[string]map[string]any{
-						"east": {},
-					},
-				}, nil).Times(1)
 
 			appManagementClient.EXPECT().
-				ListResourcesOfType(gomock.Any(), "Applications.Core/containers").
+				ListResourcesOfType(gomock.Any(), "MyCompany.Resources/testResources").
 				Return(resources, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
+			workspace := &workspaces.Workspace{
+				Connection: map[string]any{
+					"kind":    "kubernetes",
+					"context": "kind-kind",
+				},
+				Name:  "kind-kind",
+				Scope: "/planes/radius/local/resourceGroups/test-group",
+			}
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			require.NoError(t, err)
 			runner := &Runner{
 				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:          clientFactory,
 				Output:                    outputSink,
-				Workspace:                 &workspaces.Workspace{},
+				Workspace:                 workspace,
 				ApplicationName:           "",
-				ResourceType:              "Applications.Core/containers",
+				ResourceType:              "MyCompany.Resources/testResources",
 				Format:                    "table",
-				ResourceTypeSuffix:        "containers",
-				ResourceProviderNameSpace: "Applications.Core",
+				ResourceTypeSuffix:        "testResources",
+				ResourceProviderNamespace: "MyCompany.Resources",
 			}
 
-			err := runner.Run(context.Background())
+			err = runner.Run(context.Background())
 			require.NoError(t, err)
 
 			expected := []any{

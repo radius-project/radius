@@ -20,6 +20,7 @@ The preflight checks are designed to be reusable across different upgrade contex
 Currently implemented:
 
 1. **VersionCompatibilityCheck** - Validates version upgrade paths and prevents downgrades
+2. **RadiusInstallationCheck** - Verifies Radius is currently installed and healthy
 
 ### Usage Example
 
@@ -28,13 +29,16 @@ import (
     "context"
     "github.com/radius-project/radius/pkg/upgrade/preflight"
     "github.com/radius-project/radius/pkg/cli/output"
+    "github.com/radius-project/radius/pkg/cli/helm"
 )
 
-func validateUpgrade(ctx context.Context, output output.Interface, currentVersion, targetVersion string) error {
+func validateUpgrade(ctx context.Context, output output.Interface, helmInterface helm.Interface, 
+    currentVersion, targetVersion, kubeContext string) error {
     // Create preflight check registry
     registry := preflight.NewRegistry(output)
 
-    // Add checks to registry
+    // Add checks to registry in order of importance
+    registry.AddCheck(preflight.NewRadiusInstallationCheck(helmInterface, kubeContext))
     registry.AddCheck(preflight.NewVersionCompatibilityCheck(currentVersion, targetVersion))
 
     // Run all checks - registry handles execution and logging
