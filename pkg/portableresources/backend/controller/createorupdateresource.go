@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/recipes/util"
+	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -167,18 +168,40 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	// Caller ensures recipeDataModel supports recipes and has a non-nil recipe
 	recipe := recipeDataModel.GetRecipe()
 
-	resourceProperties, err := GetPropertiesFromResource(resource)
+	resourceProperties, err := resourceutil.GetPropertiesFromResource(resource)
 	if err != nil {
 		return nil, err
 	}
 
+	connectionsAndSourceIDs, err := resourceutil.GetConnectionNameandSourceIDs(resource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get connected resource IDs: %w", err)
+	}
+	connectedResourcesProperties := make(map[string]map[string]any)
+	// If there are connected resources, we need to fetch their properties and add them to the recipe context.
+	for connName, connectedResourceID := range connectionsAndSourceIDs {
+		connectedResource, err := c.DatabaseClient().Get(ctx, connectedResourceID)
+		if errors.Is(&database.ErrNotFound{ID: connectedResourceID}, err) {
+			return nil, fmt.Errorf("connected resource %s not found: %w", connectedResourceID, err)
+		} else if err != nil {
+			return nil, fmt.Errorf("failed to get connected resource %s: %w", connectedResourceID, err)
+		}
+		connectedResourceProperties, err := resourceutil.GetPropertiesFromResource(connectedResource.Data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get properties from connected resource %s: %w", connectedResourceID, err)
+		}
+
+		connectedResourcesProperties[connName] = connectedResourceProperties
+	}
+
 	metadata := recipes.ResourceMetadata{
-		Name:          recipe.Name,
-		Parameters:    recipe.Parameters,
-		EnvironmentID: resource.ResourceMetadata().EnvironmentID(),
-		ApplicationID: resource.ResourceMetadata().ApplicationID(),
-		ResourceID:    resource.GetBaseResource().ID,
-		Properties:    resourceProperties,
+		Name:                         recipe.Name,
+		Parameters:                   recipe.Parameters,
+		EnvironmentID:                resource.ResourceMetadata().EnvironmentID(),
+		ApplicationID:                resource.ResourceMetadata().ApplicationID(),
+		ResourceID:                   resource.GetBaseResource().ID,
+		Properties:                   resourceProperties,
+		ConnectedResourcesProperties: connectedResourcesProperties,
 	}
 
 	return c.engine.Execute(ctx, engine.ExecuteOptions{

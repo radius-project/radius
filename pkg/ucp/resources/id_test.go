@@ -1237,3 +1237,51 @@ func Fuzz_ResourceIDs(f *testing.F) {
 
 	})
 }
+
+func TestIsBuiltInType(t *testing.T) {
+	tests := []struct {
+		name       string
+		resourceID string
+		want       bool
+	}{
+		{
+			name:       "built-in Core",
+			resourceID: "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/foos/foo1",
+			want:       true,
+		},
+		{
+			name:       "built-in Dapr (case-insensitive)",
+			resourceID: "/planes/radius/local/resourceGroups/rg/providers/applications.dapr/services/svc1",
+			want:       true,
+		},
+		{
+			name:       "built-in Messaging",
+			resourceID: "/planes/radius/local/resourceGroups/rg/providers/Applications.Messaging/topics/topic1",
+			want:       true,
+		},
+		{
+			name:       "non built-in provider",
+			resourceID: "/planes/radius/local/resourceGroups/rg/providers/Unknown.Provider/resources/res1",
+			want:       false,
+		},
+		{
+			name:       "invalid ID format",
+			resourceID: "this-is-not-a-valid-id",
+			want:       false,
+		},
+		{
+			name:       "empty ID",
+			resourceID: "",
+			want:       false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := IsBuiltInType(tc.resourceID)
+			if got != tc.want {
+				t.Errorf("IsBuiltInType(%q) = %v; want %v", tc.resourceID, got, tc.want)
+			}
+		})
+	}
+}

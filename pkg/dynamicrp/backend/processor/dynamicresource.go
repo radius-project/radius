@@ -22,6 +22,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -74,6 +75,11 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		return err
 	}
 
+	// at this point, the duynamic resource has all properties and output properties as properties.
+	// if another udt connects to it, we should retrieve all properties and pass it down to the recipe context of the connecting resource.
+	// enrich recipe context type
+	// while rendering the resource, we retrieve connected resource properties and pass it down to recipe engine through recipe context
+
 	return nil
 }
 
@@ -97,13 +103,12 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 
 	// Filter out the basic properties from the resource properties
 	// This is to avoid overwriting the properties like application, environment etc when they are added as computed values or secret values.
-	basicProperties := []string{"application", "environment", "status"}
 	resourceProps := []string{}
 	schema := apiVersionResource.APIVersionResource.Properties.Schema
 	if schema != nil {
 		if properties, ok := schema["properties"].(map[string]any); ok {
 			for key := range properties {
-				if !slices.Contains(basicProperties, key) {
+				if !slices.Contains(resourceutil.BasicProperties, key) {
 					resourceProps = append(resourceProps, key)
 				}
 			}
