@@ -18,12 +18,12 @@ package list
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
 )
 
@@ -50,6 +51,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 sample list of resourceType: Applications.Core/containers, Applications.Core/gateways, Applications.Dapr/daprPubSubBrokers, Applications.Core/extenders, Applications.Datastores/mongoDatabases, Applications.Messaging/rabbitMQMessageQueues, Applications.Datastores/redisCaches, Applications.Datastores/sqlDatabases, Applications.Dapr/daprStateStores, Applications.Dapr/daprSecretStores
 
 # list all resources of a specified type in the default environment
+
 rad resource list Applications.Core/containers
 rad resource list Applications.Core/gateways
 
@@ -75,14 +77,14 @@ rad resource list
 			// If environment flag is provided, args are optional
 			if cmd.Flags().Changed("environment") || cmd.Flags().Changed("e") {
 				if len(args) > 1 {
-					return fmt.Errorf("accepts at most 1 arg when environment flag is provided, received %d", len(args))
+					return clierrors.Message("accepts at most 1 arg when environment flag is provided, received %d", len(args))
 				}
 				return nil
 			}
 
 			// Otherwise, exactly 1 argument is required
 			if len(args) != 1 {
-				return fmt.Errorf("accepts 1 arg(s), received %d", len(args))
+				return clierrors.Message("accepts 1 arg(s), received %d", len(args))
 			}
 			return nil
 		},
@@ -101,6 +103,7 @@ rad resource list
 // Runner is the runner implementation for the `rad resource list` command.
 type Runner struct {
 	ConfigHolder              *framework.ConfigHolder
+	UCPClientFactory          *v20231001preview.ClientFactory
 	ConnectionFactory         connections.Factory
 	Output                    output.Interface
 	Workspace                 *workspaces.Workspace
@@ -109,7 +112,7 @@ type Runner struct {
 	Format                    string
 	ResourceType              string
 	ResourceTypeSuffix        string
-	ResourceProviderNameSpace string
+	ResourceProviderNamespace string
 }
 
 // NewRunner creates a new instance of the `rad resource list` runner.
@@ -122,7 +125,9 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad resource list` command.
-//	// Validate checks the command line args, workspace, scope, application name, resource type and output format, and
+//
+
+// Validate checks the command line args, workspace, scope, application name, resource type and output format, and
 // returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
@@ -138,7 +143,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Scope = scope
 
-	// Only set application name if explicitly provided via flag
+	applicationName, err := cli.ReadApplicationName(cmd, *workspace)
+	if err != nil {
+		return err
+	}
+	r.ApplicationName = applicationName
+
 	applicationFlag, err := cmd.Flags().GetString("application")
 	if err != nil {
 		return err
@@ -147,7 +157,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.ApplicationName = applicationFlag
 	}
 
-	// Only set environment name if explicitly provided via flag
+	// The environment flag is already set via the StringVarP binding in NewCommand
+	// We don't need to get it from the flags again, but we keep this code for consistency
+	// and backward compatibility
 	environmentName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return err
@@ -157,15 +169,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.EnvironmentName = environmentName
 	}
 
-	// If we're listing all resources in an environment (no resource type specified),
-	// we don't need to validate the resource type
-	if len(args) > 0 {
-		r.ResourceProviderNameSpace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
-		if err != nil {
-			return err
-		}
-		r.ResourceType = r.ResourceProviderNameSpace + "/" + r.ResourceTypeSuffix
+	r.ResourceProviderNamespace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
+	if err != nil {
+		return err
 	}
+	r.ResourceType = r.ResourceProviderNamespace + "/" + r.ResourceTypeSuffix
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -179,14 +187,21 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad resource list` command.
 //
 
-// Run lists resources based on provided filters (application name, environment name, resource type).
-// Resources can be filtered by:
-// 1. Both application and environment (intersection of resources in both)
-// 2. Only application (all resources in the application)
-// 3. Only environment (all resources in the environment)
-// 4. Only resource type (all resources of that type)
-// The command requires at least one filter parameter to be provided.
+// Run checks if an application name is provided and if so, checks if the application exists in the workspace, then
+// lists all resources of the specified type in the application, and finally writes the resources to the output in the
+// specified format. If no application name is provided, it lists all resources of the specified type. An error is
+// returned if the application does not exist in the workspace.
 func (r *Runner) Run(ctx context.Context) error {
+	// Initialize the client factory if it hasn't been set externally.
+	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
+	if r.UCPClientFactory == nil {
+		clientFactory, err := cmd.InitializeClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.UCPClientFactory = clientFactory
+	}
+
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -200,7 +215,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// If a resource type is specified, validate it
 	if r.ResourceType != "" {
-		_, err := common.GetResourceTypeDetails(ctx, r.ResourceProviderNameSpace, r.ResourceTypeSuffix, client)
+		_, err := common.GetResourceTypeDetails(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, r.UCPClientFactory)
 		if err != nil {
 			return err
 		}

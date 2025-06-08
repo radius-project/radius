@@ -153,6 +153,7 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
+// Test_Run tests all the various permutations of the resource list command
 func Test_Run(t *testing.T) {
 	t.Run("List resources by type in application", func(t *testing.T) {
 		t.Run("Application does not exist", func(t *testing.T) {
@@ -166,18 +167,24 @@ func Test_Run(t *testing.T) {
 
 			outputSink := &output.MockOutput{}
 
-			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithContainersResourceProviderMock)
 			require.NoError(t, err)
 			runner := &Runner{
-				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				UCPClientFactory:          clientFactory,
-				Output:                    outputSink,
-				Workspace:                 &workspaces.Workspace{Name: radcli.TestWorkspaceName},
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:  clientFactory,
+				Output:            outputSink,
+				Workspace: &workspaces.Workspace{
+					Name: radcli.TestWorkspaceName,
+					Connection: map[string]any{
+						"kind":    "kubernetes",
+						"context": "kind-kind",
+					},
+				},
 				ApplicationName:           "test-app",
-				ResourceType:              "MyCompany.Resources/testResources",
+				ResourceType:              "Applications.Core/containers",
 				Format:                    "table",
-				ResourceTypeSuffix:        "testResources",
-				ResourceProviderNamespace: "MyCompany.Resources",
+				ResourceTypeSuffix:        "containers",
+				ResourceProviderNamespace: "Applications.Core",
 			}
 
 			err = runner.Run(context.Background())
@@ -189,8 +196,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			resources := []generated.GenericResource{
-				radcli.CreateResource("testResources", "A"),
-				radcli.CreateResource("testResources", "B"),
+				radcli.CreateResource("containers", "A"),
+				radcli.CreateResource("containers", "B"),
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -198,23 +205,30 @@ func Test_Run(t *testing.T) {
 				GetApplication(gomock.Any(), "test-app").
 				Return(v20231001preview.ApplicationResource{}, nil).Times(1)
 			appManagementClient.EXPECT().
-				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "MyCompany.Resources/testResources").
+				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "Applications.Core/containers").
 				Return(resources, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
-			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithContainersResourceProviderMock)
 			require.NoError(t, err)
 			runner := &Runner{
-				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				UCPClientFactory:          clientFactory,
-				Output:                    outputSink,
-				Workspace:                 &workspaces.Workspace{},
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:  clientFactory,
+				Output:            outputSink,
+				Workspace: &workspaces.Workspace{
+					Name: radcli.TestWorkspaceName,
+					Connection: map[string]any{
+						"kind":    "kubernetes",
+						"context": "kind-kind",
+					},
+				},
 				ApplicationName:           "test-app",
-				ResourceType:              "MyCompany.Resources/testResources",
+				EnvironmentName:           "",
+				ResourceType:              "Applications.Core/containers",
 				Format:                    "table",
-				ResourceTypeSuffix:        "testResources",
-				ResourceProviderNamespace: "MyCompany.Resources",
+				ResourceTypeSuffix:        "containers",
+				ResourceProviderNamespace: "Applications.Core",
 			}
 
 			err = runner.Run(context.Background())
@@ -236,38 +250,36 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			resources := []generated.GenericResource{
-				radcli.CreateResource("MyCompany.Resources/testResources", "A"),
-				radcli.CreateResource("MyCompany.Resources/testResources", "B"),
+				radcli.CreateResource("Applications.Core/containers", "A"),
+				radcli.CreateResource("Applications.Core/containers", "B"),
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-
 			appManagementClient.EXPECT().
-				ListResourcesOfType(gomock.Any(), "MyCompany.Resources/testResources").
+				ListResourcesOfType(gomock.Any(), "Applications.Core/containers").
 				Return(resources, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
-			workspace := &workspaces.Workspace{
-				Connection: map[string]any{
-					"kind":    "kubernetes",
-					"context": "kind-kind",
-				},
-				Name:  "kind-kind",
-				Scope: "/planes/radius/local/resourceGroups/test-group",
-			}
-			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithContainersResourceProviderMock)
 			require.NoError(t, err)
 			runner := &Runner{
-				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				UCPClientFactory:          clientFactory,
-				Output:                    outputSink,
-				Workspace:                 workspace,
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:  clientFactory,
+				Output:            outputSink,
+				Workspace: &workspaces.Workspace{
+					Name: radcli.TestWorkspaceName,
+					Connection: map[string]any{
+						"kind":    "kubernetes",
+						"context": "kind-kind",
+					},
+				},
 				ApplicationName:           "",
-				ResourceType:              "MyCompany.Resources/testResources",
+				EnvironmentName:           "",
+				ResourceType:              "Applications.Core/containers",
 				Format:                    "table",
-				ResourceTypeSuffix:        "testResources",
-				ResourceProviderNamespace: "MyCompany.Resources",
+				ResourceTypeSuffix:        "containers",
+				ResourceProviderNamespace: "Applications.Core",
 			}
 
 			err = runner.Run(context.Background())
@@ -295,23 +307,6 @@ func Test_Run(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				GetResourceProviderSummary(context.Background(), "local", "Applications.Core").
-				Return(ucp.ResourceProviderSummary{
-					Name: to.Ptr("Applications.Core"),
-					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-						"containers": {
-							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
-								"2023-01-01": {},
-							},
-							DefaultAPIVersion: to.Ptr("2023-01-01"),
-						},
-					},
-					Locations: map[string]map[string]any{
-						"east": {},
-					},
-				}, nil).Times(1)
-
-			appManagementClient.EXPECT().
 				GetEnvironment(gomock.Any(), "test-env").
 				Return(v20231001preview.EnvironmentResource{}, nil).Times(1)
 
@@ -321,19 +316,28 @@ func Test_Run(t *testing.T) {
 
 			outputSink := &output.MockOutput{}
 
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithContainersResourceProviderMock)
+			require.NoError(t, err)
 			runner := &Runner{
-				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:                    outputSink,
-				Workspace:                 &workspaces.Workspace{},
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:  clientFactory,
+				Output:            outputSink,
+				Workspace: &workspaces.Workspace{
+					Name: radcli.TestWorkspaceName,
+					Connection: map[string]any{
+						"kind":    "kubernetes",
+						"context": "kind-kind",
+					},
+				},
 				ApplicationName:           "",
 				EnvironmentName:           "test-env",
 				ResourceType:              "Applications.Core/containers",
 				Format:                    "table",
 				ResourceTypeSuffix:        "containers",
-				ResourceProviderNameSpace: "Applications.Core",
+				ResourceProviderNamespace: "Applications.Core",
 			}
 
-			err := runner.Run(context.Background())
+			err = runner.Run(context.Background())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -365,17 +369,26 @@ func Test_Run(t *testing.T) {
 
 			outputSink := &output.MockOutput{}
 
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			require.NoError(t, err)
 			runner := &Runner{
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:  clientFactory,
 				Output:            outputSink,
-				Workspace:         &workspaces.Workspace{},
-				ApplicationName:   "",
-				EnvironmentName:   "test-env",
-				ResourceType:      "",
-				Format:            "table",
+				Workspace: &workspaces.Workspace{
+					Name: radcli.TestWorkspaceName,
+					Connection: map[string]any{
+						"kind":    "kubernetes",
+						"context": "kind-kind",
+					},
+				},
+				ApplicationName: "",
+				EnvironmentName: "test-env",
+				ResourceType:    "",
+				Format:          "table",
 			}
 
-			err := runner.Run(context.Background())
+			err = runner.Run(context.Background())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -414,53 +427,42 @@ func Test_Run(t *testing.T) {
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				GetResourceProviderSummary(context.Background(), "local", "Applications.Core").
-				Return(ucp.ResourceProviderSummary{
-					Name: to.Ptr("Applications.Core"),
-					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-						"containers": {
-							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
-								"2023-01-01": {},
-							},
-							DefaultAPIVersion: to.Ptr("2023-01-01"),
-						},
-					},
-					Locations: map[string]map[string]any{
-						"east": {},
-					},
-				}, nil).Times(1)
-
-			appManagementClient.EXPECT().
 				GetApplication(gomock.Any(), "test-app").
 				Return(v20231001preview.ApplicationResource{}, nil).Times(1)
-
 			appManagementClient.EXPECT().
 				GetEnvironment(gomock.Any(), "test-env").
 				Return(v20231001preview.EnvironmentResource{}, nil).Times(1)
-
 			appManagementClient.EXPECT().
 				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "Applications.Core/containers").
 				Return(appResources, nil).Times(1)
-
 			appManagementClient.EXPECT().
 				ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/containers").
 				Return(envResources, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithContainersResourceProviderMock)
+			require.NoError(t, err)
 			runner := &Runner{
-				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				Output:                    outputSink,
-				Workspace:                 &workspaces.Workspace{},
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:  clientFactory,
+				Output:            outputSink,
+				Workspace: &workspaces.Workspace{
+					Name: radcli.TestWorkspaceName,
+					Connection: map[string]any{
+						"kind":    "kubernetes",
+						"context": "kind-kind",
+					},
+				},
 				ApplicationName:           "test-app",
 				EnvironmentName:           "test-env",
 				ResourceType:              "Applications.Core/containers",
 				Format:                    "table",
 				ResourceTypeSuffix:        "containers",
-				ResourceProviderNameSpace: "Applications.Core",
+				ResourceProviderNamespace: "Applications.Core",
 			}
 
-			err := runner.Run(context.Background())
+			err = runner.Run(context.Background())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -479,18 +481,28 @@ func Test_Run(t *testing.T) {
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		outputSink := &output.MockOutput{}
-
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "kind-kind",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
 		runner := &Runner{
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:  clientFactory,
 			Output:            outputSink,
-			Workspace:         &workspaces.Workspace{},
+			Workspace:         workspace,
 			ApplicationName:   "",
 			EnvironmentName:   "",
 			ResourceType:      "",
 			Format:            "table",
 		}
 
-		err := runner.Run(context.Background())
+		err = runner.Run(context.Background())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("Please specify a resource type, application name, or environment name"), err)
 	})
@@ -505,24 +517,6 @@ func Test_Run(t *testing.T) {
 
 		// Expect resource type validation
 		appManagementClient.EXPECT().
-			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Core").
-			Return(ucp.ResourceProviderSummary{
-				Name: to.Ptr("Applications.Core"),
-				ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-					"containers": {
-						APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
-							"2023-01-01": {},
-						},
-						DefaultAPIVersion: to.Ptr("2023-01-01"),
-					},
-				},
-				Locations: map[string]map[string]any{
-					"east": {},
-				},
-			}, nil).Times(1)
-
-		// First the environment is verified to exist
-		appManagementClient.EXPECT().
 			GetEnvironment(gomock.Any(), "default").
 			Return(v20231001preview.EnvironmentResource{}, nil).Times(1)
 
@@ -533,19 +527,29 @@ func Test_Run(t *testing.T) {
 
 		outputSink := &output.MockOutput{}
 
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithContainersResourceProviderMock)
+		require.NoError(t, err)
+
 		runner := &Runner{
-			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Output:                    outputSink,
-			Workspace:                 &workspaces.Workspace{},
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:  clientFactory,
+			Output:            outputSink,
+			Workspace: &workspaces.Workspace{
+				Name: radcli.TestWorkspaceName,
+				Connection: map[string]any{
+					"kind":    "kubernetes",
+					"context": "kind-kind",
+				},
+			},
 			ApplicationName:           "",
 			EnvironmentName:           "default",
 			ResourceType:              "Applications.Core/containers",
-			ResourceProviderNameSpace: "Applications.Core",
+			ResourceProviderNamespace: "Applications.Core",
 			ResourceTypeSuffix:        "containers",
 			Format:                    "table",
 		}
 
-		err := runner.Run(context.Background())
+		err = runner.Run(context.Background())
 		require.NoError(t, err)
 	})
 }
@@ -564,24 +568,6 @@ func Test_ResourceListEnvironmentComparison(t *testing.T) {
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-
-		// First test without environment flag
-		appManagementClient.EXPECT().
-			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Core").
-			Return(ucp.ResourceProviderSummary{
-				Name: to.Ptr("Applications.Core"),
-				ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-					"containers": {
-						APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
-							"2023-01-01": {},
-						},
-						DefaultAPIVersion: to.Ptr("2023-01-01"),
-					},
-				},
-				Locations: map[string]map[string]any{
-					"east": {},
-				},
-			}, nil).Times(2) // Called twice - once for each run
 
 		// Without environment flag - expect direct call to ListResourcesOfType
 		appManagementClient.EXPECT().
@@ -603,33 +589,50 @@ func Test_ResourceListEnvironmentComparison(t *testing.T) {
 
 		// First run without environment flag
 		outputWithoutEnv := &output.MockOutput{}
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithContainersResourceProviderMock)
+		require.NoError(t, err)
 		runnerWithoutEnv := &Runner{
-			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Output:                    outputWithoutEnv,
-			Workspace:                 &workspaces.Workspace{},
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:  clientFactory,
+			Output:            outputWithoutEnv,
+			Workspace: &workspaces.Workspace{
+				Name: radcli.TestWorkspaceName,
+				Connection: map[string]any{
+					"kind":    "kubernetes",
+					"context": "kind-kind",
+				},
+			},
 			ApplicationName:           "",
 			EnvironmentName:           "",
 			ResourceType:              "Applications.Core/containers",
 			Format:                    "table",
 			ResourceTypeSuffix:        "containers",
-			ResourceProviderNameSpace: "Applications.Core",
+			ResourceProviderNamespace: "Applications.Core",
 		}
 
-		err := runnerWithoutEnv.Run(context.Background())
+		err = runnerWithoutEnv.Run(context.Background())
 		require.NoError(t, err)
 
 		// Second run with environment flag
 		outputWithEnv := &output.MockOutput{}
+		require.NoError(t, err)
 		runnerWithEnv := &Runner{
-			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Output:                    outputWithEnv,
-			Workspace:                 &workspaces.Workspace{},
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:  clientFactory,
+			Output:            outputWithEnv,
+			Workspace: &workspaces.Workspace{
+				Name: radcli.TestWorkspaceName,
+				Connection: map[string]any{
+					"kind":    "kubernetes",
+					"context": "kind-kind",
+				},
+			},
 			ApplicationName:           "",
 			EnvironmentName:           "default",
 			ResourceType:              "Applications.Core/containers",
 			Format:                    "table",
 			ResourceTypeSuffix:        "containers",
-			ResourceProviderNameSpace: "Applications.Core",
+			ResourceProviderNamespace: "Applications.Core",
 		}
 
 		err = runnerWithEnv.Run(context.Background())
