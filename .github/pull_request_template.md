@@ -27,21 +27,27 @@ Fixes: #issue_number
 ## Contributor checklist
 Please verify that the PR meets the following requirements, where applicable:
 
+<!--
+This checklist uses "TaskRadio" comments to make certain options mutually exclusive.
+See: https://github.com/mheap/require-checklist-action?tab=readme-ov-file#radio-groups
+For details on how this works and why it's required.
+-->
+
 - An overview of proposed schema changes is included in a linked GitHub issue.
-    - [ ] Yes
-    - [ ] Not applicable
+    - [ ] Yes <!-- TaskRadio schema -->
+    - [ ] Not applicable <!-- TaskRadio schema -->
 - A design document PR is created in the [design-notes repository](https://github.com/radius-project/design-notes/), if new APIs are being introduced.
-    - [ ] Yes
-    - [ ] Not applicable
+    - [ ] Yes <!-- TaskRadio design-pr -->
+    - [ ] Not applicable <!-- TaskRadio design-pr -->
 - The design document has been reviewed and approved by Radius maintainers/approvers.
-    - [ ] Yes
-    - [ ] Not applicable
+    - [ ] Yes <!-- TaskRadio design-review -->
+    - [ ] Not applicable <!-- TaskRadio design-review -->
 - A PR for the [samples repository](https://github.com/radius-project/samples) is created, if existing samples are affected by the changes in this PR.
-    - [ ] Yes
-    - [ ] Not applicable
+    - [ ] Yes <!-- TaskRadio samples-pr -->
+    - [ ] Not applicable <!-- TaskRadio samples-pr -->
 - A PR for the [documentation repository](https://github.com/radius-project/docs) is created, if the changes in this PR affect the documentation or any user facing updates are made.
-    - [ ] Yes
-    - [ ] Not applicable
+    - [ ] Yes <!-- TaskRadio docs-pr -->
+    - [ ] Not applicable <!-- TaskRadio docs-pr -->
 - A PR for the [recipes repository](https://github.com/radius-project/recipes) is created, if existing recipes are affected by the changes in this PR.
-    - [ ] Yes
-    - [ ] Not applicable
+    - [ ] Yes <!-- TaskRadio recipes-pr -->
+    - [ ] Not applicable <!-- TaskRadio recipes-pr -->
