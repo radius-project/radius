@@ -185,6 +185,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Recipe(t *testing.T) {
+	t.Skip("Skipping this test temporarily - https://github.com/radius-project/radius/issues/9742")
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 

@@ -20,15 +20,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -70,46 +67,13 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	resourceProvider := v20231001preview.ResourceProviderSummary{
-		Name: to.Ptr("Applications.Test"),
-		ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
-			"exampleResources": {
-				Description: to.Ptr("Resource type description"),
-				APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
-					"2023-10-01-preview": {
-						Schema: map[string]any{
-							"properties": map[string]any{
-								"application": map[string]any{
-									"type":        "string",
-									"description": "The name of the application.",
-								},
-								"environment": map[string]any{
-									"type":        "string",
-									"description": "The name of the environment.",
-								},
-								"database": map[string]any{
-									"type":        "string",
-									"description": "The name of the database.",
-									"readOnly":    true,
-								},
-							},
-							"required": []any{
-								"environment",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
 	t.Run("Success: Resource Type Found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		resourceType := common.ResourceType{
-			Name:                      "Applications.Test/exampleResources",
-			ResourceProviderNamespace: "Applications.Test",
+			Name:                      "MyCompany.Resources/testResources",
+			ResourceProviderNamespace: "MyCompany.Resources",
 			Description:               "Resource type description",
 			APIVersions: map[string]*common.APIVersionProperties{"2023-10-01-preview": {
 				Schema: map[string]any{
@@ -135,11 +99,8 @@ func Test_Run(t *testing.T) {
 			}},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Test").
-			Return(resourceProvider, nil).
-			Times(1)
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
@@ -151,16 +112,16 @@ func Test_Run(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:          clientFactory,
 			Workspace:                 workspace,
 			Format:                    "table",
 			Output:                    outputSink,
-			ResourceTypeName:          "Applications.Test/exampleResources",
-			ResourceProviderNamespace: "Applications.Test",
-			ResourceTypeSuffix:        "exampleResources",
+			ResourceTypeName:          "MyCompany.Resources/testResources",
+			ResourceProviderNamespace: "MyCompany.Resources",
+			ResourceTypeSuffix:        "testResources",
 		}
 
-		err := runner.Run(context.Background())
+		err = runner.Run(context.Background())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -224,12 +185,8 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetResourceProviderSummary(gomock.Any(), "local", "Applications.AnotherTest").
-			Return(v20231001preview.ResourceProviderSummary{}, radcli.Create404Error()).
-			Times(1)
-
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNotFoundError)
+		require.NoError(t, err)
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
 				"kind":    "kubernetes",
@@ -240,7 +197,7 @@ func Test_Run(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:          clientFactory,
 			Workspace:                 workspace,
 			Format:                    "table",
 			Output:                    outputSink,
@@ -249,7 +206,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeSuffix:        "exampleResources",
 		}
 
-		err := runner.Run(context.Background())
+		err = runner.Run(context.Background())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("The resource provider \"Applications.AnotherTest\" was not found or has been deleted."), err)
 
@@ -260,12 +217,8 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetResourceProviderSummary(gomock.Any(), "local", "Applications.Test").
-			Return(resourceProvider, nil).
-			Times(1)
-
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
 				"kind":    "kubernetes",
@@ -276,7 +229,7 @@ func Test_Run(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:          clientFactory,
 			Workspace:                 workspace,
 			Format:                    "table",
 			Output:                    outputSink,
@@ -285,7 +238,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeSuffix:        "anotherResources",
 		}
 
-		err := runner.Run(context.Background())
+		err = runner.Run(context.Background())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("Resource type \"anotherResources\" not found in resource provider \"Applications.Test\"."), err)
 

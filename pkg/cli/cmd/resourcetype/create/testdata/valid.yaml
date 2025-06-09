@@ -1,7 +1,21 @@
-name: MyCompany.Resources
+namespace: MyCompany.Resources
 types:
   testResources:
-    apiVersions:
-      '2023-10-01-preview':
-        schema: {}
     capabilities: ["SupportsRecipes"]
+    description: Resource type description
+    apiVersions:
+      2023-10-01-preview:
+        schema:
+          properties:
+            application:
+              type: string
+              description: The name of the application.
+            environment:
+              type: string
+              description: The name of the environment.
+            database:
+              type: string
+              description: The name of the database.
+              readOnly: true
+          required:
+            - environment
