@@ -86,6 +86,49 @@ func WithResourceProviderServerNoError() ucpfake.ResourceProvidersServer {
 			resp.SetResponse(http.StatusOK, response, nil)
 			return
 		},
+		GetProviderSummary: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			options *v20231001preview.ResourceProvidersClientGetProviderSummaryOptions,
+		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetProviderSummaryResponse], errResp azfake.ErrorResponder) {
+			response := v20231001preview.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: v20231001preview.ResourceProviderSummary{
+					Name: to.Ptr(resourceProviderName),
+					ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
+						"testResources": {
+							Description: to.Ptr("Resource type description"),
+							APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
+								"2023-10-01-preview": {
+									Schema: map[string]any{
+										"properties": map[string]any{
+											"application": map[string]any{
+												"type":        "string",
+												"description": "The name of the application.",
+											},
+											"environment": map[string]any{
+												"type":        "string",
+												"description": "The name of the environment.",
+											},
+											"database": map[string]any{
+												"type":        "string",
+												"description": "The name of the database.",
+												"readOnly":    true,
+											},
+										},
+										"required": []any{
+											"environment",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, response, nil)
+			return
+		},
 	}
 	return resourceProvidersServer
 }
@@ -225,6 +268,15 @@ func WithResourceProviderServerNotFoundError() ucpfake.ResourceProvidersServer {
 			resp.SetResponse(http.StatusNotFound, response, nil)
 			return
 		},
+		GetProviderSummary: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			options *v20231001preview.ResourceProvidersClientGetProviderSummaryOptions,
+		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetProviderSummaryResponse], errResp azfake.ErrorResponder) {
+			resp.SetResponse(http.StatusNotFound, v20231001preview.ResourceProvidersClientGetProviderSummaryResponse{}, nil)
+			return
+		},
 	}
 	return resourceProvidersNotFoundServer
 }
@@ -259,6 +311,15 @@ func WithResourceProviderServerInternalError() ucpfake.ResourceProvidersServer {
 				},
 			}
 			resp.SetResponse(http.StatusInternalServerError, response, nil)
+			return
+		},
+		GetProviderSummary: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			options *v20231001preview.ResourceProvidersClientGetProviderSummaryOptions,
+		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetProviderSummaryResponse], errResp azfake.ErrorResponder) {
+			resp.SetResponse(http.StatusInternalServerError, v20231001preview.ResourceProvidersClientGetProviderSummaryResponse{}, nil)
 			return
 		},
 	}
