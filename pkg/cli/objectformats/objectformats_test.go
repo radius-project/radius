@@ -40,8 +40,7 @@ func Test_GetResourceTableFormat(t *testing.T) {
 	buffer := &bytes.Buffer{}
 	err := output.Write(output.FormatTable, obj, buffer, GetResourceTableFormat())
 	require.NoError(t, err)
-
-	expected := "RESOURCE  TYPE       GROUP       STATE\ntest      test-type  test-group  Updating\n"
+	expected := "RESOURCE  TYPE       GROUP       ENVIRONMENT  STATE\ntest      test-type  test-group  default      Updating\n"
 	require.Equal(t, expected, buffer.String())
 }
 

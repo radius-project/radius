@@ -18,6 +18,7 @@ package list
 
 import (
 	"context"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -252,6 +253,42 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	// If filtering by environment, set the environment property on resources
+	// that don't have an explicit environment property
+	if r.EnvironmentName != "" {
+		for i := range resourceList {
+			if _, found := resourceList[i].Properties["environment"]; !found {
+				newProps := make(map[string]interface{})
+				for k, v := range resourceList[i].Properties {
+					newProps[k] = v
+				}
+				newProps["environment"] = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/" + r.EnvironmentName
+				resourceList[i].Properties = newProps
+			}
+		}
+	} else if r.ApplicationName != "" {
+		// If filtering by application, try to get the environment from the application
+		appGeneric, err := client.GetResource(ctx, "Applications.Core/applications", r.ApplicationName)
+		if err == nil && appGeneric.Properties != nil {
+			// Extract environment from application
+			if envObj, ok := appGeneric.Properties["environment"]; ok {
+				if envStr, ok := envObj.(string); ok && envStr != "" {
+					// Add environment property to resources that don't have it
+					for i := range resourceList {
+						if _, found := resourceList[i].Properties["environment"]; !found {
+							newProps := make(map[string]interface{})
+							for k, v := range resourceList[i].Properties {
+								newProps[k] = v
+							}
+							newProps["environment"] = envStr
+							resourceList[i].Properties = newProps
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetGenericResourceTableFormat())
 }
 
@@ -268,10 +305,46 @@ func (r *Runner) getResourcesInApplication(ctx context.Context, client clients.A
 	}
 
 	// Get resources filtered by application and optionally by resource type
+	var resources []generated.GenericResource
 	if r.ResourceType != "" {
-		return client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+		resources, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+	} else {
+		resources, err = client.ListResourcesInApplication(ctx, r.ApplicationName)
 	}
-	return client.ListResourcesInApplication(ctx, r.ApplicationName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Try to get the application's environment to add to resources
+	appGeneric, err := client.GetResource(ctx, "Applications.Core/applications", r.ApplicationName)
+	if err == nil && appGeneric.Properties != nil {
+		if envObj, ok := appGeneric.Properties["environment"]; ok {
+			if envStr, ok := envObj.(string); ok && envStr != "" {
+				// Extract the environment name from the path
+				parts := strings.Split(envStr, "/")
+				envName := ""
+				if len(parts) > 0 {
+					envName = parts[len(parts)-1]
+				}
+
+				// Add the environment to resources that don't have it
+				if envName != "" {
+					for i := range resources {
+						if _, found := resources[i].Properties["environment"]; !found {
+							newProps := make(map[string]interface{})
+							for k, v := range resources[i].Properties {
+								newProps[k] = v
+							}
+							newProps["environment"] = envName
+							resources[i].Properties = newProps
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return resources, nil
 }
 
 // getResourcesInEnvironment retrieves resources in the specified environment,
@@ -346,12 +419,12 @@ func (r *Runner) getResourcesInApplicationAndEnvironment(ctx context.Context, cl
 	}
 
 	// Find intersection: resources that belong to both application and environment
-	return findCommonResources(appResources, envResources), nil
+	return findCommonResources(appResources, envResources, r.EnvironmentName), nil
 }
 
 // findCommonResources returns a list of resources that exist in both resource lists,
 // comparing them by resource ID.
-func findCommonResources(appResources, envResources []generated.GenericResource) []generated.GenericResource {
+func findCommonResources(appResources, envResources []generated.GenericResource, environmentName string) []generated.GenericResource {
 	result := []generated.GenericResource{}
 
 	// Create a map of environment resource IDs for faster lookup
@@ -365,7 +438,18 @@ func findCommonResources(appResources, envResources []generated.GenericResource)
 	// Filter application resources that are also in the environment
 	for _, resource := range appResources {
 		if resource.ID != nil && envResourceMap[*resource.ID] {
-			result = append(result, resource)
+			// Create a copy of the resource to avoid modifying the original
+			resourceCopy := resource
+
+			// Make sure Properties is initialized
+			if resourceCopy.Properties == nil {
+				resourceCopy.Properties = make(map[string]interface{})
+			}
+
+			// Format the environment property correctly
+			resourceCopy.Properties["environment"] = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/" + environmentName
+
+			result = append(result, resourceCopy)
 		}
 	}
 	return result

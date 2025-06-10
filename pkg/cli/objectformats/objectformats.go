@@ -41,6 +41,11 @@ func GetResourceTableFormat() output.FormatterOptions {
 				Transformer: &ResourceIDToResourceGroupNameTransformer{},
 			},
 			{
+				Heading:     "ENVIRONMENT",
+				JSONPath:    "{ .Properties.environment }",
+				Transformer: &ResourceEnvironmentNameTransformer{},
+			},
+			{
 				Heading:  "STATE",
 				JSONPath: "{ .Properties.ProvisioningState }",
 			},
@@ -89,16 +94,21 @@ type ResourceEnvironmentNameTransformer struct {
 // The path is expected to be in the format '/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-env'
 // and this function will return 'test-env'.
 func (t *ResourceEnvironmentNameTransformer) Transform(value string) string {
-	if value == "" {
-		return "default"
-	}
-
 	// Extract just the environment name from the fully qualified path
-	parts := strings.Split(value, "/")
-	if len(parts) > 0 {
-		return parts[len(parts)-1]
+	if value != "" {
+		// Handle both full paths and just environment names
+		if strings.Contains(value, "/") {
+			parts := strings.Split(value, "/")
+			if len(parts) > 0 {
+				return parts[len(parts)-1]
+			}
+		} else {
+			// If it's already just a name, return it
+			return value
+		}
 	}
 
+	// If no environment property, default to "default"
 	return "default"
 }
 

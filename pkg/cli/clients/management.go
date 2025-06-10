@@ -252,7 +252,6 @@ func (amc *UCPApplicationsManagementClient) GetApplication(ctx context.Context, 
 	if err != nil {
 		return corerpv20231001.ApplicationResource{}, err
 	}
-
 	return response.ApplicationResource, nil
 }
 
@@ -1022,7 +1021,8 @@ func isResourceInApplication(resource generated.GenericResource, applicationID s
 }
 
 func isResourceInEnvironment(resource generated.GenericResource, environmentID string) bool {
-	obj, found := resource.Properties["environment"] // A resource may not have an environment associated with it.
+	// First check for explicit environment property
+	obj, found := resource.Properties["environment"]
 	if !found {
 		// Special case for environment resources themselves
 		if resource.Type != nil && strings.EqualFold(*resource.Type, "Applications.Core/environments") && resource.ID != nil {
@@ -1043,6 +1043,50 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 			if shortNameEnv != "" && shortNameResource != "" &&
 				strings.EqualFold(shortNameEnv, shortNameResource) {
 				return true
+			}
+		}
+		// Check if the resource has an application property
+		appObj, appFound := resource.Properties["application"]
+		if appFound {
+			// If the resource has an application property, we need to check two things:
+			// 1. Is the application in the specified environment? (using app id to find app and check its env)
+			// 2. Check for namespace patterns in the resource's status that match the environment
+
+			appID, ok := appObj.(string)
+			if ok && appID != "" {
+				shortNameEnv := getResourceShortName(environmentID)
+
+				// Check for namespace patterns like 'redenv-radius' in the outputResources
+				statusObj, statusFound := resource.Properties["status"]
+				if statusFound {
+					if statusMap, ok := statusObj.(map[string]interface{}); ok {
+						// Check for compute.namespace first (more direct)
+						if compute, ok := statusMap["compute"].(map[string]interface{}); ok {
+							if namespace, ok := compute["namespace"].(string); ok {
+								// Example: "namespace": "redenv-radius"
+								if strings.HasPrefix(namespace, shortNameEnv+"-") {
+									return true
+								}
+							}
+						}
+
+						// Then check outputResources
+						if outputResources, ok := statusMap["outputResources"].([]interface{}); ok {
+							for _, outputResource := range outputResources {
+								if outputResourceMap, ok := outputResource.(map[string]interface{}); ok {
+									if id, ok := outputResourceMap["id"].(string); ok {
+										// Check if the output resource ID contains the environment name in namespace
+										// For example: /planes/kubernetes/local/namespaces/redenv-radius/...
+										nsPattern := "/namespaces/" + shortNameEnv + "-"
+										if strings.Contains(id, nsPattern) {
+											return true
+										}
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 

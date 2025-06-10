@@ -191,7 +191,6 @@ func Test_Run(t *testing.T) {
 			require.Error(t, err)
 			require.IsType(t, err, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", "test-app", radcli.TestWorkspaceName))
 		})
-
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
@@ -207,6 +206,10 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				ListResourcesOfTypeInApplication(gomock.Any(), "test-app", "Applications.Core/containers").
 				Return(resources, nil).Times(1)
+			// Since GetResource might be called multiple times in the code, we use AnyTimes instead of Times(1)
+			appManagementClient.EXPECT().
+				GetResource(gomock.Any(), "Applications.Core/applications", "test-app").
+				Return(generated.GenericResource{}, nil).AnyTimes()
 
 			outputSink := &output.MockOutput{}
 
@@ -417,12 +420,10 @@ func Test_Run(t *testing.T) {
 				radcli.CreateResource("Applications.Core/containers", "B"),
 				radcli.CreateResource("Applications.Core/containers", "C"),
 				radcli.CreateResource("Applications.Core/containers", "D"),
-			}
-
-			// Expected result: intersection of app and env resources
+			} // Expected result: intersection of app and env resources
 			expectedResources := []generated.GenericResource{
-				radcli.CreateResource("Applications.Core/containers", "B"),
-				radcli.CreateResource("Applications.Core/containers", "C"),
+				createResourceWithEnv("Applications.Core/containers", "B", "test-env"),
+				createResourceWithEnv("Applications.Core/containers", "C", "test-env"),
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -669,6 +670,21 @@ func createResourceWithEnvironment(resourceType, name, environmentName string) g
 	if environmentName != "" {
 		// Set the environment property directly as a string (matches the format in isResourceInEnvironment)
 		resource.Properties["environment"] = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/" + environmentName
+	}
+
+	return resource
+}
+
+// Helper function to create a resource with environment property
+func createResourceWithEnv(resourceType, name, environment string) generated.GenericResource {
+	resource := radcli.CreateResource(resourceType, name)
+	if resource.Properties == nil {
+		resource.Properties = make(map[string]interface{})
+	}
+
+	if environment != "" {
+		// Set the environment property as a fully qualified resource ID
+		resource.Properties["environment"] = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/" + environment
 	}
 
 	return resource
