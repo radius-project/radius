@@ -85,7 +85,7 @@ func GetConnectionNameandSourceIDs[P any](resource P) (map[string]string, error)
 					return nil, fmt.Errorf("source in connection %s is not a string: %w", connectionName, err)
 				}
 			} else {
-				return nil, fmt.Errorf("source not found in connection %s: %w", connectionName, err)
+				return nil, fmt.Errorf("source not found in connection %q: %w", connectionName, err)
 			}
 		}
 	}
