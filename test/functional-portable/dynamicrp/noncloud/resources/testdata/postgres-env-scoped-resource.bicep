@@ -29,7 +29,7 @@ resource udtenv 'Applications.Core/environments@2023-10-01-preview' = {
   }
 }
 
-resource udtpg 'Test.Resources/postgres@2023-10-01-preview' = {
+resource udtpg 'Test.Resources/postgres@2025-01-01-preview' = {
   name: 'existing-postgres'
   location: 'global'
   properties: {
