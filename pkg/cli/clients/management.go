@@ -252,6 +252,7 @@ func (amc *UCPApplicationsManagementClient) GetApplication(ctx context.Context, 
 	if err != nil {
 		return corerpv20231001.ApplicationResource{}, err
 	}
+
 	return response.ApplicationResource, nil
 }
 

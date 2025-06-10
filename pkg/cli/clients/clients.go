@@ -168,7 +168,9 @@ type ApplicationsManagementClient interface {
 	DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string) (bool, error)
 
 	// ListApplications lists all applications in the configured scope.
-	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error) // GetApplication retrieves an application by its name (or id).
+	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
+
+	// GetApplication retrieves an application by its name (or id).
 	GetApplication(ctx context.Context, applicationNameOrID string) (corerp.ApplicationResource, error)
 
 	// GetApplicationGraph retrieves the application graph of an application by its name (or id).
