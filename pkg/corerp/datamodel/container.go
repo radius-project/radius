@@ -134,6 +134,23 @@ type Container struct {
 	Command         []string                       `json:"command,omitempty"`
 	Args            []string                       `json:"args,omitempty"`
 	WorkingDir      string                         `json:"workingDir,omitempty"`
+	Resources       *ContainerResources            `json:"resources,omitempty"`
+}
+
+// ContainerResources - Resource requirements for the container
+type ContainerResources struct {
+	// Requests is the resource requests for the container
+	Requests *ResourceConstraints `json:"requests,omitempty"`
+	// Limits is the resource limits for the container
+	Limits *ResourceConstraints `json:"limits,omitempty"`
+}
+
+// ResourceConstraints - Resource constraints for CPU and memory
+type ResourceConstraints struct {
+	// CPU resource constraints. e.g. '0.5', '1', '1000m', '100'
+	CPU string `json:"cpu,omitempty"`
+	// Memory resource constraints. e.g. '128Mi', '1Gi', '1G'
+	Memory string `json:"memory,omitempty"`
 }
 
 // EnvironmentVariable - Environment variable for the container

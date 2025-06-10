@@ -380,3 +380,73 @@ func Test_Container_Secrets(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_Container_Resources(t *testing.T) {
+	template := "testdata/corerp-resources-container-resources.bicep"
+	name := "corerp-resources-container-resources"
+	appNamespace := "corerp-resources-container-resources-app"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "ctnr-resources",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ctnr-resources"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				label := fmt.Sprintf("radapp.io/application=%s", name)
+				pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{
+					LabelSelector: label,
+				})
+				require.NoError(t, err)
+				require.Len(t, pods.Items, 1)
+				t.Logf("validated number of pods: %d", len(pods.Items))
+				
+				pod := pods.Items[0]
+				containers := pod.Spec.Containers
+				require.Len(t, containers, 1)
+				t.Logf("validated number of containers: %d", len(containers))
+				
+				container := containers[0]
+				require.NotNil(t, container.Resources)
+				t.Logf("validated container resources are set")
+				
+				// Verify resource requests
+				requests := container.Resources.Requests
+				require.NotNil(t, requests)
+				cpuRequest := requests["cpu"]
+				require.Equal(t, "100m", cpuRequest.String())
+				memoryRequest := requests["memory"]
+				require.Equal(t, "128Mi", memoryRequest.String())
+				t.Logf("validated resource requests: CPU=%s, Memory=%s", cpuRequest.String(), memoryRequest.String())
+				
+				// Verify resource limits
+				limits := container.Resources.Limits
+				require.NotNil(t, limits)
+				cpuLimit := limits["cpu"]
+				require.Equal(t, "500m", cpuLimit.String())
+				memoryLimit := limits["memory"]
+				require.Equal(t, "512Mi", memoryLimit.String())
+				t.Logf("validated resource limits: CPU=%s, Memory=%s", cpuLimit.String(), memoryLimit.String())
+			},
+		},
+	})
+
+	test.Test(t)
+}
