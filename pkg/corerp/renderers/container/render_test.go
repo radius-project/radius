@@ -2237,7 +2237,11 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 				require.NotNil(t, envVar.ValueFrom.SecretKeyRef)
 				require.Equal(t, kubernetes.NormalizeResourceName(tc.resourceName), envVar.ValueFrom.SecretKeyRef.Name)
 				require.Equal(t, key, envVar.ValueFrom.SecretKeyRef.Key)
-=======
+			}
+		})
+	}
+}
+
 func TestMapContainerResources(t *testing.T) {
 	renderer := Renderer{}
 
