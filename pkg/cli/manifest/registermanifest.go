@@ -282,22 +282,16 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
-	var defaultAPIVersion string
-	if resourceType.DefaultAPIVersion == nil {
-		defaultAPIVersion = v20231001preview.Version //hardcoded for now, since we don't have a default API version in the manifest but it should be made mandatory as part of schema validation
-	} else {
-		defaultAPIVersion = *resourceType.DefaultAPIVersion
-	}
-
 	locationResource := locationResourceGetResponse.LocationResource
 	if address != "" {
 		locationResource.Properties.Address = to.Ptr(address)
 	}
 
 	locationResource.Properties.ResourceTypes[typeName] = &v20231001preview.LocationResourceType{
-		APIVersions: map[string]map[string]any{
-			defaultAPIVersion: {},
-		},
+		APIVersions: map[string]map[string]any{},
+	}
+	for apiVersionName := range resourceType.APIVersions {
+		locationResource.Properties.ResourceTypes[typeName].APIVersions[apiVersionName] = map[string]any{}
 	}
 
 	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Namespace, locationName)
