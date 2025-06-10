@@ -700,6 +700,7 @@ func (c Container) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "livenessProbe", c.LivenessProbe)
 	populate(objectMap, "ports", c.Ports)
 	populate(objectMap, "readinessProbe", c.ReadinessProbe)
+	populate(objectMap, "resources", c.Resources)
 	populate(objectMap, "volumes", c.Volumes)
 	populate(objectMap, "workingDir", c.WorkingDir)
 	return json.Marshal(objectMap)
@@ -737,6 +738,9 @@ func (c *Container) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "readinessProbe":
 			c.ReadinessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+			delete(rawMsg, key)
+		case "resources":
+				err = unpopulate(val, "Resources", &c.Resources)
 			delete(rawMsg, key)
 		case "volumes":
 			c.Volumes, err = unmarshalVolumeClassificationMap(val)
@@ -978,6 +982,37 @@ func (c *ContainerResourceUpdate) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &c.Type)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", c, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ContainerResources.
+func (c ContainerResources) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "limits", c.Limits)
+	populate(objectMap, "requests", c.Requests)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerResources.
+func (c *ContainerResources) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", c, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "limits":
+				err = unpopulate(val, "Limits", &c.Limits)
+			delete(rawMsg, key)
+		case "requests":
+				err = unpopulate(val, "Requests", &c.Requests)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -3017,6 +3052,37 @@ func (r *Resource) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &r.Type)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ResourceConstraints.
+func (r ResourceConstraints) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "cpu", r.CPU)
+	populate(objectMap, "memory", r.Memory)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceConstraints.
+func (r *ResourceConstraints) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "cpu":
+				err = unpopulate(val, "CPU", &r.CPU)
+			delete(rawMsg, key)
+		case "memory":
+				err = unpopulate(val, "Memory", &r.Memory)
 			delete(rawMsg, key)
 		}
 		if err != nil {

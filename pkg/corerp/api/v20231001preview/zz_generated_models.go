@@ -325,6 +325,9 @@ type Container struct {
 // readiness probe properties
 	ReadinessProbe HealthProbePropertiesClassification
 
+// Resource requirements for the container
+	Resources *ContainerResources
+
 // container volumes
 	Volumes map[string]VolumeClassification
 
@@ -437,6 +440,15 @@ type ContainerResourceUpdate struct {
 
 // READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// ContainerResources - Resource requirements for the container
+type ContainerResources struct {
+// The resource limits for the container
+	Limits *ResourceConstraints
+
+// The resource requests for the container
+	Requests *ResourceConstraints
 }
 
 // DaprSidecarExtension - Specifies the resource should have a Dapr sidecar injected
@@ -1281,6 +1293,15 @@ type Resource struct {
 
 // READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// ResourceConstraints - Resource constraints for CPU and memory
+type ResourceConstraints struct {
+// CPU resource constraints. e.g. '0.5', '1', '1000m', '100'
+	CPU *string
+
+// Memory resource constraints. e.g. '128Mi', '1Gi', '1G'
+	Memory *string
 }
 
 // ResourceReference - Describes a reference to an existing resource

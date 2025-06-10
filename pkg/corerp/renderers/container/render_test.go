@@ -44,6 +44,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -2236,7 +2237,123 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 				require.NotNil(t, envVar.ValueFrom.SecretKeyRef)
 				require.Equal(t, kubernetes.NormalizeResourceName(tc.resourceName), envVar.ValueFrom.SecretKeyRef.Name)
 				require.Equal(t, key, envVar.ValueFrom.SecretKeyRef.Key)
+=======
+func TestMapContainerResources(t *testing.T) {
+	renderer := Renderer{}
+
+	tests := []struct {
+		name      string
+		resources *datamodel.ContainerResources
+		expected  corev1.ResourceRequirements
+		expectErr bool
+	}{
+		{
+			name:      "nil resources",
+			resources: nil,
+			expected:  corev1.ResourceRequirements{},
+			expectErr: false,
+		},
+		{
+			name: "requests only",
+			resources: &datamodel.ContainerResources{
+				Requests: &datamodel.ResourceConstraints{
+					CPU:    "100m",
+					Memory: "128Mi",
+				},
+			},
+			expected: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    mustParseQuantity("100m"),
+					corev1.ResourceMemory: mustParseQuantity("128Mi"),
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "limits only",
+			resources: &datamodel.ContainerResources{
+				Limits: &datamodel.ResourceConstraints{
+					CPU:    "500m",
+					Memory: "512Mi",
+				},
+			},
+			expected: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    mustParseQuantity("500m"),
+					corev1.ResourceMemory: mustParseQuantity("512Mi"),
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "both requests and limits",
+			resources: &datamodel.ContainerResources{
+				Requests: &datamodel.ResourceConstraints{
+					CPU:    "100m",
+					Memory: "128Mi",
+				},
+				Limits: &datamodel.ResourceConstraints{
+					CPU:    "500m",
+					Memory: "512Mi",
+				},
+			},
+			expected: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    mustParseQuantity("100m"),
+					corev1.ResourceMemory: mustParseQuantity("128Mi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    mustParseQuantity("500m"),
+					corev1.ResourceMemory: mustParseQuantity("512Mi"),
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "invalid CPU request",
+			resources: &datamodel.ContainerResources{
+				Requests: &datamodel.ResourceConstraints{
+					CPU: "invalid",
+				},
+			},
+			expected:  corev1.ResourceRequirements{},
+			expectErr: true,
+		},
+		{
+			name: "invalid memory limit",
+			resources: &datamodel.ContainerResources{
+				Limits: &datamodel.ResourceConstraints{
+					Memory: "invalid",
+				},
+			},
+			expected:  corev1.ResourceRequirements{},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.resources == nil {
+				// For nil resources, test that the function is not called
+				return
+			}
+
+			result, err := renderer.mapContainerResources(tt.resources)
+
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, result)
 			}
 		})
 	}
+}
+
+func mustParseQuantity(s string) resource.Quantity {
+	q, err := resource.ParseQuantity(s)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse quantity %q: %v", s, err))
+	}
+	return q
 }

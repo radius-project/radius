@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -355,6 +356,15 @@ func (r Renderer) makeDeployment(
 	// If the user has specified an image pull policy, use it. Else, we will use Kubernetes default.
 	if properties.Container.ImagePullPolicy != "" {
 		container.ImagePullPolicy = corev1.PullPolicy(properties.Container.ImagePullPolicy)
+	}
+
+	// Map resource requirements if specified
+	if properties.Container.Resources != nil {
+		containerResources, err := r.mapContainerResources(properties.Container.Resources)
+		if err != nil {
+			return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to map container resources: %w", err)
+		}
+		container.Resources = containerResources
 	}
 
 	var err error
@@ -992,4 +1002,47 @@ func getSortedKeys(env map[string]corev1.EnvVar) []string {
 
 	sort.Strings(keys)
 	return keys
+}
+
+// mapContainerResources maps Radius container resources to Kubernetes ResourceRequirements
+func (r Renderer) mapContainerResources(resources *datamodel.ContainerResources) (corev1.ResourceRequirements, error) {
+	result := corev1.ResourceRequirements{}
+
+	if resources.Requests != nil {
+		result.Requests = corev1.ResourceList{}
+		if resources.Requests.CPU != "" {
+			cpuQty, err := resource.ParseQuantity(resources.Requests.CPU)
+			if err != nil {
+				return result, fmt.Errorf("invalid CPU request value %q: %w", resources.Requests.CPU, err)
+			}
+			result.Requests[corev1.ResourceCPU] = cpuQty
+		}
+		if resources.Requests.Memory != "" {
+			memQty, err := resource.ParseQuantity(resources.Requests.Memory)
+			if err != nil {
+				return result, fmt.Errorf("invalid memory request value %q: %w", resources.Requests.Memory, err)
+			}
+			result.Requests[corev1.ResourceMemory] = memQty
+		}
+	}
+
+	if resources.Limits != nil {
+		result.Limits = corev1.ResourceList{}
+		if resources.Limits.CPU != "" {
+			cpuQty, err := resource.ParseQuantity(resources.Limits.CPU)
+			if err != nil {
+				return result, fmt.Errorf("invalid CPU limit value %q: %w", resources.Limits.CPU, err)
+			}
+			result.Limits[corev1.ResourceCPU] = cpuQty
+		}
+		if resources.Limits.Memory != "" {
+			memQty, err := resource.ParseQuantity(resources.Limits.Memory)
+			if err != nil {
+				return result, fmt.Errorf("invalid memory limit value %q: %w", resources.Limits.Memory, err)
+			}
+			result.Limits[corev1.ResourceMemory] = memQty
+		}
+	}
+
+	return result, nil
 }

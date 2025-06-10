@@ -68,6 +68,11 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 			emptyExt: true,
 		},
 		{
+			filename: "containerresource-resources.json",
+			err:      nil,
+			emptyExt: false,
+		},
+		{
 			filename: "containerresource-nil-env-variables.json",
 			err:      v1.NewClientErrInvalidRequest("Environment variable DB_USER has neither value nor secret value"),
 			emptyExt: false,
@@ -186,6 +191,10 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 		},
 		{
 			filename: "containerresourcedatamodel-manual.json",
+		},
+		{
+			filename: "containerresourcedatamodel-resources.json",
+			err:      nil,
 		},
 	}
 
