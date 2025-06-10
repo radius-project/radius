@@ -222,6 +222,17 @@ toggle_workflows() {
 
 # Main function
 main() {
+    
+    local available_commands="Available commands: enable-all, disable-all, delete-all-runs"
+
+    # Check if command is provided
+    if [[ $# -eq 0 ]]; then
+        print_error "No command provided."
+        print_info "Usage: $0 <command>"    
+        print_info "$available_commands"
+        exit 1
+    fi
+
     local command="$1"
     check_gh_cli
     local repo
@@ -239,7 +250,7 @@ main() {
             ;;
         *)
             print_error "Unknown command: $command"
-            print_info "Available commands: enable-all, disable-all, delete-all-runs"
+            print_info "$available_commands"
             exit 1
             ;;
     esac
