@@ -367,7 +367,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				Parameters: map[string]any{
 					"p1": "v1",
 				},
-				Properties: properties,
+				Properties:                   properties,
+				ConnectedResourcesProperties: map[string]map[string]any{},
 			}
 
 			prevState := []string{
