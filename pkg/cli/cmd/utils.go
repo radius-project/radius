@@ -20,12 +20,16 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 // CreateEnvProviders forms the provider scope from the given
@@ -93,4 +97,22 @@ func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagem
 	}
 
 	return envResource, recipeProperties, nil
+}
+
+// InitializeClientFactory initializes a new v20231001preview.ClientFactory using the provided workspace context.
+// It connects to the workspace and creates a new client factory with anonymous credentials.
+// If the connection fails, it returns an error.
+func InitializeClientFactory(ctx context.Context, workspace *workspaces.Workspace) (*v20231001preview.ClientFactory, error) {
+	connection, err := workspace.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clientOptions := sdk.NewClientOptions(connection)
+	clientFactory, err := v20231001preview.NewClientFactory(&tokencredentials.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientFactory, nil
 }

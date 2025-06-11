@@ -22,18 +22,16 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
-
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"golang.org/x/exp/maps"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -71,12 +69,11 @@ rad resource-type create myType --from-file /path/to/input.json
 
 // Runner is the Runner implementation for the `rad resource-type create` command.
 type Runner struct {
-	UCPClientFactory  *v20231001preview.ClientFactory
-	ConnectionFactory connections.Factory
-	ConfigHolder      *framework.ConfigHolder
-	Output            output.Interface
-	Format            string
-	Workspace         *workspaces.Workspace
+	UCPClientFactory *v20231001preview.ClientFactory
+	ConfigHolder     *framework.ConfigHolder
+	Output           output.Interface
+	Format           string
+	Workspace        *workspaces.Workspace
 
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
@@ -87,9 +84,8 @@ type Runner struct {
 // NewRunner creates an instance of the runner for the `rad resource-type create` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 		Logger: func(format string, args ...any) {
 			output.LogInfo(format, args...)
 		},
@@ -134,10 +130,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Initialize the client factory if it hasn't been set externally.
 	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
 	if r.UCPClientFactory == nil {
-		err := r.initializeClientFactory(ctx, r.Workspace)
+		clientFactory, err := cmd.InitializeClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
+		r.UCPClientFactory = clientFactory
 	}
 
 	_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
@@ -164,35 +161,18 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("")
 
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Name, r.ResourceTypeName, r.UCPClientFactory)
 	if err != nil {
 		return err
 	}
-	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Name, r.ResourceTypeName, client)
-	if err != nil {
-		return err
+	resourceTypeFormat := common.ResourceTypeListOutputFormat{
+		ResourceType:   resourceTypeDetails,
+		APIVersionList: maps.Keys(resourceTypeDetails.APIVersions),
 	}
-	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeTableFormat())
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *Runner) initializeClientFactory(ctx context.Context, workspace *workspaces.Workspace) error {
-	connection, err := workspace.Connect(ctx)
+	err = r.Output.WriteFormatted(r.Format, resourceTypeFormat, common.GetResourceTypeTableFormat())
 	if err != nil {
 		return err
 	}
 
-	clientOptions := sdk.NewClientOptions(connection)
-
-	clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, clientOptions)
-	if err != nil {
-		return err
-	}
-
-	r.UCPClientFactory = clientFactory
 	return nil
 }

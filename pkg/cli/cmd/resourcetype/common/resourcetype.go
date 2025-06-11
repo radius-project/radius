@@ -30,10 +30,25 @@ import (
 type ResourceType struct {
 	// Name is the fully-qualified name of the resource type.
 	Name string
+	// Description of the resource type.
+	Description string
 	// ResourceProviderNamespace is the namespace of the resource provider.
 	ResourceProviderNamespace string
 	// APIVersions is the list of API versions supported by the resource type.
-	APIVersions []string
+	APIVersions map[string]*APIVersionProperties
+}
+
+// APIVersionProperties is used to store the schema of the resource type for the api version.
+type APIVersionProperties struct {
+	// Schema is the schema of the resource type.
+	Schema map[string]any
+}
+
+// ResourceTypeListOutputFormat is used to format the output of the resource type list and create commands.
+type ResourceTypeListOutputFormat struct {
+	ResourceType
+	// APIVersionList is the list of API versions supported by the resource type.
+	APIVersionList []string
 }
 
 // ResourceTypesForProvider returns a list of resource types for a given provider.
@@ -45,8 +60,15 @@ func ResourceTypesForProvider(provider *v20231001preview.ResourceProviderSummary
 			ResourceProviderNamespace: *provider.Name,
 		}
 
-		for version := range resourceType.APIVersions {
-			rt.APIVersions = append(rt.APIVersions, version)
+		if resourceType.Description != nil {
+			rt.Description = *resourceType.Description
+		}
+
+		rt.APIVersions = make(map[string]*APIVersionProperties)
+		for apiVersion, properties := range resourceType.APIVersions {
+			rt.APIVersions[apiVersion] = &APIVersionProperties{
+				Schema: properties.Schema,
+			}
 		}
 
 		resourceTypes = append(resourceTypes, rt)
@@ -56,6 +78,17 @@ func ResourceTypesForProvider(provider *v20231001preview.ResourceProviderSummary
 
 // GetResourceTypeTableFormat returns the fields to output from a resource type object.
 func GetResourceTypeTableFormat() output.FormatterOptions {
+	formatterOptions := GetResourceTypeShowTableFormat()
+	formatterOptions.Columns = append(formatterOptions.Columns, output.Column{
+		Heading:  "APIVERSION",
+		JSONPath: "{ .APIVersionList }",
+	})
+
+	return formatterOptions
+}
+
+// GetResourceTypeShowTableFormat returns the fields to output from a resource type object for show command.
+func GetResourceTypeShowTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
@@ -66,30 +99,55 @@ func GetResourceTypeTableFormat() output.FormatterOptions {
 				Heading:  "NAMESPACE",
 				JSONPath: "{ .ResourceProviderNamespace }",
 			},
+		},
+	}
+}
+
+// GetResourceTypeShowSchemaTableFormat returns the fields to output from a resource type schema object for show command.
+func GetResourceTypeShowSchemaTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
 			{
-				Heading:  "APIVERSION",
-				JSONPath: "{ .APIVersions }",
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "TYPE",
+				JSONPath: "{ .Type }",
+			},
+			{
+				Heading:  "REQUIRED",
+				JSONPath: "{ .IsRequired }",
+			},
+			{
+				Heading:  "READ-ONLY",
+				JSONPath: "{ .IsReadOnly }",
+			},
+			{
+				Heading:  "DESCRIPTION",
+				JSONPath: "{ .Description }",
 			},
 		},
 	}
 }
 
-// GetResourceTypeDetails fetches the details of a resource type from the resource provider.
-func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, resourceTypeName string, client clients.ApplicationsManagementClient) (ResourceType, error) {
-	resourceProvider, err := client.GetResourceProviderSummary(ctx, "local", resourceProviderName)
+// GetResourceTypeDetails retrieves the details of a resource provider's resource type using the UCP client.
+// It returns the resource type details or an error if the resource type is not found.
+func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, resourceTypeName string, clientFactory *v20231001preview.ClientFactory) (ResourceType, error) {
+	response, err := clientFactory.NewResourceProvidersClient().GetProviderSummary(ctx, "local", resourceProviderName, nil)
 	if clients.Is404Error(err) {
 		return ResourceType{}, clierrors.Message("The resource provider %q was not found or has been deleted.", resourceProviderName)
 	} else if err != nil {
 		return ResourceType{}, err
 	}
 
-	resourceTypes := ResourceTypesForProvider(&resourceProvider)
+	resourceTypes := ResourceTypesForProvider(&response.ResourceProviderSummary)
 	idx := slices.IndexFunc(resourceTypes, func(rt ResourceType) bool {
 		return rt.Name == resourceProviderName+"/"+resourceTypeName
 	})
 
 	if idx < 0 {
-		return ResourceType{}, clierrors.Message("Resource type %q not found in resource provider %q.", resourceTypeName, *resourceProvider.Name)
+		return ResourceType{}, clierrors.Message("Resource type %q not found in resource provider %q.", resourceTypeName, *response.ResourceProviderSummary.Name)
 	}
 
 	return resourceTypes[idx], nil

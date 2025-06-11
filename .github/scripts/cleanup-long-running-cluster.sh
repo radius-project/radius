@@ -49,7 +49,26 @@ fi
 
 # Delete all test namespaces.
 echo "delete all test namespaces"
-namespace_whitelist=("cert-manager" "dapr-system" "default" "gatekeeper-system" "kube-node-lease" "kube-public" "kube-system" "radius-system")
+namespace_whitelist=(
+    "aks-command"
+    "azure-monitor"
+    "azure-policy"
+    "azure-workload-identity-system"
+    "cert-manager"
+    "cluster-autoscaler"
+    "dapr-system"
+    "default"
+    "gatekeeper-system"
+    "ingress-nginx"
+    "istio-system"
+    "keda"
+    "kube-node-lease"
+    "kube-public"
+    "kube-system"
+    "nginx-ingress"
+    "radius-system"
+    "secrets-store-csi-driver"
+)
 namespaces=$(kubectl get namespaces --no-headers -o custom-columns=":metadata.name")
 for ns in $namespaces; do
     if [ -z "$ns" ]; then

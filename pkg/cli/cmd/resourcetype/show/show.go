@@ -20,12 +20,13 @@ import (
 	"context"
 
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
 )
 
@@ -54,11 +55,11 @@ rad resource-type show 'Applications.Core/containers'`,
 
 // Runner is the Runner implementation for the `rad resource-type show` command.
 type Runner struct {
-	ConnectionFactory connections.Factory
-	ConfigHolder      *framework.ConfigHolder
-	Output            output.Interface
-	Format            string
-	Workspace         *workspaces.Workspace
+	ConfigHolder     *framework.ConfigHolder
+	Output           output.Interface
+	Format           string
+	UCPClientFactory *v20231001preview.ClientFactory
+	Workspace        *workspaces.Workspace
 
 	ResourceTypeName          string
 	ResourceProviderNamespace string
@@ -68,9 +69,8 @@ type Runner struct {
 // NewRunner creates an instance of the runner for the `rad resource-type show` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 
@@ -99,17 +99,31 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad resource-type show` command.
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	// Initialize the client factory if it hasn't been set externally.
+	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
+	if r.UCPClientFactory == nil {
+		clientFactory, err := cmd.InitializeClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.UCPClientFactory = clientFactory
+	}
+
+	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, r.UCPClientFactory)
 	if err != nil {
 		return err
 	}
-	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, client)
+
+	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeShowTableFormat())
 	if err != nil {
 		return err
 	}
-	err = r.Output.WriteFormatted(r.Format, resourceTypeDetails, common.GetResourceTypeTableFormat())
-	if err != nil {
-		return err
+	if r.Format != "json" {
+		err = r.display(&resourceTypeDetails)
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
