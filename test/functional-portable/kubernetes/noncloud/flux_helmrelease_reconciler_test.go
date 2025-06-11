@@ -69,7 +69,7 @@ func Test_FluxHelmReleaseReconciler_RadiusChart(t *testing.T) {
 			// Create the HelmRelease object
 			err := opts.Client.Create(ctx, tc.helmRelease)
 			require.NoError(t, err)
-			
+
 			// Ensure cleanup runs even if test fails
 			t.Cleanup(func() {
 				// Use context.Background() for cleanup to avoid cancelled context issues
@@ -99,7 +99,7 @@ func Test_FluxHelmReleaseReconciler_VersionUpdate(t *testing.T) {
 	helmRelease := createRadiusHelmRelease("radius-update-test", "flux-system", "0.41.0")
 	err := opts.Client.Create(ctx, helmRelease)
 	require.NoError(t, err)
-	
+
 	// Ensure cleanup runs even if test fails
 	t.Cleanup(func() {
 		cleanupCtx := context.Background()
@@ -136,7 +136,7 @@ func Test_FluxHelmReleaseReconciler_PreflightFailure(t *testing.T) {
 	helmRelease := createRadiusHelmRelease("radius-failure-test", "flux-system", "0.42.0")
 	err := opts.Client.Create(ctx, helmRelease)
 	require.NoError(t, err)
-	
+
 	// Ensure cleanup runs even if test fails
 	t.Cleanup(func() {
 		cleanupCtx := context.Background()
@@ -179,6 +179,12 @@ func createRadiusHelmRelease(name, namespace, version string) *unstructured.Unst
 	}
 
 	helmRelease.Object["spec"] = spec
+	
+	// Add upgrade enabled annotation for Radius charts
+	helmRelease.SetAnnotations(map[string]string{
+		"radapp.io/upgrade-enabled": "true",
+	})
+	
 	return helmRelease
 }
 
@@ -202,7 +208,7 @@ func waitForPreflightAnnotation(t *testing.T, ctx context.Context, client client
 			return false, nil
 		}
 
-		annotationKey := "radius.io/preflight-checked-version"
+		annotationKey := "radapp.io/upgrade-checked-version"
 		actualVersion, exists := annotations[annotationKey]
 		if !exists {
 			t.Logf("Preflight annotation not found on HelmRelease %s", helmRelease.GetName())

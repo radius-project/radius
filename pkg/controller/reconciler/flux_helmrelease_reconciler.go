@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2025 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package reconciler
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/upgrade/preflight"
@@ -36,10 +35,12 @@ import (
 const (
 	// RadiusChartName is the name of the Radius Helm chart
 	RadiusChartName = "radius"
-	// RadiusPreflightAnnotation tracks the last version we ran preflight checks for
-	RadiusPreflightAnnotation = "radius.io/preflight-checked-version"
-	// RadiusPreflightHoldAnnotation indicates the HelmRelease is on hold due to preflight failures
-	RadiusPreflightHoldAnnotation = "radius.io/preflight-hold"
+	// RadiusUpgradeEnabledAnnotation marks a HelmRelease for upgrade preflight checks
+	RadiusUpgradeEnabledAnnotation = "radapp.io/upgrade-enabled"
+	// RadiusUpgradeCheckedAnnotation tracks the last version we ran preflight checks for
+	RadiusUpgradeCheckedAnnotation = "radapp.io/upgrade-checked-version"
+	// RadiusUpgradeHoldAnnotation indicates the HelmRelease is on hold due to preflight failures
+	RadiusUpgradeHoldAnnotation = "radapp.io/upgrade-hold"
 )
 
 // FluxHelmReleaseReconciler watches Flux HelmRelease objects for Radius upgrades
@@ -54,7 +55,6 @@ type FluxHelmReleaseReconciler struct {
 func (r *FluxHelmReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	// Use unstructured to work with Flux HelmRelease objects
 	helmRelease := &unstructured.Unstructured{}
 	helmRelease.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "helm.toolkit.fluxcd.io",
@@ -80,9 +80,9 @@ func (r *FluxHelmReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, nil
 	}
 
-	lastCheckedVersion := r.getAnnotation(helmRelease, RadiusPreflightAnnotation)
+	lastCheckedVersion := r.getAnnotation(helmRelease, RadiusUpgradeCheckedAnnotation)
 	if lastCheckedVersion == chartVersion {
-		return ctrl.Result{}, nil // Already processed this version
+		return ctrl.Result{}, nil
 	}
 
 	// Get current deployed version from the HelmRelease status
@@ -95,12 +95,12 @@ func (r *FluxHelmReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err := r.runPreflightChecks(ctx, currentVersion, chartVersion); err != nil {
 		r.EventRecorder.Event(helmRelease, "Warning", "PreflightFailed",
 			fmt.Sprintf("Preflight checks failed: %v", err))
-		
+
 		// Put HelmRelease on hold to prevent Flux from proceeding with the upgrade
 		if holdErr := r.holdHelmRelease(ctx, helmRelease, err.Error()); holdErr != nil {
 			logger.Error(holdErr, "Failed to put HelmRelease on hold")
 		}
-		
+
 		return ctrl.Result{RequeueAfter: time.Minute * 5}, err
 	}
 
@@ -115,18 +115,16 @@ func (r *FluxHelmReleaseReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	return ctrl.Result{}, nil
 }
 
-// isRadiusChart checks if this HelmRelease is for a Radius chart
+// isRadiusChart checks if this HelmRelease is opted-in for Radius upgrade preflight checks
 func (r *FluxHelmReleaseReconciler) isRadiusChart(hr *unstructured.Unstructured) bool {
-	chartName := r.getNestedString(hr, "spec", "chart", "spec", "chart")
-	releaseName := r.getNestedString(hr, "spec", "releaseName")
-
-	// Check for various Radius chart patterns:
-	// 1. Chart name contains "radius"
-	// 2. Release name is "radius"
-	// 3. Chart path is the standard Radius chart path
-	return strings.Contains(chartName, RadiusChartName) ||
-		releaseName == RadiusChartName ||
-		chartName == "./deploy/Chart" // Standard Radius chart path in GitRepository
+	// Check for explicit opt-in annotation
+	annotations := hr.GetAnnotations()
+	if annotations != nil {
+		if enabled, exists := annotations[RadiusUpgradeEnabledAnnotation]; exists && enabled == "true" {
+			return true
+		}
+	}
+	return false
 }
 
 // getChartVersion extracts the chart version from the HelmRelease
@@ -171,34 +169,34 @@ func (r *FluxHelmReleaseReconciler) getNestedString(hr *unstructured.Unstructure
 // runPreflightChecks executes all registered preflight checks
 func (r *FluxHelmReleaseReconciler) runPreflightChecks(ctx context.Context, currentVersion, targetVersion string) error {
 	if r.PreflightRegistry == nil {
-		return nil // No checks configured
+		return nil
 	}
 
 	// Create a new registry with version-specific checks
-	// Note: We create a new registry instance to avoid conflicts with other reconciler instances
 	tempRegistry := preflight.NewRegistry(r.PreflightRegistry.GetOutput())
 
-	// Add version compatibility check with actual versions
-	// Skip version check if versions are the same (graceful handling for GitOps re-processing)
+	// Add version compatibility check if both versions are specified
+	// and they are different
 	if currentVersion != "" && targetVersion != "" && currentVersion != targetVersion {
 		tempRegistry.AddCheck(preflight.NewVersionCompatibilityCheck(currentVersion, targetVersion))
 	}
 
-	// Run all checks - the registry handles the execution
 	_, err := tempRegistry.RunChecks(ctx)
 	return err
 }
 
 // holdHelmRelease puts the HelmRelease on hold to prevent Flux from proceeding
+// it does this by adding the `spec.suspend=true` annotation
+// https://v2-0.docs.fluxcd.io/flux/components/helm/api/
 func (r *FluxHelmReleaseReconciler) holdHelmRelease(ctx context.Context, hr *unstructured.Unstructured, reason string) error {
 	annotations := hr.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
-	
+
 	// Add hold annotation with reason
-	annotations[RadiusPreflightHoldAnnotation] = reason
-	
+	annotations[RadiusUpgradeHoldAnnotation] = reason
+
 	// Suspend the HelmRelease by setting spec.suspend = true
 	spec, found, err := unstructured.NestedMap(hr.Object, "spec")
 	if !found || err != nil {
@@ -206,7 +204,7 @@ func (r *FluxHelmReleaseReconciler) holdHelmRelease(ctx context.Context, hr *uns
 	}
 	spec["suspend"] = true
 	hr.Object["spec"] = spec
-	
+
 	hr.SetAnnotations(annotations)
 	return r.Client.Update(ctx, hr)
 }
@@ -217,18 +215,18 @@ func (r *FluxHelmReleaseReconciler) clearHoldAndMarkComplete(ctx context.Context
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
-	
+
 	// Remove hold annotation and mark preflight complete
-	delete(annotations, RadiusPreflightHoldAnnotation)
-	annotations[RadiusPreflightAnnotation] = version
-	
+	delete(annotations, RadiusUpgradeHoldAnnotation)
+	annotations[RadiusUpgradeCheckedAnnotation] = version
+
 	// Resume the HelmRelease by removing spec.suspend or setting it to false
 	spec, found, err := unstructured.NestedMap(hr.Object, "spec")
 	if found && err == nil {
-		delete(spec, "suspend") // Remove suspend field entirely (default is false)
+		delete(spec, "suspend")
 		hr.Object["spec"] = spec
 	}
-	
+
 	hr.SetAnnotations(annotations)
 	return r.Client.Update(ctx, hr)
 }

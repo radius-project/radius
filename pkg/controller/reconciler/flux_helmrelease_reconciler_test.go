@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2025 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,39 +37,40 @@ func Test_FluxHelmReleaseReconciler_isRadiusChart(t *testing.T) {
 	reconciler := &FluxHelmReleaseReconciler{}
 
 	testCases := []struct {
-		name       string
+		name        string
 		helmRelease *unstructured.Unstructured
-		expected   bool
+		expected    bool
 	}{
 		{
-			name:       "radius_chart_by_standard_path",
-			helmRelease: createTestHelmRelease("./deploy/Chart", "", ""),
-			expected:   true, // This is the standard Radius chart path
+			name:        "chart_with_upgrade_enabled_annotation",
+			helmRelease: createTestHelmReleaseWithAnnotations(map[string]string{
+				RadiusUpgradeEnabledAnnotation: "true",
+			}),
+			expected:    true,
 		},
 		{
-			name:       "radius_chart_by_name",
-			helmRelease: createTestHelmRelease("radius", "", ""),
-			expected:   true,
+			name:        "chart_with_upgrade_disabled_annotation",
+			helmRelease: createTestHelmReleaseWithAnnotations(map[string]string{
+				RadiusUpgradeEnabledAnnotation: "false",
+			}),
+			expected:    false,
 		},
 		{
-			name:       "radius_chart_by_path_with_radius",
-			helmRelease: createTestHelmRelease("./charts/radius", "", ""),
-			expected:   true,
+			name:        "radius_chart_without_annotation",
+			helmRelease: createTestHelmRelease("./deploy/Chart", "", "radius"),
+			expected:    false, // No opt-in annotation
 		},
 		{
-			name:       "radius_chart_by_release_name",
-			helmRelease: createTestHelmRelease("nginx", "", "radius"),
-			expected:   true,
+			name:        "non_radius_chart_with_annotation",
+			helmRelease: createTestHelmReleaseWithAnnotations(map[string]string{
+				RadiusUpgradeEnabledAnnotation: "true",
+			}),
+			expected:    true, // Any chart can opt-in via annotation
 		},
 		{
-			name:       "non_radius_chart",
-			helmRelease: createTestHelmRelease("nginx", "", "nginx"),
-			expected:   false,
-		},
-		{
-			name:       "empty_chart_info",
+			name:        "empty_chart_info",
 			helmRelease: createTestHelmRelease("", "", ""),
-			expected:   false,
+			expected:    false,
 		},
 	}
 
@@ -85,24 +86,24 @@ func Test_FluxHelmReleaseReconciler_getChartVersion(t *testing.T) {
 	reconciler := &FluxHelmReleaseReconciler{}
 
 	testCases := []struct {
-		name       string
+		name        string
 		helmRelease *unstructured.Unstructured
-		expected   string
+		expected    string
 	}{
 		{
-			name:       "version_specified",
+			name:        "version_specified",
 			helmRelease: createTestHelmRelease("radius", "0.42.0", ""),
-			expected:   "0.42.0",
+			expected:    "0.42.0",
 		},
 		{
-			name:       "no_version",
+			name:        "no_version",
 			helmRelease: createTestHelmRelease("radius", "", ""),
-			expected:   "",
+			expected:    "",
 		},
 		{
-			name:       "empty_helmrelease",
+			name:        "empty_helmrelease",
 			helmRelease: &unstructured.Unstructured{},
-			expected:   "",
+			expected:    "",
 		},
 	}
 
@@ -296,33 +297,33 @@ func Test_FluxHelmReleaseReconciler_getCurrentDeployedVersion(t *testing.T) {
 	reconciler := &FluxHelmReleaseReconciler{}
 
 	testCases := []struct {
-		name           string
-		helmRelease    *unstructured.Unstructured
+		name            string
+		helmRelease     *unstructured.Unstructured
 		expectedVersion string
 	}{
 		{
-			name:           "version_from_history",
-			helmRelease:    createTestHelmReleaseWithHistory("0.42.0"),
+			name:            "version_from_history",
+			helmRelease:     createTestHelmReleaseWithHistory("0.42.0"),
 			expectedVersion: "0.42.0",
 		},
 		{
-			name:           "version_from_lastAttemptedRevision",
-			helmRelease:    createTestHelmReleaseWithLastAttempted("0.41.0"),
+			name:            "version_from_lastAttemptedRevision",
+			helmRelease:     createTestHelmReleaseWithLastAttempted("0.41.0"),
 			expectedVersion: "0.41.0",
 		},
 		{
-			name:           "no_version_info",
-			helmRelease:    createTestHelmRelease("radius", "", ""),
+			name:            "no_version_info",
+			helmRelease:     createTestHelmRelease("radius", "", ""),
 			expectedVersion: "",
 		},
 		{
-			name:           "history_takes_precedence",
-			helmRelease:    createTestHelmReleaseWithBothVersions("0.42.0", "0.41.0"),
+			name:            "history_takes_precedence",
+			helmRelease:     createTestHelmReleaseWithBothVersions("0.42.0", "0.41.0"),
 			expectedVersion: "0.42.0", // History should take precedence
 		},
 		{
-			name:           "empty_history_fallback",
-			helmRelease:    createTestHelmReleaseWithEmptyHistory("0.41.0"),
+			name:            "empty_history_fallback",
+			helmRelease:     createTestHelmReleaseWithEmptyHistory("0.41.0"),
 			expectedVersion: "0.41.0",
 		},
 	}
@@ -371,7 +372,7 @@ func Test_FluxHelmReleaseReconciler_Reconcile_NonRadiusChart(t *testing.T) {
 
 	annotations := current.GetAnnotations()
 	if annotations != nil {
-		_, exists := annotations[RadiusPreflightAnnotation]
+		_, exists := annotations[RadiusUpgradeCheckedAnnotation]
 		require.False(t, exists, "Should not have preflight annotation for non-Radius chart")
 	}
 }
@@ -387,8 +388,11 @@ func Test_FluxHelmReleaseReconciler_Reconcile_RadiusChart(t *testing.T) {
 		PreflightRegistry: createTestPreflightRegistry(),
 	}
 
-	// Create a Radius HelmRelease
+	// Create a Radius HelmRelease with upgrade enabled
 	helmRelease := createTestHelmRelease("./deploy/Chart", "0.42.0", "radius")
+	helmRelease.SetAnnotations(map[string]string{
+		RadiusUpgradeEnabledAnnotation: "true",
+	})
 	err := client.Create(context.Background(), helmRelease)
 	require.NoError(t, err)
 
@@ -412,8 +416,8 @@ func Test_FluxHelmReleaseReconciler_Reconcile_RadiusChart(t *testing.T) {
 
 	annotations := current.GetAnnotations()
 	require.NotNil(t, annotations)
-	
-	version, exists := annotations[RadiusPreflightAnnotation]
+
+	version, exists := annotations[RadiusUpgradeCheckedAnnotation]
 	require.True(t, exists, "Should have preflight annotation for Radius chart")
 	require.Equal(t, "0.42.0", version)
 }
@@ -440,6 +444,10 @@ func Test_FluxHelmReleaseReconciler_Reconcile_PreflightFailure(t *testing.T) {
 		},
 		"releaseName": "radius",
 	}
+	// Add upgrade enabled annotation
+	helmRelease.SetAnnotations(map[string]string{
+		RadiusUpgradeEnabledAnnotation: "true",
+	})
 	err := client.Create(context.Background(), helmRelease)
 	require.NoError(t, err)
 
@@ -465,7 +473,7 @@ func Test_FluxHelmReleaseReconciler_Reconcile_PreflightFailure(t *testing.T) {
 	// Check hold annotation
 	annotations := current.GetAnnotations()
 	require.NotNil(t, annotations)
-	holdReason, exists := annotations[RadiusPreflightHoldAnnotation]
+	holdReason, exists := annotations[RadiusUpgradeHoldAnnotation]
 	require.True(t, exists, "Should have hold annotation when preflight fails")
 	require.Contains(t, holdReason, "Downgrading is not supported")
 
@@ -502,7 +510,7 @@ func Test_FluxHelmReleaseReconciler_holdHelmRelease(t *testing.T) {
 	// Check annotations
 	annotations := current.GetAnnotations()
 	require.NotNil(t, annotations)
-	holdReason, exists := annotations[RadiusPreflightHoldAnnotation]
+	holdReason, exists := annotations[RadiusUpgradeHoldAnnotation]
 	require.True(t, exists)
 	require.Equal(t, reason, holdReason)
 
@@ -520,7 +528,7 @@ func Test_FluxHelmReleaseReconciler_clearHoldAndMarkComplete(t *testing.T) {
 
 	// Create HelmRelease with hold
 	helmRelease := createTestHelmReleaseWithAnnotations(map[string]string{
-		RadiusPreflightHoldAnnotation: "Test hold reason",
+		RadiusUpgradeHoldAnnotation: "Test hold reason",
 	})
 	helmRelease.Object["spec"] = map[string]any{
 		"suspend": true,
@@ -550,13 +558,13 @@ func Test_FluxHelmReleaseReconciler_clearHoldAndMarkComplete(t *testing.T) {
 	// Check annotations
 	annotations := current.GetAnnotations()
 	require.NotNil(t, annotations)
-	
+
 	// Hold annotation should be removed
-	_, exists := annotations[RadiusPreflightHoldAnnotation]
+	_, exists := annotations[RadiusUpgradeHoldAnnotation]
 	require.False(t, exists, "Hold annotation should be removed")
-	
+
 	// Preflight annotation should be set
-	preflightVersion, exists := annotations[RadiusPreflightAnnotation]
+	preflightVersion, exists := annotations[RadiusUpgradeCheckedAnnotation]
 	require.True(t, exists)
 	require.Equal(t, version, preflightVersion)
 
@@ -631,7 +639,7 @@ func createTestHelmReleaseWithHistory(chartVersion string) *unstructured.Unstruc
 		map[string]any{
 			"chartVersion": chartVersion,
 			"appVersion":   "latest",
-			"digest":      "sha256:abc123",
+			"digest":       "sha256:abc123",
 		},
 	}
 	hr.Object["status"] = map[string]any{
