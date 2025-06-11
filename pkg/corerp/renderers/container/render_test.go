@@ -2107,14 +2107,14 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 			connName:     "redis",
 			resourceName: "test-container",
 			environmentVariablesInfo: map[string]any{
-				"endpoints": []string{"endpoint1", "endpoint2", "endpoint3"},
+				"endpoints": []string{"endpoint1", "endpoint2", "endpoint3", "end:points,withcommas"},
 			},
 			initialEnv:             map[string]corev1.EnvVar{},
 			initialSecretData:      map[string][]byte{},
 			expectedEnvKeys:        []string{"CONNECTION_REDIS_ENDPOINTS"},
 			expectedSecretDataKeys: []string{"CONNECTION_REDIS_ENDPOINTS"},
 			expectedSecretDataValues: map[string]string{
-				"CONNECTION_REDIS_ENDPOINTS": "endpoint1,endpoint2,endpoint3",
+				"CONNECTION_REDIS_ENDPOINTS": "endpoint1,endpoint2,endpoint3,end:points,withcommas",
 			},
 		},
 		{
