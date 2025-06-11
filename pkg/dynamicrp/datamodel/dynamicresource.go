@@ -144,9 +144,8 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 		return fmt.Errorf("failed to unmarshal output resources: %w", err)
 	}
 
-	status["outputResources"] = outputResources
-	if len(outputResources) == 0 {
-		delete(status, "outputResources")
+	if len(outputResources) > 0 {
+		status["outputResources"] = outputResources
 	}
 
 	// Store computed values and secrets as separate maps under status.
@@ -154,18 +153,16 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 	for key, value := range deploymentOutput.ComputedValues {
 		computedValues[key] = value
 	}
-	status["computedValues"] = computedValues
-	if len(computedValues) == 0 {
-		delete(status, "computedValues")
+	if len(computedValues) > 0 {
+		status["computedValues"] = computedValues
 	}
 
 	secrets := map[string]rpv1.SecretValueReference{}
 	for key, value := range deploymentOutput.SecretValues {
 		secrets[key] = value
 	}
-	status["secrets"] = secrets
-	if len(secrets) == 0 {
-		delete(status, "secrets")
+	if len(secrets) > 0 {
+		status["secrets"] = secrets
 	}
 
 	return nil
@@ -289,9 +286,20 @@ func (d *DynamicResource) GetSecrets() map[string]rpv1.SecretValueReference {
 		return secretsMap
 	}
 	for k, v := range secrets {
+		// Handle SecretValueReference structs
 		if secretRef, ok := v.(rpv1.SecretValueReference); ok {
 			secretsMap[k] = secretRef
 			continue
+		}
+
+		// Handle the case where SecretValueReference was JSON marshaled/unmarshaled
+		// and became a map[string]any
+		if secretMap, ok := v.(map[string]any); ok {
+			if value, exists := secretMap["Value"]; exists {
+				if valueStr, ok := value.(string); ok {
+					secretsMap[k] = rpv1.SecretValueReference{Value: valueStr}
+				}
+			}
 		}
 	}
 

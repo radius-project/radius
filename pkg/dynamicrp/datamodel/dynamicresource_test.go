@@ -435,6 +435,59 @@ func Test_DynamicResource_GetSecrets(t *testing.T) {
 			},
 			want: map[string]rpv1.SecretValueReference{},
 		},
+		{
+			name: "JSON-marshaled secrets are converted correctly",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{
+						"secrets": map[string]any{
+							"password": map[string]any{"Value": "s3cr3t"},
+							"token":    map[string]any{"Value": "tok123"},
+						},
+					},
+				},
+			},
+			want: map[string]rpv1.SecretValueReference{
+				"password": {Value: "s3cr3t"},
+				"token":    {Value: "tok123"},
+			},
+		},
+		{
+			name: "mixed format secrets (direct struct and JSON-marshaled)",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{
+						"secrets": map[string]any{
+							"password": rpv1.SecretValueReference{Value: "s3cr3t"},
+							"token":    map[string]any{"Value": "tok123"},
+						},
+					},
+				},
+			},
+			want: map[string]rpv1.SecretValueReference{
+				"password": {Value: "s3cr3t"},
+				"token":    {Value: "tok123"},
+			},
+		},
+		{
+			name: "malformed JSON-marshaled secrets are ignored",
+			resource: DynamicResource{
+				Properties: map[string]any{
+					"status": map[string]any{
+						"secrets": map[string]any{
+							"password":   map[string]any{"Value": "s3cr3t"},
+							"badSecret1": map[string]any{"WrongField": "value"},
+							"badSecret2": map[string]any{"Value": 123}, // non-string value
+							"goodSecret": rpv1.SecretValueReference{Value: "good"},
+						},
+					},
+				},
+			},
+			want: map[string]rpv1.SecretValueReference{
+				"password":   {Value: "s3cr3t"},
+				"goodSecret": {Value: "good"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
