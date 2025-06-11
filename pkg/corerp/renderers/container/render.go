@@ -777,20 +777,6 @@ func updateEnvAndSecretData(connName string, resourceName string, environmentVar
 			secretValue = []byte(strconv.FormatFloat(v, 'f', -1, 64))
 		case int:
 			secretValue = []byte(strconv.Itoa(v))
-		case []string:
-			stringvalue := ""
-			for i, val := range v {
-				marshaledVal, err := json.Marshal(val)
-				if err != nil {
-					// Skip this value if JSON marshaling fails
-					continue
-				}
-				stringvalue += string(marshaledVal)
-				if i < len(v)-1 {
-					stringvalue += ","
-				}
-			}
-			secretValue = []byte(stringvalue)
 		case []int:
 			intValues := make([]string, len(v))
 			for i, val := range v {

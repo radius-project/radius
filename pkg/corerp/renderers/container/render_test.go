@@ -2114,7 +2114,7 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 			expectedEnvKeys:        []string{"CONNECTION_REDIS_ENDPOINTS"},
 			expectedSecretDataKeys: []string{"CONNECTION_REDIS_ENDPOINTS"},
 			expectedSecretDataValues: map[string]string{
-				"CONNECTION_REDIS_ENDPOINTS": "\"endpoint1\",\"endpoint2\",\"endpoint3\",\"endpoints,withcommas\"",
+				"CONNECTION_REDIS_ENDPOINTS": "[\"endpoint1\",\"endpoint2\",\"endpoint3\",\"endpoints,withcommas\"]",
 			},
 		},
 		{
@@ -2182,7 +2182,7 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 			expectedEnvKeys:        []string{"CONNECTION_TEST_VALIDKEY"},
 			expectedSecretDataKeys: []string{"CONNECTION_TEST_VALIDKEY"},
 			expectedSecretDataValues: map[string]string{
-				"CONNECTION_TEST_VALIDKEY": "\"should\",\"be\",\"included\"",
+				"CONNECTION_TEST_VALIDKEY": "[\"should\",\"be\",\"included\"]",
 			},
 		},
 	}
