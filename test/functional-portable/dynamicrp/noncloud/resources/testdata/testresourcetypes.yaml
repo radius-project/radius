@@ -36,6 +36,12 @@ types:
             application:
               type: string
               description: The resource ID of the application.
+            connections:
+              type: object
+              additionalProperties:
+                source: 
+                  type: string
+                  description: The resourceID of the source of the connection.
             database:
               type: string
               description: The name of the database.
