@@ -8,7 +8,7 @@ spec:
   chart:
     spec:
       chart: ./deploy/Chart
-      version: "0.42.0"
+      version: "0.47.0"
       sourceRef:
         kind: GitRepository
         name: radius-repo
@@ -16,14 +16,3 @@ spec:
       interval: 1m
   targetNamespace: radius-system
   releaseName: radius
-  values:
-    global:
-    controller:
-      image: ghcr.io/willdavsmith/radius/controller
-      tag: latest
-    applications:
-      image: ghcr.io/willdavsmith/radius/applications-rp
-      tag: latest
-    ucp:
-      image: ghcr.io/willdavsmith/radius/ucpd
-      tag: latest
