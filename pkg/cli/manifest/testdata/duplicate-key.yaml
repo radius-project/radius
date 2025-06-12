@@ -1,4 +1,4 @@
-namespace: test-provider
+name: test-provider
 types:
   testResources:
     apiVersions:

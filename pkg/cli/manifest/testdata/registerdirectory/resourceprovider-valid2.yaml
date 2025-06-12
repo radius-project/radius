@@ -1,4 +1,4 @@
-namespace: MyCompany2.CompanyName2
+name: MyCompany2.CompanyName2
 location:
   global:
     'http://localhost:8080'

@@ -1,4 +1,4 @@
-namespace: MyCompany.Resources
+name: MyCompany.Resources
 location:
   global:
     'http://localhost:8080'

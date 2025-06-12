@@ -14,7 +14,18 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-ARROW := \033[34;1m=>\033[0m
+##@ GitHub Workflows
 
-# order matters for these
-include build/help.mk build/version.mk build/build.mk build/util.mk build/generate.mk build/test.mk build/docker.mk build/recipes.mk build/install.mk build/db.mk build/prettier.mk build/debug.mk build/workflow.mk
+WORKFLOW_SCRIPT := ./build/workflow.sh
+
+.PHONY: workflow-disable-all
+workflow-disable-all: ## Disable all workflows in the current repo
+	@bash $(WORKFLOW_SCRIPT) disable-all
+
+.PHONY: workflow-enable-all
+workflow-enable-all: ## Enable all workflows in the current repo
+	@bash $(WORKFLOW_SCRIPT) enable-all
+
+.PHONY: workflow-delete-all-runs
+workflow-delete-all-runs: ## Delete all workflow runs in the repository. NOTE: This is a destructive operation and cannot be undone.
+	@bash $(WORKFLOW_SCRIPT) delete-all-runs

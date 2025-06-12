@@ -12,7 +12,8 @@ inputs:
     required: true
   gitea-version:
     description: "Gitea version"
-    required: true
+    required: false
+    default: "v11.0.0"
 outputs:
   gitea-access-token:
     description: "Gitea access token"

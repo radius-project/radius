@@ -1,4 +1,4 @@
-namespace: Microsoft.Resources
+name: Microsoft.Resources
 location:
   global:
     "http://localhost:5017"
