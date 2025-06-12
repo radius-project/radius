@@ -1,17 +1,42 @@
 extension radius
 extension testresources
+param registry string
 
-param  environment string
+param version string
+
+@description('PostgreSQL password')
+@secure()
+param password string = newGuid()
+
+resource udtconnenv 'Applications.Core/environments@2023-10-01-preview' = {
+  name: 'dynamicrp-postgres-env'
+  location: 'global'
+  properties: {
+    compute: {
+      kind: 'kubernetes'
+      resourceId: 'self'
+      namespace: 'dynamicrp-postgres-env'
+    }
+    recipes: {
+      'Test.Resources/postgres': {
+        default: {
+          templateKind: 'bicep'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_postgress_recipe:${version}'
+        }
+      }
+    }
+  }
+}
 
 resource udtapp 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dynamicrp-cntr2udt'
   location: 'global'
   properties: {
-    environment: environment
+    environment: udtconnenv.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'dynamicrp-postgres-existing-app'
+        namespace: 'dynamicrp-cntr2udt'
       }
     ]
   }
@@ -30,17 +55,25 @@ resource udtcntr 'Applications.Core/containers@2023-10-01-preview' = {
           }
         }
 
+    
+  
+    }
       connections: {
         postgres: {
-          source: udtpgexisting.id
+          source: udtconnpg.id
         }
       }
   
     }
-  
-    }
 }
 
-resource udtpgexisting 'Test.Resources/postgres@2023-10-01-preview' existing= {
+
+resource udtconnpg 'Test.Resources/postgres@2023-10-01-preview' = {
   name: 'existing-postgres'
+  location: 'global'
+  properties: {
+    environment: udtconnenv.id
+    password: password
+    port: '5432'
+  }
 }
