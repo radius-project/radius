@@ -318,9 +318,9 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 // from the UDT into the container.
 // It has 2 steps:
 // 1. Deploy the environment and postgres resource to the environment namespace.
-// 2. Deploy an app that uses the existing postgres resource using the 'existing' keyword.
+// 2. Deploy an app that uses a container resource  which connects to the postgres resource.
+// Verify env variables are injected automatically into the container.
 func Test_Container_ConnectionTo_UDT(t *testing.T) {
-	envTemplate := "testdata/postgres-env-scoped-resource.bicep"
 	existingTemplate := "testdata/container2udt-connection.bicep"
 	name := "dynamicrp-cntr2udt"
 	appNamespace := "dynamicrp-cntr2udt"
@@ -346,29 +346,7 @@ func Test_Container_ConnectionTo_UDT(t *testing.T) {
 			},
 		},
 		{
-			Executor: step.NewDeployExecutor(envTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: name,
-						Type: validation.EnvironmentsResource,
-					},
-					{
-						Name: "existing-postgres",
-						Type: "test.resources/postgres",
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					name: {
-						validation.NewK8sPodForResource("postgresql", "postgresql").ValidateLabels(false),
-					},
-				},
-			},
-		},
-		{
-			Executor: step.NewDeployExecutor(existingTemplate),
+			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -394,13 +372,12 @@ func Test_Container_ConnectionTo_UDT(t *testing.T) {
 					},
 				},
 			},
-			// PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-			// 	// Verify that the environment namespace is created.
-			// 	_, err := ct.Options.K8sClient.CoreV1().Namespaces().Get(context.Background(), name, metav1.GetOptions{})
-			// 	require.NoError(t, err)
-			// },
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				// Verify environment variable in the container has expected value
+				deploys, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
+				if deploys == nil {
+					t.Fatalf("No deployments found in namespace %s", appNamespace)
+				}
+				require.NoError(t, err)
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "udtcntr", metav1.GetOptions{})
 				require.NoError(t, err)
 
@@ -414,15 +391,32 @@ func Test_Container_ConnectionTo_UDT(t *testing.T) {
 				}
 				require.NotNil(t, targetContainer, "Container not found")
 
-				found := false
-				for _, env := range targetContainer.Env {
-					if env.Name == "CONNECTION_POSTGRES_PORT" {
-						require.Equal(t, "8080", env.Value)
-						found = true
-						break
-					}
+				// Verify environment variable in the container has expected value
+				requiredEnvVars := []string{
+					"CONNECTION_POSTGRES_HOST",
+					"CONNECTION_POSTGRES_PORT",
+					"CONNECTION_POSTGRES_DATABASE",
+					"CONNECTION_POSTGRES_PASSWORD",
+					"CONNECTION_POSTGRES_RECIPE",
 				}
-				require.True(t, found, "Environment variable not found")
+
+				// Verify all required environment variables are present
+				foundEnvVars := make(map[string]bool)
+				for _, env := range targetContainer.Env {
+					foundEnvVars[env.Name] = true
+				}
+
+				for _, requiredVar := range requiredEnvVars {
+					require.True(t, foundEnvVars[requiredVar],
+						"Required environment variable %s not found in container", requiredVar)
+				}
+
+				for _, env := range targetContainer.Env {
+					require.NotNil(t, env.ValueFrom)
+					require.NotNil(t, env.ValueFrom.SecretKeyRef)
+					require.Equal(t, env.Name, env.ValueFrom.SecretKeyRef.Key)
+				}
+
 			},
 		},
 	})
