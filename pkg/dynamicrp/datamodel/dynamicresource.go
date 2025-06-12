@@ -145,24 +145,25 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 		return fmt.Errorf("failed to unmarshal output resources: %w", err)
 	}
 
-	status["outputResources"] = outputResources
-	if len(outputResources) == 0 {
-		delete(status, "outputResources")
+	if len(outputResources) > 0 {
+		status["outputResources"] = outputResources
 	}
 
-	// We store computed values and secrets in the status under "binding".
-	//
-	binding := map[string]any{}
+	// Store computed values and secrets as separate maps under status.
+	computedValues := map[string]any{}
 	for key, value := range deploymentOutput.ComputedValues {
-		binding[key] = value
+		computedValues[key] = value
 	}
-	for key, value := range deploymentOutput.SecretValues {
-		binding[key] = value.Value
+	if len(computedValues) > 0 {
+		status["computedValues"] = computedValues
 	}
 
-	status["binding"] = binding
-	if len(binding) == 0 {
-		delete(status, "binding")
+	secrets := map[string]rpv1.SecretValueReference{}
+	for key, value := range deploymentOutput.SecretValues {
+		secrets[key] = value
+	}
+	if len(secrets) > 0 {
+		status["secrets"] = secrets
 	}
 
 	return nil
@@ -264,4 +265,44 @@ func (d *dynamicResourceBasicPropertiesAdapter) SetResourceStatus(status rpv1.Re
 	for key, value := range marshaledResourceStatus {
 		existingStatus[key] = value
 	}
+}
+
+// GetComputedValues returns the computed values from the status map.
+func (d *DynamicResource) GetComputedValues() map[string]any {
+	status := d.Status()
+	computed, ok := status["computedValues"].(map[string]any)
+	if !ok {
+		return map[string]any{}
+	}
+
+	return computed
+}
+
+// GetSecrets returns the secrets from the status map as map[string]rpv1.SecretValueReference.
+func (d *DynamicResource) GetSecrets() map[string]rpv1.SecretValueReference {
+	status := d.Status()
+	secretsMap := map[string]rpv1.SecretValueReference{}
+	secrets, ok := status["secrets"].(map[string]any)
+	if !ok {
+		return secretsMap
+	}
+	for k, v := range secrets {
+		// Handle SecretValueReference structs
+		if secretRef, ok := v.(rpv1.SecretValueReference); ok {
+			secretsMap[k] = secretRef
+			continue
+		}
+
+		// Handle the case where SecretValueReference was JSON marshaled/unmarshaled
+		// and became a map[string]any
+		if secretMap, ok := v.(map[string]any); ok {
+			if value, exists := secretMap["Value"]; exists {
+				if valueStr, ok := value.(string); ok {
+					secretsMap[k] = rpv1.SecretValueReference{Value: valueStr}
+				}
+			}
+		}
+	}
+
+	return secretsMap
 }
