@@ -1,4 +1,4 @@
-namespace: Test.Resources
+name: Test.Resources
 types:
   userTypeAlpha:
     capabilities: ["SupportsRecipes"]
@@ -16,7 +16,7 @@ types:
             status:
               type: object
               properties:
-                binding:
+                computedValues:
                   type: object
                   properties:
                     port:
@@ -51,7 +51,7 @@ types:
             status:
               type: object
               properties:
-                binding:
+                computedValues:
                   type: object
                   properties:
                     username:

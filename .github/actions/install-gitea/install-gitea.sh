@@ -60,7 +60,7 @@ fi
 
 # Install Gitea from Helm chart
 helm install gitea gitea-charts/gitea --version "$GITEA_VERSION" --namespace gitea --create-namespace -f .github/actions/install-gitea/gitea-config.yaml
-kubectl wait --for=condition=available deployment/gitea -n gitea --timeout=120s
+kubectl wait --for=condition=available deployment/gitea -n gitea --timeout=240s
 
 # Get the Gitea pod name
 gitea_pod=$(kubectl get pods -n gitea -l app=gitea -o jsonpath='{.items[0].metadata.name}')

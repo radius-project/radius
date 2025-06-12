@@ -1,10 +1,12 @@
+#!/bin/bash
+
 # ------------------------------------------------------------
 # Copyright 2023 The Radius Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -14,7 +16,18 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-ARROW := \033[34;1m=>\033[0m
+set -e
 
-# order matters for these
-include build/help.mk build/version.mk build/build.mk build/util.mk build/generate.mk build/test.mk build/docker.mk build/recipes.mk build/install.mk build/db.mk build/prettier.mk build/debug.mk build/workflow.mk
+FLUX_VERSION=$1
+
+if [ -z "$FLUX_VERSION" ]; then
+  echo "FLUX_VERSION is not set. Exiting..."
+  exit 1
+fi
+
+for i in 1 2 3; do
+  flux install --namespace=flux-system --version=v"$FLUX_VERSION" --components=source-controller --network-policy=false && \
+  kubectl wait --for=condition=available deployment -l app.kubernetes.io/component=source-controller -n flux-system --timeout=120s && break
+  echo "Attempt $i failed, retrying in 10 seconds..."
+  sleep 10
+done
