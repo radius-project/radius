@@ -770,6 +770,14 @@ func updateEnvAndSecretData(connName string, resourceName string, environmentVar
 		var secretValue []byte
 		var err error
 
+		// We store primitives (strings, integers, floats) as their string representations in the secret.
+		// Ex: 123 is converted to "123", 12.34 is converted to "12.34".
+		// Arrays of integers and floats are stored as comma-separated strings (e.g., "1,2,3" for integers).
+		// Strings are stored as-is.
+		// For other types, we use JSON marshaling to convert them to a string representation.
+		// This allows us to handle complex types like arrays of strings, objects, arrays of objects, maps etc.
+		// When JSON marshaling fails, we skip the value and do not store it in the secret/ env variable.
+
 		switch v := value.(type) {
 		case string:
 			secretValue = []byte(v)
@@ -790,7 +798,6 @@ func updateEnvAndSecretData(connName string, resourceName string, environmentVar
 			}
 			secretValue = []byte(strings.Join(floatValues, ","))
 		default:
-			// Use JSON marshaling for all other types (arrays of objects, maps, structs, etc.)
 			secretValue, err = json.Marshal(v)
 			if err != nil {
 				// Skip this value if JSON marshaling fails
