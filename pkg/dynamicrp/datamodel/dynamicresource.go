@@ -41,6 +41,7 @@ type DynamicResource struct {
 	Properties map[string]any `json:"properties"`
 }
 
+// Status() returns the status of the resource.
 func (d *DynamicResource) Status() map[string]any {
 	if d.Properties == nil {
 		d.Properties = map[string]any{}
