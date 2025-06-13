@@ -1,5 +1,6 @@
 extension radius
 extension testresources
+// extension hack
 param registry string
 
 param version string
@@ -53,10 +54,11 @@ resource udtparent 'Test.Resources/udtParent@2023-10-01-preview' = {
     name: 'udtparent'
     properties: {
       environment: udttoudtenv.id
+      application: udttoudtapp.id
       password: password
       port: '5432'
       connections: {
-        postgres: {
+        databaseresource: {
           source: udtchild.id
         }
       }
@@ -69,6 +71,7 @@ resource udtchild 'Test.Resources/postgres@2023-10-01-preview' = {
   location: 'global'
   properties: {
     environment: udttoudtenv.id
+     application: udttoudtapp.id
     password: password
     port: '5432'
   }
