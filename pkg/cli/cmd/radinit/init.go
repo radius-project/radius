@@ -65,6 +65,8 @@ If an environment already exists, 'rad init' will prompt the user to use the exi
 By default, 'rad init' will optimize for a developer-focused environment with an environment named "default" and Recipes that support prototyping, development and testing using lightweight containers. These environments are great for building and testing your application.
 
 Specifying the '--full' flag will cause 'rad init' to prompt the user for all available configuration options such as Kubernetes context, environment name, and cloud providers. This is useful for fully customizing your environment.
+
+For air-gapped environments, use the '--recipe-registry' flag to specify an alternative container registry for dev recipes.
 `,
 		Example: `
 ## Create a new development environment named "default"
@@ -72,6 +74,9 @@ rad init
 
 ## Prompt the user for all available options to create a new environment
 rad init --full
+
+## Use a custom registry for dev recipes in an air-gapped environment
+rad init --recipe-registry registry.localhost:5000/radius-recipes
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -80,6 +85,7 @@ rad init --full
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
+	cmd.Flags().String("recipe-registry", "", "Alternative container registry for dev recipes (for air-gapped environments)")
 	return cmd, runner
 }
 
@@ -111,6 +117,9 @@ type Runner struct {
 
 	// DevRecipeClient is the interface for the dev recipe client.
 	DevRecipeClient DevRecipeClient
+
+	// RecipeRegistry is the alternative container registry for dev recipes.
+	RecipeRegistry string
 
 	// Format is the output format.
 	Format string
@@ -160,6 +169,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Format = format
 
 	r.Full, err = cmd.Flags().GetBool("full")
+	if err != nil {
+		return err
+	}
+
+	r.RecipeRegistry, err = cmd.Flags().GetString("recipe-registry")
 	if err != nil {
 		return err
 	}

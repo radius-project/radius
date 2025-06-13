@@ -30,7 +30,8 @@ import (
 )
 
 type CLIClusterOptions struct {
-	Radius ChartOptions
+	Radius  ChartOptions
+	Contour ChartOptions
 }
 
 type ClusterOptions struct {
@@ -82,13 +83,17 @@ func NewDefaultClusterOptions() ClusterOptions {
 func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions {
 	options := NewDefaultClusterOptions()
 
-	// If any of the CLI options are provided, override the default options.
+	// If any of the Radius CLI options are provided, override the default options.
 	if cliOptions.Radius.Reinstall {
 		options.Radius.Reinstall = cliOptions.Radius.Reinstall
 	}
 
 	if cliOptions.Radius.ChartPath != "" {
 		options.Radius.ChartPath = cliOptions.Radius.ChartPath
+	}
+
+	if cliOptions.Radius.ChartRepo != "" {
+		options.Radius.ChartRepo = cliOptions.Radius.ChartRepo
 	}
 
 	if len(cliOptions.Radius.SetArgs) > 0 {
@@ -101,6 +106,35 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 
 	if cliOptions.Radius.ChartVersion != "" {
 		options.Radius.ChartVersion = cliOptions.Radius.ChartVersion
+	}
+
+	if cliOptions.Radius.ChartRepo != "" {
+		options.Radius.ChartRepo = cliOptions.Radius.ChartRepo
+	}
+
+	// Apply Contour overrides
+	if cliOptions.Contour.Disabled {
+		options.Contour.Disabled = cliOptions.Contour.Disabled
+	}
+
+	if cliOptions.Contour.ChartVersion != "" {
+		options.Contour.ChartVersion = cliOptions.Contour.ChartVersion
+	}
+
+	if cliOptions.Contour.ChartRepo != "" {
+		options.Contour.ChartRepo = cliOptions.Contour.ChartRepo
+	}
+
+	if cliOptions.Contour.ChartPath != "" {
+		options.Contour.ChartPath = cliOptions.Contour.ChartPath
+	}
+
+	if len(cliOptions.Contour.SetArgs) > 0 {
+		options.Contour.SetArgs = cliOptions.Contour.SetArgs
+	}
+
+	if len(cliOptions.Contour.SetFileArgs) > 0 {
+		options.Contour.SetFileArgs = cliOptions.Contour.SetFileArgs
 	}
 
 	return options
@@ -165,11 +199,18 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
 
+	if clusterOptions.Contour.Disabled {
+		output.LogInfo("Contour is disabled, skipping installation")
+		return nil
+	}
+
 	// Install Contour
+	output.LogInfo("Installing Contour...")
 	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
+
 	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
 	if err != nil {
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)

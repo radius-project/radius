@@ -1,23 +1,20 @@
 extension radius
 
-@description('The URL of the server hosting test Terraform modules.')
-param moduleServer string
-
 @description('Username for Postgres db.')
-param userName string
+param username string
 
 @description('Password for Postgres db.')
 @secure()
 param password string
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'corerp-resources-terraform-pg-env'
+  name: 'app-postgres-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-terraform-pg-env'
+      namespace: 'app-postgres-env'
     }
     recipeConfig: {
       terraform: {
@@ -39,6 +36,10 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
             }
           ]
         }
+        version: {
+          version: '1.7.0'
+          releasesApiBaseUrl: 'http://localhost:8081/repository/terraform'
+        }
       }
       env: {
         PGPORT: '5432'
@@ -54,7 +55,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Core/extenders': {
         defaultpostgres: {
           templateKind: 'terraform'
-          templatePath: '${moduleServer}/postgres.zip'
+          templatePath: 'http://localhost:8081/repository/terraform-releases/modules/kubernetes/postgres/1.0.0/postgres.zip'
         }
       }
     }
@@ -62,14 +63,14 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
 }
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'corerp-resources-terraform-pg-app'
+  name: 'app-postgres'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'corerp-resources-terraform-pg-app'
+        namespace: 'app-postgres'
       }
     ]
   }
@@ -92,17 +93,17 @@ resource pgsapp 'Applications.Core/extenders@2023-10-01-preview' = {
 resource pgsecretstore 'Applications.Core/secretStores@2023-10-01-preview' = {
   name: 'pgs-secretstore'
   properties: {
-    resource: 'corerp-resources-terraform-pg-app/pgs-secretstore'
+    resource: 'app-postgres/pgs-secretstore'
     type: 'generic'
     data: {
       username: {
-        value: userName
+        value: username
       }
       password: {
         value: password
       }
       host: {
-        value: 'postgres.corerp-resources-terraform-pg-app.svc.cluster.local'
+        value: 'postgres.app-postgres.svc.cluster.local'
       }
     }
   }
