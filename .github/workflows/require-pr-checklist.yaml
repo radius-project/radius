@@ -6,7 +6,7 @@ on:
 
 jobs:
   checklist-completed:
-    if: github.actor != 'dependabot[bot]' # Skip for Dependabot PRs
+    if: github.event.pull_request.user.login != 'dependabot[bot]' # Skip for Dependabot PRs
     runs-on: ubuntu-latest
     steps:
       - uses: mheap/require-checklist-action@v2
