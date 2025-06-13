@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -116,7 +117,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 					},
 				},
 			}
-			properties, err := GetPropertiesFromResource(testResource)
+			properties, err := resourceutil.GetPropertiesFromResource(testResource)
 			require.NoError(t, err)
 
 			recipeData := recipes.ResourceMetadata{
