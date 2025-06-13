@@ -18,8 +18,10 @@ package container
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -37,6 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -731,34 +734,81 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				continue
 			}
 
-			// handles case where container has source field structured as a resourceID.
-			for key, value := range properties.ComputedValues {
-				name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
+			env, secretData = updateEnvAndSecretData(name, resource.Name, properties.ComputedValues, env, secretData)
 
-				source := corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: kubernetes.NormalizeResourceName(resource.Name),
-						},
-						Key: name,
-					},
+			if !resources.IsBuiltInType(con.Source) {
+				partialResource, err := resourceutil.GetPropertiesFromResource(properties.Resource)
+				if err != nil {
+					return nil, nil, err
 				}
-				switch v := value.(type) {
-				case string:
-					secretData[name] = []byte(v)
-					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-				case float64:
-					secretData[name] = []byte(strconv.Itoa(int(v)))
-					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-				case int:
-					secretData[name] = []byte(strconv.Itoa(v))
-					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-				}
+				env, secretData = updateEnvAndSecretData(name, resource.Name, partialResource, env, secretData)
 			}
 		}
 	}
 
 	return env, secretData, nil
+}
+
+func updateEnvAndSecretData(connName string, resourceName string, environmentVariablesInfo map[string]any, env map[string]corev1.EnvVar, secretData map[string][]byte) (updatedEnv map[string]corev1.EnvVar, updatedSecretData map[string][]byte) {
+	for key, value := range environmentVariablesInfo {
+		if slices.Contains(resourceutil.BasicProperties, key) {
+			continue
+		}
+		name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(connName), strings.ToUpper(key))
+		if _, exists := env[name]; exists {
+			continue
+		}
+		source := corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: kubernetes.NormalizeResourceName(resourceName),
+				},
+				Key: name,
+			},
+		}
+
+		var secretValue []byte
+		var err error
+
+		// We store primitives (strings, integers, floats) as their string representations in the secret.
+		// Ex: 123 is converted to "123", 12.34 is converted to "12.34".
+		// Arrays of integers and floats are stored as comma-separated strings (e.g., "1,2,3" for integers).
+		// Strings are stored as-is.
+		// For other types, we use JSON marshaling to convert them to a string representation.
+		// This allows us to handle complex types like arrays of strings, objects, arrays of objects, maps etc.
+		// When JSON marshaling fails, we skip the value and do not store it in the secret/ env variable.
+
+		switch v := value.(type) {
+		case string:
+			secretValue = []byte(v)
+		case float64:
+			secretValue = []byte(strconv.FormatFloat(v, 'f', -1, 64))
+		case int:
+			secretValue = []byte(strconv.Itoa(v))
+		case []int:
+			intValues := make([]string, len(v))
+			for i, val := range v {
+				intValues[i] = strconv.Itoa(val)
+			}
+			secretValue = []byte(strings.Join(intValues, ","))
+		case []float64:
+			floatValues := make([]string, len(v))
+			for i, val := range v {
+				floatValues[i] = strconv.FormatFloat(val, 'f', -1, 64)
+			}
+			secretValue = []byte(strings.Join(floatValues, ","))
+		default:
+			secretValue, err = json.Marshal(v)
+			if err != nil {
+				// Skip this value if JSON marshaling fails
+				continue
+			}
+		}
+
+		secretData[name] = secretValue
+		env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+	}
+	return env, secretData
 }
 
 func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Probe, error) {
