@@ -24,7 +24,7 @@ resource udttoudtenv 'Applications.Core/environments@2023-10-01-preview' = {
           templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_postgress_recipe:${version}'
         }
       }
-      'Test.Resources/parentudt': {
+      'Test.Resources/udtParent': {
         default: {
           templateKind: 'bicep'
           templatePath: '${registry}/test/testrecipes/test-bicep-recipes/parent-udt:${version}'
