@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package resourceutil
 
 import (
 	"encoding/json"
@@ -25,6 +25,9 @@ const (
 	errMarshalResource             = "failed to marshal resource"
 	errUnmarshalResourceProperties = "failed to unmarshal resource for properties"
 )
+
+// BasicProperties is a list of common properties that are expected to be present in all resources
+var BasicProperties = []string{"application", "environment", "status", "connections"}
 
 // GetPropertiesFromResource extracts the "properties" field from the resource
 // by serializing it to JSON and deserializing just the "properties" field.
