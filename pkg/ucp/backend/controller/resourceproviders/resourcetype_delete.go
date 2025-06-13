@@ -23,6 +23,7 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -122,12 +123,26 @@ func (c *ResourceTypeDeleteController) deleteApiVersion(ctx context.Context, api
 		return err
 	}
 
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Check if this API version is still being used by other resource types
+	// before deleting the database record
+	stillInUse, err := c.isAPIVersionInUseByOtherResourceTypes(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to check API version usage: %w", err)
+	}
+
+	if stillInUse {
+		logger.Info("Skipping API version database deletion - still in use by other resource types", "id", id.String())
+		return nil
+	}
+
+	// Proceed with database deletion since no other resource types are using this API version
 	client, err := v20231001preview.NewAPIVersionsClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.Connection))
 	if err != nil {
 		return err
 	}
 
-	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Beginning cascading delete of API version", "id", id.String())
 	poller, err := client.BeginDelete(
 		ctx,
@@ -147,6 +162,58 @@ func (c *ResourceTypeDeleteController) deleteApiVersion(ctx context.Context, api
 
 	logger.Info("Completed cascading delete of API version", "id", id.String())
 	return nil
+}
+
+// isAPIVersionInUseByOtherResourceTypes checks if the given API version is still being used
+// by other resource types in the same resource provider.
+func (c *ResourceTypeDeleteController) isAPIVersionInUseByOtherResourceTypes(ctx context.Context, apiVersionID resources.ID) (bool, error) {
+	// Extract the resource provider and API version name from the API version ID
+	// API version ID format: /planes/radius/local/providers/System.Resources/resourceProviders/Radius.Resources/resourceTypes/postgreSQL/apiVersions/2023-10-01-preview
+	resourceProviderName := apiVersionID.TypeSegments()[0].Name    // "Radius.Resources"
+	currentResourceTypeName := apiVersionID.TypeSegments()[1].Name // "postgreSQL"
+	apiVersionName := apiVersionID.Name()                          // "2023-10-01-preview"
+
+	// Get the resource provider summary to check what other resource types exist
+	summaryID, err := datamodel.ResourceProviderSummaryIDFromParts(
+		apiVersionID.RootScope(),
+		resourceProviderName,
+	)
+	if err != nil {
+		return false, err
+	}
+
+	obj, err := c.DatabaseClient().Get(ctx, summaryID.String())
+	if err != nil {
+		// If the summary doesn't exist, then no other resource types are using this API version
+		if errors.Is(err, &database.ErrNotFound{}) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	summary := &datamodel.ResourceProviderSummary{}
+	err = obj.As(summary)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if any other resource types (besides the current one being deleted)
+	// are using this API version
+	for resourceTypeName, resourceType := range summary.Properties.ResourceTypes {
+		// Skip the resource type that's currently being deleted
+		if resourceTypeName == currentResourceTypeName {
+			continue
+		}
+
+		// Check if this resource type has the same API version
+		if resourceType.APIVersions != nil {
+			if _, hasAPIVersion := resourceType.APIVersions[apiVersionName]; hasAPIVersion {
+				return true, nil // Found another resource type using this API version
+			}
+		}
+	}
+
+	return false, nil // No other resource types are using this API version
 }
 
 func (c *ResourceTypeDeleteController) updateSummary(id resources.ID) func(summary *datamodel.ResourceProviderSummary) error {
