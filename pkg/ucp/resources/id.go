@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -38,6 +39,13 @@ const (
 
 	ResourceGroupType = "System.Resources/resourceGroups"
 )
+
+var builtInProviders = []string{
+	"applications.core",
+	"applications.dapr",
+	"applications.messaging",
+	"applications.datastores",
+}
 
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() or ParseXyz()
 // to create IDs and use String() to convert back to strings.
@@ -901,4 +909,14 @@ func MakeRelativeID(scopes []ScopeSegment, resourceTypes []TypeSegment, extensio
 	}
 
 	return SegmentSeparator + strings.Join(segments, SegmentSeparator)
+}
+
+// IsBuiltInType checks if the resource ID refers to a built-in resource type.
+func IsBuiltInType(resourceID string) bool {
+	ri, err := Parse(resourceID)
+	if err != nil {
+		return false
+	}
+	provider := strings.ToLower(ri.ProviderNamespace())
+	return slices.Contains(builtInProviders, provider)
 }

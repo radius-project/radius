@@ -19,14 +19,17 @@ package container
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"testing"
 
 	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	azrenderer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
 	azvolrenderer "github.com/radius-project/radius/pkg/corerp/renderers/volume/azure"
+	dynamicrp_dm "github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -144,6 +147,26 @@ func makeRadiusResourceID(t *testing.T, resourceType string, resourceName string
 	return id
 }
 
+func makeDynamicResource() *dynamicrp_dm.DynamicResource {
+	return &dynamicrp_dm.DynamicResource{
+		BaseResource: apiv1.BaseResource{
+			TrackedResource: apiv1.TrackedResource{
+				ID:   "/planes/radius/local/resourceGroups/test-resourcegroup/providers/Applications.Test/testType/test-resource",
+				Type: "Applications.Test/testType",
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: "2024-01-01",
+			},
+		},
+		Properties: map[string]any{
+			"property1": "value1",
+			"property2": 2,
+			"property3": 3.14,
+			"status":    map[string]any{},
+		},
+	}
+}
+
 func Test_GetDependencyIDs_Success(t *testing.T) {
 	testStorageResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 	testAzureResourceID := makeAzureResourceID(t, "Microsoft.ServiceBus/namespaces", "testAzureResource")
@@ -171,6 +194,9 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			},
 			"testNonRadiusConnectionWithoutIAM": {
 				Source: testAzureResourceID.String(),
+			},
+			"testDynamicResourceConnection": {
+				Source: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource").String(),
 			},
 		},
 		Container: datamodel.Container{
@@ -229,12 +255,13 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	renderer := Renderer{}
 	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.NoError(t, err)
-	require.Len(t, radiusResourceIDs, 3)
+	require.Len(t, radiusResourceIDs, 4)
 	require.Len(t, azureResourceIDs, 1)
 
 	expectedRadiusResourceIDs := []resources.ID{
 		makeRadiusResourceID(t, "Applications.Datastores/redisCaches", "A"),
 		makeRadiusResourceID(t, "Applications.Datastores/redisCaches", "B"),
+		makeRadiusResourceID(t, "Applications.Test/testType", "test-resource"),
 		resources.MustParse(envVarSource3),
 	}
 	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
@@ -623,6 +650,9 @@ func Test_Render_Connections(t *testing.T) {
 			"containerB": {
 				Source: fmt.Sprintf("%s://%s:%s", containerConnectionScheme, containerConnectionHostname, containerConnectionPort),
 			},
+			"dynamicResource": {
+				Source: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource").String(),
+			},
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
@@ -644,6 +674,10 @@ func Test_Render_Connections(t *testing.T) {
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
 			},
+		},
+		(makeRadiusResourceID(t, "Applications.Test/testType", "test-resource").String()): {
+			ResourceID: makeRadiusResourceID(t, "Applications.Test/testType", "test-resource"),
+			Resource:   makeDynamicResource(),
 		},
 	}
 
@@ -702,6 +736,39 @@ func Test_Render_Connections(t *testing.T) {
 				Name:  "CONNECTION_CONTAINERB_SCHEME",
 				Value: containerConnectionScheme,
 			},
+			{
+				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY1",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY1",
+					},
+				},
+			},
+			{
+				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY2",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY2",
+					},
+				},
+			},
+			{
+				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY3",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY3",
+					},
+				},
+			},
 			{Name: envVarName1, Value: envVarValue1},
 			{Name: envVarName2, Value: envVarValue2},
 		}
@@ -721,9 +788,12 @@ func Test_Render_Connections(t *testing.T) {
 		require.Empty(t, secret.Annotations)
 
 		require.Equal(t, outputResource.LocalID, rpv1.LocalIDSecret)
-		require.Len(t, secret.Data, 2)
+		require.Len(t, secret.Data, 5)
 		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_A_COMPUTEDKEY1"]))
 		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
+		require.Equal(t, "value1", string(secret.Data["CONNECTION_DYNAMICRESOURCE_PROPERTY1"]))
+		require.Equal(t, "2", string(secret.Data["CONNECTION_DYNAMICRESOURCE_PROPERTY2"]))
+		require.Equal(t, "3.14", string(secret.Data["CONNECTION_DYNAMICRESOURCE_PROPERTY3"]))
 	})
 	require.Len(t, output.Resources, 5)
 }
@@ -1973,4 +2043,200 @@ func getAppSetup() *setupMaps {
 
 type setupMaps struct {
 	appKubeMetadataExt *datamodel.KubeMetadataExtension
+}
+
+func Test_updateEnvAndSecretData(t *testing.T) {
+	tests := []struct {
+		name                     string
+		connName                 string
+		resourceName             string
+		environmentVariablesInfo map[string]any
+		initialEnv               map[string]corev1.EnvVar
+		initialSecretData        map[string][]byte
+		expectedEnvKeys          []string
+		expectedSecretDataKeys   []string
+		expectedSecretDataValues map[string]string
+	}{
+		{
+			name:         "string value",
+			connName:     "redis",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"host": "redis.example.com",
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_REDIS_HOST"},
+			expectedSecretDataKeys: []string{"CONNECTION_REDIS_HOST"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_REDIS_HOST": "redis.example.com",
+			},
+		},
+		{
+			name:         "float64 value",
+			connName:     "database",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"timeout": 30.5,
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_DATABASE_TIMEOUT"},
+			expectedSecretDataKeys: []string{"CONNECTION_DATABASE_TIMEOUT"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_DATABASE_TIMEOUT": "30.5",
+			},
+		},
+		{
+			name:         "int value",
+			connName:     "database",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"port": 5432,
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_DATABASE_PORT"},
+			expectedSecretDataKeys: []string{"CONNECTION_DATABASE_PORT"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_DATABASE_PORT": "5432",
+			},
+		},
+		{
+			name:         "slice of strings",
+			connName:     "redis",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"endpoints": []string{"endpoint1", "endpoint2", "endpoint3", "endpoints,withcommas"},
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_REDIS_ENDPOINTS"},
+			expectedSecretDataKeys: []string{"CONNECTION_REDIS_ENDPOINTS"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_REDIS_ENDPOINTS": "[\"endpoint1\",\"endpoint2\",\"endpoint3\",\"endpoints,withcommas\"]",
+			},
+		},
+		{
+			name:         "slice of integers",
+			connName:     "database",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"ports": []int{5432, 5433, 5434},
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_DATABASE_PORTS"},
+			expectedSecretDataKeys: []string{"CONNECTION_DATABASE_PORTS"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_DATABASE_PORTS": "5432,5433,5434",
+			},
+		},
+		{
+			name:         "slice of floats",
+			connName:     "metrics",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"thresholds": []float64{1.5, 2.7, 3.14},
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_METRICS_THRESHOLDS"},
+			expectedSecretDataKeys: []string{"CONNECTION_METRICS_THRESHOLDS"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_METRICS_THRESHOLDS": "1.5,2.7,3.14",
+			},
+		},
+		{
+			name:         "map to JSON",
+			connName:     "auth",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"credentials": map[string]any{
+					"username": "admin",
+					"port":     8080,
+					"enabled":  true,
+				},
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_AUTH_CREDENTIALS"},
+			expectedSecretDataKeys: []string{"CONNECTION_AUTH_CREDENTIALS"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_AUTH_CREDENTIALS": `{"enabled":true,"port":8080,"username":"admin"}`,
+			},
+		},
+		{
+			name:         "skip basic properties",
+			connName:     "test",
+			resourceName: "test-container",
+			environmentVariablesInfo: map[string]any{
+				"application": "should-be-skipped", // Basic property
+				"environment": "should-be-skipped", // Basic property
+				"status":      "should-be-skipped", // Basic property
+				"connections": map[string]any{},    // Basic property
+				"validkey":    []string{"should", "be", "included"},
+			},
+			initialEnv:             map[string]corev1.EnvVar{},
+			initialSecretData:      map[string][]byte{},
+			expectedEnvKeys:        []string{"CONNECTION_TEST_VALIDKEY"},
+			expectedSecretDataKeys: []string{"CONNECTION_TEST_VALIDKEY"},
+			expectedSecretDataValues: map[string]string{
+				"CONNECTION_TEST_VALIDKEY": "[\"should\",\"be\",\"included\"]",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env := make(map[string]corev1.EnvVar)
+			for k, v := range tc.initialEnv {
+				env[k] = v
+			}
+			secretData := make(map[string][]byte)
+			for k, v := range tc.initialSecretData {
+				secretData[k] = v
+			}
+
+			updatedEnv, updatedSecretData := updateEnvAndSecretData(
+				tc.connName,
+				tc.resourceName,
+				tc.environmentVariablesInfo,
+				env,
+				secretData,
+			)
+
+			actualEnvKeys := []string{}
+			for key := range updatedEnv {
+				actualEnvKeys = append(actualEnvKeys, key)
+			}
+			sort.Strings(actualEnvKeys)
+			sort.Strings(tc.expectedEnvKeys)
+			require.Equal(t, tc.expectedEnvKeys, actualEnvKeys)
+
+			actualSecretKeys := []string{}
+			for key := range updatedSecretData {
+				actualSecretKeys = append(actualSecretKeys, key)
+			}
+			sort.Strings(actualSecretKeys)
+			sort.Strings(tc.expectedSecretDataKeys)
+			require.Equal(t, tc.expectedSecretDataKeys, actualSecretKeys)
+
+			for key, expectedValue := range tc.expectedSecretDataValues {
+				actualValue, exists := updatedSecretData[key]
+				require.True(t, exists, "Expected secret data key %s not found", key)
+				require.Equal(t, expectedValue, string(actualValue), "Secret data value mismatch for key %s", key)
+			}
+
+			for _, key := range tc.expectedEnvKeys {
+				envVar, exists := updatedEnv[key]
+				require.True(t, exists, "Expected environment variable %s not found", key)
+				require.Equal(t, key, envVar.Name)
+				require.NotNil(t, envVar.ValueFrom)
+				require.NotNil(t, envVar.ValueFrom.SecretKeyRef)
+				require.Equal(t, kubernetes.NormalizeResourceName(tc.resourceName), envVar.ValueFrom.SecretKeyRef.Name)
+				require.Equal(t, key, envVar.ValueFrom.SecretKeyRef.Key)
+			}
+		})
+	}
 }

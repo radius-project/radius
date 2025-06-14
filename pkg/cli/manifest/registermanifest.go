@@ -59,10 +59,10 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		}
 	}
 
-	logIfEnabled(logger, "Creating resource provider %s at location %s", resourceProvider.Namespace, locationName)
+	logIfEnabled(logger, "Creating resource provider %s at location %s", resourceProvider.Name, locationName)
 	err = retryOperation(ctx, func() error {
 		resourceProviderPoller, err := clientFactory.NewResourceProvidersClient().BeginCreateOrUpdate(
-			ctx, planeName, resourceProvider.Namespace,
+			ctx, planeName, resourceProvider.Name,
 			v20231001preview.ResourceProviderResource{
 				Location:   to.Ptr(locationName),
 				Properties: &v20231001preview.ResourceProviderProperties{},
@@ -89,9 +89,9 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 	}
 
 	for resourceTypeName, resourceType := range resourceProvider.Types {
-		logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Namespace, resourceTypeName)
+		logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, resourceTypeName)
 		err = retryOperation(ctx, func() error {
-			resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, resourceTypeName, v20231001preview.ResourceTypeResource{
+			resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, resourceTypeName, v20231001preview.ResourceTypeResource{
 				Properties: &v20231001preview.ResourceTypeProperties{
 					Capabilities:      to.SliceOfPtrs(resourceType.Capabilities...),
 					DefaultAPIVersion: resourceType.DefaultAPIVersion,
@@ -116,10 +116,10 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		}
 
 		for apiVersionName := range resourceType.APIVersions {
-			logIfEnabled(logger, "Creating API Version %s/%s@%s", resourceProvider.Namespace, resourceTypeName, apiVersionName)
+			logIfEnabled(logger, "Creating API Version %s/%s@%s", resourceProvider.Name, resourceTypeName, apiVersionName)
 			schema := resourceType.APIVersions[apiVersionName].Schema.(map[string]any)
 			err = retryOperation(ctx, func() error {
-				apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, resourceTypeName, apiVersionName, v20231001preview.APIVersionResource{
+				apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, resourceTypeName, apiVersionName, v20231001preview.APIVersionResource{
 					Properties: &v20231001preview.APIVersionProperties{
 						Schema: schema,
 					},
@@ -146,9 +146,9 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		locationResource.Properties.Address = to.Ptr(address)
 	}
 
-	logIfEnabled(logger, "Creating location %s/%s/%s", resourceProvider.Namespace, locationName, address)
+	logIfEnabled(logger, "Creating location %s/%s/%s", resourceProvider.Name, locationName, address)
 	err = retryOperation(ctx, func() error {
-		locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, locationName, locationResource, nil)
+		locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, locationName, locationResource, nil)
 		if err != nil {
 			return err
 		}
@@ -162,7 +162,7 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
-	_, err = clientFactory.NewResourceProvidersClient().Get(ctx, planeName, resourceProvider.Namespace, nil)
+	_, err = clientFactory.NewResourceProvidersClient().Get(ctx, planeName, resourceProvider.Name, nil)
 	if err != nil {
 		return err
 	}
@@ -234,10 +234,10 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return fmt.Errorf("type %s not found in manifest file %s", typeName, filePath)
 	}
 
-	logIfEnabled(logger, "Creating resource type %s/%s with capabilities %s ", resourceProvider.Namespace, typeName, strings.Join(resourceType.Capabilities, ","))
+	logIfEnabled(logger, "Creating resource type %s/%s with capabilities %s ", resourceProvider.Name, typeName, strings.Join(resourceType.Capabilities, ","))
 
 	err = retryOperation(ctx, func() error {
-		resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, typeName, v20231001preview.ResourceTypeResource{
+		resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, v20231001preview.ResourceTypeResource{
 			Properties: &v20231001preview.ResourceTypeProperties{
 				Capabilities:      to.SliceOfPtrs(resourceType.Capabilities...),
 				DefaultAPIVersion: resourceType.DefaultAPIVersion,
@@ -260,8 +260,8 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 	for apiVersionName := range resourceType.APIVersions {
 		schema := resourceType.APIVersions[apiVersionName].Schema.(map[string]any)
-		logIfEnabled(logger, "Creating API Version %s/%s@%s", resourceProvider.Namespace, typeName, apiVersionName)
-		apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, typeName, apiVersionName, v20231001preview.APIVersionResource{
+		logIfEnabled(logger, "Creating API Version %s/%s@%s", resourceProvider.Name, typeName, apiVersionName)
+		apiVersionsPoller, err := clientFactory.NewAPIVersionsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, apiVersionName, v20231001preview.APIVersionResource{
 			Properties: &v20231001preview.APIVersionProperties{
 				Schema: schema,
 			},
@@ -277,7 +277,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 	}
 
 	// get the existing location resource and update it with new resource type. We have to revisit this code once schema is finalized and validated.
-	locationResourceGetResponse, err := clientFactory.NewLocationsClient().Get(ctx, planeName, resourceProvider.Namespace, locationName, nil)
+	locationResourceGetResponse, err := clientFactory.NewLocationsClient().Get(ctx, planeName, resourceProvider.Name, locationName, nil)
 	if err != nil {
 		return err
 	}
@@ -300,8 +300,8 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		},
 	}
 
-	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Namespace, locationName)
-	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, locationName, locationResource, nil)
+	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Name, locationName)
+	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, locationName, locationResource, nil)
 	if err != nil {
 		return err
 	}
@@ -311,7 +311,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
-	logIfEnabled(logger, "Resource type %s/%s created successfully", resourceProvider.Namespace, typeName)
+	logIfEnabled(logger, "Resource type %s/%s created successfully", resourceProvider.Name, typeName)
 	return nil
 }
 

@@ -1,4 +1,4 @@
-namespace: MyCompany.CompanyName
+name: MyCompany.CompanyName
 types:
   testResource1:
     apiVersions:

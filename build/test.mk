@@ -58,64 +58,87 @@ test-get-envtools:
 test-validate-cli: ## Run cli integration tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
+.PHONY: test-functional-all
 test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-corerp test-functional-cli test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples test-functional-dynamicrp-noncloud ## Runs all functional tests
 
+.PHONY: test-functional-all-noncloud
 # Run all functional tests that do not require cloud resources
 test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud ## Runs all functional tests that do not require cloud resources
 
+.PHONY: test-functional-all-cloud
 # Run all functional tests that require cloud resources
 test-functional-all-cloud: test-functional-ucp-cloud test-functional-corerp-cloud
 
+.PHONY: test-functional-ucp
 test-functional-ucp: test-functional-ucp-noncloud test-functional-ucp-cloud ## Runs all UCP functional tests (both cloud and non-cloud)
 
+.PHONY: test-functional-ucp-noncloud
 test-functional-ucp-noncloud: ## Runs UCP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
+.PHONY: test-functional-ucp-cloud
 test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
+.PHONY: test-functional-kubernetes
 test-functional-kubernetes: test-functional-kubernetes-noncloud ## Runs all Kubernetes functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
+.PHONY: test-functional-kubernetes-noncloud
 test-functional-kubernetes-noncloud: ## Runs Kubernetes functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/kubernetes/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
+.PHONY: test-functional-corerp
 test-functional-corerp: test-functional-corerp-noncloud test-functional-corerp-cloud ## Runs all Core RP functional tests (both cloud and non-cloud)
 
+.PHONY: test-functional-corerp-noncloud
 test-functional-corerp-noncloud: ## Runs corerp functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
+.PHONY: test-functional-corerp-cloud
 test-functional-corerp-cloud: ## Runs corerp functional tests that require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
+.PHONY: test-functional-msgrp
 test-functional-msgrp: test-functional-msgrp-noncloud ## Runs all Messaging RP functional tests (both cloud and non-cloud)
 
+.PHONY: test-functional-msgrp-noncloud
 test-functional-msgrp-noncloud: ## Runs Messaging RP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/messagingrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
 
+.PHONY: test-functional-cli
 test-functional-cli: test-functional-cli-noncloud ## Runs all cli functional tests (both cloud and non-cloud)
 
+.PHONY: test-functional-cli-noncloud
 test-functional-cli-noncloud: ## Runs cli functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/cli/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
+.PHONY: test-functional-daprrp
 test-functional-daprrp: test-functional-daprrp-noncloud ## Runs all Dapr RP functional tests (both cloud and non-cloud)
 
+.PHONY: test-functional-daprrp-noncloud
 test-functional-daprrp-noncloud: ## Runs Dapr RP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
+.PHONY: test-functional-datastoresrp
 test-functional-datastoresrp: test-functional-datastoresrp-noncloud ## Runs all Datastores RP functional tests (non-cloud)
 
+.PHONY: test-functional-datastoresrp-noncloud
 test-functional-datastoresrp-noncloud: ## Runs Datastores RP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/datastoresrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
+.PHONY: test-functional-dynamicrp-noncloud
 test-functional-dynamicrp-noncloud: ## Runs Dynamic RP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
-	
+
+.PHONY: test-functional-samples
 test-functional-samples: test-functional-samples-noncloud ## Runs all Samples functional tests
 
+.PHONY: test-functional-samples-noncloud
 test-functional-samples-noncloud: ## Runs Samples functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/samples/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
+.PHONY: test-validate-bicep
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin/rad-bicep" ./build/validate-bicep.sh
 
@@ -131,4 +154,6 @@ test-ucp-spec-examples: oav-installed ## Validates UCP examples conform to UCP O
 	# @echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
 	# oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
 
-
+.PHONY: test-deploy-lrt-cluster
+test-deploy-aks-cluster: ## Deploys an AKS cluster to Azure for the long-running tests. Optional parameters: [TEST_AKS_AZURE_LOCATION=<location>] [TEST_AKS_RG=<resource group name>]
+	@bash ./build/test.sh
