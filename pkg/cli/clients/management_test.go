@@ -27,6 +27,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/cli/output"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -918,8 +919,72 @@ func Test_ResourceGroup(t *testing.T) {
 	})
 
 	t.Run("DeleteResourceGroup", func(t *testing.T) {
-		mock := NewMockresourceGroupClient(gomock.NewController(t))
+		ctrl := gomock.NewController(t)
+		mock := NewMockresourceGroupClient(ctrl)
+		envmock := NewMockenvironmentResourceClient(ctrl)
+		applicationResourceMock := NewMockapplicationResourceClient(ctrl)
+		genericResourceMock := NewMockgenericResourceClient(ctrl)
+		resourceProviderMock := NewMockresourceProviderClient(ctrl)
 		client := createClient(mock)
+		client.environmentResourceClientFactory = func(scope string) (environmentResourceClient, error) {
+			return envmock, nil
+		}
+		client.applicationResourceClientFactory = func(scope string) (applicationResourceClient, error) {
+			return applicationResourceMock, nil
+		}
+		client.resourceProviderClientFactory = func() (resourceProviderClient, error) {
+			return resourceProviderMock, nil
+		}
+		client.genericResourceClientFactory = func(scope string, resourceType string) (genericResourceClient, error) {
+			return genericResourceMock, nil
+		}
+		testResourceType := "Applications.Core/environments"
+		listPages := []corerp.EnvironmentsClientListByScopeResponse{
+			{
+				EnvironmentResourceListResult: corerp.EnvironmentResourceListResult{
+					Value: []*corerp.EnvironmentResource{
+						{
+							ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test1"),
+							Name:     to.Ptr("test1"),
+							Type:     &testResourceType,
+							Location: to.Ptr(v1.LocationGlobal),
+						},
+					},
+					NextLink: to.Ptr("0"),
+				},
+			},
+		}
+		applicationListPages := []corerp.ApplicationsClientListByScopeResponse{
+			{
+				ApplicationResourceListResult: corerp.ApplicationResourceListResult{
+					Value: []*corerp.ApplicationResource{
+						{
+							ID:       to.Ptr(testScope + "/providers/Applications.Core/applications/test-application"),
+							Name:     to.Ptr("test-application"),
+							Type:     to.Ptr("Applications.Core/applications"),
+							Location: to.Ptr(v1.LocationGlobal),
+							Properties: &corerp.ApplicationProperties{
+								Environment: to.Ptr(testScope + "/providers/Applications.Core/environments/test-environment"),
+							},
+						},
+					},
+					NextLink: to.Ptr("0"),
+				},
+			},
+		}
+		// Handle deletion of resources in the application.
+		applicationResourceMock.EXPECT().
+			NewListByScopePager(gomock.Any()).
+			Return(pager(applicationListPages)).AnyTimes()
+		envmock.EXPECT().
+			NewListByScopePager(gomock.Any()).
+			Return(pager(listPages))
+		envmock.EXPECT().
+			Delete(gomock.Any(), "test1", gomock.Any()).
+			DoAndReturn(func(ctx context.Context, s string, acdo *corerp.EnvironmentsClientDeleteOptions) (corerp.EnvironmentsClientDeleteResponse, error) {
+				setCapture(ctx, &http.Response{StatusCode: 200})
+				return corerp.EnvironmentsClientDeleteResponse{}, nil
+			})
 
 		mock.EXPECT().
 			Delete(gomock.Any(), "local", testResourceName, gomock.Any()).
@@ -928,7 +993,7 @@ func Test_ResourceGroup(t *testing.T) {
 				return ucp.ResourceGroupsClientDeleteResponse{}, nil
 			})
 
-		deleted, err := client.DeleteResourceGroup(context.Background(), "local", testResourceName)
+		deleted, err := client.DeleteResourceGroup(context.Background(), "local", testResourceName, &output.MockOutput{})
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
