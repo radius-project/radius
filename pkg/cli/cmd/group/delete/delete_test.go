@@ -20,12 +20,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -76,7 +80,9 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().DeleteResourceGroup(gomock.Any(), "local", "testrg").Return(true, nil).Times(1)
+			appManagementClient.EXPECT().ListEnvironmentsInResourceGroup(gomock.Any(), "testrg").Return([]corerpv20231001.EnvironmentResource{}, &azcore.ResponseError{
+				ErrorCode: v1.CodeNotFound,
+			}).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -93,11 +99,7 @@ func Test_Run(t *testing.T) {
 
 			expected := []any{
 				output.LogOutput{
-					Format: "deleting resource group %q ...\n",
-					Params: []any{"testrg"},
-				},
-				output.LogOutput{
-					Format: "resource group %q deleted",
+					Format: "resource group %q does not exist or already been deleted.",
 					Params: []any{"testrg"},
 				},
 			}
@@ -106,11 +108,17 @@ func Test_Run(t *testing.T) {
 
 		t.Run("Success (deleted)", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().DeleteResourceGroup(gomock.Any(), "local", "testrg").Return(false, nil).Times(1)
-
 			outputSink := &output.MockOutput{}
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().ListEnvironmentsInResourceGroup(gomock.Any(), "testrg").Return([]corerpv20231001.EnvironmentResource{
+				{
+					ID:       to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/test1"),
+					Name:     to.Ptr("test1"),
+					Type:     to.Ptr("Applications.Core/environments"),
+					Location: to.Ptr(v1.LocationGlobal),
+				},
+			}, nil).AnyTimes()
+			appManagementClient.EXPECT().DeleteResourceGroup(gomock.Any(), "local", "testrg", outputSink).Return(true, nil).Times(1)
 
 			runner := &Runner{
 				ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
@@ -125,11 +133,7 @@ func Test_Run(t *testing.T) {
 
 			expected := []any{
 				output.LogOutput{
-					Format: "deleting resource group %q ...\n",
-					Params: []any{"testrg"},
-				},
-				output.LogOutput{
-					Format: "resource group %q does not exist or has already been deleted",
+					Format: "resource group %q deleted",
 					Params: []any{"testrg"},
 				},
 			}
@@ -141,10 +145,10 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			outputSink := &output.MockOutput{}
-
+			appManagementClient.EXPECT().ListEnvironmentsInResourceGroup(gomock.Any(), "testrg").Return([]corerpv20231001.EnvironmentResource{}, nil).Times(1)
 			prompter := prompt.NewMockInterface(ctrl)
 			prompter.EXPECT().
-				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
+				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, "The resource group 'testrg' is empty. Are you sure you want to delete the resource group?").
 				Return(prompt.ConfirmNo, nil).
 				Times(1)
 
@@ -173,15 +177,18 @@ func Test_Run(t *testing.T) {
 
 	t.Run("Exit console with interrupt signal", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().ListEnvironmentsInResourceGroup(gomock.Any(), "testrg").Return([]corerpv20231001.EnvironmentResource{}, nil).Times(1)
 		outputSink := &output.MockOutput{}
 		prompter := prompt.NewMockInterface(ctrl)
 		prompter.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, "The resource group 'testrg' is empty. Are you sure you want to delete the resource group?").
 			Return("", &prompt.ErrExitConsole{}).
 			Times(1)
 
 		runner := &Runner{
+			ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:            &workspaces.Workspace{},
 			UCPResourceGroupName: "testrg",
 			Confirmation:         false,
 			InputPrompter:        prompter,
