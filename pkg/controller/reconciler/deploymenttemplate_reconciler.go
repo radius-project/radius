@@ -151,13 +151,13 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 			deploymentTemplate.Status.Operation = nil
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-			statusErr := r.Client.Status().Update(ctx, deploymentTemplate)
-			if statusErr != nil {
-				return ctrl.Result{}, statusErr
+			err := r.Client.Status().Update(ctx, deploymentTemplate)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
 
-			// Schedule a delayed retry (5 minutes)
-			retryDelay := 5 * time.Minute
+			// Schedule a delayed retry (1 minute)
+			retryDelay := 1 * time.Minute
 			logger.Info("Scheduling delayed retry for failed operation", "retryAfter", retryDelay)
 			return ctrl.Result{Requeue: true, RequeueAfter: retryDelay}, nil
 		}
@@ -304,14 +304,15 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 		logger.Error(err, "Unable to create or update resource.")
 		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
 
+		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-		statusErr := r.Client.Status().Update(ctx, deploymentTemplate)
-		if statusErr != nil {
-			return ctrl.Result{}, statusErr
+		err := r.Client.Status().Update(ctx, deploymentTemplate)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 
-		// Schedule a delayed retry (5 minutes)
-		retryDelay := 5 * time.Minute
+		// Schedule a delayed retry (1 minute)
+		retryDelay := 1 * time.Minute
 		logger.Info("Scheduling delayed retry for failed deployment", "retryAfter", retryDelay)
 		return ctrl.Result{Requeue: true, RequeueAfter: retryDelay}, nil
 	} else if updatePoller != nil {
