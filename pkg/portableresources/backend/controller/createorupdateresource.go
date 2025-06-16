@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/recipes/util"
+	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -171,7 +172,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	// Caller ensures recipeDataModel supports recipes and has a non-nil recipe
 	recipe := recipeDataModel.GetRecipe()
 
-	resourceProperties, err := GetPropertiesFromResource(resource)
+	resourceProperties, err := resourceutil.GetPropertiesFromResource(resource)
 	if err != nil {
 		return nil, err
 	}

@@ -570,7 +570,36 @@ func (s *CustomRegistrySource) extractFile(f *zip.File) (string, error) {
 	}
 	defer rc.Close()
 
-	execPath := filepath.Join(s.InstallDir, f.Name)
+	// Clean the file name to prevent directory traversal
+	cleanName := filepath.Base(f.Name)
+	if cleanName != f.Name {
+		return "", fmt.Errorf("invalid file path in archive: %s", f.Name)
+	}
+
+	// Additional validation: ensure the name doesn't contain any path separators
+	if strings.Contains(cleanName, "/") || strings.Contains(cleanName, "\\") {
+		return "", fmt.Errorf("invalid file name in archive: %s", f.Name)
+	}
+
+	// Construct the destination path safely
+	execPath := filepath.Join(s.InstallDir, cleanName)
+	
+	// Verify the final path is within InstallDir
+	absInstallDir, err := filepath.Abs(s.InstallDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute install directory: %w", err)
+	}
+	
+	absExecPath, err := filepath.Abs(execPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute exec path: %w", err)
+	}
+	
+	// Ensure the destination path is within the install directory
+	if !strings.HasPrefix(absExecPath, absInstallDir) {
+		return "", fmt.Errorf("invalid destination path: %s", execPath)
+	}
+
 	outFile, err := os.OpenFile(execPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 	if err != nil {
 		return "", err

@@ -69,6 +69,3 @@ hack/bicep-types-radius/generated/**/*.md
 
 # Bicep extensions
 *.tgz
-
-# Local deployment scripts
-local-deploy.sh

@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
@@ -70,7 +71,14 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir, options.EnvConfig.RecipeConfig.Terraform, options.Secrets)
+	
+	// Default to empty TerraformConfigProperties if not configured
+	terraformConfig := datamodel.TerraformConfigProperties{}
+	if options.EnvConfig != nil {
+		terraformConfig = options.EnvConfig.RecipeConfig.Terraform
+	}
+	
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -127,7 +135,14 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir, options.EnvConfig.RecipeConfig.Terraform, options.Secrets)
+	
+	// Default to empty TerraformConfigProperties if not configured
+	terraformConfig := datamodel.TerraformConfigProperties{}
+	if options.EnvConfig != nil {
+		terraformConfig = options.EnvConfig.RecipeConfig.Terraform
+	}
+	
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -186,7 +201,14 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir, options.EnvConfig.RecipeConfig.Terraform, options.Secrets)
+	
+	// Default to empty TerraformConfigProperties if not configured
+	terraformConfig := datamodel.TerraformConfigProperties{}
+	if options.EnvConfig != nil {
+		terraformConfig = options.EnvConfig.RecipeConfig.Terraform
+	}
+	
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
