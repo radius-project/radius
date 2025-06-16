@@ -170,12 +170,12 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 
 			deploymentResource.Status.Operation = nil
 			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
-			err = r.Client.Status().Update(ctx, deploymentResource)
-			if err != nil {
-				return ctrl.Result{}, err
+			statusErr := r.Client.Status().Update(ctx, deploymentResource)
+			if statusErr != nil {
+				return ctrl.Result{}, statusErr
 			}
 
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{}, err
 		}
 
 		// If we get here, the operation was a success. Update the status and continue.
@@ -246,7 +246,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 
 	if dependentResource != "" {
 		logger.Info("Resource is an application or environment, being used by another resource.", "resourceId", deploymentResource.Spec.Id, "dependentResource", dependentResource)
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{}, nil
 	}
 
 	deletePoller, err := r.startDeleteOperation(ctx, deploymentResource)
@@ -284,12 +284,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		}
 	}
 
-	// If we get here, then we're in a bad state. We should have removed the finalizer, but we didn't.
-	// We should requeue and try again.
-
-	logger.Info("Finalizer was not removed, requeueing.")
-
-	return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (sdkclients.Poller[sdkclients.ClientDeleteResponse], error) {

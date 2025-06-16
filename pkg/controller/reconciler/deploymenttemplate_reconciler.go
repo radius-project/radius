@@ -116,7 +116,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	if deploymentTemplate.DeletionTimestamp != nil {
+	if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil {
 		return r.reconcileDelete(ctx, &deploymentTemplate)
 	}
 
@@ -156,10 +156,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				return ctrl.Result{}, err
 			}
 
-			// Schedule a delayed retry (1 minute)
-			retryDelay := 1 * time.Minute
-			logger.Info("Scheduling delayed retry for failed operation", "retryAfter", retryDelay)
-			return ctrl.Result{Requeue: true, RequeueAfter: retryDelay}, nil
+			return ctrl.Result{}, nil
 		}
 
 		logger.Info("Creating output resources.")
@@ -306,15 +303,14 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-		err := r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
+		statusErr := r.Client.Status().Update(ctx, deploymentTemplate)
+		if statusErr != nil {
+			return ctrl.Result{}, statusErr
 		}
 
-		// Schedule a delayed retry (1 minute)
-		retryDelay := 1 * time.Minute
-		logger.Info("Scheduling delayed retry for failed deployment", "retryAfter", retryDelay)
-		return ctrl.Result{Requeue: true, RequeueAfter: retryDelay}, nil
+		// Return the error to the controller-runtime.
+		// This will cause the controller to requeue the request and retry the operation.
+		return ctrl.Result{}, err
 	} else if updatePoller != nil {
 		// We've successfully started an operation. Update the status and requeue.
 		token, err := updatePoller.ResumeToken()
@@ -386,11 +382,10 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 			err := r.Client.Delete(ctx, &resource)
 			if err != nil && !apierrors.IsNotFound(err) {
 				logger.Error(err, "Failed to delete owned resource, continuing with other resources", "resourceName", resource.Name)
-				// Continue with other resources rather than failing completely
 			}
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{}, fmt.Errorf("Requeuing to wait for owned resources to be deleted, %d remaining", len(ownedResources))
 	}
 
 	logger.Info("Resource is deleted.")
@@ -410,16 +405,8 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 	}
 
 	logger.Info("Finalizer was not removed, requeueing.")
-
 	err = r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// If we get here, then we're in a bad state. We should have removed the finalizer, but we didn't.
-	// We should requeue and try again.
-
-	return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (sdkclients.Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
