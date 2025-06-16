@@ -7,6 +7,14 @@ param username string
 @secure()
 param password string
 
+@description('GitLab Personal Access Token for accessing private modules')
+@secure()
+param gitlabPAT string
+
+// @description('Local Registry Server Token')
+// @secure()
+// param localRegistryToken string = 'test-token-123' // Default token for local testing
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'app-postgres-env'
   location: 'global'
@@ -36,9 +44,29 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
             }
           ]
         }
+        authentication: {
+          git: {
+            pat: {
+              'gitlab.com': {
+                secret: gitlabSecrets.id
+              }
+            }
+          }
+        }
+        // registry: {
+        //   mirror: 'https://4f69-2600-1700-5ab2-1200-6584-be2-b7b4-a66c.ngrok-free.app'
+        //   authentication: {
+        //     basic: {
+        //       secret: localRegistryBasicAuth.id
+        //     }
+        //   }
+        // }
         version: {
           version: '1.7.0'
-          releasesApiBaseUrl: 'http://localhost:8081/repository/terraform'
+          releasesApiBaseUrl: 'http://host.docker.internal:8081/repository/terraform'
+          tls: {
+            skipVerify: true
+          }
         }
       }
       env: {
@@ -55,7 +83,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Core/extenders': {
         defaultpostgres: {
           templateKind: 'terraform'
-          templatePath: 'http://localhost:8081/repository/terraform-releases/modules/kubernetes/postgres/1.0.0/postgres.zip'
+          templatePath: 'git::https://gitlab.com/ytimocin-group/ytimocin-project.git//terraform-modules/postgres-kubernetes?ref=postgres-kubernetes/v1.0.0'
         }
       }
     }
@@ -104,6 +132,52 @@ resource pgsecretstore 'Applications.Core/secretStores@2023-10-01-preview' = {
       }
       host: {
         value: 'postgres.app-postgres.svc.cluster.local'
+      }
+    }
+  }
+}
+
+resource gitlabSecrets 'Applications.Core/secretStores@2023-10-01-preview' = {
+  name: 'gitlab-secrets'
+  properties: {
+    resource: 'app-postgres-env/gitlab-secrets'
+    type: 'generic'
+    data: {
+      pat: {
+        value: gitlabPAT
+      }
+      username: {
+        value: 'oauth2' // GitLab supports oauth2 as username with PAT
+      }
+    }
+  }
+}
+
+// // Local registry token secret
+// resource localRegistryTokenSecret 'Applications.Core/secretStores@2023-10-01-preview' = {
+//   name: 'local-registry-token-secret'
+//   properties: {
+//     resource: 'app-postgres-env/local-registry-token-secret'
+//     type: 'generic'
+//     data: {
+//       token: {
+//         value: localRegistryToken
+//       }
+//     }
+//   }
+// }
+
+resource localRegistryBasicAuth 'Applications.Core/secretStores@2023-10-01-preview' = {
+  name: 'local-registry-basic-auth'
+  properties: {
+    resource: 'app-postgres-env/local-registry-basic-auth'
+    type: 'generic'
+    data: {
+      username: {
+        value: 'terraform'
+      }
+      password: {
+        value: 'test-token-123'
       }
     }
   }

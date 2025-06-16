@@ -115,10 +115,44 @@ func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][
 	registrySecretIDs := make(map[string][]string)
 	var mu sync.Mutex
 
-	if envConfig.RecipeConfig.Terraform.Registry != nil &&
-		envConfig.RecipeConfig.Terraform.Registry.Authentication.Token != nil {
-		token := envConfig.RecipeConfig.Terraform.Registry.Authentication.Token
-		addSecretKeys(registrySecretIDs, token.Source, token.Key, &mu)
+	// Handle registry authentication
+	if envConfig.RecipeConfig.Terraform.Registry != nil {
+		auth := envConfig.RecipeConfig.Terraform.Registry.Authentication
+		
+		// Basic authentication
+		if auth.Basic != nil && auth.Basic.Secret != "" {
+			// Basic auth needs username and password
+			addSecretKeys(registrySecretIDs, auth.Basic.Secret, "username", &mu)
+			addSecretKeys(registrySecretIDs, auth.Basic.Secret, "password", &mu)
+		}
+	}
+
+	// Handle version authentication for binary downloads
+	if envConfig.RecipeConfig.Terraform.Version != nil {
+		// Handle authentication
+		if envConfig.RecipeConfig.Terraform.Version.Authentication != nil {
+			if envConfig.RecipeConfig.Terraform.Version.Authentication.Basic != nil {
+				// Basic auth needs username and password
+				addSecretKeys(registrySecretIDs, envConfig.RecipeConfig.Terraform.Version.Authentication.Basic.Secret, "username", &mu)
+				addSecretKeys(registrySecretIDs, envConfig.RecipeConfig.Terraform.Version.Authentication.Basic.Secret, "password", &mu)
+			}
+		}
+		
+		// Handle TLS CA certificate
+		if envConfig.RecipeConfig.Terraform.Version.TLS != nil &&
+			envConfig.RecipeConfig.Terraform.Version.TLS.CACertificate != nil {
+			cert := envConfig.RecipeConfig.Terraform.Version.TLS.CACertificate
+			addSecretKeys(registrySecretIDs, cert.Source, cert.Key, &mu)
+		}
+		
+		// Handle TLS client certificate
+		if envConfig.RecipeConfig.Terraform.Version.TLS != nil &&
+			envConfig.RecipeConfig.Terraform.Version.TLS.ClientCertificate != nil {
+			clientCert := envConfig.RecipeConfig.Terraform.Version.TLS.ClientCertificate
+			// Client cert needs certificate and key
+			addSecretKeys(registrySecretIDs, clientCert.Secret, "certificate", &mu)
+			addSecretKeys(registrySecretIDs, clientCert.Secret, "key", &mu)
+		}
 	}
 
 	return registrySecretIDs
@@ -156,6 +190,12 @@ func addSecretKeys(secrets map[string][]string, secretStoreID, key string, mu *s
 	if _, ok := secrets[secretStoreID]; !ok {
 		secrets[secretStoreID] = []string{key}
 	} else {
+		// Check if key already exists to avoid duplicates
+		for _, existingKey := range secrets[secretStoreID] {
+			if existingKey == key {
+				return
+			}
+		}
 		secrets[secretStoreID] = append(secrets[secretStoreID], key)
 	}
 }

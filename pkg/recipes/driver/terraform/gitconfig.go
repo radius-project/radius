@@ -20,7 +20,9 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	git "github.com/go-git/go-git/v5"
@@ -75,7 +77,7 @@ func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, t
 	// Initialize a new Git repository in the terraform working directory.
 	_, err := git.PlainInit(workingDirectory, false)
 	if err != nil {
-		return fmt.Errorf("falied to initialize git in the working directory:%w", err)
+		return fmt.Errorf("failed to initialize git in the working directory:%w", err)
 	}
 
 	err = setGitConfigForDir(workingDirectory)
@@ -83,15 +85,25 @@ func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, t
 		return err
 	}
 
-	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
-	if err != nil {
-		return err
-	}
+	// Check if this is SSH authentication
+	if privateKey, ok := secrets["privateKey"]; ok {
+		// Handle SSH authentication
+		err = configureSSHAuth(workingDirectory, privateKey, secrets)
+		if err != nil {
+			return fmt.Errorf("failed to configure SSH authentication: %w", err)
+		}
+	} else {
+		// Handle PAT/username authentication
+		urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
+		if err != nil {
+			return err
+		}
 
-	cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", urlConfigKey, urlConfigValue)
-	_, err = cmd.Output()
-	if err != nil {
-		return errors.New("failed to add git config")
+		cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", urlConfigKey, urlConfigValue)
+		_, err = cmd.Output()
+		if err != nil {
+			return errors.New("failed to add git config")
+		}
 	}
 
 	return nil
@@ -181,6 +193,39 @@ func unsetGitConfigForDirIfApplicable(secretStoreID string, secretData map[strin
 	err := unsetGitConfigForDir(requestDirPath, secrets.Data, templatePath)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// configureSSHAuth sets up SSH authentication for Git operations
+func configureSSHAuth(workingDirectory string, privateKey string, secrets map[string]string) error {
+	// Create SSH directory
+	sshDir := filepath.Join(workingDirectory, ".ssh")
+	if err := os.MkdirAll(sshDir, 0700); err != nil {
+		return fmt.Errorf("failed to create SSH directory: %w", err)
+	}
+
+	// Write private key to file
+	keyPath := filepath.Join(sshDir, "id_rsa")
+	if err := os.WriteFile(keyPath, []byte(privateKey), 0600); err != nil {
+		return fmt.Errorf("failed to write SSH private key: %w", err)
+	}
+
+	// Configure Git to use SSH command with custom key
+	sshCommand := fmt.Sprintf("ssh -i %s -o IdentitiesOnly=yes", keyPath)
+	
+	// Handle StrictHostKeyChecking based on secrets
+	strictHostKey := "yes"
+	if strict, ok := secrets["strictHostKeyChecking"]; ok && strict == "false" {
+		strictHostKey = "no"
+	}
+	sshCommand += fmt.Sprintf(" -o StrictHostKeyChecking=%s", strictHostKey)
+	
+	// Set GIT_SSH_COMMAND for the git config
+	cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", "core.sshCommand", sshCommand)
+	if _, err := cmd.Output(); err != nil {
+		return fmt.Errorf("failed to set SSH command in git config: %w", err)
 	}
 
 	return nil

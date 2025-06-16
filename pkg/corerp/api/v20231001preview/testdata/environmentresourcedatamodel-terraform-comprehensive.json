@@ -1,0 +1,60 @@
+{
+  "id": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/environments/test-env",
+  "name": "test-env",
+  "type": "Applications.Core/environments",
+  "systemData": {},
+  "properties": {
+    "compute": {
+      "kind": "kubernetes",
+      "resourceId": "/planes/kubernetes/local/namespaces/test-namespace",
+      "namespace": "test-namespace",
+      "identity": null
+    },
+    "provisioningState": "Succeeded",
+    "recipeConfig": {
+      "terraform": {
+        "authentication": {
+          "git": {
+            "pat": {
+              "github.com": {
+                "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/github-pat"
+              },
+              "gitlab.com": {
+                "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/gitlab-pat"
+              }
+            }
+          }
+        },
+        "registry": {
+          "mirror": "https://terraform.example.com",
+          "providerMappings": {
+            "registry.terraform.io/hashicorp/aws": "terraform.example.com/providers/aws",
+            "registry.terraform.io/hashicorp/azurerm": "terraform.example.com/providers/azurerm"
+          },
+          "authentication": {
+            "pat": {
+              "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/registry-pat"
+            },
+            "additionalHosts": ["gitlab.com", "packages.gitlab.com"]
+          }
+        },
+        "version": {
+          "version": "1.7.0",
+          "releasesApiBaseUrl": "https://releases.example.com",
+          "tls": {
+            "skipVerify": true,
+            "caCertificate": {
+              "source": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/ca-cert",
+              "key": "ca-cert"
+            }
+          },
+          "authentication": {
+            "basic": {
+              "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/releases-basic"
+            }
+          }
+        }
+      }
+    }
+  }
+}

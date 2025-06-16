@@ -1,0 +1,34 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+  "name": "env0",
+  "type": "Applications.Core/environments",
+  "properties": {
+    "compute": {
+      "kind": "kubernetes",
+      "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+      "namespace": "default"
+    },
+    "recipeConfig": {
+      "terraform": {
+        "authentication": {
+          "git": {
+            "pat": {
+              "gitlab.com": {
+                "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/gitlabSecrets"
+              }
+            }
+          }
+        },
+        "registry": {
+          "mirror": "https://ytimocin-group.gitlab.io/terraform-registry/",
+          "authentication": {
+            "basic": {
+              "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/gitlabSecrets"
+            }
+          }
+        }
+      }
+    },
+    "provisioningState": "Accepted"
+  }
+}

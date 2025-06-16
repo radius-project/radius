@@ -319,7 +319,28 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 	}
 
 	if secretStoreID != "" {
-		secretStoreIDResourceKeys[secretStoreID] = []string{PrivateRegistrySecretKey_Pat, PrivateRegistrySecretKey_Username}
+		// Determine the authentication type to request appropriate keys
+		url, err := GetGitURL(definition.TemplatePath)
+		if err == nil {
+			hostname := strings.TrimPrefix(url.Hostname(), "www.")
+			authType := GetGitAuthType(envConfig, hostname)
+			
+			switch authType {
+			case "ssh":
+				// Request SSH-specific keys
+				secretStoreIDResourceKeys[secretStoreID] = []string{
+					SSHSecretKey_PrivateKey,
+					SSHSecretKey_Passphrase,
+					SSHSecretKey_StrictHostKeyChecking,
+				}
+			case "pat":
+				// Request PAT-specific keys
+				secretStoreIDResourceKeys[secretStoreID] = []string{
+					PrivateRegistrySecretKey_Pat,
+					PrivateRegistrySecretKey_Username,
+				}
+			}
+		}
 	}
 
 	// Get the secret IDs and associated keys in provider configuration and environment variables

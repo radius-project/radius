@@ -31,6 +31,11 @@ const (
 
 	PrivateRegistrySecretKey_Pat      = "pat"
 	PrivateRegistrySecretKey_Username = "username"
+	
+	// SSH authentication secret keys
+	SSHSecretKey_PrivateKey             = "privateKey"
+	SSHSecretKey_Passphrase             = "passphrase"
+	SSHSecretKey_StrictHostKeyChecking  = "strictHostKeyChecking"
 )
 
 // GetTerraformProviderFullName returns the full provider name including registry
@@ -65,7 +70,46 @@ func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePat
 		}
 
 		// get the secret store id associated with the git domain of the template path.
-		return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
+		hostname := strings.TrimPrefix(url.Hostname(), "www.")
+		
+		// Check for SSH authentication first
+		if envConfig.RecipeConfig.Terraform.Authentication.Git.SSH != nil {
+			if sshConfig, exists := envConfig.RecipeConfig.Terraform.Authentication.Git.SSH[hostname]; exists {
+				return sshConfig.Secret, nil
+			}
+		}
+		
+		// Check for PAT authentication
+		if envConfig.RecipeConfig.Terraform.Authentication.Git.PAT != nil {
+			if patConfig, exists := envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[hostname]; exists {
+				return patConfig.Secret, nil
+			}
+		}
+		// No authentication configured for this hostname
+		return "", nil
 	}
+
 	return "", nil
+}
+
+// GetGitAuthType returns the authentication type for a given hostname
+func GetGitAuthType(envConfig recipes.Configuration, hostname string) string {
+	// Normalize hostname
+	hostname = strings.TrimPrefix(hostname, "www.")
+	
+	// Check for SSH authentication first
+	if envConfig.RecipeConfig.Terraform.Authentication.Git.SSH != nil {
+		if _, exists := envConfig.RecipeConfig.Terraform.Authentication.Git.SSH[hostname]; exists {
+			return "ssh"
+		}
+	}
+	
+	// Check for PAT authentication
+	if envConfig.RecipeConfig.Terraform.Authentication.Git.PAT != nil {
+		if _, exists := envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[hostname]; exists {
+			return "pat"
+		}
+	}
+	
+	return "none"
 }

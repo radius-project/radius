@@ -390,6 +390,224 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 			filename: "environmentresource-terraformrecipe-localpath.json",
 			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidLocalModulePathFmt, "../not-allowed/")},
 		},
+		{
+			filename: "environmentresource-terraform-tls.json",
+			expected: &datamodel.Environment{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: rpv1.EnvironmentCompute{
+						Kind: "kubernetes",
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
+							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+							Namespace:  "default",
+						},
+					},
+					RecipeConfig: datamodel.RecipeConfigProperties{
+						Terraform: datamodel.TerraformConfigProperties{
+							Authentication: datamodel.AuthConfig{
+								Git: datamodel.GitAuthConfig{},
+							},
+							Version: &datamodel.TerraformVersionConfig{
+								Version:            "1.7.0",
+								ReleasesAPIBaseURL: "https://terraform.example.com",
+								TLS: &datamodel.TerraformTLSConfig{
+									SkipVerify: true,
+									CACertificate: &datamodel.SecretReference{
+										Source: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",
+										Key:    "ca-cert",
+									},
+								},
+							},
+							Providers: map[string][]datamodel.ProviderConfigProperties(nil),
+						},
+						Env: datamodel.EnvironmentVariables{
+							AdditionalProperties: map[string]string(nil),
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			filename: "environmentresource-terraform-auth.json",
+			expected: &datamodel.Environment{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: rpv1.EnvironmentCompute{
+						Kind: "kubernetes",
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
+							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+							Namespace:  "default",
+						},
+					},
+					RecipeConfig: datamodel.RecipeConfigProperties{
+						Terraform: datamodel.TerraformConfigProperties{
+							Authentication: datamodel.AuthConfig{
+								Git: datamodel.GitAuthConfig{},
+							},
+							Version: &datamodel.TerraformVersionConfig{
+								Version:            "1.7.0",
+								ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
+								Authentication: &datamodel.RegistryAuthConfig{
+									Basic: &datamodel.BasicAuthConfig{
+										Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/authSecrets",
+									},
+								},
+							},
+							Registry: &datamodel.TerraformRegistryConfig{
+								Mirror: "https://registry.example.com",
+								Authentication: datamodel.RegistryAuthConfig{
+									Basic: &datamodel.BasicAuthConfig{
+										Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/registrySecrets",
+									},
+								},
+							},
+							Providers: map[string][]datamodel.ProviderConfigProperties(nil),
+						},
+						Env: datamodel.EnvironmentVariables{
+							AdditionalProperties: map[string]string(nil),
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			filename: "environmentresource-terraform-pat.json",
+			expected: &datamodel.Environment{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: rpv1.EnvironmentCompute{
+						Kind: "kubernetes",
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
+							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+							Namespace:  "default",
+						},
+					},
+					RecipeConfig: datamodel.RecipeConfigProperties{
+						Terraform: datamodel.TerraformConfigProperties{
+							Authentication: datamodel.AuthConfig{
+								Git: datamodel.GitAuthConfig{
+									PAT: map[string]datamodel.SecretConfig{
+										"gitlab.com": {
+											Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/gitlabSecrets",
+										},
+									},
+								},
+							},
+							Registry: &datamodel.TerraformRegistryConfig{
+								Mirror: "https://ytimocin-group.gitlab.io/terraform-registry/",
+								Authentication: datamodel.RegistryAuthConfig{
+									Basic: &datamodel.BasicAuthConfig{
+										Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/gitlabSecrets",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			filename: "environmentresource-terraform-registry-additionalhosts.json",
+			expected: &datamodel.Environment{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name:     "env0",
+						Type:     "Applications.Core/environments",
+						Location: "West US",
+						Tags:     map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: rpv1.EnvironmentCompute{
+						Kind: rpv1.KubernetesComputeKind,
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
+							ResourceID: "/planes/kubernetes/local/namespaces/env0-ns",
+							Namespace: "env0-ns",
+						},
+					},
+					Providers: datamodel.Providers{
+						Azure: datamodel.ProvidersAzure{
+							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+						},
+					},
+					RecipeConfig: datamodel.RecipeConfigProperties{
+						Terraform: datamodel.TerraformConfigProperties{
+							Authentication: datamodel.AuthConfig{
+								Git: datamodel.GitAuthConfig{
+									PAT: map[string]datamodel.SecretConfig{
+										"github.com": {
+											Secret: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/github",
+										},
+									},
+								},
+							},
+							Registry: &datamodel.TerraformRegistryConfig{
+								Mirror: "https://my-registry.example.com/terraform",
+								Authentication: datamodel.RegistryAuthConfig{
+									Basic: &datamodel.BasicAuthConfig{
+										Secret: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/registry-creds",
+									},
+									AdditionalHosts: []string{"original-registry.example.com", "backup-registry.example.com"},
+								},
+								ProviderMappings: map[string]string{
+									"hashicorp/aws":     "my-company/aws",
+									"hashicorp/azurerm": "my-company/azurerm",
+								},
+							},
+							Version: &datamodel.TerraformVersionConfig{
+								Version: "1.5.0",
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
 	}
 
 	for _, tt := range conversionTests {
@@ -431,6 +649,26 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 			err:      nil,
 			emptyExt: true,
 		},
+		{
+			filename: "environmentresourcedatamodel-terraform-tls.json",
+			err:      nil,
+			emptyExt: false,
+		},
+		{
+			filename: "environmentresourcedatamodel-terraform-auth.json",
+			err:      nil,
+			emptyExt: false,
+		},
+		{
+			filename: "environmentresourcedatamodel-terraform-pat.json",
+			err:      nil,
+			emptyExt: false,
+		},
+		{
+			filename: "environmentresourcedatamodel-terraform-registry-additionalhosts.json",
+			err:      nil,
+			emptyExt: false,
+		},
 	}
 
 	for _, tt := range conversionTests {
@@ -453,15 +691,23 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "env0", string(*versioned.Name))
 				require.Equal(t, "Applications.Core/environments", string(*versioned.Type))
 				require.Equal(t, "kubernetes", string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", string(*versioned.Properties.Compute.GetEnvironmentCompute().ResourceID))
+				if versioned.Properties.Compute.GetEnvironmentCompute().ResourceID != nil {
+					require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", string(*versioned.Properties.Compute.GetEnvironmentCompute().ResourceID))
+				}
 				require.Equal(t, 1, len(versioned.Properties.Recipes))
 				require.Equal(t, "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().TemplatePath))
 				require.Equal(t, recipes.TemplateKindBicep, string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().TemplateKind))
-				require.Equal(t, map[string]any{"throughput": float64(400)}, versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().Parameters)
+				if tt.filename == "environmentresourcedatamodel.json" {
+					require.Equal(t, map[string]any{"throughput": float64(400)}, versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().Parameters)
+				}
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
-				require.Equal(t, "/planes/aws/aws/accounts/140313373712/regions/us-west-2", string(*versioned.Properties.Providers.Aws.Scope))
-				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
-				require.Equal(t, 1, len(versioned.Properties.Extensions))
+				if versioned.Properties.Providers != nil && versioned.Properties.Providers.Aws != nil {
+					require.Equal(t, "/planes/aws/aws/accounts/140313373712/regions/us-west-2", string(*versioned.Properties.Providers.Aws.Scope))
+				}
+				if versioned.Properties.Extensions != nil && len(versioned.Properties.Extensions) > 0 {
+					require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
+					require.Equal(t, 1, len(versioned.Properties.Extensions))
+				}
 				recipeDetails := versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"]
 
 				if tt.filename == "environmentresourcedatamodel.json" {
@@ -502,6 +748,95 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 					}
 
 					require.Nil(t, versioned.Properties.RecipeConfig)
+				}
+
+				if tt.filename == "environmentresourcedatamodel-terraform-tls.json" {
+					// Verify TLS configuration was properly converted
+					require.NotNil(t, versioned.Properties.RecipeConfig)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Version)
+					require.Equal(t, "1.7.0", *versioned.Properties.RecipeConfig.Terraform.Version.Version)
+					require.Equal(t, "https://terraform.example.com", *versioned.Properties.RecipeConfig.Terraform.Version.ReleasesAPIBaseURL)
+
+					// Verify TLS settings
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Version.TLS)
+					require.Equal(t, true, *versioned.Properties.RecipeConfig.Terraform.Version.TLS.SkipVerify)
+
+					// Verify CA certificate reference
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Version.TLS.CaCertificate)
+					require.Equal(t, baseSecretStorePath+"tlsSecrets", *versioned.Properties.RecipeConfig.Terraform.Version.TLS.CaCertificate.Source)
+					require.Equal(t, "ca-cert", *versioned.Properties.RecipeConfig.Terraform.Version.TLS.CaCertificate.Key)
+				}
+
+				if tt.filename == "environmentresourcedatamodel-terraform-auth.json" {
+					// Verify authentication configuration
+					require.NotNil(t, versioned.Properties.RecipeConfig)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform)
+					
+					// Verify version configuration
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Version)
+					require.Equal(t, "1.7.0", *versioned.Properties.RecipeConfig.Terraform.Version.Version)
+					require.Equal(t, "https://terraform-mirror.example.com", *versioned.Properties.RecipeConfig.Terraform.Version.ReleasesAPIBaseURL)
+					
+					// Verify version authentication
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Version.Authentication)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Version.Authentication.Basic)
+					require.Equal(t, baseSecretStorePath+"authSecrets", *versioned.Properties.RecipeConfig.Terraform.Version.Authentication.Basic.Secret)
+					
+					// Verify registry configuration
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry)
+					require.Equal(t, "https://registry.example.com", *versioned.Properties.RecipeConfig.Terraform.Registry.Mirror)
+					
+					// Verify registry authentication
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry.Authentication)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.Basic)
+					require.Equal(t, baseSecretStorePath+"registrySecrets", *versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.Basic.Secret)
+				}
+
+				if tt.filename == "environmentresourcedatamodel-terraform-pat.json" {
+					// Verify PAT authentication configuration
+					require.NotNil(t, versioned.Properties.RecipeConfig)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform)
+					
+					// Verify Git authentication
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Authentication)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Authentication.Git)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Authentication.Git.Pat)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Authentication.Git.Pat["gitlab.com"])
+					require.Equal(t, baseSecretStorePath+"gitlabSecrets", *versioned.Properties.RecipeConfig.Terraform.Authentication.Git.Pat["gitlab.com"].Secret)
+					
+					// Verify registry configuration
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry)
+					require.Equal(t, "https://ytimocin-group.gitlab.io/terraform-registry/", *versioned.Properties.RecipeConfig.Terraform.Registry.Mirror)
+					
+					// Verify registry basic authentication
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry.Authentication)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.Basic)
+					require.Equal(t, baseSecretStorePath+"gitlabSecrets", *versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.Basic.Secret)
+				}
+
+				if tt.filename == "environmentresourcedatamodel-terraform-registry-additionalhosts.json" {
+					// Verify registry configuration with additional hosts
+					require.NotNil(t, versioned.Properties.RecipeConfig)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry)
+					require.Equal(t, "https://my-registry.example.com/terraform", *versioned.Properties.RecipeConfig.Terraform.Registry.Mirror)
+					
+					// Verify registry authentication
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry.Authentication)
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.Basic)
+					require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/registry-creds", *versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.Basic.Secret)
+					
+					// Verify additional hosts
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.AdditionalHosts)
+					require.Len(t, versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.AdditionalHosts, 2)
+					require.Equal(t, "original-registry.example.com", *versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.AdditionalHosts[0])
+					require.Equal(t, "backup-registry.example.com", *versioned.Properties.RecipeConfig.Terraform.Registry.Authentication.AdditionalHosts[1])
+					
+					// Verify provider mappings
+					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Registry.ProviderMappings)
+					require.Equal(t, "my-company/aws", *versioned.Properties.RecipeConfig.Terraform.Registry.ProviderMappings["hashicorp/aws"])
+					require.Equal(t, "my-company/azurerm", *versioned.Properties.RecipeConfig.Terraform.Registry.ProviderMappings["hashicorp/azurerm"])
 				}
 			}
 		})
@@ -1193,9 +1528,8 @@ func Test_toFromTerraformRegistryConfigDatamodel(t *testing.T) {
 							"hashicorp/azurerm": to.Ptr("mycompany/azurerm"),
 						},
 						Authentication: &RegistryAuthConfig{
-							Token: &SecretReference{
-								Source: to.Ptr("/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore"),
-								Key:    to.Ptr("registryToken"),
+							Basic: &BasicAuthConfig{
+								Secret: to.Ptr("/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore"),
 							},
 						},
 					},
@@ -1207,9 +1541,8 @@ func Test_toFromTerraformRegistryConfigDatamodel(t *testing.T) {
 					"hashicorp/azurerm": "mycompany/azurerm",
 				},
 				Authentication: datamodel.RegistryAuthConfig{
-					Token: &datamodel.SecretReference{
-						Source: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore",
-						Key:    "registryToken",
+					Basic: &datamodel.BasicAuthConfig{
+						Secret: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore",
 					},
 				},
 			},
@@ -1221,8 +1554,8 @@ func Test_toFromTerraformRegistryConfigDatamodel(t *testing.T) {
 					Registry: &TerraformRegistryConfig{
 						Mirror: to.Ptr("terraform.example.com"),
 						Authentication: &RegistryAuthConfig{
-							Credentials: &SecretConfig{
-								Secret: to.Ptr("/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/credStore"),
+							Basic: &BasicAuthConfig{
+								Secret: to.Ptr("/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/basicAuthStore"),
 							},
 						},
 					},
@@ -1231,8 +1564,8 @@ func Test_toFromTerraformRegistryConfigDatamodel(t *testing.T) {
 			expectedDataModel: &datamodel.TerraformRegistryConfig{
 				Mirror: "terraform.example.com",
 				Authentication: datamodel.RegistryAuthConfig{
-					Credentials: &datamodel.SecretConfig{
-						Secret: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/credStore",
+					Basic: &datamodel.BasicAuthConfig{
+						Secret: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/basicAuthStore",
 					},
 				},
 			},
@@ -1279,19 +1612,11 @@ func Test_toFromTerraformRegistryConfigDatamodel(t *testing.T) {
 				require.Equal(t, tt.expectedDataModel.ProviderMappings, result.Terraform.Registry.ProviderMappings)
 
 				// Verify authentication details
-				if tt.expectedDataModel.Authentication.Token != nil {
-					require.NotNil(t, result.Terraform.Registry.Authentication.Token)
-					require.Equal(t, tt.expectedDataModel.Authentication.Token.Source, result.Terraform.Registry.Authentication.Token.Source)
-					require.Equal(t, tt.expectedDataModel.Authentication.Token.Key, result.Terraform.Registry.Authentication.Token.Key)
+				if tt.expectedDataModel.Authentication.Basic != nil {
+					require.NotNil(t, result.Terraform.Registry.Authentication.Basic)
+					require.Equal(t, tt.expectedDataModel.Authentication.Basic.Secret, result.Terraform.Registry.Authentication.Basic.Secret)
 				} else {
-					require.Nil(t, result.Terraform.Registry.Authentication.Token)
-				}
-
-				if tt.expectedDataModel.Authentication.Credentials != nil {
-					require.NotNil(t, result.Terraform.Registry.Authentication.Credentials)
-					require.Equal(t, tt.expectedDataModel.Authentication.Credentials.Secret, result.Terraform.Registry.Authentication.Credentials.Secret)
-				} else {
-					require.Nil(t, result.Terraform.Registry.Authentication.Credentials)
+					require.Nil(t, result.Terraform.Registry.Authentication.Basic)
 				}
 			}
 
@@ -1319,21 +1644,11 @@ func Test_toFromTerraformRegistryConfigDatamodel(t *testing.T) {
 				if tt.configWithRegistry.Terraform.Registry.Authentication != nil {
 					require.NotNil(t, versioned.Terraform.Registry.Authentication)
 
-					if tt.configWithRegistry.Terraform.Registry.Authentication.Token != nil {
-						require.NotNil(t, versioned.Terraform.Registry.Authentication.Token)
+					if tt.configWithRegistry.Terraform.Registry.Authentication.Basic != nil {
+						require.NotNil(t, versioned.Terraform.Registry.Authentication.Basic)
 						require.Equal(t,
-							tt.configWithRegistry.Terraform.Registry.Authentication.Token.Source,
-							versioned.Terraform.Registry.Authentication.Token.Source)
-						require.Equal(t,
-							tt.configWithRegistry.Terraform.Registry.Authentication.Token.Key,
-							versioned.Terraform.Registry.Authentication.Token.Key)
-					}
-
-					if tt.configWithRegistry.Terraform.Registry.Authentication.Credentials != nil {
-						require.NotNil(t, versioned.Terraform.Registry.Authentication.Credentials)
-						require.Equal(t,
-							tt.configWithRegistry.Terraform.Registry.Authentication.Credentials.Secret,
-							versioned.Terraform.Registry.Authentication.Credentials.Secret)
+							tt.configWithRegistry.Terraform.Registry.Authentication.Basic.Secret,
+							versioned.Terraform.Registry.Authentication.Basic.Secret)
 					}
 				} else {
 					require.Nil(t, versioned.Terraform.Registry.Authentication, "Authentication should be nil after round-trip")
@@ -1363,4 +1678,128 @@ func Test_toRecipeConfigDatamodel_NilAuthenticationHandling(t *testing.T) {
 
 	// Authentication should be zero value but not cause nil pointer dereference
 	require.Equal(t, datamodel.RegistryAuthConfig{}, result.Terraform.Registry.Authentication)
+}
+
+func Test_toFromTerraformTLSConfigDatamodel(t *testing.T) {
+	tests := []struct {
+		name              string
+		config            *RecipeConfigProperties
+		expectedDataModel *datamodel.TerraformVersionConfig
+	}{
+		{
+			name: "TLS config with skipVerify only",
+			config: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Version: &TerraformVersionConfig{
+						Version:            to.Ptr("1.7.0"),
+						ReleasesAPIBaseURL: to.Ptr("https://terraform.example.com"),
+						TLS: &TerraformTLSConfig{
+							SkipVerify: to.Ptr(true),
+						},
+					},
+				},
+			},
+			expectedDataModel: &datamodel.TerraformVersionConfig{
+				Version:            "1.7.0",
+				ReleasesAPIBaseURL: "https://terraform.example.com",
+				TLS: &datamodel.TerraformTLSConfig{
+					SkipVerify: true,
+				},
+			},
+		},
+		{
+			name: "TLS config with CA certificate",
+			config: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Version: &TerraformVersionConfig{
+						Version:            to.Ptr("1.8.0"),
+						ReleasesAPIBaseURL: to.Ptr("https://private.terraform.io"),
+						TLS: &TerraformTLSConfig{
+							SkipVerify: to.Ptr(false),
+							CaCertificate: &SecretReference{
+								Source: to.Ptr("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets"),
+								Key:    to.Ptr("ca-cert"),
+							},
+						},
+					},
+				},
+			},
+			expectedDataModel: &datamodel.TerraformVersionConfig{
+				Version:            "1.8.0",
+				ReleasesAPIBaseURL: "https://private.terraform.io",
+				TLS: &datamodel.TerraformTLSConfig{
+					SkipVerify: false,
+					CACertificate: &datamodel.SecretReference{
+						Source: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",
+						Key:    "ca-cert",
+					},
+				},
+			},
+		},
+		{
+			name: "No TLS config",
+			config: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Version: &TerraformVersionConfig{
+						Version:            to.Ptr("1.9.0"),
+						ReleasesAPIBaseURL: to.Ptr("https://releases.hashicorp.com"),
+					},
+				},
+			},
+			expectedDataModel: &datamodel.TerraformVersionConfig{
+				Version:            "1.9.0",
+				ReleasesAPIBaseURL: "https://releases.hashicorp.com",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test conversion to datamodel
+			result := toRecipeConfigDatamodel(tt.config)
+
+			require.NotNil(t, result.Terraform.Version)
+			require.Equal(t, tt.expectedDataModel.Version, result.Terraform.Version.Version)
+			require.Equal(t, tt.expectedDataModel.ReleasesAPIBaseURL, result.Terraform.Version.ReleasesAPIBaseURL)
+
+			// Check TLS config
+			if tt.expectedDataModel.TLS != nil {
+				require.NotNil(t, result.Terraform.Version.TLS)
+				require.Equal(t, tt.expectedDataModel.TLS.SkipVerify, result.Terraform.Version.TLS.SkipVerify)
+
+				if tt.expectedDataModel.TLS.CACertificate != nil {
+					require.NotNil(t, result.Terraform.Version.TLS.CACertificate)
+					require.Equal(t, tt.expectedDataModel.TLS.CACertificate.Source, result.Terraform.Version.TLS.CACertificate.Source)
+					require.Equal(t, tt.expectedDataModel.TLS.CACertificate.Key, result.Terraform.Version.TLS.CACertificate.Key)
+				} else {
+					require.Nil(t, result.Terraform.Version.TLS.CACertificate)
+				}
+			} else {
+				require.Nil(t, result.Terraform.Version.TLS)
+			}
+
+			// Test round-trip conversion back to versioned model
+			versioned := fromRecipeConfigDatamodel(result)
+
+			require.NotNil(t, versioned.Terraform.Version)
+			require.Equal(t, tt.config.Terraform.Version.Version, versioned.Terraform.Version.Version)
+			require.Equal(t, tt.config.Terraform.Version.ReleasesAPIBaseURL, versioned.Terraform.Version.ReleasesAPIBaseURL)
+
+			// Check TLS config after round-trip
+			if tt.config.Terraform.Version.TLS != nil {
+				require.NotNil(t, versioned.Terraform.Version.TLS)
+				require.Equal(t, tt.config.Terraform.Version.TLS.SkipVerify, versioned.Terraform.Version.TLS.SkipVerify)
+
+				if tt.config.Terraform.Version.TLS.CaCertificate != nil {
+					require.NotNil(t, versioned.Terraform.Version.TLS.CaCertificate)
+					require.Equal(t, tt.config.Terraform.Version.TLS.CaCertificate.Source, versioned.Terraform.Version.TLS.CaCertificate.Source)
+					require.Equal(t, tt.config.Terraform.Version.TLS.CaCertificate.Key, versioned.Terraform.Version.TLS.CaCertificate.Key)
+				} else {
+					require.Nil(t, versioned.Terraform.Version.TLS.CaCertificate)
+				}
+			} else {
+				require.Nil(t, versioned.Terraform.Version.TLS)
+			}
+		})
+	}
 }

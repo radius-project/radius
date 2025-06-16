@@ -17,242 +17,387 @@ limitations under the License.
 package terraform
 
 import (
-	"os"
-	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewTerraform_Success(t *testing.T) {
-	// Create a temporary directory for testing.
-	testDir := t.TempDir()
-	execPath := filepath.Join(testDir, "terraform")
-	expectedWorkingDir := filepath.Join(testDir, executionSubDir)
-
-	tf, err := NewTerraform(testcontext.New(t), testDir, execPath)
-	require.NoError(t, err)
-	require.Equal(t, expectedWorkingDir, tf.WorkingDir())
-}
-
-func TestNewTerraform_InvalidDir(t *testing.T) {
-	// Create a temporary directory for testing.
-	testDir := t.TempDir()
-	// Create a read-only directory within the temporary directory.
-	readOnlyDir := filepath.Join(testDir, "read-only-dir")
-	err := os.MkdirAll(readOnlyDir, 0555)
-	require.NoError(t, err)
-
-	execPath := filepath.Join(testDir, "terraform")
-
-	// Call NewTerraform with read only root directory.
-	_, err = NewTerraform(testcontext.New(t), readOnlyDir, execPath)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to create working directory for terraform execution")
-}
-
-func TestNewTerraform_EmptyExecPath(t *testing.T) {
-	// Create a temporary directory for testing.
-	testDir := t.TempDir()
-
-	// Call NewTerraform with an empty exec path.
-	_, err := NewTerraform(testcontext.New(t), testDir, "")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to initialize Terraform: no suitable terraform binary could be found")
-}
-
-func TestCreateWorkingDir_Created(t *testing.T) {
-	// Create a temporary directory for testing.
-	testDir := t.TempDir()
-
-	expectedWorkingDir := filepath.Join(testDir, executionSubDir)
-	workingDir, err := createWorkingDir(testcontext.New(t), testDir)
-	require.NoError(t, err)
-	require.Equal(t, expectedWorkingDir, workingDir)
-
-	// Assert that the working directory was created.
-	_, err = os.Stat(workingDir)
-	require.NoError(t, err)
-}
-
-func TestCreateWorkingDir_Error(t *testing.T) {
-	// Create a temporary directory for testing.
-	testDir := t.TempDir()
-	// Create a read-only directory within the temporary directory.
-	readOnlyDir := filepath.Join(testDir, "read-only-dir")
-	err := os.MkdirAll(readOnlyDir, 0555)
-	require.NoError(t, err)
-
-	// Call createWorkingDir with the read-only directory.
-	_, err = createWorkingDir(testcontext.New(t), readOnlyDir)
-
-	// Assert that createWorkingDir returns an error.
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to create working directory")
-}
-
-// TestGetProviderEnvSecretIDs tests the GetProviderEnvSecretIDs function which is a wrapper around the
-// extractProviderSecretIDs and extractEnvSecretIDs functions.
-func TestGetProviderEnvSecretIDs(t *testing.T) {
+func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 	tests := []struct {
-		name      string
-		envConfig recipes.Configuration
-		want      map[string][]string
+		name       string
+		envConfig  recipes.Configuration
+		wantLength int
+		wantKeys   map[string][]string
 	}{
 		{
-			name: "both env and provider secrets populated",
+			name: "no terraform config",
 			envConfig: recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Terraform: datamodel.TerraformConfigProperties{
-						Providers: map[string][]datamodel.ProviderConfigProperties{
-							"aws": {
-								{
-									Secrets: map[string]datamodel.SecretReference{
-										"aws_secret1": {Source: "my-app-secret-source-id", Key: "secret-key1"},
-									},
-								},
-							},
-						},
-					},
-					EnvSecrets: map[string]datamodel.SecretReference{
-						"env_secret1": {Source: "my-env-secret-source-id", Key: "secret-key2"},
-					},
-				},
+				RecipeConfig: datamodel.RecipeConfigProperties{},
 			},
-			want: map[string][]string{
-				"my-app-secret-source-id": {"secret-key1"},
-				"my-env-secret-source-id": {"secret-key2"},
-			},
+			wantLength: 0,
+			wantKeys:   map[string][]string{},
 		},
 		{
-			name: "provider secret populated",
+			name: "registry authentication only",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Providers: map[string][]datamodel.ProviderConfigProperties{
-							"aws": {
-								{
-									Secrets: map[string]datamodel.SecretReference{
-										"aws_secret1": {Source: "my-app-secret-source-id", Key: "secret-key1"},
-									},
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/registry",
 								},
 							},
 						},
 					},
 				},
 			},
-			want: map[string][]string{
-				"my-app-secret-source-id": {"secret-key1"},
+			wantLength: 1,
+			wantKeys: map[string][]string{
+				"/secret/store/registry": {"username", "password"},
 			},
 		},
 		{
-			name: "env secret populated",
-			envConfig: recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					EnvSecrets: map[string]datamodel.SecretReference{
-						"env_secret1": {Source: "my-env-secret-source-id", Key: "secret-key-env"},
-					},
-				},
-			},
-			want: map[string][]string{
-				"my-env-secret-source-id": {"secret-key-env"},
-			},
-		},
-		{
-			name: "secrets are declared nil",
+			name: "version authentication only",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Providers: map[string][]datamodel.ProviderConfigProperties{
-							"aws": {
-								{
-									Secrets: nil,
+						Version: &datamodel.TerraformVersionConfig{
+							Version:            "1.7.0",
+							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
+							Authentication: &datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/version",
 								},
 							},
 						},
 					},
-					EnvSecrets: nil,
 				},
 			},
-			want: map[string][]string{},
+			wantLength: 1,
+			wantKeys: map[string][]string{
+				"/secret/store/version": {"username", "password"},
+			},
 		},
 		{
-			name: "secrets are nil",
+			name: "both registry and version authentication",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Providers: map[string][]datamodel.ProviderConfigProperties{
-							"aws": {},
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/registry",
+								},
+							},
+						},
+						Version: &datamodel.TerraformVersionConfig{
+							Version:            "1.7.0",
+							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
+							Authentication: &datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/version",
+								},
+							},
 						},
 					},
 				},
 			},
-			want: map[string][]string{},
+			wantLength: 2,
+			wantKeys: map[string][]string{
+				"/secret/store/registry": {"username", "password"},
+				"/secret/store/version":  {"username", "password"},
+			},
+		},
+		{
+			name: "version with TLS CA certificate",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Version: &datamodel.TerraformVersionConfig{
+							Version:            "1.7.0",
+							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
+							TLS: &datamodel.TerraformTLSConfig{
+								CACertificate: &datamodel.SecretReference{
+									Source: "/secret/store/tls",
+									Key:    "ca-cert",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 1,
+			wantKeys: map[string][]string{
+				"/secret/store/tls": {"ca-cert"},
+			},
+		},
+		{
+			name: "all authentication types",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/registry",
+								},
+							},
+						},
+						Version: &datamodel.TerraformVersionConfig{
+							Version:            "1.7.0",
+							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
+							Authentication: &datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/version",
+								},
+							},
+							TLS: &datamodel.TerraformTLSConfig{
+								CACertificate: &datamodel.SecretReference{
+									Source: "/secret/store/tls",
+									Key:    "ca-cert",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 3,
+			wantKeys: map[string][]string{
+				"/secret/store/registry": {"username", "password"},
+				"/secret/store/version":  {"username", "password"},
+				"/secret/store/tls":      {"ca-cert"},
+			},
+		},
+		{
+			name: "same secret store for multiple purposes",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/shared",
+								},
+							},
+						},
+						Version: &datamodel.TerraformVersionConfig{
+							Version:            "1.7.0",
+							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
+							Authentication: &datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/shared",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 1,
+			wantKeys: map[string][]string{
+				"/secret/store/shared": {"username", "password"},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			providerSecretIDs := GetProviderEnvSecretIDs(tt.envConfig)
-			require.Equal(t, tt.want, providerSecretIDs)
+			got := GetTerraformRegistrySecretIDs(tt.envConfig)
+			
+			// Check total number of secret stores
+			require.Equal(t, tt.wantLength, len(got))
+			
+			// Check each expected secret store and its keys
+			for secretStore, expectedKeys := range tt.wantKeys {
+				gotKeys, ok := got[secretStore]
+				require.True(t, ok, "expected secret store %s not found", secretStore)
+				
+				// Sort both slices for comparison since order doesn't matter
+				require.ElementsMatch(t, expectedKeys, gotKeys, "keys don't match for secret store %s", secretStore)
+			}
 		})
 	}
 }
 
-func TestAddSecretKeys(t *testing.T) {
+func TestGetTerraformRegistrySecretIDs_NewAuthMethods(t *testing.T) {
 	tests := []struct {
-		name           string
-		secrets        map[string][]string
-		secretStoreID  string
-		key            string
-		expectedResult map[string][]string
+		name       string
+		envConfig  recipes.Configuration
+		wantLength int
+		wantKeys   map[string][]string
 	}{
 		{
-			name:           "Add to empty map",
-			secrets:        make(map[string][]string),
-			secretStoreID:  "store1",
-			key:            "key1",
-			expectedResult: map[string][]string{"store1": {"key1"}},
+			name: "PAT authentication",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/pat",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 1,
+			wantKeys: map[string][]string{
+				"/secret/store/pat": {"username", "password"},
+			},
 		},
 		{
-			name:           "Add new key to existing store",
-			secrets:        map[string][]string{"store1": {"key1"}},
-			secretStoreID:  "store1",
-			key:            "key2",
-			expectedResult: map[string][]string{"store1": {"key1", "key2"}},
+			name: "Basic authentication",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/basic",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 1,
+			wantKeys: map[string][]string{
+				"/secret/store/basic": {"username", "password"},
+			},
 		},
 		{
-			name:           "Add key to new store",
-			secrets:        map[string][]string{"store1": {"key1"}},
-			secretStoreID:  "store2",
-			key:            "key1",
-			expectedResult: map[string][]string{"store1": {"key1"}, "store2": {"key1"}},
+			name: "Client certificate authentication",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/client-cert",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 1,
+			wantKeys: map[string][]string{
+				"/secret/store/client-cert": {"username", "password"},
+			},
 		},
 		{
-			name:           "Ignore empty secretStoreID",
-			secrets:        map[string][]string{"store1": {"key1"}},
-			secretStoreID:  "",
-			key:            "key1",
-			expectedResult: map[string][]string{"store1": {"key1"}},
+			name: "Basic authentication for headers",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/headers",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 1,
+			wantKeys: map[string][]string{
+				"/secret/store/headers": {"username", "password"},
+			},
 		},
 		{
-			name:           "Ignore empty key",
-			secrets:        map[string][]string{"store1": {"key1"}},
-			secretStoreID:  "store1",
-			key:            "",
-			expectedResult: map[string][]string{"store1": {"key1"}},
+			name: "Multiple authentication methods",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "/secret/store/pat",
+								},
+							},
+						},
+						Version: &datamodel.TerraformVersionConfig{
+							TLS: &datamodel.TerraformTLSConfig{
+								ClientCertificate: &datamodel.ClientCertConfig{
+									Secret: "/secret/store/tls-client",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 2,
+			wantKeys: map[string][]string{
+				"/secret/store/pat":        {"username", "password"},
+				"/secret/store/tls-client": {"certificate", "key"},
+			},
+		},
+		{
+			name: "Empty additional hosts",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								AdditionalHosts: []string{},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 0,
+			wantKeys:   map[string][]string{},
+		},
+		{
+			name: "Basic auth with empty secret",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							Mirror: "https://registry.example.com",
+							Authentication: datamodel.RegistryAuthConfig{
+								Basic: &datamodel.BasicAuthConfig{
+									Secret: "",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 0,
+			wantKeys: map[string][]string{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mu := &sync.Mutex{}
-			addSecretKeys(tt.secrets, tt.secretStoreID, tt.key, mu)
-			require.Equal(t, tt.expectedResult, tt.secrets)
+			got := GetTerraformRegistrySecretIDs(tt.envConfig)
+			
+			// Check total number of secret stores
+			require.Equal(t, tt.wantLength, len(got))
+			
+			// Check each expected secret store and its keys
+			for secretStore, expectedKeys := range tt.wantKeys {
+				gotKeys, ok := got[secretStore]
+				require.True(t, ok, "expected secret store %s not found", secretStore)
+				
+				// Sort both slices for comparison since order doesn't matter
+				require.ElementsMatch(t, expectedKeys, gotKeys, "keys don't match for secret store %s", secretStore)
+			}
 		})
 	}
 }

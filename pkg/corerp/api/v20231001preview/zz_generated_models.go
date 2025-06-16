@@ -233,6 +233,13 @@ type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
 	Type *string
 }
 
+// BasicAuthConfig - Basic HTTP authentication configuration.
+type BasicAuthConfig struct {
+// The ID of an Applications.Core/SecretStore resource containing the basic authentication credentials. The secret store must
+// have secrets named 'username' and 'password'.
+	Secret *string
+}
+
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
 // deployment.
 type BicepConfigProperties struct {
@@ -285,6 +292,14 @@ type CertificateObjectProperties struct {
 
 // Certificate version
 	Version *string
+}
+
+// ClientCertConfig - Client certificate (mTLS) configuration for authentication.
+type ClientCertConfig struct {
+// The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have
+// secrets named 'cert' and 'key' containing the PEM-encoded certificate and
+// private key. A secret named 'passphrase' is optional, containing the passphrase for the private key.
+	Secret *string
 }
 
 // ConnectionProperties - Connection Properties
@@ -879,6 +894,9 @@ type GatewayTLS struct {
 type GitAuthConfig struct {
 // Personal Access Token (PAT) configuration used to authenticate to Git platforms.
 	Pat map[string]*SecretConfig
+
+// SSH key configuration used to authenticate to Git platforms.
+	SSH map[string]*SSHConfig
 }
 
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
@@ -1261,13 +1279,14 @@ type RecipeStatus struct {
 	TemplateVersion *string
 }
 
-// RegistryAuthConfig - Authentication configuration for private Terraform registry mirrors.
+// RegistryAuthConfig - Authentication configuration for accessing private Terraform registry mirrors.
 type RegistryAuthConfig struct {
-// Credentials-based authentication for Terraform registry mirrors.
-	Credentials *SecretConfig
+// Additional hosts that should use the same authentication credentials. This is useful when a registry mirror redirects to
+// other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).
+	AdditionalHosts []*string
 
-// Token-based authentication for Terraform registry mirrors.
-	Token *SecretReference
+// Basic HTTP authentication configuration for registry authentication.
+	Basic *BasicAuthConfig
 }
 
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
@@ -1317,6 +1336,19 @@ type RuntimesProperties struct {
 
 // The runtime configuration properties for Kubernetes
 	Kubernetes *KubernetesRuntimeProperties
+}
+
+// SSHConfig - SSH key configuration used to authenticate to Git platforms.
+type SSHConfig struct {
+// The ID of an Applications.Core/SecretStore resource containing the SSH private key and optional passphrase. The secret
+// store must have a secret named 'private-key' containing the SSH private key. A
+// secret named 'passphrase' is optional, containing the passphrase for the private key. A secret named 'known-hosts' is optional,
+// containing the known hosts entries.
+	Secret *string
+
+// Specifies whether to perform strict host key checking. When false, accepts any host key (insecure but sometimes necessary
+// for private Git servers). Defaults to true.
+	StrictHostKeyChecking *bool
 }
 
 // SecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
@@ -1557,13 +1589,33 @@ type TerraformRegistryConfig struct {
 	ProviderMappings map[string]*string
 }
 
+// TerraformTLSConfig - TLS configuration options for Terraform binary downloads.
+type TerraformTLSConfig struct {
+// Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a
+// key named 'ca-cert' with the PEM-encoded certificate bundle.
+	CaCertificate *SecretReference
+
+// Client certificate configuration for mutual TLS (mTLS) authentication.
+	ClientCertificate *ClientCertConfig
+
+// Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING:
+// This makes the connection vulnerable to man-in-the-middle attacks.
+	SkipVerify *bool
+}
+
 // TerraformVersionConfig - Configuration for Terraform binary installation. Allows specifying a version and an optional custom
 // base URL for the releases API.
 type TerraformVersionConfig struct {
+// Authentication configuration for accessing the Terraform binary releases API.
+	Authentication *RegistryAuthConfig
+
 // Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead
 // of the default HashiCorp releases site. The directory structure of the custom URL
 // must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'
 	ReleasesAPIBaseURL *string
+
+// TLS configuration for connecting to the releases API.
+	TLS *TerraformTLSConfig
 
 // Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example:
 // '1.7.0'

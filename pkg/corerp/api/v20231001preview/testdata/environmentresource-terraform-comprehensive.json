@@ -1,0 +1,48 @@
+{
+  "name": "test-env",
+  "properties": {
+    "compute": {
+      "kind": "kubernetes",
+      "namespace": "test-namespace"
+    },
+    "recipeConfig": {
+      "terraform": {
+        "authentication": {
+          "git": {
+            "pat": {
+              "github.com": {
+                "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/github-pat"
+              },
+              "gitlab.com": {
+                "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/gitlab-pat"
+              }
+            }
+          }
+        },
+        "registry": {
+          "mirror": "https://terraform.example.com",
+          "providerMappings": {
+            "registry.terraform.io/hashicorp/aws": "terraform.example.com/providers/aws"
+          },
+          "authentication": {
+            "token": {
+              "source": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/registry-token",
+              "key": "token"
+            },
+            "additionalHosts": ["gitlab.com", "packages.gitlab.com"]
+          }
+        },
+        "version": {
+          "version": "1.7.0",
+          "releasesApiBaseUrl": "https://releases.example.com",
+          "authentication": {
+            "token": {
+              "source": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/releases-token",
+              "key": "api-token"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -50,7 +50,7 @@ model EnvironmentResource
 @doc("Environment properties")
 model EnvironmentProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("The compute resource used by application environment.")
@@ -69,7 +69,7 @@ model EnvironmentProperties {
   recipeConfig?: RecipeConfigProperties;
 
   @doc("The environment extension.")
-  @extension("x-ms-identifiers", [])
+  @extension("x-ms-identifiers", #[])
   extensions?: Array<Extension>;
 }
 
@@ -134,15 +134,33 @@ model TerraformVersionConfig {
 
   @doc("Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site. The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'")
   releasesApiBaseUrl?: string;
+
+  @doc("TLS configuration for connecting to the releases API.")
+  tls?: TerraformTLSConfig;
+
+  @doc("Authentication configuration for accessing the Terraform binary releases API.")
+  authentication?: RegistryAuthConfig;
 }
 
-@doc("Authentication configuration for private Terraform registry mirrors.")
-model RegistryAuthConfig {
-  @doc("Token-based authentication for Terraform registry mirrors.")
-  token?: SecretReference;
+@doc("TLS configuration options for Terraform binary downloads.")
+model TerraformTLSConfig {
+  @doc("Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.")
+  caCertificate?: SecretReference;
 
-  @doc("Credentials-based authentication for Terraform registry mirrors.")
-  credentials?: SecretConfig;
+  @doc("Client certificate configuration for mutual TLS (mTLS) authentication.")
+  clientCertificate?: ClientCertConfig;
+
+  @doc("Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING: This makes the connection vulnerable to man-in-the-middle attacks.")
+  skipVerify?: boolean = false;
+}
+
+@doc("Authentication configuration for accessing private Terraform registry mirrors.")
+model RegistryAuthConfig {
+  @doc("Basic HTTP authentication configuration for registry authentication.")
+  basic?: BasicAuthConfig;
+
+  @doc("Additional hosts that should use the same authentication credentials. This is useful when a registry mirror redirects to other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).")
+  additionalHosts?: string[];
 }
 
 @doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
@@ -155,11 +173,35 @@ model AuthConfig {
 model GitAuthConfig {
   @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
   pat?: Record<SecretConfig>;
+
+  @doc("SSH key configuration used to authenticate to Git platforms.")
+  ssh?: Record<SSHConfig>;
 }
 
 @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
 model SecretConfig {
   @doc("The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified.")
+  secret?: string;
+}
+
+@doc("SSH key configuration used to authenticate to Git platforms.")
+model SSHConfig {
+  @doc("The ID of an Applications.Core/SecretStore resource containing the SSH private key and optional passphrase. The secret store must have a secret named 'private-key' containing the SSH private key. A secret named 'passphrase' is optional, containing the passphrase for the private key. A secret named 'known-hosts' is optional, containing the known hosts entries.")
+  secret?: string;
+
+  @doc("Specifies whether to perform strict host key checking. When false, accepts any host key (insecure but sometimes necessary for private Git servers). Defaults to true.")
+  strictHostKeyChecking?: boolean = true;
+}
+
+@doc("Basic HTTP authentication configuration.")
+model BasicAuthConfig {
+  @doc("The ID of an Applications.Core/SecretStore resource containing the basic authentication credentials. The secret store must have secrets named 'username' and 'password'.")
+  secret?: string;
+}
+
+@doc("Client certificate (mTLS) configuration for authentication.")
+model ClientCertConfig {
+  @doc("The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have secrets named 'cert' and 'key' containing the PEM-encoded certificate and private key. A secret named 'passphrase' is optional, containing the passphrase for the private key.")
   secret?: string;
 }
 

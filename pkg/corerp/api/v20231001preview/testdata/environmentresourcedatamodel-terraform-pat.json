@@ -1,0 +1,61 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+  "name": "env0",
+  "type": "Applications.Core/environments",
+  "location": "global",
+  "systemData": {},
+  "properties": {
+    "compute": {
+      "kind": "kubernetes",
+      "kubernetesCompute": {
+        "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+        "namespace": "default"
+      }
+    },
+    "providers": {
+      "azure": {
+        "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
+      }
+    },
+    "recipeConfig": {
+      "terraform": {
+        "authentication": {
+          "git": {
+            "pat": {
+              "gitlab.com": {
+                "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/gitlabSecrets"
+              }
+            }
+          }
+        },
+        "registry": {
+          "mirror": "https://ytimocin-group.gitlab.io/terraform-registry/",
+          "authentication": {
+            "basic": {
+              "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/gitlabSecrets"
+            }
+          }
+        }
+      }
+    },
+    "extensions": [
+      {
+        "kind": "kubernetesMetadata",
+        "kubernetesMetadata": {
+          "annotations": {
+            "name": "value"
+          }
+        }
+      }
+    ],
+    "recipes": {
+      "Applications.Datastores/mongoDatabases": {
+        "cosmos-recipe": {
+          "templateKind": "bicep",
+          "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"
+        }
+      }
+    },
+    "provisioningState": "Accepted"
+  }
+}

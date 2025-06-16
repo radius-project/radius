@@ -1,0 +1,52 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+  "name": "env0",
+  "type": "Applications.Core/environments",
+  "location": "West US",
+  "properties": {
+    "provisioningState": "Accepted",
+    "compute": {
+      "kind": "kubernetes",
+      "resourceId": "/planes/kubernetes/local/namespaces/env0-ns",
+      "namespace": "env0-ns"
+    },
+    "providers": {
+      "azure": {
+        "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"
+      }
+    },
+    "recipeConfig": {
+      "terraform": {
+        "authentication": {
+          "git": {
+            "pat": {
+              "github.com": {
+                "secret": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/github"
+              }
+            }
+          }
+        },
+        "registry": {
+          "mirror": "https://my-registry.example.com/terraform",
+          "authentication": {
+            "basic": {
+              "secret": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/registry-creds"
+            },
+            "additionalHosts": [
+              "original-registry.example.com",
+              "backup-registry.example.com"
+            ]
+          },
+          "providerMappings": {
+            "hashicorp/aws": "my-company/aws",
+            "hashicorp/azurerm": "my-company/azurerm"
+          }
+        },
+        "version": {
+          "version": "1.5.0",
+          "releasesAPIBaseURL": "https://releases.example.com"
+        }
+      }
+    }
+  }
+}

@@ -2539,6 +2539,16 @@
       ],
       "x-ms-discriminator-value": "azure.com.keyvault"
     },
+    "BasicAuthConfig": {
+      "type": "object",
+      "description": "Basic HTTP authentication configuration.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing the basic authentication credentials. The secret store must have secrets named 'username' and 'password'."
+        }
+      }
+    },
     "BicepConfigProperties": {
       "type": "object",
       "description": "Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.",
@@ -2701,6 +2711,16 @@
             "description": "Public Key type"
           }
         ]
+      }
+    },
+    "ClientCertConfig": {
+      "type": "object",
+      "description": "Client certificate (mTLS) configuration for authentication.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have secrets named 'cert' and 'key' containing the PEM-encoded certificate and private key. A secret named 'passphrase' is optional, containing the passphrase for the private key."
+        }
       }
     },
     "ConnectionProperties": {
@@ -3565,6 +3585,13 @@
           "additionalProperties": {
             "$ref": "#/definitions/SecretConfig"
           }
+        },
+        "ssh": {
+          "type": "object",
+          "description": "SSH key configuration used to authenticate to Git platforms.",
+          "additionalProperties": {
+            "$ref": "#/definitions/SSHConfig"
+          }
         }
       }
     },
@@ -4249,15 +4276,18 @@
     },
     "RegistryAuthConfig": {
       "type": "object",
-      "description": "Authentication configuration for private Terraform registry mirrors.",
+      "description": "Authentication configuration for accessing private Terraform registry mirrors.",
       "properties": {
-        "token": {
-          "$ref": "#/definitions/SecretReference",
-          "description": "Token-based authentication for Terraform registry mirrors."
+        "basic": {
+          "$ref": "#/definitions/BasicAuthConfig",
+          "description": "Basic HTTP authentication configuration for registry authentication."
         },
-        "credentials": {
-          "$ref": "#/definitions/SecretConfig",
-          "description": "Credentials-based authentication for Terraform registry mirrors."
+        "additionalHosts": {
+          "type": "array",
+          "description": "Additional hosts that should use the same authentication credentials. This is useful when a registry mirror redirects to other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -4372,6 +4402,21 @@
         "aci": {
           "$ref": "#/definitions/ACIRuntimeProperties",
           "description": "The runtime configuration properties for ACI"
+        }
+      }
+    },
+    "SSHConfig": {
+      "type": "object",
+      "description": "SSH key configuration used to authenticate to Git platforms.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing the SSH private key and optional passphrase. The secret store must have a secret named 'private-key' containing the SSH private key. A secret named 'passphrase' is optional, containing the passphrase for the private key. A secret named 'known-hosts' is optional, containing the known hosts entries."
+        },
+        "strictHostKeyChecking": {
+          "type": "boolean",
+          "description": "Specifies whether to perform strict host key checking. When false, accepts any host key (insecure but sometimes necessary for private Git servers). Defaults to true.",
+          "default": true
         }
       }
     },
@@ -4803,6 +4848,25 @@
         }
       }
     },
+    "TerraformTLSConfig": {
+      "type": "object",
+      "description": "TLS configuration options for Terraform binary downloads.",
+      "properties": {
+        "caCertificate": {
+          "$ref": "#/definitions/SecretReference",
+          "description": "Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle."
+        },
+        "clientCertificate": {
+          "$ref": "#/definitions/ClientCertConfig",
+          "description": "Client certificate configuration for mutual TLS (mTLS) authentication."
+        },
+        "skipVerify": {
+          "type": "boolean",
+          "description": "Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING: This makes the connection vulnerable to man-in-the-middle attacks.",
+          "default": false
+        }
+      }
+    },
     "TerraformVersionConfig": {
       "type": "object",
       "description": "Configuration for Terraform binary installation. Allows specifying a version and an optional custom base URL for the releases API.",
@@ -4814,6 +4878,14 @@
         "releasesApiBaseUrl": {
           "type": "string",
           "description": "Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site. The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'"
+        },
+        "tls": {
+          "$ref": "#/definitions/TerraformTLSConfig",
+          "description": "TLS configuration for connecting to the releases API."
+        },
+        "authentication": {
+          "$ref": "#/definitions/RegistryAuthConfig",
+          "description": "Authentication configuration for accessing the Terraform binary releases API."
         }
       }
     },
