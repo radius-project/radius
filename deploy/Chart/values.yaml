@@ -32,6 +32,23 @@ global:
     irsa:
       enabled: false
 
+  # Configure preflight checks that run before Radius services start.
+  preflight:
+    # Enable preflight checks (default: true)
+    enabled: true
+    # Skip preflight checks on fresh installs (default: false)
+    skipOnInstall: false
+    # Image for the preflight check container
+    image: ghcr.io/radius-project/radcli
+    # Default tag uses Chart AppVersion.
+    # tag: latest
+    # Resources for preflight init container
+    resources:
+      requests:
+        memory: "32Mi"
+      limits:
+        memory: "64Mi"
+
 controller:
   image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.

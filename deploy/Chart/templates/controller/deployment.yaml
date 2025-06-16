@@ -28,6 +28,26 @@ spec:
     spec:
       serviceAccountName: controller
       initContainers:
+      {{- if .Values.global.preflight.enabled }}
+      - name: preflight-check
+        image: "{{ .Values.global.preflight.image }}:{{ .Values.global.preflight.tag | default $appversion }}"
+        args:
+        - upgrade
+        - kubernetes
+        - --preflight-only
+        {{- if .Values.global.preflight.skipOnInstall }}
+        - --skip-preflight
+        {{- end }}
+        env:
+        - name: KUBERNETES_IN_CLUSTER_CONFIG
+          value: "true"
+        {{- if .Values.global.preflight.resources }}
+        resources:{{ toYaml .Values.global.preflight.resources | nindent 10 }}
+        {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+      {{- end }}
       - name: bicep
         image: "{{ .Values.bicep.image }}:{{ .Values.bicep.tag | default $appversion }}"
         command: ['sh', '-c', 'mv /bicepconfig.json /bicepconfig/bicepconfig.json && mv /bicep /usr/local/bin/bicep']

@@ -104,6 +104,7 @@ APPS_MAP := ucpd:./deploy/images/ucpd \
 	applications-rp:./deploy/images/applications-rp \
 	dynamic-rp:./deploy/images/dynamic-rp \
 	controller:./deploy/images/controller \
+	radcli:./deploy/images/radcli \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego \
 	bicep:./deploy/images/bicep

@@ -30,6 +30,27 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
+      {{- if .Values.global.preflight.enabled }}
+      initContainers:
+      - name: preflight-check
+        image: "{{ .Values.global.preflight.image }}:{{ .Values.global.preflight.tag | default $appversion }}"
+        args:
+        - upgrade
+        - kubernetes
+        - --preflight-only
+        {{- if .Values.global.preflight.skipOnInstall }}
+        - --skip-preflight
+        {{- end }}
+        env:
+        - name: KUBERNETES_IN_CLUSTER_CONFIG
+          value: "true"
+        {{- if .Values.global.preflight.resources }}
+        resources:{{ toYaml .Values.global.preflight.resources | nindent 10 }}
+        {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+      {{- end }}
       containers:
       - name: dynamic-rp
         image: "{{ .Values.dynamicrp.image }}:{{ .Values.dynamicrp.tag | default $appversion }}"

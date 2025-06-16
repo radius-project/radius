@@ -12,6 +12,7 @@ rules:
   - namespaces
   - secrets
   - events
+  - nodes
   verbs:
   - create
   - delete

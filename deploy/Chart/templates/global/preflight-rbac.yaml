@@ -1,0 +1,75 @@
+{{- if .Values.global.preflight.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: radius-preflight
+  labels:
+    app.kubernetes.io/name: preflight
+    app.kubernetes.io/part-of: radius
+rules:
+# Read access to namespaces for namespace validation
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+# Read access to nodes for cluster resource checks
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+# Read access to deployments for installation status checks
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+# Read access to custom resource definitions
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+# Read access to Helm releases (stored as secrets)
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: radius-preflight
+  labels:
+    app.kubernetes.io/name: preflight
+    app.kubernetes.io/part-of: radius
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: radius-preflight
+subjects:
+- kind: ServiceAccount
+  name: preflight
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: preflight
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: preflight
+    app.kubernetes.io/part-of: radius
+{{- end }}
