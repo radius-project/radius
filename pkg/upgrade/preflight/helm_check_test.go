@@ -57,7 +57,7 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 			},
 			expectPass:    true,
-			expectMessage: "Helm successfully connected to cluster and found Radius release (version: v0.47.0), Contour dependency found (version: v1.25.0)",
+			expectMessage: "Helm successfully connected to cluster and found Radius release (version: v0.47.0), Contour installed (version: v1.25.0)",
 			expectError:   false,
 		},
 		{
@@ -72,7 +72,7 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 			},
 			expectPass:    true,
-			expectMessage: "Helm successfully connected to cluster and found Radius release (version: v0.47.0), Contour dependency not found",
+			expectMessage: "Helm successfully connected to cluster and found Radius release (version: v0.47.0)",
 			expectError:   false,
 		},
 		{
@@ -89,9 +89,7 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 			setupMock: func(mockHelm *helm.MockInterface) {
 				installState := helm.InstallState{
 					RadiusInstalled:  false,
-					RadiusVersion:    "",
 					ContourInstalled: false,
-					ContourVersion:   "",
 				}
 				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 			},
