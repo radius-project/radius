@@ -2,6 +2,9 @@
 
 set -e
 
+# Install TypeSpec first to ensure the language server is available when the VS Code extension loads.
+npm install -g @typespec/compiler
+
 # Adding workspace as safe directory to avoid permission issues
 git config --global --add safe.directory /workspaces/radius 
 

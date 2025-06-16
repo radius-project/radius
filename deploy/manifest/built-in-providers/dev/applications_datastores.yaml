@@ -1,4 +1,4 @@
-namespace: Applications.Datastores
+name: Applications.Datastores
 location:
   global:
     "http://localhost:8080"

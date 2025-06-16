@@ -1,0 +1,14 @@
+name: Require PR Checklist
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  checklist-completed:
+    if: github.event.pull_request.user.login != 'dependabot[bot]' # Skip for Dependabot PRs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mheap/require-checklist-action@v2
+        with:
+          requireChecklist: true # If this is true and there are no checklists detected or not filled out, the action will fail
