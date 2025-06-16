@@ -129,7 +129,7 @@ test-functional-datastoresrp-noncloud: ## Runs Datastores RP functional tests th
 
 .PHONY: test-functional-dynamicrp-noncloud
 test-functional-dynamicrp-noncloud: ## Runs Dynamic RP functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
 .PHONY: test-functional-samples
 test-functional-samples: test-functional-samples-noncloud ## Runs all Samples functional tests
