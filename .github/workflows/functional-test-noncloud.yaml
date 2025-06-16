@@ -525,6 +525,7 @@ jobs:
           kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
 
       - name: TEMP list all namespaces on the cluster
+        if: always()
         run: |
           echo "Listing all namespaces in the cluster:"
           kubectl get namespaces
