@@ -524,6 +524,11 @@ jobs:
           echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
           kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
 
+      - name: TEMP list all namespaces on the cluster
+        run: |
+          echo "Listing all namespaces in the cluster:"
+          kubectl get namespaces
+
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v4
