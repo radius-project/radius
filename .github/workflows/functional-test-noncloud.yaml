@@ -529,6 +529,18 @@ jobs:
         run: |
           echo "Listing all namespaces in the cluster:"
           kubectl get namespaces
+      
+      - name: TEMP list all DeploymentTemplates on the cluster
+        if: always()
+        run: |
+          echo "Listing all DeploymentTemplates in the cluster:"
+          kubectl get deploymenttemplates -A
+      
+      - name: TEMP describe all DeploymentTemplates on the cluster
+        if: always()
+        run: |
+          echo "Describing all DeploymentTemplates in the cluster:"
+          kubectl describe deploymenttemplates -A
 
       - name: Upload container logs
         if: always()

@@ -41,6 +41,7 @@ import (
 	gitobject "github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -120,6 +121,9 @@ func Test_Flux_Complex(t *testing.T) {
 func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) {
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
+
+	// Track all namespaces created during the test for cleanup
+	namespacesToCleanup := make(map[string]bool)
 
 	gitRepoName := fmt.Sprintf("%s-repo", testName)
 	gitServerURL := os.Getenv(testGitServerURLEnvVariableName)
@@ -277,6 +281,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 
 		for _, configEntry := range radiusConfig.Config {
 			name, namespace, _, _ := getValuesFromRadiusGitOpsConfig(configEntry)
+			namespacesToCleanup[namespace] = true
 
 			deploymentTemplate, err := waitForDeploymentTemplateToBeReadyWithGeneration(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, stepNumber, opts.Client)
 			defer func() {
@@ -312,6 +317,15 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			t.Fatalf("Error asserting expected resources exist: %v", err)
 		}
 		t.Logf("Successfully asserted expected resources exist in %s", scope)
+	}
+
+	// Clean up namespaces at the end of the test
+	for ns := range namespacesToCleanup {
+		t.Logf("Cleaning up namespace: %s", ns)
+		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, ns, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Logf("Failed to delete namespace %s: %v", ns, err)
+		}
 	}
 }
 

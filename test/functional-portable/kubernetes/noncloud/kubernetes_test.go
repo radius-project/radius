@@ -59,6 +59,15 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	_, err := opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
+	// Clean up the namespace after the test
+	defer func() {
+		t.Logf("Cleaning up namespace: %s", namespace)
+		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Logf("Failed to delete namespace %s: %v", namespace, err)
+		}
+	}()
+
 	cli := radcli.NewCLI(t, "")
 
 	params := []string{
