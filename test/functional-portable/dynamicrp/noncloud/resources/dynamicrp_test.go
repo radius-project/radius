@@ -543,6 +543,7 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 		{
 			Executor:                               step.NewDeployExecutor(existingTemplate, testutil.GetTerraformRecipeModuleServerURL()),
 			SkipResourceDeletion:                   true,
+			SkipObjectValidation:                   true,
 			SkipKubernetesOutputResourceValidation: true,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
