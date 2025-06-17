@@ -582,7 +582,7 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 				for i := range deploy.Spec.Template.Spec.Containers {
 					container := &deploy.Spec.Template.Spec.Containers[i]
 					fmt.Println("Container Name:", container.Name)
-					if container.Name == "udtparent" {
+					if container.Name == "postgres" {
 						targetContainer = container
 						break
 					}
