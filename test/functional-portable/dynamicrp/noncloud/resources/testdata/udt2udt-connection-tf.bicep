@@ -1,16 +1,12 @@
 extension radius
 extension testresources
-// extension hack
-// param registry string
-
-// param version string
 
 @description('The URL of the server hosting test Terraform modules.')
 param moduleServer string
 
-@description('PostgreSQL password')
-@secure()
-param password string = newGuid()
+// @description('PostgreSQL password')
+// @secure()
+// param password string = newGuid()
 
 resource udttoudtenv 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'udttoudtenv'
