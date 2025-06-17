@@ -406,6 +406,9 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 
 	logger.Info("Finalizer was not removed, requeueing.")
 	err = r.Client.Status().Update(ctx, deploymentTemplate)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
 }
 
