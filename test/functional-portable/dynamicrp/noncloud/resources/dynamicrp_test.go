@@ -44,7 +44,7 @@ import (
 //   - Validates the creation of required resources (app, container, environment
 //     and the user-defined resource instance) in the Kubernetes cluster
 //   - Validates that the container can access port information from the user-defined resource via environment variables
-/*
+
 func Test_DynamicRP_Recipe(t *testing.T) {
 	template := "testdata/usertypealpha-recipe.bicep"
 	appName := "usertypealpha-recipe-app"
@@ -510,7 +510,7 @@ func Test_UDT_ConnectionTo_UDT(t *testing.T) {
 	})
 	test.Test(t)
 }
-*/
+
 func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 	existingTemplate := "testdata/udt2udt-connection-tf.bicep"
 	name := "dynamicrp-udt2udt"
