@@ -28,8 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test_DynamicRP_SharedAPIVersionDeletion tests the fix for GitHub issue #9754.
-// This test validates that when deleting a resource type that shares an API version
+// Test_DynamicRP_SharedAPIVersionDeletion validates that when deleting a resource type that shares an API version
 // with other resource types, the API versions of other resource types are not affected.
 //
 // The test consists of two main steps:
@@ -50,7 +49,7 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	// Resource types that share the same API version (2023-10-01-preview) - upd this after Vishwa's fix
+	// Resource types that share the same API version (2023-10-01-preview)
 	resourceProviderName := "Test.Resources"
 	resourceTypesToDelete := "Test.Resources/sharedAPITestTypeA"
 	resourceTypesToPreserve := []string{
@@ -78,27 +77,7 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 					err = json.Unmarshal([]byte(output), &resourceTypeData)
 					require.NoError(t, err)
 
-					// Check that the shared API version exists - handle both formats robustly
-					var hasSharedVersion bool
-					t.Logf("APIVersions field type: %T, value: %+v", resourceTypeData["APIVersions"], resourceTypeData["APIVersions"])
-
-					switch apiVersions := resourceTypeData["APIVersions"].(type) {
-					case map[string]any:
-						// Pipeline format: APIVersions as map {"2023-10-01-preview": {...}}
-						_, hasSharedVersion = apiVersions[sharedAPIVersion]
-					case []any:
-						// Local format: APIVersions as array ["2023-10-01-preview"]
-						for _, version := range apiVersions {
-							if version.(string) == sharedAPIVersion {
-								hasSharedVersion = true
-								break
-							}
-						}
-					default:
-						t.Fatalf("APIVersions has unexpected type %T, expected map or array. Full data: %+v", apiVersions, resourceTypeData)
-					}
-
-					require.True(t, hasSharedVersion, "Resource type %s should have API version %s", resourceType, sharedAPIVersion)
+					require.True(t, hasAPIVersion(t, resourceTypeData, sharedAPIVersion), "Resource type %s should have API version %s", resourceType, sharedAPIVersion)
 				}
 
 				// Verify resource provider summary shows all resource types with API versions
@@ -115,10 +94,10 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 				// Verify each resource type has the shared API version in the summary
 				for _, resourceType := range append(resourceTypesToPreserve, resourceTypesToDelete) {
 					resourceTypeName := resourceType[len(resourceProviderName)+1:] // Remove "Test.Resources/" prefix
-					resourceTypeEntry, ok := resourceTypes[resourceTypeName].(map[string]interface{})
+					resourceTypeEntry, ok := resourceTypes[resourceTypeName].(map[string]any)
 					require.True(t, ok, "Resource type %s should exist in provider summary", resourceTypeName)
 
-					apiVersions, ok := resourceTypeEntry["apiVersions"].(map[string]interface{})
+					apiVersions, ok := resourceTypeEntry["apiVersions"].(map[string]any)
 					require.True(t, ok, "apiVersions should exist for resource type %s", resourceTypeName)
 
 					_, hasSharedVersion := apiVersions[sharedAPIVersion]
@@ -154,27 +133,7 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 					err = json.Unmarshal([]byte(output), &resourceTypeData)
 					require.NoError(t, err)
 
-					// Check that the shared API version still exists - this is the main bug fix validation
-					var hasSharedVersion bool
-					t.Logf("APIVersions field type: %T, value: %+v", resourceTypeData["APIVersions"], resourceTypeData["APIVersions"])
-
-					switch apiVersions := resourceTypeData["APIVersions"].(type) {
-					case map[string]interface{}:
-						// Pipeline format: APIVersions as map {"2023-10-01-preview": {...}}
-						_, hasSharedVersion = apiVersions[sharedAPIVersion]
-					case []interface{}:
-						// Local format: APIVersions as array ["2023-10-01-preview"]
-						for _, version := range apiVersions {
-							if version.(string) == sharedAPIVersion {
-								hasSharedVersion = true
-								break
-							}
-						}
-					default:
-						t.Fatalf("APIVersions has unexpected type %T, expected map or array. Full data: %+v", apiVersions, resourceTypeData)
-					}
-
-					require.True(t, hasSharedVersion, "BUG: Resource type %s lost API version %s after deleting %s - this is the bug we're fixing!", resourceType, sharedAPIVersion, resourceTypesToDelete)
+					require.True(t, hasAPIVersion(t, resourceTypeData, sharedAPIVersion), "BUG: Resource type %s lost API version %s after deleting %s - this is the bug we're fixing!", resourceType, sharedAPIVersion, resourceTypesToDelete)
 				}
 
 				// Verify resource provider summary still shows preserved resource types with API versions
@@ -215,4 +174,27 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 	})
 
 	test.Test(t)
+}
+
+// hasAPIVersion checks if a resource type contains the specified API version.
+func hasAPIVersion(t *testing.T, resourceTypeData map[string]any, expectedVersion string) bool {
+	t.Logf("APIVersions field type: %T, value: %+v", resourceTypeData["APIVersions"], resourceTypeData["APIVersions"])
+
+	switch apiVersions := resourceTypeData["APIVersions"].(type) {
+	case map[string]any:
+		// APIVersions as map {"2023-10-01-preview": {...}}
+		_, exists := apiVersions[expectedVersion]
+		return exists
+	case []any:
+		// APIVersions as array ["2023-10-01-preview"]
+		for _, version := range apiVersions {
+			if version.(string) == expectedVersion {
+				return true
+			}
+		}
+		return false
+	default:
+		t.Fatalf("APIVersions has unexpected type %T, expected map or array. Full data: %+v", apiVersions, resourceTypeData)
+		return false
+	}
 }

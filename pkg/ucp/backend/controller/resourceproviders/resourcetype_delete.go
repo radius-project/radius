@@ -106,21 +106,21 @@ func (c *ResourceTypeDeleteController) apiVersions(ctx context.Context, rawID st
 
 	resourceProviderName := id.TypeSegments()[0].Name // e.g., "Applications.Test"
 	resourceTypeName := id.TypeSegments()[1].Name     // e.g., "testResources"
-	expectedPrefix := id.String()                     // Full resource type ID
+	expectedPrefix := id.String()                     // Resource Type ID
 
-	allResults := []*v20231001preview.APIVersionResource{}
+	results := []*v20231001preview.APIVersionResource{}
 	pager := client.NewListPager(id.FindScope(resources_radius.PlaneTypeRadius), resourceProviderName, resourceTypeName, nil)
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
 			return nil, err
 		}
-		allResults = append(allResults, page.Value...)
+		results = append(results, page.Value...)
 	}
 
 	// Filter to only API versions for this specific resource type
 	filteredResults := []*v20231001preview.APIVersionResource{}
-	for _, apiVersion := range allResults {
+	for _, apiVersion := range results {
 		if apiVersion.ID != nil && strings.HasPrefix(*apiVersion.ID, expectedPrefix) {
 			filteredResults = append(filteredResults, apiVersion)
 		}

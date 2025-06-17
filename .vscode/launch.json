@@ -97,7 +97,7 @@
         "Launch Applications RP",
         "Launch Dynamic RP",
         "Launch Controller",
-       // "Launch Deployment Engine"
+        "Launch Deployment Engine"
       ],
       "stopAll": true
     }
