@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/test"
@@ -568,12 +569,19 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 					t.Fatalf("No deployments found in namespace %s", appNamespace)
 				}
 				require.NoError(t, err)
+				//list deployments
+				fmt.Println("Deployments in namespace:", appNamespace)
+				for _, deploy := range deploys.Items {
+					fmt.Println("Deployment Name:", deploy.Name)
+				}
+				fmt.Println("Total Deployments Found:", len(deploys.Items))
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "udtparent", metav1.GetOptions{})
 				require.NoError(t, err)
 
 				var targetContainer *corev1.Container
 				for i := range deploy.Spec.Template.Spec.Containers {
 					container := &deploy.Spec.Template.Spec.Containers[i]
+					fmt.Println("Container Name:", container.Name)
 					if container.Name == "udtparent" {
 						targetContainer = container
 						break
