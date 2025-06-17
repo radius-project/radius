@@ -597,6 +597,7 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 				// Verify all required environment variables are present
 				foundEnvVars := make(map[string]bool)
 				for _, env := range targetContainer.Env {
+					fmt.Print("Environment Variable Found: ", env.Name, "\n")
 					foundEnvVars[env.Name] = true
 				}
 				for _, requiredVar := range requiredEnvVars {
