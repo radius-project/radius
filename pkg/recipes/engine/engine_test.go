@@ -61,6 +61,11 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
+		ConnectedResourcesProperties: map[string]map[string]any{
+			"database": {
+				"name": "db",
+			},
+		},
 	}
 	prevState := []string{
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
