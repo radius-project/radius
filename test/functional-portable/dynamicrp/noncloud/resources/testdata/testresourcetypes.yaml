@@ -75,6 +75,51 @@ types:
             application:
               type: string
               description: The resource ID of the application.
+            size:
+              type: string
+              description: The size of the PostgreSQL database
+            connections:
+              type: object
+              additionalProperties:
+                source:
+                  type: string
+                  description: The resourceID of the source of the connection.
+            database:
+              type: string
+              description: The name of the database.
+            host:
+              type: string
+              description: The host name of the database.
+            port:
+              type: string
+              description: The port number of the database.
+            password:
+              type: string
+              description: The password for the database.
+            status:
+              type: object
+              properties:
+                computedValues:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                      description: The username for the database.
+    capabilities: ["SupportsRecipes"]
+  udtChild:
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+            application:
+              type: string
+              description: The resource ID of the application.
+            size:
+              type: string
+              description: The size of the PostgreSQL database
             connections:
               type: object
               additionalProperties:

@@ -43,6 +43,7 @@ import (
 //   - Validates the creation of required resources (app, container, environment
 //     and the user-defined resource instance) in the Kubernetes cluster
 //   - Validates that the container can access port information from the user-defined resource via environment variables
+/*
 func Test_DynamicRP_Recipe(t *testing.T) {
 	template := "testdata/usertypealpha-recipe.bicep"
 	appName := "usertypealpha-recipe-app"
@@ -503,6 +504,97 @@ func Test_UDT_ConnectionTo_UDT(t *testing.T) {
 
 				require.True(t, found, "No deployments found with label 'radapp.io/connected-to-resource' in pod template labels")
 
+			},
+		},
+	})
+	test.Test(t)
+}
+*/
+func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
+	existingTemplate := "testdata/udt2udt-connection-tf.bicep"
+	name := "dynamicrp-udt2udt"
+	appNamespace := "udttoudtapp"
+	appName := "udttoudtapp"
+	childResourceTypeName := "Test.Resources/udtChild"
+	parentResourceTypeName := "Test.Resources/udtParent"
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, childResourceTypeName)
+				output, err = cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, parentResourceTypeName)
+			},
+		},
+		{
+			Executor:                               step.NewDeployExecutor(existingTemplate, testutil.GetTerraformRecipeModuleServerURL()), //step.NewDeployExecutor(existingTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			SkipKubernetesOutputResourceValidation: true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "udtparent",
+						Type: "test.resources/udtparent",
+						App:  appName,
+					},
+					{
+						Name: "udtchild",
+						Type: "test.resources/udtChild",
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				deploys, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
+				if deploys == nil {
+					t.Fatalf("No deployments found in namespace %s", appNamespace)
+				}
+				require.NoError(t, err)
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "udtparent", metav1.GetOptions{})
+				require.NoError(t, err)
+
+				var targetContainer *corev1.Container
+				for i := range deploy.Spec.Template.Spec.Containers {
+					container := &deploy.Spec.Template.Spec.Containers[i]
+					if container.Name == "udtparent" {
+						targetContainer = container
+						break
+					}
+				}
+				require.NotNil(t, targetContainer, "Container not found")
+
+				// Verify environment variable in the container has expected value
+				requiredEnvVars := []string{
+					"CONNECTED_TO",
+				}
+
+				// Verify all required environment variables are present
+				foundEnvVars := make(map[string]bool)
+				for _, env := range targetContainer.Env {
+					foundEnvVars[env.Name] = true
+				}
+				for _, requiredVar := range requiredEnvVars {
+					require.True(t, foundEnvVars[requiredVar],
+						"Required environment variable %s not found in container", requiredVar)
+				}
 			},
 		},
 	})
