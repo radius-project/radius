@@ -541,8 +541,7 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 			},
 		},
 		{
-			Executor:                               step.NewDeployExecutor(existingTemplate, testutil.GetTerraformRecipeModuleServerURL()), //step.NewDeployExecutor(existingTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
-			SkipObjectValidation:                   true,
+			Executor:                               step.NewDeployExecutor(existingTemplate, testutil.GetTerraformRecipeModuleServerURL()),
 			SkipResourceDeletion:                   true,
 			SkipKubernetesOutputResourceValidation: true,
 			RPResources: &validation.RPResourceSet{
