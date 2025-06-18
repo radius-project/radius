@@ -35,6 +35,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -145,6 +146,18 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		// If we get here, the operation is complete.
 		resp, err := poller.Result(ctx)
 		if err != nil {
+			// Special case: If deletion is requested and we get a 404 error, treat it as success
+			// This can happen when resources are deleted while an operation is in progress
+			if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil && clients.Is404Error(err) {
+				logger.Info("Operation returned 404 during deletion, treating as success.")
+				deploymentTemplate.Status.Operation = nil
+				err := r.Client.Status().Update(ctx, deploymentTemplate)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
+			}
+
 			// Operation failed, reset state and schedule delayed retry.
 			r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
 			logger.Error(err, "Update failed.")
@@ -156,6 +169,17 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				return ctrl.Result{}, err
 			}
 
+			return ctrl.Result{}, nil
+		}
+
+		// If deletion is requested, skip creating output resources
+		if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil {
+			logger.Info("Skipping output resource creation due to pending deletion.")
+			deploymentTemplate.Status.Operation = nil
+			err := r.Client.Status().Update(ctx, deploymentTemplate)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{}, nil
 		}
 

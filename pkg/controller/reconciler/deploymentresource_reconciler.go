@@ -155,6 +155,7 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 				if controllerutil.RemoveFinalizer(deploymentResource, DeploymentResourceFinalizer) {
 					deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
 					deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
+					deploymentResource.Status.Operation = nil
 					err = r.Client.Update(ctx, deploymentResource)
 					if err != nil {
 						return ctrl.Result{}, err
