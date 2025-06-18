@@ -68,6 +68,15 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 		}
 	}()
 
+	// Clean up the environment namespace after the test
+	defer func() {
+		t.Logf("Cleaning up environment namespace: %s", environmentName)
+		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, environmentName, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Logf("Failed to delete environment namespace %s: %v", environmentName, err)
+		}
+	}()
+
 	cli := radcli.NewCLI(t, "")
 
 	params := []string{

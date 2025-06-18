@@ -293,6 +293,24 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, steps []Step) {
 	ctx := testcontext.New(t)
 
+	// Track namespaces created during the test for cleanup
+	namespacesToCleanup := make(map[string]bool)
+	defer func() {
+		// Clean up namespaces at the end of the test
+		for ns := range namespacesToCleanup {
+			t.Logf("Cleaning up namespace: %s", ns)
+			namespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			}
+			err := opts.client.Delete(ctx, namespace)
+			if err != nil && k8sclient.IgnoreNotFound(err) != nil {
+				t.Logf("Failed to delete namespace %s: %v", ns, err)
+			}
+		}
+	}()
+
 	for stepIndex, step := range steps {
 		stepNumber := stepIndex + 1
 		radiusConfig, err := ParseRadiusGitOpsConfig(path.Join(step.Path, "radius-gitops-config.yaml"))
@@ -306,6 +324,9 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 			if namespaceName == "" {
 				namespaceName = nameBase
 			}
+
+			// Track namespace for cleanup
+			namespacesToCleanup[namespaceName] = true
 
 			// Create a namespace if it does not exist
 			if err := opts.client.Get(ctx, types.NamespacedName{Name: namespaceName}, &corev1.Namespace{}); err != nil {

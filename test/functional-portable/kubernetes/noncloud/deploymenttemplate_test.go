@@ -158,6 +158,16 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 		}
 	}()
 
+	// Clean up the environment namespace created by the deployed resources
+	environmentNamespace := fmt.Sprintf("%s-env", name)
+	defer func() {
+		t.Logf("Cleaning up environment namespace: %s", environmentNamespace)
+		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, environmentNamespace, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Logf("Failed to delete environment namespace %s: %v", environmentNamespace, err)
+		}
+	}()
+
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
 
 	t.Run("Create DeploymentTemplate", func(t *testing.T) {
@@ -234,6 +244,16 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			t.Logf("Failed to delete namespace %s: %v", namespace, err)
+		}
+	}()
+
+	// Clean up the environment namespace created by the deployed resources
+	environmentNamespace := fmt.Sprintf("%s-env", name)
+	defer func() {
+		t.Logf("Cleaning up environment namespace: %s", environmentNamespace)
+		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, environmentNamespace, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Logf("Failed to delete environment namespace %s: %v", environmentNamespace, err)
 		}
 	}()
 
