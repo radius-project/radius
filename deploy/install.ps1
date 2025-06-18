@@ -89,7 +89,7 @@ if (Test-Path "C:\radius\rad.exe" -PathType Leaf) {
 if (Test-Path $RadiusCliFilePath -PathType Leaf) {
     Write-Output "Previous rad CLI detected: $RadiusCliFilePath"
     try {
-        $CurrentVersion = &$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version
+        $CurrentVersion = &$RadiusCliFilePath version --cli --output json | ConvertFrom-JSON | Select-Object -ExpandProperty version
         Write-Output "Previous version: $CurrentVersion`r`n"
     }
     catch {
@@ -180,7 +180,7 @@ if (!(Test-Path $RadiusCliFilePath -PathType Leaf)) {
 }
 
 # Print the version string of the installed CLI
-Write-Output "rad CLI version: $(&$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version)"
+Write-Output "rad CLI version: $(&$RadiusCliFilePath version --cli --output json | ConvertFrom-JSON | Select-Object -ExpandProperty version)"
 
 # Add RadiusRoot directory to User Path environment variable
 $UserPathEnvironmentVar = (Get-Item -Path HKCU:\Environment).GetValue(
