@@ -79,7 +79,7 @@ require (
 	github.com/stern/stern v1.32.0
 	github.com/stretchr/testify v1.10.0
 	github.com/wI2L/jsondiff v0.7.0
-	github.com/willdavsmith/bicep-tools-go v0.0.0-20250619130143-3f45f91051fe
+	github.com/willdavsmith/bicep-tools-go v0.1.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.61.0
 	go.opentelemetry.io/otel v1.36.0
@@ -175,7 +175,7 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
-	github.com/willdavsmith/bicep-types-go v0.0.0-20250619130301-761fa0895f10 // indirect
+	github.com/willdavsmith/bicep-types-go v0.1.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
