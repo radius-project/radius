@@ -119,11 +119,10 @@ func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][
 	if envConfig.RecipeConfig.Terraform.Registry != nil {
 		auth := envConfig.RecipeConfig.Terraform.Registry.Authentication
 		
-		// Basic authentication
-		if auth.Basic != nil && auth.Basic.Secret != "" {
-			// Basic auth needs username and password
-			addSecretKeys(registrySecretIDs, auth.Basic.Secret, "username", &mu)
-			addSecretKeys(registrySecretIDs, auth.Basic.Secret, "password", &mu)
+		// Token authentication
+		if auth.Token != nil && auth.Token.Secret != "" {
+			// Token auth needs token
+			addSecretKeys(registrySecretIDs, auth.Token.Secret, "token", &mu)
 		}
 	}
 
@@ -131,10 +130,9 @@ func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][
 	if envConfig.RecipeConfig.Terraform.Version != nil {
 		// Handle authentication
 		if envConfig.RecipeConfig.Terraform.Version.Authentication != nil {
-			if envConfig.RecipeConfig.Terraform.Version.Authentication.Basic != nil {
-				// Basic auth needs username and password
-				addSecretKeys(registrySecretIDs, envConfig.RecipeConfig.Terraform.Version.Authentication.Basic.Secret, "username", &mu)
-				addSecretKeys(registrySecretIDs, envConfig.RecipeConfig.Terraform.Version.Authentication.Basic.Secret, "password", &mu)
+			if envConfig.RecipeConfig.Terraform.Version.Authentication.Token != nil {
+				// Token auth needs token
+				addSecretKeys(registrySecretIDs, envConfig.RecipeConfig.Terraform.Version.Authentication.Token.Secret, "token", &mu)
 			}
 		}
 		

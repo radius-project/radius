@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# echo "==> Building Radius..."
-# make build && make generate && make test
+echo "==> Building Radius..."
+make build && make generate && make test
 
 echo "==> Setting Docker registry environment variables..."
 export DOCKER_REGISTRY=ghcr.io/ytimocin
@@ -12,7 +12,7 @@ echo "==> Building and pushing Docker images..."
 make docker-build docker-push
 
 echo "==> Resetting the Kind cluster..."
-kind delete cluster && kind create cluster
+kind delete cluster && kind create cluster --wait 60s
 
 echo "==> Installing Radius on Kubernetes..."
 ./dist/darwin_arm64/release/rad install kubernetes \
@@ -35,9 +35,9 @@ echo "==> Create Radius environment..."
 echo "==> Publishing Bicep extension..."
 bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target updated.zip
 
-echo "===> Deploy a Bicep file..."
-./dist/darwin_arm64/release/rad deploy app-kubernetes-postgres.bicep \
-  --parameters username=postgres \
-  --parameters password=admin
+# echo "===> Deploy a Bicep file..."
+# ./dist/darwin_arm64/release/rad deploy app-kubernetes-postgres.bicep \
+#   --parameters username=postgres \
+#   --parameters password=admin
 
-echo "==> Deployment complete!"
+# echo "==> Deployment complete!"

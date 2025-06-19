@@ -156,8 +156,8 @@ model TerraformTLSConfig {
 
 @doc("Authentication configuration for accessing private Terraform registry mirrors.")
 model RegistryAuthConfig {
-  @doc("Basic HTTP authentication configuration for registry authentication.")
-  basic?: BasicAuthConfig;
+  @doc("Token authentication configuration for registry authentication.")
+  token?: TokenConfig;
 
   @doc("Additional hosts that should use the same authentication credentials. This is useful when a registry mirror redirects to other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).")
   additionalHosts?: string[];
@@ -193,15 +193,15 @@ model SSHConfig {
   strictHostKeyChecking?: boolean = true;
 }
 
-@doc("Basic HTTP authentication configuration.")
-model BasicAuthConfig {
-  @doc("The ID of an Applications.Core/SecretStore resource containing the basic authentication credentials. The secret store must have secrets named 'username' and 'password'.")
-  secret?: string;
-}
-
 @doc("Client certificate (mTLS) configuration for authentication.")
 model ClientCertConfig {
   @doc("The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have secrets named 'cert' and 'key' containing the PEM-encoded certificate and private key. A secret named 'passphrase' is optional, containing the passphrase for the private key.")
+  secret?: string;
+}
+
+@doc("Token authentication configuration.")
+model TokenConfig {
+  @doc("The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token' containing the token value.")
   secret?: string;
 }
 

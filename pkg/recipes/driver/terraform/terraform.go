@@ -88,11 +88,12 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		}
 	}()
 
-	if err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath); err != nil {
+	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
+	if err != nil {
 		return nil, fmt.Errorf("failed to configure terraform registry: %w", err)
 	}
 	defer func() {
-		if err := CleanupTerraformRegistryConfig(ctx, requestDirPath); err != nil {
+		if err := CleanupTerraformRegistryConfig(ctx, regConfig); err != nil {
 			// Log the error but don't fail the operation
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform registry configuration: %s", err.Error()))
 		}
@@ -147,6 +148,17 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 	defer func() {
 		if err := os.RemoveAll(requestDirPath); err != nil {
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
+		}
+	}()
+
+	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
+	if err != nil {
+		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to configure terraform registry: %s", err.Error()), "", nil)
+	}
+	defer func() {
+		if err := CleanupTerraformRegistryConfig(ctx, regConfig); err != nil {
+			// Log the error but don't fail the operation
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform registry configuration: %s", err.Error()))
 		}
 	}()
 
@@ -274,6 +286,17 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 	defer func() {
 		if err := os.RemoveAll(requestDirPath); err != nil {
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
+		}
+	}()
+
+	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
+	if err != nil {
+		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, fmt.Sprintf("failed to configure terraform registry: %s", err.Error()), "", nil)
+	}
+	defer func() {
+		if err := CleanupTerraformRegistryConfig(ctx, regConfig); err != nil {
+			// Log the error but don't fail the operation
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform registry configuration: %s", err.Error()))
 		}
 	}()
 

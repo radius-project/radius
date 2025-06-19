@@ -2265,12 +2265,12 @@
     "$type": "ObjectType",
     "name": "RegistryAuthConfig",
     "properties": {
-      "basic": {
+      "token": {
         "type": {
           "$ref": "#/174"
         },
         "flags": 0,
-        "description": "Basic HTTP authentication configuration."
+        "description": "Token authentication configuration."
       },
       "additionalHosts": {
         "type": {
@@ -2283,14 +2283,14 @@
   },
   {
     "$type": "ObjectType",
-    "name": "BasicAuthConfig",
+    "name": "TokenConfig",
     "properties": {
       "secret": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The ID of an Applications.Core/SecretStore resource containing the basic authentication credentials. The secret store must have secrets named 'username' and 'password'."
+        "description": "The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token' containing the token value."
       }
     }
   },

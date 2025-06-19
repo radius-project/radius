@@ -583,18 +583,18 @@ func (s *CustomRegistrySource) extractFile(f *zip.File) (string, error) {
 
 	// Construct the destination path safely
 	execPath := filepath.Join(s.InstallDir, cleanName)
-	
+
 	// Verify the final path is within InstallDir
 	absInstallDir, err := filepath.Abs(s.InstallDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute install directory: %w", err)
 	}
-	
+
 	absExecPath, err := filepath.Abs(execPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute exec path: %w", err)
 	}
-	
+
 	// Ensure the destination path is within the install directory
 	if !strings.HasPrefix(absExecPath, absInstallDir) {
 		return "", fmt.Errorf("invalid destination path: %s", execPath)

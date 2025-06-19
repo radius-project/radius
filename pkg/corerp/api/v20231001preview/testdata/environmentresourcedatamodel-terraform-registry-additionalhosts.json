@@ -30,7 +30,7 @@
         "registry": {
           "mirror": "https://my-registry.example.com/terraform",
           "authentication": {
-            "basic": {
+            "token": {
               "secret": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/registry-creds"
             },
             "additionalHosts": [

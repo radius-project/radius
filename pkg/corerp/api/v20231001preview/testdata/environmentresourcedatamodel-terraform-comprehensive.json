@@ -32,7 +32,7 @@
             "registry.terraform.io/hashicorp/azurerm": "terraform.example.com/providers/azurerm"
           },
           "authentication": {
-            "pat": {
+            "token": {
               "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/registry-pat"
             },
             "additionalHosts": ["gitlab.com", "packages.gitlab.com"]
@@ -49,7 +49,7 @@
             }
           },
           "authentication": {
-            "basic": {
+            "token": {
               "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/releases-basic"
             }
           }

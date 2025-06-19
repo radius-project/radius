@@ -26,8 +26,7 @@
           },
           "authentication": {
             "token": {
-              "source": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/registry-token",
-              "key": "token"
+              "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/registry-token"
             },
             "additionalHosts": ["gitlab.com", "packages.gitlab.com"]
           }
@@ -37,8 +36,7 @@
           "releasesApiBaseUrl": "https://releases.example.com",
           "authentication": {
             "token": {
-              "source": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/releases-token",
-              "key": "api-token"
+              "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/releases-token"
             }
           }
         }

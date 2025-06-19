@@ -11,9 +11,9 @@ param password string
 @secure()
 param gitlabPAT string
 
-// @description('Local Registry Server Token')
-// @secure()
-// param localRegistryToken string = 'test-token-123' // Default token for local testing
+@description('Local Registry Server Token')
+@secure()
+param localRegistryToken string = 'test-token-123' // Default token for local testing
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'app-postgres-env'
@@ -53,17 +53,17 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
             }
           }
         }
-        // registry: {
-        //   mirror: 'https://4f69-2600-1700-5ab2-1200-6584-be2-b7b4-a66c.ngrok-free.app'
-        //   authentication: {
-        //     basic: {
-        //       secret: localRegistryBasicAuth.id
-        //     }
-        //   }
-        // }
+        registry: {
+          mirror: 'https://dsl-qty-white-visited.trycloudflare.com'
+          authentication: {
+            token: {
+              secret: localRegistryTokenSecret.id
+            }
+          }
+        }
         version: {
           version: '1.7.0'
-          releasesApiBaseUrl: 'http://host.docker.internal:8081/repository/terraform'
+          releasesApiBaseUrl: 'http://host.docker.internal:8081/repository/terraform-releases'
           tls: {
             skipVerify: true
           }
@@ -153,31 +153,15 @@ resource gitlabSecrets 'Applications.Core/secretStores@2023-10-01-preview' = {
   }
 }
 
-// // Local registry token secret
-// resource localRegistryTokenSecret 'Applications.Core/secretStores@2023-10-01-preview' = {
-//   name: 'local-registry-token-secret'
-//   properties: {
-//     resource: 'app-postgres-env/local-registry-token-secret'
-//     type: 'generic'
-//     data: {
-//       token: {
-//         value: localRegistryToken
-//       }
-//     }
-//   }
-// }
-
-resource localRegistryBasicAuth 'Applications.Core/secretStores@2023-10-01-preview' = {
-  name: 'local-registry-basic-auth'
+// Local registry token secret - Updated to use token authentication
+resource localRegistryTokenSecret 'Applications.Core/secretStores@2023-10-01-preview' = {
+  name: 'local-registry-token-secret'
   properties: {
-    resource: 'app-postgres-env/local-registry-basic-auth'
+    resource: 'app-postgres-env/local-registry-token-secret'
     type: 'generic'
     data: {
-      username: {
-        value: 'terraform'
-      }
-      password: {
-        value: 'test-token-123'
+      token: {
+        value: localRegistryToken
       }
     }
   }

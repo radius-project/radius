@@ -233,13 +233,6 @@ type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
 	Type *string
 }
 
-// BasicAuthConfig - Basic HTTP authentication configuration.
-type BasicAuthConfig struct {
-// The ID of an Applications.Core/SecretStore resource containing the basic authentication credentials. The secret store must
-// have secrets named 'username' and 'password'.
-	Secret *string
-}
-
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
 // deployment.
 type BicepConfigProperties struct {
@@ -1285,8 +1278,8 @@ type RegistryAuthConfig struct {
 // other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).
 	AdditionalHosts []*string
 
-// Basic HTTP authentication configuration for registry authentication.
-	Basic *BasicAuthConfig
+// Token authentication configuration for registry authentication.
+	Token *TokenConfig
 }
 
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
@@ -1620,6 +1613,13 @@ type TerraformVersionConfig struct {
 // Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example:
 // '1.7.0'
 	Version *string
+}
+
+// TokenConfig - Token authentication configuration.
+type TokenConfig struct {
+// The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret
+// named 'token' containing the token value.
+	Secret *string
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'

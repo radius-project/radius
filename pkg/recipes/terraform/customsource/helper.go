@@ -18,8 +18,8 @@ package customsource
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hc-install/product"
@@ -67,6 +67,8 @@ func InstallTerraformWithTLS(
 		InstallDir: installDir,
 	}
 
+	log.Printf("Base URL for Terraform releases: %s", customSource.BaseURL)
+
 	// Handle TLS configuration if present
 	if terraformConfig.Version.TLS != nil {
 		tlsConfig := terraformConfig.Version.TLS
@@ -94,27 +96,21 @@ func InstallTerraformWithTLS(
 
 	// Handle authentication if configured
 	if terraformConfig.Version.Authentication != nil {
-		// Handle basic authentication
-		if terraformConfig.Version.Authentication.Basic != nil {
-			secretData, ok := secrets[terraformConfig.Version.Authentication.Basic.Secret]
+		// Handle token authentication
+		if terraformConfig.Version.Authentication.Token != nil {
+			secretData, ok := secrets[terraformConfig.Version.Authentication.Token.Secret]
 			if !ok {
-				return "", fmt.Errorf("authentication secret store not found: %s", terraformConfig.Version.Authentication.Basic.Secret)
+				return "", fmt.Errorf("authentication secret store not found: %s", terraformConfig.Version.Authentication.Token.Secret)
 			}
 
-			username, ok := secretData.Data["username"]
+			token, ok := secretData.Data["token"]
 			if !ok {
-				return "", fmt.Errorf("username not found in secret store")
+				return "", fmt.Errorf("token not found in secret store")
 			}
 
-			password, ok := secretData.Data["password"]
-			if !ok {
-				return "", fmt.Errorf("password not found in secret store")
-			}
-
-			// For basic auth, we need to set the auth token as "Basic base64(username:password)"
-			credentials := fmt.Sprintf("%s:%s", string(username), string(password))
-			encoded := base64.StdEncoding.EncodeToString([]byte(credentials))
-			customSource.AuthToken = fmt.Sprintf("Basic %s", encoded)
+			// For token auth, we set the auth token directly (without "Bearer" prefix)
+			// The custom source will add the appropriate header
+			customSource.AuthToken = string(token)
 		}
 	}
 

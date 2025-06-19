@@ -22,7 +22,7 @@
         "registry": {
           "mirror": "https://ytimocin-group.gitlab.io/terraform-registry/",
           "authentication": {
-            "basic": {
+            "token": {
               "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/gitlabSecrets"
             }
           }

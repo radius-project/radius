@@ -2539,16 +2539,6 @@
       ],
       "x-ms-discriminator-value": "azure.com.keyvault"
     },
-    "BasicAuthConfig": {
-      "type": "object",
-      "description": "Basic HTTP authentication configuration.",
-      "properties": {
-        "secret": {
-          "type": "string",
-          "description": "The ID of an Applications.Core/SecretStore resource containing the basic authentication credentials. The secret store must have secrets named 'username' and 'password'."
-        }
-      }
-    },
     "BicepConfigProperties": {
       "type": "object",
       "description": "Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.",
@@ -4278,9 +4268,9 @@
       "type": "object",
       "description": "Authentication configuration for accessing private Terraform registry mirrors.",
       "properties": {
-        "basic": {
-          "$ref": "#/definitions/BasicAuthConfig",
-          "description": "Basic HTTP authentication configuration for registry authentication."
+        "token": {
+          "$ref": "#/definitions/TokenConfig",
+          "description": "Token authentication configuration for registry authentication."
         },
         "additionalHosts": {
           "type": "array",
@@ -4911,6 +4901,16 @@
             "description": "TLS Version 1.3"
           }
         ]
+      }
+    },
+    "TokenConfig": {
+      "type": "object",
+      "description": "Token authentication configuration.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token' containing the token value."
+        }
       }
     },
     "ValueFromProperties": {

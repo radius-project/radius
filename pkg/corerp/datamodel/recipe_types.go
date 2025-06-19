@@ -100,12 +100,6 @@ type SSHConfig struct {
 	StrictHostKeyChecking bool `json:"strictHostKeyChecking,omitempty"`
 }
 
-// BasicAuthConfig - Basic HTTP authentication configuration.
-type BasicAuthConfig struct {
-	// The ID of an Applications.Core/SecretStore resource containing the basic authentication credentials.
-	// The secret store must have secrets named 'username' and 'password'.
-	Secret string `json:"secret,omitempty"`
-}
 
 // ClientCertConfig - Client certificate (mTLS) configuration for authentication.
 type ClientCertConfig struct {
@@ -150,10 +144,17 @@ type TerraformRegistryConfig struct {
 	Authentication RegistryAuthConfig `json:"authentication,omitempty"`
 }
 
+// TokenConfig - Token authentication configuration.
+type TokenConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the authentication token.
+	// The secret store must have a secret named 'token' containing the token value.
+	Secret string `json:"secret,omitempty"`
+}
+
 // RegistryAuthConfig - Authentication configuration for accessing private Terraform registry mirrors.
 type RegistryAuthConfig struct {
-	// Basic is the basic HTTP authentication configuration for registry authentication.
-	Basic *BasicAuthConfig `json:"basic,omitempty"`
+	// Token is the token authentication configuration for registry authentication.
+	Token *TokenConfig `json:"token,omitempty"`
 
 	// AdditionalHosts is a list of additional hosts that should use the same authentication credentials.
 	// This is useful when a registry mirror redirects to other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).

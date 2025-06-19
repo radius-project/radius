@@ -14,7 +14,7 @@
           "version": "1.7.0",
           "releasesApiBaseUrl": "https://terraform-mirror.example.com",
           "authentication": {
-            "basic": {
+            "token": {
               "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/authSecrets"
             }
           }
@@ -22,7 +22,7 @@
         "registry": {
           "mirror": "https://registry.example.com",
           "authentication": {
-            "basic": {
+            "token": {
               "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/registrySecrets"
             }
           }

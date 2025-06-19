@@ -36,8 +36,7 @@ func TestConfigureTerraformRegistry(t *testing.T) {
 	const (
 		mirrorURL     = "terraform.example.com"
 		secretStoreID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore"
-		secretKey     = "registryToken"
-		tokenValue    = "test-secret-token-value"
+		token         = "test-auth-token-12345"
 	)
 
 	// Setup configuration from the example
@@ -50,7 +49,7 @@ func TestConfigureTerraformRegistry(t *testing.T) {
 						"hashicorp/azurerm": "mycompany/azurerm",
 					},
 					Authentication: datamodel.RegistryAuthConfig{
-						Basic: &datamodel.BasicAuthConfig{
+						Token: &datamodel.TokenConfig{
 							Secret: secretStoreID,
 						},
 					},
@@ -64,39 +63,36 @@ func TestConfigureTerraformRegistry(t *testing.T) {
 		secretStoreID: {
 			Type: "opaque",
 			Data: map[string]string{
-				"username": "testuser",
-				"password": tokenValue,
+				"token": token,
 			},
 		},
 	}
 
 	// Call the function under test
 	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
+	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
 	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
+	require.NotNil(t, regConfig, "Should return a RegistryConfig")
 
 	// Verify the .terraformrc file was created
 	configFilePath := filepath.Join(tempDir, TerraformRCFilename)
 	require.FileExists(t, configFilePath, ".terraformrc file should be created")
+	require.Equal(t, configFilePath, regConfig.ConfigPath, "RegistryConfig should contain the correct config path")
 
 	// Read the generated file
 	content, err := os.ReadFile(configFilePath)
 	require.NoError(t, err, "Should be able to read the config file")
 	configContent := string(content)
 
-	// Verify the content contains the expected sections
-	expectedCredentials := `credentials "terraform.example.com" {
-  username = "testuser"
-  password = "test-secret-token-value"
-}`
-	require.True(t, strings.Contains(configContent, expectedCredentials),
-		"Config file should contain credentials block with username and password")
+	// Verify the content does NOT contain credentials (only env vars now)
+	require.False(t, strings.Contains(configContent, "credentials"),
+		"Config file should NOT contain credentials block")
 
-	// Check for provider installation block with mirror URL
+	// Check for provider installation block with normalized mirror URL
 	require.True(t, strings.Contains(configContent, "provider_installation {"),
 		"Config file should contain provider_installation block")
-	require.True(t, strings.Contains(configContent, `url    = "terraform.example.com"`),
-		"Config file should contain the mirror URL")
+	require.True(t, strings.Contains(configContent, `url     = "https://terraform.example.com"`),
+		"Config file should contain the normalized mirror URL with https scheme")
 	require.True(t, strings.Contains(configContent, `include = ["*/*/*"]`),
 		"Config file should contain include pattern")
 	require.True(t, strings.Contains(configContent, `exclude = ["*/*/*"]`),
@@ -106,11 +102,23 @@ func TestConfigureTerraformRegistry(t *testing.T) {
 	require.Equal(t, configFilePath, os.Getenv(EnvTerraformCLIConfigFile),
 		"TF_CLI_CONFIG_FILE environment variable should be set")
 
+	// Verify TF_TOKEN_* environment variable was set with raw token value
+	require.Equal(t, token, os.Getenv("TF_TOKEN_terraform_example_com"),
+		"TF_TOKEN_* environment variable should be set with raw token value")
+
+	// Verify the RegistryConfig tracks the environment variables
+	require.Contains(t, regConfig.EnvVars, EnvTerraformCLIConfigFile,
+		"RegistryConfig should track TF_CLI_CONFIG_FILE")
+	require.Contains(t, regConfig.EnvVars, "TF_TOKEN_terraform_example_com",
+		"RegistryConfig should track TF_TOKEN_* variable")
+
 	// Test cleanup
-	err = CleanupTerraformRegistryConfig(ctx, tempDir)
+	err = CleanupTerraformRegistryConfig(ctx, regConfig)
 	require.NoError(t, err, "Cleanup should not return an error")
 	require.Empty(t, os.Getenv(EnvTerraformCLIConfigFile),
-		"Environment variable should be unset after cleanup")
+		"TF_CLI_CONFIG_FILE should be unset after cleanup")
+	require.Empty(t, os.Getenv("TF_TOKEN_terraform_example_com"),
+		"TF_TOKEN_* should be unset after cleanup")
 }
 
 func TestConfigureTerraformRegistry_NoAuth(t *testing.T) {
@@ -131,8 +139,9 @@ func TestConfigureTerraformRegistry_NoAuth(t *testing.T) {
 
 	// Call the function under test
 	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, nil, tempDir)
+	regConfig, err := ConfigureTerraformRegistry(ctx, config, nil, tempDir)
 	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
+	require.NotNil(t, regConfig, "Should return a RegistryConfig")
 
 	// Verify the .terraformrc file was created
 	configFilePath := filepath.Join(tempDir, TerraformRCFilename)
@@ -150,12 +159,13 @@ func TestConfigureTerraformRegistry_NoAuth(t *testing.T) {
 	// Check for provider installation block with mirror URL
 	require.True(t, strings.Contains(configContent, "provider_installation {"),
 		"Config file should contain provider_installation block")
-	require.True(t, strings.Contains(configContent, `url    = "terraform.example.com"`),
-		"Config file should contain the mirror URL")
-	require.True(t, strings.Contains(configContent, `include = ["*/*/*"]`),
-		"Config file should contain include pattern")
-	require.True(t, strings.Contains(configContent, `exclude = ["*/*/*"]`),
-		"Config file should contain exclude pattern")
+	require.True(t, strings.Contains(configContent, `url     = "https://terraform.example.com"`),
+		"Config file should contain the normalized mirror URL")
+
+	// Verify only TF_CLI_CONFIG_FILE is tracked (no token env vars)
+	require.Len(t, regConfig.EnvVars, 1, "Should only track one environment variable")
+	require.Equal(t, EnvTerraformCLIConfigFile, regConfig.EnvVars[0],
+		"Should only track TF_CLI_CONFIG_FILE")
 }
 
 func TestConfigureTerraformRegistry_NoRegistry(t *testing.T) {
@@ -171,8 +181,9 @@ func TestConfigureTerraformRegistry_NoRegistry(t *testing.T) {
 
 	// Call the function under test
 	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, nil, tempDir)
+	regConfig, err := ConfigureTerraformRegistry(ctx, config, nil, tempDir)
 	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
+	require.Nil(t, regConfig, "Should return nil when no registry is configured")
 
 	// Verify the .terraformrc file was NOT created
 	configFilePath := filepath.Join(tempDir, TerraformRCFilename)
@@ -180,25 +191,24 @@ func TestConfigureTerraformRegistry_NoRegistry(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "No .terraformrc file should be created when no registry is configured")
 }
 
-func TestConfigureTerraformRegistry_BasicAuthWithUsername(t *testing.T) {
+func TestConfigureTerraformRegistry_WithPort(t *testing.T) {
 	// Create temp dir for test
 	tempDir := t.TempDir()
 
 	const (
-		mirrorURL     = "terraform.example.com"
+		mirrorURL     = "terraform.example.com:8443"
 		secretStoreID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore"
-		password      = "github_pat_test123"
-		username      = "testuser"
+		token         = "test-token-with-port"
 	)
 
-	// Setup configuration with basic authentication
+	// Setup configuration with port in URL
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
 				Registry: &datamodel.TerraformRegistryConfig{
 					Mirror: mirrorURL,
 					Authentication: datamodel.RegistryAuthConfig{
-						Basic: &datamodel.BasicAuthConfig{
+						Token: &datamodel.TokenConfig{
 							Secret: secretStoreID,
 						},
 					},
@@ -212,167 +222,34 @@ func TestConfigureTerraformRegistry_BasicAuthWithUsername(t *testing.T) {
 		secretStoreID: {
 			Type: "opaque",
 			Data: map[string]string{
-				"password": password,
-				"username": username,
+				"token": token,
 			},
 		},
 	}
 
 	// Call the function under test
 	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
+	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
 	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
 
-	// Verify the .terraformrc file was created
-	configFilePath := filepath.Join(tempDir, TerraformRCFilename)
-	require.FileExists(t, configFilePath, ".terraformrc file should be created")
+	// Verify the correct token env var name with port (colons replaced with underscores)
+	require.Equal(t, token, os.Getenv("TF_TOKEN_terraform_example_com_8443"),
+		"TF_TOKEN_* should include port with colons replaced by underscores")
 
 	// Read the generated file
-	content, err := os.ReadFile(configFilePath)
+	content, err := os.ReadFile(regConfig.ConfigPath)
 	require.NoError(t, err, "Should be able to read the config file")
 	configContent := string(content)
 
-	// Verify the content contains the expected credentials
-	expectedCredentials := `credentials "terraform.example.com" {
-  username = "testuser"
-  password = "github_pat_test123"
-}`
-	require.True(t, strings.Contains(configContent, expectedCredentials),
-		"Config file should contain credentials block with username and password")
+	// Verify the normalized URL includes the port
+	require.True(t, strings.Contains(configContent, `url     = "https://terraform.example.com:8443"`),
+		"Config file should contain the normalized mirror URL with port")
+
+	// Cleanup
+	os.Unsetenv("TF_TOKEN_terraform_example_com_8443")
 }
 
-func TestConfigureTerraformRegistry_BasicAuth(t *testing.T) {
-	// Create temp dir for test
-	tempDir := t.TempDir()
-
-	const (
-		mirrorURL     = "terraform.example.com"
-		secretStoreID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore"
-		username      = "basicuser"
-		password      = "basicpass123"
-	)
-
-	// Setup configuration with basic authentication
-	config := recipes.Configuration{
-		RecipeConfig: datamodel.RecipeConfigProperties{
-			Terraform: datamodel.TerraformConfigProperties{
-				Registry: &datamodel.TerraformRegistryConfig{
-					Mirror: mirrorURL,
-					Authentication: datamodel.RegistryAuthConfig{
-						Basic: &datamodel.BasicAuthConfig{
-							Secret: secretStoreID,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// Setup mock secrets data
-	secrets := map[string]recipes.SecretData{
-		secretStoreID: {
-			Type: "opaque",
-			Data: map[string]string{
-				"username": username,
-				"password": password,
-			},
-		},
-	}
-
-	// Call the function under test
-	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
-	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
-
-	// Verify the .terraformrc file was created
-	configFilePath := filepath.Join(tempDir, TerraformRCFilename)
-	require.FileExists(t, configFilePath, ".terraformrc file should be created")
-
-	// Read the generated file
-	content, err := os.ReadFile(configFilePath)
-	require.NoError(t, err, "Should be able to read the config file")
-	configContent := string(content)
-
-	// Verify the content contains the expected credentials
-	expectedCredentials := `credentials "terraform.example.com" {
-  username = "basicuser"
-  password = "basicpass123"
-}`
-	require.True(t, strings.Contains(configContent, expectedCredentials),
-		"Config file should contain credentials block with username and password")
-}
-
-// Removing CustomHeaders test as this auth type is no longer supported
-/*
-func TestConfigureTerraformRegistry_CustomHeaders(t *testing.T) {
-	// Create temp dir for test
-	tempDir := t.TempDir()
-
-	const (
-		mirrorURL      = "terraform.example.com"
-		secretStoreID1 = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore1"
-		secretStoreID2 = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore2"
-		apiKeyValue    = "api-key-123"
-		authTokenValue = "bearer-token-456"
-	)
-
-	// Setup configuration with custom headers
-	config := recipes.Configuration{
-		RecipeConfig: datamodel.RecipeConfigProperties{
-			Terraform: datamodel.TerraformConfigProperties{
-				Registry: &datamodel.TerraformRegistryConfig{
-					Mirror: mirrorURL,
-					Authentication: datamodel.RegistryAuthConfig{
-						CustomHeaders: map[string]datamodel.SecretReference{
-							"X-API-Key": {
-								Source: secretStoreID1,
-								Key:    "apiKey",
-							},
-							"Authorization": {
-								Source: secretStoreID2,
-								Key:    "token",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// Setup mock secrets data
-	secrets := map[string]recipes.SecretData{
-		secretStoreID1: {
-			Type: "opaque",
-			Data: map[string]string{
-				"apiKey": apiKeyValue,
-			},
-		},
-		secretStoreID2: {
-			Type: "opaque",
-			Data: map[string]string{
-				"token": authTokenValue,
-			},
-		},
-	}
-
-	// Clear any existing environment variables
-	os.Unsetenv("TF_REGISTRY_HEADER_X_API_KEY")
-	os.Unsetenv("TF_REGISTRY_HEADER_AUTHORIZATION")
-
-	// Call the function under test
-	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
-	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
-
-	// Clean up environment variables
-	os.Unsetenv("TF_REGISTRY_HEADER_X_API_KEY")
-	os.Unsetenv("TF_REGISTRY_HEADER_AUTHORIZATION")
-}
-*/
-
-// Removing ClientCertificate test as this auth type is no longer supported
-/*
-func TestConfigureTerraformRegistry_ClientCertificate(t *testing.T) {
+func TestConfigureTerraformRegistry_MissingToken(t *testing.T) {
 	// Create temp dir for test
 	tempDir := t.TempDir()
 
@@ -381,14 +258,14 @@ func TestConfigureTerraformRegistry_ClientCertificate(t *testing.T) {
 		secretStoreID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore"
 	)
 
-	// Setup configuration with client certificate
+	// Setup configuration with token authentication
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
 				Registry: &datamodel.TerraformRegistryConfig{
 					Mirror: mirrorURL,
 					Authentication: datamodel.RegistryAuthConfig{
-						ClientCertificate: &datamodel.ClientCertConfig{
+						Token: &datamodel.TokenConfig{
 							Secret: secretStoreID,
 						},
 					},
@@ -397,145 +274,22 @@ func TestConfigureTerraformRegistry_ClientCertificate(t *testing.T) {
 		},
 	}
 
-	// Setup mock secrets data (not used directly, but needed for validation)
+	// Setup mock secrets data with missing token
 	secrets := map[string]recipes.SecretData{
 		secretStoreID: {
 			Type: "opaque",
 			Data: map[string]string{
-				"certificate": "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----",
-				"key":         "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+				// token is missing
 			},
 		},
 	}
 
 	// Call the function under test
 	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
-	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
-
-	// Verify the .terraformrc file was created (even though client cert is handled differently)
-	configFilePath := filepath.Join(tempDir, TerraformRCFilename)
-	require.FileExists(t, configFilePath, ".terraformrc file should be created")
-
-	// The actual client certificate handling would be done at the HTTP transport level
-	// This test just verifies that the configuration is accepted
-}
-*/
-
-func TestConfigureTerraformRegistry_MissingSecrets(t *testing.T) {
-	// Create temp dir for test
-	tempDir := t.TempDir()
-
-	const (
-		mirrorURL     = "terraform.example.com"
-		secretStoreID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore"
-	)
-
-	// Setup configuration with basic authentication
-	config := recipes.Configuration{
-		RecipeConfig: datamodel.RecipeConfigProperties{
-			Terraform: datamodel.TerraformConfigProperties{
-				Registry: &datamodel.TerraformRegistryConfig{
-					Mirror: mirrorURL,
-					Authentication: datamodel.RegistryAuthConfig{
-						Basic: &datamodel.BasicAuthConfig{
-							Secret: secretStoreID,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// Setup mock secrets data with missing username
-	secrets := map[string]recipes.SecretData{
-		secretStoreID: {
-			Type: "opaque",
-			Data: map[string]string{
-				"password": "pass123", // username is missing
-			},
-		},
-	}
-
-	// Call the function under test
-	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
-	require.Error(t, err, "ConfigureTerraformRegistry should return an error when required secrets are missing")
-	require.Contains(t, err.Error(), "username or password not found")
-}
-
-func TestConfigureTerraformRegistry_GitLabPagesMirror(t *testing.T) {
-	// Create temp dir for test
-	tempDir := t.TempDir()
-
-	const (
-		mirrorURL     = "https://ytimocin-group.gitlab.io/terraform-registry/"
-		secretStoreID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/gitlabSecrets"
-		patValue      = "glpat-xxxxxxxxxxxx"
-	)
-
-	// Setup configuration with GitLab Pages mirror and basic authentication
-	config := recipes.Configuration{
-		RecipeConfig: datamodel.RecipeConfigProperties{
-			Terraform: datamodel.TerraformConfigProperties{
-				Registry: &datamodel.TerraformRegistryConfig{
-					Mirror: mirrorURL,
-					Authentication: datamodel.RegistryAuthConfig{
-						Basic: &datamodel.BasicAuthConfig{
-							Secret: secretStoreID,
-						},
-						AdditionalHosts: []string{"gitlab.com"},
-					},
-				},
-			},
-		},
-	}
-
-	// Setup mock secrets data
-	secrets := map[string]recipes.SecretData{
-		secretStoreID: {
-			Type: "opaque",
-			Data: map[string]string{
-				"username": "oauth2",
-				"password": patValue,
-			},
-		},
-	}
-
-	// Call the function under test
-	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
-	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
-
-	// Verify the .terraformrc file was created
-	configFilePath := filepath.Join(tempDir, TerraformRCFilename)
-	require.FileExists(t, configFilePath, ".terraformrc file should be created")
-
-	// Read the generated file
-	content, err := os.ReadFile(configFilePath)
-	require.NoError(t, err, "Should be able to read the config file")
-	configContent := string(content)
-
-	// Verify the content contains credentials for both the mirror host and gitlab.com
-	expectedMirrorCredentials := `credentials "ytimocin-group.gitlab.io" {
-  username = "oauth2"
-  password = "glpat-xxxxxxxxxxxx"
-}`
-	require.True(t, strings.Contains(configContent, expectedMirrorCredentials),
-		"Config file should contain credentials block for mirror host")
-
-	expectedGitLabCredentials := `credentials "gitlab.com" {
-  username = "oauth2"
-  password = "glpat-xxxxxxxxxxxx"
-}`
-	require.True(t, strings.Contains(configContent, expectedGitLabCredentials),
-		"Config file should contain credentials block for gitlab.com")
-
-	// Check for provider installation block with mirror URL
-	require.True(t, strings.Contains(configContent, "provider_installation {"),
-		"Config file should contain provider_installation block")
-	require.True(t, strings.Contains(configContent, `url    = "https://ytimocin-group.gitlab.io/terraform-registry/"`),
-		"Config file should contain the mirror URL")
+	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
+	require.Error(t, err, "ConfigureTerraformRegistry should return an error when token is missing")
+	require.Nil(t, regConfig, "Should return nil on error")
+	require.Contains(t, err.Error(), "token not found")
 }
 
 func TestConfigureTerraformRegistry_AdditionalHosts(t *testing.T) {
@@ -545,7 +299,7 @@ func TestConfigureTerraformRegistry_AdditionalHosts(t *testing.T) {
 	const (
 		mirrorURL     = "https://my-registry.example.com"
 		secretStoreID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecrets"
-		tokenValue    = "test-token-12345"
+		token         = "test-token-12345"
 	)
 
 	// Setup configuration with additional hosts
@@ -555,7 +309,7 @@ func TestConfigureTerraformRegistry_AdditionalHosts(t *testing.T) {
 				Registry: &datamodel.TerraformRegistryConfig{
 					Mirror: mirrorURL,
 					Authentication: datamodel.RegistryAuthConfig{
-						Basic: &datamodel.BasicAuthConfig{
+						Token: &datamodel.TokenConfig{
 							Secret: secretStoreID,
 						},
 						AdditionalHosts: []string{"original-registry.example.com", "backup-registry.example.com"},
@@ -570,46 +324,101 @@ func TestConfigureTerraformRegistry_AdditionalHosts(t *testing.T) {
 		secretStoreID: {
 			Type: "opaque",
 			Data: map[string]string{
-				"username": "testuser",
-				"password": tokenValue,
+				"token": token,
 			},
 		},
 	}
 
 	// Call the function under test
 	ctx := context.Background()
-	err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
+	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
 	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
 
-	// Verify the .terraformrc file was created
-	configFilePath := filepath.Join(tempDir, TerraformRCFilename)
-	require.FileExists(t, configFilePath, ".terraformrc file should be created")
+	// Verify environment variables for all hosts
+	
+	// Check primary host
+	require.Equal(t, token, os.Getenv("TF_TOKEN_my-registry_example_com"),
+		"TF_TOKEN_* should be set for primary host")
+	
+	// Check additional hosts
+	require.Equal(t, token, os.Getenv("TF_TOKEN_original-registry_example_com"),
+		"TF_TOKEN_* should be set for first additional host")
+	require.Equal(t, token, os.Getenv("TF_TOKEN_backup-registry_example_com"),
+		"TF_TOKEN_* should be set for second additional host")
 
-	// Read the generated file
-	content, err := os.ReadFile(configFilePath)
-	require.NoError(t, err, "Should be able to read the config file")
-	configContent := string(content)
+	// Verify all env vars are tracked
+	require.Len(t, regConfig.EnvVars, 4, "Should track all environment variables")
+	require.Contains(t, regConfig.EnvVars, EnvTerraformCLIConfigFile)
+	require.Contains(t, regConfig.EnvVars, "TF_TOKEN_my-registry_example_com")
+	require.Contains(t, regConfig.EnvVars, "TF_TOKEN_original-registry_example_com")
+	require.Contains(t, regConfig.EnvVars, "TF_TOKEN_backup-registry_example_com")
 
-	// Verify the content contains credentials for the mirror host
-	expectedMirrorCredentials := `credentials "my-registry.example.com" {
-  username = "testuser"
-  password = "test-token-12345"
-}`
-	require.True(t, strings.Contains(configContent, expectedMirrorCredentials),
-		"Config file should contain credentials block for mirror host")
+	// Cleanup
+	err = CleanupTerraformRegistryConfig(ctx, regConfig)
+	require.NoError(t, err)
+	
+	// Verify all env vars are cleaned up
+	require.Empty(t, os.Getenv("TF_TOKEN_my-registry_example_com"))
+	require.Empty(t, os.Getenv("TF_TOKEN_original-registry_example_com"))
+	require.Empty(t, os.Getenv("TF_TOKEN_backup-registry_example_com"))
+}
 
-	// Verify the content contains credentials for additional hosts
-	expectedAdditionalHost1 := `credentials "original-registry.example.com" {
-  username = "testuser"
-  password = "test-token-12345"
-}`
-	require.True(t, strings.Contains(configContent, expectedAdditionalHost1),
-		"Config file should contain credentials block for first additional host")
+func TestConfigureTerraformRegistry_InvalidURL(t *testing.T) {
+	// Create temp dir for test
+	tempDir := t.TempDir()
 
-	expectedAdditionalHost2 := `credentials "backup-registry.example.com" {
-  username = "testuser"
-  password = "test-token-12345"
-}`
-	require.True(t, strings.Contains(configContent, expectedAdditionalHost2),
-		"Config file should contain credentials block for second additional host")
+	// Setup configuration with invalid URL
+	config := recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Registry: &datamodel.TerraformRegistryConfig{
+					Mirror: "://invalid-url",
+				},
+			},
+		},
+	}
+
+	// Call the function under test
+	ctx := context.Background()
+	regConfig, err := ConfigureTerraformRegistry(ctx, config, nil, tempDir)
+	require.Error(t, err, "ConfigureTerraformRegistry should return an error for invalid URL")
+	require.Nil(t, regConfig, "Should return nil on error")
+	require.Contains(t, err.Error(), "invalid terraform registry mirror URL")
+}
+
+func TestCleanupTerraformRegistryConfig_NilConfig(t *testing.T) {
+	// Test that cleanup handles nil config gracefully
+	ctx := context.Background()
+	err := CleanupTerraformRegistryConfig(ctx, nil)
+	require.NoError(t, err, "Cleanup should handle nil config without error")
+}
+
+func TestCleanupTerraformRegistryConfig_FileRemoval(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "test.terraformrc")
+	
+	// Create a test file
+	err := os.WriteFile(configPath, []byte("test"), 0600)
+	require.NoError(t, err)
+	
+	// Create config
+	regConfig := &RegistryConfig{
+		ConfigPath: configPath,
+		EnvVars:    []string{"TEST_VAR"},
+	}
+	
+	// Set a test env var
+	os.Setenv("TEST_VAR", "test-value")
+	
+	// Call cleanup
+	ctx := context.Background()
+	err = CleanupTerraformRegistryConfig(ctx, regConfig)
+	require.NoError(t, err)
+	
+	// Verify file is removed
+	_, err = os.Stat(configPath)
+	require.True(t, os.IsNotExist(err), "Config file should be removed")
+	
+	// Verify env var is unset
+	require.Empty(t, os.Getenv("TEST_VAR"), "Environment variable should be unset")
 }

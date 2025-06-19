@@ -318,7 +318,7 @@ func TestCustomRegistrySource_ZipSlipProtection(t *testing.T) {
 			// we'll test just the validation logic by extracting it
 			cleanName := filepath.Base(zipFile.Name)
 			err := validateZipPath(zipFile.Name, cleanName)
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errMsg != "" {

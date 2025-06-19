@@ -18,7 +18,6 @@ package terraform
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"net/url"
 	"os"
@@ -40,122 +39,126 @@ const (
 	DefaultFilePerms = 0600
 )
 
+// RegistryConfig tracks the configuration created for cleanup
+type RegistryConfig struct {
+	ConfigPath string
+	EnvVars    []string
+}
+
 // ConfigureTerraformRegistry sets up Terraform registry configuration for private registries.
-// It creates a .terraformrc file with the registry mirror and authentication details.
-func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuration, secrets map[string]recipes.SecretData, dirPath string) error {
+// It creates a .terraformrc file with the registry mirror and sets up authentication via environment variables.
+// Returns a RegistryConfig struct that tracks created resources for cleanup.
+func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuration, secrets map[string]recipes.SecretData, dirPath string) (*RegistryConfig, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Initialize the registry config to track what we create
+	regConfig := &RegistryConfig{
+		EnvVars: []string{},
+	}
 
 	// Check if registry mirror configuration exists
 	if config.RecipeConfig.Terraform.Registry == nil || config.RecipeConfig.Terraform.Registry.Mirror == "" {
 		logger.Info("No Terraform registry mirror configured, skipping registry configuration")
-		return nil
+		return nil, nil
 	}
 
 	// Extract and validate the mirror URL
 	mirrorURL := config.RecipeConfig.Terraform.Registry.Mirror
 	logger.Info("Configuring Terraform registry with mirror", "url", mirrorURL)
 
-	// Add scheme if missing
-	if !strings.HasPrefix(mirrorURL, "http://") && !strings.HasPrefix(mirrorURL, "https://") {
-		mirrorURL = "https://" + mirrorURL
+	// Check if URL is malformed first (e.g., starts with ://)
+	if strings.HasPrefix(mirrorURL, "://") {
+		return nil, fmt.Errorf("invalid terraform registry mirror URL: %s", mirrorURL)
 	}
 
-	// Validate the URL is well-formed
+	// Try parsing the URL as-is
 	parsedURL, err := url.Parse(mirrorURL)
 	if err != nil {
-		return fmt.Errorf("invalid terraform registry mirror URL: %w", err)
+		return nil, fmt.Errorf("invalid terraform registry mirror URL: %w", err)
 	}
 
-	hostname := parsedURL.Hostname()
-	if hostname == "" {
-		return fmt.Errorf("empty hostname in mirror URL: %s", config.RecipeConfig.Terraform.Registry.Mirror)
+	// If no scheme is present, add https:// and reparse
+	// This handles cases like "example.com" or "example.com:8443"
+	if parsedURL.Scheme == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https" && strings.Contains(mirrorURL, ":")) {
+		// For URLs without a scheme, Go's url.Parse may misinterpret the host as scheme
+		// e.g., "example.com:8443" becomes scheme="example.com" instead of host="example.com:8443"
+		// So we always add https:// for scheme-less URLs
+		mirrorURL = "https://" + mirrorURL
+		parsedURL, err = url.Parse(mirrorURL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid terraform registry mirror URL: %w", err)
+		}
+	}
+
+	// Use Host() instead of Hostname() to preserve port information
+	host := parsedURL.Host
+	if host == "" {
+		return nil, fmt.Errorf("empty host in mirror URL: %s", config.RecipeConfig.Terraform.Registry.Mirror)
 	}
 
 	// Begin building Terraform configuration
 	var configContent strings.Builder
 
-	// Track if authentication is configured
-	hasAuth := false
-
 	// Handle authentication
 	auth := config.RecipeConfig.Terraform.Registry.Authentication
 
-	// Basic authentication
-	if auth.Basic != nil && auth.Basic.Secret != "" {
-		secretStoreID := auth.Basic.Secret
+	// Token authentication
+	if auth.Token != nil && auth.Token.Secret != "" {
+		secretStoreID := auth.Token.Secret
 
-		// Get credentials from secret store
+		// Get token from secret store
 		if secrets == nil {
-			return fmt.Errorf("no secrets available for basic authentication")
+			return nil, fmt.Errorf("no secrets available for token authentication")
 		}
 
 		secretData, secretExists := secrets[secretStoreID]
 		if !secretExists {
-			return fmt.Errorf("secret store %q not found", secretStoreID)
+			return nil, fmt.Errorf("secret store %q not found", secretStoreID)
 		}
 
-		username, usernameExists := secretData.Data["username"]
-		password, passwordExists := secretData.Data["password"]
-
-		if !usernameExists || !passwordExists {
-			return fmt.Errorf("username or password not found in secret store %q", secretStoreID)
+		token, tokenExists := secretData.Data["token"]
+		if !tokenExists {
+			return nil, fmt.Errorf("token not found in secret store %q", secretStoreID)
 		}
 
-		// Configure credentials
-		configContent.WriteString(fmt.Sprintf("credentials %q {\n  username = %q\n  password = %q\n}\n\n", hostname, username, password))
-		hasAuth = true
+		// Set environment variable directly with the token (no encoding)
+		envVar := setTerraformTokenEnv(host, string(token))
+		regConfig.EnvVars = append(regConfig.EnvVars, envVar)
 
-		// Set environment variable for basic auth
-		credentials := fmt.Sprintf("%s:%s", string(username), string(password))
-		encoded := base64.StdEncoding.EncodeToString([]byte(credentials))
-		token := fmt.Sprintf("Basic %s", encoded)
-		setTerraformTokenEnv(hostname, token)
-
-		logger.Info("Configured basic authentication",
-			"hostname", hostname,
-			"username", string(username),
+		logger.Info("Configured token authentication",
+			"host", host,
 			"secretStoreID", secretStoreID)
-	}
 
-	// Handle additional hosts if configured
-	if hasAuth && len(auth.AdditionalHosts) > 0 {
-		logger.Info("Configuring authentication for additional hosts", "hosts", auth.AdditionalHosts)
+		// Handle additional hosts if configured
+		if len(auth.AdditionalHosts) > 0 {
+			logger.Info("Configuring authentication for additional hosts", "hosts", auth.AdditionalHosts)
 
-		// Get credentials once (we already validated they exist above)
-		secretData := secrets[auth.Basic.Secret]
-		username := secretData.Data["username"]
-		password := secretData.Data["password"]
+			// Apply same token to each additional host
+			for _, additionalHost := range auth.AdditionalHosts {
+				if additionalHost == "" || additionalHost == host {
+					continue // Skip empty or duplicate hosts
+				}
 
-		// Apply same credentials to each additional host
-		for _, additionalHost := range auth.AdditionalHosts {
-			if additionalHost == "" || additionalHost == hostname {
-				continue // Skip empty or duplicate hosts
+				// Set environment variable
+				envVar := setTerraformTokenEnv(additionalHost, string(token))
+				regConfig.EnvVars = append(regConfig.EnvVars, envVar)
+				
+				logger.Info("Added token authentication for additional host", "host", additionalHost)
 			}
-
-			// Add credentials for this host
-			configContent.WriteString(fmt.Sprintf("credentials %q {\n  username = %q\n  password = %q\n}\n\n", additionalHost, username, password))
-			
-			// Set environment variable
-			credentials := fmt.Sprintf("%s:%s", string(username), string(password))
-			encoded := base64.StdEncoding.EncodeToString([]byte(credentials))
-			token := fmt.Sprintf("Basic %s", encoded)
-			setTerraformTokenEnv(additionalHost, token)
-			
-			logger.Info("Added basic authentication for additional host", "host", additionalHost, "username", string(username))
 		}
 	}
 
-	// Add provider installation configuration with mirror URL
+	// Add provider installation configuration with normalized mirror URL
 	configContent.WriteString(fmt.Sprintf(`provider_installation {
   network_mirror {
-    url    = %q
+    url     = %q
     include = ["*/*/*"]
   }
   direct {
     exclude = ["*/*/*"]
   }
 }
-`, config.RecipeConfig.Terraform.Registry.Mirror))
+`, parsedURL.String()))
 
 	// Create the .terraformrc file in the execution directory
 	terraformRCPath := filepath.Join(dirPath, TerraformRCFilename)
@@ -163,38 +166,57 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 
 	err = os.WriteFile(terraformRCPath, []byte(configContent.String()), DefaultFilePerms)
 	if err != nil {
-		return fmt.Errorf("failed to write Terraform registry configuration file: %w", err)
+		return nil, fmt.Errorf("failed to write Terraform registry configuration file: %w", err)
 	}
+	regConfig.ConfigPath = terraformRCPath
 
 	// Set the TF_CLI_CONFIG_FILE environment variable to point to our config file
 	os.Setenv(EnvTerraformCLIConfigFile, terraformRCPath)
+	regConfig.EnvVars = append(regConfig.EnvVars, EnvTerraformCLIConfigFile)
+
 	logger.Info("Set environment variable for Terraform config",
 		"variable", EnvTerraformCLIConfigFile,
 		"value", terraformRCPath)
 
 	logger.Info("Terraform registry configuration created",
 		"path", terraformRCPath,
-		"mirror", mirrorURL,
-		"hasAuth", hasAuth)
+		"mirror", parsedURL.String())
 
-	return nil
+	return regConfig, nil
 }
 
 // setTerraformTokenEnv sets the TF_TOKEN_* environment variable for a hostname
-func setTerraformTokenEnv(hostname string, token string) {
-	// Replace dots with underscores in hostname
+// Returns the environment variable name for tracking
+func setTerraformTokenEnv(hostname string, token string) string {
+	// Replace dots and colons with underscores in hostname (for ports)
 	envHostname := strings.ReplaceAll(hostname, ".", "_")
+	envHostname = strings.ReplaceAll(envHostname, ":", "_")
 	envVarName := fmt.Sprintf("TF_TOKEN_%s", envHostname)
 	os.Setenv(envVarName, token)
+	return envVarName
 }
 
 // CleanupTerraformRegistryConfig removes the Terraform registry configuration and unsets environment variables
-func CleanupTerraformRegistryConfig(ctx context.Context, dirPath string) error {
-	// Unset environment variables
-	os.Unsetenv(EnvTerraformCLIConfigFile)
+func CleanupTerraformRegistryConfig(ctx context.Context, config *RegistryConfig) error {
+	if config == nil {
+		return nil
+	}
 
-	// Note: We cannot reliably clean up TF_TOKEN_* variables without tracking which ones we set
-	// This is a limitation but shouldn't cause issues as they're process-specific
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Unset all tracked environment variables
+	for _, envVar := range config.EnvVars {
+		os.Unsetenv(envVar)
+		logger.Info("Unset environment variable", "variable", envVar)
+	}
+
+	// Remove the config file if it exists
+	if config.ConfigPath != "" {
+		if err := os.Remove(config.ConfigPath); err != nil && !os.IsNotExist(err) {
+			logger.Info("Failed to remove Terraform config file", "path", config.ConfigPath, "error", err)
+			// Don't return error as this is just cleanup
+		}
+	}
 
 	return nil
 }

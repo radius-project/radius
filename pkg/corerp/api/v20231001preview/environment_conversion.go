@@ -237,10 +237,10 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 					auth := config.Terraform.Registry.Authentication
 					registryConfig.Authentication = datamodel.RegistryAuthConfig{}
 
-					// Handle basic auth if provided
-					if auth.Basic != nil {
-						registryConfig.Authentication.Basic = &datamodel.BasicAuthConfig{
-							Secret: to.String(auth.Basic.Secret),
+					// Handle token auth if provided
+					if auth.Token != nil {
+						registryConfig.Authentication.Token = &datamodel.TokenConfig{
+							Secret: to.String(auth.Token.Secret),
 						}
 					}
 					
@@ -289,10 +289,10 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 				if config.Terraform.Version.Authentication != nil {
 					recipeConfig.Terraform.Version.Authentication = &datamodel.RegistryAuthConfig{}
 					
-					// Convert basic auth
-					if config.Terraform.Version.Authentication.Basic != nil {
-						recipeConfig.Terraform.Version.Authentication.Basic = &datamodel.BasicAuthConfig{
-							Secret: to.String(config.Terraform.Version.Authentication.Basic.Secret),
+					// Convert token auth
+					if config.Terraform.Version.Authentication.Token != nil {
+						recipeConfig.Terraform.Version.Authentication.Token = &datamodel.TokenConfig{
+							Secret: to.String(config.Terraform.Version.Authentication.Token.Secret),
 						}
 					}
 					
@@ -382,10 +382,10 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 				if !reflect.DeepEqual(config.Terraform.Registry.Authentication, datamodel.RegistryAuthConfig{}) {
 					registryConfig.Authentication = &RegistryAuthConfig{}
 
-					// Handle basic auth if provided
-					if config.Terraform.Registry.Authentication.Basic != nil {
-						registryConfig.Authentication.Basic = &BasicAuthConfig{
-							Secret: to.Ptr(config.Terraform.Registry.Authentication.Basic.Secret),
+					// Handle token auth if provided
+					if config.Terraform.Registry.Authentication.Token != nil {
+						registryConfig.Authentication.Token = &TokenConfig{
+							Secret: to.Ptr(config.Terraform.Registry.Authentication.Token.Secret),
 						}
 					}
 					
@@ -435,10 +435,10 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 				if config.Terraform.Version.Authentication != nil {
 					recipeConfig.Terraform.Version.Authentication = &RegistryAuthConfig{}
 					
-					// Convert basic auth
-					if config.Terraform.Version.Authentication.Basic != nil {
-						recipeConfig.Terraform.Version.Authentication.Basic = &BasicAuthConfig{
-							Secret: to.Ptr(config.Terraform.Version.Authentication.Basic.Secret),
+					// Convert token auth
+					if config.Terraform.Version.Authentication.Token != nil {
+						recipeConfig.Terraform.Version.Authentication.Token = &TokenConfig{
+							Secret: to.Ptr(config.Terraform.Version.Authentication.Token.Secret),
 						}
 					}
 					
