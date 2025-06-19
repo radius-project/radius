@@ -287,6 +287,14 @@ type CertificateObjectProperties struct {
 	Version *string
 }
 
+// ClientCertConfig - Client certificate (mTLS) configuration for authentication.
+type ClientCertConfig struct {
+// The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have
+// secrets named 'cert' and 'key' containing the PEM-encoded certificate and
+// private key. A secret named 'passphrase' is optional, containing the passphrase for the private key.
+	Secret *string
+}
+
 // ConnectionProperties - Connection Properties
 type ConnectionProperties struct {
 // REQUIRED; The source of the connection
@@ -879,6 +887,9 @@ type GatewayTLS struct {
 type GitAuthConfig struct {
 // Personal Access Token (PAT) configuration used to authenticate to Git platforms.
 	Pat map[string]*SecretConfig
+
+// SSH key configuration used to authenticate to Git platforms.
+	SSH map[string]*SSHConfig
 }
 
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
@@ -1261,6 +1272,16 @@ type RecipeStatus struct {
 	TemplateVersion *string
 }
 
+// RegistryAuthConfig - Authentication configuration for accessing private Terraform registry mirrors.
+type RegistryAuthConfig struct {
+// Additional hosts that should use the same authentication credentials. This is useful when a registry mirror redirects to
+// other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).
+	AdditionalHosts []*string
+
+// Token authentication configuration for registry authentication.
+	Token *TokenConfig
+}
+
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
 type RegistrySecretConfig struct {
 // The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container
@@ -1308,6 +1329,19 @@ type RuntimesProperties struct {
 
 // The runtime configuration properties for Kubernetes
 	Kubernetes *KubernetesRuntimeProperties
+}
+
+// SSHConfig - SSH key configuration used to authenticate to Git platforms.
+type SSHConfig struct {
+// The ID of an Applications.Core/SecretStore resource containing the SSH private key and optional passphrase. The secret
+// store must have a secret named 'private-key' containing the SSH private key. A
+// secret named 'passphrase' is optional, containing the passphrase for the private key. A secret named 'known-hosts' is optional,
+// containing the known hosts entries.
+	Secret *string
+
+// Specifies whether to perform strict host key checking. When false, accepts any host key (insecure but sometimes necessary
+// for private Git servers). Defaults to true.
+	StrictHostKeyChecking *bool
 }
 
 // SecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
@@ -1503,6 +1537,12 @@ type TerraformConfigProperties struct {
 // other APIs. For more information, please see:
 // https://developer.hashicorp.com/terraform/language/providers/configuration.
 	Providers map[string][]*ProviderConfigProperties
+
+// Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.
+	Registry *TerraformRegistryConfig
+
+// Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API.
+	Version *TerraformVersionConfig
 }
 
 // TerraformRecipeProperties - Represents Terraform recipe properties.
@@ -1528,6 +1568,58 @@ func (t *TerraformRecipeProperties) GetRecipeProperties() *RecipeProperties {
 		TemplateKind: t.TemplateKind,
 		TemplatePath: t.TemplatePath,
 	}
+}
+
+// TerraformRegistryConfig - Configuration for Terraform provider registry mirroring.
+type TerraformRegistryConfig struct {
+// Authentication configuration for accessing private Terraform registry mirrors.
+	Authentication *RegistryAuthConfig
+
+// Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'
+	Mirror *string
+
+// Provider mappings to translate between official and custom provider identifiers.
+	ProviderMappings map[string]*string
+}
+
+// TerraformTLSConfig - TLS configuration options for Terraform binary downloads.
+type TerraformTLSConfig struct {
+// Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a
+// key named 'ca-cert' with the PEM-encoded certificate bundle.
+	CaCertificate *SecretReference
+
+// Client certificate configuration for mutual TLS (mTLS) authentication.
+	ClientCertificate *ClientCertConfig
+
+// Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING:
+// This makes the connection vulnerable to man-in-the-middle attacks.
+	SkipVerify *bool
+}
+
+// TerraformVersionConfig - Configuration for Terraform binary installation. Allows specifying a version and an optional custom
+// base URL for the releases API.
+type TerraformVersionConfig struct {
+// Authentication configuration for accessing the Terraform binary releases API.
+	Authentication *RegistryAuthConfig
+
+// Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead
+// of the default HashiCorp releases site. The directory structure of the custom URL
+// must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'
+	ReleasesAPIBaseURL *string
+
+// TLS configuration for connecting to the releases API.
+	TLS *TerraformTLSConfig
+
+// Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example:
+// '1.7.0'
+	Version *string
+}
+
+// TokenConfig - Token authentication configuration.
+type TokenConfig struct {
+// The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret
+// named 'token' containing the token value.
+	Secret *string
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'

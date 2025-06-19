@@ -33,6 +33,8 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/driver/bicep"
+	"github.com/radius-project/radius/pkg/recipes/driver/terraform"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/sdk/clients"
@@ -192,21 +194,21 @@ func bicepDriver(options *Options) (driver.Driver, error) {
 		return nil, err
 	}
 
-	return driver.NewBicepDriver(
+	return bicep.NewBicepDriver(
 		sdk.NewClientOptions(options.UCP),
 		deploymentEngineClient,
 		resourceClient,
-		driver.BicepOptions{
+		bicep.BicepOptions{
 			DeleteRetryCount:        bicepDeleteRetryCount,
 			DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,
 		}), nil
 }
 
 func terraformDriver(options *Options) (driver.Driver, error) {
-	return driver.NewTerraformDriver(
+	return terraform.NewTerraformDriver(
 		options.UCP,
 		options.SecretProvider,
-		driver.TerraformOptions{
+		terraform.TerraformOptions{
 			Path: options.Config.Terraform.Path,
 		}, *options.KubernetesProvider), nil
 }

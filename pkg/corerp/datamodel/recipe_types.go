@@ -40,6 +40,12 @@ type TerraformConfigProperties struct {
 
 	// Providers specifies the Terraform provider configurations. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs: https://developer.hashicorp.com/terraform/language/providers/configuration.// Providers specifies the Terraform provider configurations.
 	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
+
+	// Registry specifies the Terraform registry configuration.
+	Registry *TerraformRegistryConfig `json:"registry,omitempty"`
+
+	// Version specifies the Terraform binary version and the URL to download it from.
+	Version *TerraformVersionConfig `json:"version,omitempty"`
 }
 
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
@@ -67,6 +73,9 @@ type AuthConfig struct {
 type GitAuthConfig struct {
 	// Personal Access Token (PAT) configuration used to authenticate to Git platforms.
 	PAT map[string]SecretConfig `json:"pat,omitempty"`
+
+	// SSH key configuration used to authenticate to Git platforms.
+	SSH map[string]SSHConfig `json:"ssh,omitempty"`
 }
 
 // SecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
@@ -74,6 +83,29 @@ type SecretConfig struct {
 	// The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret
 	// store must have a secret named 'pat', containing the PAT value. A secret named
 	// 'username' is optional, containing the username associated with the pat. By default no username is specified.
+	Secret string `json:"secret,omitempty"`
+}
+
+// SSHConfig - SSH key configuration used to authenticate to Git platforms.
+type SSHConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the SSH private key and optional passphrase.
+	// The secret store must have a secret named 'private-key' containing the SSH private key.
+	// A secret named 'passphrase' is optional, containing the passphrase for the private key.
+	// A secret named 'known-hosts' is optional, containing the known hosts entries.
+	Secret string `json:"secret,omitempty"`
+
+	// StrictHostKeyChecking specifies whether to perform strict host key checking.
+	// When false, accepts any host key (insecure but sometimes necessary for private Git servers).
+	// Defaults to true.
+	StrictHostKeyChecking bool `json:"strictHostKeyChecking,omitempty"`
+}
+
+
+// ClientCertConfig - Client certificate (mTLS) configuration for authentication.
+type ClientCertConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the client certificate and key.
+	// The secret store must have secrets named 'cert' and 'key' containing the PEM-encoded certificate and private key.
+	// A secret named 'passphrase' is optional, containing the passphrase for the private key.
 	Secret string `json:"secret,omitempty"`
 }
 
@@ -98,4 +130,67 @@ type SecretReference struct {
 
 	// Key represents the key of the secret.
 	Key string `json:"key"`
+}
+
+// TerraformRegistryConfig - Configuration for Terraform Registry.
+type TerraformRegistryConfig struct {
+	// Mirror is the URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'.
+	Mirror string `json:"mirror,omitempty"`
+
+	// ProviderMappings is used to translate between official and custom provider identifiers.
+	ProviderMappings map[string]string `json:"providerMappings,omitempty"`
+
+	// Authentication configuration for accessing private Terraform registry mirrors.
+	Authentication RegistryAuthConfig `json:"authentication,omitempty"`
+}
+
+// TokenConfig - Token authentication configuration.
+type TokenConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the authentication token.
+	// The secret store must have a secret named 'token' containing the token value.
+	Secret string `json:"secret,omitempty"`
+}
+
+// RegistryAuthConfig - Authentication configuration for accessing private Terraform registry mirrors.
+type RegistryAuthConfig struct {
+	// Token is the token authentication configuration for registry authentication.
+	Token *TokenConfig `json:"token,omitempty"`
+
+	// AdditionalHosts is a list of additional hosts that should use the same authentication credentials.
+	// This is useful when a registry mirror redirects to other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).
+	AdditionalHosts []string `json:"additionalHosts,omitempty"`
+}
+
+// TerraformVersionConfig - Configuration for Terraform binary.
+type TerraformVersionConfig struct {
+	// Version is the version of the Terraform binary to use. Example: '1.0.0'.
+	// If omitted, the system may default to the latest stable version.
+	Version string `json:"version,omitempty"`
+
+	// ReleasesAPIBaseURL is an optional base URL for a custom Terraform releases API.
+	// If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site.
+	// The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files).
+	// Example: 'https://my-terraform-mirror.example.com'
+	ReleasesAPIBaseURL string `json:"releasesApiBaseUrl,omitempty"`
+
+	// TLS contains TLS configuration for connecting to the releases API.
+	TLS *TerraformTLSConfig `json:"tls,omitempty"`
+
+	// Authentication configuration for accessing the Terraform binary releases API.
+	Authentication *RegistryAuthConfig `json:"authentication,omitempty"`
+}
+
+// TerraformTLSConfig - TLS configuration options for Terraform binary downloads.
+type TerraformTLSConfig struct {
+	// CACertificate is a reference to a secret containing a custom CA certificate bundle to use for TLS verification.
+	// The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.
+	CACertificate *SecretReference `json:"caCertificate,omitempty"`
+
+	// ClientCertificate is the client certificate configuration for mutual TLS (mTLS) authentication.
+	ClientCertificate *ClientCertConfig `json:"clientCertificate,omitempty"`
+
+	// SkipVerify allows insecure connections (skip TLS verification).
+	// This is strongly discouraged in production environments.
+	// WARNING: This makes the connection vulnerable to man-in-the-middle attacks.
+	SkipVerify bool `json:"skipVerify,omitempty"`
 }

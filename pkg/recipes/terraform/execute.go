@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
@@ -70,7 +71,14 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+	
+	// Default to empty TerraformConfigProperties if not configured
+	terraformConfig := datamodel.TerraformConfigProperties{}
+	if options.EnvConfig != nil {
+		terraformConfig = options.EnvConfig.RecipeConfig.Terraform
+	}
+	
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -109,7 +117,8 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, fmt.Errorf("error getting kubernetes client: %w", err)
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).
+		ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
 	} else if !backendExists {
@@ -126,7 +135,14 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+	
+	// Default to empty TerraformConfigProperties if not configured
+	terraformConfig := datamodel.TerraformConfigProperties{}
+	if options.EnvConfig != nil {
+		terraformConfig = options.EnvConfig.RecipeConfig.Terraform
+	}
+	
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -185,7 +201,14 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+	
+	// Default to empty TerraformConfigProperties if not configured
+	terraformConfig := datamodel.TerraformConfigProperties{}
+	if options.EnvConfig != nil {
+		terraformConfig = options.EnvConfig.RecipeConfig.Terraform
+	}
+	
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -381,14 +404,20 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
-		return nil, fmt.Errorf("terraform init failure: %w", err)
+		return nil, fmt.Errorf("terraform init failure during apply flow: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 		[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState)})
 
+	// Set apply options to handle locks
+	applyOptions := []tfexec.ApplyOption{
+		tfexec.Lock(true),
+		tfexec.LockTimeout("60s"),
+	}
+
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
-	if err := tf.Apply(ctx); err != nil {
+	if err := tf.Apply(ctx, applyOptions...); err != nil {
 		return nil, fmt.Errorf("terraform apply failure: %w", err)
 	}
 
@@ -408,7 +437,7 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
-		return fmt.Errorf("terraform init failure: %w", err)
+		return fmt.Errorf("terraform init failure during destroy flow: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
