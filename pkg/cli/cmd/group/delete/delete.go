@@ -18,8 +18,12 @@ package delete
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -113,29 +117,55 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
 
-	// Prompt user to confirm deletion
-	if !r.Confirmation {
-		confirmed, err := prompt.YesOrNoPrompt(
-			fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName),
-			prompt.ConfirmNo,
-			r.InputPrompter)
-		if err != nil {
-			return err
-		}
-
-		if !confirmed {
-			r.Output.LogInfo("resource group %q NOT deleted", r.UCPResourceGroupName)
-			return nil
-		}
-	}
-
-	r.Output.LogInfo("deleting resource group %q ...\n", r.UCPResourceGroupName)
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	deleted, err := client.DeleteResourceGroup(ctx, "local", r.UCPResourceGroupName)
+	envs, err := client.ListEnvironmentsInResourceGroup(ctx, r.UCPResourceGroupName)
+	if err != nil {
+		responseError := &azcore.ResponseError{}
+		if errors.As(err, &responseError) && responseError.ErrorCode == v1.CodeNotFound || responseError.StatusCode == http.StatusNotFound {
+			r.Output.LogInfo("resource group %q does not exist or already been deleted.", r.UCPResourceGroupName)
+			return nil
+		}
+		return err
+	}
+
+	if len(envs) > 0 {
+		// Prompt user to confirm deletion
+		if !r.Confirmation {
+			confirmed, err := prompt.YesOrNoPrompt(
+				fmt.Sprintf("The resource group '%v' contains deployed resources. Are you sure you want to delete the resource group and its resources? Use 'rad resource list --group %v' to view the existing resources.", r.UCPResourceGroupName, r.UCPResourceGroupName),
+				prompt.ConfirmNo,
+				r.InputPrompter)
+			if err != nil {
+				return err
+			}
+
+			if !confirmed {
+				r.Output.LogInfo("resource group %q NOT deleted", r.UCPResourceGroupName)
+				return nil
+			}
+		}
+	} else {
+		if !r.Confirmation {
+			confirmed, err := prompt.YesOrNoPrompt(
+				fmt.Sprintf("The resource group '%v' is empty. Are you sure you want to delete the resource group?", r.UCPResourceGroupName),
+				prompt.ConfirmNo,
+				r.InputPrompter)
+			if err != nil {
+				return err
+			}
+
+			if !confirmed {
+				r.Output.LogInfo("resource group %q NOT deleted", r.UCPResourceGroupName)
+				return nil
+			}
+		}
+	}
+
+	deleted, err := client.DeleteResourceGroup(ctx, "local", r.UCPResourceGroupName, r.Output)
 	if err != nil {
 		return err
 	}
