@@ -137,3 +137,34 @@ func Test_RequireFullyQualifiedResourceTypeAndName(t *testing.T) {
 		})
 	}
 }
+
+func Test_ReadResourceTypeNameArgs(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "No arguments",
+			args: []string{},
+			want: "",
+		},
+		{
+			name: "Resource type provided",
+			args: []string{"testResources"},
+			want: "testResources",
+		},
+		{
+			name: "Multiple arguments - returns first",
+			args: []string{"testResources", "extra"},
+			want: "testResources",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ReadResourceTypeNameArgs(nil, tt.args)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}

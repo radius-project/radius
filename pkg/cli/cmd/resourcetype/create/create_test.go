@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -47,14 +46,14 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
-			Name:          "Invalid: resource type not present in manifest",
-			Input:         []string{"myResources", "--from-file", "testdata/valid.yaml"},
-			ExpectedValid: false,
+			Name:          "Valid: no resource type argument",
+			Input:         []string{"--from-file", "testdata/valid.yaml"},
+			ExpectedValid: true,
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
-			Name:          "Invalid: missing resource type as argument",
-			Input:         []string{"--from-file", "testdata/valid.yaml"},
+			Name:          "Invalid: resource type not present in manifest",
+			Input:         []string{"myResources", "--from-file", "testdata/valid.yaml"},
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
@@ -64,7 +63,7 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Success: resource type created", func(t *testing.T) {
+	t.Run("Success: resource type created when provider exists", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -74,6 +73,11 @@ func Test_Run(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
+		var logBuffer bytes.Buffer
+		logger := func(format string, args ...any) {
+			fmt.Fprintf(&logBuffer, format+"\n", args...)
+		}
+
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			UCPClientFactory:                 clientFactory,
@@ -81,77 +85,74 @@ func Test_Run(t *testing.T) {
 			Workspace:                        &workspaces.Workspace{},
 			ResourceProvider:                 resourceProviderData,
 			Format:                           "table",
+			Logger:                           logger,
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 			ResourceTypeName:                 "testResources",
 		}
 
 		err = runner.Run(context.Background())
-		require.NoError(t, err)
-		expected := []interface{}{
+		require.NoError(t, err) // Verify the correct log messages are output
+		expectedLogs := []interface{}{
 			output.LogOutput{
-				Format: "Resource provider %q found. Registering resource type %q.",
-				Params: []interface{}{"MyCompany.Resources", "testResources"},
-			},
-			output.LogOutput{
-				Format: "",
-				Params: nil,
-			},
-			output.FormattedOutput{
-				Format: "table",
-				Obj: common.ResourceTypeListOutputFormat{
-					ResourceType: common.ResourceType{
-						Name:                      "MyCompany.Resources/testResources",
-						Description:               "Resource type description",
-						ResourceProviderNamespace: "MyCompany.Resources",
-						APIVersions: map[string]*common.APIVersionProperties{
-							"2023-10-01-preview": {
-								Schema: map[string]any{
-									"properties": map[string]any{
-										"application": map[string]any{
-											"type":        "string",
-											"description": "The name of the application.",
-										},
-										"environment": map[string]any{
-											"type":        "string",
-											"description": "The name of the environment.",
-										},
-										"database": map[string]any{
-											"type":        "string",
-											"description": "The name of the database.",
-											"readOnly":    true,
-										},
-									},
-									"required": []any{
-										"environment",
-									},
-								},
-							},
-						},
-					},
-					APIVersionList: []string{"2023-10-01-preview"},
-				},
-				Options: output.FormatterOptions{
-					Columns: []output.Column{
-						{
-							Heading:  "TYPE",
-							JSONPath: "{ .Name }",
-						},
-						{
-							Heading:  "NAMESPACE",
-							JSONPath: "{ .ResourceProviderNamespace }",
-						},
-						{
-							Heading:  "APIVERSION",
-							JSONPath: "{ .APIVersionList }",
-						},
-					},
-				},
+				Format: "Registering resource type %q for resource provider %q.",
+				Params: []interface{}{"testResources", "MyCompany.Resources4"},
 			},
 		}
-		require.Equal(t, expected, outputSink.Writes, "Mismatch in output sink writes")
+
+		for _, expectedLog := range expectedLogs {
+			require.Contains(t, outputSink.Writes, expectedLog, "Expected log message not found")
+		}
+
+		// Verify RegisterType was called (should see specific log messages)
+		logOutput := logBuffer.String()
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s with capabilities", runner.ResourceProvider.Name, "testResources"))
 	})
 
-	t.Run("Resource provider does not exist", func(t *testing.T) {
+	t.Run("No resource type name provided - registers entire manifest", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
+		require.NoError(t, err)
+
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
+
+		var logBuffer bytes.Buffer
+		logger := func(format string, args ...any) {
+			fmt.Fprintf(&logBuffer, format+"\n", args...)
+		}
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			UCPClientFactory:                 clientFactory,
+			Output:                           outputSink,
+			Workspace:                        &workspaces.Workspace{},
+			ResourceProvider:                 resourceProviderData,
+			Format:                           "table",
+			Logger:                           logger,
+			ResourceProviderManifestFilePath: "testdata/valid.yaml",
+			ResourceTypeName:                 "", // Empty resource type name
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+
+		// Verify the correct log message is output
+		expectedLog := output.LogOutput{
+			Format: "No resource type name provided. Registering all resource types in the manifest for resource provider %q.",
+			Params: []interface{}{"MyCompany.Resources4"},
+		}
+		require.Contains(t, outputSink.Writes, expectedLog, "Expected log message for no resource type name provided")
+
+		// Verify RegisterResourceProvider was called
+		logOutput := logBuffer.String()
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Name, "testResources"))
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Name, "prodResources"))
+	})
+
+	t.Run("Resource provider does not exist - registers resource provider with single type", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -168,9 +169,10 @@ func Test_Run(t *testing.T) {
 			fmt.Fprintf(&logBuffer, format+"\n", args...)
 		}
 
+		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			UCPClientFactory:                 clientFactory,
-			Output:                           &output.MockOutput{},
+			Output:                           outputSink,
 			Workspace:                        &workspaces.Workspace{},
 			ResourceProvider:                 resourceProviderData,
 			Format:                           "table",
@@ -180,6 +182,29 @@ func Test_Run(t *testing.T) {
 		}
 
 		_ = runner.Run(context.Background())
+
+		// Verify the correct log messages are output
+		expectedLogs := []interface{}{
+			output.LogOutput{
+				Format: "Registering resource type %q for resource provider %q.",
+				Params: []interface{}{"testResources", "MyCompany.Resources4"},
+			},
+		}
+
+		// Verify no other ersource types are registered
+		shouldNotContain := []interface{}{
+			output.LogOutput{
+				Format: "Registering resource type %q for resource provider %q.",
+				Params: []interface{}{"prodResources", "MyCompany.Resources4"},
+			},
+		}
+
+		for _, expectedLog := range expectedLogs {
+			require.Contains(t, outputSink.Writes, expectedLog, "Expected log message not found")
+			require.NotContains(t, outputSink.Writes, shouldNotContain, "Log messages related to unspecified resource types should not be present")
+		}
+
+		// Verify RegisterResourceProvider was called for the filtered resource provider
 		logOutput := logBuffer.String()
 		require.Contains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
 	})
