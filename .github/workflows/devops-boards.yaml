@@ -35,7 +35,7 @@ jobs:
           # https://learn.microsoft.com/azure/devops/integrate/get-started/authentication/service-principal-managed-identity
           echo "ADO_TOKEN=$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query "accessToken" --output tsv)" >> $GITHUB_ENV
       - name: Sync issue to Azure DevOps
-        uses: danhellem/github-actions-issue-to-work-item@v2.4
+        uses: danhellem/github-actions-issue-to-work-item@v2.5
         env:
           ado_token: ${{ env.ADO_TOKEN }}
           github_token: '${{ secrets.GH_RAD_CI_BOT_PAT }}'
