@@ -37,7 +37,7 @@ func (osfs OSFileSystem) Create(name string) (fs.File, error) {
 
 func (osfs OSFileSystem) Exists(name string) bool {
 	_, err := os.Stat(name)
-	return err != nil
+	return err == nil
 }
 
 func (osfs OSFileSystem) Open(name string) (fs.File, error) {
