@@ -20,6 +20,8 @@ import (
 	"io/fs"
 )
 
+//go:generate mockgen -typed -destination=./mock_filesystem.go -package=filesystem -self_package github.com/radius-project/radius/pkg/cli/filesystem github.com/radius-project/radius/pkg/cli/filesystem FileSystem
+
 // FileSystem is an interface that defines the methods needed to interact with a file system.
 type FileSystem interface {
 	Create(name string) (fs.File, error)

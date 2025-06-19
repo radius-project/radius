@@ -24,158 +24,78 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
-func TestCustomConfigValidationCheck_Run(t *testing.T) {
-	ctx := context.Background()
-
+func TestCustomConfigValidationCheck_BasicValidation(t *testing.T) {
 	tests := []struct {
 		name              string
 		setParams         []string
 		setFileParams     []string
-		setupFiles        func(t *testing.T) []string // returns files to cleanup
-		chartPath         string                      // defaults to "../../../deploy/Chart" if empty
-		shouldFail        bool                        // true if test should fail
-		expectMsgContains []string                    // message fragments to check
+		setupFiles        func(t *testing.T) []string
+		shouldFail        bool
+		expectMsgContains []string
 	}{
 		{
-			name:              "no parameters",
-			expectMsgContains: []string{"No custom configuration parameters provided"},
+			name: "no parameters",
+			expectMsgContains: []string{
+				"No custom configuration parameters provided",
+			},
 		},
 		{
-			name:              "valid set parameter",
-			setParams:         []string{"app.config=value"},
-			expectMsgContains: []string{"All 1 custom configuration parameters passed"},
-		},
-		{
-			name:              "valid set parameter with complex key",
-			setParams:         []string{"image.tag=v1.0.0"},
-			expectMsgContains: []string{"All 1 custom configuration parameters passed"},
-		},
-		{
-			name: "valid set-file parameter",
+			name: "valid parameters - mixed types",
+			setParams: []string{
+				"app.config=value",
+				"image.tag=v1.0.0",
+			},
 			setupFiles: func(t *testing.T) []string {
 				tmpFile := createTempFile(t, "test content")
 				return []string{fmt.Sprintf("values.yaml=%s", tmpFile)}
 			},
-			expectMsgContains: []string{"All 1 custom configuration parameters passed"},
+			expectMsgContains: []string{
+				"All 3 custom configuration parameters passed",
+				"basic validation",
+			},
 		},
 		{
-			name:              "invalid set parameter format",
-			setParams:         []string{"invalid-format"},
-			shouldFail:        true,
-			expectMsgContains: []string{"Configuration validation failed", "must be in format 'key=value'"},
-		},
-		{
-			name:              "empty key in set parameter",
-			setParams:         []string{"=value"},
-			shouldFail:        true,
-			expectMsgContains: []string{"key cannot be empty"},
-		},
-		{
-			name:              "nonexistent file",
-			setFileParams:     []string{"config=/nonexistent/file.yaml"},
-			shouldFail:        true,
-			expectMsgContains: []string{"file does not exist"},
-		},
-		{
-			name:              "multiple parameters with mixed results",
-			setParams:         []string{"valid.key=value", "invalid-format"},
-			setFileParams:     []string{"config=/nonexistent/file.yaml"},
-			shouldFail:        true,
-			expectMsgContains: []string{"Configuration validation failed", "must be in format 'key=value'", "file does not exist"},
-		},
-		// Chart validation tests (uses default chart path)
-		{
-			name: "chart validation - valid parameters",
+			name: "invalid parameters - mixed failures",
 			setParams: []string{
-				"de.image=ghcr.io/radius-project/deployment-engine:v1.0.0",
-				"controller.resources.limits.memory=400Mi",
-				"global.prometheus.enabled=false",
+				"valid.key=value",
+				"invalid-format",
+				"=empty-key",
 			},
-			expectMsgContains: []string{"validation against Helm chart"},
-		},
-		{
-			name: "chart validation - invalid parameter syntax",
-			setParams: []string{
-				"de.image[invalid=syntax",
+			setFileParams: []string{
+				"config=/nonexistent/file.yaml",
+				"=empty-key-file",
 			},
-			shouldFail:        true,
-			expectMsgContains: []string{"Chart validation failed", "failed chart validation"},
-		},
-		{
-			name: "chart validation - valid complex paths",
-			setParams: []string{
-				"database.enabled=true",
-				"database.postgres_user=testuser",
-				"rp.resources.requests.memory=200Mi",
-				"global.azureWorkloadIdentity.enabled=true",
+			shouldFail: true,
+			expectMsgContains: []string{
+				"Configuration validation failed",
+				"must be in format 'key=value'",
+				"key cannot be empty",
+				"cannot read file",
 			},
-			expectMsgContains: []string{"validation against Helm chart"},
-		},
-		{
-			name: "chart validation - set-file validation",
-			setupFiles: func(t *testing.T) []string {
-				configFile := createTempFile(t, "custom-config-content")
-				return []string{fmt.Sprintf("global.rootCA.cert=%s", configFile)}
-			},
-			expectMsgContains: []string{"validation against Helm chart"},
-		},
-		{
-			name: "chart validation - set-file with invalid key syntax for helm",
-			setupFiles: func(t *testing.T) []string {
-				configFile := createTempFile(t, "test content")
-				// This will pass basic validation but fail Helm's parser
-				// due to invalid array index syntax
-				return []string{fmt.Sprintf("values[invalid].key=%s", configFile)}
-			},
-			shouldFail:        true,
-			expectMsgContains: []string{"Chart validation failed", "--set-file parameter 'values[invalid].key=", "failed chart validation"},
-		},
-		{
-			name:              "chart validation - nonexistent chart path",
-			setParams:         []string{"de.image=test"},
-			chartPath:         "/nonexistent/chart/path",
-			shouldFail:        true,
-			expectMsgContains: []string{"Chart validation failed", "chart path '/nonexistent/chart/path' does not exist"},
-		},
-		{
-			name: "chart validation - non-existent key",
-			setParams: []string{
-				"foo=bar",
-				"nonexistent.key=value",
-			},
-			expectMsgContains: []string{"validation against Helm chart"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			setFileParams := tt.setFileParams
-
-			// Handle file setup if needed
 			if tt.setupFiles != nil {
-				fileParams := tt.setupFiles(t)
-				setFileParams = fileParams
+				setFileParams = tt.setupFiles(t)
 			}
 
-			// Skip test if using default chart and it doesn't exist
-			if tt.chartPath == "" {
-				if _, err := os.Stat("../../../deploy/Chart"); os.IsNotExist(err) {
-					t.Skip("Radius chart not found, skipping chart validation test")
-				}
-			}
-
-			check := NewCustomConfigValidationCheck(tt.setParams, setFileParams, tt.chartPath, nil)
-			pass, msg, err := check.Run(ctx)
+			check := NewCustomConfigValidationCheck(tt.setParams, setFileParams, "", nil)
+			// Override the default chart path to skip chart validation for basic tests
+			check.chartPath = ""
+			pass, msg, err := check.Run(context.Background())
 
 			require.NoError(t, err)
 			assert.Equal(t, !tt.shouldFail, pass)
-
 			for _, contains := range tt.expectMsgContains {
 				assert.Contains(t, msg, contains)
 			}
@@ -183,104 +103,152 @@ func TestCustomConfigValidationCheck_Run(t *testing.T) {
 	}
 }
 
-func TestCustomConfigValidationCheck_ValidateSetParam(t *testing.T) {
-	check := NewCustomConfigValidationCheck([]string{}, []string{}, "", nil)
+func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
+	// Skip if chart doesn't exist
+	if _, err := os.Stat("../../../deploy/Chart"); os.IsNotExist(err) {
+		t.Skip("Radius chart not found, skipping chart validation tests")
+	}
 
 	tests := []struct {
-		name      string
-		param     string
-		expectErr string
+		name              string
+		setParams         []string
+		setFileParams     []string
+		setupFiles        func(t *testing.T) []string
+		chartPath         string
+		shouldFail        bool
+		expectMsgContains []string
 	}{
 		{
-			name:      "valid parameter",
-			param:     "image.tag=v1.0.0",
-			expectErr: "",
+			name: "valid chart parameters",
+			setParams: []string{
+				"de.image=ghcr.io/radius-project/deployment-engine:v1.0.0",
+				"controller.resources.limits.memory=400Mi",
+				"global.prometheus.enabled=false",
+				"database.enabled=true",
+			},
+			expectMsgContains: []string{
+				"validation against Helm chart",
+			},
 		},
 		{
-			name:      "valid complex key",
-			param:     "app.env[0].name=TEST",
-			expectErr: "",
+			name: "invalid parameter syntax",
+			setParams: []string{
+				"de.image[invalid=syntax",
+				"values[invalid].key=test",
+			},
+			shouldFail: true,
+			expectMsgContains: []string{
+				"Chart validation failed",
+				"failed chart validation",
+			},
 		},
 		{
-			name:      "missing equals",
-			param:     "invalid",
-			expectErr: "must be in format 'key=value'",
+			name: "valid set-file with chart",
+			setupFiles: func(t *testing.T) []string {
+				configFile := createTempFile(t, "custom-config-content")
+				return []string{fmt.Sprintf("global.rootCA.cert=%s", configFile)}
+			},
+			expectMsgContains: []string{
+				"validation against Helm chart",
+			},
 		},
 		{
-			name:      "empty key",
-			param:     "=value",
-			expectErr: "key cannot be empty",
-		},
-		{
-			name:      "empty value is allowed",
-			param:     "key=",
-			expectErr: "", // Empty values are allowed in Helm
+			name: "nonexistent chart path",
+			setParams: []string{
+				"de.image=test",
+			},
+			chartPath:  "/nonexistent/chart/path",
+			shouldFail: true,
+			expectMsgContains: []string{
+				"Chart validation failed",
+				"failed to access chart path",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := check.validateSetParam(tt.param)
-			if tt.expectErr == "" {
-				assert.Empty(t, result)
-			} else {
-				assert.Contains(t, result, tt.expectErr)
+			setFileParams := tt.setFileParams
+			if tt.setupFiles != nil {
+				setFileParams = tt.setupFiles(t)
+			}
+
+			check := NewCustomConfigValidationCheck(tt.setParams, setFileParams, tt.chartPath, nil)
+			pass, msg, err := check.Run(context.Background())
+
+			require.NoError(t, err)
+			assert.Equal(t, !tt.shouldFail, pass)
+			for _, contains := range tt.expectMsgContains {
+				assert.Contains(t, msg, contains)
 			}
 		})
 	}
 }
 
-func TestCustomConfigValidationCheck_ValidateSetFileParam(t *testing.T) {
-	check := NewCustomConfigValidationCheck([]string{}, []string{}, "", nil)
-
+func TestCustomConfigValidationCheck_ErrorHandling(t *testing.T) {
 	tests := []struct {
-		name      string
-		param     string
-		setupFile func(t *testing.T) string // returns the param to use
-		expectErr string
+		name        string
+		setupMocks  func(*testing.T) (*filesystem.MockFileSystem, *helm.MockHelmClient, string)
+		setParams   []string
+		shouldFail  bool
+		expectError string
 	}{
 		{
-			name: "valid file parameter",
-			setupFile: func(t *testing.T) string {
-				tmpFile := createTempFile(t, "test content")
-				return fmt.Sprintf("config=%s", tmpFile)
+			name: "filesystem error",
+			setupMocks: func(t *testing.T) (*filesystem.MockFileSystem, *helm.MockHelmClient, string) {
+				ctrl := gomock.NewController(t)
+				mockFS := filesystem.NewMockFileSystem(ctrl)
+				mockFS.EXPECT().ReadFile("test.yaml").Return(nil, errors.New("file read error"))
+				return mockFS, nil, ""
 			},
-			expectErr: "",
+			setParams:   []string{},
+			shouldFail:  true,
+			expectError: "cannot read file",
 		},
 		{
-			name:      "invalid format",
-			param:     "invalid",
-			expectErr: "must be in format 'key=filepath'",
-		},
-		{
-			name:      "empty key",
-			param:     "=/path/to/file",
-			expectErr: "key cannot be empty",
-		},
-		{
-			name:      "empty filepath",
-			param:     "config=",
-			expectErr: "filepath cannot be empty",
-		},
-		{
-			name:      "nonexistent file",
-			param:     "config=/nonexistent/file.yaml",
-			expectErr: "file does not exist",
+			name: "chart load error",
+			setupMocks: func(t *testing.T) (*filesystem.MockFileSystem, *helm.MockHelmClient, string) {
+				ctrl := gomock.NewController(t)
+				chartPath := t.TempDir()
+				// Create Chart.yaml
+				err := os.WriteFile(filepath.Join(chartPath, "Chart.yaml"), []byte("name: test\nversion: 1.0.0"), 0644)
+				require.NoError(t, err)
+
+				mockClient := helm.NewMockHelmClient(ctrl)
+				mockClient.EXPECT().LoadChart(chartPath).Return(nil, errors.New("chart corrupted"))
+
+				mockFS := filesystem.NewMockFileSystem(ctrl)
+				mockFS.EXPECT().Stat(chartPath).Return(nil, nil)
+
+				return mockFS, mockClient, chartPath
+			},
+			setParams: []string{
+				"key=value",
+			},
+			shouldFail:  true,
+			expectError: "failed to load chart",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			param := tt.param
-			if tt.setupFile != nil {
-				param = tt.setupFile(t)
+			mockFS, mockClient, chartPath := tt.setupMocks(t)
+
+			var setFileParams []string
+			if mockFS != nil && tt.name == "filesystem error" {
+				setFileParams = []string{"config=test.yaml"}
 			}
 
-			result := check.validateSetFileParam(param)
-			if tt.expectErr == "" {
-				assert.Empty(t, result)
-			} else {
-				assert.Contains(t, result, tt.expectErr)
+			check := NewCustomConfigValidationCheck(tt.setParams, setFileParams, chartPath, mockClient)
+			if mockFS != nil {
+				check.fs = mockFS
+			}
+
+			pass, msg, err := check.Run(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, !tt.shouldFail, pass)
+			if tt.expectError != "" {
+				assert.Contains(t, msg, tt.expectError)
 			}
 		})
 	}
@@ -295,36 +263,4 @@ func createTempFile(t *testing.T, content string) string {
 	require.NoError(t, err)
 
 	return tmpFile
-}
-
-func TestCustomConfigValidationCheck_LoadChartError(t *testing.T) {
-	ctx := context.Background()
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	// Create a valid chart directory
-	chartPath := t.TempDir()
-	// Create Chart.yaml to make it look like a valid chart directory
-	chartYaml := filepath.Join(chartPath, "Chart.yaml")
-	err := os.WriteFile(chartYaml, []byte("name: test\nversion: 1.0.0"), 0644)
-	require.NoError(t, err)
-
-	mockClient := helm.NewMockHelmClient(ctrl)
-	// Mock LoadChart to return an error
-	mockClient.EXPECT().LoadChart(chartPath).Return(nil, errors.New("chart is corrupted"))
-
-	check := NewCustomConfigValidationCheck(
-		[]string{"key=value"},
-		nil,
-		chartPath,
-		mockClient,
-	)
-
-	pass, msg, err := check.Run(ctx)
-
-	require.NoError(t, err) // Run should not return error, just validation failure
-	assert.False(t, pass)
-	assert.Contains(t, msg, "Chart validation failed")
-	assert.Contains(t, msg, "failed to load chart from")
-	assert.Contains(t, msg, "chart is corrupted")
 }

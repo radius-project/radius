@@ -19,11 +19,11 @@ package preflight
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"maps"
 
+	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"helm.sh/helm/v3/pkg/strvals"
 )
@@ -38,6 +38,7 @@ type CustomConfigValidationCheck struct {
 	setFileParams []string
 	chartPath     string
 	helmClient    helm.HelmClient
+	fs            filesystem.FileSystem
 }
 
 // NewCustomConfigValidationCheck creates a new custom configuration validation check.
@@ -61,6 +62,7 @@ func NewCustomConfigValidationCheck(setParams, setFileParams []string, chartPath
 		setFileParams: setFileParams,
 		chartPath:     chartPath,
 		helmClient:    helmClient,
+		fs:            filesystem.NewOSFS(),
 	}
 }
 
@@ -81,73 +83,53 @@ func (c *CustomConfigValidationCheck) Run(ctx context.Context) (bool, string, er
 		return true, "No custom configuration parameters provided", nil
 	}
 
-	issues := c.validateAllParams()
-
-	// If basic validation failed, return early
-	if len(issues) > 0 {
+	// Validate basic format first
+	if issues := c.validateAllParams(); len(issues) > 0 {
 		return false, fmt.Sprintf("Configuration validation failed: %s", strings.Join(issues, "; ")), nil
 	}
 
-	// Perform chart-based validation if chart information is available
-	chartValidated := false
-	if c.chartPath != "" {
-		if chartIssues := c.validateAgainstChart(); len(chartIssues) > 0 {
-			return false, fmt.Sprintf("Chart validation failed: %s", strings.Join(chartIssues, "; ")), nil
-		}
-		chartValidated = true
+	// Try chart validation if available
+	if issues := c.validateAgainstChart(); len(issues) > 0 {
+		return false, fmt.Sprintf("Chart validation failed: %s", strings.Join(issues, "; ")), nil
 	}
 
-	// Build success message
+	// Determine validation type for message
 	validationType := "basic validation"
-	if chartValidated {
+	if c.chartPath != "" {
 		validationType = "validation against Helm chart"
 	}
-	message := fmt.Sprintf("All %d custom configuration parameters passed %s", configCount, validationType)
 
-	return true, message, nil
+	return true, fmt.Sprintf("All %d custom configuration parameters passed %s", configCount, validationType), nil
 }
 
-// validateSetParam performs basic format validation for --set parameters.
-func (c *CustomConfigValidationCheck) validateSetParam(param string) string {
+// validateParam validates basic format for parameters.
+func (c *CustomConfigValidationCheck) validateParam(param, format string) string {
 	parts := strings.SplitN(param, "=", 2)
 	if len(parts) != 2 {
-		return "must be in format 'key=value'"
+		return fmt.Sprintf("must be in format '%s'", format)
 	}
 
-	key := strings.TrimSpace(parts[0])
-	if key == "" {
+	if strings.TrimSpace(parts[0]) == "" {
 		return "key cannot be empty"
 	}
-
-	// Note: We intentionally don't validate the key format here since Helm's
-	// validation rules are complex and may change. Let Helm handle that validation.
 
 	return ""
 }
 
-// validateSetFileParam validates --set-file parameters and checks file accessibility.
-func (c *CustomConfigValidationCheck) validateSetFileParam(param string) string {
+// validateFileParam validates --set-file parameters including file accessibility.
+func (c *CustomConfigValidationCheck) validateFileParam(param string) string {
+	if issue := c.validateParam(param, "key=filepath"); issue != "" {
+		return issue
+	}
+
 	parts := strings.SplitN(param, "=", 2)
-	if len(parts) != 2 {
-		return "must be in format 'key=filepath'"
-	}
-
-	key := strings.TrimSpace(parts[0])
 	filepath := strings.TrimSpace(parts[1])
-
-	if key == "" {
-		return "key cannot be empty"
-	}
 
 	if filepath == "" {
 		return "filepath cannot be empty"
 	}
 
-	// Try to read the file to ensure it exists and is accessible
-	if _, err := os.ReadFile(filepath); err != nil {
-		if os.IsNotExist(err) {
-			return "file does not exist"
-		}
+	if _, err := c.fs.ReadFile(filepath); err != nil {
 		return fmt.Sprintf("cannot read file: %v", err)
 	}
 
@@ -156,45 +138,42 @@ func (c *CustomConfigValidationCheck) validateSetFileParam(param string) string 
 
 // validateAgainstChart validates --set parameters against the actual Helm chart.
 func (c *CustomConfigValidationCheck) validateAgainstChart() []string {
-	var issues []string
+	if c.chartPath == "" {
+		return nil // No chart path, skip validation
+	}
 
-	// Check if the chart path exists
-	_, err := os.Stat(c.chartPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			issues = append(issues, fmt.Sprintf("chart path '%s' does not exist", c.chartPath))
-			return issues
-		}
-		issues = append(issues, fmt.Sprintf("failed to access chart path '%s': %v", c.chartPath, err))
-		return issues
+	// Check chart accessibility and load
+	if _, err := c.fs.Stat(c.chartPath); err != nil {
+		return []string{fmt.Sprintf("failed to access chart path '%s': %v", c.chartPath, err)}
 	}
 
 	helmChart, err := c.helmClient.LoadChart(c.chartPath)
 	if err != nil {
-		issues = append(issues, fmt.Sprintf("failed to load chart from '%s': %v", c.chartPath, err))
-		return issues
+		return []string{fmt.Sprintf("failed to load chart from '%s': %v", c.chartPath, err)}
 	}
 
-	// Create a copy of the chart values to test parameter application
+	// Prepare test values
 	testValues := make(map[string]any)
 	if helmChart.Values != nil {
 		maps.Copy(testValues, helmChart.Values)
 	}
 
-	// Apply --set parameters and validate them
+	var issues []string
+
+	// Validate --set parameters
 	for _, param := range c.setParams {
 		if err := strvals.ParseInto(param, testValues); err != nil {
 			issues = append(issues, fmt.Sprintf("--set parameter '%s' failed chart validation: %v", param, err))
 		}
 	}
 
-	// Apply --set-file parameters and validate them
-	for _, param := range c.setFileParams {
-		reader := func(rs []rune) (any, error) {
-			data, err := os.ReadFile(string(rs))
-			return string(data), err
-		}
+	// Validate --set-file parameters
+	reader := func(rs []rune) (any, error) {
+		data, err := c.fs.ReadFile(string(rs))
+		return string(data), err
+	}
 
+	for _, param := range c.setFileParams {
 		if err := strvals.ParseIntoFile(param, testValues, reader); err != nil {
 			issues = append(issues, fmt.Sprintf("--set-file parameter '%s' failed chart validation: %v", param, err))
 		}
@@ -207,16 +186,16 @@ func (c *CustomConfigValidationCheck) validateAgainstChart() []string {
 func (c *CustomConfigValidationCheck) validateAllParams() []string {
 	var issues []string
 
-	// Basic format validation for --set parameters
+	// Validate --set parameters
 	for _, param := range c.setParams {
-		if issue := c.validateSetParam(param); issue != "" {
+		if issue := c.validateParam(param, "key=value"); issue != "" {
 			issues = append(issues, fmt.Sprintf("--set parameter '%s': %s", param, issue))
 		}
 	}
 
-	// File existence validation for --set-file parameters
+	// Validate --set-file parameters
 	for _, param := range c.setFileParams {
-		if issue := c.validateSetFileParam(param); issue != "" {
+		if issue := c.validateFileParam(param); issue != "" {
 			issues = append(issues, fmt.Sprintf("--set-file parameter '%s': %s", param, issue))
 		}
 	}
