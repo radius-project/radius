@@ -18,11 +18,11 @@ package publishextension
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 
+	"github.com/radius-project/bicep-tools-go/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // NewCommand creates a new instance of the `rad bicep publish-extension` command.
@@ -45,7 +46,7 @@ This command compiles a set of resource types (resource provider manifest) into 
 
 Bicep extensions enable extensibility for the Bicep language. This command can be used to generate and distribute Bicep support for resource types authored by users. Bicep extensions can be distributed using Open Container Initiative (OCI) registry, such as Azure Container Registry, Docker Hub, or GitHub Container Registry. See https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-extension for more information on Bicep extensions.
 
-Once an extension is been generated, it can be used locally or published to a container registry for distribution depending on the target specified.
+Once an extension has been generated, it can be used locally or published to a container registry for distribution depending on the target specified.
 
 When publishing to an OCI registry it is expected the user runs docker login (or similar command) and has the proper permission to push to the target OCI registry.
 		`,
@@ -106,17 +107,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad bicep publish-extension` command.
 func (r *Runner) Run(ctx context.Context) error {
-	// This command ties together two separate shell commands:
-	// 1. We use NPX to run https://github.com/radius-project/bicep-tools/tree/main/packages/manifest-to-bicep-extension
-	//       - This generates a Bicep extension "index"
+	// This command ties together two separate operations:
+	// 1. We use the Go bicep-tools library to generate a Bicep extension "index"
 	// 2. We use `bicep publish-extension` to publish the extension "index" to the "target"
 	//
 	// 3. We can clean up the "index" directory after publishing.
-
-	_, err := exec.LookPath("npx")
-	if errors.Is(err, exec.ErrNotFound) {
-		return clierrors.Message("The command 'npx' was not found on the PATH. Please install Node.js 16+ to use this command.")
-	}
 
 	temp, err := os.MkdirTemp("", "bicep-extension-*")
 	if err != nil {
@@ -139,23 +134,39 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outputDirectoryPath string) error {
-	// npx @radius-project/manifest-to-bicep-extension@alpha generate <resource provider> <temp>
-	args := []string{
-		"@radius-project/manifest-to-bicep-extension@alpha",
-		"generate",
-		inputFilePath,
-		outputDirectoryPath,
+func generateBicepExtensionIndex(_ context.Context, inputFilePath string, outputDirectoryPath string) error {
+	// Read the radius manifest format
+	radiusManifest, err := manifest.ReadFile(inputFilePath)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to read manifest file")
 	}
-	cmd := exec.CommandContext(ctx, "npx", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
+	
+	// Convert to bicep-tools-go format
+	bicepManifest, err := convertRadiusToBicepManifest(radiusManifest)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to convert manifest format")
+	}
+	
+	generator := cli.NewGenerator()
+	result, err := generator.GenerateFromString(bicepManifest)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to generate Bicep extension")
 	}
-
+	
+	// Write the three output files
+	files := map[string]string{
+		"types.json": result.TypesContent,
+		"index.json": result.IndexContent,
+		"index.md":   result.DocumentationContent,
+	}
+	
+	for filename, content := range files {
+		outputPath := filepath.Join(outputDirectoryPath, filename)
+		if err := os.WriteFile(outputPath, []byte(content), 0755); err != nil {
+			return clierrors.MessageWithCause(err, "Failed to write %s", filename)
+		}
+	}
+	
 	return nil
 }
 
@@ -186,4 +197,49 @@ func publishExtension(ctx context.Context, inputDirectoryPath string, target str
 	}
 
 	return nil
+}
+
+// convertRadiusToBicepManifest converts from radius CLI manifest format to bicep-tools-go format
+func convertRadiusToBicepManifest(radiusManifest *manifest.ResourceProvider) (string, error) {
+	// Create the bicep manifest structure
+	bicepManifest := map[string]any{
+		"name":  radiusManifest.Name,
+		"types": make(map[string]any),
+	}
+	
+	// Convert types
+	for typeName, resourceType := range radiusManifest.Types {
+		bicepType := map[string]any{
+			"apiVersions": make(map[string]any),
+		}
+		
+		// Set default API version if present
+		if resourceType.DefaultAPIVersion != nil {
+			bicepType["defaultApiVersion"] = *resourceType.DefaultAPIVersion
+		}
+		
+		// Convert API versions
+		for apiVersion, apiVersionData := range resourceType.APIVersions {
+			bicepAPIVersion := map[string]any{
+				"schema": apiVersionData.Schema,
+			}
+			
+			// Move capabilities from resource type level to API version level
+			if resourceType.Capabilities != nil && len(resourceType.Capabilities) > 0 {
+				bicepAPIVersion["capabilities"] = resourceType.Capabilities
+			}
+			
+			bicepType["apiVersions"].(map[string]any)[apiVersion] = bicepAPIVersion
+		}
+		
+		bicepManifest["types"].(map[string]any)[typeName] = bicepType
+	}
+	
+	// Convert to YAML string
+	yamlBytes, err := yaml.Marshal(bicepManifest)
+	if err != nil {
+		return "", err
+	}
+	
+	return string(yamlBytes), nil
 }

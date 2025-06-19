@@ -6,7 +6,14 @@ go 1.24.2
 // xref: https://github.com/opencontainers/go-digest/pull/66
 replace github.com/opencontainers/go-digest => github.com/opencontainers/go-digest v1.0.1-0.20220411205349-bde1400a84be
 
+// Local development replacements for bicep libraries
+replace github.com/radius-project/bicep-tools-go => /Users/willsmith/dev/bicep-types-root/bicep-tools-go
+
+replace github.com/azure/bicep-types-go => /Users/willsmith/dev/bicep-types-root/bicep-types-go
+
 require (
+	github.com/azure/bicep-types-go v0.0.0-00010101000000-000000000000
+	github.com/radius-project/bicep-tools-go v0.0.0-00010101000000-000000000000
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.3
@@ -199,7 +206,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
