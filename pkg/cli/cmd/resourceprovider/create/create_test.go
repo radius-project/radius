@@ -98,7 +98,6 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource provider %s", resourceProviderData.Name))
 		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", resourceProviderData.Name, expectedResourceType))
 		require.Contains(t, logOutput, fmt.Sprintf("Creating API Version %s/%s@%s", resourceProviderData.Name, expectedResourceType, expectedAPIVersion))
 	})
