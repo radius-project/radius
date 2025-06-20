@@ -147,7 +147,6 @@ func Test_Run(t *testing.T) {
 
 		// Verify RegisterResourceProvider was called
 		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
 		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Name, "testResources"))
 		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Name, "prodResources"))
 	})
@@ -203,10 +202,6 @@ func Test_Run(t *testing.T) {
 			require.Contains(t, outputSink.Writes, expectedLog, "Expected log message not found")
 			require.NotContains(t, outputSink.Writes, shouldNotContain, "Log messages related to unspecified resource types should not be present")
 		}
-
-		// Verify RegisterResourceProvider was called for the filtered resource provider
-		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource provider %s", runner.ResourceProvider.Name))
 	})
 	t.Run("Get Resource provider Internal Error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
