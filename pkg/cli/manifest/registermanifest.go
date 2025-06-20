@@ -64,7 +64,6 @@ func RegisterResourceProvider(ctx context.Context, clientFactory *v20231001previ
 		}
 	}
 
-	logIfEnabled(logger, "Creating resource provider %s at location %s", resourceProvider.Name, locationName)
 	err := retryOperation(ctx, func() error {
 		resourceProviderPoller, err := clientFactory.NewResourceProvidersClient().BeginCreateOrUpdate(
 			ctx, planeName, resourceProvider.Name,
