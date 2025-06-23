@@ -23,6 +23,9 @@ import (
 	"github.com/Masterminds/semver/v3"
 )
 
+// Ensure VersionCompatibilityCheck implements PreflightCheck interface
+var _ PreflightCheck = (*VersionCompatibilityCheck)(nil)
+
 // VersionCompatibilityCheck validates that the target version is a valid upgrade
 // from the current version. It prevents downgrades and enforces incremental upgrade policies.
 type VersionCompatibilityCheck struct {

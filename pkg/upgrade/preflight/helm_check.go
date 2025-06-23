@@ -23,6 +23,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli/helm"
 )
 
+// Ensure HelmConnectivityCheck implements PreflightCheck interface
+var _ PreflightCheck = (*HelmConnectivityCheck)(nil)
+
 // HelmConnectivityCheck validates that Helm can connect to the cluster
 // and access the Radius release for upgrade operations.
 type HelmConnectivityCheck struct {

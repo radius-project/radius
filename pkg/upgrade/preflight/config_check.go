@@ -28,6 +28,9 @@ import (
 	"helm.sh/helm/v3/pkg/strvals"
 )
 
+// Ensure CustomConfigValidationCheck implements PreflightCheck interface
+var _ PreflightCheck = (*CustomConfigValidationCheck)(nil)
+
 // CustomConfigValidationCheck validates that custom configuration parameters
 // are accessible and properly formatted against the actual Helm chart.
 //
