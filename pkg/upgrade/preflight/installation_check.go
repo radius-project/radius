@@ -23,6 +23,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli/helm"
 )
 
+// Ensure RadiusInstallationCheck implements PreflightCheck interface
+var _ PreflightCheck = (*RadiusInstallationCheck)(nil)
+
 // RadiusInstallationCheck validates that Radius is currently installed
 // in the cluster and in a healthy state for upgrading.
 type RadiusInstallationCheck struct {
