@@ -133,3 +133,30 @@ bicep:
   image: ghcr.io/radius-project/bicep
   # Default tag uses Chart AppVersion.
   # tag: latest
+
+preUpgrade:
+  # Enable pre-upgrade preflight checks
+  enabled: true
+  # Container image for pre-upgrade checks
+  image: ghcr.io/radius-project/pre-upgrade
+  # Default tag uses Chart AppVersion.
+  # tag: latest
+  imagePullPolicy: IfNotPresent
+  # Current version of Radius to upgrade from
+  # This should be set by the user or detected from the current installation
+  currentVersion: ""
+  # Individual preflight checks configuration
+  checks:
+    # Version compatibility check
+    version: true
+  # Job configuration
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 300
+  # Resource requirements
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
