@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2025 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ func (s *simpleOutput) CompleteStep(step output.Step) {
 
 func main() {
 	ctx := context.Background()
-	
+
 	currentVersion := os.Getenv("CURRENT_VERSION")
 	targetVersion := os.Getenv("TARGET_VERSION")
 	enabledChecks := os.Getenv("ENABLED_CHECKS")
@@ -81,33 +81,25 @@ func main() {
 
 	for _, checkName := range checks {
 		checkName = strings.TrimSpace(checkName)
-		
+
 		switch checkName {
 		case "version":
 			versionCheck := preflight.NewVersionCompatibilityCheck(currentVersion, targetVersion)
 			registry.AddCheck(versionCheck)
-			
+
 		case "resources":
 			resourceCheck := preflight.NewKubernetesResourceCheck("")
 			registry.AddCheck(resourceCheck)
-			
+
 		case "installation":
 			helmClient := helm.NewHelmClient()
 			helmInterface := &helm.Impl{
 				Helm: helmClient,
 			}
-			
+
 			installationCheck := preflight.NewRadiusInstallationCheck(helmInterface, "")
 			registry.AddCheck(installationCheck)
-			
-		case "customResources":
-			crdCheck := preflight.NewCustomResourceDefinitionCheck("")
-			registry.AddCheck(crdCheck)
-			
-		case "workloads":
-			workloadCheck := preflight.NewActiveWorkloadHealthCheck("")
-			registry.AddCheck(workloadCheck)
-			
+
 		default:
 			fmt.Fprintf(os.Stderr, "Error: Unknown check '%s'\n", checkName)
 			os.Exit(1)
@@ -121,7 +113,7 @@ func main() {
 	}
 
 	fmt.Printf("All preflight checks completed successfully\n")
-	
+
 	for _, result := range results {
 		if result.Success {
 			fmt.Printf("✓ %s: %s\n", result.Check.Name(), result.Message)
@@ -129,6 +121,6 @@ func main() {
 			fmt.Printf("⚠ %s: %s\n", result.Check.Name(), result.Message)
 		}
 	}
-	
+
 	os.Exit(0)
 }

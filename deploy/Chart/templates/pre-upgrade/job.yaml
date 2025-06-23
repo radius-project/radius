@@ -3,12 +3,12 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: radius-pre-upgrade
+  name: pre-upgrade
   namespace: "{{ .Release.Namespace }}"
   labels:
-    app.kubernetes.io/name: radius-pre-upgrade
+    control-plane: pre-upgrade
+    app.kubernetes.io/name: pre-upgrade
     app.kubernetes.io/part-of: radius
-    app.kubernetes.io/version: "{{ $appversion }}"
   annotations:
     "helm.sh/hook": pre-upgrade
     "helm.sh/hook-weight": "1"
@@ -19,17 +19,15 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: radius-pre-upgrade
+        control-plane: pre-upgrade
+        app.kubernetes.io/name: pre-upgrade
         app.kubernetes.io/part-of: radius
     spec:
       restartPolicy: Never
-      {{- if .Values.preUpgrade.serviceAccount.create }}
-      serviceAccountName: radius-pre-upgrade
-      {{- end }}
       containers:
       - name: pre-upgrade
         image: "{{ .Values.preUpgrade.image }}:{{ .Values.preUpgrade.tag | default $appversion }}"
-        imagePullPolicy: {{ .Values.preUpgrade.imagePullPolicy }}
+        imagePullPolicy: 'Always'
         env:
         - name: CURRENT_VERSION
           value: "{{ .Values.preUpgrade.currentVersion }}"
@@ -39,18 +37,6 @@ spec:
           value: "{{- $checks := list -}}
           {{- if .Values.preUpgrade.checks.version -}}
             {{- $checks = append $checks "version" -}}
-          {{- end -}}
-          {{- if .Values.preUpgrade.checks.resources -}}
-            {{- $checks = append $checks "resources" -}}
-          {{- end -}}
-          {{- if .Values.preUpgrade.checks.installation -}}
-            {{- $checks = append $checks "installation" -}}
-          {{- end -}}
-          {{- if .Values.preUpgrade.checks.customResources -}}
-            {{- $checks = append $checks "customResources" -}}
-          {{- end -}}
-          {{- if .Values.preUpgrade.checks.workloads -}}
-            {{- $checks = append $checks "workloads" -}}
           {{- end -}}
           {{- join "," $checks -}}"
         resources:
@@ -71,16 +57,4 @@ spec:
         runAsUser: 65532
         runAsGroup: 65532
         fsGroup: 65532
-      {{- with .Values.preUpgrade.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.preUpgrade.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.preUpgrade.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
 {{- end }}
