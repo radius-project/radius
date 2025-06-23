@@ -80,7 +80,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 	// Load the downloaded module to retrieve providers and variables required by the module.
 	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
 	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
-	loadedModule, err := inspectModule(tf.WorkingDir(), options.EnvRecipe)
+	loadedModule, err := inspectModule(ctx, tf.WorkingDir(), options.EnvRecipe)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,10 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 // localModuleName is the name of the module specified in the configuration used to download the module.
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
-func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*moduleInspectResult, error) {
+func inspectModule(ctx context.Context, workingDir string, recipe *recipes.EnvironmentDefinition) (*moduleInspectResult, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info("Starting module inspection", "recipe", recipe.Name, "templatePath", recipe.TemplatePath)
+	
 	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: map[string]*config.RequiredProviderInfo{}, ResultOutputExists: false, Parameters: map[string]any{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
@@ -102,17 +105,25 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 	//
 	// If the template path is for a submodule, we'll add the submodule path to the module directory.
 	_, subModule := getter.SourceDirSubdir(recipe.TemplatePath)
-	mod, diags := tfconfig.LoadModule(filepath.Join(workingDir, moduleRootDir, recipe.Name, subModule))
+	modulePath := filepath.Join(workingDir, moduleRootDir, recipe.Name, subModule)
+	logger.Info("Loading Terraform module", "modulePath", modulePath)
+	
+	mod, diags := tfconfig.LoadModule(modulePath)
 	if diags.HasErrors() {
+		logger.Error(diags.Err(), "Failed to load Terraform module", "modulePath", modulePath)
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
 	}
 
 	// Check that the module has a recipe context variable.
 	if _, ok := mod.Variables[recipecontext.RecipeContextParamKey]; ok {
 		result.ContextVarExists = true
+		logger.Info("Recipe context variable found in module")
+	} else {
+		logger.Info("Recipe context variable not found in module")
 	}
 
 	// Extract the details of required providers.
+	logger.Info("Extracting required providers", "count", len(mod.RequiredProviders))
 	for k, v := range mod.RequiredProviders {
 		requiredprovider := &config.RequiredProviderInfo{}
 
@@ -136,14 +147,19 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 		}
 
 		result.RequiredProviders[k] = requiredprovider
+		logger.Info("Found required provider", "name", k, "source", requiredprovider.Source, "version", requiredprovider.Version, "aliasCount", len(requiredprovider.ConfigurationAliases))
 	}
 
 	// Check if an output named "result" is defined in the module.
 	if _, ok := mod.Outputs[recipes.ResultPropertyName]; ok {
 		result.ResultOutputExists = true
+		logger.Info("Result output found in module")
+	} else {
+		logger.Info("Result output not found in module")
 	}
 
 	// Extract the list of parameters.
+	logger.Info("Extracting module parameters", "count", len(mod.Variables))
 	for variable, value := range mod.Variables {
 		tfVar := map[string]any{
 			"name":         value.Name,
@@ -157,5 +173,6 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 		result.Parameters[variable] = tfVar
 	}
 
+	logger.Info("Module inspection complete", "providers", len(result.RequiredProviders), "parameters", len(result.Parameters), "hasContext", result.ContextVarExists, "hasResult", result.ResultOutputExists)
 	return result, nil
 }

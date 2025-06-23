@@ -182,6 +182,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
 	err = initAndDestroy(ctx, tf)
 	if err != nil {
+		logger.Error(err, "Failed to initialize and destroy Terraform configuration")
 		return err
 	}
 
@@ -190,6 +191,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		Secrets(backends.RadiusNamespace).
 		Delete(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix, metav1.DeleteOptions{})
 	if err != nil {
+		logger.Error(err, "Failed to delete Kubernetes secret for terraform state", "secretName", backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 		return fmt.Errorf("error deleting kubernetes secret for terraform state: %w", err)
 	}
 
@@ -238,6 +240,8 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 // setEnvironmentVariables sets environment variables for the Terraform process by reading values from the recipe configuration.
 // Terraform process will use environment variables as input for the recipe deployment.
 func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	
 	if options.EnvConfig == nil {
 		return nil
 	}
@@ -249,22 +253,28 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 
 	if len(recipeConfig.Env.AdditionalProperties) > 0 {
 		envVarUpdate = true
+		logger.Info("Setting environment variables from recipe config", "count", len(recipeConfig.Env.AdditionalProperties))
 		for key, value := range recipeConfig.Env.AdditionalProperties {
 			envVars[key] = value
 		}
 	}
 
 	if len(recipeConfig.EnvSecrets) > 0 {
+		logger.Info("Extracting secret environment variables", "count", len(recipeConfig.EnvSecrets))
 		for secretName, secretReference := range recipeConfig.EnvSecrets {
+			logger.Info("Processing environment secret", "secretName", secretName, "source", secretReference.Source, "key", secretReference.Key)
 			// Extract secret value from the secrets input
 			if secretData, ok := options.Secrets[secretReference.Source]; ok {
 				if secretValue, ok := secretData.Data[secretReference.Key]; ok {
 					envVarUpdate = true
 					envVars[secretName] = secretValue
+					logger.Info("Environment secret extracted successfully", "secretName", secretName)
 				} else {
+					logger.Error(nil, "Missing secret key in secret store", "source", secretReference.Source, "key", secretReference.Key)
 					return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
 				}
 			} else {
+				logger.Error(nil, "Missing secret source", "source", secretReference.Source)
 				return fmt.Errorf("missing secret source: %s", secretReference.Source)
 			}
 		}
@@ -401,6 +411,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 	logger.Info("Initializing Terraform")
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
+		logger.Error(err, "Terraform init failed during apply flow")
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
@@ -418,6 +429,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
 	if err := tf.Apply(ctx, applyOptions...); err != nil {
+		logger.Error(err, "Terraform apply failed")
 		return nil, fmt.Errorf("terraform apply failure: %w", err)
 	}
 
@@ -434,6 +446,7 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 	logger.Info("Initializing Terraform")
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
+		logger.Error(err, "Terraform init failed during destroy flow")
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
@@ -444,6 +457,7 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 	// Destroy Terraform configuration
 	logger.Info("Running Terraform destroy")
 	if err := tf.Destroy(ctx); err != nil {
+		logger.Error(err, "Terraform destroy failed")
 		return fmt.Errorf("terraform destroy failure: %w", err)
 	}
 

@@ -18,6 +18,7 @@ package terraform
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -166,7 +167,7 @@ func TestConfigureSSHAuth(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpdir := t.TempDir()
-			
+
 			secrets := map[string]string{
 				"privateKey": tt.privateKey,
 			}
@@ -177,32 +178,32 @@ func TestConfigureSSHAuth(t *testing.T) {
 			// Initialize git repository first
 			err := os.MkdirAll(filepath.Join(tmpdir, ".git"), 0755)
 			require.NoError(t, err)
-			
+
 			// Create an empty git config file
 			err = os.WriteFile(filepath.Join(tmpdir, ".git", "config"), []byte(""), 0644)
 			require.NoError(t, err)
-			
+
 			err = configureSSHAuth(tmpdir, tt.privateKey, secrets)
-			
+
 			if tt.expectError {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				
+
 				// Verify SSH key file was created
 				sshKeyPath := filepath.Join(tmpdir, ".ssh", "id_rsa")
 				require.FileExists(t, sshKeyPath)
-				
+
 				// Verify key content
 				keyContent, err := os.ReadFile(sshKeyPath)
 				require.NoError(t, err)
 				require.Equal(t, tt.privateKey, string(keyContent))
-				
+
 				// Verify file permissions
 				info, err := os.Stat(sshKeyPath)
 				require.NoError(t, err)
 				require.Equal(t, os.FileMode(0600), info.Mode())
-				
+
 				// Verify git config contains SSH command
 				gitConfigPath := filepath.Join(tmpdir, ".git", "config")
 				gitConfigContent, err := os.ReadFile(gitConfigPath)
@@ -253,16 +254,16 @@ func TestAddSecretsToGitConfig_WithSSH(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpdir := t.TempDir()
-			
+
 			err := addSecretsToGitConfig(tmpdir, tt.secrets, tt.templatePath)
 			require.NoError(t, err)
-			
+
 			if tt.expectSSH {
 				// Verify SSH key file exists
 				sshKeyPath := filepath.Join(tmpdir, ".ssh", "id_rsa")
 				require.FileExists(t, sshKeyPath)
 			}
-			
+
 			if tt.expectPAT {
 				// Verify git config contains URL rewrite
 				gitConfigPath := filepath.Join(tmpdir, ".git", "config")
@@ -275,7 +276,6 @@ func TestAddSecretsToGitConfig_WithSSH(t *testing.T) {
 }
 
 func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
-
 	tmpGitConfigFile := filepath.Join(tmpdir, ".gitconfig")
 
 	err := os.WriteFile(
@@ -287,11 +287,16 @@ func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
 	if err != nil {
 		return func() {}, err
 	}
+
 	prevGitConfigEnv := os.Getenv("HOME")
-	os.Setenv("HOME", tmpdir)
+	err = os.Setenv("HOME", tmpdir)
+	if err != nil {
+		return func() {}, fmt.Errorf("failed to set HOME environment variable: %w", err)
+	}
 
 	return func() {
-		os.Setenv("HOME", prevGitConfigEnv)
+		// Best effort restoration - errors here are non-critical
+		_ = os.Setenv("HOME", prevGitConfigEnv)
 	}, nil
 }
 

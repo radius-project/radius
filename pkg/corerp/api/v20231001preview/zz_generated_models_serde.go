@@ -3798,6 +3798,7 @@ func (t TerraformVersionConfig) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "authentication", t.Authentication)
 	populate(objectMap, "releasesApiBaseUrl", t.ReleasesAPIBaseURL)
+	populate(objectMap, "releasesArchiveUrl", t.ReleasesArchiveURL)
 	populate(objectMap, "tls", t.TLS)
 	populate(objectMap, "version", t.Version)
 	return json.Marshal(objectMap)
@@ -3817,6 +3818,9 @@ func (t *TerraformVersionConfig) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "releasesApiBaseUrl":
 				err = unpopulate(val, "ReleasesAPIBaseURL", &t.ReleasesAPIBaseURL)
+			delete(rawMsg, key)
+		case "releasesArchiveUrl":
+				err = unpopulate(val, "ReleasesArchiveURL", &t.ReleasesArchiveURL)
 			delete(rawMsg, key)
 		case "tls":
 				err = unpopulate(val, "TLS", &t.TLS)

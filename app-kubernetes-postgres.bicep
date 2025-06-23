@@ -54,7 +54,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
           }
         }
         registry: {
-          mirror: 'https://dsl-qty-white-visited.trycloudflare.com'
+          mirror: 'https://spatial-childrens-actors-implies.trycloudflare.com'
           authentication: {
             token: {
               secret: localRegistryTokenSecret.id
@@ -62,8 +62,9 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
           }
         }
         version: {
-          version: '1.7.0'
-          releasesApiBaseUrl: 'http://host.docker.internal:8081/repository/terraform-releases'
+          releasesArchiveUrl: 'http://host.docker.internal:8081/repository/terraform/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip'
+          // version: '1.7.0'
+          // releasesApiBaseUrl: 'http://host.docker.internal:8081/repository/terraform-releases'
           tls: {
             skipVerify: true
           }

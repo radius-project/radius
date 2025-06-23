@@ -17,6 +17,7 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -27,6 +28,7 @@ import (
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // getGitURLWithSecrets returns the git URL with secrets information added.
@@ -70,6 +72,8 @@ func getURLConfigKeyValue(secrets map[string]string, templatePath string) (strin
 // and adds them to the Git config by running
 // git config --file .git/config url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
 func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, templatePath string) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	
 	if !strings.HasPrefix(templatePath, "git::") || secrets == nil || len(secrets) == 0 {
 		return nil
 	}
@@ -87,12 +91,16 @@ func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, t
 
 	// Check if this is SSH authentication
 	if privateKey, ok := secrets["privateKey"]; ok {
+		logger.Info("Configuring SSH authentication for Git", "templatePath", templatePath)
 		// Handle SSH authentication
 		err = configureSSHAuth(workingDirectory, privateKey, secrets)
 		if err != nil {
+			logger.Error(err, "Failed to configure SSH authentication")
 			return fmt.Errorf("failed to configure SSH authentication: %w", err)
 		}
+		logger.Info("SSH authentication configured successfully")
 	} else {
+		logger.Info("Configuring PAT/username authentication for Git", "templatePath", templatePath, "hasUsername", secrets["username"] != "")
 		// Handle PAT/username authentication
 		urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
 		if err != nil {
@@ -102,8 +110,10 @@ func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, t
 		cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", urlConfigKey, urlConfigValue)
 		_, err = cmd.Output()
 		if err != nil {
+			logger.Error(err, "Failed to add git config")
 			return errors.New("failed to add git config")
 		}
+		logger.Info("Git authentication configured successfully")
 	}
 
 	return nil
@@ -161,14 +171,19 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 // addSecretsToGitConfigIfApplicable adds secrets to the Git configuration file if applicable.
 // It is a wrapper function to addSecretsToGitConfig()
 func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[string]recipes.SecretData, requestDirPath string, templatePath string) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	
 	if secretStoreID == "" || secretData == nil {
 		return nil
 	}
 
 	secrets, ok := secretData[secretStoreID]
 	if !ok {
+		logger.Error(nil, "Secrets not found for secret store", "secretStoreID", secretStoreID)
 		return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
 	}
+	
+	logger.Info("Adding Git authentication configuration", "secretStoreID", secretStoreID, "templatePath", templatePath)
 
 	err := addSecretsToGitConfig(requestDirPath, secrets.Data, templatePath)
 	if err != nil {
@@ -200,6 +215,8 @@ func unsetGitConfigForDirIfApplicable(secretStoreID string, secretData map[strin
 
 // configureSSHAuth sets up SSH authentication for Git operations
 func configureSSHAuth(workingDirectory string, privateKey string, secrets map[string]string) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	
 	// Create SSH directory
 	sshDir := filepath.Join(workingDirectory, ".ssh")
 	if err := os.MkdirAll(sshDir, 0700); err != nil {
@@ -208,7 +225,9 @@ func configureSSHAuth(workingDirectory string, privateKey string, secrets map[st
 
 	// Write private key to file
 	keyPath := filepath.Join(sshDir, "id_rsa")
+	logger.Info("Writing SSH private key", "keyPath", keyPath)
 	if err := os.WriteFile(keyPath, []byte(privateKey), 0600); err != nil {
+		logger.Error(err, "Failed to write SSH private key")
 		return fmt.Errorf("failed to write SSH private key: %w", err)
 	}
 
@@ -219,6 +238,7 @@ func configureSSHAuth(workingDirectory string, privateKey string, secrets map[st
 	strictHostKey := "yes"
 	if strict, ok := secrets["strictHostKeyChecking"]; ok && strict == "false" {
 		strictHostKey = "no"
+		logger.Info("SSH strict host key checking disabled")
 	}
 	sshCommand += fmt.Sprintf(" -o StrictHostKeyChecking=%s", strictHostKey)
 	

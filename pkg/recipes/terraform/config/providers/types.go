@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 //go:generate mockgen -typed -destination=./mock_provider.go -package=providers -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/providers github.com/radius-project/radius/pkg/recipes/terraform/config/providers Provider
@@ -51,12 +52,15 @@ func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *
 // specified under the RecipeConfig/Terraform/Providers section under environment configuration.
 // The function also extracts secrets from the secrets data input and updates the provider configurations with secrets as applicable.
 func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configuration, secrets map[string]recipes.SecretData) (map[string][]map[string]any, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	providerConfigs := make(map[string][]map[string]any)
 
 	// If the provider is not configured, or has empty configuration, skip this iteration
 	if envConfig != nil && envConfig.RecipeConfig.Terraform.Providers != nil {
+		logger.Info("Processing recipe provider configurations", "providerCount", len(envConfig.RecipeConfig.Terraform.Providers))
 		for provider, config := range envConfig.RecipeConfig.Terraform.Providers {
 			if len(config) > 0 {
+				logger.Info("Processing provider configuration", "provider", provider, "configCount", len(config))
 				configList := make([]map[string]any, 0)
 
 				for _, configDetails := range config {
@@ -69,8 +73,12 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 					}
 
 					// Extract secrets from provider configuration if they are present.
-					secretsConfig, err := extractSecretsFromRecipeConfig(configDetails.Secrets, secrets)
+					if len(configDetails.Secrets) > 0 {
+						logger.Info("Extracting secrets for provider", "provider", provider, "secretCount", len(configDetails.Secrets))
+					}
+					secretsConfig, err := extractSecretsFromRecipeConfig(ctx, configDetails.Secrets, secrets)
 					if err != nil {
+						logger.Error(err, "Failed to extract secrets for provider", "provider", provider)
 						return nil, err
 					}
 
@@ -96,19 +104,24 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 }
 
 // extractSecretsFromRecipeConfig extracts secrets for env recipe configuration from the secrets data input and updates the currentConfig map.
-func extractSecretsFromRecipeConfig(recipeConfigSecrets map[string]datamodel.SecretReference, secrets map[string]recipes.SecretData) (map[string]any, error) {
+func extractSecretsFromRecipeConfig(ctx context.Context, recipeConfigSecrets map[string]datamodel.SecretReference, secrets map[string]recipes.SecretData) (map[string]any, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	secretsConfig := make(map[string]any)
 
 	// Extract secrets from configDetails if they are present
 	for secretName, secretReference := range recipeConfigSecrets {
+		logger.Info("Extracting secret", "secretName", secretName, "source", secretReference.Source, "key", secretReference.Key)
 		// Extract secret value from the secrets data input
 		if secretIDs, ok := secrets[secretReference.Source]; ok {
 			if secretValue, ok := secretIDs.Data[secretReference.Key]; ok {
 				secretsConfig[secretName] = secretValue
+				logger.Info("Secret extracted successfully", "secretName", secretName)
 			} else {
+				logger.Error(nil, "Missing secret key in secret store", "source", secretReference.Source, "key", secretReference.Key)
 				return nil, fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
 			}
 		} else {
+			logger.Error(nil, "Missing secret store", "source", secretReference.Source)
 			return nil, fmt.Errorf("missing secret store id: %s", secretReference.Source)
 		}
 	}

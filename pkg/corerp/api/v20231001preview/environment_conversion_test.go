@@ -704,7 +704,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				if versioned.Properties.Providers != nil && versioned.Properties.Providers.Aws != nil {
 					require.Equal(t, "/planes/aws/aws/accounts/140313373712/regions/us-west-2", string(*versioned.Properties.Providers.Aws.Scope))
 				}
-				if versioned.Properties.Extensions != nil && len(versioned.Properties.Extensions) > 0 {
+				if len(versioned.Properties.Extensions) > 0 {
 					require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 					require.Equal(t, 1, len(versioned.Properties.Extensions))
 				}

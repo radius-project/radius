@@ -88,3 +88,89 @@ func Test_validateReleasesURL(t *testing.T) {
 		})
 	}
 }
+
+func Test_validateArchiveURL(t *testing.T) {
+	tests := []struct {
+		name       string
+		archiveURL string
+		tlsConfig  *datamodel.TerraformTLSConfig
+		wantErr    bool
+		errorMsg   string
+	}{
+		{
+			name:       "empty URL is valid",
+			archiveURL: "",
+			tlsConfig:  nil,
+			wantErr:    false,
+		},
+		{
+			name:       "HTTPS URL with .zip extension is valid",
+			archiveURL: "https://releases.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip",
+			tlsConfig:  nil,
+			wantErr:    false,
+		},
+		{
+			name:       "HTTP URL without skipVerify is invalid",
+			archiveURL: "http://releases.example.com/terraform_1.7.0_linux_amd64.zip",
+			tlsConfig:  nil,
+			wantErr:    true,
+			errorMsg:   "archive URL must use HTTPS for security. Use 'tls.skipVerify: true' to allow insecure connections (not recommended)",
+		},
+		{
+			name:       "HTTP URL with skipVerify is valid",
+			archiveURL: "http://releases.example.com/terraform_1.7.0_linux_amd64.zip",
+			tlsConfig: &datamodel.TerraformTLSConfig{
+				SkipVerify: true,
+			},
+			wantErr: false,
+		},
+		{
+			name:       "URL without .zip extension is invalid",
+			archiveURL: "https://releases.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64",
+			tlsConfig:  nil,
+			wantErr:    true,
+			errorMsg:   "archive URL must point to a .zip file",
+		},
+		{
+			name:       "URL with .tar.gz extension is invalid",
+			archiveURL: "https://releases.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.tar.gz",
+			tlsConfig:  nil,
+			wantErr:    true,
+			errorMsg:   "archive URL must point to a .zip file, got: .gz",
+		},
+		{
+			name:       "invalid URL scheme",
+			archiveURL: "ftp://releases.example.com/terraform_1.7.0_linux_amd64.zip",
+			tlsConfig:  nil,
+			wantErr:    true,
+			errorMsg:   "archive URL must use either HTTP or HTTPS scheme, got: ftp",
+		},
+		{
+			name:       "malformed URL",
+			archiveURL: "://invalid-url.zip",
+			tlsConfig:  nil,
+			wantErr:    true,
+			errorMsg:   "invalid archive URL",
+		},
+		{
+			name:       "URL with query parameters is valid",
+			archiveURL: "https://releases.example.com/terraform_1.7.0_linux_amd64.zip?token=abc123",
+			tlsConfig:  nil,
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateArchiveURL(tt.archiveURL, tt.tlsConfig)
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errorMsg != "" {
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

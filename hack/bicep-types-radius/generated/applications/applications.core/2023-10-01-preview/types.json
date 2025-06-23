@@ -2311,6 +2311,13 @@
         "flags": 0,
         "description": "Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example: '1.7.0'"
       },
+      "releasesArchiveUrl": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Optional direct URL to a Terraform binary archive (.zip file). If set, Terraform will be downloaded directly from this URL instead of using the releases API. This takes precedence over releasesApiBaseUrl. The URL must point to a valid Terraform release archive. Example: 'https://my-mirror.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip'"
+      },
       "releasesApiBaseUrl": {
         "type": {
           "$ref": "#/0"

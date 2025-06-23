@@ -246,7 +246,7 @@ func TestConfigureTerraformRegistry_WithPort(t *testing.T) {
 		"Config file should contain the normalized mirror URL with port")
 
 	// Cleanup
-	os.Unsetenv("TF_TOKEN_terraform_example_com_8443")
+	require.NoError(t, os.Unsetenv("TF_TOKEN_terraform_example_com_8443"))
 }
 
 func TestConfigureTerraformRegistry_MissingToken(t *testing.T) {
@@ -408,7 +408,7 @@ func TestCleanupTerraformRegistryConfig_FileRemoval(t *testing.T) {
 	}
 	
 	// Set a test env var
-	os.Setenv("TEST_VAR", "test-value")
+	require.NoError(t, os.Setenv("TEST_VAR", "test-value"))
 	
 	// Call cleanup
 	ctx := context.Background()

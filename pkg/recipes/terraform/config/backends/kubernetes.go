@@ -62,11 +62,16 @@ func NewKubernetesBackend(k8sClientSet kubernetes.Interface) Backend {
 // in-cluster config is not present.
 // https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
 func (p *kubernetesBackend) BuildBackend(resourceRecipe *recipes.ResourceMetadata) (map[string]any, error) {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	logger.Info("Building Kubernetes backend configuration", "resourceID", resourceRecipe.ResourceID)
+	
 	secretSuffix, err := generateSecretSuffix(resourceRecipe)
 	if err != nil {
+		logger.Error(err, "Failed to generate secret suffix for Kubernetes backend")
 		return nil, err
 	}
 
+	logger.Info("Generated secret suffix for backend", "secretSuffix", secretSuffix)
 	return generateKubernetesBackendConfig(secretSuffix)
 }
 
@@ -92,24 +97,30 @@ func (p *kubernetesBackend) ValidateBackendExists(ctx context.Context, name stri
 // generateSecretSuffix returns a unique string from the resourceID, environmentID, and applicationID
 // which is used as key for kubernetes secret in defining terraform backend.
 func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	
 	parsedResourceID, err := resources.Parse(resourceRecipe.ResourceID)
 	if err != nil {
+		logger.Error(err, "Failed to parse resource ID", "resourceID", resourceRecipe.ResourceID)
 		return "", err
 	}
 
 	parsedEnvID, err := resources.Parse(resourceRecipe.EnvironmentID)
 	if err != nil {
+		logger.Error(err, "Failed to parse environment ID", "environmentID", resourceRecipe.EnvironmentID)
 		return "", err
 	}
 
 	parsedAppID, err := resources.Parse(resourceRecipe.ApplicationID)
 	if err != nil {
+		logger.Error(err, "Failed to parse application ID", "applicationID", resourceRecipe.ApplicationID)
 		return "", err
 	}
 
 	hasher := sha1.New()
 	_, err = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))))
 	if err != nil {
+		logger.Error(err, "Failed to generate hash for secret suffix")
 		return "", err
 	}
 	hash := hasher.Sum(nil)
@@ -136,6 +147,8 @@ func generateKubernetesBackendConfig(secretSuffix string) (map[string]interface{
 				backendValue["config_path"] = clientcmd.RecommendedHomeFile
 			}
 		} else {
+			logger := ucplog.FromContextOrDiscard(context.Background())
+			logger.Error(err, "Failed to get Kubernetes config")
 			return nil, err
 		}
 	} else {

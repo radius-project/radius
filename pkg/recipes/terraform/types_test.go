@@ -249,6 +249,58 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			},
 		},
 		{
+			name: "version with releases archive URL and authentication",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Version: &datamodel.TerraformVersionConfig{
+							Version:            "1.7.0",
+							ReleasesArchiveURL: "https://terraform-mirror.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip",
+							Authentication: &datamodel.RegistryAuthConfig{
+								Token: &datamodel.TokenConfig{
+									Secret: "/secret/store/archive",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 1,
+			wantKeys: map[string][]string{
+				"/secret/store/archive": {"token"},
+			},
+		},
+		{
+			name: "version with both releases archive URL and API base URL",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Version: &datamodel.TerraformVersionConfig{
+							Version:            "1.7.0",
+							ReleasesArchiveURL: "https://terraform-mirror.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip",
+							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
+							Authentication: &datamodel.RegistryAuthConfig{
+								Token: &datamodel.TokenConfig{
+									Secret: "/secret/store/shared-auth",
+								},
+							},
+							TLS: &datamodel.TerraformTLSConfig{
+								CACertificate: &datamodel.SecretReference{
+									Source: "/secret/store/ca",
+									Key:    "ca-cert",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantLength: 2,
+			wantKeys: map[string][]string{
+				"/secret/store/shared-auth": {"token"},
+				"/secret/store/ca":          {"ca-cert"},
+			},
+		},
+		{
 			name: "empty additional hosts",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{

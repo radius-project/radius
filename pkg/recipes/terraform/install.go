@@ -46,12 +46,17 @@ const (
 
 // validateReleasesURL validates the releases API URL and ensures it uses HTTPS unless explicitly allowed
 func validateReleasesURL(releasesURL string, tlsConfig *datamodel.TerraformTLSConfig) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	
 	if releasesURL == "" {
+		logger.Info("No custom releases URL provided, using default HashiCorp releases site")
 		return nil // Default HashiCorp releases site will be used
 	}
 
+	logger.Info("Validating releases API URL", "url", releasesURL)
 	parsedURL, err := url.Parse(releasesURL)
 	if err != nil {
+		logger.Error(err, "Failed to parse releases API URL", "url", releasesURL)
 		return fmt.Errorf("invalid releases API URL: %w", err)
 	}
 
@@ -59,15 +64,60 @@ func validateReleasesURL(releasesURL string, tlsConfig *datamodel.TerraformTLSCo
 	if parsedURL.Scheme == "http" {
 		if tlsConfig != nil && tlsConfig.SkipVerify {
 			// Allow HTTP only if skipVerify is explicitly set to true
+			logger.Info("Allowing HTTP URL due to TLS skip verify setting", "url", releasesURL)
 			return nil
 		}
+		logger.Error(nil, "Releases API URL must use HTTPS for security", "url", releasesURL)
 		return fmt.Errorf("releases API URL must use HTTPS for security. Use 'tls.skipVerify: true' to allow insecure connections (not recommended)")
 	}
 
 	if parsedURL.Scheme != "https" {
+		logger.Error(nil, "Invalid URL scheme for releases API", "scheme", parsedURL.Scheme, "url", releasesURL)
 		return fmt.Errorf("releases API URL must use either HTTP or HTTPS scheme, got: %s", parsedURL.Scheme)
 	}
 
+	logger.Info("Releases API URL validation passed", "url", releasesURL)
+	return nil
+}
+
+// validateArchiveURL validates the archive URL and ensures it uses HTTPS unless explicitly allowed
+func validateArchiveURL(archiveURL string, tlsConfig *datamodel.TerraformTLSConfig) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	
+	if archiveURL == "" {
+		return nil
+	}
+
+	logger.Info("Validating archive URL", "url", archiveURL)
+	parsedURL, err := url.Parse(archiveURL)
+	if err != nil {
+		logger.Error(err, "Failed to parse archive URL", "url", archiveURL)
+		return fmt.Errorf("invalid archive URL: %w", err)
+	}
+
+	// Check if URL uses HTTP instead of HTTPS
+	if parsedURL.Scheme == "http" {
+		if tlsConfig != nil && tlsConfig.SkipVerify {
+			// Allow HTTP only if skipVerify is explicitly set to true
+			logger.Info("Allowing HTTP archive URL due to TLS skip verify setting", "url", archiveURL)
+			return nil
+		}
+		logger.Error(nil, "Archive URL must use HTTPS for security", "url", archiveURL)
+		return fmt.Errorf("archive URL must use HTTPS for security. Use 'tls.skipVerify: true' to allow insecure connections (not recommended)")
+	}
+
+	if parsedURL.Scheme != "https" {
+		logger.Error(nil, "Invalid URL scheme for archive", "scheme", parsedURL.Scheme, "url", archiveURL)
+		return fmt.Errorf("archive URL must use either HTTP or HTTPS scheme, got: %s", parsedURL.Scheme)
+	}
+
+	// Validate that the URL ends with .zip
+	if filepath.Ext(parsedURL.Path) != ".zip" {
+		logger.Error(nil, "Archive URL must point to a .zip file", "extension", filepath.Ext(parsedURL.Path), "url", archiveURL)
+		return fmt.Errorf("archive URL must point to a .zip file, got: %s", filepath.Ext(parsedURL.Path))
+	}
+
+	logger.Info("Archive URL validation passed", "url", archiveURL)
 	return nil
 }
 
@@ -85,17 +135,27 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 
 	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
 
-	// Validate the releases URL
+	// Validate the URLs
 	var tlsConfig *datamodel.TerraformTLSConfig
+	var useArchiveURL bool
 	if terraformConfig.Version != nil {
-		if err := validateReleasesURL(terraformConfig.Version.ReleasesAPIBaseURL, terraformConfig.Version.TLS); err != nil {
+		tlsConfig = terraformConfig.Version.TLS
+		
+		// Check if releasesArchiveUrl is provided (takes precedence)
+		if terraformConfig.Version.ReleasesArchiveURL != "" {
+			if err := validateArchiveURL(terraformConfig.Version.ReleasesArchiveURL, tlsConfig); err != nil {
+				return nil, err
+			}
+			useArchiveURL = true
+			logger.Info(fmt.Sprintf("Using direct archive URL: %s", terraformConfig.Version.ReleasesArchiveURL))
+		} else if err := validateReleasesURL(terraformConfig.Version.ReleasesAPIBaseURL, tlsConfig); err != nil {
 			return nil, err
 		}
-		tlsConfig = terraformConfig.Version.TLS
 	}
 
-	// Check if we need to use custom source for TLS configuration or authentication
-	needsCustomSource := (tlsConfig != nil && (tlsConfig.SkipVerify || tlsConfig.CACertificate != nil)) ||
+	// Check if we need to use custom source for TLS configuration, authentication, or archive URL
+	needsCustomSource := useArchiveURL ||
+		(tlsConfig != nil && (tlsConfig.SkipVerify || tlsConfig.CACertificate != nil)) ||
 		(terraformConfig.Version != nil && terraformConfig.Version.Authentication != nil)
 
 	installStartTime := time.Now()
@@ -108,13 +168,16 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 
 		// Log security warnings if applicable
 		if tlsConfig != nil && tlsConfig.SkipVerify {
-			logger.Info("WARNING: TLS verification is disabled for Terraform releases API. This is insecure and should not be used in production.")
+			logger.Info("WARNING: TLS verification is disabled for Terraform releases. This is insecure and should not be used in production.")
 		}
 		if tlsConfig != nil && tlsConfig.CACertificate != nil {
-			logger.Info("Using custom CA certificate for Terraform releases API")
+			logger.Info("Using custom CA certificate for Terraform releases")
 		}
 		if terraformConfig.Version != nil && terraformConfig.Version.Authentication != nil {
-			logger.Info("Using authentication for Terraform releases API")
+			logger.Info("Using authentication for Terraform releases")
+		}
+		if useArchiveURL {
+			logger.Info("Using direct archive URL for Terraform download")
 		}
 
 		// Use custom installation method
@@ -183,9 +246,15 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 		// For initial iteration we will always install Terraform for every execution of the recipe driver.
 		execPath, err = installer.Ensure(ctx, []src.Source{terraformSource})
 		if err != nil {
+			// Determine version for metrics
+			versionStr := "latest"
+			if terraformConfig.Version != nil && terraformConfig.Version.Version != "" {
+				versionStr = terraformConfig.Version.Version
+			}
+			
 			metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
 				[]attribute.KeyValue{
-					metrics.TerraformVersionAttrKey.String("latest"),
+					metrics.TerraformVersionAttrKey.String(versionStr),
 					metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
 				},
 			)
@@ -193,14 +262,24 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 		}
 	}
 
+	// Determine the version string for logging and metrics
+	versionStr := "latest"
+	if terraformConfig.Version != nil && terraformConfig.Version.Version != "" {
+		versionStr = terraformConfig.Version.Version
+	}
+
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
 		[]attribute.KeyValue{
-			metrics.TerraformVersionAttrKey.String("latest"),
+			metrics.TerraformVersionAttrKey.String(versionStr),
 			metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState),
 		},
 	)
 
-	logger.Info(fmt.Sprintf("Terraform latest version installed to: %q", execPath))
+	if versionStr == "latest" {
+		logger.Info(fmt.Sprintf("Terraform latest version installed to: %q", execPath))
+	} else {
+		logger.Info(fmt.Sprintf("Terraform version %s installed to: %q", versionStr, execPath))
+	}
 
 	// Create a new instance of tfexec.Terraform with current Terraform installation path
 	tf, err := NewTerraform(ctx, tfDir, execPath)

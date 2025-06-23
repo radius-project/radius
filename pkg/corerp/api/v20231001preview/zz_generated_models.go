@@ -1607,6 +1607,11 @@ type TerraformVersionConfig struct {
 // must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'
 	ReleasesAPIBaseURL *string
 
+// Optional direct URL to a Terraform binary archive (.zip file). If set, Terraform will be downloaded directly from this
+// URL instead of using the releases API. This takes precedence over
+// releasesApiBaseUrl. The URL must point to a valid Terraform release archive. Example: 'https://my-mirror.example.com/terraform/1.7.0/terraform1.7.0linux_amd64.zip'
+	ReleasesArchiveURL *string
+
 // TLS configuration for connecting to the releases API.
 	TLS *TerraformTLSConfig
 

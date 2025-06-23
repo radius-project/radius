@@ -59,7 +59,7 @@ func TestCustomRegistrySource_Validate(t *testing.T) {
 				InstallDir: "/tmp/install",
 			},
 			wantErr: true,
-			errMsg:  "Product is required",
+			errMsg:  "product is required",
 		},
 		{
 			name: "missing version",
@@ -69,7 +69,7 @@ func TestCustomRegistrySource_Validate(t *testing.T) {
 				InstallDir: "/tmp/install",
 			},
 			wantErr: true,
-			errMsg:  "Version is required",
+			errMsg:  "version is required when not using direct archive URL",
 		},
 		{
 			name: "missing base URL",
@@ -79,7 +79,16 @@ func TestCustomRegistrySource_Validate(t *testing.T) {
 				InstallDir: "/tmp/install",
 			},
 			wantErr: true,
-			errMsg:  "BaseURL is required",
+			errMsg:  "either BaseURL or ArchiveURL is required",
+		},
+		{
+			name: "valid source with archive URL and no version",
+			source: &CustomRegistrySource{
+				Product:    product.Terraform,
+				ArchiveURL: "https://example.com/terraform.zip",
+				InstallDir: "/tmp/install",
+			},
+			wantErr: false,
 		},
 		{
 			name: "missing install dir",
@@ -89,7 +98,7 @@ func TestCustomRegistrySource_Validate(t *testing.T) {
 				BaseURL: "https://example.com",
 			},
 			wantErr: true,
-			errMsg:  "InstallDir is required",
+			errMsg:  "installDir is required",
 		},
 	}
 
@@ -156,7 +165,7 @@ func TestCustomRegistrySource_Install_MockServer(t *testing.T) {
 		switch r.URL.Path {
 		case "/terraform/index.json":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(mockIndex)
+			_ = json.NewEncoder(w).Encode(mockIndex)
 
 		default:
 			// For actual binary downloads, we'd return a zip file
@@ -376,3 +385,192 @@ func TestCustomRegistrySource_findBuild(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no build found")
 }
+
+func TestCustomRegistrySource_DirectArchiveURL(t *testing.T) {
+	// Create a mock server that simulates a direct download
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check auth header if present
+		if auth := r.Header.Get("Authorization"); auth != "" {
+			if auth != "Bearer test-token" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+		}
+
+		// For the archive URL, return a mock zip file
+		if strings.HasSuffix(r.URL.Path, ".zip") {
+			w.Header().Set("Content-Type", "application/zip")
+			
+			// Create a minimal valid zip file
+			zipWriter := zip.NewWriter(w)
+			writer, err := zipWriter.Create("terraform")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			_, _ = writer.Write([]byte("mock terraform binary"))
+			_ = zipWriter.Close()
+			return
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	tests := []struct {
+		name      string
+		source    *CustomRegistrySource
+		wantErr   bool
+		errMsg    string
+	}{
+		{
+			name: "successful direct download",
+			source: &CustomRegistrySource{
+				Product:    product.Terraform,
+				Version:    version.Must(version.NewVersion("1.9.2")),
+				ArchiveURL: server.URL + "/terraform/1.9.2/terraform_1.9.2_linux_amd64.zip",
+				InstallDir: t.TempDir(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "successful direct download without version",
+			source: &CustomRegistrySource{
+				Product:    product.Terraform,
+				ArchiveURL: server.URL + "/terraform/1.9.2/terraform_1.9.2_linux_amd64.zip",
+				InstallDir: t.TempDir(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "direct download with auth",
+			source: &CustomRegistrySource{
+				Product:    product.Terraform,
+				Version:    version.Must(version.NewVersion("1.9.2")),
+				ArchiveURL: server.URL + "/terraform/1.9.2/terraform_1.9.2_linux_amd64.zip",
+				InstallDir: t.TempDir(),
+				AuthToken:  "Bearer test-token",
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid archive URL",
+			source: &CustomRegistrySource{
+				Product:    product.Terraform,
+				Version:    version.Must(version.NewVersion("1.9.2")),
+				ArchiveURL: "://invalid-url",
+				InstallDir: t.TempDir(),
+			},
+			wantErr: true,
+			errMsg:  "failed to parse archive URL",
+		},
+		{
+			name: "archive URL without filename",
+			source: &CustomRegistrySource{
+				Product:    product.Terraform,
+				ArchiveURL: server.URL + "/",
+				InstallDir: t.TempDir(),
+			},
+			wantErr: true,
+			errMsg:  "archive URL must include a filename",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			execPath, err := tt.source.Install(ctx)
+			
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.NotEmpty(t, execPath)
+				assert.FileExists(t, execPath)
+			}
+		})
+	}
+}
+
+func TestCustomRegistrySource_ArchiveURLPrecedence(t *testing.T) {
+	// Mock server that tracks which endpoints are called
+	var indexCalled, archiveCalled bool
+	
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "index.json"):
+			indexCalled = true
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(releaseIndex{})
+			
+		case strings.HasSuffix(r.URL.Path, ".zip"):
+			archiveCalled = true
+			w.Header().Set("Content-Type", "application/zip")
+			
+			// Create a minimal valid zip file
+			zipWriter := zip.NewWriter(w)
+			writer, err := zipWriter.Create("terraform")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			_, _ = writer.Write([]byte("mock terraform binary"))
+			_ = zipWriter.Close()
+			
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	// Test that ArchiveURL takes precedence over BaseURL
+	source := &CustomRegistrySource{
+		Product:    product.Terraform,
+		Version:    version.Must(version.NewVersion("1.9.2")),
+		BaseURL:    server.URL,
+		ArchiveURL: server.URL + "/terraform_1.9.2_linux_amd64.zip",
+		InstallDir: t.TempDir(),
+	}
+
+	ctx := context.Background()
+	_, err := source.Install(ctx)
+	require.NoError(t, err)
+
+	// Verify that only the archive was downloaded, not the index
+	assert.False(t, indexCalled, "index.json should not be called when ArchiveURL is set")
+	assert.True(t, archiveCalled, "archive should be downloaded when ArchiveURL is set")
+}
+
+// TestCustomRegistrySource_RealHashiCorpURL demonstrates how to use a real HashiCorp release URL
+// This test is commented out by default to avoid network calls in tests
+// Uncomment to test with a real URL
+/*
+func TestCustomRegistrySource_RealHashiCorpURL(t *testing.T) {
+	// Note: Remember to import "os" package when uncommenting this test
+	t.Skip("Skipping test that requires network access to releases.hashicorp.com")
+	
+	// Example using the real HashiCorp releases URL
+	source := &CustomRegistrySource{
+		Product:    product.Terraform,
+		Version:    version.Must(version.NewVersion("1.9.2")),
+		ArchiveURL: "https://releases.hashicorp.com/terraform/1.9.2/terraform_1.9.2_linux_amd64.zip",
+		InstallDir: t.TempDir(),
+	}
+
+	ctx := context.Background()
+	execPath, err := source.Install(ctx)
+	require.NoError(t, err)
+	
+	// Verify the binary was installed
+	assert.NotEmpty(t, execPath)
+	assert.FileExists(t, execPath)
+	
+	// The file should be executable
+	info, err := os.Stat(execPath)
+	require.NoError(t, err)
+	assert.True(t, info.Mode()&0111 != 0, "file should be executable")
+}
+*/

@@ -148,7 +148,7 @@ func Test_ValidateBackendExists(t *testing.T) {
 	require.False(t, exists)
 
 	// Validate error is returned for errors other than NotFound.
-	clientset.Fake.PrependReactor("get", "secrets", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+	clientset.PrependReactor("get", "secrets", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, k8s_errors.NewServerTimeout(schema.GroupResource{Resource: "test-secret"}, "get", 1)
 	})
 	exists, err = b.ValidateBackendExists(context.Background(), "test-secret")

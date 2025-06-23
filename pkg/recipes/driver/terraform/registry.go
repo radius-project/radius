@@ -122,7 +122,10 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 		}
 
 		// Set environment variable directly with the token (no encoding)
-		envVar := setTerraformTokenEnv(host, string(token))
+		envVar, err := setTerraformTokenEnv(host, string(token))
+		if err != nil {
+			return nil, fmt.Errorf("failed to set token for %s: %w", host, err)
+		}
 		regConfig.EnvVars = append(regConfig.EnvVars, envVar)
 
 		logger.Info("Configured token authentication",
@@ -140,7 +143,10 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 				}
 
 				// Set environment variable
-				envVar := setTerraformTokenEnv(additionalHost, string(token))
+				envVar, err := setTerraformTokenEnv(additionalHost, string(token))
+				if err != nil {
+					return nil, fmt.Errorf("failed to set token for additional host %s: %w", additionalHost, err)
+				}
 				regConfig.EnvVars = append(regConfig.EnvVars, envVar)
 				
 				logger.Info("Added token authentication for additional host", "host", additionalHost)
@@ -171,7 +177,9 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 	regConfig.ConfigPath = terraformRCPath
 
 	// Set the TF_CLI_CONFIG_FILE environment variable to point to our config file
-	os.Setenv(EnvTerraformCLIConfigFile, terraformRCPath)
+	if err := os.Setenv(EnvTerraformCLIConfigFile, terraformRCPath); err != nil {
+		return nil, fmt.Errorf("failed to set %s environment variable: %w", EnvTerraformCLIConfigFile, err)
+	}
 	regConfig.EnvVars = append(regConfig.EnvVars, EnvTerraformCLIConfigFile)
 
 	logger.Info("Set environment variable for Terraform config",
@@ -187,13 +195,15 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 
 // setTerraformTokenEnv sets the TF_TOKEN_* environment variable for a hostname
 // Returns the environment variable name for tracking
-func setTerraformTokenEnv(hostname string, token string) string {
+func setTerraformTokenEnv(hostname string, token string) (string, error) {
 	// Replace dots and colons with underscores in hostname (for ports)
 	envHostname := strings.ReplaceAll(hostname, ".", "_")
 	envHostname = strings.ReplaceAll(envHostname, ":", "_")
 	envVarName := fmt.Sprintf("TF_TOKEN_%s", envHostname)
-	os.Setenv(envVarName, token)
-	return envVarName
+	if err := os.Setenv(envVarName, token); err != nil {
+		return "", fmt.Errorf("failed to set environment variable %s: %w", envVarName, err)
+	}
+	return envVarName, nil
 }
 
 // CleanupTerraformRegistryConfig removes the Terraform registry configuration and unsets environment variables
@@ -206,8 +216,12 @@ func CleanupTerraformRegistryConfig(ctx context.Context, config *RegistryConfig)
 
 	// Unset all tracked environment variables
 	for _, envVar := range config.EnvVars {
-		os.Unsetenv(envVar)
-		logger.Info("Unset environment variable", "variable", envVar)
+		if err := os.Unsetenv(envVar); err != nil {
+			// Log the error but continue cleanup
+			logger.Error(err, "Failed to unset environment variable", "variable", envVar)
+		} else {
+			logger.Info("Unset environment variable", "variable", envVar)
+		}
 	}
 
 	// Remove the config file if it exists

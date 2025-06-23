@@ -24,6 +24,7 @@ package customsource
 
 import (
 	"archive/zip"
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
@@ -32,7 +33,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -44,19 +44,12 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hc-install/product"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // HTTPClient is an interface for HTTP operations, allowing for easier testing
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
-}
-
-// RetryConfig configures retry behavior for network operations
-type RetryConfig struct {
-	MaxAttempts  int
-	InitialDelay time.Duration
-	MaxDelay     time.Duration
-	Multiplier   float64
 }
 
 // CustomRegistrySource implements a custom source for hc-install that supports
@@ -71,6 +64,10 @@ type CustomRegistrySource struct {
 	// BaseURL for the custom registry (e.g., "https://private-registry.com")
 	BaseURL string
 
+	// ArchiveURL is a direct URL to the Terraform archive (.zip file)
+	// If set, this URL will be used directly instead of querying the registry API
+	ArchiveURL string
+
 	// InstallDir is the directory to install the product
 	InstallDir string
 
@@ -80,29 +77,14 @@ type CustomRegistrySource struct {
 	// CACertPEM is PEM-encoded CA certificate(s)
 	CACertPEM []byte
 
-	// ClientCertPEM is PEM-encoded client certificate for mTLS
-	ClientCertPEM []byte
-
-	// ClientKeyPEM is PEM-encoded client key for mTLS
-	ClientKeyPEM []byte
-
 	// InsecureSkipVerify skips TLS verification (not recommended for production)
 	InsecureSkipVerify bool
 
 	// Timeout for HTTP requests
 	Timeout int
 
-	// RetryConfig for network operations (optional, uses defaults if nil)
-	RetryConfig *RetryConfig
-
 	// HTTPClient allows injection of a custom HTTP client (for testing)
 	HTTPClient HTTPClient
-
-	// logger for debug output
-	logger *log.Logger
-
-	// pathsToRemove tracks files to clean up
-	pathsToRemove []string
 }
 
 // releaseIndex represents the structure of index.json from HashiCorp releases
@@ -126,47 +108,50 @@ type releaseBuild struct {
 // Note: This implementation is standalone and doesn't integrate with hc-install's
 // installer.Ensure() method due to the library's use of internal packages.
 
-// DefaultRetryConfig returns the default retry configuration
-func DefaultRetryConfig() *RetryConfig {
-	return &RetryConfig{
-		MaxAttempts:  3,
-		InitialDelay: 1 * time.Second,
-		MaxDelay:     30 * time.Second,
-		Multiplier:   2.0,
-	}
-}
+// Default retry configuration
+const (
+	retryMaxAttempts  = 3
+	retryInitialDelay = 1 * time.Second
+	retryMaxDelay     = 30 * time.Second
+	retryMultiplier   = 2.0
+)
 
 // Validate checks if the source configuration is valid
 func (s *CustomRegistrySource) Validate() error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	logger.Info("Validating custom registry source configuration")
+	
 	if s.Product.Name == "" {
-		return fmt.Errorf("Product is required")
+		logger.Error(nil, "Product name is required")
+		return fmt.Errorf("product is required")
 	}
-	if s.Version == nil {
-		return fmt.Errorf("Version is required")
+	// Version is required only when using BaseURL (API-based installation)
+	if s.ArchiveURL == "" && s.Version == nil {
+		logger.Error(nil, "Version is required when not using direct archive URL")
+		return fmt.Errorf("version is required when not using direct archive URL")
 	}
-	if s.BaseURL == "" {
-		return fmt.Errorf("BaseURL is required")
+	// Either BaseURL or ArchiveURL must be provided
+	if s.BaseURL == "" && s.ArchiveURL == "" {
+		logger.Error(nil, "Either BaseURL or ArchiveURL is required")
+		return fmt.Errorf("either BaseURL or ArchiveURL is required")
 	}
 	if s.InstallDir == "" {
-		return fmt.Errorf("InstallDir is required")
+		logger.Error(nil, "Install directory is required")
+		return fmt.Errorf("installDir is required")
 	}
+	
+	logger.Info("Custom registry source validation passed", 
+		"product", s.Product.Name, 
+		"hasVersion", s.Version != nil,
+		"hasArchiveURL", s.ArchiveURL != "",
+		"hasBaseURL", s.BaseURL != "")
 	return nil
-}
-
-// SetLogger sets the logger for debug output
-func (s *CustomRegistrySource) SetLogger(logger *log.Logger) {
-	s.logger = logger
-}
-
-// log writes to the logger if available
-func (s *CustomRegistrySource) log(format string, v ...interface{}) {
-	if s.logger != nil {
-		s.logger.Printf(format, v...)
-	}
 }
 
 // Install downloads and installs the product from the custom registry
 func (s *CustomRegistrySource) Install(ctx context.Context) (string, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	
 	if err := s.Validate(); err != nil {
 		return "", err
 	}
@@ -178,63 +163,98 @@ func (s *CustomRegistrySource) Install(ctx context.Context) (string, error) {
 	}
 
 	// Ensure install directory exists
-	if err := os.MkdirAll(s.InstallDir, 0755); err != nil {
+	if err = os.MkdirAll(s.InstallDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create install directory: %w", err)
 	}
 
-	// Get release information
-	s.log("Fetching release information for %s %s", s.Product.Name, s.Version)
-	releaseInfo, err := s.fetchReleaseInfo(ctx, client)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch release info: %w", err)
-	}
+	var zipPath string
 
-	// Find the build for current OS/arch
-	build, err := s.findBuild(releaseInfo)
-	if err != nil {
-		return "", err
-	}
+	// Check if we have a direct archive URL
+	if s.ArchiveURL != "" {
+		// Direct download from archive URL
+		logger.Info("Using direct archive URL", "url", s.ArchiveURL)
 
-	// Download the binary
-	s.log("Downloading %s from %s", build.Filename, build.URL)
-	zipPath, err := s.downloadFile(ctx, client, build.URL, build.Filename)
-	if err != nil {
-		return "", fmt.Errorf("failed to download: %w", err)
-	}
-	s.pathsToRemove = append(s.pathsToRemove, zipPath)
+		// Extract filename from URL
+		u, err := url.Parse(s.ArchiveURL)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse archive URL: %w", err)
+		}
 
-	// Download and verify checksums
-	if releaseInfo.Shasums != "" {
-		s.log("Downloading and verifying checksums")
-		if err := s.verifyChecksum(ctx, client, releaseInfo.Shasums, zipPath, build.Filename); err != nil {
-			return "", fmt.Errorf("checksum verification failed: %w", err)
+		filename := filepath.Base(u.Path)
+		if filename == "" || filename == "." || filename == "/" {
+			return "", fmt.Errorf("archive URL must include a filename: %s", s.ArchiveURL)
+		}
+
+		logger.Info("Downloading Terraform archive", "filename", filename, "url", s.ArchiveURL)
+		zipPath, err = s.downloadFile(ctx, client, s.ArchiveURL, filename)
+		if err != nil {
+			return "", fmt.Errorf("failed to download from archive URL: %w", err)
+		}
+		defer func() { _ = os.Remove(zipPath) }()
+	} else {
+		// Standard flow: fetch release info from API
+		logger.Info("Fetching release information", "product", s.Product.Name, "version", s.Version)
+		var releaseInfo *releaseVersion
+		releaseInfo, err = s.fetchReleaseInfo(ctx, client)
+		if err != nil {
+			return "", fmt.Errorf("failed to fetch release info: %w", err)
+		}
+
+		// Find the build for current OS/arch
+		build, err := s.findBuild(releaseInfo)
+		if err != nil {
+			return "", err
+		}
+
+		// Download the binary
+		logger.Info("Downloading Terraform binary", "filename", build.Filename, "url", build.URL)
+		zipPath, err = s.downloadFile(ctx, client, build.URL, build.Filename)
+		if err != nil {
+			return "", fmt.Errorf("failed to download: %w", err)
+		}
+		defer func() { _ = os.Remove(zipPath) }()
+
+		// Download and verify checksums
+		if releaseInfo.Shasums != "" {
+			logger.Info("Downloading and verifying checksums")
+			if err = s.verifyChecksum(ctx, client, releaseInfo.Shasums, zipPath, build.Filename); err != nil {
+				return "", fmt.Errorf("checksum verification failed: %w", err)
+			}
 		}
 	}
 
 	// Extract the binary
-	s.log("Extracting %s", build.Filename)
 	execPath, err := s.extractBinary(zipPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to extract binary: %w", err)
 	}
 
 	// Make executable
-	if err := os.Chmod(execPath, 0755); err != nil {
+	if err = os.Chmod(execPath, 0755); err != nil {
 		return "", fmt.Errorf("failed to make executable: %w", err)
 	}
 
-	s.log("Successfully installed %s %s to %s", s.Product.Name, s.Version, execPath)
+	// Log success
+	if s.Version != nil {
+		logger.Info("Successfully installed Terraform", "product", s.Product.Name, "version", s.Version, "path", execPath)
+	} else {
+		logger.Info("Successfully installed Terraform", "product", s.Product.Name, "path", execPath)
+	}
 	return execPath, nil
 }
 
 // getHTTPClient returns the HTTP client to use - either injected or creates a default one
 func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+	
 	// If an HTTP client was injected, use it
 	if s.HTTPClient != nil {
+		logger.Info("Using injected HTTP client")
 		return s.HTTPClient, nil
 	}
 
 	// Otherwise create a default client with custom TLS configuration
+	logger.Info("Creating default HTTP client with custom TLS configuration", "insecureSkipVerify", s.InsecureSkipVerify)
 	tlsConfig := &tls.Config{
 		MinVersion:         tls.VersionTLS12,
 		InsecureSkipVerify: s.InsecureSkipVerify,
@@ -242,15 +262,19 @@ func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
 
 	// Add custom CA if provided and not skipping verification
 	if len(s.CACertPEM) > 0 && !s.InsecureSkipVerify {
+		logger.Info("Configuring custom CA certificate")
 		caCertPool, err := x509.SystemCertPool()
 		if err != nil {
 			// Fall back to empty pool if system certs unavailable
+			logger.Info("Failed to load system cert pool, creating empty pool", "error", err.Error())
 			caCertPool = x509.NewCertPool()
 		}
 
 		if !caCertPool.AppendCertsFromPEM(s.CACertPEM) {
+			logger.Error(nil, "Failed to parse CA certificate")
 			return nil, fmt.Errorf("failed to parse CA certificate")
 		}
+		logger.Info("Successfully added custom CA certificate to pool")
 
 		tlsConfig.RootCAs = caCertPool
 	}
@@ -258,6 +282,9 @@ func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
 	timeout := s.Timeout
 	if timeout == 0 {
 		timeout = 300 // 5 minutes default
+		logger.Info("Using default timeout", "seconds", timeout)
+	} else {
+		logger.Info("Using configured timeout", "seconds", timeout)
 	}
 
 	return &http.Client{
@@ -270,77 +297,82 @@ func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
 
 // doWithRetry performs an HTTP request with retry logic
 func (s *CustomRegistrySource) doWithRetry(ctx context.Context, client HTTPClient, req *http.Request) (*http.Response, error) {
-	config := s.RetryConfig
-	if config == nil {
-		config = DefaultRetryConfig()
-	}
-
+	logger := ucplog.FromContextOrDiscard(ctx)
 	var lastErr error
-	delay := config.InitialDelay
+	delay := retryInitialDelay
 
-	for attempt := 0; attempt < config.MaxAttempts; attempt++ {
-		// Clone the request for each attempt
+	for attempt := 0; attempt < retryMaxAttempts; attempt++ {
+		// Clone request for retry
 		reqClone := req.Clone(ctx)
 		if req.Body != nil {
-			// If there's a body, we need to handle it properly
-			// For now, we'll just error as our current use cases don't have request bodies
 			return nil, fmt.Errorf("retry with request body not yet implemented")
 		}
 
-		// Check context before making request
-		select {
-		case <-ctx.Done():
+		// Check context cancellation
+		if ctx.Err() != nil {
 			return nil, ctx.Err()
-		default:
 		}
 
 		resp, err := client.Do(reqClone)
 		if err == nil && resp.StatusCode < 500 {
-			// Success or client error - don't retry
 			return resp, nil
 		}
 
-		// Log the error
+		// Handle error
 		if err != nil {
-			s.log("Request failed (attempt %d/%d): %v", attempt+1, config.MaxAttempts, err)
+			logger.Info("Request failed, retrying", "attempt", attempt+1, "maxAttempts", retryMaxAttempts, "error", err.Error())
 			lastErr = err
 		} else {
-			s.log("Request failed with status %d (attempt %d/%d)", resp.StatusCode, attempt+1, config.MaxAttempts)
+			logger.Info("Request failed with status, retrying", "status", resp.StatusCode, "attempt", attempt+1, "maxAttempts", retryMaxAttempts)
 			lastErr = fmt.Errorf("server returned status %d", resp.StatusCode)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 
-		// Don't sleep after the last attempt
-		if attempt < config.MaxAttempts-1 {
-			s.log("Retrying after %v", delay)
+		// Sleep before retry (except last attempt)
+		if attempt < retryMaxAttempts-1 {
+			logger.Info("Retrying after delay", "delay", delay.String())
+			timer := time.NewTimer(delay)
 			select {
-			case <-time.After(delay):
+			case <-timer.C:
 			case <-ctx.Done():
+				timer.Stop()
 				return nil, ctx.Err()
 			}
 
-			// Calculate next delay with exponential backoff
-			delay = time.Duration(float64(delay) * config.Multiplier)
-			if delay > config.MaxDelay {
-				delay = config.MaxDelay
+			// Exponential backoff
+			delay = time.Duration(float64(delay) * retryMultiplier)
+			if delay > retryMaxDelay {
+				delay = retryMaxDelay
 			}
 		}
 	}
 
-	return nil, fmt.Errorf("request failed after %d attempts: %w", config.MaxAttempts, lastErr)
+	return nil, fmt.Errorf("request failed after %d attempts: %w", retryMaxAttempts, lastErr)
 }
 
 // buildURL constructs a URL by joining the base URL with the given path segments
 func (s *CustomRegistrySource) buildURL(segments ...string) (string, error) {
+	// Ensure base URL is valid
+	if s.BaseURL == "" {
+		return "", fmt.Errorf("base URL is empty")
+	}
+
+	// Parse to validate and normalize
 	baseURL, err := url.Parse(s.BaseURL)
 	if err != nil {
 		return "", fmt.Errorf("invalid base URL: %w", err)
 	}
 
-	// Join path segments
-	pathSegments := []string{baseURL.Path}
-	pathSegments = append(pathSegments, segments...)
-	baseURL.Path = path.Join(pathSegments...)
+	// Build path efficiently
+	if len(segments) > 0 {
+		// Combine base path with segments
+		allSegments := make([]string, 0, len(segments)+1)
+		if baseURL.Path != "" && baseURL.Path != "/" {
+			allSegments = append(allSegments, baseURL.Path)
+		}
+		allSegments = append(allSegments, segments...)
+		baseURL.Path = path.Join(allSegments...)
+	}
 
 	return baseURL.String(), nil
 }
@@ -366,7 +398,7 @@ func (s *CustomRegistrySource) fetchReleaseInfo(ctx context.Context, client HTTP
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch index.json: %s", resp.Status)
@@ -384,6 +416,7 @@ func (s *CustomRegistrySource) fetchReleaseInfo(ctx context.Context, client HTTP
 		return nil, fmt.Errorf("version %s not found in registry", versionStr)
 	}
 
+	// Return pointer to avoid copy
 	return &release, nil
 }
 
@@ -424,7 +457,7 @@ func (s *CustomRegistrySource) downloadFile(ctx context.Context, client HTTPClie
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("download failed: %s", resp.Status)
@@ -436,31 +469,21 @@ func (s *CustomRegistrySource) downloadFile(ctx context.Context, client HTTPClie
 		return "", err
 	}
 
-	// Use defer with a variable to control cleanup
-	var cleanupTemp bool = true
+	// Capture path before defer
 	tempPath := tmpFile.Name()
+	cleanupTemp := true
 
 	defer func() {
-		tmpFile.Close()
+		_ = tmpFile.Close()
 		if cleanupTemp {
-			os.Remove(tempPath)
+			_ = os.Remove(tempPath)
 		}
 	}()
 
-	// Copy content with context cancellation support
-	done := make(chan error, 1)
-	go func() {
-		_, err := io.Copy(tmpFile, resp.Body)
-		done <- err
-	}()
-
-	select {
-	case err := <-done:
-		if err != nil {
-			return "", fmt.Errorf("failed to download file: %w", err)
-		}
-	case <-ctx.Done():
-		return "", ctx.Err()
+	// Copy content directly - io.Copy already handles interruption well
+	_, err = io.Copy(tmpFile, resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to download file: %w", err)
 	}
 
 	// Download successful, don't cleanup temp file
@@ -492,21 +515,17 @@ func (s *CustomRegistrySource) verifyChecksum(ctx context.Context, client HTTPCl
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download shasums: %s", resp.Status)
 	}
 
-	// Read shasums content
-	shasums, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	// Find the checksum for our file
+	// Stream and parse shasums content
 	var expectedSum string
-	for _, line := range strings.Split(string(shasums), "\n") {
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
 		parts := strings.Fields(line)
 		if len(parts) == 2 && parts[1] == filename {
 			expectedSum = parts[0]
@@ -514,19 +533,24 @@ func (s *CustomRegistrySource) verifyChecksum(ctx context.Context, client HTTPCl
 		}
 	}
 
+	if err = scanner.Err(); err != nil {
+		return fmt.Errorf("error reading shasums: %w", err)
+	}
+
 	if expectedSum == "" {
 		return fmt.Errorf("checksum not found for %s", filename)
 	}
 
-	// Calculate actual checksum
+	// Calculate actual checksum efficiently
 	f, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
+	// Use buffered reader for better performance on large files
 	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
+	if _, err := io.CopyBuffer(h, f, make([]byte, 64*1024)); err != nil {
 		return err
 	}
 
@@ -545,7 +569,7 @@ func (s *CustomRegistrySource) extractBinary(zipPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	// Look for the executable
 	execName := s.Product.Name
@@ -568,23 +592,18 @@ func (s *CustomRegistrySource) extractFile(f *zip.File) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
-	// Clean the file name to prevent directory traversal
+	// Validate and clean the file name to prevent directory traversal
 	cleanName := filepath.Base(f.Name)
-	if cleanName != f.Name {
+	if cleanName != f.Name || strings.ContainsAny(cleanName, "/\\") {
 		return "", fmt.Errorf("invalid file path in archive: %s", f.Name)
 	}
 
-	// Additional validation: ensure the name doesn't contain any path separators
-	if strings.Contains(cleanName, "/") || strings.Contains(cleanName, "\\") {
-		return "", fmt.Errorf("invalid file name in archive: %s", f.Name)
-	}
-
-	// Construct the destination path safely
+	// Construct the destination path
 	execPath := filepath.Join(s.InstallDir, cleanName)
 
-	// Verify the final path is within InstallDir
+	// Verify the path is within InstallDir (single check)
 	absInstallDir, err := filepath.Abs(s.InstallDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute install directory: %w", err)
@@ -595,8 +614,7 @@ func (s *CustomRegistrySource) extractFile(f *zip.File) (string, error) {
 		return "", fmt.Errorf("failed to get absolute exec path: %w", err)
 	}
 
-	// Ensure the destination path is within the install directory
-	if !strings.HasPrefix(absExecPath, absInstallDir) {
+	if !strings.HasPrefix(absExecPath, absInstallDir+string(filepath.Separator)) && absExecPath != absInstallDir {
 		return "", fmt.Errorf("invalid destination path: %s", execPath)
 	}
 
@@ -604,22 +622,12 @@ func (s *CustomRegistrySource) extractFile(f *zip.File) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
-	if _, err := io.Copy(outFile, rc); err != nil {
+	// Use buffered copy for better performance
+	if _, err := io.CopyBuffer(outFile, rc, make([]byte, 32*1024)); err != nil {
 		return "", err
 	}
 
 	return execPath, nil
-}
-
-// Remove cleans up any temporary files created during installation
-func (s *CustomRegistrySource) Remove(ctx context.Context) error {
-	var lastErr error
-	for _, path := range s.pathsToRemove {
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			lastErr = err
-		}
-	}
-	return lastErr
 }

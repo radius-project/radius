@@ -132,6 +132,9 @@ model TerraformVersionConfig {
   @doc("Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example: '1.7.0'")
   version?: string;
 
+  @doc("Optional direct URL to a Terraform binary archive (.zip file). If set, Terraform will be downloaded directly from this URL instead of using the releases API. This takes precedence over releasesApiBaseUrl. The URL must point to a valid Terraform release archive. Example: 'https://my-mirror.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip'")
+  releasesArchiveUrl?: string;
+
   @doc("Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site. The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'")
   releasesApiBaseUrl?: string;
 
