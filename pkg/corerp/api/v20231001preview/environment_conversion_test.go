@@ -422,7 +422,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Version: &datamodel.TerraformVersionConfig{
 								Version:            "1.7.0",
 								ReleasesAPIBaseURL: "https://terraform.example.com",
-								TLS: &datamodel.TerraformTLSConfig{
+								TLS: &datamodel.TLSConfig{
 									SkipVerify: true,
 									CACertificate: &datamodel.SecretReference{
 										Source: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",
@@ -1680,7 +1680,7 @@ func Test_toRecipeConfigDatamodel_NilAuthenticationHandling(t *testing.T) {
 	require.Equal(t, datamodel.RegistryAuthConfig{}, result.Terraform.Registry.Authentication)
 }
 
-func Test_toFromTerraformTLSConfigDatamodel(t *testing.T) {
+func Test_toFromTLSConfigDatamodel(t *testing.T) {
 	tests := []struct {
 		name              string
 		config            *RecipeConfigProperties
@@ -1693,7 +1693,7 @@ func Test_toFromTerraformTLSConfigDatamodel(t *testing.T) {
 					Version: &TerraformVersionConfig{
 						Version:            to.Ptr("1.7.0"),
 						ReleasesAPIBaseURL: to.Ptr("https://terraform.example.com"),
-						TLS: &TerraformTLSConfig{
+						TLS: &TLSConfig{
 							SkipVerify: to.Ptr(true),
 						},
 					},
@@ -1702,7 +1702,7 @@ func Test_toFromTerraformTLSConfigDatamodel(t *testing.T) {
 			expectedDataModel: &datamodel.TerraformVersionConfig{
 				Version:            "1.7.0",
 				ReleasesAPIBaseURL: "https://terraform.example.com",
-				TLS: &datamodel.TerraformTLSConfig{
+				TLS: &datamodel.TLSConfig{
 					SkipVerify: true,
 				},
 			},
@@ -1714,7 +1714,7 @@ func Test_toFromTerraformTLSConfigDatamodel(t *testing.T) {
 					Version: &TerraformVersionConfig{
 						Version:            to.Ptr("1.8.0"),
 						ReleasesAPIBaseURL: to.Ptr("https://private.terraform.io"),
-						TLS: &TerraformTLSConfig{
+						TLS: &TLSConfig{
 							SkipVerify: to.Ptr(false),
 							CaCertificate: &SecretReference{
 								Source: to.Ptr("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets"),
@@ -1727,7 +1727,7 @@ func Test_toFromTerraformTLSConfigDatamodel(t *testing.T) {
 			expectedDataModel: &datamodel.TerraformVersionConfig{
 				Version:            "1.8.0",
 				ReleasesAPIBaseURL: "https://private.terraform.io",
-				TLS: &datamodel.TerraformTLSConfig{
+				TLS: &datamodel.TLSConfig{
 					SkipVerify: false,
 					CACertificate: &datamodel.SecretReference{
 						Source: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",

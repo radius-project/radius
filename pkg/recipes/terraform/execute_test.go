@@ -17,6 +17,7 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
 	"path/filepath"
 	reflect "reflect"
 	"testing"
@@ -244,7 +245,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.setEnvironmentVariables(tf, tc.opts)
+			err = e.setEnvironmentVariables(context.Background(), tf, tc.opts)
 
 			if tc.wantErr {
 				require.Error(t, err)

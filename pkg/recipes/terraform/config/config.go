@@ -219,7 +219,7 @@ func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders ma
 // Save() must be called after adding recipe context to the module config.
 func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName string, recipeCtx *recipecontext.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	
+
 	mod, ok := cfg.Module[moduleName]
 	if !ok {
 		// must not happen because module key is set when the config is initialized in New().
@@ -322,7 +322,7 @@ func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.Resource
 // This function only updates config in memory, Save() must be called to persist the updated config.
 func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 	logger := ucplog.FromContextOrDiscard(context.Background())
-	
+
 	if localModuleName == "" {
 		logger.Error(nil, "Module name cannot be empty")
 		return errors.New("module name cannot be empty")

@@ -43,6 +43,7 @@ const (
 type RegistryConfig struct {
 	ConfigPath string
 	EnvVars    []string
+	TempFiles  []string // Track temporary certificate files for cleanup
 }
 
 // ConfigureTerraformRegistry sets up Terraform registry configuration for private registries.
@@ -148,13 +149,122 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 					return nil, fmt.Errorf("failed to set token for additional host %s: %w", additionalHost, err)
 				}
 				regConfig.EnvVars = append(regConfig.EnvVars, envVar)
-				
+
 				logger.Info("Added token authentication for additional host", "host", additionalHost)
 			}
 		}
 	}
 
-	// Add provider installation configuration with normalized mirror URL
+	// Log TLS configuration details
+	if config.RecipeConfig.Terraform.Registry.TLS != nil {
+		logger.Info("Registry TLS configuration found",
+			"skipVerify", config.RecipeConfig.Terraform.Registry.TLS.SkipVerify,
+			"hasCACert", config.RecipeConfig.Terraform.Registry.TLS.CACertificate != nil,
+			"hasClientCert", config.RecipeConfig.Terraform.Registry.TLS.ClientCertificate != nil)
+
+		if config.RecipeConfig.Terraform.Registry.TLS.SkipVerify && parsedURL.Scheme == "https" {
+			logger.Info("WARNING: TLS skipVerify is set but Terraform does not support skipping TLS verification for provider mirrors. " +
+				"You must either use HTTP, add the CA certificate to the system trust store, or use a filesystem mirror.")
+		}
+	} else {
+		logger.Info("No TLS configuration found for registry")
+	}
+
+	// Handle CA certificate if provided
+	if config.RecipeConfig.Terraform.Registry.TLS != nil &&
+		config.RecipeConfig.Terraform.Registry.TLS.CACertificate != nil &&
+		config.RecipeConfig.Terraform.Registry.TLS.CACertificate.Source != "" {
+
+		logger.Info("Configuring CA certificate for registry")
+
+		// Get CA certificate from secrets
+		secretStoreID := config.RecipeConfig.Terraform.Registry.TLS.CACertificate.Source
+		secretKey := config.RecipeConfig.Terraform.Registry.TLS.CACertificate.Key
+
+		// Log available secrets for debugging
+		logger.Info("Looking for CA certificate", "secretStoreID", secretStoreID, "key", secretKey)
+		if secrets != nil {
+			var availableSecrets []string
+			for k := range secrets {
+				availableSecrets = append(availableSecrets, k)
+			}
+			logger.Info("Available secrets", "secrets", availableSecrets)
+		}
+
+		// Check if secrets map exists first
+		if secrets == nil {
+			logger.Info("No secrets available, skipping CA certificate configuration")
+		} else if secretData, ok := secrets[secretStoreID]; ok {
+			if caCert, ok := secretData.Data[secretKey]; ok {
+				// Write CA certificate to file
+				caCertPath := filepath.Join(dirPath, "terraform-registry-ca.pem")
+				if err := os.WriteFile(caCertPath, []byte(caCert), 0600); err != nil {
+					return nil, fmt.Errorf("failed to write CA certificate: %w", err)
+				}
+
+				regConfig.TempFiles = append(regConfig.TempFiles, caCertPath)
+
+				// Set environment variables for CA certificate
+				if err := os.Setenv("SSL_CERT_FILE", caCertPath); err != nil {
+					return nil, fmt.Errorf("failed to set SSL_CERT_FILE: %w", err)
+				}
+				regConfig.EnvVars = append(regConfig.EnvVars, "SSL_CERT_FILE")
+
+				if err := os.Setenv("CURL_CA_BUNDLE", caCertPath); err != nil {
+					return nil, fmt.Errorf("failed to set CURL_CA_BUNDLE: %w", err)
+				}
+				regConfig.EnvVars = append(regConfig.EnvVars, "CURL_CA_BUNDLE")
+
+				logger.Info("CA certificate configured", "path", caCertPath)
+			} else {
+				return nil, fmt.Errorf("CA certificate not found in secret store %q with key %q", secretStoreID, secretKey)
+			}
+		} else {
+			return nil, fmt.Errorf("secret store %q not found for CA certificate", secretStoreID)
+		}
+	}
+
+	// Handle client certificate if provided (for mTLS)
+	if config.RecipeConfig.Terraform.Registry.TLS != nil &&
+		config.RecipeConfig.Terraform.Registry.TLS.ClientCertificate != nil &&
+		config.RecipeConfig.Terraform.Registry.TLS.ClientCertificate.Secret != "" {
+
+		logger.Info("Configuring client certificate for registry mTLS")
+
+		// Get client certificate and key from secrets
+		secretStoreID := config.RecipeConfig.Terraform.Registry.TLS.ClientCertificate.Secret
+
+		if secretData, ok := secrets[secretStoreID]; ok {
+			// Write client certificate
+			if clientCert, ok := secretData.Data["certificate"]; ok {
+				clientCertPath := filepath.Join(dirPath, "terraform-registry-client.pem")
+				if err := os.WriteFile(clientCertPath, []byte(clientCert), 0600); err != nil {
+					return nil, fmt.Errorf("failed to write client certificate: %w", err)
+				}
+				regConfig.TempFiles = append(regConfig.TempFiles, clientCertPath)
+
+				// Note: Terraform doesn't directly support client certificates via environment variables
+				// This would require proxy with mTLS support or system-level configuration
+				logger.Info("Client certificate written", "path", clientCertPath,
+					"note", "Client certificates may require additional configuration")
+			}
+
+			// Write client key
+			if clientKey, ok := secretData.Data["key"]; ok {
+				clientKeyPath := filepath.Join(dirPath, "terraform-registry-client-key.pem")
+				if err := os.WriteFile(clientKeyPath, []byte(clientKey), 0600); err != nil {
+					return nil, fmt.Errorf("failed to write client key: %w", err)
+				}
+				regConfig.TempFiles = append(regConfig.TempFiles, clientKeyPath)
+
+				logger.Info("Client key written", "path", clientKeyPath)
+			}
+		} else {
+			return nil, fmt.Errorf("secret store %q not found for client certificate", secretStoreID)
+		}
+	}
+
+	// Add provider installation configuration
 	configContent.WriteString(fmt.Sprintf(`provider_installation {
   network_mirror {
     url     = %q
@@ -229,6 +339,16 @@ func CleanupTerraformRegistryConfig(ctx context.Context, config *RegistryConfig)
 		if err := os.Remove(config.ConfigPath); err != nil && !os.IsNotExist(err) {
 			logger.Info("Failed to remove Terraform config file", "path", config.ConfigPath, "error", err)
 			// Don't return error as this is just cleanup
+		}
+	}
+
+	// Remove temporary certificate files
+	for _, tempFile := range config.TempFiles {
+		if err := os.Remove(tempFile); err != nil && !os.IsNotExist(err) {
+			logger.Info("Failed to remove temporary file", "path", tempFile, "error", err)
+			// Don't return error as this is just cleanup
+		} else {
+			logger.Info("Removed temporary file", "path", tempFile)
 		}
 	}
 

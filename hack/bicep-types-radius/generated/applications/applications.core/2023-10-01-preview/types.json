@@ -1817,14 +1817,14 @@
       },
       "recipes": {
         "type": {
-          "$ref": "#/158"
+          "$ref": "#/160"
         },
         "flags": 0,
         "description": "Specifies Recipes linked to the Environment."
       },
       "recipeConfig": {
         "type": {
-          "$ref": "#/159"
+          "$ref": "#/161"
         },
         "flags": 0,
         "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
@@ -1963,14 +1963,61 @@
         },
         "flags": 0,
         "description": "Any object"
+      },
+      "tls": {
+        "type": {
+          "$ref": "#/153"
+        },
+        "flags": 0,
+        "description": "TLS configuration options for HTTPS connections."
       }
     },
     "elements": {
       "bicep": {
-        "$ref": "#/153"
+        "$ref": "#/155"
       },
       "terraform": {
-        "$ref": "#/155"
+        "$ref": "#/157"
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TLSConfig",
+    "properties": {
+      "caCertificate": {
+        "type": {
+          "$ref": "#/83"
+        },
+        "flags": 0,
+        "description": "This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data."
+      },
+      "clientCertificate": {
+        "type": {
+          "$ref": "#/154"
+        },
+        "flags": 0,
+        "description": "Client certificate (mTLS) configuration for authentication."
+      },
+      "skipVerify": {
+        "type": {
+          "$ref": "#/48"
+        },
+        "flags": 0,
+        "description": "Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING: This makes the connection vulnerable to man-in-the-middle attacks."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ClientCertConfig",
+    "properties": {
+      "secret": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have secrets named 'cert' and 'key' containing the PEM-encoded certificate and private key. A secret named 'passphrase' is optional, containing the passphrase for the private key."
       }
     }
   },
@@ -1987,7 +2034,7 @@
       },
       "templateKind": {
         "type": {
-          "$ref": "#/154"
+          "$ref": "#/156"
         },
         "flags": 1,
         "description": "Discriminator property for RecipeProperties."
@@ -2011,7 +2058,7 @@
       },
       "templateKind": {
         "type": {
-          "$ref": "#/156"
+          "$ref": "#/158"
         },
         "flags": 1,
         "description": "Discriminator property for RecipeProperties."
@@ -2035,7 +2082,7 @@
     "name": "EnvironmentPropertiesRecipes",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/157"
+      "$ref": "#/159"
     }
   },
   {
@@ -2044,7 +2091,7 @@
     "properties": {
       "terraform": {
         "type": {
-          "$ref": "#/160"
+          "$ref": "#/162"
         },
         "flags": 0,
         "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
@@ -2078,28 +2125,28 @@
     "properties": {
       "authentication": {
         "type": {
-          "$ref": "#/161"
+          "$ref": "#/163"
         },
         "flags": 0,
         "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git."
       },
       "providers": {
         "type": {
-          "$ref": "#/170"
+          "$ref": "#/172"
         },
         "flags": 0,
         "description": "Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration."
       },
       "registry": {
         "type": {
-          "$ref": "#/171"
+          "$ref": "#/173"
         },
         "flags": 0,
         "description": "Configuration for Terraform provider registry mirroring."
       },
       "version": {
         "type": {
-          "$ref": "#/176"
+          "$ref": "#/178"
         },
         "flags": 0,
         "description": "Configuration for Terraform binary installation. Allows specifying a version and an optional custom base URL for the releases API."
@@ -2112,7 +2159,7 @@
     "properties": {
       "git": {
         "type": {
-          "$ref": "#/162"
+          "$ref": "#/164"
         },
         "flags": 0,
         "description": "Authentication information used to access private Terraform modules from Git repository sources."
@@ -2125,14 +2172,14 @@
     "properties": {
       "pat": {
         "type": {
-          "$ref": "#/164"
+          "$ref": "#/166"
         },
         "flags": 0,
         "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms."
       },
       "ssh": {
         "type": {
-          "$ref": "#/166"
+          "$ref": "#/168"
         },
         "flags": 0,
         "description": "SSH key configuration used to authenticate to Git platforms."
@@ -2157,7 +2204,7 @@
     "name": "GitAuthConfigPat",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/163"
+      "$ref": "#/165"
     }
   },
   {
@@ -2185,7 +2232,7 @@
     "name": "GitAuthConfigSsh",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/165"
+      "$ref": "#/167"
     }
   },
   {
@@ -2194,7 +2241,7 @@
     "properties": {
       "secrets": {
         "type": {
-          "$ref": "#/168"
+          "$ref": "#/170"
         },
         "flags": 0,
         "description": "Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource."
@@ -2215,7 +2262,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/167"
+      "$ref": "#/169"
     }
   },
   {
@@ -2223,7 +2270,7 @@
     "name": "TerraformConfigPropertiesProviders",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/169"
+      "$ref": "#/171"
     }
   },
   {
@@ -2239,17 +2286,24 @@
       },
       "providerMappings": {
         "type": {
-          "$ref": "#/172"
+          "$ref": "#/174"
         },
         "flags": 0,
         "description": "Provider mappings to translate between official and custom provider identifiers."
       },
       "authentication": {
         "type": {
-          "$ref": "#/173"
+          "$ref": "#/175"
         },
         "flags": 0,
         "description": "Authentication configuration for accessing private Terraform registry mirrors."
+      },
+      "tls": {
+        "type": {
+          "$ref": "#/153"
+        },
+        "flags": 0,
+        "description": "TLS configuration options for HTTPS connections."
       }
     }
   },
@@ -2267,14 +2321,14 @@
     "properties": {
       "token": {
         "type": {
-          "$ref": "#/174"
+          "$ref": "#/176"
         },
         "flags": 0,
         "description": "Token authentication configuration."
       },
       "additionalHosts": {
         "type": {
-          "$ref": "#/175"
+          "$ref": "#/177"
         },
         "flags": 0,
         "description": "Additional hosts that should use the same authentication credentials. This is useful when a registry mirror redirects to other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com)."
@@ -2327,57 +2381,17 @@
       },
       "tls": {
         "type": {
-          "$ref": "#/177"
+          "$ref": "#/153"
         },
         "flags": 0,
-        "description": "TLS configuration options for Terraform binary downloads."
+        "description": "TLS configuration options for HTTPS connections."
       },
       "authentication": {
         "type": {
-          "$ref": "#/173"
+          "$ref": "#/175"
         },
         "flags": 0,
         "description": "Authentication configuration for accessing private Terraform registry mirrors."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TerraformTLSConfig",
-    "properties": {
-      "caCertificate": {
-        "type": {
-          "$ref": "#/83"
-        },
-        "flags": 0,
-        "description": "This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data."
-      },
-      "clientCertificate": {
-        "type": {
-          "$ref": "#/178"
-        },
-        "flags": 0,
-        "description": "Client certificate (mTLS) configuration for authentication."
-      },
-      "skipVerify": {
-        "type": {
-          "$ref": "#/48"
-        },
-        "flags": 0,
-        "description": "Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING: This makes the connection vulnerable to man-in-the-middle attacks."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ClientCertConfig",
-    "properties": {
-      "secret": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have secrets named 'cert' and 'key' containing the PEM-encoded certificate and private key. A secret named 'passphrase' is optional, containing the passphrase for the private key."
       }
     }
   },

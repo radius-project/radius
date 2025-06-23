@@ -45,9 +45,9 @@ const (
 )
 
 // validateReleasesURL validates the releases API URL and ensures it uses HTTPS unless explicitly allowed
-func validateReleasesURL(releasesURL string, tlsConfig *datamodel.TerraformTLSConfig) error {
-	logger := ucplog.FromContextOrDiscard(context.Background())
-	
+func validateReleasesURL(ctx context.Context, releasesURL string, tlsConfig *datamodel.TLSConfig) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	if releasesURL == "" {
 		logger.Info("No custom releases URL provided, using default HashiCorp releases site")
 		return nil // Default HashiCorp releases site will be used
@@ -81,9 +81,9 @@ func validateReleasesURL(releasesURL string, tlsConfig *datamodel.TerraformTLSCo
 }
 
 // validateArchiveURL validates the archive URL and ensures it uses HTTPS unless explicitly allowed
-func validateArchiveURL(archiveURL string, tlsConfig *datamodel.TerraformTLSConfig) error {
-	logger := ucplog.FromContextOrDiscard(context.Background())
-	
+func validateArchiveURL(ctx context.Context, archiveURL string, tlsConfig *datamodel.TLSConfig) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	if archiveURL == "" {
 		return nil
 	}
@@ -136,19 +136,19 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
 
 	// Validate the URLs
-	var tlsConfig *datamodel.TerraformTLSConfig
+	var tlsConfig *datamodel.TLSConfig
 	var useArchiveURL bool
 	if terraformConfig.Version != nil {
 		tlsConfig = terraformConfig.Version.TLS
-		
+
 		// Check if releasesArchiveUrl is provided (takes precedence)
 		if terraformConfig.Version.ReleasesArchiveURL != "" {
-			if err := validateArchiveURL(terraformConfig.Version.ReleasesArchiveURL, tlsConfig); err != nil {
+			if err := validateArchiveURL(ctx, terraformConfig.Version.ReleasesArchiveURL, tlsConfig); err != nil {
 				return nil, err
 			}
 			useArchiveURL = true
 			logger.Info(fmt.Sprintf("Using direct archive URL: %s", terraformConfig.Version.ReleasesArchiveURL))
-		} else if err := validateReleasesURL(terraformConfig.Version.ReleasesAPIBaseURL, tlsConfig); err != nil {
+		} else if err := validateReleasesURL(ctx, terraformConfig.Version.ReleasesAPIBaseURL, tlsConfig); err != nil {
 			return nil, err
 		}
 	}
@@ -251,7 +251,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 			if terraformConfig.Version != nil && terraformConfig.Version.Version != "" {
 				versionStr = terraformConfig.Version.Version
 			}
-			
+
 			metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
 				[]attribute.KeyValue{
 					metrics.TerraformVersionAttrKey.String(versionStr),

@@ -232,6 +232,11 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 					registryConfig.ProviderMappings = providerMappings
 				}
 
+				// Handle TLS configuration
+				if config.Terraform.Registry.TLS != nil {
+					registryConfig.TLS = toTLSConfigDatamodel(config.Terraform.Registry.TLS)
+				}
+
 				// Handle authentication only if provided
 				if config.Terraform.Registry.Authentication != nil {
 					auth := config.Terraform.Registry.Authentication
@@ -266,7 +271,7 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 
 				// Convert TLS configuration if present
 				if config.Terraform.Version.TLS != nil {
-					recipeConfig.Terraform.Version.TLS = &datamodel.TerraformTLSConfig{
+					recipeConfig.Terraform.Version.TLS = &datamodel.TLSConfig{
 						SkipVerify: to.Bool(config.Terraform.Version.TLS.SkipVerify),
 					}
 
@@ -401,6 +406,11 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 					}
 				}
 
+				// Handle TLS configuration
+				if config.Terraform.Registry.TLS != nil {
+					registryConfig.TLS = fromTLSConfigDatamodel(config.Terraform.Registry.TLS)
+				}
+
 				recipeConfig.Terraform.Registry = registryConfig
 			}
 
@@ -413,7 +423,7 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 
 				// Convert TLS configuration if present
 				if config.Terraform.Version.TLS != nil {
-					recipeConfig.Terraform.Version.TLS = &TerraformTLSConfig{
+					recipeConfig.Terraform.Version.TLS = &TLSConfig{
 						SkipVerify: to.Ptr(config.Terraform.Version.TLS.SkipVerify),
 					}
 
@@ -647,19 +657,27 @@ func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.
 				return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, to.String(c.TemplatePath)))
 			}
 		}
-		return datamodel.EnvironmentRecipeProperties{
+		props := datamodel.EnvironmentRecipeProperties{
 			TemplateKind:    types.TemplateKindTerraform,
 			TemplateVersion: to.String(c.TemplateVersion),
 			TemplatePath:    to.String(c.TemplatePath),
 			Parameters:      c.Parameters,
-		}, nil
+		}
+		if c.TLS != nil {
+			props.TLS = toTLSConfigDatamodel(c.TLS)
+		}
+		return props, nil
 	case *BicepRecipeProperties:
-		return datamodel.EnvironmentRecipeProperties{
+		props := datamodel.EnvironmentRecipeProperties{
 			TemplateKind: types.TemplateKindBicep,
 			TemplatePath: to.String(c.TemplatePath),
 			PlainHTTP:    to.Bool(c.PlainHTTP),
 			Parameters:   c.Parameters,
-		}, nil
+		}
+		if c.TLS != nil {
+			props.TLS = toTLSConfigDatamodel(c.TLS)
+		}
+		return props, nil
 	}
 	return datamodel.EnvironmentRecipeProperties{}, nil
 }
@@ -667,19 +685,27 @@ func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.
 func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipeProperties) RecipePropertiesClassification {
 	switch e.TemplateKind {
 	case types.TemplateKindTerraform:
-		return &TerraformRecipeProperties{
+		props := &TerraformRecipeProperties{
 			TemplateKind:    to.Ptr(e.TemplateKind),
 			TemplateVersion: to.Ptr(e.TemplateVersion),
 			TemplatePath:    to.Ptr(e.TemplatePath),
 			Parameters:      e.Parameters,
 		}
+		if e.TLS != nil {
+			props.TLS = fromTLSConfigDatamodel(e.TLS)
+		}
+		return props
 	case types.TemplateKindBicep:
-		return &BicepRecipeProperties{
+		props := &BicepRecipeProperties{
 			TemplateKind: to.Ptr(e.TemplateKind),
 			TemplatePath: to.Ptr(e.TemplatePath),
 			Parameters:   e.Parameters,
 			PlainHTTP:    to.Ptr(e.PlainHTTP),
 		}
+		if e.TLS != nil {
+			props.TLS = fromTLSConfigDatamodel(e.TLS)
+		}
+		return props
 	}
 
 	return nil
@@ -784,4 +810,54 @@ func fromRecipeConfigEnvDatamodel(config datamodel.RecipeConfigProperties) map[s
 	}
 
 	return env
+}
+
+func toTLSConfigDatamodel(tls *TLSConfig) *datamodel.TLSConfig {
+	if tls == nil {
+		return nil
+	}
+
+	result := &datamodel.TLSConfig{
+		SkipVerify: to.Bool(tls.SkipVerify),
+	}
+
+	if tls.CaCertificate != nil {
+		result.CACertificate = &datamodel.SecretReference{
+			Source: to.String(tls.CaCertificate.Source),
+			Key:    to.String(tls.CaCertificate.Key),
+		}
+	}
+
+	if tls.ClientCertificate != nil {
+		result.ClientCertificate = &datamodel.ClientCertConfig{
+			Secret: to.String(tls.ClientCertificate.Secret),
+		}
+	}
+
+	return result
+}
+
+func fromTLSConfigDatamodel(tls *datamodel.TLSConfig) *TLSConfig {
+	if tls == nil {
+		return nil
+	}
+
+	result := &TLSConfig{
+		SkipVerify: to.Ptr(tls.SkipVerify),
+	}
+
+	if tls.CACertificate != nil {
+		result.CaCertificate = &SecretReference{
+			Source: to.Ptr(tls.CACertificate.Source),
+			Key:    to.Ptr(tls.CACertificate.Key),
+		}
+	}
+
+	if tls.ClientCertificate != nil {
+		result.ClientCertificate = &ClientCertConfig{
+			Secret: to.Ptr(tls.ClientCertificate.Secret),
+		}
+	}
+
+	return result
 }

@@ -55,7 +55,7 @@ func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.S
 	}
 }
 
-// Options represents the options required for execution of Terraform driver.
+// TerraformOptions represents the options required for execution of Terraform driver.
 type TerraformOptions struct {
 	// Path is the path to the directory mounted to the container where terraform can be installed and executed.
 	Path string
@@ -347,7 +347,7 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 		if err == nil {
 			hostname := strings.TrimPrefix(url.Hostname(), "www.")
 			authType := GetGitAuthType(envConfig, hostname)
-			
+
 			switch authType {
 			case "ssh":
 				// Request SSH-specific keys

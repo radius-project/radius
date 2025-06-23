@@ -125,6 +125,9 @@ model TerraformRegistryConfig {
 
   @doc("Authentication configuration for accessing private Terraform registry mirrors.")
   authentication?: RegistryAuthConfig;
+
+  @doc("TLS configuration for connecting to the Terraform registry mirror.")
+  tls?: TLSConfig;
 }
 
 @doc("Configuration for Terraform binary installation. Allows specifying a version and an optional custom base URL for the releases API.")
@@ -139,14 +142,14 @@ model TerraformVersionConfig {
   releasesApiBaseUrl?: string;
 
   @doc("TLS configuration for connecting to the releases API.")
-  tls?: TerraformTLSConfig;
+  tls?: TLSConfig;
 
   @doc("Authentication configuration for accessing the Terraform binary releases API.")
   authentication?: RegistryAuthConfig;
 }
 
-@doc("TLS configuration options for Terraform binary downloads.")
-model TerraformTLSConfig {
+@doc("TLS configuration options for HTTPS connections.")
+model TLSConfig {
   @doc("Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.")
   caCertificate?: SecretReference;
 
@@ -249,6 +252,9 @@ model RecipeProperties {
 
   @doc("Key/value parameters to pass to the recipe template at deployment.")
   parameters?: {};
+
+  @doc("TLS configuration for downloading recipe artifacts from HTTPS endpoints.")
+  tls?: TLSConfig;
 }
 
 @doc("Represents Bicep recipe properties.")

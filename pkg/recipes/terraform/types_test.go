@@ -121,7 +121,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 						Version: &datamodel.TerraformVersionConfig{
 							Version:            "1.7.0",
 							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
-							TLS: &datamodel.TerraformTLSConfig{
+							TLS: &datamodel.TLSConfig{
 								CACertificate: &datamodel.SecretReference{
 									Source: "/secret/store/tls",
 									Key:    "ca-cert",
@@ -157,7 +157,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 									Secret: "/secret/store/version",
 								},
 							},
-							TLS: &datamodel.TerraformTLSConfig{
+							TLS: &datamodel.TLSConfig{
 								CACertificate: &datamodel.SecretReference{
 									Source: "/secret/store/tls",
 									Key:    "ca-cert",
@@ -212,7 +212,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 						Version: &datamodel.TerraformVersionConfig{
 							Version:            "1.7.0",
 							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
-							TLS: &datamodel.TerraformTLSConfig{
+							TLS: &datamodel.TLSConfig{
 								ClientCertificate: &datamodel.ClientCertConfig{
 									Secret: "/secret/store/tls-client",
 								},
@@ -284,7 +284,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 									Secret: "/secret/store/shared-auth",
 								},
 							},
-							TLS: &datamodel.TerraformTLSConfig{
+							TLS: &datamodel.TLSConfig{
 								CACertificate: &datamodel.SecretReference{
 									Source: "/secret/store/ca",
 									Key:    "ca-cert",
@@ -358,15 +358,15 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := GetTerraformRegistrySecretIDs(tt.envConfig)
-			
+
 			// Check total number of secret stores
 			require.Equal(t, tt.wantLength, len(got))
-			
+
 			// Check each expected secret store and its keys
 			for secretStore, expectedKeys := range tt.wantKeys {
 				gotKeys, ok := got[secretStore]
 				require.True(t, ok, "expected secret store %s not found", secretStore)
-				
+
 				// Sort both slices for comparison since order doesn't matter
 				require.ElementsMatch(t, expectedKeys, gotKeys, "keys don't match for secret store %s", secretStore)
 			}

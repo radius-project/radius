@@ -118,11 +118,27 @@ func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][
 	// Handle registry authentication
 	if envConfig.RecipeConfig.Terraform.Registry != nil {
 		auth := envConfig.RecipeConfig.Terraform.Registry.Authentication
-		
+
 		// Token authentication
 		if auth.Token != nil && auth.Token.Secret != "" {
 			// Token auth needs token
 			addSecretKeys(registrySecretIDs, auth.Token.Secret, "token", &mu)
+		}
+
+		// Handle registry TLS CA certificate
+		if envConfig.RecipeConfig.Terraform.Registry.TLS != nil &&
+			envConfig.RecipeConfig.Terraform.Registry.TLS.CACertificate != nil {
+			cert := envConfig.RecipeConfig.Terraform.Registry.TLS.CACertificate
+			addSecretKeys(registrySecretIDs, cert.Source, cert.Key, &mu)
+		}
+
+		// Handle registry TLS client certificate
+		if envConfig.RecipeConfig.Terraform.Registry.TLS != nil &&
+			envConfig.RecipeConfig.Terraform.Registry.TLS.ClientCertificate != nil {
+			clientCert := envConfig.RecipeConfig.Terraform.Registry.TLS.ClientCertificate
+			// Client cert needs certificate and key
+			addSecretKeys(registrySecretIDs, clientCert.Secret, "certificate", &mu)
+			addSecretKeys(registrySecretIDs, clientCert.Secret, "key", &mu)
 		}
 	}
 
@@ -135,14 +151,14 @@ func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][
 				addSecretKeys(registrySecretIDs, envConfig.RecipeConfig.Terraform.Version.Authentication.Token.Secret, "token", &mu)
 			}
 		}
-		
+
 		// Handle TLS CA certificate
 		if envConfig.RecipeConfig.Terraform.Version.TLS != nil &&
 			envConfig.RecipeConfig.Terraform.Version.TLS.CACertificate != nil {
 			cert := envConfig.RecipeConfig.Terraform.Version.TLS.CACertificate
 			addSecretKeys(registrySecretIDs, cert.Source, cert.Key, &mu)
 		}
-		
+
 		// Handle TLS client certificate
 		if envConfig.RecipeConfig.Terraform.Version.TLS != nil &&
 			envConfig.RecipeConfig.Terraform.Version.TLS.ClientCertificate != nil {

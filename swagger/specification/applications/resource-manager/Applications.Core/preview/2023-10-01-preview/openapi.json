@@ -4234,6 +4234,10 @@
         "parameters": {
           "type": "object",
           "description": "Key/value parameters to pass to the recipe template at deployment."
+        },
+        "tls": {
+          "$ref": "#/definitions/TLSConfig",
+          "description": "TLS configuration for downloading recipe artifacts from HTTPS endpoints."
         }
       },
       "discriminator": "templateKind",
@@ -4752,6 +4756,25 @@
         }
       }
     },
+    "TLSConfig": {
+      "type": "object",
+      "description": "TLS configuration options for HTTPS connections.",
+      "properties": {
+        "caCertificate": {
+          "$ref": "#/definitions/SecretReference",
+          "description": "Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle."
+        },
+        "clientCertificate": {
+          "$ref": "#/definitions/ClientCertConfig",
+          "description": "Client certificate configuration for mutual TLS (mTLS) authentication."
+        },
+        "skipVerify": {
+          "type": "boolean",
+          "description": "Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING: This makes the connection vulnerable to man-in-the-middle attacks.",
+          "default": false
+        }
+      }
+    },
     "TcpHealthProbeProperties": {
       "type": "object",
       "description": "Specifies the properties for readiness/liveness probe using TCP",
@@ -4835,25 +4858,10 @@
         "authentication": {
           "$ref": "#/definitions/RegistryAuthConfig",
           "description": "Authentication configuration for accessing private Terraform registry mirrors."
-        }
-      }
-    },
-    "TerraformTLSConfig": {
-      "type": "object",
-      "description": "TLS configuration options for Terraform binary downloads.",
-      "properties": {
-        "caCertificate": {
-          "$ref": "#/definitions/SecretReference",
-          "description": "Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle."
         },
-        "clientCertificate": {
-          "$ref": "#/definitions/ClientCertConfig",
-          "description": "Client certificate configuration for mutual TLS (mTLS) authentication."
-        },
-        "skipVerify": {
-          "type": "boolean",
-          "description": "Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING: This makes the connection vulnerable to man-in-the-middle attacks.",
-          "default": false
+        "tls": {
+          "$ref": "#/definitions/TLSConfig",
+          "description": "TLS configuration for connecting to the Terraform registry mirror."
         }
       }
     },
@@ -4874,7 +4882,7 @@
           "description": "Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site. The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'"
         },
         "tls": {
-          "$ref": "#/definitions/TerraformTLSConfig",
+          "$ref": "#/definitions/TLSConfig",
           "description": "TLS configuration for connecting to the releases API."
         },
         "authentication": {

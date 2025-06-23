@@ -400,7 +400,7 @@ func TestCustomRegistrySource_DirectArchiveURL(t *testing.T) {
 		// For the archive URL, return a mock zip file
 		if strings.HasSuffix(r.URL.Path, ".zip") {
 			w.Header().Set("Content-Type", "application/zip")
-			
+
 			// Create a minimal valid zip file
 			zipWriter := zip.NewWriter(w)
 			writer, err := zipWriter.Create("terraform")
@@ -418,10 +418,10 @@ func TestCustomRegistrySource_DirectArchiveURL(t *testing.T) {
 	defer server.Close()
 
 	tests := []struct {
-		name      string
-		source    *CustomRegistrySource
-		wantErr   bool
-		errMsg    string
+		name    string
+		source  *CustomRegistrySource
+		wantErr bool
+		errMsg  string
 	}{
 		{
 			name: "successful direct download",
@@ -480,7 +480,7 @@ func TestCustomRegistrySource_DirectArchiveURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			execPath, err := tt.source.Install(ctx)
-			
+
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.errMsg != "" {
@@ -498,18 +498,18 @@ func TestCustomRegistrySource_DirectArchiveURL(t *testing.T) {
 func TestCustomRegistrySource_ArchiveURLPrecedence(t *testing.T) {
 	// Mock server that tracks which endpoints are called
 	var indexCalled, archiveCalled bool
-	
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "index.json"):
 			indexCalled = true
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(releaseIndex{})
-			
+
 		case strings.HasSuffix(r.URL.Path, ".zip"):
 			archiveCalled = true
 			w.Header().Set("Content-Type", "application/zip")
-			
+
 			// Create a minimal valid zip file
 			zipWriter := zip.NewWriter(w)
 			writer, err := zipWriter.Create("terraform")
@@ -519,7 +519,7 @@ func TestCustomRegistrySource_ArchiveURLPrecedence(t *testing.T) {
 			}
 			_, _ = writer.Write([]byte("mock terraform binary"))
 			_ = zipWriter.Close()
-			
+
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -551,7 +551,7 @@ func TestCustomRegistrySource_ArchiveURLPrecedence(t *testing.T) {
 func TestCustomRegistrySource_RealHashiCorpURL(t *testing.T) {
 	// Note: Remember to import "os" package when uncommenting this test
 	t.Skip("Skipping test that requires network access to releases.hashicorp.com")
-	
+
 	// Example using the real HashiCorp releases URL
 	source := &CustomRegistrySource{
 		Product:    product.Terraform,
@@ -563,11 +563,11 @@ func TestCustomRegistrySource_RealHashiCorpURL(t *testing.T) {
 	ctx := context.Background()
 	execPath, err := source.Install(ctx)
 	require.NoError(t, err)
-	
+
 	// Verify the binary was installed
 	assert.NotEmpty(t, execPath)
 	assert.FileExists(t, execPath)
-	
+
 	// The file should be executable
 	info, err := os.Stat(execPath)
 	require.NoError(t, err)

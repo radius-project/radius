@@ -37,7 +37,7 @@ func InstallTerraformWithTLS(
 	secrets map[string]recipes.SecretData,
 ) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	
+
 	// Default to latest version if not specified
 	var tfVersion *version.Version
 	if terraformConfig.Version != nil && terraformConfig.Version.Version != "" {

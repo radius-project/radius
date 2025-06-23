@@ -96,7 +96,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 func inspectModule(ctx context.Context, workingDir string, recipe *recipes.EnvironmentDefinition) (*moduleInspectResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Starting module inspection", "recipe", recipe.Name, "templatePath", recipe.TemplatePath)
-	
+
 	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: map[string]*config.RequiredProviderInfo{}, ResultOutputExists: false, Parameters: map[string]any{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
@@ -107,7 +107,7 @@ func inspectModule(ctx context.Context, workingDir string, recipe *recipes.Envir
 	_, subModule := getter.SourceDirSubdir(recipe.TemplatePath)
 	modulePath := filepath.Join(workingDir, moduleRootDir, recipe.Name, subModule)
 	logger.Info("Loading Terraform module", "modulePath", modulePath)
-	
+
 	mod, diags := tfconfig.LoadModule(modulePath)
 	if diags.HasErrors() {
 		logger.Error(diags.Err(), "Failed to load Terraform module", "modulePath", modulePath)

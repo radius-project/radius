@@ -64,7 +64,7 @@ func NewKubernetesBackend(k8sClientSet kubernetes.Interface) Backend {
 func (p *kubernetesBackend) BuildBackend(resourceRecipe *recipes.ResourceMetadata) (map[string]any, error) {
 	logger := ucplog.FromContextOrDiscard(context.Background())
 	logger.Info("Building Kubernetes backend configuration", "resourceID", resourceRecipe.ResourceID)
-	
+
 	secretSuffix, err := generateSecretSuffix(resourceRecipe)
 	if err != nil {
 		logger.Error(err, "Failed to generate secret suffix for Kubernetes backend")
@@ -98,7 +98,7 @@ func (p *kubernetesBackend) ValidateBackendExists(ctx context.Context, name stri
 // which is used as key for kubernetes secret in defining terraform backend.
 func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
 	logger := ucplog.FromContextOrDiscard(context.Background())
-	
+
 	parsedResourceID, err := resources.Parse(resourceRecipe.ResourceID)
 	if err != nil {
 		logger.Error(err, "Failed to parse resource ID", "resourceID", resourceRecipe.ResourceID)

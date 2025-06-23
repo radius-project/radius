@@ -120,7 +120,7 @@ const (
 func (s *CustomRegistrySource) Validate() error {
 	logger := ucplog.FromContextOrDiscard(context.Background())
 	logger.Info("Validating custom registry source configuration")
-	
+
 	if s.Product.Name == "" {
 		logger.Error(nil, "Product name is required")
 		return fmt.Errorf("product is required")
@@ -139,9 +139,9 @@ func (s *CustomRegistrySource) Validate() error {
 		logger.Error(nil, "Install directory is required")
 		return fmt.Errorf("installDir is required")
 	}
-	
-	logger.Info("Custom registry source validation passed", 
-		"product", s.Product.Name, 
+
+	logger.Info("Custom registry source validation passed",
+		"product", s.Product.Name,
 		"hasVersion", s.Version != nil,
 		"hasArchiveURL", s.ArchiveURL != "",
 		"hasBaseURL", s.BaseURL != "")
@@ -151,7 +151,7 @@ func (s *CustomRegistrySource) Validate() error {
 // Install downloads and installs the product from the custom registry
 func (s *CustomRegistrySource) Install(ctx context.Context) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	
+
 	if err := s.Validate(); err != nil {
 		return "", err
 	}
@@ -246,7 +246,7 @@ func (s *CustomRegistrySource) Install(ctx context.Context) (string, error) {
 // getHTTPClient returns the HTTP client to use - either injected or creates a default one
 func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
 	logger := ucplog.FromContextOrDiscard(context.Background())
-	
+
 	// If an HTTP client was injected, use it
 	if s.HTTPClient != nil {
 		logger.Info("Using injected HTTP client")

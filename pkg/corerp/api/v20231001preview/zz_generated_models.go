@@ -255,12 +255,16 @@ type BicepRecipeProperties struct {
 // Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS,
 // for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
 	PlainHTTP *bool
+
+// TLS configuration for downloading recipe artifacts from HTTPS endpoints.
+	TLS *TLSConfig
 }
 
 // GetRecipeProperties implements the RecipePropertiesClassification interface for type BicepRecipeProperties.
 func (b *BicepRecipeProperties) GetRecipeProperties() *RecipeProperties {
 	return &RecipeProperties{
 		Parameters: b.Parameters,
+		TLS: b.TLS,
 		TemplateKind: b.TemplateKind,
 		TemplatePath: b.TemplatePath,
 	}
@@ -1255,6 +1259,9 @@ type RecipeProperties struct {
 
 // Key/value parameters to pass to the recipe template at deployment.
 	Parameters map[string]any
+
+// TLS configuration for downloading recipe artifacts from HTTPS endpoints.
+	TLS *TLSConfig
 }
 
 // GetRecipeProperties implements the RecipePropertiesClassification interface for type RecipeProperties.
@@ -1527,6 +1534,20 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 	}
 }
 
+// TLSConfig - TLS configuration options for HTTPS connections.
+type TLSConfig struct {
+// Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a
+// key named 'ca-cert' with the PEM-encoded certificate bundle.
+	CaCertificate *SecretReference
+
+// Client certificate configuration for mutual TLS (mTLS) authentication.
+	ClientCertificate *ClientCertConfig
+
+// Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING:
+// This makes the connection vulnerable to man-in-the-middle attacks.
+	SkipVerify *bool
+}
+
 // TerraformConfigProperties - Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as
 // part of Recipe deployment.
 type TerraformConfigProperties struct {
@@ -1556,6 +1577,9 @@ type TerraformRecipeProperties struct {
 // Key/value parameters to pass to the recipe template at deployment.
 	Parameters map[string]any
 
+// TLS configuration for downloading recipe artifacts from HTTPS endpoints.
+	TLS *TLSConfig
+
 // Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
 // for other module sources.
 	TemplateVersion *string
@@ -1565,6 +1589,7 @@ type TerraformRecipeProperties struct {
 func (t *TerraformRecipeProperties) GetRecipeProperties() *RecipeProperties {
 	return &RecipeProperties{
 		Parameters: t.Parameters,
+		TLS: t.TLS,
 		TemplateKind: t.TemplateKind,
 		TemplatePath: t.TemplatePath,
 	}
@@ -1580,20 +1605,9 @@ type TerraformRegistryConfig struct {
 
 // Provider mappings to translate between official and custom provider identifiers.
 	ProviderMappings map[string]*string
-}
 
-// TerraformTLSConfig - TLS configuration options for Terraform binary downloads.
-type TerraformTLSConfig struct {
-// Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a
-// key named 'ca-cert' with the PEM-encoded certificate bundle.
-	CaCertificate *SecretReference
-
-// Client certificate configuration for mutual TLS (mTLS) authentication.
-	ClientCertificate *ClientCertConfig
-
-// Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING:
-// This makes the connection vulnerable to man-in-the-middle attacks.
-	SkipVerify *bool
+// TLS configuration for connecting to the Terraform registry mirror.
+	TLS *TLSConfig
 }
 
 // TerraformVersionConfig - Configuration for Terraform binary installation. Allows specifying a version and an optional custom
@@ -1613,7 +1627,7 @@ type TerraformVersionConfig struct {
 	ReleasesArchiveURL *string
 
 // TLS configuration for connecting to the releases API.
-	TLS *TerraformTLSConfig
+	TLS *TLSConfig
 
 // Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example:
 // '1.7.0'

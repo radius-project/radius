@@ -100,7 +100,6 @@ type SSHConfig struct {
 	StrictHostKeyChecking bool `json:"strictHostKeyChecking,omitempty"`
 }
 
-
 // ClientCertConfig - Client certificate (mTLS) configuration for authentication.
 type ClientCertConfig struct {
 	// The ID of an Applications.Core/SecretStore resource containing the client certificate and key.
@@ -142,6 +141,9 @@ type TerraformRegistryConfig struct {
 
 	// Authentication configuration for accessing private Terraform registry mirrors.
 	Authentication RegistryAuthConfig `json:"authentication,omitempty"`
+
+	// TLS configuration for connecting to the Terraform registry mirror.
+	TLS *TLSConfig `json:"tls,omitempty"`
 }
 
 // TokenConfig - Token authentication configuration.
@@ -181,14 +183,14 @@ type TerraformVersionConfig struct {
 	ReleasesAPIBaseURL string `json:"releasesApiBaseUrl,omitempty"`
 
 	// TLS contains TLS configuration for connecting to the releases API.
-	TLS *TerraformTLSConfig `json:"tls,omitempty"`
+	TLS *TLSConfig `json:"tls,omitempty"`
 
 	// Authentication configuration for accessing the Terraform binary releases API.
 	Authentication *RegistryAuthConfig `json:"authentication,omitempty"`
 }
 
-// TerraformTLSConfig - TLS configuration options for Terraform binary downloads.
-type TerraformTLSConfig struct {
+// TLSConfig - TLS configuration options for HTTPS connections.
+type TLSConfig struct {
 	// CACertificate is a reference to a secret containing a custom CA certificate bundle to use for TLS verification.
 	// The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.
 	CACertificate *SecretReference `json:"caCertificate,omitempty"`

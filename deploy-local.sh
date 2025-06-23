@@ -15,6 +15,7 @@ echo "==> Resetting the Kind cluster..."
 kind delete cluster && kind create cluster --wait 60s
 
 echo "==> Installing Radius on Kubernetes..."
+
 ./dist/darwin_arm64/release/rad install kubernetes \
   --set rp.image=ghcr.io/ytimocin/applications-rp,rp.tag=latest \
   --set dynamicrp.image=ghcr.io/ytimocin/dynamic-rp,dynamicrp.tag=latest \
@@ -22,6 +23,16 @@ echo "==> Installing Radius on Kubernetes..."
   --set ucp.image=ghcr.io/ytimocin/ucpd,ucp.tag=latest \
   --set bicep.image=ghcr.io/ytimocin/bicep,bicep.tag=latest \
   --reinstall
+
+# ./dist/darwin_arm64/release/rad install kubernetes \
+#   --set rp.image=ghcr.io/radius-project/dev/applications-rp,rp.tag=pr-func8b357be0dc \
+#   --set dynamicrp.image=ghcr.io/radius-project/dev/dynamic-rp,dynamicrp.tag=pr-func8b357be0dc \
+#   --set controller.image=ghcr.io/radius-project/dev/controller,controller.tag=pr-func8b357be0dc \
+#   --set ucp.image=ghcr.io/radius-project/dev/ucpd,ucp.tag=pr-func8b357be0dc \
+#   --set bicep.image=ghcr.io/radius-project/dev/bicep,bicep.tag=pr-func8b357be0dc
+
+echo "==> Waiting for 30 seconds to allow services to initialize..."
+sleep 30
 
 echo "==> Create Radius workspace..."
 ./dist/darwin_arm64/release/rad workspace create kubernetes default --force

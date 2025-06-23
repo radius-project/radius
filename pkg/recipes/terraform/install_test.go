@@ -17,6 +17,7 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -27,7 +28,7 @@ func Test_validateReleasesURL(t *testing.T) {
 	tests := []struct {
 		name        string
 		releasesURL string
-		tlsConfig   *datamodel.TerraformTLSConfig
+		tlsConfig   *datamodel.TLSConfig
 		wantErr     bool
 		errorMsg    string
 	}{
@@ -53,7 +54,7 @@ func Test_validateReleasesURL(t *testing.T) {
 		{
 			name:        "HTTP URL with skipVerify is valid",
 			releasesURL: "http://releases.example.com",
-			tlsConfig: &datamodel.TerraformTLSConfig{
+			tlsConfig: &datamodel.TLSConfig{
 				SkipVerify: true,
 			},
 			wantErr: false,
@@ -76,7 +77,7 @@ func Test_validateReleasesURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateReleasesURL(tt.releasesURL, tt.tlsConfig)
+			err := validateReleasesURL(context.Background(), tt.releasesURL, tt.tlsConfig)
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errorMsg != "" {
@@ -93,7 +94,7 @@ func Test_validateArchiveURL(t *testing.T) {
 	tests := []struct {
 		name       string
 		archiveURL string
-		tlsConfig  *datamodel.TerraformTLSConfig
+		tlsConfig  *datamodel.TLSConfig
 		wantErr    bool
 		errorMsg   string
 	}{
@@ -119,7 +120,7 @@ func Test_validateArchiveURL(t *testing.T) {
 		{
 			name:       "HTTP URL with skipVerify is valid",
 			archiveURL: "http://releases.example.com/terraform_1.7.0_linux_amd64.zip",
-			tlsConfig: &datamodel.TerraformTLSConfig{
+			tlsConfig: &datamodel.TLSConfig{
 				SkipVerify: true,
 			},
 			wantErr: false,
@@ -162,7 +163,7 @@ func Test_validateArchiveURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateArchiveURL(tt.archiveURL, tt.tlsConfig)
+			err := validateArchiveURL(context.Background(), tt.archiveURL, tt.tlsConfig)
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errorMsg != "" {

@@ -335,11 +335,11 @@ func TestConfigureTerraformRegistry_AdditionalHosts(t *testing.T) {
 	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
 
 	// Verify environment variables for all hosts
-	
+
 	// Check primary host
 	require.Equal(t, token, os.Getenv("TF_TOKEN_my-registry_example_com"),
 		"TF_TOKEN_* should be set for primary host")
-	
+
 	// Check additional hosts
 	require.Equal(t, token, os.Getenv("TF_TOKEN_original-registry_example_com"),
 		"TF_TOKEN_* should be set for first additional host")
@@ -356,7 +356,7 @@ func TestConfigureTerraformRegistry_AdditionalHosts(t *testing.T) {
 	// Cleanup
 	err = CleanupTerraformRegistryConfig(ctx, regConfig)
 	require.NoError(t, err)
-	
+
 	// Verify all env vars are cleaned up
 	require.Empty(t, os.Getenv("TF_TOKEN_my-registry_example_com"))
 	require.Empty(t, os.Getenv("TF_TOKEN_original-registry_example_com"))
@@ -396,29 +396,29 @@ func TestCleanupTerraformRegistryConfig_NilConfig(t *testing.T) {
 func TestCleanupTerraformRegistryConfig_FileRemoval(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "test.terraformrc")
-	
+
 	// Create a test file
 	err := os.WriteFile(configPath, []byte("test"), 0600)
 	require.NoError(t, err)
-	
+
 	// Create config
 	regConfig := &RegistryConfig{
 		ConfigPath: configPath,
 		EnvVars:    []string{"TEST_VAR"},
 	}
-	
+
 	// Set a test env var
 	require.NoError(t, os.Setenv("TEST_VAR", "test-value"))
-	
+
 	// Call cleanup
 	ctx := context.Background()
 	err = CleanupTerraformRegistryConfig(ctx, regConfig)
 	require.NoError(t, err)
-	
+
 	// Verify file is removed
 	_, err = os.Stat(configPath)
 	require.True(t, os.IsNotExist(err), "Config file should be removed")
-	
+
 	// Verify env var is unset
 	require.Empty(t, os.Getenv("TEST_VAR"), "Environment variable should be unset")
 }

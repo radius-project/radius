@@ -31,11 +31,11 @@ const (
 
 	PrivateRegistrySecretKey_Pat      = "pat"
 	PrivateRegistrySecretKey_Username = "username"
-	
+
 	// SSH authentication secret keys
-	SSHSecretKey_PrivateKey             = "privateKey"
-	SSHSecretKey_Passphrase             = "passphrase"
-	SSHSecretKey_StrictHostKeyChecking  = "strictHostKeyChecking"
+	SSHSecretKey_PrivateKey            = "privateKey"
+	SSHSecretKey_Passphrase            = "passphrase"
+	SSHSecretKey_StrictHostKeyChecking = "strictHostKeyChecking"
 )
 
 // GetTerraformProviderFullName returns the full provider name including registry
@@ -71,14 +71,14 @@ func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePat
 
 		// get the secret store id associated with the git domain of the template path.
 		hostname := strings.TrimPrefix(url.Hostname(), "www.")
-		
+
 		// Check for SSH authentication first
 		if envConfig.RecipeConfig.Terraform.Authentication.Git.SSH != nil {
 			if sshConfig, exists := envConfig.RecipeConfig.Terraform.Authentication.Git.SSH[hostname]; exists {
 				return sshConfig.Secret, nil
 			}
 		}
-		
+
 		// Check for PAT authentication
 		if envConfig.RecipeConfig.Terraform.Authentication.Git.PAT != nil {
 			if patConfig, exists := envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[hostname]; exists {
@@ -96,20 +96,20 @@ func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePat
 func GetGitAuthType(envConfig recipes.Configuration, hostname string) string {
 	// Normalize hostname
 	hostname = strings.TrimPrefix(hostname, "www.")
-	
+
 	// Check for SSH authentication first
 	if envConfig.RecipeConfig.Terraform.Authentication.Git.SSH != nil {
 		if _, exists := envConfig.RecipeConfig.Terraform.Authentication.Git.SSH[hostname]; exists {
 			return "ssh"
 		}
 	}
-	
+
 	// Check for PAT authentication
 	if envConfig.RecipeConfig.Terraform.Authentication.Git.PAT != nil {
 		if _, exists := envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[hostname]; exists {
 			return "pat"
 		}
 	}
-	
+
 	return "none"
 }

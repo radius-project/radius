@@ -15,6 +15,10 @@ param gitlabPAT string
 @secure()
 param localRegistryToken string = 'test-token-123' // Default token for local testing
 
+@description('Registry CA Certificate')
+@secure()
+param registryCACert string = ''
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'app-postgres-env'
   location: 'global'
@@ -44,20 +48,27 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
             }
           ]
         }
-        authentication: {
-          git: {
-            pat: {
-              'gitlab.com': {
-                secret: gitlabSecrets.id
-              }
-            }
-          }
-        }
+        // authentication: {
+        //   git: {
+        //     pat: {
+        //       'gitlab.com': {
+        //         secret: gitlabSecrets.id
+        //       }
+        //     }
+        //   }
+        // }
         registry: {
-          mirror: 'https://spatial-childrens-actors-implies.trycloudflare.com'
+          mirror: 'https://host.docker.internal:8443'
           authentication: {
             token: {
               secret: localRegistryTokenSecret.id
+            }
+          }
+          tls: {
+            // skipVerify: true
+            caCertificate: {
+              source: registryTLSCerts.id
+              key: 'server.crt'
             }
           }
         }
@@ -84,7 +95,10 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Core/extenders': {
         defaultpostgres: {
           templateKind: 'terraform'
-          templatePath: 'git::https://gitlab.com/ytimocin-group/ytimocin-project.git//terraform-modules/postgres-kubernetes?ref=postgres-kubernetes/v1.0.0'
+          templatePath: 'http://host.docker.internal:8081/repository/terraform/modules/kubernetes/postgres/1.0.0/postgres.zip'
+          // tls: {
+          //   skipVerify: true
+          // }
         }
       }
     }
@@ -163,6 +177,20 @@ resource localRegistryTokenSecret 'Applications.Core/secretStores@2023-10-01-pre
     data: {
       token: {
         value: localRegistryToken
+      }
+    }
+  }
+}
+
+// Registry TLS certificates secret (only created if certificate is provided)
+resource registryTLSCerts 'Applications.Core/secretStores@2023-10-01-preview' = {
+  name: 'registry-tls-certs'
+  properties: {
+    resource: 'app-postgres-env/registry-tls-certs'
+    type: 'generic'
+    data: {
+      'server.crt': {
+        value: registryCACert
       }
     }
   }

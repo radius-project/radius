@@ -78,6 +78,36 @@ type EnvironmentDefinition struct {
 
 	// Allows insecure connections to registry without SSL check.
 	PlainHTTP bool
+
+	// TLS represents TLS configuration for recipe downloads over HTTPS.
+	TLS *TLSConfig
+}
+
+// TLSConfig represents TLS configuration options for HTTPS connections.
+type TLSConfig struct {
+	// CACertificate represents a reference to a CA certificate secret.
+	CACertificate *SecretReference `json:"caCertificate,omitempty"`
+
+	// ClientCertificate represents client certificate configuration for mTLS.
+	ClientCertificate *ClientCertConfig `json:"clientCertificate,omitempty"`
+
+	// SkipVerify allows insecure connections (skip TLS verification).
+	SkipVerify bool `json:"skipVerify,omitempty"`
+}
+
+// SecretReference represents a reference to a secret.
+type SecretReference struct {
+	// Source is the source of the secret.
+	Source string `json:"source"`
+
+	// Key is the key in the secret.
+	Key string `json:"key"`
+}
+
+// ClientCertConfig represents client certificate configuration.
+type ClientCertConfig struct {
+	// Secret is the secret containing both certificate and key.
+	Secret string `json:"secret"`
 }
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
