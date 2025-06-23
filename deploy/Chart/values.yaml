@@ -147,16 +147,8 @@ preUpgrade:
   currentVersion: ""
   # Individual preflight checks configuration
   checks:
-    # Version compatibility check (recommended: always enabled)
+    # Version compatibility check
     version: true
-    # Kubernetes resource availability check
-    resources: true
-    # Radius installation status check
-    installation: true
-    # Custom Resource Definition compatibility check
-    customResources: false
-    # Active workload health check
-    workloads: false
   # Job configuration
   backoffLimit: 2
   ttlSecondsAfterFinished: 300
@@ -168,14 +160,3 @@ preUpgrade:
     limits:
       cpu: "200m"
       memory: "128Mi"
-  # Service account configuration
-  serviceAccount:
-    create: true
-    automountServiceAccountToken: false
-    annotations: {}
-  # Node selection constraints
-  nodeSelector: {}
-  # Affinity rules
-  affinity: {}
-  # Tolerations
-  tolerations: []
