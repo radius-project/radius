@@ -28,6 +28,17 @@ import (
 	"helm.sh/helm/v3/pkg/strvals"
 )
 
+const (
+	// DefaultChartPath is the default path to the Radius Helm chart.
+	DefaultChartPath = "../../../deploy/Chart"
+
+	// SetParamFormat is the expected format for --set parameters
+	SetParamFormat = "key=value"
+
+	// SetFileParamFormat is the expected format for --set-file parameters
+	SetFileParamFormat = "key=filepath"
+)
+
 // Ensure CustomConfigValidationCheck implements PreflightCheck interface
 var _ PreflightCheck = (*CustomConfigValidationCheck)(nil)
 
@@ -49,10 +60,18 @@ type CustomConfigValidationCheck struct {
 // If helmClient is nil, a new client will be created.
 // The check will fall back to basic syntax validation if the chart is not found.
 func NewCustomConfigValidationCheck(setParams, setFileParams []string, chartPath string, helmClient helm.HelmClient) *CustomConfigValidationCheck {
+	// Valudate slice parameters
+	if setParams == nil {
+		setParams = []string{}
+	}
+	if setFileParams == nil {
+		setFileParams = []string{}
+	}
+
 	// Use default chart path if not specified
 	if chartPath == "" {
 		// Default path from pkg/upgrade/preflight to deploy/Chart
-		chartPath = "../../../deploy/Chart"
+		chartPath = DefaultChartPath
 	}
 
 	// Create helm client if not provided
@@ -121,7 +140,7 @@ func (c *CustomConfigValidationCheck) validateParam(param, format string) string
 
 // validateFileParam validates --set-file parameters including file accessibility.
 func (c *CustomConfigValidationCheck) validateFileParam(param string) string {
-	if issue := c.validateParam(param, "key=filepath"); issue != "" {
+	if issue := c.validateParam(param, SetFileParamFormat); issue != "" {
 		return issue
 	}
 
@@ -129,7 +148,7 @@ func (c *CustomConfigValidationCheck) validateFileParam(param string) string {
 	filepath := strings.TrimSpace(parts[1])
 
 	if filepath == "" {
-		return "filepath cannot be empty"
+		return "file path cannot be empty"
 	}
 
 	if _, err := c.fs.ReadFile(filepath); err != nil {
@@ -191,7 +210,7 @@ func (c *CustomConfigValidationCheck) validateAllParams() []string {
 
 	// Validate --set parameters
 	for _, param := range c.setParams {
-		if issue := c.validateParam(param, "key=value"); issue != "" {
+		if issue := c.validateParam(param, SetParamFormat); issue != "" {
 			issues = append(issues, fmt.Sprintf("--set parameter '%s': %s", param, issue))
 		}
 	}

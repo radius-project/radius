@@ -27,6 +27,8 @@ import (
 )
 
 func TestHelmConnectivityCheck_Properties(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -38,6 +40,8 @@ func TestHelmConnectivityCheck_Properties(t *testing.T) {
 }
 
 func TestHelmConnectivityCheck_Run(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		setupMock     func(*helm.MockInterface)
@@ -97,10 +101,27 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 			expectMessage: "Helm can connect to cluster but Radius release not found",
 			expectError:   false,
 		},
+		{
+			name: "contour installed but radius not found",
+			setupMock: func(mockHelm *helm.MockInterface) {
+				installState := helm.InstallState{
+					RadiusInstalled:  false,
+					RadiusVersion:    "",
+					ContourInstalled: true,
+					ContourVersion:   "v1.25.0",
+				}
+				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
+			},
+			expectPass:    false,
+			expectMessage: "Helm can connect to cluster but Radius release not found",
+			expectError:   false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 

@@ -31,6 +31,8 @@ import (
 )
 
 func TestCustomConfigValidationCheck_BasicValidation(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name              string
 		setParams         []string
@@ -85,6 +87,8 @@ func TestCustomConfigValidationCheck_BasicValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			memFS := filesystem.NewMemMapFileSystem()
 
 			setFileParams := tt.setFileParams
@@ -109,12 +113,14 @@ func TestCustomConfigValidationCheck_BasicValidation(t *testing.T) {
 }
 
 func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
+	t.Parallel()
+
 	// For chart validation tests, we'll check if real chart exists using default filesystem
 	// since this is just for the skip check
 	defaultFS := filesystem.NewMemMapFileSystem()
-	realChartPath := "../../../deploy/Chart"
+	realChartPath := DefaultChartPath
 	if _, err := defaultFS.Stat(realChartPath); errors.Is(err, fs.ErrNotExist) {
-		t.Skip("Radius chart not found at ../../../deploy/Chart, skipping chart validation tests")
+		t.Skipf("Radius chart not found at %s, skipping chart validation tests", realChartPath)
 	}
 
 	tests := []struct {
@@ -188,6 +194,8 @@ func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			// For chart validation, we need to use the real filesystem
 			// since the chart is on disk
 			memFS := filesystem.NewMemMapFileSystem()
@@ -215,6 +223,8 @@ func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
 }
 
 func TestCustomConfigValidationCheck_ErrorHandling(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupMocks  func(*testing.T) (*filesystem.MockFileSystem, *helm.MockHelmClient, string)
@@ -275,6 +285,8 @@ func TestCustomConfigValidationCheck_ErrorHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mockFS, mockClient, chartPath := tt.setupMocks(t)
 
 			var setFileParams []string
