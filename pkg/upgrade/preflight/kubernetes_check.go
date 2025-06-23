@@ -30,6 +30,9 @@ const (
 	RadiusSystemNamespace = "radius-system"
 )
 
+// Ensure KubernetesConnectivityCheck implements PreflightCheck interface
+var _ PreflightCheck = (*KubernetesConnectivityCheck)(nil)
+
 // KubernetesConnectivityCheck validates cluster connectivity and basic permissions.
 type KubernetesConnectivityCheck struct {
 	kubeContext string
