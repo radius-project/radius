@@ -28,15 +28,11 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 rules:
 # Helm stores release information in secrets with specific labels
+# This Role is restricted to "{{ .Release.Namespace }}", since it
+# only needs to be able to access Helm release information for Radius.
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["get", "list"]
-  # Only allow access to Helm release secrets
-  # Helm uses owner=helm and status=deployed labels
-- apiGroups: [""]
-  resources: ["configmaps"]
-  verbs: ["get", "list"]
-  # For Helm v2 compatibility (if needed)
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
