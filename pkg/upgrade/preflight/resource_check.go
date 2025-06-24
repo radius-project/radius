@@ -26,6 +26,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// Ensure KubernetesResourceCheck implements PreflightCheck interface
+var _ PreflightCheck = (*KubernetesResourceCheck)(nil)
+
 // KubernetesResourceCheck validates cluster resource availability for upgrades.
 type KubernetesResourceCheck struct {
 	kubeContext string
