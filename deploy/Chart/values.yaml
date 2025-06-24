@@ -134,7 +134,7 @@ bicep:
   # Default tag uses Chart AppVersion.
   # tag: latest
 
-preUpgrade:
+preupgrade:
   # Enable pre-upgrade preflight checks
   enabled: true
   # Container image for pre-upgrade checks
