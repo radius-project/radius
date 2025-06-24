@@ -14,7 +14,7 @@ metadata:
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
-  backoffLimit: {{ .Values.preupgrade.backoffLimit }}
+  backoffLimit: 0
   ttlSecondsAfterFinished: {{ .Values.preupgrade.ttlSecondsAfterFinished }}
   template:
     metadata:
