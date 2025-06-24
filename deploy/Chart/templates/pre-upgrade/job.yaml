@@ -24,13 +24,12 @@ spec:
         app.kubernetes.io/part-of: radius
     spec:
       restartPolicy: Never
+      serviceAccountName: pre-upgrade
       containers:
       - name: pre-upgrade
         image: "{{ .Values.preUpgrade.image }}:{{ .Values.preUpgrade.tag | default $appversion }}"
         imagePullPolicy: 'Always'
         env:
-        - name: CURRENT_VERSION
-          value: "{{ .Values.preUpgrade.currentVersion }}"
         - name: TARGET_VERSION
           value: "{{ .Chart.AppVersion }}"
         - name: ENABLED_CHECKS
