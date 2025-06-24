@@ -17,110 +17,14 @@ limitations under the License.
 package main
 
 import (
-	"context"
-	"fmt"
 	"os"
-	"strings"
 
-	"github.com/radius-project/radius/pkg/cli/helm"
-	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/upgrade/preflight"
+	"github.com/radius-project/radius/cmd/pre-upgrade/cmd"
 )
 
-type simpleOutput struct{}
-
-type simpleStep struct{}
-
-func (s *simpleOutput) LogInfo(format string, args ...any) {
-	fmt.Printf(format, args...)
-	fmt.Println()
-}
-
-func (s *simpleOutput) WriteFormatted(format string, obj any, options output.FormatterOptions) error {
-	return fmt.Errorf("WriteFormatted not supported in pre-upgrade container")
-}
-
-func (s *simpleOutput) BeginStep(format string, args ...any) output.Step {
-	fmt.Printf("Starting: ")
-	fmt.Printf(format, args...)
-	fmt.Println()
-	return output.Step{}
-}
-
-func (s *simpleOutput) CompleteStep(step output.Step) {
-}
-
 func main() {
-	ctx := context.Background()
-
-	currentVersion := os.Getenv("CURRENT_VERSION")
-	targetVersion := os.Getenv("TARGET_VERSION")
-	enabledChecks := os.Getenv("ENABLED_CHECKS")
-
-	if currentVersion == "" {
-		fmt.Fprintf(os.Stderr, "Error: CURRENT_VERSION environment variable is required\n")
-		os.Exit(1)
-	}
-
-	if targetVersion == "" {
-		fmt.Fprintf(os.Stderr, "Error: TARGET_VERSION environment variable is required\n")
-		os.Exit(1)
-	}
-
-	if enabledChecks == "" {
-		enabledChecks = "version"
-	}
-
-	output := &simpleOutput{}
-	registry := preflight.NewRegistry(output)
-
-	checks := strings.Split(enabledChecks, ",")
-	fmt.Printf("Running preflight checks: %s\n", strings.Join(checks, ", "))
-	fmt.Printf("Current version: %s\n", currentVersion)
-	fmt.Printf("Target version: %s\n", targetVersion)
-
-	for _, checkName := range checks {
-		checkName = strings.TrimSpace(checkName)
-
-		switch checkName {
-		case "version":
-			versionCheck := preflight.NewVersionCompatibilityCheck(currentVersion, targetVersion)
-			registry.AddCheck(versionCheck)
-
-		case "resources":
-			resourceCheck := preflight.NewKubernetesResourceCheck("")
-			registry.AddCheck(resourceCheck)
-
-		case "installation":
-			helmClient := helm.NewHelmClient()
-			helmInterface := &helm.Impl{
-				Helm: helmClient,
-			}
-
-			installationCheck := preflight.NewRadiusInstallationCheck(helmInterface, "")
-			registry.AddCheck(installationCheck)
-
-		default:
-			fmt.Fprintf(os.Stderr, "Error: Unknown check '%s'\n", checkName)
-			os.Exit(1)
-		}
-	}
-
-	results, err := registry.RunChecks(ctx)
+	err := cmd.Execute()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Preflight checks failed: %v\n", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo // this is OK inside the main function.
 	}
-
-	fmt.Printf("All preflight checks completed successfully\n")
-
-	for _, result := range results {
-		if result.Success {
-			fmt.Printf("✓ %s: %s\n", result.Check.Name(), result.Message)
-		} else if result.Severity == preflight.SeverityWarning {
-			fmt.Printf("⚠ %s: %s\n", result.Check.Name(), result.Message)
-		}
-	}
-
-	os.Exit(0)
 }

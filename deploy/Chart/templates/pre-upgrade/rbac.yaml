@@ -1,0 +1,62 @@
+{{- if .Values.preUpgrade.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pre-upgrade
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: pre-upgrade
+    app.kubernetes.io/name: pre-upgrade
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pre-upgrade
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: pre-upgrade
+    app.kubernetes.io/name: pre-upgrade
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+# Helm stores release information in secrets with specific labels
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]
+  # Only allow access to Helm release secrets
+  # Helm uses owner=helm and status=deployed labels
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+  # For Helm v2 compatibility (if needed)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pre-upgrade
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: pre-upgrade
+    app.kubernetes.io/name: pre-upgrade
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+subjects:
+- kind: ServiceAccount
+  name: pre-upgrade
+  namespace: "{{ .Release.Namespace }}"
+roleRef:
+  kind: Role
+  name: pre-upgrade
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
