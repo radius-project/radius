@@ -141,10 +141,6 @@ preUpgrade:
   image: ghcr.io/radius-project/pre-upgrade
   # Default tag uses Chart AppVersion.
   # tag: latest
-  imagePullPolicy: IfNotPresent
-  # Current version of Radius to upgrade from
-  # This should be set by the user or detected from the current installation
-  currentVersion: ""
   # Individual preflight checks configuration
   checks:
     # Version compatibility check
