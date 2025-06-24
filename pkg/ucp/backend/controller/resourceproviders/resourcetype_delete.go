@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -103,8 +104,12 @@ func (c *ResourceTypeDeleteController) apiVersions(ctx context.Context, rawID st
 		return nil, err
 	}
 
+	resourceProviderName := id.TypeSegments()[0].Name // e.g., "Applications.Test"
+	resourceTypeName := id.TypeSegments()[1].Name     // e.g., "testResources"
+	expectedPrefix := id.String()                     // Resource Type ID
+
 	results := []*v20231001preview.APIVersionResource{}
-	pager := client.NewListPager(id.FindScope(resources_radius.PlaneTypeRadius), id.TypeSegments()[0].Name, id.TypeSegments()[1].Name, nil)
+	pager := client.NewListPager(id.FindScope(resources_radius.PlaneTypeRadius), resourceProviderName, resourceTypeName, nil)
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
@@ -113,7 +118,15 @@ func (c *ResourceTypeDeleteController) apiVersions(ctx context.Context, rawID st
 		results = append(results, page.Value...)
 	}
 
-	return results, nil
+	// Filter to only API versions for this specific resource type
+	filteredResults := []*v20231001preview.APIVersionResource{}
+	for _, apiVersion := range results {
+		if apiVersion.ID != nil && strings.HasPrefix(*apiVersion.ID, expectedPrefix) {
+			filteredResults = append(filteredResults, apiVersion)
+		}
+	}
+
+	return filteredResults, nil
 }
 
 func (c *ResourceTypeDeleteController) deleteApiVersion(ctx context.Context, apiVersion *v20231001preview.APIVersionResource) error {
@@ -122,12 +135,13 @@ func (c *ResourceTypeDeleteController) deleteApiVersion(ctx context.Context, api
 		return err
 	}
 
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	client, err := v20231001preview.NewAPIVersionsClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.Connection))
 	if err != nil {
 		return err
 	}
 
-	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Beginning cascading delete of API version", "id", id.String())
 	poller, err := client.BeginDelete(
 		ctx,
