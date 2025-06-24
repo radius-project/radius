@@ -92,10 +92,10 @@ func Test_Run(t *testing.T) {
 
 		err = runner.Run(context.Background())
 		require.NoError(t, err) // Verify the correct log messages are output
-		expectedLogs := []interface{}{
+		expectedLogs := []any{
 			output.LogOutput{
-				Format: "Registering resource type %q for resource provider %q.",
-				Params: []interface{}{"testResources", "MyCompany.Resources4"},
+				Format: "Creating resource type %s/%s.",
+				Params: []any{"MyCompany.Resources4", "testResources"},
 			},
 		}
 
@@ -140,8 +140,8 @@ func Test_Run(t *testing.T) {
 
 		// Verify the correct log message is output
 		expectedLog := output.LogOutput{
-			Format: "No resource type name provided. Registering all resource types in the manifest for resource provider %q.",
-			Params: []interface{}{"MyCompany.Resources4"},
+			Format: "No resource type name provided. Creating all resource types in the manifest.",
+			Params: nil,
 		}
 		require.Contains(t, outputSink.Writes, expectedLog, "Expected log message for no resource type name provided")
 
@@ -183,18 +183,18 @@ func Test_Run(t *testing.T) {
 		_ = runner.Run(context.Background())
 
 		// Verify the correct log messages are output
-		expectedLogs := []interface{}{
+		expectedLogs := []any{
 			output.LogOutput{
-				Format: "Registering resource type %q for resource provider %q.",
-				Params: []interface{}{"testResources", "MyCompany.Resources4"},
+				Format: "Creating resource type %s/%s.",
+				Params: []any{"MyCompany.Resources4", "testResources"},
 			},
 		}
 
 		// Verify no other ersource types are registered
-		shouldNotContain := []interface{}{
+		shouldNotContain := []any{
 			output.LogOutput{
-				Format: "Registering resource type %q for resource provider %q.",
-				Params: []interface{}{"prodResources", "MyCompany.Resources4"},
+				Format: "Creating resource type %s/%s.",
+				Params: []any{"MyCompany.Resources4", "prodResources"},
 			},
 		}
 
