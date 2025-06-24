@@ -1,4 +1,4 @@
-{{- if .Values.preUpgrade.enabled }}
+{{- if .Values.preupgrade.enabled }}
 {{- $appversion := include "radius.versiontag" . }}
 apiVersion: batch/v1
 kind: Job
@@ -14,8 +14,8 @@ metadata:
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
-  backoffLimit: {{ .Values.preUpgrade.backoffLimit }}
-  ttlSecondsAfterFinished: {{ .Values.preUpgrade.ttlSecondsAfterFinished }}
+  backoffLimit: {{ .Values.preupgrade.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.preupgrade.ttlSecondsAfterFinished }}
   template:
     metadata:
       labels:
@@ -27,19 +27,19 @@ spec:
       serviceAccountName: pre-upgrade
       containers:
       - name: pre-upgrade
-        image: "{{ .Values.preUpgrade.image }}:{{ .Values.preUpgrade.tag | default $appversion }}"
+        image: "{{ .Values.preupgrade.image }}:{{ .Values.preupgrade.tag | default $appversion }}"
         imagePullPolicy: 'Always'
         env:
         - name: TARGET_VERSION
           value: "{{ .Chart.AppVersion }}"
         - name: ENABLED_CHECKS
           value: "{{- $checks := list -}}
-          {{- if .Values.preUpgrade.checks.version -}}
+          {{- if .Values.preupgrade.checks.version -}}
             {{- $checks = append $checks "version" -}}
           {{- end -}}
           {{- join "," $checks -}}"
         resources:
-          {{- toYaml .Values.preUpgrade.resources | nindent 10 }}
+          {{- toYaml .Values.preupgrade.resources | nindent 10 }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
