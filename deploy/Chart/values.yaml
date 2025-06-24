@@ -146,7 +146,6 @@ preupgrade:
     # Version compatibility check
     version: true
   # Job configuration
-  backoffLimit: 2
   ttlSecondsAfterFinished: 300
   # Resource requirements
   resources:
