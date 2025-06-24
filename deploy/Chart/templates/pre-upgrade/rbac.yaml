@@ -1,4 +1,4 @@
-{{- if .Values.preUpgrade.enabled }}
+{{- if .Values.preupgrade.enabled }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
