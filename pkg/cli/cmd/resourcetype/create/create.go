@@ -48,7 +48,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	Input can be passed in using a JSON or YAML file using the --from-file option.
 
 	resource-type name argument is optional. If specified, only the specified type is created/updated. 
-	If not specified, all resource types in the referred file are created/updated.
+	If not specified, all resource types in the referenced file are created/updated.
 	`,
 		Example: `
 # Create a resource type from YAML file
@@ -57,10 +57,10 @@ rad resource-type create myType --from-file /path/to/input.yaml
 # Create a resource type from JSON file
 rad resource-type create myType --from-file /path/to/input.json
 
-# Create all resource type from YAML file
+# Create all resource types from YAML file
 rad resource-type create  --from-file /path/to/input.yaml
  
-# Create all resource type from JSON file
+# Create all resource types from JSON file
 rad resource-type create myType --from-file /path/to/input.json
 `,
 		Args: cobra.MaximumNArgs(1),
@@ -145,14 +145,14 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.ResourceTypeName == "" {
-		r.Output.LogInfo("No resource type name provided. Registering all resource types in the manifest for resource provider %q.", r.ResourceProvider.Name)
+		r.Output.LogInfo("No resource type name provided. Creating all resource types in the manifest.")
 
 		registerErr := manifest.RegisterResourceProvider(ctx, r.UCPClientFactory, "local", *r.ResourceProvider, r.Logger)
 		if registerErr != nil {
 			return registerErr
 		}
 	} else {
-		r.Output.LogInfo("Registering resource type %q for resource provider %q.", r.ResourceTypeName, r.ResourceProvider.Name)
+		r.Output.LogInfo("Creating resource type %s/%s.", r.ResourceProvider.Name, r.ResourceTypeName)
 
 		_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
 		if err != nil {
