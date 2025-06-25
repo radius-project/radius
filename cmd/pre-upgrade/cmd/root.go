@@ -46,11 +46,9 @@ func Execute() error {
 		},
 	}
 
-	// Get enabled checks from environment variable
 	enabledChecksEnv := os.Getenv("ENABLED_CHECKS")
 	enabledChecks := strings.Split(enabledChecksEnv, ",")
 
-	// Get targetVersion from environment variable
 	targetVersion := os.Getenv("TARGET_VERSION")
 
 	options := preupgrade.Options{
