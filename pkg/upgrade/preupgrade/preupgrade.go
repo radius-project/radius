@@ -35,8 +35,9 @@ type Config struct {
 
 // Options holds the options for preflight checks
 type Options struct {
-	EnabledChecks []string
-	TargetVersion string
+	EnabledChecks  []string
+	TargetVersion  string
+	CurrentVersion string
 }
 
 // RunPreflightChecks executes all configured preflight checks
@@ -52,10 +53,16 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 		case "version":
 			state, err := config.Helm.CheckRadiusInstall(config.KubeContext)
 			if err != nil {
+				fmt.Printf("RunPreflightChecks: CheckRadiusInstall failed: %v\n", err)
 				return fmt.Errorf("failed to check current Radius installation: %w", err)
 			}
 
-			versionCheck := preflight.NewVersionCompatibilityCheck(state.RadiusVersion, options.TargetVersion)
+			currentVersion := state.RadiusVersion
+			fmt.Printf("RunPreflightChecks: CheckRadiusInstall returned RadiusVersion=%s\n", currentVersion)
+
+			fmt.Printf("RunPreflightChecks: Current RadiusVersion=%s, TargetVersion=%s\n", currentVersion, options.TargetVersion)
+
+			versionCheck := preflight.NewVersionCompatibilityCheck(currentVersion, options.TargetVersion)
 			registry.AddCheck(versionCheck)
 
 		default:
