@@ -88,9 +88,6 @@ type TLSConfig struct {
 	// CACertificate represents a reference to a CA certificate secret.
 	CACertificate *SecretReference `json:"caCertificate,omitempty"`
 
-	// ClientCertificate represents client certificate configuration for mTLS.
-	ClientCertificate *ClientCertConfig `json:"clientCertificate,omitempty"`
-
 	// SkipVerify allows insecure connections (skip TLS verification).
 	SkipVerify bool `json:"skipVerify,omitempty"`
 }
@@ -102,12 +99,6 @@ type SecretReference struct {
 
 	// Key is the key in the secret.
 	Key string `json:"key"`
-}
-
-// ClientCertConfig represents client certificate configuration.
-type ClientCertConfig struct {
-	// Secret is the secret containing both certificate and key.
-	Secret string `json:"secret"`
 }
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
@@ -164,8 +155,8 @@ type SecretData struct {
 	Data map[string]string `json:"data"`
 }
 
-// PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.
-// outputs map is the value of "result" output from the recipe deployment response.
+// PrepareRecipeResponse populates the recipe output from the recipe deployment output stored in the "result" object.
+// resultValue is the value of the "result" output from the recipe deployment response.
 func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error {
 	b, err := json.Marshal(&resultValue)
 	if err != nil {

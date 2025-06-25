@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -170,7 +171,8 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return fmt.Errorf("error getting kubernetes client: %w", err)
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).
+		ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 	if err != nil {
 		// Continue with the delete flow for all errors other than backend not found.
 		// If it is an intermittent error then the delete flow will fail and should be retried from the client.
@@ -252,9 +254,7 @@ func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terra
 	if len(recipeConfig.Env.AdditionalProperties) > 0 {
 		envVarUpdate = true
 		logger.Info("Setting environment variables from recipe config", "count", len(recipeConfig.Env.AdditionalProperties))
-		for key, value := range recipeConfig.Env.AdditionalProperties {
-			envVars[key] = value
-		}
+		maps.Copy(envVars, recipeConfig.Env.AdditionalProperties)
 	}
 
 	if len(recipeConfig.EnvSecrets) > 0 {
@@ -278,47 +278,21 @@ func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terra
 		}
 	}
 
-	// Handle TLS configuration if present in the recipe definition
-	if options.EnvRecipe != nil && options.EnvRecipe.TLS != nil {
-		logger.Info("Configuring TLS settings for recipe")
+	// Add TLS environment variables
+	err := addTLSEnvironmentVariables(ctx, options, envVars)
+	if err != nil {
+		return fmt.Errorf("failed to add TLS environment variables: %w", err)
+	}
+
+	// Add registry environment variables if provided
+	if len(options.RegistryEnv) > 0 {
 		envVarUpdate = true
-
-		// Skip verification if requested
-		if options.EnvRecipe.TLS.SkipVerify {
-			logger.Info("TLS verification will be skipped")
-			envVars["GIT_SSL_NO_VERIFY"] = "true"
-		}
-
-		// Only write certificate files if certificates are actually provided
-		if options.EnvRecipe.TLS.CACertificate != nil || options.EnvRecipe.TLS.ClientCertificate != nil {
-			certPaths, err := writeTLSCertificates(ctx, tf.WorkingDir(), options.EnvRecipe.TLS, options.Secrets)
-			if err != nil {
-				return fmt.Errorf("failed to write TLS certificates: %w", err)
-			}
-
-			// CA certificate configuration
-			if certPaths != nil && certPaths.CAPath != "" {
-				logger.Info("Configuring custom CA certificate", "path", certPaths.CAPath)
-				// Git respects this
-				envVars["GIT_SSL_CAINFO"] = certPaths.CAPath
-				// General HTTPS tools (including go-getter used by Terraform)
-				envVars["SSL_CERT_FILE"] = certPaths.CAPath
-				// Some tools prefer CURL_CA_BUNDLE
-				envVars["CURL_CA_BUNDLE"] = certPaths.CAPath
-			}
-
-			// Client certificate configuration for mTLS
-			if certPaths != nil && certPaths.ClientCertPath != "" && certPaths.ClientKeyPath != "" {
-				logger.Info("Configuring client certificates for mTLS", "certPath", certPaths.ClientCertPath)
-				// Git client certificate support
-				envVars["GIT_SSL_CERT"] = certPaths.ClientCertPath
-				envVars["GIT_SSL_KEY"] = certPaths.ClientKeyPath
-			}
-		}
+		logger.Info("Adding registry environment variables", "count", len(options.RegistryEnv))
+		maps.Copy(envVars, options.RegistryEnv)
 	}
 
 	// Set the environment variables for the Terraform process
-	if envVarUpdate {
+	if envVarUpdate || len(envVars) > 0 {
 		if err := tf.SetEnv(envVars); err != nil {
 			return fmt.Errorf("failed to set environment variables: %w", err)
 		}
@@ -331,10 +305,47 @@ func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terra
 type tlsCertificatePaths struct {
 	// CAPath is the path to the CA certificate file
 	CAPath string
-	// ClientCertPath is the path to the client certificate file
-	ClientCertPath string
-	// ClientKeyPath is the path to the client key file
-	ClientKeyPath string
+}
+
+func addTLSEnvironmentVariables(
+	ctx context.Context,
+	options Options,
+	envVars map[string]string,
+) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Handle TLS configuration if present in the recipe definition
+	if options.EnvRecipe != nil && options.EnvRecipe.TLS != nil {
+		logger.Info("Configuring TLS settings for recipe")
+
+		// Skip verification if requested
+		if options.EnvRecipe.TLS.SkipVerify {
+			logger.Info("TLS verification will be skipped")
+			envVars["GIT_SSL_NO_VERIFY"] = "true"
+		}
+
+		// Only write certificate files if certificates are actually provided
+		if options.EnvRecipe.TLS.CACertificate != nil {
+			// Note: We need the working directory, but don't have access to tf here
+			// This function is called before tf is fully initialized, so we use RootDir
+			workingDir := filepath.Join(options.RootDir, executionSubDir)
+			certPaths, err := writeTLSCertificates(ctx, workingDir, options.EnvRecipe.TLS, options.Secrets)
+			if err != nil {
+				return fmt.Errorf("failed to write TLS certificates: %w", err)
+			}
+
+			// CA certificate configuration
+			if certPaths != nil && certPaths.CAPath != "" {
+				logger.Info("Configuring custom CA certificate for Git operations", "path", certPaths.CAPath)
+				// Git respects GIT_SSL_CAINFO for Git-based module sources
+				envVars["GIT_SSL_CAINFO"] = certPaths.CAPath
+				// Note: We only set GIT_SSL_CAINFO here to avoid conflicts with registry CA certificates
+				// Registry operations use SSL_CERT_FILE which is set separately in registry configuration
+			}
+		}
+	}
+
+	return nil
 }
 
 // writeTLSCertificates extracts certificate data from secrets and writes them to temporary files
@@ -344,7 +355,7 @@ func writeTLSCertificates(ctx context.Context, workingDir string, tls *recipes.T
 	}
 
 	// Return nil if no certificates are configured
-	if tls.CACertificate == nil && tls.ClientCertificate == nil {
+	if tls.CACertificate == nil {
 		return nil, nil
 	}
 
@@ -373,37 +384,6 @@ func writeTLSCertificates(ctx context.Context, workingDir string, tls *recipes.T
 		paths.CAPath = filepath.Join(tlsDir, "ca.crt")
 		if err := os.WriteFile(paths.CAPath, []byte(caData), 0600); err != nil {
 			return nil, fmt.Errorf("failed to write CA certificate: %w", err)
-		}
-	}
-
-	// Handle client certificate for mTLS
-	if tls.ClientCertificate != nil {
-		logger.Info("Writing client certificates", "source", tls.ClientCertificate.Secret)
-		secretData, ok := secrets[tls.ClientCertificate.Secret]
-		if !ok {
-			return nil, fmt.Errorf("client certificate secret not found: %s", tls.ClientCertificate.Secret)
-		}
-
-		// Client certificate
-		certData, ok := secretData.Data["certificate"]
-		if !ok {
-			return nil, fmt.Errorf("certificate key not found in client certificate secret %s", tls.ClientCertificate.Secret)
-		}
-
-		paths.ClientCertPath = filepath.Join(tlsDir, "client.crt")
-		if err := os.WriteFile(paths.ClientCertPath, []byte(certData), 0600); err != nil {
-			return nil, fmt.Errorf("failed to write client certificate: %w", err)
-		}
-
-		// Client key
-		keyData, ok := secretData.Data["key"]
-		if !ok {
-			return nil, fmt.Errorf("key not found in client certificate secret %s", tls.ClientCertificate.Secret)
-		}
-
-		paths.ClientKeyPath = filepath.Join(tlsDir, "client.key")
-		if err := os.WriteFile(paths.ClientKeyPath, []byte(keyData), 0600); err != nil {
-			return nil, fmt.Errorf("failed to write client key: %w", err)
 		}
 	}
 
@@ -485,8 +465,6 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 			return "", err
 		}
 	}
-
-	// Add more configurations here.
 
 	// Ensure that we need to save the configuration after adding providers and recipecontext.
 	if err := tfConfig.Save(ctx, workingDir); err != nil {

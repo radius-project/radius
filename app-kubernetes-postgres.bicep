@@ -65,7 +65,6 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
             }
           }
           tls: {
-            // skipVerify: true
             caCertificate: {
               source: registryTLSCerts.id
               key: 'server.crt'

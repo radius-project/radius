@@ -145,6 +145,7 @@ func (s *CustomRegistrySource) Validate() error {
 		"hasVersion", s.Version != nil,
 		"hasArchiveURL", s.ArchiveURL != "",
 		"hasBaseURL", s.BaseURL != "")
+
 	return nil
 }
 

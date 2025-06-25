@@ -66,6 +66,10 @@ type Options struct {
 	// Secrets represents a map of secrets required for recipe execution.
 	// The map's key represents the secretStoreIDs while the value represents the secret data.
 	Secrets map[string]recipes.SecretData
+
+	// RegistryEnv represents environment variables needed for Terraform registry configuration.
+	// These are passed from the driver layer to be included in the Terraform execution environment.
+	RegistryEnv map[string]string
 }
 
 // NewTerraform creates a working directory for Terraform execution and new Terraform executor with Terraform logs enabled.
@@ -131,15 +135,6 @@ func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][
 			cert := envConfig.RecipeConfig.Terraform.Registry.TLS.CACertificate
 			addSecretKeys(registrySecretIDs, cert.Source, cert.Key, &mu)
 		}
-
-		// Handle registry TLS client certificate
-		if envConfig.RecipeConfig.Terraform.Registry.TLS != nil &&
-			envConfig.RecipeConfig.Terraform.Registry.TLS.ClientCertificate != nil {
-			clientCert := envConfig.RecipeConfig.Terraform.Registry.TLS.ClientCertificate
-			// Client cert needs certificate and key
-			addSecretKeys(registrySecretIDs, clientCert.Secret, "certificate", &mu)
-			addSecretKeys(registrySecretIDs, clientCert.Secret, "key", &mu)
-		}
 	}
 
 	// Handle version authentication for binary downloads
@@ -157,15 +152,6 @@ func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][
 			envConfig.RecipeConfig.Terraform.Version.TLS.CACertificate != nil {
 			cert := envConfig.RecipeConfig.Terraform.Version.TLS.CACertificate
 			addSecretKeys(registrySecretIDs, cert.Source, cert.Key, &mu)
-		}
-
-		// Handle TLS client certificate
-		if envConfig.RecipeConfig.Terraform.Version.TLS != nil &&
-			envConfig.RecipeConfig.Terraform.Version.TLS.ClientCertificate != nil {
-			clientCert := envConfig.RecipeConfig.Terraform.Version.TLS.ClientCertificate
-			// Client cert needs certificate and key
-			addSecretKeys(registrySecretIDs, clientCert.Secret, "certificate", &mu)
-			addSecretKeys(registrySecretIDs, clientCert.Secret, "key", &mu)
 		}
 	}
 

@@ -132,14 +132,14 @@ model TerraformRegistryConfig {
 
 @doc("Configuration for Terraform binary installation. Allows specifying a version and an optional custom base URL for the releases API.")
 model TerraformVersionConfig {
-  @doc("Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example: '1.7.0'")
-  version?: string;
-
   @doc("Optional direct URL to a Terraform binary archive (.zip file). If set, Terraform will be downloaded directly from this URL instead of using the releases API. This takes precedence over releasesApiBaseUrl. The URL must point to a valid Terraform release archive. Example: 'https://my-mirror.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip'")
   releasesArchiveUrl?: string;
 
   @doc("Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site. The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'")
   releasesApiBaseUrl?: string;
+
+  @doc("Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example: '1.7.0'")
+  version?: string;
 
   @doc("TLS configuration for connecting to the releases API.")
   tls?: TLSConfig;
@@ -152,9 +152,6 @@ model TerraformVersionConfig {
 model TLSConfig {
   @doc("Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.")
   caCertificate?: SecretReference;
-
-  @doc("Client certificate configuration for mutual TLS (mTLS) authentication.")
-  clientCertificate?: ClientCertConfig;
 
   @doc("Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING: This makes the connection vulnerable to man-in-the-middle attacks.")
   skipVerify?: boolean = false;
@@ -179,29 +176,11 @@ model AuthConfig {
 model GitAuthConfig {
   @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
   pat?: Record<SecretConfig>;
-
-  @doc("SSH key configuration used to authenticate to Git platforms.")
-  ssh?: Record<SSHConfig>;
 }
 
 @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
 model SecretConfig {
   @doc("The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified.")
-  secret?: string;
-}
-
-@doc("SSH key configuration used to authenticate to Git platforms.")
-model SSHConfig {
-  @doc("The ID of an Applications.Core/SecretStore resource containing the SSH private key and optional passphrase. The secret store must have a secret named 'private-key' containing the SSH private key. A secret named 'passphrase' is optional, containing the passphrase for the private key. A secret named 'known-hosts' is optional, containing the known hosts entries.")
-  secret?: string;
-
-  @doc("Specifies whether to perform strict host key checking. When false, accepts any host key (insecure but sometimes necessary for private Git servers). Defaults to true.")
-  strictHostKeyChecking?: boolean = true;
-}
-
-@doc("Client certificate (mTLS) configuration for authentication.")
-model ClientCertConfig {
-  @doc("The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have secrets named 'cert' and 'key' containing the PEM-encoded certificate and private key. A secret named 'passphrase' is optional, containing the passphrase for the private key.")
   secret?: string;
 }
 

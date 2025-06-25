@@ -89,32 +89,22 @@ func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, t
 		return err
 	}
 
-	// Check if this is SSH authentication
-	if privateKey, ok := secrets["privateKey"]; ok {
-		logger.Info("Configuring SSH authentication for Git", "templatePath", templatePath)
-		// Handle SSH authentication
-		err = configureSSHAuth(workingDirectory, privateKey, secrets)
-		if err != nil {
-			logger.Error(err, "Failed to configure SSH authentication")
-			return fmt.Errorf("failed to configure SSH authentication: %w", err)
-		}
-		logger.Info("SSH authentication configured successfully")
-	} else {
-		logger.Info("Configuring PAT/username authentication for Git", "templatePath", templatePath, "hasUsername", secrets["username"] != "")
-		// Handle PAT/username authentication
-		urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
-		if err != nil {
-			return err
-		}
-
-		cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", urlConfigKey, urlConfigValue)
-		_, err = cmd.Output()
-		if err != nil {
-			logger.Error(err, "Failed to add git config")
-			return errors.New("failed to add git config")
-		}
-		logger.Info("Git authentication configured successfully")
+	logger.Info("Configuring PAT/username authentication for Git",
+		"templatePath", templatePath,
+		"hasUsername", secrets["username"] != "")
+	// Handle PAT/username authentication
+	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
+	if err != nil {
+		return err
 	}
+
+	cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", urlConfigKey, urlConfigValue)
+	_, err = cmd.Output()
+	if err != nil {
+		logger.Error(err, "Failed to add git config")
+		return errors.New("failed to add git config")
+	}
+	logger.Info("Git authentication configured successfully")
 
 	return nil
 }

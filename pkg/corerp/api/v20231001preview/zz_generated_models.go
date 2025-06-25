@@ -291,14 +291,6 @@ type CertificateObjectProperties struct {
 	Version *string
 }
 
-// ClientCertConfig - Client certificate (mTLS) configuration for authentication.
-type ClientCertConfig struct {
-// The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have
-// secrets named 'cert' and 'key' containing the PEM-encoded certificate and
-// private key. A secret named 'passphrase' is optional, containing the passphrase for the private key.
-	Secret *string
-}
-
 // ConnectionProperties - Connection Properties
 type ConnectionProperties struct {
 // REQUIRED; The source of the connection
@@ -891,9 +883,6 @@ type GatewayTLS struct {
 type GitAuthConfig struct {
 // Personal Access Token (PAT) configuration used to authenticate to Git platforms.
 	Pat map[string]*SecretConfig
-
-// SSH key configuration used to authenticate to Git platforms.
-	SSH map[string]*SSHConfig
 }
 
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
@@ -1338,19 +1327,6 @@ type RuntimesProperties struct {
 	Kubernetes *KubernetesRuntimeProperties
 }
 
-// SSHConfig - SSH key configuration used to authenticate to Git platforms.
-type SSHConfig struct {
-// The ID of an Applications.Core/SecretStore resource containing the SSH private key and optional passphrase. The secret
-// store must have a secret named 'private-key' containing the SSH private key. A
-// secret named 'passphrase' is optional, containing the passphrase for the private key. A secret named 'known-hosts' is optional,
-// containing the known hosts entries.
-	Secret *string
-
-// Specifies whether to perform strict host key checking. When false, accepts any host key (insecure but sometimes necessary
-// for private Git servers). Defaults to true.
-	StrictHostKeyChecking *bool
-}
-
 // SecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
 type SecretConfig struct {
 // The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret
@@ -1539,9 +1515,6 @@ type TLSConfig struct {
 // Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a
 // key named 'ca-cert' with the PEM-encoded certificate bundle.
 	CaCertificate *SecretReference
-
-// Client certificate configuration for mutual TLS (mTLS) authentication.
-	ClientCertificate *ClientCertConfig
 
 // Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING:
 // This makes the connection vulnerable to man-in-the-middle attacks.

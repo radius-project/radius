@@ -73,9 +73,6 @@ type AuthConfig struct {
 type GitAuthConfig struct {
 	// Personal Access Token (PAT) configuration used to authenticate to Git platforms.
 	PAT map[string]SecretConfig `json:"pat,omitempty"`
-
-	// SSH key configuration used to authenticate to Git platforms.
-	SSH map[string]SSHConfig `json:"ssh,omitempty"`
 }
 
 // SecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
@@ -84,20 +81,6 @@ type SecretConfig struct {
 	// store must have a secret named 'pat', containing the PAT value. A secret named
 	// 'username' is optional, containing the username associated with the pat. By default no username is specified.
 	Secret string `json:"secret,omitempty"`
-}
-
-// SSHConfig - SSH key configuration used to authenticate to Git platforms.
-type SSHConfig struct {
-	// The ID of an Applications.Core/SecretStore resource containing the SSH private key and optional passphrase.
-	// The secret store must have a secret named 'private-key' containing the SSH private key.
-	// A secret named 'passphrase' is optional, containing the passphrase for the private key.
-	// A secret named 'known-hosts' is optional, containing the known hosts entries.
-	Secret string `json:"secret,omitempty"`
-
-	// StrictHostKeyChecking specifies whether to perform strict host key checking.
-	// When false, accepts any host key (insecure but sometimes necessary for private Git servers).
-	// Defaults to true.
-	StrictHostKeyChecking bool `json:"strictHostKeyChecking,omitempty"`
 }
 
 // ClientCertConfig - Client certificate (mTLS) configuration for authentication.
@@ -194,9 +177,6 @@ type TLSConfig struct {
 	// CACertificate is a reference to a secret containing a custom CA certificate bundle to use for TLS verification.
 	// The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.
 	CACertificate *SecretReference `json:"caCertificate,omitempty"`
-
-	// ClientCertificate is the client certificate configuration for mutual TLS (mTLS) authentication.
-	ClientCertificate *ClientCertConfig `json:"clientCertificate,omitempty"`
 
 	// SkipVerify allows insecure connections (skip TLS verification).
 	// This is strongly discouraged in production environments.

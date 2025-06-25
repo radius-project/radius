@@ -42,19 +42,24 @@ const (
 // RegistryConfig tracks the configuration created for cleanup
 type RegistryConfig struct {
 	ConfigPath string
-	EnvVars    []string
-	TempFiles  []string // Track temporary certificate files for cleanup
+	EnvVars    map[string]string
+	TempFiles  []string
 }
 
 // ConfigureTerraformRegistry sets up Terraform registry configuration for private registries.
 // It creates a .terraformrc file with the registry mirror and sets up authentication via environment variables.
 // Returns a RegistryConfig struct that tracks created resources for cleanup.
-func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuration, secrets map[string]recipes.SecretData, dirPath string) (*RegistryConfig, error) {
+func ConfigureTerraformRegistry(
+	ctx context.Context,
+	config recipes.Configuration,
+	secrets map[string]recipes.SecretData,
+	dirPath string,
+) (*RegistryConfig, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Initialize the registry config to track what we create
 	regConfig := &RegistryConfig{
-		EnvVars: []string{},
+		EnvVars: make(map[string]string),
 	}
 
 	// Check if registry mirror configuration exists
@@ -122,12 +127,15 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 			return nil, fmt.Errorf("token not found in secret store %q", secretStoreID)
 		}
 
-		// Set environment variable directly with the token (no encoding)
-		envVar, err := setTerraformTokenEnv(host, string(token))
+		// Use environment variables instead of credentials blocks in the config file.
+		// This is necessary when using self-signed certificates, as Terraform requires
+		// the TLS configuration to be set via environment variables for the initial
+		// connection to download the provider index files.
+		envVarName, envVarValue, err := getTerraformTokenEnv(host, string(token))
 		if err != nil {
-			return nil, fmt.Errorf("failed to set token for %s: %w", host, err)
+			return nil, fmt.Errorf("failed to prepare token for %s: %w", host, err)
 		}
-		regConfig.EnvVars = append(regConfig.EnvVars, envVar)
+		regConfig.EnvVars[envVarName] = envVarValue
 
 		logger.Info("Configured token authentication",
 			"host", host,
@@ -143,12 +151,12 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 					continue // Skip empty or duplicate hosts
 				}
 
-				// Set environment variable
-				envVar, err := setTerraformTokenEnv(additionalHost, string(token))
+				// Get environment variable name and value
+				envVarName, envVarValue, err := getTerraformTokenEnv(additionalHost, string(token))
 				if err != nil {
-					return nil, fmt.Errorf("failed to set token for additional host %s: %w", additionalHost, err)
+					return nil, fmt.Errorf("failed to prepare token for additional host %s: %w", additionalHost, err)
 				}
-				regConfig.EnvVars = append(regConfig.EnvVars, envVar)
+				regConfig.EnvVars[envVarName] = envVarValue
 
 				logger.Info("Added token authentication for additional host", "host", additionalHost)
 			}
@@ -159,8 +167,7 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 	if config.RecipeConfig.Terraform.Registry.TLS != nil {
 		logger.Info("Registry TLS configuration found",
 			"skipVerify", config.RecipeConfig.Terraform.Registry.TLS.SkipVerify,
-			"hasCACert", config.RecipeConfig.Terraform.Registry.TLS.CACertificate != nil,
-			"hasClientCert", config.RecipeConfig.Terraform.Registry.TLS.ClientCertificate != nil)
+			"hasCACert", config.RecipeConfig.Terraform.Registry.TLS.CACertificate != nil)
 
 		if config.RecipeConfig.Terraform.Registry.TLS.SkipVerify && parsedURL.Scheme == "https" {
 			logger.Info("WARNING: TLS skipVerify is set but Terraform does not support skipping TLS verification for provider mirrors. " +
@@ -204,63 +211,18 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 
 				regConfig.TempFiles = append(regConfig.TempFiles, caCertPath)
 
-				// Set environment variables for CA certificate
-				if err := os.Setenv("SSL_CERT_FILE", caCertPath); err != nil {
-					return nil, fmt.Errorf("failed to set SSL_CERT_FILE: %w", err)
-				}
-				regConfig.EnvVars = append(regConfig.EnvVars, "SSL_CERT_FILE")
+				// Store environment variables for CA certificate
+				// These are used for HTTPS operations during provider downloads from the registry
+				// Note: Git operations use GIT_SSL_CAINFO which is set separately in recipe TLS config
+				regConfig.EnvVars["SSL_CERT_FILE"] = caCertPath
+				regConfig.EnvVars["CURL_CA_BUNDLE"] = caCertPath
 
-				if err := os.Setenv("CURL_CA_BUNDLE", caCertPath); err != nil {
-					return nil, fmt.Errorf("failed to set CURL_CA_BUNDLE: %w", err)
-				}
-				regConfig.EnvVars = append(regConfig.EnvVars, "CURL_CA_BUNDLE")
-
-				logger.Info("CA certificate configured", "path", caCertPath)
+				logger.Info("CA certificate configured for registry operations", "path", caCertPath)
 			} else {
 				return nil, fmt.Errorf("CA certificate not found in secret store %q with key %q", secretStoreID, secretKey)
 			}
 		} else {
 			return nil, fmt.Errorf("secret store %q not found for CA certificate", secretStoreID)
-		}
-	}
-
-	// Handle client certificate if provided (for mTLS)
-	if config.RecipeConfig.Terraform.Registry.TLS != nil &&
-		config.RecipeConfig.Terraform.Registry.TLS.ClientCertificate != nil &&
-		config.RecipeConfig.Terraform.Registry.TLS.ClientCertificate.Secret != "" {
-
-		logger.Info("Configuring client certificate for registry mTLS")
-
-		// Get client certificate and key from secrets
-		secretStoreID := config.RecipeConfig.Terraform.Registry.TLS.ClientCertificate.Secret
-
-		if secretData, ok := secrets[secretStoreID]; ok {
-			// Write client certificate
-			if clientCert, ok := secretData.Data["certificate"]; ok {
-				clientCertPath := filepath.Join(dirPath, "terraform-registry-client.pem")
-				if err := os.WriteFile(clientCertPath, []byte(clientCert), 0600); err != nil {
-					return nil, fmt.Errorf("failed to write client certificate: %w", err)
-				}
-				regConfig.TempFiles = append(regConfig.TempFiles, clientCertPath)
-
-				// Note: Terraform doesn't directly support client certificates via environment variables
-				// This would require proxy with mTLS support or system-level configuration
-				logger.Info("Client certificate written", "path", clientCertPath,
-					"note", "Client certificates may require additional configuration")
-			}
-
-			// Write client key
-			if clientKey, ok := secretData.Data["key"]; ok {
-				clientKeyPath := filepath.Join(dirPath, "terraform-registry-client-key.pem")
-				if err := os.WriteFile(clientKeyPath, []byte(clientKey), 0600); err != nil {
-					return nil, fmt.Errorf("failed to write client key: %w", err)
-				}
-				regConfig.TempFiles = append(regConfig.TempFiles, clientKeyPath)
-
-				logger.Info("Client key written", "path", clientKeyPath)
-			}
-		} else {
-			return nil, fmt.Errorf("secret store %q not found for client certificate", secretStoreID)
 		}
 	}
 
@@ -286,13 +248,10 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 	}
 	regConfig.ConfigPath = terraformRCPath
 
-	// Set the TF_CLI_CONFIG_FILE environment variable to point to our config file
-	if err := os.Setenv(EnvTerraformCLIConfigFile, terraformRCPath); err != nil {
-		return nil, fmt.Errorf("failed to set %s environment variable: %w", EnvTerraformCLIConfigFile, err)
-	}
-	regConfig.EnvVars = append(regConfig.EnvVars, EnvTerraformCLIConfigFile)
+	// Store the TF_CLI_CONFIG_FILE environment variable
+	regConfig.EnvVars[EnvTerraformCLIConfigFile] = terraformRCPath
 
-	logger.Info("Set environment variable for Terraform config",
+	logger.Info("Prepared environment variable for Terraform config",
 		"variable", EnvTerraformCLIConfigFile,
 		"value", terraformRCPath)
 
@@ -303,17 +262,14 @@ func ConfigureTerraformRegistry(ctx context.Context, config recipes.Configuratio
 	return regConfig, nil
 }
 
-// setTerraformTokenEnv sets the TF_TOKEN_* environment variable for a hostname
-// Returns the environment variable name for tracking
-func setTerraformTokenEnv(hostname string, token string) (string, error) {
+// getTerraformTokenEnv prepares the TF_TOKEN_* environment variable for a hostname
+// Returns the environment variable name and value
+func getTerraformTokenEnv(hostname string, token string) (string, string, error) {
 	// Replace dots and colons with underscores in hostname (for ports)
 	envHostname := strings.ReplaceAll(hostname, ".", "_")
 	envHostname = strings.ReplaceAll(envHostname, ":", "_")
 	envVarName := fmt.Sprintf("TF_TOKEN_%s", envHostname)
-	if err := os.Setenv(envVarName, token); err != nil {
-		return "", fmt.Errorf("failed to set environment variable %s: %w", envVarName, err)
-	}
-	return envVarName, nil
+	return envVarName, token, nil
 }
 
 // CleanupTerraformRegistryConfig removes the Terraform registry configuration and unsets environment variables
@@ -324,15 +280,9 @@ func CleanupTerraformRegistryConfig(ctx context.Context, config *RegistryConfig)
 
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Unset all tracked environment variables
-	for _, envVar := range config.EnvVars {
-		if err := os.Unsetenv(envVar); err != nil {
-			// Log the error but continue cleanup
-			logger.Error(err, "Failed to unset environment variable", "variable", envVar)
-		} else {
-			logger.Info("Unset environment variable", "variable", envVar)
-		}
-	}
+	// Note: We no longer unset environment variables since they are now passed
+	// to the Terraform process rather than set on the current process.
+	// The cleanup is handled by the tfexec library when the process terminates.
 
 	// Remove the config file if it exists
 	if config.ConfigPath != "" {

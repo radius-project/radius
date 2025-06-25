@@ -214,67 +214,6 @@ func TestConfigureSSHAuth(t *testing.T) {
 	}
 }
 
-func TestAddSecretsToGitConfig_WithSSH(t *testing.T) {
-	tests := []struct {
-		name         string
-		secrets      map[string]string
-		templatePath string
-		expectSSH    bool
-		expectPAT    bool
-	}{
-		{
-			name: "SSH authentication",
-			secrets: map[string]string{
-				"privateKey":            "-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key\n-----END OPENSSH PRIVATE KEY-----",
-				"strictHostKeyChecking": "false",
-			},
-			templatePath: "git::git@github.com:myorg/myrepo.git",
-			expectSSH:    true,
-			expectPAT:    false,
-		},
-		{
-			name: "PAT authentication",
-			secrets: map[string]string{
-				"username": "test-user",
-				"pat":      "ghp_token123",
-			},
-			templatePath: "git::https://github.com/myorg/myrepo",
-			expectSSH:    false,
-			expectPAT:    true,
-		},
-		{
-			name:         "No authentication for non-git URL",
-			secrets:      map[string]string{},
-			templatePath: "https://github.com/myorg/myrepo",
-			expectSSH:    false,
-			expectPAT:    false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tmpdir := t.TempDir()
-
-			err := addSecretsToGitConfig(tmpdir, tt.secrets, tt.templatePath)
-			require.NoError(t, err)
-
-			if tt.expectSSH {
-				// Verify SSH key file exists
-				sshKeyPath := filepath.Join(tmpdir, ".ssh", "id_rsa")
-				require.FileExists(t, sshKeyPath)
-			}
-
-			if tt.expectPAT {
-				// Verify git config contains URL rewrite
-				gitConfigPath := filepath.Join(tmpdir, ".git", "config")
-				gitConfigContent, err := os.ReadFile(gitConfigPath)
-				require.NoError(t, err)
-				require.Contains(t, string(gitConfigContent), "insteadOf")
-			}
-		})
-	}
-}
-
 func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
 	tmpGitConfigFile := filepath.Join(tmpdir, ".gitconfig")
 

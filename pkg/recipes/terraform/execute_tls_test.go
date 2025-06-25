@@ -18,139 +18,179 @@ package terraform
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_writeTLSCertificates(t *testing.T) {
+func TestAddTLSEnvironmentVariables(t *testing.T) {
 	tests := []struct {
-		name    string
-		tls     *recipes.TLSConfig
-		secrets map[string]recipes.SecretData
-		wantErr bool
-		verify  func(t *testing.T, paths *tlsCertificatePaths, workingDir string)
+		name           string
+		options        Options
+		existingEnvVars map[string]string
+		expectedEnvVars map[string]string
+		wantErr        bool
 	}{
 		{
-			name: "nil TLS config",
-			tls:  nil,
-			verify: func(t *testing.T, paths *tlsCertificatePaths, workingDir string) {
-				require.Nil(t, paths)
-			},
-		},
-		{
-			name: "skip verify only without certificates",
-			tls: &recipes.TLSConfig{
-				SkipVerify: true,
-			},
-			verify: func(t *testing.T, paths *tlsCertificatePaths, workingDir string) {
-				require.Nil(t, paths)
-				// Verify no .tls directory was created
-				tlsDir := filepath.Join(workingDir, ".tls")
-				_, err := os.Stat(tlsDir)
-				require.True(t, os.IsNotExist(err))
-			},
-		},
-		{
-			name: "CA certificate only",
-			tls: &recipes.TLSConfig{
-				CACertificate: &recipes.SecretReference{
-					Source: "/secrets/ca",
-					Key:    "cert",
-				},
-			},
-			secrets: map[string]recipes.SecretData{
-				"/secrets/ca": {
-					Data: map[string]string{
-						"cert": "-----BEGIN CERTIFICATE-----\nMIIDQTCCAimgAwIBAgITBmyfz5m...\n-----END CERTIFICATE-----",
+			name: "recipe TLS with skipVerify only",
+			options: Options{
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					TLS: &recipes.TLSConfig{
+						SkipVerify: true,
 					},
 				},
 			},
-			verify: func(t *testing.T, paths *tlsCertificatePaths, workingDir string) {
-				require.NotNil(t, paths)
-				require.NotEmpty(t, paths.CAPath)
-				require.FileExists(t, paths.CAPath)
-
-				content, err := os.ReadFile(paths.CAPath)
-				require.NoError(t, err)
-				require.Contains(t, string(content), "BEGIN CERTIFICATE")
+			existingEnvVars: map[string]string{},
+			expectedEnvVars: map[string]string{
+				"GIT_SSL_NO_VERIFY": "true",
 			},
 		},
 		{
-			name: "client certificates for mTLS",
-			tls: &recipes.TLSConfig{
-				ClientCertificate: &recipes.ClientCertConfig{
-					Secret: "/secrets/client",
+			name: "recipe TLS with CA certificate",
+			options: Options{
+				RootDir: "/tmp/test",
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					TLS: &recipes.TLSConfig{
+						CACertificate: &recipes.SecretReference{
+							Source: "secret-store-1",
+							Key:    "ca-cert",
+						},
+					},
 				},
-			},
-			secrets: map[string]recipes.SecretData{
-				"/secrets/client": {
-					Data: map[string]string{
-						"certificate": "-----BEGIN CERTIFICATE-----\nMIIDQTCCAimgAwIBAgITBmyfz5m...\n-----END CERTIFICATE-----",
-						"key":         "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQE...\n-----END PRIVATE KEY-----",
+				Secrets: map[string]recipes.SecretData{
+					"secret-store-1": {
+						Data: map[string]string{
+							"ca-cert": "-----BEGIN CERTIFICATE-----\ntest-ca-cert\n-----END CERTIFICATE-----",
+						},
 					},
 				},
 			},
-			verify: func(t *testing.T, paths *tlsCertificatePaths, workingDir string) {
-				require.NotNil(t, paths)
-				require.NotEmpty(t, paths.ClientCertPath)
-				require.NotEmpty(t, paths.ClientKeyPath)
-				require.FileExists(t, paths.ClientCertPath)
-				require.FileExists(t, paths.ClientKeyPath)
-
-				// Verify file permissions
-				info, err := os.Stat(paths.ClientKeyPath)
-				require.NoError(t, err)
-				require.Equal(t, os.FileMode(0600), info.Mode().Perm())
+			existingEnvVars: map[string]string{},
+			expectedEnvVars: map[string]string{
+				"GIT_SSL_CAINFO": "/tmp/test/.terraform/modules/.tls/ca.crt",
 			},
 		},
 		{
-			name: "missing secret source",
-			tls: &recipes.TLSConfig{
-				CACertificate: &recipes.SecretReference{
-					Source: "/secrets/missing",
-					Key:    "cert",
+			name: "recipe TLS with both skipVerify and CA certificate",
+			options: Options{
+				RootDir: "/tmp/test",
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					TLS: &recipes.TLSConfig{
+						SkipVerify: true,
+						CACertificate: &recipes.SecretReference{
+							Source: "secret-store-1",
+							Key:    "ca-cert",
+						},
+					},
 				},
-			},
-			secrets: map[string]recipes.SecretData{},
-			wantErr: true,
-		},
-		{
-			name: "missing secret key",
-			tls: &recipes.TLSConfig{
-				CACertificate: &recipes.SecretReference{
-					Source: "/secrets/ca",
-					Key:    "missing",
-				},
-			},
-			secrets: map[string]recipes.SecretData{
-				"/secrets/ca": {
-					Data: map[string]string{
-						"cert": "data",
+				Secrets: map[string]recipes.SecretData{
+					"secret-store-1": {
+						Data: map[string]string{
+							"ca-cert": "-----BEGIN CERTIFICATE-----\ntest-ca-cert\n-----END CERTIFICATE-----",
+						},
 					},
 				},
 			},
-			wantErr: true,
+			existingEnvVars: map[string]string{},
+			expectedEnvVars: map[string]string{
+				"GIT_SSL_NO_VERIFY": "true",
+				"GIT_SSL_CAINFO":    "/tmp/test/.terraform/modules/.tls/ca.crt",
+			},
+		},
+		{
+			name: "recipe TLS with registry env vars present",
+			options: Options{
+				RootDir: "/tmp/test",
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					TLS: &recipes.TLSConfig{
+						CACertificate: &recipes.SecretReference{
+							Source: "secret-store-1",
+							Key:    "ca-cert",
+						},
+					},
+				},
+				Secrets: map[string]recipes.SecretData{
+					"secret-store-1": {
+						Data: map[string]string{
+							"ca-cert": "-----BEGIN CERTIFICATE-----\ntest-ca-cert\n-----END CERTIFICATE-----",
+						},
+					},
+				},
+			},
+			existingEnvVars: map[string]string{
+				"SSL_CERT_FILE":   "/tmp/registry-ca.crt",
+				"CURL_CA_BUNDLE":  "/tmp/registry-ca.crt",
+			},
+			expectedEnvVars: map[string]string{
+				"SSL_CERT_FILE":   "/tmp/registry-ca.crt", // Registry vars preserved
+				"CURL_CA_BUNDLE":  "/tmp/registry-ca.crt", // Registry vars preserved
+				"GIT_SSL_CAINFO":  "/tmp/test/.terraform/modules/.tls/ca.crt", // Recipe uses different var
+			},
+		},
+		{
+			name: "no TLS configuration",
+			options: Options{
+				EnvRecipe: &recipes.EnvironmentDefinition{},
+			},
+			existingEnvVars: map[string]string{
+				"EXISTING_VAR": "value",
+			},
+			expectedEnvVars: map[string]string{
+				"EXISTING_VAR": "value",
+			},
+		},
+		{
+			name: "missing CA certificate in secrets",
+			options: Options{
+				RootDir: "/tmp/test",
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					TLS: &recipes.TLSConfig{
+						CACertificate: &recipes.SecretReference{
+							Source: "secret-store-1",
+							Key:    "ca-cert",
+						},
+					},
+				},
+				Secrets: map[string]recipes.SecretData{},
+			},
+			existingEnvVars: map[string]string{},
+			wantErr:        true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			workingDir := t.TempDir()
+			// Create a copy of existing env vars
+			envVars := make(map[string]string)
+			for k, v := range tt.existingEnvVars {
+				envVars[k] = v
+			}
 
-			paths, err := writeTLSCertificates(context.Background(), workingDir, tt.tls, tt.secrets)
+			// Call the function
+			err := addTLSEnvironmentVariables(context.Background(), tt.options, envVars)
+
 			if tt.wantErr {
 				require.Error(t, err)
 				return
 			}
 
 			require.NoError(t, err)
-			if tt.verify != nil {
-				tt.verify(t, paths, workingDir)
+
+			// Check that expected env vars are set
+			for k, v := range tt.expectedEnvVars {
+				assert.Contains(t, envVars, k)
+				// For file paths, just check they end with the expected filename
+				if k == "GIT_SSL_CAINFO" {
+					assert.Contains(t, envVars[k], ".tls/ca.crt")
+				} else {
+					assert.Equal(t, v, envVars[k])
+				}
 			}
+
+			// Ensure no unexpected env vars were added
+			assert.Equal(t, len(tt.expectedEnvVars), len(envVars))
 		})
 	}
 }

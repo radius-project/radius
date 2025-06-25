@@ -98,13 +98,13 @@ func TestConfigureTerraformRegistry(t *testing.T) {
 	require.True(t, strings.Contains(configContent, `exclude = ["*/*/*"]`),
 		"Config file should contain exclude pattern")
 
-	// Verify environment variable was set
-	require.Equal(t, configFilePath, os.Getenv(EnvTerraformCLIConfigFile),
-		"TF_CLI_CONFIG_FILE environment variable should be set")
+	// Verify environment variables are in the map (not set on process)
+	require.Equal(t, configFilePath, regConfig.EnvVars[EnvTerraformCLIConfigFile],
+		"TF_CLI_CONFIG_FILE should be in EnvVars map")
 
-	// Verify TF_TOKEN_* environment variable was set with raw token value
-	require.Equal(t, token, os.Getenv("TF_TOKEN_terraform_example_com"),
-		"TF_TOKEN_* environment variable should be set with raw token value")
+	// Verify TF_TOKEN_* environment variable is in the map with raw token value
+	require.Equal(t, token, regConfig.EnvVars["TF_TOKEN_terraform_example_com"],
+		"TF_TOKEN_* should be in EnvVars map with raw token value")
 
 	// Verify the RegistryConfig tracks the environment variables
 	require.Contains(t, regConfig.EnvVars, EnvTerraformCLIConfigFile,
@@ -115,10 +115,7 @@ func TestConfigureTerraformRegistry(t *testing.T) {
 	// Test cleanup
 	err = CleanupTerraformRegistryConfig(ctx, regConfig)
 	require.NoError(t, err, "Cleanup should not return an error")
-	require.Empty(t, os.Getenv(EnvTerraformCLIConfigFile),
-		"TF_CLI_CONFIG_FILE should be unset after cleanup")
-	require.Empty(t, os.Getenv("TF_TOKEN_terraform_example_com"),
-		"TF_TOKEN_* should be unset after cleanup")
+	// Note: We no longer set/unset process environment variables
 }
 
 func TestConfigureTerraformRegistry_NoAuth(t *testing.T) {
@@ -162,10 +159,10 @@ func TestConfigureTerraformRegistry_NoAuth(t *testing.T) {
 	require.True(t, strings.Contains(configContent, `url     = "https://terraform.example.com"`),
 		"Config file should contain the normalized mirror URL")
 
-	// Verify only TF_CLI_CONFIG_FILE is tracked (no token env vars)
+	// Verify only TF_CLI_CONFIG_FILE is tracked (no token env vars since we use credentials block)
 	require.Len(t, regConfig.EnvVars, 1, "Should only track one environment variable")
-	require.Equal(t, EnvTerraformCLIConfigFile, regConfig.EnvVars[0],
-		"Should only track TF_CLI_CONFIG_FILE")
+	require.Contains(t, regConfig.EnvVars, EnvTerraformCLIConfigFile,
+		"Should track TF_CLI_CONFIG_FILE")
 }
 
 func TestConfigureTerraformRegistry_NoRegistry(t *testing.T) {
@@ -233,7 +230,7 @@ func TestConfigureTerraformRegistry_WithPort(t *testing.T) {
 	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
 
 	// Verify the correct token env var name with port (colons replaced with underscores)
-	require.Equal(t, token, os.Getenv("TF_TOKEN_terraform_example_com_8443"),
+	require.Equal(t, token, regConfig.EnvVars["TF_TOKEN_terraform_example_com_8443"],
 		"TF_TOKEN_* should include port with colons replaced by underscores")
 
 	// Read the generated file
@@ -245,8 +242,6 @@ func TestConfigureTerraformRegistry_WithPort(t *testing.T) {
 	require.True(t, strings.Contains(configContent, `url     = "https://terraform.example.com:8443"`),
 		"Config file should contain the normalized mirror URL with port")
 
-	// Cleanup
-	require.NoError(t, os.Unsetenv("TF_TOKEN_terraform_example_com_8443"))
 }
 
 func TestConfigureTerraformRegistry_MissingToken(t *testing.T) {
@@ -337,14 +332,14 @@ func TestConfigureTerraformRegistry_AdditionalHosts(t *testing.T) {
 	// Verify environment variables for all hosts
 
 	// Check primary host
-	require.Equal(t, token, os.Getenv("TF_TOKEN_my-registry_example_com"),
-		"TF_TOKEN_* should be set for primary host")
+	require.Equal(t, token, regConfig.EnvVars["TF_TOKEN_my-registry_example_com"],
+		"TF_TOKEN_* should be in map for primary host")
 
 	// Check additional hosts
-	require.Equal(t, token, os.Getenv("TF_TOKEN_original-registry_example_com"),
-		"TF_TOKEN_* should be set for first additional host")
-	require.Equal(t, token, os.Getenv("TF_TOKEN_backup-registry_example_com"),
-		"TF_TOKEN_* should be set for second additional host")
+	require.Equal(t, token, regConfig.EnvVars["TF_TOKEN_original-registry_example_com"],
+		"TF_TOKEN_* should be in map for first additional host")
+	require.Equal(t, token, regConfig.EnvVars["TF_TOKEN_backup-registry_example_com"],
+		"TF_TOKEN_* should be in map for second additional host")
 
 	// Verify all env vars are tracked
 	require.Len(t, regConfig.EnvVars, 4, "Should track all environment variables")
@@ -356,11 +351,6 @@ func TestConfigureTerraformRegistry_AdditionalHosts(t *testing.T) {
 	// Cleanup
 	err = CleanupTerraformRegistryConfig(ctx, regConfig)
 	require.NoError(t, err)
-
-	// Verify all env vars are cleaned up
-	require.Empty(t, os.Getenv("TF_TOKEN_my-registry_example_com"))
-	require.Empty(t, os.Getenv("TF_TOKEN_original-registry_example_com"))
-	require.Empty(t, os.Getenv("TF_TOKEN_backup-registry_example_com"))
 }
 
 func TestConfigureTerraformRegistry_InvalidURL(t *testing.T) {
@@ -404,11 +394,8 @@ func TestCleanupTerraformRegistryConfig_FileRemoval(t *testing.T) {
 	// Create config
 	regConfig := &RegistryConfig{
 		ConfigPath: configPath,
-		EnvVars:    []string{"TEST_VAR"},
+		EnvVars:    map[string]string{"TEST_VAR": "test-value"},
 	}
-
-	// Set a test env var
-	require.NoError(t, os.Setenv("TEST_VAR", "test-value"))
 
 	// Call cleanup
 	ctx := context.Background()
@@ -419,6 +406,6 @@ func TestCleanupTerraformRegistryConfig_FileRemoval(t *testing.T) {
 	_, err = os.Stat(configPath)
 	require.True(t, os.IsNotExist(err), "Config file should be removed")
 
-	// Verify env var is unset
-	require.Empty(t, os.Getenv("TEST_VAR"), "Environment variable should be unset")
+	// Note: We no longer unset environment variables since they are now passed
+	// to the Terraform process rather than set on the current process
 }

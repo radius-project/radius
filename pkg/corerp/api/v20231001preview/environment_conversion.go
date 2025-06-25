@@ -204,18 +204,6 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 						}
 						recipeConfig.Terraform.Authentication.Git.PAT = p
 					}
-
-					// Handle SSH configuration
-					if gitConfig.SSH != nil {
-						s := map[string]datamodel.SSHConfig{}
-						for k, v := range gitConfig.SSH {
-							s[k] = datamodel.SSHConfig{
-								Secret:                to.String(v.Secret),
-								StrictHostKeyChecking: to.Bool(v.StrictHostKeyChecking),
-							}
-						}
-						recipeConfig.Terraform.Authentication.Git.SSH = s
-					}
 				}
 			}
 
@@ -280,13 +268,6 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 						recipeConfig.Terraform.Version.TLS.CACertificate = &datamodel.SecretReference{
 							Source: to.String(config.Terraform.Version.TLS.CaCertificate.Source),
 							Key:    to.String(config.Terraform.Version.TLS.CaCertificate.Key),
-						}
-					}
-
-					// Convert client certificate if present
-					if config.Terraform.Version.TLS.ClientCertificate != nil {
-						recipeConfig.Terraform.Version.TLS.ClientCertificate = &datamodel.ClientCertConfig{
-							Secret: to.String(config.Terraform.Version.TLS.ClientCertificate.Secret),
 						}
 					}
 				}
@@ -356,17 +337,6 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 							}
 						}
 					}
-
-					// Handle SSH configuration
-					if config.Terraform.Authentication.Git.SSH != nil {
-						recipeConfig.Terraform.Authentication.Git.SSH = map[string]*SSHConfig{}
-						for k, v := range config.Terraform.Authentication.Git.SSH {
-							recipeConfig.Terraform.Authentication.Git.SSH[k] = &SSHConfig{
-								Secret:                to.Ptr(v.Secret),
-								StrictHostKeyChecking: to.Ptr(v.StrictHostKeyChecking),
-							}
-						}
-					}
 				}
 			}
 
@@ -432,13 +402,6 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 						recipeConfig.Terraform.Version.TLS.CaCertificate = &SecretReference{
 							Source: to.Ptr(config.Terraform.Version.TLS.CACertificate.Source),
 							Key:    to.Ptr(config.Terraform.Version.TLS.CACertificate.Key),
-						}
-					}
-
-					// Convert client certificate if present
-					if config.Terraform.Version.TLS.ClientCertificate != nil {
-						recipeConfig.Terraform.Version.TLS.ClientCertificate = &ClientCertConfig{
-							Secret: to.Ptr(config.Terraform.Version.TLS.ClientCertificate.Secret),
 						}
 					}
 				}
@@ -828,12 +791,6 @@ func toTLSConfigDatamodel(tls *TLSConfig) *datamodel.TLSConfig {
 		}
 	}
 
-	if tls.ClientCertificate != nil {
-		result.ClientCertificate = &datamodel.ClientCertConfig{
-			Secret: to.String(tls.ClientCertificate.Secret),
-		}
-	}
-
 	return result
 }
 
@@ -850,12 +807,6 @@ func fromTLSConfigDatamodel(tls *datamodel.TLSConfig) *TLSConfig {
 		result.CaCertificate = &SecretReference{
 			Source: to.Ptr(tls.CACertificate.Source),
 			Key:    to.Ptr(tls.CACertificate.Key),
-		}
-	}
-
-	if tls.ClientCertificate != nil {
-		result.ClientCertificate = &ClientCertConfig{
-			Secret: to.Ptr(tls.ClientCertificate.Secret),
 		}
 	}
 

@@ -205,28 +205,6 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			},
 		},
 		{
-			name: "version with TLS client certificate",
-			envConfig: recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Terraform: datamodel.TerraformConfigProperties{
-						Version: &datamodel.TerraformVersionConfig{
-							Version:            "1.7.0",
-							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
-							TLS: &datamodel.TLSConfig{
-								ClientCertificate: &datamodel.ClientCertConfig{
-									Secret: "/secret/store/tls-client",
-								},
-							},
-						},
-					},
-				},
-			},
-			wantLength: 1,
-			wantKeys: map[string][]string{
-				"/secret/store/tls-client": {"certificate", "key"},
-			},
-		},
-		{
 			name: "token auth with additional hosts",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{

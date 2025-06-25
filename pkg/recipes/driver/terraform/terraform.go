@@ -99,6 +99,12 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		}
 	}()
 
+	// Extract registry environment variables to pass to the executor
+	var registryEnv map[string]string
+	if regConfig != nil && regConfig.EnvVars != nil {
+		registryEnv = regConfig.EnvVars
+	}
+
 	// Get the secret store ID associated with the git private terraform repository source.
 	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
 	if err != nil {
@@ -117,6 +123,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 		Secrets:        opts.Secrets,
+		RegistryEnv:    registryEnv,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -162,6 +169,12 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 		}
 	}()
 
+	// Extract registry environment variables to pass to the executor
+	var registryEnv map[string]string
+	if regConfig != nil && regConfig.EnvVars != nil {
+		registryEnv = regConfig.EnvVars
+	}
+
 	// Get the secret store ID associated with the git private terraform repository source.
 	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
 	if err != nil {
@@ -180,6 +193,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 		Secrets:        opts.Secrets,
+		RegistryEnv:    registryEnv,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -300,6 +314,12 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		}
 	}()
 
+	// Extract registry environment variables to pass to the executor
+	var registryEnv map[string]string
+	if regConfig != nil && regConfig.EnvVars != nil {
+		registryEnv = regConfig.EnvVars
+	}
+
 	// Get the secret store ID associated with the git private terraform repository source.
 	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
 	if err != nil {
@@ -316,6 +336,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		RootDir:        requestDirPath,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		RegistryEnv:    registryEnv,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -342,28 +363,7 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 	}
 
 	if secretStoreID != "" {
-		// Determine the authentication type to request appropriate keys
-		url, err := GetGitURL(definition.TemplatePath)
-		if err == nil {
-			hostname := strings.TrimPrefix(url.Hostname(), "www.")
-			authType := GetGitAuthType(envConfig, hostname)
-
-			switch authType {
-			case "ssh":
-				// Request SSH-specific keys
-				secretStoreIDResourceKeys[secretStoreID] = []string{
-					SSHSecretKey_PrivateKey,
-					SSHSecretKey_Passphrase,
-					SSHSecretKey_StrictHostKeyChecking,
-				}
-			case "pat":
-				// Request PAT-specific keys
-				secretStoreIDResourceKeys[secretStoreID] = []string{
-					PrivateRegistrySecretKey_Pat,
-					PrivateRegistrySecretKey_Username,
-				}
-			}
-		}
+		secretStoreIDResourceKeys[secretStoreID] = []string{PrivateRegistrySecretKey_Pat, PrivateRegistrySecretKey_Username}
 	}
 
 	// Get the secret IDs and associated keys in provider configuration and environment variables

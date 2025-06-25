@@ -658,33 +658,6 @@ func (c *CertificateObjectProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ClientCertConfig.
-func (c ClientCertConfig) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "secret", c.Secret)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ClientCertConfig.
-func (c *ClientCertConfig) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", c, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "secret":
-				err = unpopulate(val, "Secret", &c.Secret)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", c, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type ConnectionProperties.
 func (c ConnectionProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -2070,7 +2043,6 @@ func (g *GatewayTLS) UnmarshalJSON(data []byte) error {
 func (g GitAuthConfig) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "pat", g.Pat)
-	populate(objectMap, "ssh", g.SSH)
 	return json.Marshal(objectMap)
 }
 
@@ -2085,9 +2057,6 @@ func (g *GitAuthConfig) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "pat":
 				err = unpopulate(val, "Pat", &g.Pat)
-			delete(rawMsg, key)
-		case "ssh":
-				err = unpopulate(val, "SSH", &g.SSH)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -3189,37 +3158,6 @@ func (r *RuntimesProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type SSHConfig.
-func (s SSHConfig) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "secret", s.Secret)
-	populate(objectMap, "strictHostKeyChecking", s.StrictHostKeyChecking)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type SSHConfig.
-func (s *SSHConfig) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", s, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "secret":
-				err = unpopulate(val, "Secret", &s.Secret)
-			delete(rawMsg, key)
-		case "strictHostKeyChecking":
-				err = unpopulate(val, "StrictHostKeyChecking", &s.StrictHostKeyChecking)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", s, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type SecretConfig.
 func (s SecretConfig) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -3657,7 +3595,6 @@ func (t *TCPHealthProbeProperties) UnmarshalJSON(data []byte) error {
 func (t TLSConfig) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "caCertificate", t.CaCertificate)
-	populate(objectMap, "clientCertificate", t.ClientCertificate)
 	populate(objectMap, "skipVerify", t.SkipVerify)
 	return json.Marshal(objectMap)
 }
@@ -3673,9 +3610,6 @@ func (t *TLSConfig) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "caCertificate":
 				err = unpopulate(val, "CaCertificate", &t.CaCertificate)
-			delete(rawMsg, key)
-		case "clientCertificate":
-				err = unpopulate(val, "ClientCertificate", &t.ClientCertificate)
 			delete(rawMsg, key)
 		case "skipVerify":
 				err = unpopulate(val, "SkipVerify", &t.SkipVerify)
