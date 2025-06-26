@@ -68,13 +68,13 @@ func GetConnectionNameandSourceIDs[P any](resource P) (map[string]string, error)
 	}
 
 	if resourceProperties != nil && resourceProperties["connections"] != nil {
-		connections, ok := resourceProperties["connections"].(map[string]interface{})
+		connections, ok := resourceProperties["connections"].(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("failed to get connections from resource properties: %w", err)
 		}
 
 		for connectionName, connectionProperties := range connections {
-			if source, ok := connectionProperties.(map[string]interface{})["source"]; ok {
+			if source, ok := connectionProperties.(map[string]any)["source"]; ok {
 				if resourceID, ok := source.(string); ok {
 					_, err := resources.Parse(resourceID) // Validate the resource ID format
 					if err != nil {

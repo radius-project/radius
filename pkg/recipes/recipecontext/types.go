@@ -54,7 +54,7 @@ type Resource struct {
 	// Properties represents the properties of the resource.
 	Properties map[string]any `json:"properties,omitempty"`
 
-	// Connections reqpresent a map of connections to other resources.
+	// Connections represent a map of connections to other resources.
 	// The key is the connection name, and the value is a map of connected resource properties.
 	// We enrich the recipe context with this, allowing the recipe to access properties of connected resources using the following format:
 	// context.resource.connections.[connection-name].[connected-resource-property]

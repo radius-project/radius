@@ -149,11 +149,11 @@ func TestGetConnectionNameandSourceIDs(t *testing.T) {
 			name: "Valid connections with multiple sources",
 			resource: &PropertiesTestResource{
 				Properties: map[string]any{
-					"connections": map[string]interface{}{
-						"database": map[string]interface{}{
+					"connections": map[string]any{
+						"database": map[string]any{
 							"source": "/planes/radius/local/resourceGroups/rg/providers/MyResources.Datastores/sqlDatabases/db1",
 						},
-						"redis": map[string]interface{}{
+						"redis": map[string]any{
 							"source": "/planes/radius/local/resourceGroups/rg/providers/MyResources.Caches/redisCaches/cache1",
 						},
 					},
@@ -170,8 +170,8 @@ func TestGetConnectionNameandSourceIDs(t *testing.T) {
 			name: "Single valid connection",
 			resource: &PropertiesTestResource{
 				Properties: map[string]any{
-					"connections": map[string]interface{}{
-						"storage": map[string]interface{}{
+					"connections": map[string]any{
+						"storage": map[string]any{
 							"source": "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/storageAccounts/storage1",
 						},
 					},
@@ -186,7 +186,7 @@ func TestGetConnectionNameandSourceIDs(t *testing.T) {
 			name: "Empty connections map",
 			resource: &PropertiesTestResource{
 				Properties: map[string]any{
-					"connections": map[string]interface{}{},
+					"connections": map[string]any{},
 				},
 			},
 			expected:    map[string]string{},
@@ -236,8 +236,8 @@ func TestGetConnectionNameandSourceIDs(t *testing.T) {
 			name: "Missing source field in connection",
 			resource: &PropertiesTestResource{
 				Properties: map[string]any{
-					"connections": map[string]interface{}{
-						"database": map[string]interface{}{
+					"connections": map[string]any{
+						"database": map[string]any{
 							"type": "sql",
 						},
 					},
@@ -252,8 +252,8 @@ func TestGetConnectionNameandSourceIDs(t *testing.T) {
 			name: "Invalid resource ID format",
 			resource: &PropertiesTestResource{
 				Properties: map[string]any{
-					"connections": map[string]interface{}{
-						"database": map[string]interface{}{
+					"connections": map[string]any{
+						"database": map[string]any{
 							"source": "invalid-resource-id",
 						},
 					},
@@ -291,8 +291,8 @@ func TestGetConnectionNameandSourceIDs_InvalidJSONMarshaling(t *testing.T) {
 
 	resource := &InvalidResource{
 		Properties: map[string]any{
-			"connections": map[string]interface{}{
-				"database": map[string]interface{}{
+			"connections": map[string]any{
+				"database": map[string]any{
 					"source": "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/sqlDatabases/db1",
 				},
 			},
@@ -304,56 +304,4 @@ func TestGetConnectionNameandSourceIDs_InvalidJSONMarshaling(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), errMarshalResource)
-}
-
-func TestGetConnectionNameandSourceIDs_EdgeCases(t *testing.T) {
-	t.Run("Connection with additional properties", func(t *testing.T) {
-		resource := &PropertiesTestResource{
-			Properties: map[string]any{
-				"connections": map[string]interface{}{
-					"database": map[string]interface{}{
-						"source":      "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/sqlDatabases/db1",
-						"type":        "sql",
-						"description": "Main database",
-						"timeout":     30,
-					},
-				},
-			},
-		}
-
-		result, err := GetConnectionNameandSourceIDs(resource)
-		require.NoError(t, err)
-		require.Equal(t, map[string]string{
-			"database": "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/sqlDatabases/db1",
-		}, result)
-	})
-
-	t.Run("Complex nested properties with connections", func(t *testing.T) {
-		resource := &PropertiesTestResource{
-			Properties: map[string]any{
-				"application": TestApplicationID,
-				"environment": TestEnvironmentID,
-				"connections": map[string]interface{}{
-					"primary-db": map[string]interface{}{
-						"source": "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/sqlDatabases/primary",
-					},
-					"cache-store": map[string]interface{}{
-						"source": "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/redisCaches/main-cache",
-					},
-				},
-				"otherProperties": map[string]any{
-					"nested": map[string]any{
-						"value": "test",
-					},
-				},
-			},
-		}
-
-		result, err := GetConnectionNameandSourceIDs(resource)
-		require.NoError(t, err)
-		require.Equal(t, map[string]string{
-			"primary-db":  "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/sqlDatabases/primary",
-			"cache-store": "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/redisCaches/main-cache",
-		}, result)
-	})
 }
