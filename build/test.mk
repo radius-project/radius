@@ -63,7 +63,7 @@ test-functional-all: test-functional-ucp test-functional-kubernetes test-functio
 
 .PHONY: test-functional-all-noncloud
 # Run all functional tests that do not require cloud resources
-test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud ## Runs all functional tests that do not require cloud resources
+test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud test-functional-upgrade-noncloud ## Runs all functional tests that do not require cloud resources
 
 .PHONY: test-functional-all-cloud
 # Run all functional tests that require cloud resources
@@ -129,9 +129,13 @@ test-functional-datastoresrp-noncloud: ## Runs Datastores RP functional tests th
 
 .PHONY: test-functional-dynamicrp-noncloud
 test-functional-dynamicrp-noncloud: ## Runs Dynamic RP functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
 
-.PHONY: test-functional-samples
+test-functional-upgrade: test-functional-upgrade-noncloud ## Runs all Upgrade functional tests
+
+test-functional-upgrade-noncloud: ## Runs Upgrade functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/upgrade/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+	
 test-functional-samples: test-functional-samples-noncloud ## Runs all Samples functional tests
 
 .PHONY: test-functional-samples-noncloud
