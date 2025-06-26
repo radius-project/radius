@@ -198,8 +198,6 @@ func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *
 }
 
 func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespace string) (bool, string, error) {
-	fmt.Printf("QueryRelease: kubeContext=%s, releaseName=%s, namespace=%s\n", kubeContext, releaseName, namespace)
-	
 	flags := genericclioptions.ConfigFlags{
 		Namespace: &namespace,
 		Context:   &kubeContext,
@@ -207,57 +205,44 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 
 	helmConf, err := initHelmConfig(&flags)
 	if err != nil {
-		fmt.Printf("QueryRelease: initHelmConfig failed: %v\n", err)
 		return false, "", fmt.Errorf("failed to get helm config, err: %w", err)
 	}
-	fmt.Printf("QueryRelease: helmConf initialized successfully\n")
 
 	// First try to get the release directly using Get instead of List
 	// This is more reliable during pre-upgrade hooks
 	getClient := helm.NewGet(helmConf)
 	directRelease, getErr := getClient.Run(releaseName)
 	if getErr == nil && directRelease != nil {
-		fmt.Printf("QueryRelease: Successfully got release directly: Name=%s, Status=%s\n", directRelease.Name, directRelease.Info.Status)
 		if directRelease.Chart != nil && directRelease.Chart.Metadata != nil {
 			version := directRelease.Chart.Metadata.Version
-			fmt.Printf("QueryRelease: Found version via Get: %s\n", version)
 			return true, version, nil
 		}
-	} else if getErr != nil {
-		fmt.Printf("QueryRelease: Failed to get release directly: %v\n", getErr)
 	}
 
 	// Fall back to List if Get doesn't work
 	releases, err := helmAction.HelmClient.RunHelmList(helmConf, releaseName)
 	if err != nil {
-		fmt.Printf("QueryRelease: RunHelmList failed: %v\n", err)
 		return false, "", fmt.Errorf("failed to run helm list, err: %w", err)
 	}
-	fmt.Printf("QueryRelease: RunHelmList returned %d releases\n", len(releases))
 
 	if len(releases) == 0 {
-		fmt.Printf("QueryRelease: No releases found for %s in namespace %s\n", releaseName, namespace)
 		return false, "", nil
 	}
 
 	if len(releases) > 1 {
-		fmt.Printf("QueryRelease: Multiple releases found: %d\n", len(releases))
 		return false, "", fmt.Errorf("multiple deployed releases found with the same name: %s", releaseName)
 	}
 
 	// Get the latest release (List returns sorted by revision number)
 	latestRelease := releases[0]
-	fmt.Printf("QueryRelease: Found release: Name=%s, Status=%s\n", latestRelease.Name, latestRelease.Info.Status)
 	
 	// During upgrade, the release might be in "pending-upgrade" or other states
 	// We should still be able to get the version
 	if latestRelease.Chart == nil || latestRelease.Chart.Metadata == nil {
-		fmt.Printf("QueryRelease: Chart or metadata is nil for release %s\n", releaseName)
 		return false, "", fmt.Errorf("failed to get chart version for release: %s", releaseName)
 	}
 
 	version := latestRelease.Chart.Metadata.Version
-	fmt.Printf("QueryRelease: Found version: %s\n", version)
 	return true, version, nil
 }
 
@@ -268,17 +253,8 @@ func (helmAction *HelmActionImpl) LoadChart(chartPath string) (*chart.Chart, err
 // initHelmConfig initializes a helm configuration object and sets the backend storage driver to use kubernetes secrets,
 // returning the configuration object and an error if one occurs.
 func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, error) {
-	fmt.Printf("initHelmConfig: flags.Namespace=%v, flags.Context=%v\n", flags.Namespace, flags.Context)
-	if flags.Namespace != nil {
-		fmt.Printf("initHelmConfig: Namespace value=%s\n", *flags.Namespace)
-	}
-	if flags.Context != nil {
-		fmt.Printf("initHelmConfig: Context value=%s\n", *flags.Context)
-	}
-	
 	// If context is empty string, set it to nil to let Helm detect in-cluster config
 	if flags.Context != nil && *flags.Context == "" {
-		fmt.Printf("initHelmConfig: Context is empty string, setting to nil for in-cluster detection\n")
 		flags.Context = nil
 	}
 	
@@ -286,44 +262,10 @@ func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, 
 	hc := helm.Configuration{}
 	// helmDriver is "secret" to make the backend storage driver
 	// use kubernetes secrets.
-	namespace := *flags.Namespace
-	fmt.Printf("initHelmConfig: Initializing Helm config with namespace=%s, driver=%s\n", namespace, helmDriverSecret)
-	err := hc.Init(flags, namespace, helmDriverSecret, func(format string, v ...any) {
+	err := hc.Init(flags, *flags.Namespace, helmDriverSecret, func(format string, v ...any) {
 		builder.WriteString(fmt.Sprintf(format, v...))
 		builder.WriteRune('\n')
 	})
-	
-	if err != nil {
-		fmt.Printf("initHelmConfig: hc.Init failed: %v\n", err)
-	} else {
-		fmt.Printf("initHelmConfig: hc.Init succeeded, helmDriver=%s\n", helmDriverSecret)
-		fmt.Printf("initHelmConfig: Helm output:\n%s\n", builder.String())
-		
-		// Debug: Check if we can access the Kubernetes API
-		if hc.RESTClientGetter != nil {
-			restConfig, err := hc.RESTClientGetter.ToRESTConfig()
-			if err != nil {
-				fmt.Printf("initHelmConfig: Failed to get REST config: %v\n", err)
-			} else {
-				fmt.Printf("initHelmConfig: REST config Host=%s\n", restConfig.Host)
-			}
-			
-			discoveryClient, err := hc.RESTClientGetter.ToDiscoveryClient()
-			if err != nil {
-				fmt.Printf("initHelmConfig: Failed to get discovery client: %v\n", err)
-			} else {
-				_, err = discoveryClient.ServerVersion()
-				if err != nil {
-					fmt.Printf("initHelmConfig: Failed to get server version: %v\n", err)
-				} else {
-					fmt.Printf("initHelmConfig: Successfully connected to Kubernetes API\n")
-				}
-			}
-			
-			// Debug: Log the namespace we're working with
-			fmt.Printf("initHelmConfig: Working in namespace: %s\n", *flags.Namespace)
-		}
-	}
 	
 	return &hc, err
 }
