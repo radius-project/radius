@@ -38,6 +38,7 @@ func Execute() error {
 	ctx := rootCmd.Context()
 
 	config := preupgrade.Config{
+		KubeContext: "", // Empty string for in-cluster configuration
 		Helm: &helm.Impl{
 			Helm: helm.NewHelmClient(),
 		},
