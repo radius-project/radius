@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/test"
@@ -43,6 +44,7 @@ import (
 //   - Validates the creation of required resources (app, container, environment
 //     and the user-defined resource instance) in the Kubernetes cluster
 //   - Validates that the container can access port information from the user-defined resource via environment variables
+
 func Test_DynamicRP_Recipe(t *testing.T) {
 	template := "testdata/usertypealpha-recipe.bicep"
 	appName := "usertypealpha-recipe-app"
@@ -308,6 +310,324 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 					}
 				}
 				require.True(t, found, "Environment variable not found")
+			},
+		},
+	})
+	test.Test(t)
+}
+
+// This test verifies the connections from a container to an UDT  injects the environment variables
+// from the UDT into the container.
+// It has 2 steps:
+// 1. Resource Type Registration:
+// - Registers a user-defined resource type "Test.Resources/postgres" using the CLI.
+// 2. Resource Deployment:
+// - Deploys a Bicep template that creates a container and connects it to the UDT.
+// - Validates the creation of required resources in the Kubernetes cluster.
+// - Validates the container has environment variables set with the values from the UDT instance.
+
+func Test_Container_ConnectionTo_UDT(t *testing.T) {
+	existingTemplate := "testdata/container2udt-connection.bicep"
+	name := "dynamicrp-cntr2udt"
+	appNamespace := "dynamicrp-cntr2udt"
+	appName := "dynamicrp-cntr2udt"
+	resourceTypeName := "Test.Resources/postgres"
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", resourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, resourceTypeName)
+			},
+		},
+		{
+			Executor: step.NewDeployExecutor(existingTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "udtcntr",
+						Type: validation.ContainersResource,
+						App:  appName,
+					},
+					{
+						Name: "udtconnpg",
+						Type: "test.resources/postgres",
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "postgres-cntr").ValidateLabels(false),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				deploys, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
+				if deploys == nil {
+					t.Fatalf("No deployments found in namespace %s", appNamespace)
+				}
+				require.NoError(t, err)
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "udtcntr", metav1.GetOptions{})
+				require.NoError(t, err)
+
+				var targetContainer *corev1.Container
+				for i := range deploy.Spec.Template.Spec.Containers {
+					container := &deploy.Spec.Template.Spec.Containers[i]
+					if container.Name == "udtcntr" {
+						targetContainer = container
+						break
+					}
+				}
+				require.NotNil(t, targetContainer, "Container not found")
+
+				// Verify environment variable in the container has expected value
+				requiredEnvVars := []string{
+					"CONNECTION_POSTGRES_HOST",
+					"CONNECTION_POSTGRES_PORT",
+					"CONNECTION_POSTGRES_DATABASE",
+					"CONNECTION_POSTGRES_PASSWORD",
+					"CONNECTION_POSTGRES_RECIPE",
+				}
+
+				// Verify all required environment variables are present
+				foundEnvVars := make(map[string]bool)
+				for _, env := range targetContainer.Env {
+					foundEnvVars[env.Name] = true
+				}
+
+				for _, requiredVar := range requiredEnvVars {
+					require.True(t, foundEnvVars[requiredVar],
+						"Required environment variable %s not found in container", requiredVar)
+				}
+
+				for _, env := range targetContainer.Env {
+					require.NotNil(t, env.ValueFrom)
+					require.NotNil(t, env.ValueFrom.SecretKeyRef)
+					require.Equal(t, env.Name, env.ValueFrom.SecretKeyRef.Key)
+				}
+
+			},
+		},
+	})
+	test.Test(t)
+}
+
+// Test_UDT_ConnectionTo_UDT tests the deployment of a user-defined resource type with connections to another UDT.
+// It consists of two main steps:
+// 1. Resource Type Registration:
+//   - Registers a user-defined resource type "Test.Resources/postgres" using the CLI.
+//
+// 2. Resource Deployment:
+//   - Deploys a Bicep template that creates a UDT instance and connects it to another UDT instance.
+//   - Validates the creation of required resources in the Kubernetes cluster.
+//   - Validates that the pod template contains non-empty labels populated with values from
+//     the connected postgres resource properties in the udtParent deployment
+func Test_UDT_ConnectionTo_UDT(t *testing.T) {
+	existingTemplate := "testdata/udt2udt-connection.bicep"
+	name := "dynamicrp-udt2udt"
+	appNamespace := "udttoudtapp"
+	appName := "udttoudtapp"
+	childResourceTypeName := "Test.Resources/postgres"
+	parentResourceTypeName := "Test.Resources/udtParent"
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, childResourceTypeName)
+				output, err = cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, parentResourceTypeName)
+			},
+		},
+		{
+			Executor:                               step.NewDeployExecutor(existingTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			SkipKubernetesOutputResourceValidation: true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "udttoudtparent",
+						Type: "test.resources/udtparent",
+						App:  appName,
+					},
+					{
+						Name: "udttoudtchild",
+						Type: "test.resources/postgres",
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				deploys, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, deploys.Items, "No deployments found in namespace %s", appNamespace)
+
+				found := false
+				for _, deploy := range deploys.Items {
+					t.Logf("Checking deployment: %s", deploy.Name)
+
+					// Check pod template labels
+					if deploy.Spec.Template.Labels != nil {
+						t.Logf("Pod template labels for deployment '%s':", deploy.Name)
+						for key, value := range deploy.Spec.Template.Labels {
+							t.Logf("  %s: %s", key, value)
+						}
+
+						if labelValue, exists := deploy.Spec.Template.Labels["radapp.io/connected-to-resource"]; exists {
+							t.Logf("✓ Found deployment '%s' with label 'radapp.io/connected-to-resource'='%s'", deploy.Name, labelValue)
+							found = true
+
+							// Verify the label value is not empty (should contain the host value)
+							require.NotEmpty(t, labelValue, "Label value should not be empty")
+						}
+					}
+				}
+
+				require.True(t, found, "No deployments found with label 'radapp.io/connected-to-resource' in pod template labels")
+
+			},
+		},
+	})
+	test.Test(t)
+}
+
+// Test_UDT_ConnectionTo_UDTTF tests the deployment of a user-defined resource type with connections to another UDT.
+// It consists of two main steps:
+// 1. Resource Type Registration:
+//   - Registers a user-defined resource type "Test.Resources/udtParent" and "Test.Resources/udtChild" using the CLI.
+// 2. Resource Deployment:
+//   - Deploys a Terraform template that creates a UDT instance and connects it to another UDT instance.
+//   - Validates the creation of required resources in the Kubernetes cluster.
+//   - Validates that the pod template contains non-empty labels populated with values from
+//     the connected udtChild resource properties in the udtParent deployment
+
+func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
+	existingTemplate := "testdata/udt2udt-connection-tf.bicep"
+	name := "dynamicrp-udt2udt"
+	appNamespace := "udttoudtapp"
+	appName := "udttoudtapp"
+	childResourceTypeName := "Test.Resources/udtChild"
+	parentResourceTypeName := "Test.Resources/udtParent"
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, childResourceTypeName)
+				output, err = cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, parentResourceTypeName)
+			},
+		},
+		{
+			Executor:                               step.NewDeployExecutor(existingTemplate, testutil.GetTerraformRecipeModuleServerURL()),
+			SkipResourceDeletion:                   true,
+			SkipObjectValidation:                   true,
+			SkipKubernetesOutputResourceValidation: true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "udtparent",
+						Type: "test.resources/udtparent",
+						App:  appName,
+					},
+					{
+						Name: "udtchild",
+						Type: "test.resources/udtChild",
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				deploys, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
+				if deploys == nil {
+					t.Fatalf("No deployments found in namespace %s", appNamespace)
+				}
+				require.NoError(t, err)
+				//list deployments
+				fmt.Println("Deployments in namespace:", appNamespace)
+				for _, deploy := range deploys.Items {
+					fmt.Println("Deployment Name:", deploy.Name)
+				}
+				fmt.Println("Total Deployments Found:", len(deploys.Items))
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "udtparent", metav1.GetOptions{})
+				require.NoError(t, err)
+
+				var targetContainer *corev1.Container
+				for i := range deploy.Spec.Template.Spec.Containers {
+					container := &deploy.Spec.Template.Spec.Containers[i]
+					fmt.Println("Container Name:", container.Name)
+					if container.Name == "postgres" {
+						targetContainer = container
+						break
+					}
+				}
+				require.NotNil(t, targetContainer, "Container not found")
+
+				// Verify environment variable in the container has expected value
+				requiredEnvVars := []string{
+					"CONNECTED_TO",
+				}
+
+				// Verify all required environment variables are present
+				foundEnvVars := make(map[string]bool)
+				for _, env := range targetContainer.Env {
+					fmt.Print("Environment Variable Found: ", env.Name, "\n")
+					foundEnvVars[env.Name] = true
+				}
+				for _, requiredVar := range requiredEnvVars {
+					require.True(t, foundEnvVars[requiredVar],
+						"Required environment variable %s not found in container", requiredVar)
+				}
 			},
 		},
 	})

@@ -178,6 +178,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		return nil, fmt.Errorf("failed to get connected resource IDs: %w", err)
 	}
 	connectedResourcesProperties := make(map[string]map[string]any)
+
 	// If there are connected resources, we need to fetch their properties and add them to the recipe context.
 	for connName, connectedResourceID := range connectionsAndSourceIDs {
 		connectedResource, err := c.DatabaseClient().Get(ctx, connectedResourceID)
@@ -186,6 +187,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		} else if err != nil {
 			return nil, fmt.Errorf("failed to get connected resource %s: %w", connectedResourceID, err)
 		}
+
 		connectedResourceProperties, err := resourceutil.GetPropertiesFromResource(connectedResource.Data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get properties from connected resource %s: %w", connectedResourceID, err)
