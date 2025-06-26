@@ -36,14 +36,18 @@ resource externalresourcecntr 'Applications.Core/containers@2023-10-01-preview' 
         image: 'ghcr.io/radius-project/mirror/debian:latest'
         command: ['/bin/sh']
         args: ['-c', 'while true; do echo hello; sleep 10;done']
-        env: {
-          UDTCONFIGMAP_DATA: {
-            value: externalresource.properties.configMap
-          }          
-        }
+        // env: {
+        //   UDTCONFIGMAP_DATA: {
+        //     value: externalresource.properties.configMap
+        //   }          
+        // }
     }
-  
+    connections: {
+      externalresource: {
+        source: externalresource.id
+      }
     }
+  }
 }
 
 resource externalresource 'Test.Resources/externalResource@2023-10-01-preview' = {
