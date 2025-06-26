@@ -53,24 +53,6 @@ type UCPApplicationsManagementClient struct {
 
 var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
-func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx context.Context, resourceType string) ([]string, error) {
-	provider := strings.Split(resourceType, "/")[0]
-	summ, err := amc.GetResourceProviderSummary(ctx, "local", provider)
-	if err != nil {
-		if clientv2.Is404Error(err) {
-			return nil, fmt.Errorf("resource provider %q not found in the configured scope", provider)
-		}
-		return nil, err
-	}
-
-	rT, ok := summ.ResourceTypes[strings.Split(resourceType, "/")[1]]
-	if !ok {
-		return nil, fmt.Errorf("resource provider %q not found in the configured scope--", provider)
-	}
-
-	return maps.Keys(rT.APIVersions), nil
-}
-
 // ListResourcesOfType lists all resources of a given type in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
 
@@ -80,7 +62,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Cont
 	}
 	results := []generated.GenericResource{}
 
-	client, err := amc.createGenericClient(amc.RootScope, resourceType, apiVersions[0])
+	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersions)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +137,7 @@ func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, res
 		return generated.GenericResource{}, err
 	}
 
-	client, err := amc.createGenericClient(scope, resourceType, apiVersions[0])
+	client, err := amc.getGenericClient(scope, resourceType, apiVersions)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
@@ -205,7 +187,7 @@ func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, 
 		return false, err
 	}
 
-	client, err := amc.createGenericClient(scope, resourceType, apiVersions[0])
+	client, err := amc.getGenericClient(scope, resourceType, apiVersions)
 	if err != nil {
 		return false, err
 	}
@@ -1084,4 +1066,40 @@ func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context,
 	}
 
 	return amc.capture(ctx, response)
+}
+
+// getApiVersionsForResourceType retrieves the API versions for a given resource type in the configured scope.
+func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx context.Context, resourceType string) ([]string, error) {
+	provider := strings.Split(resourceType, "/")[0]
+	summary, err := amc.GetResourceProviderSummary(ctx, "local", provider)
+	if err != nil {
+		if clientv2.Is404Error(err) {
+			return nil, fmt.Errorf("resource provider %q not found in the configured scope", provider)
+		}
+		return nil, err
+	}
+
+	resType := strings.Split(resourceType, "/")[1]
+	resourceTypeSummary, ok := summary.ResourceTypes[resType]
+	if !ok {
+		return nil, fmt.Errorf("resource type %q not found in the resource provider %q", resType, provider)
+	}
+
+	return maps.Keys(resourceTypeSummary.APIVersions), nil
+}
+
+// getGenericClient returns a generic resource client for the specified scope and resource type.
+// if apiVersions is empty, it uses the default version i.e 2023-10-01-preview else uses any version supported by the resource type.
+func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string) (client genericResourceClient, err error) {
+	if len(apiVersions) == 0 {
+		client, err = amc.createGenericClient(scope, resourceType)
+	} else {
+		client, err = amc.createGenericClient(scope, resourceType, apiVersions[0])
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return client, err
 }
