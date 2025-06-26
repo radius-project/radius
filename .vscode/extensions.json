@@ -1,0 +1,6 @@
+{
+  "recommendations": [
+    "ms-azuretools.vscode-bicep",
+    "golang.go"
+  ]
+}
