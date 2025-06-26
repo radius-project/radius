@@ -28,6 +28,7 @@ func init() {
 func NewResourceProviderCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:     "resource-provider",
+		Hidden:  true,
 		Aliases: []string{"rp"},
 		Short:   "Manage resource providers",
 		Long:    `Manage resource providers`,
