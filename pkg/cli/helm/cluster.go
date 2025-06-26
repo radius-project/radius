@@ -222,40 +222,29 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 // CheckRadiusInstall checks if the Radius release is installed in the given kubeContext and returns an InstallState object
 // with the version of the release if installed, or an error if an error occurs while checking.
 func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
-	fmt.Printf("CheckRadiusInstall: kubeContext=%s\n", kubeContext)
-	
 	clusterOptions := NewDefaultClusterOptions()
-	fmt.Printf("CheckRadiusInstall: Radius.ReleaseName=%s, Radius.Namespace=%s\n", clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
-	
 	helmAction := NewHelmAction(i.Helm)
 
 	// Check if Radius is installed
 	radiusInstalled, radiusVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
-		fmt.Printf("CheckRadiusInstall: QueryRelease for Radius failed: %v\n", err)
 		// During a pre-upgrade hook, the release being upgraded might be temporarily inaccessible
 		// In this case, we should not fail but continue with other checks
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "failed to get release") {
-			fmt.Printf("CheckRadiusInstall: Radius release not found or inaccessible (might be locked during upgrade)\n")
 			radiusInstalled = false
 			radiusVersion = ""
 		} else {
 			return InstallState{}, err
 		}
 	}
-	fmt.Printf("CheckRadiusInstall: Radius - installed=%v, version=%s\n", radiusInstalled, radiusVersion)
 
 	// Check if Contour is installed
 	contourInstalled, contourVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace)
 	if err != nil {
-		fmt.Printf("CheckRadiusInstall: QueryRelease for Contour failed: %v\n", err)
 		return InstallState{}, err
 	}
-	fmt.Printf("CheckRadiusInstall: Contour - installed=%v, version=%s\n", contourInstalled, contourVersion)
 
-	state := InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion, ContourInstalled: contourInstalled, ContourVersion: contourVersion}
-	fmt.Printf("CheckRadiusInstall: Returning state: %+v\n", state)
-	return state, nil
+	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion, ContourInstalled: contourInstalled, ContourVersion: contourVersion}, nil
 }
 
 // UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.

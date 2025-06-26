@@ -53,15 +53,17 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 		case "version":
 			state, err := config.Helm.CheckRadiusInstall(config.KubeContext)
 			if err != nil {
-				fmt.Printf("RunPreflightChecks: CheckRadiusInstall failed: %v\n", err)
 				return fmt.Errorf("failed to check current Radius installation: %w", err)
 			}
 
+			// If Radius is not installed, this is a new installation, not an upgrade
+			// In this case, we can skip the version compatibility check
+			if !state.RadiusInstalled {
+				config.Output.LogInfo("Radius is not currently installed. Proceeding with fresh installation.")
+				continue
+			}
+
 			currentVersion := state.RadiusVersion
-			fmt.Printf("RunPreflightChecks: CheckRadiusInstall returned RadiusVersion=%s, RadiusInstalled=%v\n", currentVersion, state.RadiusInstalled)
-
-			fmt.Printf("RunPreflightChecks: Current RadiusVersion=%s, TargetVersion=%s\n", currentVersion, options.TargetVersion)
-
 			versionCheck := preflight.NewVersionCompatibilityCheck(currentVersion, options.TargetVersion)
 			registry.AddCheck(versionCheck)
 
