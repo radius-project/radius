@@ -96,12 +96,12 @@ func (client *HelmClientImpl) RunHelmUninstall(helmConf *helm.Configuration, rel
 
 func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
 	fmt.Printf("RunHelmList: Looking for release with name=%s\n", releaseName)
-	
+
 	listClient := helm.NewList(helmConf)
 	listClient.Filter = releaseName
 	// Don't filter by deployed status - we want to find the release in any state
 	// listClient.Deployed = true
-	
+
 	fmt.Printf("RunHelmList: Filter=%s, Deployed=%v\n", listClient.Filter, listClient.Deployed)
 
 	// Debug: Try to get a specific release by name
@@ -109,15 +109,28 @@ func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseN
 	release, err := getClient.Run(releaseName)
 	if err != nil {
 		fmt.Printf("RunHelmList: Failed to get release %s directly: %v\n", releaseName, err)
+
+		// During pre-upgrade hooks, the release might be locked. Try getting history instead
+		fmt.Printf("RunHelmList: Attempting to get release history for %s\n", releaseName)
+		historyClient := helm.NewHistory(helmConf)
+		historyClient.Max = 1 // Just get the latest
+		history, histErr := historyClient.Run(releaseName)
+		if histErr != nil {
+			fmt.Printf("RunHelmList: Failed to get history for %s: %v\n", releaseName, histErr)
+		} else if len(history) > 0 {
+			fmt.Printf("RunHelmList: Found %d history entries for %s\n", len(history), releaseName)
+			latestHistory := history[len(history)-1]
+			fmt.Printf("RunHelmList: Latest history: Name=%s, Status=%s, Version=%d\n", latestHistory.Name, latestHistory.Info.Status, latestHistory.Version)
+		}
 	} else if release != nil {
 		fmt.Printf("RunHelmList: Successfully got release %s directly: Status=%s, Version=%d\n", release.Name, release.Info.Status, release.Version)
 	}
-	
+
 	// Let's also list ALL releases to see what's there
 	allListClient := helm.NewList(helmConf)
 	// Don't filter by deployed status
 	// allListClient.Deployed = true
-	allListClient.AllNamespaces = false  // Make sure we're not searching all namespaces
+	allListClient.AllNamespaces = false // Make sure we're not searching all namespaces
 	allReleases, allErr := allListClient.Run()
 	fmt.Printf("RunHelmList: Listing ALL releases (Deployed=%v, AllNamespaces=%v)\n", allListClient.Deployed, allListClient.AllNamespaces)
 	if allErr != nil {
@@ -126,11 +139,19 @@ func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseN
 		fmt.Printf("RunHelmList: Found %d total releases\n", len(allReleases))
 		for i, rel := range allReleases {
 			if rel != nil {
-				fmt.Printf("  [%d]: Name=%s, Namespace=%s, Status=%s\n", i, rel.Name, rel.Namespace, rel.Info.Status)
+				fmt.Printf("  [%d]: Name=%s, Namespace=%s, Status=%s, Version=%d\n", i, rel.Name, rel.Namespace, rel.Info.Status, rel.Version)
 			}
 		}
 	}
-	
+
+	// Debug: Additional information about the Helm configuration
+	fmt.Printf("RunHelmList: Additional debug - checking if we can access releases at all\n")
+	if helmConf.Releases == nil {
+		fmt.Printf("RunHelmList: WARNING - helmConf.Releases is nil!\n")
+	} else {
+		fmt.Printf("RunHelmList: helmConf.Releases is initialized\n")
+	}
+
 	// Also try without the Deployed filter
 	allListClient2 := helm.NewList(helmConf)
 	allListClient2.AllNamespaces = false
@@ -153,7 +174,7 @@ func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseN
 			}
 		}
 	}
-	
+
 	return releases, err
 }
 

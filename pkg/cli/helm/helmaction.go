@@ -212,6 +212,22 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 	}
 	fmt.Printf("QueryRelease: helmConf initialized successfully\n")
 
+	// First try to get the release directly using Get instead of List
+	// This is more reliable during pre-upgrade hooks
+	getClient := helm.NewGet(helmConf)
+	directRelease, getErr := getClient.Run(releaseName)
+	if getErr == nil && directRelease != nil {
+		fmt.Printf("QueryRelease: Successfully got release directly: Name=%s, Status=%s\n", directRelease.Name, directRelease.Info.Status)
+		if directRelease.Chart != nil && directRelease.Chart.Metadata != nil {
+			version := directRelease.Chart.Metadata.Version
+			fmt.Printf("QueryRelease: Found version via Get: %s\n", version)
+			return true, version, nil
+		}
+	} else if getErr != nil {
+		fmt.Printf("QueryRelease: Failed to get release directly: %v\n", getErr)
+	}
+
+	// Fall back to List if Get doesn't work
 	releases, err := helmAction.HelmClient.RunHelmList(helmConf, releaseName)
 	if err != nil {
 		fmt.Printf("QueryRelease: RunHelmList failed: %v\n", err)
@@ -270,7 +286,9 @@ func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, 
 	hc := helm.Configuration{}
 	// helmDriver is "secret" to make the backend storage driver
 	// use kubernetes secrets.
-	err := hc.Init(flags, *flags.Namespace, helmDriverSecret, func(format string, v ...any) {
+	namespace := *flags.Namespace
+	fmt.Printf("initHelmConfig: Initializing Helm config with namespace=%s, driver=%s\n", namespace, helmDriverSecret)
+	err := hc.Init(flags, namespace, helmDriverSecret, func(format string, v ...any) {
 		builder.WriteString(fmt.Sprintf(format, v...))
 		builder.WriteRune('\n')
 	})

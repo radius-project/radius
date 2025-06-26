@@ -58,7 +58,7 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 			}
 
 			currentVersion := state.RadiusVersion
-			fmt.Printf("RunPreflightChecks: CheckRadiusInstall returned RadiusVersion=%s\n", currentVersion)
+			fmt.Printf("RunPreflightChecks: CheckRadiusInstall returned RadiusVersion=%s, RadiusInstalled=%v\n", currentVersion, state.RadiusInstalled)
 
 			fmt.Printf("RunPreflightChecks: Current RadiusVersion=%s, TargetVersion=%s\n", currentVersion, options.TargetVersion)
 

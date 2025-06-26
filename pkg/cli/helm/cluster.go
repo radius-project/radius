@@ -233,7 +233,15 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	radiusInstalled, radiusVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
 		fmt.Printf("CheckRadiusInstall: QueryRelease for Radius failed: %v\n", err)
-		return InstallState{}, err
+		// During a pre-upgrade hook, the release being upgraded might be temporarily inaccessible
+		// In this case, we should not fail but continue with other checks
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "failed to get release") {
+			fmt.Printf("CheckRadiusInstall: Radius release not found or inaccessible (might be locked during upgrade)\n")
+			radiusInstalled = false
+			radiusVersion = ""
+		} else {
+			return InstallState{}, err
+		}
 	}
 	fmt.Printf("CheckRadiusInstall: Radius - installed=%v, version=%s\n", radiusInstalled, radiusVersion)
 
