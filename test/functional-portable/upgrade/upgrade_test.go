@@ -19,7 +19,6 @@ package upgrade_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -41,21 +40,20 @@ const (
 
 func Test_PreflightContainer_FreshInstall(t *testing.T) {
 	ctx := testcontext.New(t)
-	
+
 	// Create CLI without requiring pre-existing Radius installation
 	cli := radcli.NewCLI(t, "")
 
 	// Clean up any existing installation
 	cli.RunCommand(ctx, []string{"uninstall", "kubernetes"})
 
-	// Use a test image that's available everywhere instead of the actual pre-upgrade image
-	// This test is focused on verifying the Helm pre-upgrade hook mechanism, not the container functionality
+	// Use local registry image for testing the pre-upgrade functionality
 	t.Log("Installing Radius with preflight enabled")
 	_, err := cli.RunCommand(ctx, []string{
 		"install", "kubernetes",
 		"--chart", "../../../deploy/Chart",
 		"--set", "preupgrade.enabled=true",
-		"--set", "preupgrade.image=redis,preupgrade.tag=7-alpine",
+		"--set", "preupgrade.image=ghcr.io/willdavsmith/radius/pre-upgrade",
 	})
 	require.NoError(t, err, "Failed to install Radius")
 
@@ -66,11 +64,12 @@ func Test_PreflightContainer_FreshInstall(t *testing.T) {
 	_, err = cli.RunCommand(ctx, []string{
 		"upgrade", "kubernetes",
 		"--chart", "../../../deploy/Chart",
+		"--set", "preupgrade.image=ghcr.io/willdavsmith/radius/pre-upgrade",
 		"--skip-preflight", // Skip CLI preflight to trigger Helm pre-upgrade hook
 	})
 	// This might fail due to version issues, but should trigger the Helm hook
 	// The key test is that the job gets created
-	
+
 	t.Log("Verifying preflight job was created by Helm pre-upgrade hook")
 	verifyPreflightJobRan(t, ctx, options, true)
 
@@ -85,23 +84,31 @@ func Test_PreflightContainer_PreflightDisabled(t *testing.T) {
 
 	// Clean up any existing installation
 	cli.RunCommand(ctx, []string{"uninstall", "kubernetes"})
+	
+	// Wait for cleanup to complete
+	time.Sleep(3 * time.Second)
 
-	// Use a test image that's available everywhere instead of the actual pre-upgrade image
 	t.Log("Installing Radius with preflight disabled")
 	_, err := cli.RunCommand(ctx, []string{
 		"install", "kubernetes",
 		"--chart", "../../../deploy/Chart",
 		"--set", "preupgrade.enabled=false",
-		"--set", "preupgrade.image=redis,preupgrade.tag=7-alpine",
+		"--set", "preupgrade.image=ghcr.io/willdavsmith/radius/pre-upgrade",
 	})
 	require.NoError(t, err, "Failed to install Radius")
 
 	options := rp.NewRPTestOptions(t)
 
 	t.Log("Attempting upgrade with preflight disabled")
+	
+	// Ensure no leftover job exists before upgrade
+	options.K8sClient.BatchV1().Jobs(radiusNamespace).Delete(ctx, preUpgradeJobName, metav1.DeleteOptions{})
+	
 	_, err = cli.RunCommand(ctx, []string{
 		"upgrade", "kubernetes",
 		"--chart", "../../../deploy/Chart",
+		"--set", "preupgrade.enabled=false",
+		"--set", "preupgrade.image=ghcr.io/willdavsmith/radius/pre-upgrade",
 		"--skip-preflight",
 	})
 	// Upgrade might fail due to version issues, but that's expected in test environment
@@ -120,8 +127,11 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 
 	// Clean up any existing installation
 	cli.RunCommand(ctx, []string{"uninstall", "kubernetes"})
+	
+	// Wait for cleanup to complete
+	time.Sleep(3 * time.Second)
 
-	// Use a test image that's available everywhere instead of the actual pre-upgrade image
+	// Use local registry image for testing
 	t.Log("Installing Radius with custom preflight configuration")
 	_, err := cli.RunCommand(ctx, []string{
 		"install", "kubernetes",
@@ -129,7 +139,7 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 		"--set", "preupgrade.enabled=true",
 		"--set", "preupgrade.ttlSecondsAfterFinished=60",
 		"--set", "preupgrade.checks.version=true",
-		"--set", "preupgrade.image=redis,preupgrade.tag=7-alpine",
+		"--set", "preupgrade.image=ghcr.io/willdavsmith/radius/pre-upgrade",
 	})
 	require.NoError(t, err, "Failed to install Radius")
 
@@ -139,6 +149,10 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 	_, err = cli.RunCommand(ctx, []string{
 		"upgrade", "kubernetes",
 		"--chart", "../../../deploy/Chart",
+		"--set", "preupgrade.enabled=true",
+		"--set", "preupgrade.ttlSecondsAfterFinished=60",
+		"--set", "preupgrade.checks.version=true",
+		"--set", "preupgrade.image=ghcr.io/willdavsmith/radius/pre-upgrade",
 	})
 	// Upgrade might fail due to version issues, but we still want to check job configuration
 
@@ -154,7 +168,7 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 		}
 		return nil, fmt.Errorf("job not found")
 	}()
-	
+
 	if jobErr == nil {
 		t.Log("✓ Found preflight job, checking configuration")
 		require.NotNil(t, job.Spec.TTLSecondsAfterFinished)
@@ -177,13 +191,13 @@ func Test_PreflightContainer_PreflightOnly(t *testing.T) {
 	// Clean up any existing installation
 	cli.RunCommand(ctx, []string{"uninstall", "kubernetes"})
 
-	// Use a test image that's available everywhere instead of the actual pre-upgrade image
+	// Use local registry image for testing
 	t.Log("Installing Radius")
 	_, err := cli.RunCommand(ctx, []string{
 		"install", "kubernetes",
 		"--chart", "../../../deploy/Chart",
 		"--set", "preupgrade.enabled=true",
-		"--set", "preupgrade.image=redis,preupgrade.tag=7-alpine",
+		"--set", "preupgrade.image=ghcr.io/willdavsmith/radius/pre-upgrade",
 	})
 	require.NoError(t, err, "Failed to install Radius")
 
@@ -193,6 +207,7 @@ func Test_PreflightContainer_PreflightOnly(t *testing.T) {
 	_, err = cli.RunCommand(ctx, []string{
 		"upgrade", "kubernetes",
 		"--chart", "../../../deploy/Chart",
+		"--set", "preupgrade.image=ghcr.io/willdavsmith/radius/pre-upgrade",
 		"--preflight-only",
 	})
 	// Preflight might fail due to version compatibility issues, which is expected
@@ -207,19 +222,13 @@ func Test_PreflightContainer_PreflightOnly(t *testing.T) {
 
 // Helper functions
 
-func getCurrentVersion() string {
-	if version := os.Getenv("REL_VERSION"); version != "" {
-		return version
-	}
-	return "latest"
-}
 
 func verifyPreflightJobRan(t *testing.T, ctx context.Context, options rp.RPTestOptions, shouldExist bool) {
 	if shouldExist {
 		// Look for the job, but be flexible about timing since upgrades might fail early
 		var jobExists bool
 		var finalJob *batchv1.Job
-		
+
 		// Try to find the job with a shorter timeout since upgrade might fail quickly
 		jobExists = func() bool {
 			for i := 0; i < 15; i++ { // 15 seconds total
@@ -235,7 +244,7 @@ func verifyPreflightJobRan(t *testing.T, ctx context.Context, options rp.RPTestO
 
 		if jobExists {
 			t.Log("✓ Preflight job was created by Helm pre-upgrade hook")
-			
+
 			// If we found the job, let's check its logs regardless of status
 			pods, err := options.K8sClient.CoreV1().Pods(radiusNamespace).List(ctx, metav1.ListOptions{
 				LabelSelector: "job-name=" + preUpgradeJobName,
@@ -262,14 +271,3 @@ func verifyPreflightJobRan(t *testing.T, ctx context.Context, options rp.RPTestO
 	}
 }
 
-func getPreflightJob(t *testing.T, ctx context.Context, options rp.RPTestOptions) *batchv1.Job {
-	// Wait for job to appear
-	var job *batchv1.Job
-	require.Eventually(t, func() bool {
-		var err error
-		job, err = options.K8sClient.BatchV1().Jobs(radiusNamespace).Get(ctx, preUpgradeJobName, metav1.GetOptions{})
-		return err == nil
-	}, 30*time.Second, 1*time.Second, "Preflight job should be created")
-
-	return job
-}

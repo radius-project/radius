@@ -17,7 +17,7 @@
 ##@ Test
 
 # Will be set by our build workflow, this is just a default
-TEST_TIMEOUT ?=1h
+TEST_TIMEOUT ?=5m
 RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 REL_VERSION ?=latest
 DOCKER_REGISTRY ?=ghcr.io/radius-project/dev
