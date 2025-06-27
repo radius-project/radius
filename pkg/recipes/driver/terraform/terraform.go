@@ -88,10 +88,25 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		}
 	}()
 
+	logger.Info("Configuring Terraform registry",
+		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.Registry != nil,
+		"secretsCount", len(opts.Secrets))
+
 	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
 	if err != nil {
+		logger.Error(err, "Failed to configure Terraform registry")
 		return nil, fmt.Errorf("failed to configure terraform registry: %w", err)
 	}
+
+	if regConfig != nil {
+		logger.Info("Terraform registry configured successfully",
+			"configPath", regConfig.ConfigPath,
+			"envVarsCount", len(regConfig.EnvVars),
+			"tempFilesCount", len(regConfig.TempFiles))
+	} else {
+		logger.Info("No Terraform registry configuration needed")
+	}
+
 	defer func() {
 		if err := CleanupTerraformRegistryConfig(ctx, regConfig); err != nil {
 			// Log the error but don't fail the operation
@@ -103,6 +118,12 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 	var registryEnv map[string]string
 	if regConfig != nil && regConfig.EnvVars != nil {
 		registryEnv = regConfig.EnvVars
+		logger.Info("Extracted registry environment variables",
+			"count", len(registryEnv))
+
+		for key, value := range registryEnv {
+			logger.Info("Registry environment variable", "key", key, "value", value)
+		}
 	}
 
 	// Get the secret store ID associated with the git private terraform repository source.
@@ -158,10 +179,25 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 		}
 	}()
 
+	logger.Info("Configuring Terraform registry for delete operation",
+		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.Registry != nil,
+		"secretsCount", len(opts.Secrets))
+
 	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
 	if err != nil {
+		logger.Error(err, "Failed to configure Terraform registry for delete")
 		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to configure terraform registry: %s", err.Error()), "", nil)
 	}
+
+	if regConfig != nil {
+		logger.Info("Terraform registry configured successfully for delete",
+			"configPath", regConfig.ConfigPath,
+			"envVarsCount", len(regConfig.EnvVars),
+			"tempFilesCount", len(regConfig.TempFiles))
+	} else {
+		logger.Info("No Terraform registry configuration needed for delete")
+	}
+
 	defer func() {
 		if err := CleanupTerraformRegistryConfig(ctx, regConfig); err != nil {
 			// Log the error but don't fail the operation
@@ -173,6 +209,12 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 	var registryEnv map[string]string
 	if regConfig != nil && regConfig.EnvVars != nil {
 		registryEnv = regConfig.EnvVars
+		logger.Info("Extracted registry environment variables for delete",
+			"count", len(registryEnv))
+
+		for key, value := range registryEnv {
+			logger.Info("Registry environment variable", "key", key, "value", value)
+		}
 	}
 
 	// Get the secret store ID associated with the git private terraform repository source.
@@ -303,10 +345,25 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		}
 	}()
 
+	logger.Info("Configuring Terraform registry for metadata operation",
+		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.Registry != nil,
+		"secretsCount", len(opts.Secrets))
+
 	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
 	if err != nil {
+		logger.Error(err, "Failed to configure Terraform registry for metadata")
 		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, fmt.Sprintf("failed to configure terraform registry: %s", err.Error()), "", nil)
 	}
+
+	if regConfig != nil {
+		logger.Info("Terraform registry configured successfully for metadata",
+			"configPath", regConfig.ConfigPath,
+			"envVarsCount", len(regConfig.EnvVars),
+			"tempFilesCount", len(regConfig.TempFiles))
+	} else {
+		logger.Info("No Terraform registry configuration needed for metadata")
+	}
+
 	defer func() {
 		if err := CleanupTerraformRegistryConfig(ctx, regConfig); err != nil {
 			// Log the error but don't fail the operation
@@ -318,6 +375,12 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 	var registryEnv map[string]string
 	if regConfig != nil && regConfig.EnvVars != nil {
 		registryEnv = regConfig.EnvVars
+		logger.Info("Extracted registry environment variables for metadata",
+			"count", len(registryEnv))
+
+		for key, value := range registryEnv {
+			logger.Info("Registry environment variable", "key", key, "value", value)
+		}
 	}
 
 	// Get the secret store ID associated with the git private terraform repository source.
@@ -363,6 +426,8 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 	}
 
 	if secretStoreID != "" {
+		// For Git authentication, we request both pat and username keys.
+		// The username is optional and will be handled gracefully if not present.
 		secretStoreIDResourceKeys[secretStoreID] = []string{PrivateRegistrySecretKey_Pat, PrivateRegistrySecretKey_Username}
 	}
 

@@ -19,6 +19,7 @@ package customsource
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hc-install/product"
@@ -90,18 +91,44 @@ func InstallTerraformWithTLS(
 
 		// Handle custom CA certificate
 		if tlsConfig.CACertificate != nil {
-			logger.Info("Configuring custom CA certificate", "secretSource", tlsConfig.CACertificate.Source)
+			logger.Info("Configuring custom CA certificate",
+				"secretSource", tlsConfig.CACertificate.Source,
+				"secretKey", tlsConfig.CACertificate.Key)
+			
+			// Log available secrets for debugging
+			availableSecrets := make([]string, 0, len(secrets))
+			for k := range secrets {
+				availableSecrets = append(availableSecrets, k)
+			}
+			logger.Info("Available secrets for TLS configuration", "secrets", availableSecrets)
+			
 			secretData, ok := secrets[tlsConfig.CACertificate.Source]
 			if !ok {
-				logger.Error(nil, "CA certificate secret store not found", "secretSource", tlsConfig.CACertificate.Source)
+				logger.Error(nil, "CA certificate secret store not found", 
+					"secretSource", tlsConfig.CACertificate.Source,
+					"availableSecrets", availableSecrets)
 				return "", fmt.Errorf("CA certificate secret store not found: %s", tlsConfig.CACertificate.Source)
 			}
 
+			logger.Info("Found secret store for CA certificate",
+				"secretSource", tlsConfig.CACertificate.Source,
+				"dataKeysCount", len(secretData.Data))
+
 			caCertPEM, ok := secretData.Data[tlsConfig.CACertificate.Key]
 			if !ok {
-				logger.Error(nil, "CA certificate key not found in secret store", "key", tlsConfig.CACertificate.Key)
+				availableKeys := make([]string, 0, len(secretData.Data))
+				for k := range secretData.Data {
+					availableKeys = append(availableKeys, k)
+				}
+				logger.Error(nil, "CA certificate key not found in secret store", 
+					"requestedKey", tlsConfig.CACertificate.Key,
+					"availableKeys", availableKeys)
 				return "", fmt.Errorf("CA certificate key '%s' not found in secret store", tlsConfig.CACertificate.Key)
 			}
+
+			logger.Info("Successfully extracted CA certificate",
+				"certLength", len(caCertPEM),
+				"certPreview", getCertPreview(string(caCertPEM)))
 
 			customSource.CACertPEM = []byte(caCertPEM)
 		}
@@ -111,18 +138,39 @@ func InstallTerraformWithTLS(
 	if terraformConfig.Version.Authentication != nil {
 		// Handle token authentication
 		if terraformConfig.Version.Authentication.Token != nil {
-			logger.Info("Configuring token authentication", "secretSource", terraformConfig.Version.Authentication.Token.Secret)
+			logger.Info("Configuring token authentication", 
+				"secretSource", terraformConfig.Version.Authentication.Token.Secret)
+			
 			secretData, ok := secrets[terraformConfig.Version.Authentication.Token.Secret]
 			if !ok {
-				logger.Error(nil, "Authentication secret store not found", "secretSource", terraformConfig.Version.Authentication.Token.Secret)
+				availableSecrets := make([]string, 0, len(secrets))
+				for k := range secrets {
+					availableSecrets = append(availableSecrets, k)
+				}
+				logger.Error(nil, "Authentication secret store not found", 
+					"secretSource", terraformConfig.Version.Authentication.Token.Secret,
+					"availableSecrets", availableSecrets)
 				return "", fmt.Errorf("authentication secret store not found: %s", terraformConfig.Version.Authentication.Token.Secret)
 			}
 
+			logger.Info("Found authentication secret store",
+				"secretSource", terraformConfig.Version.Authentication.Token.Secret,
+				"dataKeysCount", len(secretData.Data))
+
 			token, ok := secretData.Data["token"]
 			if !ok {
-				logger.Error(nil, "Token not found in secret store", "secretSource", terraformConfig.Version.Authentication.Token.Secret)
+				availableKeys := make([]string, 0, len(secretData.Data))
+				for k := range secretData.Data {
+					availableKeys = append(availableKeys, k)
+				}
+				logger.Error(nil, "Token not found in secret store", 
+					"secretSource", terraformConfig.Version.Authentication.Token.Secret,
+					"availableKeys", availableKeys)
 				return "", fmt.Errorf("token not found in secret store")
 			}
+
+			logger.Info("Successfully extracted authentication token",
+				"tokenLength", len(token))
 
 			// For token auth, we set the auth token directly (without "Bearer" prefix)
 			// The custom source will add the appropriate header
@@ -143,8 +191,21 @@ func InstallTerraformWithTLS(
 	}
 
 	// Install directly using the custom source
-	logger.Info("Starting Terraform installation with custom source", "version", tfVersion, "hasAuth", hasAuthentication, "hasTLS", hasTLSConfig)
+	logger.Info("Starting Terraform installation with custom source", 
+		"version", tfVersion, 
+		"hasAuth", hasAuthentication, 
+		"hasTLS", hasTLSConfig,
+		"hasArchiveURL", hasArchiveURL)
 	return customSource.Install(ctx)
+}
+
+// getCertPreview returns a safe preview of certificate content
+func getCertPreview(cert string) string {
+	lines := strings.Split(cert, "\n")
+	if len(lines) > 0 {
+		return lines[0] // Usually "-----BEGIN CERTIFICATE-----"
+	}
+	return "empty"
 }
 
 // getAPIBaseURL returns the API base URL from config or empty string for default

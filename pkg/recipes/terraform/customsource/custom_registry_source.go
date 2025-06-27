@@ -263,7 +263,10 @@ func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
 
 	// Add custom CA if provided and not skipping verification
 	if len(s.CACertPEM) > 0 && !s.InsecureSkipVerify {
-		logger.Info("Configuring custom CA certificate")
+		logger.Info("Configuring custom CA certificate",
+			"certLength", len(s.CACertPEM),
+			"certPreview", getCertPreview(string(s.CACertPEM)))
+
 		caCertPool, err := x509.SystemCertPool()
 		if err != nil {
 			// Fall back to empty pool if system certs unavailable
@@ -272,12 +275,21 @@ func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
 		}
 
 		if !caCertPool.AppendCertsFromPEM(s.CACertPEM) {
-			logger.Error(nil, "Failed to parse CA certificate")
+			logger.Error(nil, "Failed to parse CA certificate",
+				"certLength", len(s.CACertPEM),
+				"certPreview", getCertPreview(string(s.CACertPEM)))
+			// Log the first few lines of the cert for debugging
+			certLines := strings.Split(string(s.CACertPEM), "\n")
+			for i := 0; i < 5 && i < len(certLines); i++ {
+				logger.Info("CA certificate line", "index", i, "content", certLines[i])
+			}
 			return nil, fmt.Errorf("failed to parse CA certificate")
 		}
 		logger.Info("Successfully added custom CA certificate to pool")
 
 		tlsConfig.RootCAs = caCertPool
+	} else if len(s.CACertPEM) > 0 && s.InsecureSkipVerify {
+		logger.Info("CA certificate provided but TLS verification is disabled - CA cert will be ignored")
 	}
 
 	timeout := s.Timeout
@@ -299,6 +311,12 @@ func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
 // doWithRetry performs an HTTP request with retry logic
 func (s *CustomRegistrySource) doWithRetry(ctx context.Context, client HTTPClient, req *http.Request) (*http.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	logger.Info("Making HTTP request with retry",
+		"method", req.Method,
+		"url", req.URL.String(),
+		"hasAuth", req.Header.Get("Authorization") != "")
+
 	var lastErr error
 	delay := retryInitialDelay
 
@@ -316,15 +334,26 @@ func (s *CustomRegistrySource) doWithRetry(ctx context.Context, client HTTPClien
 
 		resp, err := client.Do(reqClone)
 		if err == nil && resp.StatusCode < 500 {
+			logger.Info("HTTP request succeeded",
+				"status", resp.StatusCode,
+				"statusText", resp.Status,
+				"attempt", attempt+1)
 			return resp, nil
 		}
 
 		// Handle error
 		if err != nil {
-			logger.Info("Request failed, retrying", "attempt", attempt+1, "maxAttempts", retryMaxAttempts, "error", err.Error())
+			logger.Info("Request failed, retrying",
+				"attempt", attempt+1,
+				"maxAttempts", retryMaxAttempts,
+				"error", err.Error())
 			lastErr = err
 		} else {
-			logger.Info("Request failed with status, retrying", "status", resp.StatusCode, "attempt", attempt+1, "maxAttempts", retryMaxAttempts)
+			logger.Info("Request failed with status, retrying",
+				"status", resp.StatusCode,
+				"statusText", resp.Status,
+				"attempt", attempt+1,
+				"maxAttempts", retryMaxAttempts)
 			lastErr = fmt.Errorf("server returned status %d", resp.StatusCode)
 			_ = resp.Body.Close()
 		}
