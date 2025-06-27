@@ -106,7 +106,8 @@ APPS_MAP := ucpd:./deploy/images/ucpd \
 	controller:./deploy/images/controller \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego \
-	bicep:./deploy/images/bicep
+	bicep:./deploy/images/bicep \
+	pre-upgrade:./deploy/images/pre-upgrade
 
 # copy_manifests copies the manifests to the output directory
 .PHONY: copy-manifests

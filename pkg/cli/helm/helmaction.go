@@ -208,6 +208,18 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 		return false, "", fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
+	// First try to get the release directly using Get instead of List
+	// This is more reliable during pre-upgrade hooks
+	getClient := helm.NewGet(helmConf)
+	directRelease, getErr := getClient.Run(releaseName)
+	if getErr == nil && directRelease != nil {
+		if directRelease.Chart != nil && directRelease.Chart.Metadata != nil {
+			version := directRelease.Chart.Metadata.Version
+			return true, version, nil
+		}
+	}
+
+	// Fall back to List if Get doesn't work
 	releases, err := helmAction.HelmClient.RunHelmList(helmConf, releaseName)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to run helm list, err: %w", err)
@@ -221,13 +233,17 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 		return false, "", fmt.Errorf("multiple deployed releases found with the same name: %s", releaseName)
 	}
 
-	// Get the latest deployed release (List returns sorted by revision number)
+	// Get the latest release (List returns sorted by revision number)
 	latestRelease := releases[0]
+	
+	// During upgrade, the release might be in "pending-upgrade" or other states
+	// We should still be able to get the version
 	if latestRelease.Chart == nil || latestRelease.Chart.Metadata == nil {
 		return false, "", fmt.Errorf("failed to get chart version for release: %s", releaseName)
 	}
 
-	return true, latestRelease.Chart.Metadata.Version, nil
+	version := latestRelease.Chart.Metadata.Version
+	return true, version, nil
 }
 
 func (helmAction *HelmActionImpl) LoadChart(chartPath string) (*chart.Chart, error) {
@@ -237,6 +253,11 @@ func (helmAction *HelmActionImpl) LoadChart(chartPath string) (*chart.Chart, err
 // initHelmConfig initializes a helm configuration object and sets the backend storage driver to use kubernetes secrets,
 // returning the configuration object and an error if one occurs.
 func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, error) {
+	// If context is empty string, set it to nil to let Helm detect in-cluster config
+	if flags.Context != nil && *flags.Context == "" {
+		flags.Context = nil
+	}
+	
 	builder := strings.Builder{}
 	hc := helm.Configuration{}
 	// helmDriver is "secret" to make the backend storage driver
@@ -245,6 +266,7 @@ func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, 
 		builder.WriteString(fmt.Sprintf(format, v...))
 		builder.WriteRune('\n')
 	})
+	
 	return &hc, err
 }
 
