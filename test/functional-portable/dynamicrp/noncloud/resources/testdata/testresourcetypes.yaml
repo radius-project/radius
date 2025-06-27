@@ -13,6 +13,12 @@ types:
             environment:
               type: string
               description: The resource ID of the environment.
+            connections:
+              type: object
+              additionalProperties:
+                source:
+                  type: string
+                  description: The resourceID of the source of the connection.
             status:
               type: object
               properties:
