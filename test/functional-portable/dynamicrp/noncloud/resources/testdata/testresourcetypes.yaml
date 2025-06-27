@@ -27,7 +27,7 @@ types:
             - environment
   postgres:
     apiVersions:
-      '2023-10-01-preview':
+      '2025-01-01-preview':
         schema: 
           type: object
           properties:
