@@ -38,6 +38,12 @@ resource usertypealpha 'apps/Deployment@v1' = {
             ]
             command: ['/bin/sh']
             args: ['-c', 'while true; do sleep 30; done']
+            env: [
+              {
+                name: 'CONN_INJECTED'
+                value: contains(context.resource, 'connections') && contains(context.resource.connections, 'externalresource') ? context.resource.connections.externalresource.configMap : ''
+              }
+            ]
           }
         ]
       }

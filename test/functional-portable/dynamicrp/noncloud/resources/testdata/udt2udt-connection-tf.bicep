@@ -1,12 +1,15 @@
 extension radius
 extension testresources
+extension kubernetes with {
+  kubeConfig: ''
+  namespace: 'udttoudtapp'
+} as kubernetes
 
 @description('The URL of the server hosting test Terraform modules.')
 param moduleServer string
 
-// @description('PostgreSQL password')
-// @secure()
-// param password string = newGuid()
+@description('Specifies the port the container listens on.')
+param port int = 8080
 
 resource udttoudtenv 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'udttoudtenv'
@@ -18,16 +21,13 @@ resource udttoudtenv 'Applications.Core/environments@2023-10-01-preview' = {
       namespace: 'udttoudtenv'
     }
     recipes: {
-      'Test.Resources/udtChild': {
-        default: {
-          templateKind: 'terraform'
-          templatePath: '${moduleServer}/child-udt.zip'
-        }
-      }
-      'Test.Resources/udtParent': {
+      'Test.Resources/userTypeAlpha': {
         default: {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/parent-udt.zip'
+          parameters: {
+            port: port
+          }
         }
       }
     }
@@ -48,28 +48,35 @@ resource udttoudtapp 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-
-resource udtparent 'Test.Resources/udtParent@2023-10-01-preview' = {
-    name: 'udtparent'
-    properties: {
-      environment: udttoudtenv.id
-      application: udttoudtapp.id
-      size: 'S'
-      connections: {
-        databaseresource: {
-          source: udtchild.id
-        }
+resource udttoudtparent 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
+  name: 'udttoudtparent'
+  properties: {
+    environment: udttoudtenv.id
+    application: udttoudtapp.id
+    connections: {
+      externalresource: {
+        source: udttoudtchild.id
       }
-    }     
+    }
+  }     
 }
 
-
-resource udtchild 'Test.Resources/udtChild@2023-10-01-preview' = {
-  name: 'udtchild'
+resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {
+  name: 'udttoudtchild'
   location: 'global'
   properties: {
     environment: udttoudtenv.id
     application: udttoudtapp.id
-    size: 'S'
+    configMap: string(configMap.data)
+  }
+}
+
+resource configMap 'core/ConfigMap@v1' = {
+  metadata: {
+    name: 'udt-config-map-child'
+  }
+  data: {
+    'app1.sample.properties': 'property1=value1\nproperty2=value2'
+    'app2.sample.properties': 'property3=value3\nproperty4=value4'
   }
 }

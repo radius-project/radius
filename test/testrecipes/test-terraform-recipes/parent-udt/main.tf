@@ -12,35 +12,17 @@ variable "context" {
   type = any
 }
 
-variable "memory" {
-  description = "Memory limits for the PostgreSQL container"
-  type = map(object({
-    memoryRequest = string
-    memoryLimit  = string
-  }))
-  default = {
-    S = {
-      memoryRequest = "512Mi"
-      memoryLimit   = "1024Mi"
-    },
-    M = {
-      memoryRequest = "1Gi"
-      memoryLimit   = "2Gi"
-    }
-  }
+variable "port" {
+  description = "Specifies the port the container listens on."
+  type = number
 }
 
 locals {
-  uniqueName = var.context.resource.name
-  port     = 5432
+  uniqueName = "usertypealpha-${substr(sha256(var.context.resource.id), 0, 8)}"
   namespace = var.context.runtime.kubernetes.namespace
 }
 
-resource "random_password" "password" {
-  length           = 16
-}
-
-resource "kubernetes_deployment" "postgresql" {
+resource "kubernetes_deployment" "usertypealpha" {
   metadata {
     name      = local.uniqueName
     namespace = local.namespace
@@ -49,47 +31,34 @@ resource "kubernetes_deployment" "postgresql" {
   spec {
     selector {
       match_labels = {
-        app = "postgres"
+        app      = "usertypealpha"
+        resource = var.context.resource.name
       }
     }
 
     template {
       metadata {
         labels = {
-          app = "postgres"
+          app      = "usertypealpha"
+          resource = var.context.resource.name
         }
       }
 
       spec {
         container {
-          image = "postgres:16-alpine"
-          name  = "postgres"
-          resources {
-            requests = {
-              memory = var.memory[var.context.resource.properties.size].memoryRequest
-              }
-              limits = {
-                memory= var.memory[var.context.resource.properties.size].memoryLimit
-              }
-            }
-          env {
-            name  = "POSTGRES_PASSWORD"
-            value = random_password.password.result
-          }
-          env {
-            name = "POSTGRES_USER"
-            value = "postgres"
-          }
-          env {
-            name  = "POSTGRES_DB"
-            value = "postgres_db"
-          }
-          env {
-            name = "CONNECTED_TO"
-            value = var.context.resource.connections.databaseresource.host
-          }
+          name  = "usertypealpha"
+          image = "alpine:latest"
+          
           port {
-            container_port = local.port
+            container_port = var.port
+          }
+          
+          command = ["/bin/sh"]
+          args    = ["-c", "while true; do sleep 30; done"]
+          
+          env {
+            name  = "CONN_INJECTED"
+            value = try(var.context.resource.connections.externalresource.configMap, "")
           }
         }
       }
@@ -97,32 +66,15 @@ resource "kubernetes_deployment" "postgresql" {
   }
 }
 
-resource "kubernetes_service" "postgres" {
-  metadata {
-    name      = local.uniqueName
-    namespace = local.namespace
-  }
-
-  spec {
-    selector = {
-      app = "postgres"
-    }
-
-    port {
-      port        = local.port
-      target_port = local.port
-    } 
-  }
-}
-
 output "result" {
   value = {
+    # This workaround is needed because the deployment engine omits Kubernetes resources from its output.
+    # Once this gap is addressed, users won't need to do this.
+    resources = [
+      "/planes/kubernetes/local/namespaces/${kubernetes_deployment.usertypealpha.metadata[0].namespace}/providers/apps/Deployment/${kubernetes_deployment.usertypealpha.metadata[0].name}"
+    ]
     values = {
-      host = "${kubernetes_service.postgres.metadata[0].name}.${kubernetes_service.postgres.metadata[0].namespace}.svc.cluster.local"
-      port = local.port
-      database = "postgres_db"
-      username = "postgres"
-      password = random_password.password.result
+      port = var.port
     }
   }
 }

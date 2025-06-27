@@ -1,13 +1,15 @@
 extension radius
 extension testresources
-// extension hack
+extension kubernetes with {
+  kubeConfig: ''
+  namespace: 'udttoudtapp'
+} as kubernetes
 param registry string
 
 param version string
 
-@description('PostgreSQL password')
-@secure()
-param password string = newGuid()
+@description('Specifies the port the container listens on.')
+param port int = 8080
 
 resource udttoudtenv 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'udttoudtenv'
@@ -19,16 +21,13 @@ resource udttoudtenv 'Applications.Core/environments@2023-10-01-preview' = {
       namespace: 'udttoudtenv'
     }
     recipes: {
-      'Test.Resources/postgres': {
+      'Test.Resources/userTypeAlpha': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_postgress_recipe:${version}'
-        }
-      }
-      'Test.Resources/udtParent': {
-        default: {
-          templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/parent-udt:${version}'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
+          parameters: {
+            port: port
+          }
         }
       }
     }
@@ -50,29 +49,37 @@ resource udttoudtapp 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 
-resource udttoudtparent 'Test.Resources/udtParent@2023-10-01-preview' = {
+resource udttoudtparent 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
     name: 'udttoudtparent'
     properties: {
       environment: udttoudtenv.id
       application: udttoudtapp.id
-      password: password
-      port: '5432'
       connections: {
-        databaseresource: {
-          source: udttoudtchild.id
-        }
+      externalresource: {
+        source: udttoudtchild.id
       }
-    }     
+    }
+  }
+    
 }
 
 
-resource udttoudtchild 'Test.Resources/postgres@2023-10-01-preview' = {
+resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {
   name: 'udttoudtchild'
   location: 'global'
   properties: {
     environment: udttoudtenv.id
-     application: udttoudtapp.id
-    password: password
-    port: '5432'
+    application: udttoudtapp.id
+    configMap: string(configMap.data)
+  }
+}
+
+resource configMap 'core/ConfigMap@v1' = {
+  metadata: {
+    name: 'udt-config-map-child'
+  }
+  data: {
+    'app1.sample.properties': 'property1=value1\nproperty2=value2'
+    'app2.sample.properties': 'property3=value3\nproperty4=value4'
   }
 }
