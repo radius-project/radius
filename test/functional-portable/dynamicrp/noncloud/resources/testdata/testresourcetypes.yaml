@@ -78,3 +78,42 @@ types:
             - application
             - environment
             - configMap 
+  # Additional resource types for shared API version deletion test (GitHub issue #9754)
+  sharedAPITestTypeA:
+    capabilities: []
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            configA:
+              type: string
+              description: Configuration data for shared API test type A.
+          required:
+            - application
+            - environment
+  sharedAPITestTypeB:
+    capabilities: []
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            configB:
+              type: string
+              description: Configuration data for shared API test type B.
+          required:
+            - application
+            - environment
