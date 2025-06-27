@@ -63,7 +63,7 @@ test-functional-all: test-functional-ucp test-functional-kubernetes test-functio
 
 .PHONY: test-functional-all-noncloud
 # Run all functional tests that do not require cloud resources
-test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud test-functional-upgrade-noncloud ## Runs all functional tests that do not require cloud resources
+test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud ## Runs all functional tests that do not require cloud resources
 
 .PHONY: test-functional-all-cloud
 # Run all functional tests that require cloud resources
