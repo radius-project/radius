@@ -66,6 +66,10 @@ type Options struct {
 	// Secrets represents a map of secrets required for recipe execution.
 	// The map's key represents the secretStoreIDs while the value represents the secret data.
 	Secrets map[string]recipes.SecretData
+
+	// RegistryEnv represents environment variables needed for Terraform registry configuration.
+	// These are passed from the driver layer to be included in the Terraform execution environment.
+	RegistryEnv map[string]string
 }
 
 // NewTerraform creates a working directory for Terraform execution and new Terraform executor with Terraform logs enabled.
@@ -111,6 +115,49 @@ func GetProviderEnvSecretIDs(envConfig recipes.Configuration) map[string][]strin
 	return providerSecretIDs
 }
 
+func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][]string {
+	registrySecretIDs := make(map[string][]string)
+	var mu sync.Mutex
+
+	// Handle registry authentication
+	if envConfig.RecipeConfig.Terraform.Registry != nil {
+		auth := envConfig.RecipeConfig.Terraform.Registry.Authentication
+
+		// Token authentication
+		if auth.Token != nil && auth.Token.Secret != "" {
+			// Token auth needs token
+			addSecretKeys(registrySecretIDs, auth.Token.Secret, "token", &mu)
+		}
+
+		// Handle registry TLS CA certificate
+		if envConfig.RecipeConfig.Terraform.Registry.TLS != nil &&
+			envConfig.RecipeConfig.Terraform.Registry.TLS.CACertificate != nil {
+			cert := envConfig.RecipeConfig.Terraform.Registry.TLS.CACertificate
+			addSecretKeys(registrySecretIDs, cert.Source, cert.Key, &mu)
+		}
+	}
+
+	// Handle version authentication for binary downloads
+	if envConfig.RecipeConfig.Terraform.Version != nil {
+		// Handle authentication
+		if envConfig.RecipeConfig.Terraform.Version.Authentication != nil {
+			if envConfig.RecipeConfig.Terraform.Version.Authentication.Token != nil {
+				// Token auth needs token
+				addSecretKeys(registrySecretIDs, envConfig.RecipeConfig.Terraform.Version.Authentication.Token.Secret, "token", &mu)
+			}
+		}
+
+		// Handle TLS CA certificate
+		if envConfig.RecipeConfig.Terraform.Version.TLS != nil &&
+			envConfig.RecipeConfig.Terraform.Version.TLS.CACertificate != nil {
+			cert := envConfig.RecipeConfig.Terraform.Version.TLS.CACertificate
+			addSecretKeys(registrySecretIDs, cert.Source, cert.Key, &mu)
+		}
+	}
+
+	return registrySecretIDs
+}
+
 // extractProviderSecrets extracts secrets from Terraform provider configurations
 func extractProviderSecretIDs(providers map[string][]dm.ProviderConfigProperties, secrets map[string][]string, mu *sync.Mutex) {
 	for _, config := range providers {
@@ -143,6 +190,12 @@ func addSecretKeys(secrets map[string][]string, secretStoreID, key string, mu *s
 	if _, ok := secrets[secretStoreID]; !ok {
 		secrets[secretStoreID] = []string{key}
 	} else {
+		// Check if key already exists to avoid duplicates
+		for _, existingKey := range secrets[secretStoreID] {
+			if existingKey == key {
+				return
+			}
+		}
 		secrets[secretStoreID] = append(secrets[secretStoreID], key)
 	}
 }

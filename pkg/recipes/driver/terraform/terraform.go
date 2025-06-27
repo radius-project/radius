@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver
+package terraform
 
 import (
 	"context"
@@ -25,16 +25,14 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"golang.org/x/exp/slices"
-
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk"
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
 	awsresources "github.com/radius-project/radius/pkg/ucp/resources/aws"
@@ -42,23 +40,28 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util"
 
+	"github.com/google/uuid"
 	tfjson "github.com/hashicorp/terraform-json"
+	"golang.org/x/exp/slices"
 )
 
-var _ Driver = (*terraformDriver)(nil)
+var _ driver.Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, options TerraformOptions, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) Driver {
+func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, options TerraformOptions, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) driver.Driver {
 	return &terraformDriver{
 		terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, kubernetesClients),
 		options:           options,
 	}
 }
 
-// Options represents the options required for execution of Terraform driver.
+// TerraformOptions represents the options required for execution of Terraform driver.
 type TerraformOptions struct {
 	// Path is the path to the directory mounted to the container where terraform can be installed and executed.
 	Path string
+
+	// EnvConfig is the configuration for the environment.
+	EnvConfig recipes.Configuration
 }
 
 // terraformDriver represents a driver to interact with Terraform Recipe - deploy recipe, delete resources, etc.
@@ -72,7 +75,7 @@ type terraformDriver struct {
 
 // Execute creates a unique directory for each execution of terraform and deploys the recipe using the
 // the Terraform CLI through terraform-exec. It returns a RecipeOutput or an error if the deployment fails.
-func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
@@ -84,6 +87,44 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
 		}
 	}()
+
+	logger.Info("Configuring Terraform registry",
+		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.Registry != nil,
+		"secretsCount", len(opts.Secrets))
+
+	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
+	if err != nil {
+		logger.Error(err, "Failed to configure Terraform registry")
+		return nil, fmt.Errorf("failed to configure terraform registry: %w", err)
+	}
+
+	if regConfig != nil {
+		logger.Info("Terraform registry configured successfully",
+			"configPath", regConfig.ConfigPath,
+			"envVarsCount", len(regConfig.EnvVars),
+			"tempFilesCount", len(regConfig.TempFiles))
+	} else {
+		logger.Info("No Terraform registry configuration needed")
+	}
+
+	defer func() {
+		if err := CleanupTerraformRegistryConfig(ctx, regConfig); err != nil {
+			// Log the error but don't fail the operation
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform registry configuration: %s", err.Error()))
+		}
+	}()
+
+	// Extract registry environment variables to pass to the executor
+	var registryEnv map[string]string
+	if regConfig != nil && regConfig.EnvVars != nil {
+		registryEnv = regConfig.EnvVars
+		logger.Info("Extracted registry environment variables",
+			"count", len(registryEnv))
+
+		for key, value := range registryEnv {
+			logger.Info("Registry environment variable", "key", key, "value", value)
+		}
+	}
 
 	// Get the secret store ID associated with the git private terraform repository source.
 	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
@@ -103,6 +144,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 		Secrets:        opts.Secrets,
+		RegistryEnv:    registryEnv,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -114,7 +156,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.BaseOptions.Definition, tfState)
+	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.Definition, tfState)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -124,7 +166,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 
 // Delete creates a unique directory for each execution of terraform and deletes the resources deployed by the Terraform module
 // using the Terraform CLI through terraform-exec. It returns an error if the deletion fails.
-func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error {
+func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
@@ -136,6 +178,44 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
 		}
 	}()
+
+	logger.Info("Configuring Terraform registry for delete operation",
+		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.Registry != nil,
+		"secretsCount", len(opts.Secrets))
+
+	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
+	if err != nil {
+		logger.Error(err, "Failed to configure Terraform registry for delete")
+		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to configure terraform registry: %s", err.Error()), "", nil)
+	}
+
+	if regConfig != nil {
+		logger.Info("Terraform registry configured successfully for delete",
+			"configPath", regConfig.ConfigPath,
+			"envVarsCount", len(regConfig.EnvVars),
+			"tempFilesCount", len(regConfig.TempFiles))
+	} else {
+		logger.Info("No Terraform registry configuration needed for delete")
+	}
+
+	defer func() {
+		if err := CleanupTerraformRegistryConfig(ctx, regConfig); err != nil {
+			// Log the error but don't fail the operation
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform registry configuration: %s", err.Error()))
+		}
+	}()
+
+	// Extract registry environment variables to pass to the executor
+	var registryEnv map[string]string
+	if regConfig != nil && regConfig.EnvVars != nil {
+		registryEnv = regConfig.EnvVars
+		logger.Info("Extracted registry environment variables for delete",
+			"count", len(registryEnv))
+
+		for key, value := range registryEnv {
+			logger.Info("Registry environment variable", "key", key, "value", value)
+		}
+	}
 
 	// Get the secret store ID associated with the git private terraform repository source.
 	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
@@ -155,6 +235,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 		Secrets:        opts.Secrets,
+		RegistryEnv:    registryEnv,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -251,7 +332,7 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 }
 
 // GetRecipeMetadata returns the Terraform Recipe parameters by downloading the module and retrieving variable information
-func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
+func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOptions) (map[string]any, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
@@ -263,6 +344,44 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
 		}
 	}()
+
+	logger.Info("Configuring Terraform registry for metadata operation",
+		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.Registry != nil,
+		"secretsCount", len(opts.Secrets))
+
+	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
+	if err != nil {
+		logger.Error(err, "Failed to configure Terraform registry for metadata")
+		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, fmt.Sprintf("failed to configure terraform registry: %s", err.Error()), "", nil)
+	}
+
+	if regConfig != nil {
+		logger.Info("Terraform registry configured successfully for metadata",
+			"configPath", regConfig.ConfigPath,
+			"envVarsCount", len(regConfig.EnvVars),
+			"tempFilesCount", len(regConfig.TempFiles))
+	} else {
+		logger.Info("No Terraform registry configuration needed for metadata")
+	}
+
+	defer func() {
+		if err := CleanupTerraformRegistryConfig(ctx, regConfig); err != nil {
+			// Log the error but don't fail the operation
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform registry configuration: %s", err.Error()))
+		}
+	}()
+
+	// Extract registry environment variables to pass to the executor
+	var registryEnv map[string]string
+	if regConfig != nil && regConfig.EnvVars != nil {
+		registryEnv = regConfig.EnvVars
+		logger.Info("Extracted registry environment variables for metadata",
+			"count", len(registryEnv))
+
+		for key, value := range registryEnv {
+			logger.Info("Registry environment variable", "key", key, "value", value)
+		}
+	}
 
 	// Get the secret store ID associated with the git private terraform repository source.
 	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
@@ -280,6 +399,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 		RootDir:        requestDirPath,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		RegistryEnv:    registryEnv,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -306,6 +426,8 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 	}
 
 	if secretStoreID != "" {
+		// For Git authentication, we request both pat and username keys.
+		// The username is optional and will be handled gracefully if not present.
 		secretStoreIDResourceKeys[secretStoreID] = []string{PrivateRegistrySecretKey_Pat, PrivateRegistrySecretKey_Username}
 	}
 
@@ -314,6 +436,15 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 
 	// Merge secretStoreIDResourceKeys with providerSecretIDs
 	for secretStoreID, keys := range providerSecretIDs {
+		if _, ok := secretStoreIDResourceKeys[secretStoreID]; !ok {
+			secretStoreIDResourceKeys[secretStoreID] = keys
+		} else {
+			secretStoreIDResourceKeys[secretStoreID] = append(secretStoreIDResourceKeys[secretStoreID], keys...)
+		}
+	}
+
+	terraformRegistrySecrets := terraform.GetTerraformRegistrySecretIDs(envConfig)
+	for secretStoreID, keys := range terraformRegistrySecrets {
 		if _, ok := secretStoreIDResourceKeys[secretStoreID]; !ok {
 			secretStoreIDResourceKeys[secretStoreID] = keys
 		} else {
@@ -333,9 +464,17 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 		return recipeResources, nil
 	}
 
+	registry := GetTerraformRegistry(d.options.EnvConfig)
+	azureProvider := GetTerraformProviderFullName(registry,
+		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformAzureProvider, DefaultTerraformAzureProvider))
+	awsProvider := GetTerraformProviderFullName(registry,
+		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformAWSProvider, DefaultTerraformAWSProvider))
+	kubernetesProvider := GetTerraformProviderFullName(registry,
+		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformKubernetesProvider, DefaultTerraformKubernetesProvider))
+
 	for _, resource := range module.Resources {
 		switch resource.ProviderName {
-		case TerraformKubernetesProvider:
+		case kubernetesProvider:
 			var resourceType, resourceName, namespace, provider string
 			// For resource type "kubernetes_manifest" get the required details from the manifest property.
 			// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest
@@ -390,7 +529,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 				return []string{}, err
 			}
 			recipeResources = append(recipeResources, kubernetesResourceID)
-		case TerraformAzureProvider:
+		case azureProvider:
 			if resource.AttributeValues != nil {
 				if id, ok := resource.AttributeValues["id"].(string); ok {
 					_, err := resources.ParseResource(id)
@@ -402,7 +541,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 					}
 				}
 			}
-		case TerraformAWSProvider:
+		case awsProvider:
 			if resource.AttributeValues != nil {
 				if arn, ok := resource.AttributeValues["arn"].(string); ok {
 					awsResourceID, err := awsresources.ToUCPResourceID(arn)

@@ -396,7 +396,7 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			secretsConfig, err := extractSecretsFromRecipeConfig(tt.recipeConfigSecrets, tt.secrets)
+			secretsConfig, err := extractSecretsFromRecipeConfig(context.Background(), tt.recipeConfigSecrets, tt.secrets)
 			if tt.expectError {
 				require.EqualError(t, err, tt.expectedErrorMessage, err.Error())
 			} else {

@@ -18,9 +18,13 @@ package helm
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/strvals"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -53,7 +57,12 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 	}
 
 	if options.ChartPath == "" {
-		helmChart, err = helmAction.HelmChartFromContainerRegistry(options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)
+		chartRepo := options.ChartRepo
+		if chartRepo == "" {
+			chartRepo = contourHelmRepo
+		}
+
+		helmChart, err = helmAction.HelmChartFromContainerRegistry(options.ChartVersion, helmConf, chartRepo, options.ReleaseName)
 	} else {
 		helmChart, err = helmAction.LoadChart(options.ChartPath)
 	}
@@ -73,10 +82,36 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 // LoadBalancer service ports to 8080 and 8443 so that they don't conflict with Envoy while using Host Networking. It
 // returns an error if any of the nodes in the chart values are not found.
 func addContourValues(helmChart *chart.Chart, options ContourChartOptions) error {
+	values := helmChart.Values
+
+	// Parse --set arguments in order so that the last one wins.
+	for _, arg := range options.SetArgs {
+		err := strvals.ParseInto(arg, values)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, arg := range options.SetFileArgs {
+		if runtime.GOOS == "windows" {
+			arg = filepath.ToSlash(arg)
+		}
+
+		reader := func(rs []rune) (any, error) {
+			data, err := os.ReadFile(string(rs))
+			return string(data), err
+		}
+
+		err := strvals.ParseIntoFile(arg, values, reader)
+		if err != nil {
+			return err
+		}
+	}
+
 	if options.HostNetwork {
 		// https://projectcontour.io/docs/main/deploy-options/#host-networking
 		// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
-		envoyNode := helmChart.Values["envoy"].(map[string]any)
+		envoyNode := values["envoy"].(map[string]any)
 		if envoyNode == nil {
 			return fmt.Errorf("envoy node not found in chart values")
 		}

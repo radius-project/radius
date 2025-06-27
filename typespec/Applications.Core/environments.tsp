@@ -50,7 +50,7 @@ model EnvironmentResource
 @doc("Environment properties")
 model EnvironmentProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("The compute resource used by application environment.")
@@ -69,7 +69,7 @@ model EnvironmentProperties {
   recipeConfig?: RecipeConfigProperties;
 
   @doc("The environment extension.")
-  @extension("x-ms-identifiers", [])
+  @extension("x-ms-identifiers", #[])
   extensions?: Array<Extension>;
 }
 
@@ -107,6 +107,63 @@ model TerraformConfigProperties {
 
   @doc("Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration.")
   providers?: Record<Array<ProviderConfigProperties>>;
+
+  @doc("Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.")
+  registry?: TerraformRegistryConfig;
+
+  @doc("Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API.")
+  version?: TerraformVersionConfig;
+}
+
+@doc("Configuration for Terraform provider registry mirroring.")
+model TerraformRegistryConfig {
+  @doc("Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'")
+  mirror?: string;
+
+  @doc("Provider mappings to translate between official and custom provider identifiers.")
+  providerMappings?: Record<string>;
+
+  @doc("Authentication configuration for accessing private Terraform registry mirrors.")
+  authentication?: RegistryAuthConfig;
+
+  @doc("TLS configuration for connecting to the Terraform registry mirror.")
+  tls?: TLSConfig;
+}
+
+@doc("Configuration for Terraform binary installation. Allows specifying a version and an optional custom base URL for the releases API.")
+model TerraformVersionConfig {
+  @doc("Optional direct URL to a Terraform binary archive (.zip file). If set, Terraform will be downloaded directly from this URL instead of using the releases API. This takes precedence over releasesApiBaseUrl. The URL must point to a valid Terraform release archive. Example: 'https://my-mirror.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip'")
+  releasesArchiveUrl?: string;
+
+  @doc("Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site. The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'")
+  releasesApiBaseUrl?: string;
+
+  @doc("Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example: '1.7.0'")
+  version?: string;
+
+  @doc("TLS configuration for connecting to the releases API.")
+  tls?: TLSConfig;
+
+  @doc("Authentication configuration for accessing the Terraform binary releases API.")
+  authentication?: RegistryAuthConfig;
+}
+
+@doc("TLS configuration options for HTTPS connections.")
+model TLSConfig {
+  @doc("Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.")
+  caCertificate?: SecretReference;
+
+  @doc("Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING: This makes the connection vulnerable to man-in-the-middle attacks.")
+  skipVerify?: boolean = false;
+}
+
+@doc("Authentication configuration for accessing private Terraform registry mirrors.")
+model RegistryAuthConfig {
+  @doc("Token authentication configuration for registry authentication.")
+  token?: TokenConfig;
+
+  @doc("Additional hosts that should use the same authentication credentials. This is useful when a registry mirror redirects to other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).")
+  additionalHosts?: string[];
 }
 
 @doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
@@ -124,6 +181,12 @@ model GitAuthConfig {
 @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
 model SecretConfig {
   @doc("The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified.")
+  secret?: string;
+}
+
+@doc("Token authentication configuration.")
+model TokenConfig {
+  @doc("The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token' containing the token value.")
   secret?: string;
 }
 
@@ -168,6 +231,9 @@ model RecipeProperties {
 
   @doc("Key/value parameters to pass to the recipe template at deployment.")
   parameters?: {};
+
+  @doc("TLS configuration for downloading recipe artifacts from HTTPS endpoints.")
+  tls?: TLSConfig;
 }
 
 @doc("Represents Bicep recipe properties.")

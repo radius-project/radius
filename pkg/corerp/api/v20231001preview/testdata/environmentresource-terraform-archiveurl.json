@@ -1,0 +1,33 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+  "name": "env0",
+  "type": "Applications.Core/environments",
+  "properties": {
+    "compute": {
+      "kind": "kubernetes",
+      "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+      "namespace": "default"
+    },
+    "recipeConfig": {
+      "terraform": {
+        "version": {
+          "version": "1.7.0",
+          "releasesArchiveUrl": "https://terraform-mirror.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip",
+          "authentication": {
+            "token": {
+              "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/authSecrets"
+            }
+          },
+          "tls": {
+            "skipVerify": false,
+            "caCertificate": {
+              "source": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",
+              "key": "ca-cert"
+            }
+          }
+        }
+      }
+    },
+    "provisioningState": "Accepted"
+  }
+}

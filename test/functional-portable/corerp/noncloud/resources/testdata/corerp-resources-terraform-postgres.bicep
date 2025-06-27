@@ -22,10 +22,11 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
     recipeConfig: {
       terraform: {
         providers: {
-          postgresql: [ {
+          postgresql: [
+            {
               alias: 'pgdb-test'
               sslmode: 'disable'
-              secrets: {               
+              secrets: {
                 username: {
                   source: pgsecretstore.id
                   key: 'username'
@@ -35,7 +36,8 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
                   key: 'password'
                 }
               }
-            } ]
+            }
+          ]
         }
       }
       env: {
