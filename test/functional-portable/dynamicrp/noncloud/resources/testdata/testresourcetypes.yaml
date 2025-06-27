@@ -34,8 +34,8 @@ types:
   postgres:
     capabilities: ["SupportsRecipes"]
     apiVersions:
-      "2023-10-01-preview":
-        schema:
+      '2023-10-01-preview':
+        schema: 
           type: object
           properties:
             environment:
@@ -43,6 +43,27 @@ types:
             application:
               type: string
               description: The resource ID of the application.
+            database:
+              type: string
+              description: The name of the database.
+            host:
+              type: string
+              description: The host name of the database.
+            port:
+              type: string
+              description: The port number of the database.
+            password:
+              type: string
+              description: The password for the database.
+            status:
+              type: object
+              properties:
+                computedValues:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                      description: The username for the database.
   externalResource:
     capabilities: []
     apiVersions:
