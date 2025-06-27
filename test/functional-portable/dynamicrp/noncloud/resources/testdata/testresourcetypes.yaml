@@ -123,4 +123,4 @@ types:
           required:
             - application
             - environment
-            - configMap
+            
