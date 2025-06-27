@@ -97,10 +97,12 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
-	// Set environment variables for the Terraform process.
-	err = e.setEnvironmentVariables(ctx, tf, options)
-	if err != nil {
-		return nil, err
+	if options.EnvConfig != nil {
+		// Set environment variables for the Terraform process.
+		err = e.setEnvironmentVariables(ctx, tf, options)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Create Terraform config in the working directory
@@ -156,9 +158,12 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Set environment variables BEFORE generateConfig to ensure Git has proper TLS settings
-	err = e.setEnvironmentVariables(ctx, tf, options)
-	if err != nil {
-		return err
+	if options.EnvConfig != nil || (options.EnvRecipe != nil && options.EnvRecipe.TLS != nil) {
+		// Set environment variables for the Terraform process.
+		err = e.setEnvironmentVariables(ctx, tf, options)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Create Terraform config in the working directory
@@ -227,10 +232,12 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	}
 
 	// Set environment variables BEFORE any module operations
-	// Set environment variables for the Terraform process.
-	err = e.setEnvironmentVariables(ctx, tf, options)
-	if err != nil {
-		return nil, err
+	if options.EnvConfig != nil || (options.EnvRecipe != nil && options.EnvRecipe.TLS != nil) {
+		// Set environment variables for the Terraform process.
+		err = e.setEnvironmentVariables(ctx, tf, options)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options)
