@@ -97,18 +97,16 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
-	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
+	// Set environment variables for the Terraform process.
+	err = e.setEnvironmentVariables(ctx, tf, options)
 	if err != nil {
 		return nil, err
 	}
 
-	if options.EnvConfig != nil {
-		// Set environment variables for the Terraform process.
-		err = e.setEnvironmentVariables(ctx, tf, options)
-		if err != nil {
-			return nil, err
-		}
+	// Create Terraform config in the working directory
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
+	if err != nil {
+		return nil, err
 	}
 
 	// Run TF Init and Apply in the working directory
@@ -153,6 +151,12 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 			logger.Info("Failed to cleanup Terraform installation", "error", err.Error())
 		}
 	}()
+	if err != nil {
+		return err
+	}
+
+	// Set environment variables BEFORE generateConfig to ensure Git has proper TLS settings
+	err = e.setEnvironmentVariables(ctx, tf, options)
 	if err != nil {
 		return err
 	}
@@ -222,6 +226,13 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
+	// Set environment variables BEFORE any module operations
+	// Set environment variables for the Terraform process.
+	err = e.setEnvironmentVariables(ctx, tf, options)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options)
 	if err != nil {
 		return nil, err
@@ -242,60 +253,83 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, options Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	if options.EnvConfig == nil {
-		return nil
-	}
-
 	// Populate envVars with the environment variables from current process
 	envVars := splitEnvVar(os.Environ())
-	recipeConfig := &options.EnvConfig.RecipeConfig
 	var envVarUpdate bool
 
-	if len(recipeConfig.Env.AdditionalProperties) > 0 {
-		envVarUpdate = true
-		logger.Info("Setting environment variables from recipe config", "count", len(recipeConfig.Env.AdditionalProperties))
-		maps.Copy(envVars, recipeConfig.Env.AdditionalProperties)
-	}
+	// Handle recipe config if present
+	if options.EnvConfig != nil {
+		recipeConfig := &options.EnvConfig.RecipeConfig
 
-	if len(recipeConfig.EnvSecrets) > 0 {
-		logger.Info("Extracting secret environment variables", "count", len(recipeConfig.EnvSecrets))
-		for secretName, secretReference := range recipeConfig.EnvSecrets {
-			logger.Info("Processing environment secret", "secretName", secretName, "source", secretReference.Source, "key", secretReference.Key)
-			// Extract secret value from the secrets input
-			if secretData, ok := options.Secrets[secretReference.Source]; ok {
-				if secretValue, ok := secretData.Data[secretReference.Key]; ok {
-					envVarUpdate = true
-					envVars[secretName] = secretValue
-					logger.Info("Environment secret extracted successfully", "secretName", secretName)
+		if len(recipeConfig.Env.AdditionalProperties) > 0 {
+			envVarUpdate = true
+			logger.Info("Setting environment variables from recipe config", "count", len(recipeConfig.Env.AdditionalProperties))
+			maps.Copy(envVars, recipeConfig.Env.AdditionalProperties)
+		}
+
+		if len(recipeConfig.EnvSecrets) > 0 {
+			logger.Info("Extracting secret environment variables", "count", len(recipeConfig.EnvSecrets))
+			for secretName, secretReference := range recipeConfig.EnvSecrets {
+				logger.Info("Processing environment secret", "secretName", secretName, "source", secretReference.Source, "key", secretReference.Key)
+				// Extract secret value from the secrets input
+				if secretData, ok := options.Secrets[secretReference.Source]; ok {
+					if secretValue, ok := secretData.Data[secretReference.Key]; ok {
+						envVarUpdate = true
+						envVars[secretName] = secretValue
+						logger.Info("Environment secret extracted successfully", "secretName", secretName)
+					} else {
+						logger.Error(nil, "Missing secret key in secret store", "source", secretReference.Source, "key", secretReference.Key)
+						return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
+					}
 				} else {
-					logger.Error(nil, "Missing secret key in secret store", "source", secretReference.Source, "key", secretReference.Key)
-					return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
+					logger.Error(nil, "Missing secret source", "source", secretReference.Source)
+					return fmt.Errorf("missing secret source: %s", secretReference.Source)
 				}
-			} else {
-				logger.Error(nil, "Missing secret source", "source", secretReference.Source)
-				return fmt.Errorf("missing secret source: %s", secretReference.Source)
 			}
 		}
 	}
 
-	// Add TLS environment variables
+	// Add TLS environment variables (this can run even if EnvConfig is nil)
 	err := addTLSEnvironmentVariables(ctx, options, envVars)
 	if err != nil {
 		return fmt.Errorf("failed to add TLS environment variables: %w", err)
+	}
+	// If TLS settings were added, mark for update
+	if options.EnvRecipe != nil && options.EnvRecipe.TLS != nil {
+		envVarUpdate = true
 	}
 
 	// Add registry environment variables if provided
 	if len(options.RegistryEnv) > 0 {
 		envVarUpdate = true
 		logger.Info("Adding registry environment variables", "count", len(options.RegistryEnv))
+
+		// Log each registry environment variable for debugging
+		for key, value := range options.RegistryEnv {
+			if strings.Contains(key, "TOKEN") {
+				logger.Info("Adding registry env var", "key", key, "valueLength", len(value))
+			} else if strings.Contains(key, "SSL_CERT_FILE") || strings.Contains(key, "CURL_CA_BUNDLE") {
+				logger.Info("Adding TLS env var", "key", key, "value", value)
+			} else {
+				logger.Info("Adding registry env var", "key", key, "value", value)
+			}
+		}
+
 		maps.Copy(envVars, options.RegistryEnv)
 	}
 
 	// Set the environment variables for the Terraform process
 	if envVarUpdate || len(envVars) > 0 {
+		logger.Info("Setting environment variables for Terraform process",
+			"totalCount", len(envVars),
+			"hasUpdate", envVarUpdate)
+
 		if err := tf.SetEnv(envVars); err != nil {
+			logger.Error(err, "Failed to set environment variables")
 			return fmt.Errorf("failed to set environment variables: %w", err)
 		}
+
+		logger.Info("Successfully set environment variables for Terraform process")
 	}
 
 	return nil
@@ -510,7 +544,18 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Initialize Terraform
-	logger.Info("Initializing Terraform")
+	logger.Info("Initializing Terraform",
+		"workingDir", tf.WorkingDir())
+
+	// Check if required environment variables are set (for debugging)
+	for _, envKey := range []string{"TF_CLI_CONFIG_FILE", "SSL_CERT_FILE", "CURL_CA_BUNDLE"} {
+		if value := os.Getenv(envKey); value != "" {
+			logger.Info("Environment variable check", "key", envKey, "value", value)
+		} else {
+			logger.Info("Environment variable not set in process", "key", envKey)
+		}
+	}
+
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
 		logger.Error(err, "Terraform init failed during apply flow")
