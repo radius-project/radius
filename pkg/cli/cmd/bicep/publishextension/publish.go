@@ -18,7 +18,6 @@ package publishextension
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
+	"github.com/radius-project/radius/pkg/cli/manifestbicep"
 	"github.com/radius-project/radius/pkg/cli/output"
 
 	"github.com/spf13/cobra"
@@ -113,9 +113,17 @@ func (r *Runner) Run(ctx context.Context) error {
 	//
 	// 3. We can clean up the "index" directory after publishing.
 
-	_, err := exec.LookPath("npx")
-	if errors.Is(err, exec.ErrNotFound) {
-		return clierrors.Message("The command 'npx' was not found on the PATH. Please install Node.js 16+ to use this command.")
+	_, err := manifestbicep.GetManifestToBicepExtensionFilePath()
+	if err != nil {
+		return err
+	}
+
+	installed, err := manifestbicep.IsManifestToBicepExtensionInstalled()
+	if err != nil {
+		return err
+	}
+	if !installed {
+		return clierrors.Message("The 'manifest-to-bicep-extension' CLI tool is not installed. Please install it to use this command.")
 	}
 
 	temp, err := os.MkdirTemp("", "bicep-extension-*")
@@ -140,18 +148,22 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outputDirectoryPath string) error {
-	// npx @radius-project/manifest-to-bicep-extension@alpha generate <resource provider> <temp>
+	manifestToBicepExtensionFilePath, err := manifestbicep.GetManifestToBicepExtensionFilePath()
+	if err != nil {
+		return err
+	}
+
+	// manifest-to-bicep-extension generate <resource provider> <temp>
 	args := []string{
-		"@radius-project/manifest-to-bicep-extension@alpha",
 		"generate",
 		inputFilePath,
 		outputDirectoryPath,
 	}
-	cmd := exec.CommandContext(ctx, "npx", args...)
+	cmd := exec.CommandContext(ctx, manifestToBicepExtensionFilePath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to generate Bicep extension")
 	}
