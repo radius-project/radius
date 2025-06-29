@@ -65,6 +65,70 @@ verifySupported() {
     exit 1
 }
 
+getManifestToBicepExtensionBinaryName() {
+    local platform="${OS}-${ARCH}"
+    
+    case $platform in
+        "darwin-amd64")
+            echo "manifest-to-bicep-extension-darwin-amd64"
+            ;;
+        "darwin-arm64")
+            echo "manifest-to-bicep-extension-darwin-arm64"
+            ;;
+        "linux-amd64")
+            echo "manifest-to-bicep-extension-linux-amd64"
+            ;;
+        "linux-arm64")
+            echo "manifest-to-bicep-extension-linux-arm64"
+            ;;
+        "linux-arm")
+            # bicep-tools doesn't provide linux-arm, skip
+            echo ""
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+downloadManifestToBicepExtension() {
+    local binary_name=$(getManifestToBicepExtensionBinaryName)
+    
+    if [ -z "$binary_name" ]; then
+        echo "manifest-to-bicep-extension is not available for ${OS}-${ARCH}, skipping..."
+        return 0
+    fi
+    
+    local home_dir
+    home_dir=$(eval echo ~$USER)
+    local install_dir="${home_dir}/.rad/bin"
+    local binary_path="${install_dir}/manifest-to-bicep-extension"
+    
+    # Create the install directory if it doesn't exist
+    mkdir -p "$install_dir"
+    
+    local download_url="https://github.com/willdavsmith/bicep-tools/releases/download/v0.2.0/${binary_name}"
+    
+    echo "Downloading manifest-to-bicep-extension from ${download_url}..."
+    
+    if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
+        curl -SsL "$download_url" -o "$binary_path"
+    else
+        wget -q -O "$binary_path" "$download_url"
+    fi
+    
+    if [ ! -f "$binary_path" ]; then
+        echo "Failed to download manifest-to-bicep-extension"
+        return 1
+    fi
+    
+    # Make the binary executable
+    chmod +x "$binary_path"
+    
+    echo "manifest-to-bicep-extension installed successfully"
+    return 0
+}
+
 runAsRoot() {
     local CMD="$*"
 
@@ -186,6 +250,16 @@ installFile() {
            exit 1
         fi
 
+        echo "Installing manifest-to-bicep-extension..."
+        downloadManifestToBicepExtension
+        result=$?
+        if [ $result -eq 0 ]; then
+            echo "manifest-to-bicep-extension installation completed"
+        else
+           echo "Failed to install manifest-to-bicep-extension"
+           exit 1
+        fi
+
         # TODO: $RADIUS_CLI_FILE --version
     else 
         echo "Failed to install $RADIUS_CLI_FILENAME"
@@ -230,12 +304,12 @@ else
     ret_val=v$1
 fi
 
-verifySupported $ret_val
+verifySupported "$ret_val"
 checkExistingRadius
 
 echo "Installing $ret_val Radius CLI..."
 
-downloadFile $ret_val
+downloadFile "$ret_val"
 installFile
 cleanup
 
