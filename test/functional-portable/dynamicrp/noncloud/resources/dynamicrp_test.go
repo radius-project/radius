@@ -134,8 +134,7 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 // It has 2 steps:
 // 1. Deploy the environment and postgres resource to the environment namespace.
 // 2. Deploy an app that uses the existing postgres resource using the 'existing' keyword.
-func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
-	t.Skip()
+func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {	
 	envTemplate := "testdata/postgres-env-scoped-resource.bicep"
 	existingTemplate := "testdata/postgres-existing-and-cntr.bicep"
 	name := "dynamicrp-postgres-env"
