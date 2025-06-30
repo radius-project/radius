@@ -78,45 +78,6 @@ func (c *MockInterfaceCheckRadiusInstallCall) DoAndReturn(f func(string) (Instal
 	return c
 }
 
-// GetLatestRadiusVersion mocks base method.
-func (m *MockInterface) GetLatestRadiusVersion(arg0 context.Context) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLatestRadiusVersion", arg0)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetLatestRadiusVersion indicates an expected call of GetLatestRadiusVersion.
-func (mr *MockInterfaceMockRecorder) GetLatestRadiusVersion(arg0 any) *MockInterfaceGetLatestRadiusVersionCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestRadiusVersion", reflect.TypeOf((*MockInterface)(nil).GetLatestRadiusVersion), arg0)
-	return &MockInterfaceGetLatestRadiusVersionCall{Call: call}
-}
-
-// MockInterfaceGetLatestRadiusVersionCall wrap *gomock.Call
-type MockInterfaceGetLatestRadiusVersionCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockInterfaceGetLatestRadiusVersionCall) Return(arg0 string, arg1 error) *MockInterfaceGetLatestRadiusVersionCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockInterfaceGetLatestRadiusVersionCall) Do(f func(context.Context) (string, error)) *MockInterfaceGetLatestRadiusVersionCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceGetLatestRadiusVersionCall) DoAndReturn(f func(context.Context) (string, error)) *MockInterfaceGetLatestRadiusVersionCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // InstallRadius mocks base method.
 func (m *MockInterface) InstallRadius(arg0 context.Context, arg1 ClusterOptions, arg2 string) error {
 	m.ctrl.T.Helper()
