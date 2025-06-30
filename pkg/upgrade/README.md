@@ -23,8 +23,6 @@ Currently implemented:
 2. **RadiusInstallationCheck** - Verifies Radius is currently installed and healthy
 3. **KubernetesConnectivityCheck** - Tests cluster connectivity and permissions
 4. **KubernetesResourceCheck** - Checks cluster resource availability for upgrades
-5. **HelmConnectivityCheck** - Verifies Helm can access the cluster and find Radius release
-6. **CustomConfigValidationCheck** - Validates --set and --set-file parameters
 
 ### Usage Example
 
@@ -37,16 +35,14 @@ import (
 )
 
 func validateUpgrade(ctx context.Context, output output.Interface, helmInterface helm.Interface,
-    currentVersion, targetVersion, kubeContext string, setParams, setFileParams []string) error {
+    currentVersion, targetVersion, kubeContext string) error {
     // Create preflight check registry
     registry := preflight.NewRegistry(output)
 
     // Add checks to registry in order of importance
     registry.AddCheck(preflight.NewKubernetesConnectivityCheck(kubeContext))
-    registry.AddCheck(preflight.NewHelmConnectivityCheck(helmInterface, kubeContext))
     registry.AddCheck(preflight.NewRadiusInstallationCheck(helmInterface, kubeContext))
     registry.AddCheck(preflight.NewVersionCompatibilityCheck(currentVersion, targetVersion))
-    registry.AddCheck(preflight.NewCustomConfigValidationCheck(setParams, setFileParams))
     registry.AddCheck(preflight.NewKubernetesResourceCheck(kubeContext))
 
     // Run all checks - registry handles execution and logging

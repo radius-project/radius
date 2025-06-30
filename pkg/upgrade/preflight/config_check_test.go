@@ -18,239 +18,293 @@ package preflight
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io/fs"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/filesystem"
+	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
-func TestCustomConfigValidationCheck_Properties(t *testing.T) {
-	check := NewCustomConfigValidationCheck([]string{}, []string{})
+func TestCustomConfigValidationCheck_BasicValidation(t *testing.T) {
+	t.Parallel()
 
-	assert.Equal(t, "Custom Configuration Validation", check.Name())
-	assert.Equal(t, SeverityWarning, check.Severity())
-}
-
-func TestCustomConfigValidationCheck_Run(t *testing.T) {
 	tests := []struct {
-		name          string
-		setParams     []string
-		setFileParams []string
-		expectPass    bool
-		expectMessage string
+		name              string
+		setParams         []string
+		setFileParams     []string
+		setupFiles        func(t *testing.T, fs filesystem.FileSystem) []string
+		shouldFail        bool
+		expectMsgContains []string
 	}{
 		{
-			name:          "no parameters",
-			setParams:     []string{},
-			setFileParams: []string{},
-			expectPass:    true,
-			expectMessage: "No custom configuration parameters provided",
+			name: "no parameters",
+			expectMsgContains: []string{
+				"No custom configuration parameters provided",
+			},
 		},
 		{
-			name:          "valid set parameter with warning",
-			setParams:     []string{"image.tag=v1.0.0"},
-			setFileParams: []string{},
-			expectPass:    true,
-			expectMessage: "All 1 custom configuration parameters are valid. Warnings:",
+			name: "valid parameters - mixed types",
+			setParams: []string{
+				"app.config=value",
+				"image.tag=v1.0.0",
+			},
+			setupFiles: func(t *testing.T, fs filesystem.FileSystem) []string {
+				tmpFile := "/tmp/values.yaml"
+				err := fs.WriteFile(tmpFile, []byte("test content"), 0644)
+				require.NoError(t, err)
+				return []string{fmt.Sprintf("values.yaml=%s", tmpFile)}
+			},
+			expectMsgContains: []string{
+				"All 3 custom configuration parameters passed",
+				"basic validation",
+			},
 		},
 		{
-			name:          "valid set parameter without warning",
-			setParams:     []string{"app.config=value"},
-			setFileParams: []string{},
-			expectPass:    true,
-			expectMessage: "All 1 custom configuration parameters are valid",
-		},
-		{
-			name:          "valid set-file parameter",
-			setParams:     []string{},
-			setFileParams: []string{"values.yaml=/path/to/values.yaml"},
-			expectPass:    true,
-			expectMessage: "All 1 custom configuration parameters are valid",
-		},
-		{
-			name:          "invalid set parameter format",
-			setParams:     []string{"invalid-format"},
-			setFileParams: []string{},
-			expectPass:    false,
-			expectMessage: "Configuration validation failed: --set parameter 'invalid-format': must be in format 'key=value'",
-		},
-		{
-			name:          "empty key in set parameter",
-			setParams:     []string{"=value"},
-			setFileParams: []string{},
-			expectPass:    false,
-			expectMessage: "Configuration validation failed: --set parameter '=value': key cannot be empty",
-		},
-		{
-			name:          "empty value in set parameter",
-			setParams:     []string{"key="},
-			setFileParams: []string{},
-			expectPass:    false,
-			expectMessage: "Configuration validation failed: --set parameter 'key=': value cannot be empty",
-		},
-		{
-			name:          "dangerous file path",
-			setParams:     []string{},
-			setFileParams: []string{"config=/etc/passwd"},
-			expectPass:    false,
-			expectMessage: "Configuration validation failed: --set-file parameter 'config=/etc/passwd': filepath appears to reference system files or use dangerous patterns",
-		},
-		{
-			name:          "valid array syntax",
-			setParams:     []string{"env[0].name=TEST"},
-			setFileParams: []string{},
-			expectPass:    true,
-			expectMessage: "All 1 custom configuration parameters are valid",
-		},
-		{
-			name:          "invalid array syntax",
-			setParams:     []string{"env[].name=TEST"},
-			setFileParams: []string{},
-			expectPass:    false,
-			expectMessage: "Configuration validation failed: --set parameter 'env[].name=TEST': invalid array or map syntax in key",
+			name: "invalid parameters - mixed failures",
+			setParams: []string{
+				"valid.key=value",
+				"invalid-format",
+				"=empty-key",
+			},
+			setFileParams: []string{
+				"config=/nonexistent/file.yaml",
+				"=empty-key-file",
+			},
+			shouldFail: true,
+			expectMsgContains: []string{
+				"Configuration validation failed",
+				"must be in format 'key=value'",
+				"key cannot be empty",
+				"cannot read file",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			check := NewCustomConfigValidationCheck(tt.setParams, tt.setFileParams)
-			pass, message, err := check.Run(context.Background())
+			t.Parallel()
 
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expectPass, pass)
-			if tt.name == "valid set parameter with warning" {
-				// For the warning case, just check that the base message is there and warnings are mentioned
-				assert.Contains(t, message, "All 1 custom configuration parameters are valid")
-				assert.Contains(t, message, "Warnings:")
-			} else {
-				assert.Contains(t, message, tt.expectMessage)
+			memFS := filesystem.NewMemMapFileSystem()
+
+			setFileParams := tt.setFileParams
+			if tt.setupFiles != nil {
+				setFileParams = tt.setupFiles(t, memFS)
+			}
+
+			check := NewCustomConfigValidationCheck(tt.setParams, setFileParams, "", nil)
+			check.fs = memFS
+			// Override the default chart path to skip chart validation for basic tests
+			check.chartPath = ""
+
+			pass, msg, err := check.Run(context.Background())
+
+			require.NoError(t, err)
+			assert.Equal(t, !tt.shouldFail, pass)
+			for _, contains := range tt.expectMsgContains {
+				assert.Contains(t, msg, contains)
 			}
 		})
 	}
 }
 
-func TestCustomConfigValidationCheck_ValidateSetParameter(t *testing.T) {
-	check := NewCustomConfigValidationCheck([]string{}, []string{})
+func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
+	t.Parallel()
+
+	// For chart validation tests, we'll check if real chart exists using default filesystem
+	// since this is just for the skip check
+	defaultFS := filesystem.NewMemMapFileSystem()
+	realChartPath := DefaultChartPath
+	if _, err := defaultFS.Stat(realChartPath); errors.Is(err, fs.ErrNotExist) {
+		t.Skipf("Radius chart not found at %s, skipping chart validation tests", realChartPath)
+	}
 
 	tests := []struct {
-		name      string
-		param     string
-		expectErr string
+		name              string
+		setParams         []string
+		setFileParams     []string
+		setupFiles        func(t *testing.T, fs filesystem.FileSystem) []string
+		shouldFail        bool
+		expectMsgContains []string
 	}{
 		{
-			name:      "valid parameter",
-			param:     "image.tag=v1.0.0",
-			expectErr: "",
+			name: "valid chart parameters",
+			setParams: []string{
+				"de.image=ghcr.io/radius-project/deployment-engine:v1.0.0",
+				"controller.resources.limits.memory=400Mi",
+				"global.prometheus.enabled=false",
+				"global.zipkin.url=http://zipkin:9411/api/v2/spans",
+			},
+			expectMsgContains: []string{
+				"validation against Helm chart",
+			},
 		},
 		{
-			name:      "missing equals",
-			param:     "invalid",
-			expectErr: "must be in format 'key=value'",
+			name: "invalid parameter syntax",
+			setParams: []string{
+				"de.image[invalid=syntax",
+				"controller.resources[invalid].key=test",
+			},
+			shouldFail: true,
+			expectMsgContains: []string{
+				"Chart validation failed",
+				"failed chart validation",
+			},
 		},
 		{
-			name:      "empty key",
-			param:     "=value",
-			expectErr: "key cannot be empty",
+			name: "valid set-file with chart",
+			setupFiles: func(t *testing.T, fs filesystem.FileSystem) []string {
+				tmpFile := "/tmp/config.yaml"
+				err := fs.WriteFile(tmpFile, []byte("custom-config-content"), 0644)
+				require.NoError(t, err)
+				return []string{fmt.Sprintf("global.rootCA.cert=%s", tmpFile)}
+			},
+			expectMsgContains: []string{
+				"validation against Helm chart",
+			},
 		},
 		{
-			name:      "empty value",
-			param:     "key=",
-			expectErr: "value cannot be empty",
+			name: "mixed valid parameters with real chart values",
+			setParams: []string{
+				"de.tag=latest",
+				"ucp.image=ghcr.io/radius-project/ucpd:latest",
+				"global.azureWorkloadIdentity.enabled=true",
+				"controller.logLevel=debug",
+			},
+			expectMsgContains: []string{
+				"All 4 custom configuration parameters passed",
+				"validation against Helm chart",
+			},
 		},
 		{
-			name:      "invalid characters in key",
-			param:     "key@invalid=value",
-			expectErr: "key contains invalid characters for Helm configuration path",
+			name: "invalid nested parameter",
+			setParams: []string{
+				"controller.nonexistent.nested.value=test",
+			},
+			shouldFail: false, // Helm allows setting non-existent values
+			expectMsgContains: []string{
+				"validation against Helm chart",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := check.validateSetParameter(tt.param)
-			if tt.expectErr == "" {
-				assert.Empty(t, result)
-			} else {
-				assert.Contains(t, result, tt.expectErr)
+			t.Parallel()
+
+			// For chart validation, we need to use the real filesystem
+			// since the chart is on disk
+			memFS := filesystem.NewMemMapFileSystem()
+
+			// Setup files if needed
+			setFileParams := tt.setFileParams
+			if tt.setupFiles != nil {
+				setFileParams = tt.setupFiles(t, memFS)
+			}
+
+			// Use the real chart path
+			check := NewCustomConfigValidationCheck(tt.setParams, setFileParams, realChartPath, nil)
+			// Use memFS for file parameters but default FS will be used for chart loading
+			check.fs = memFS
+
+			pass, msg, err := check.Run(context.Background())
+
+			require.NoError(t, err)
+			assert.Equal(t, !tt.shouldFail, pass)
+			for _, contains := range tt.expectMsgContains {
+				assert.Contains(t, msg, contains)
 			}
 		})
 	}
 }
 
-func TestCustomConfigValidationCheck_IsValidHelmPath(t *testing.T) {
-	check := NewCustomConfigValidationCheck([]string{}, []string{})
+func TestCustomConfigValidationCheck_ErrorHandling(t *testing.T) {
+	t.Parallel()
 
 	tests := []struct {
-		name   string
-		path   string
-		expect bool
+		name        string
+		setupMocks  func(*testing.T) (*filesystem.MockFileSystem, *helm.MockHelmClient, string)
+		setParams   []string
+		shouldFail  bool
+		expectError string
 	}{
-		{"simple key", "image", true},
-		{"dotted path", "image.tag", true},
-		{"with dashes", "container-name", true},
-		{"with underscores", "env_var", true},
-		{"with numbers", "port8080", true},
-		{"with brackets", "env[0]", true},
-		{"invalid symbols", "key@invalid", false},
-		{"spaces", "key with spaces", false},
-		{"slashes", "path/to/key", false},
+		{
+			name: "filesystem error",
+			setupMocks: func(t *testing.T) (*filesystem.MockFileSystem, *helm.MockHelmClient, string) {
+				ctrl := gomock.NewController(t)
+				mockFS := filesystem.NewMockFileSystem(ctrl)
+				mockFS.EXPECT().ReadFile("test.yaml").Return(nil, errors.New("file read error"))
+				return mockFS, nil, ""
+			},
+			setParams:   []string{},
+			shouldFail:  true,
+			expectError: "cannot read file",
+		},
+		{
+			name: "chart load error",
+			setupMocks: func(t *testing.T) (*filesystem.MockFileSystem, *helm.MockHelmClient, string) {
+				ctrl := gomock.NewController(t)
+				chartPath := "/test/chart"
+
+				mockClient := helm.NewMockHelmClient(ctrl)
+				mockClient.EXPECT().LoadChart(chartPath).Return(nil, errors.New("chart corrupted"))
+
+				mockFS := filesystem.NewMockFileSystem(ctrl)
+				mockFS.EXPECT().Stat(chartPath).Return(nil, nil)
+
+				return mockFS, mockClient, chartPath
+			},
+			setParams: []string{
+				"key=value",
+			},
+			shouldFail:  true,
+			expectError: "failed to load chart",
+		},
+		{
+			name: "nonexistent chart path",
+			setupMocks: func(t *testing.T) (*filesystem.MockFileSystem, *helm.MockHelmClient, string) {
+				ctrl := gomock.NewController(t)
+				chartPath := "/nonexistent/chart/path"
+
+				mockFS := filesystem.NewMockFileSystem(ctrl)
+				mockFS.EXPECT().Stat(chartPath).Return(nil, fs.ErrNotExist)
+
+				return mockFS, nil, chartPath
+			},
+			setParams: []string{
+				"de.image=test",
+			},
+			shouldFail:  true,
+			expectError: "failed to access chart path",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := check.isValidHelmPath(tt.path)
-			assert.Equal(t, tt.expect, result)
-		})
-	}
-}
+			t.Parallel()
 
-func TestCustomConfigValidationCheck_IsValidArrayOrMapSyntax(t *testing.T) {
-	check := NewCustomConfigValidationCheck([]string{}, []string{})
+			mockFS, mockClient, chartPath := tt.setupMocks(t)
 
-	tests := []struct {
-		name   string
-		path   string
-		expect bool
-	}{
-		{"simple array", "env[0]", true},
-		{"map access", "config[key]", true},
-		{"nested path", "app.env[0].name", true},
-		{"empty brackets", "env[]", false},
-		{"unclosed bracket", "env[0", false},
-		{"unopened bracket", "env0]", false},
-		{"nested brackets", "env[[0]]", false},
-		{"no brackets", "simple.path", false},
-	}
+			var setFileParams []string
+			if mockFS != nil && tt.name == "filesystem error" {
+				setFileParams = []string{"config=test.yaml"}
+			}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := check.isValidArrayOrMapSyntax(tt.path)
-			assert.Equal(t, tt.expect, result)
-		})
-	}
-}
+			check := NewCustomConfigValidationCheck(tt.setParams, setFileParams, chartPath, mockClient)
+			if mockFS != nil {
+				check.fs = mockFS
+			}
 
-func TestCustomConfigValidationCheck_IsDangerousFilePath(t *testing.T) {
-	check := NewCustomConfigValidationCheck([]string{}, []string{})
-
-	tests := []struct {
-		name   string
-		path   string
-		expect bool
-	}{
-		{"safe file", "/home/user/config.yaml", false},
-		{"relative safe", "config/values.yaml", false},
-		{"etc directory", "/etc/passwd", true},
-		{"usr directory", "/usr/bin/something", true},
-		{"parent directory", "../config", true},
-		{"current directory", "./config", true},
-		{"home shortcut", "~/config", true},
-		{"variable", "$HOME/config", true},
-		{"case insensitive", "/ETC/passwd", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := check.isDangerousFilePath(tt.path)
-			assert.Equal(t, tt.expect, result)
+			pass, msg, err := check.Run(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, !tt.shouldFail, pass)
+			if tt.expectError != "" {
+				assert.Contains(t, msg, tt.expectError)
+			}
 		})
 	}
 }

@@ -20,20 +20,71 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"maps"
+
+	"github.com/radius-project/radius/pkg/cli/filesystem"
+	"github.com/radius-project/radius/pkg/cli/helm"
+	"helm.sh/helm/v3/pkg/strvals"
 )
 
-// CustomConfigValidationCheck validates that any custom configuration parameters
-// (--set, --set-file) are well-formed and safe for the upgrade process.
+const (
+	// DefaultChartPath is the default path to the Radius Helm chart.
+	DefaultChartPath = "../../../deploy/Chart"
+
+	// SetParamFormat is the expected format for --set parameters
+	SetParamFormat = "key=value"
+
+	// SetFileParamFormat is the expected format for --set-file parameters
+	SetFileParamFormat = "key=filepath"
+)
+
+// Ensure CustomConfigValidationCheck implements PreflightCheck interface
+var _ PreflightCheck = (*CustomConfigValidationCheck)(nil)
+
+// CustomConfigValidationCheck validates that custom configuration parameters
+// are accessible and properly formatted against the actual Helm chart.
+//
+// This check loads the Radius chart and validates --set parameters using Helm's
+// own validation logic to ensure they match the chart's expected structure.
 type CustomConfigValidationCheck struct {
 	setParams     []string
 	setFileParams []string
+	chartPath     string
+	helmClient    helm.HelmClient
+	fs            filesystem.FileSystem
 }
 
 // NewCustomConfigValidationCheck creates a new custom configuration validation check.
-func NewCustomConfigValidationCheck(setParams, setFileParams []string) *CustomConfigValidationCheck {
+// If chartPath is empty, it defaults to the standard Radius chart location.
+// If helmClient is nil, a new client will be created.
+// The check will fall back to basic syntax validation if the chart is not found.
+func NewCustomConfigValidationCheck(setParams, setFileParams []string, chartPath string, helmClient helm.HelmClient) *CustomConfigValidationCheck {
+	// Valudate slice parameters
+	if setParams == nil {
+		setParams = []string{}
+	}
+	if setFileParams == nil {
+		setFileParams = []string{}
+	}
+
+	// Use default chart path if not specified
+	if chartPath == "" {
+		// Default path from pkg/upgrade/preflight to deploy/Chart
+		chartPath = DefaultChartPath
+	}
+
+	// Create helm client if not provided
+	if helmClient == nil {
+		helmClient = helm.NewHelmClient()
+	}
+
 	return &CustomConfigValidationCheck{
 		setParams:     setParams,
 		setFileParams: setFileParams,
+		chartPath:     chartPath,
+		helmClient:    helmClient,
+		fs:            filesystem.NewOSFS(),
 	}
 }
 
@@ -44,204 +95,132 @@ func (c *CustomConfigValidationCheck) Name() string {
 
 // Severity returns the severity level of this check.
 func (c *CustomConfigValidationCheck) Severity() CheckSeverity {
-	return SeverityWarning // Warnings don't block upgrades, just inform the user
+	return SeverityWarning
 }
 
 // Run executes the custom configuration validation check.
 func (c *CustomConfigValidationCheck) Run(ctx context.Context) (bool, string, error) {
+	configCount := len(c.setParams) + len(c.setFileParams)
+	if configCount == 0 {
+		return true, "No custom configuration parameters provided", nil
+	}
+
+	// Validate basic format first
+	if issues := c.validateAllParams(); len(issues) > 0 {
+		return false, fmt.Sprintf("Configuration validation failed: %s", strings.Join(issues, "; ")), nil
+	}
+
+	// Try chart validation if available
+	if issues := c.validateAgainstChart(); len(issues) > 0 {
+		return false, fmt.Sprintf("Chart validation failed: %s", strings.Join(issues, "; ")), nil
+	}
+
+	// Determine validation type for message
+	validationType := "basic validation"
+	if c.chartPath != "" {
+		validationType = "validation against Helm chart"
+	}
+
+	return true, fmt.Sprintf("All %d custom configuration parameters passed %s", configCount, validationType), nil
+}
+
+// validateParam validates basic format for parameters.
+func (c *CustomConfigValidationCheck) validateParam(param, format string) string {
+	parts := strings.SplitN(param, "=", 2)
+	if len(parts) != 2 {
+		return fmt.Sprintf("must be in format '%s'", format)
+	}
+
+	if strings.TrimSpace(parts[0]) == "" {
+		return "key cannot be empty"
+	}
+
+	return ""
+}
+
+// validateFileParam validates --set-file parameters including file accessibility.
+func (c *CustomConfigValidationCheck) validateFileParam(param string) string {
+	if issue := c.validateParam(param, SetFileParamFormat); issue != "" {
+		return issue
+	}
+
+	parts := strings.SplitN(param, "=", 2)
+	filepath := strings.TrimSpace(parts[1])
+
+	if filepath == "" {
+		return "file path cannot be empty"
+	}
+
+	if _, err := c.fs.ReadFile(filepath); err != nil {
+		return fmt.Sprintf("cannot read file: %v", err)
+	}
+
+	return ""
+}
+
+// validateAgainstChart validates --set parameters against the actual Helm chart.
+func (c *CustomConfigValidationCheck) validateAgainstChart() []string {
+	if c.chartPath == "" {
+		return nil // No chart path, skip validation
+	}
+
+	// Check chart accessibility and load
+	if _, err := c.fs.Stat(c.chartPath); err != nil {
+		return []string{fmt.Sprintf("failed to access chart path '%s': %v", c.chartPath, err)}
+	}
+
+	helmChart, err := c.helmClient.LoadChart(c.chartPath)
+	if err != nil {
+		return []string{fmt.Sprintf("failed to load chart from '%s': %v", c.chartPath, err)}
+	}
+
+	// Prepare test values
+	testValues := make(map[string]any)
+	if helmChart.Values != nil {
+		maps.Copy(testValues, helmChart.Values)
+	}
+
 	var issues []string
 
 	// Validate --set parameters
 	for _, param := range c.setParams {
-		if issue := c.validateSetParameter(param); issue != "" {
+		if err := strvals.ParseInto(param, testValues); err != nil {
+			issues = append(issues, fmt.Sprintf("--set parameter '%s' failed chart validation: %v", param, err))
+		}
+	}
+
+	// Validate --set-file parameters
+	reader := func(rs []rune) (any, error) {
+		data, err := c.fs.ReadFile(string(rs))
+		return string(data), err
+	}
+
+	for _, param := range c.setFileParams {
+		if err := strvals.ParseIntoFile(param, testValues, reader); err != nil {
+			issues = append(issues, fmt.Sprintf("--set-file parameter '%s' failed chart validation: %v", param, err))
+		}
+	}
+
+	return issues
+}
+
+// validateAllParams validates both --set and --set-file parameters.
+func (c *CustomConfigValidationCheck) validateAllParams() []string {
+	var issues []string
+
+	// Validate --set parameters
+	for _, param := range c.setParams {
+		if issue := c.validateParam(param, SetParamFormat); issue != "" {
 			issues = append(issues, fmt.Sprintf("--set parameter '%s': %s", param, issue))
 		}
 	}
 
 	// Validate --set-file parameters
 	for _, param := range c.setFileParams {
-		if issue := c.validateSetFileParameter(param); issue != "" {
+		if issue := c.validateFileParam(param); issue != "" {
 			issues = append(issues, fmt.Sprintf("--set-file parameter '%s': %s", param, issue))
 		}
 	}
 
-	// Check for potentially dangerous configuration overrides (warnings only)
-	dangerousConfigs := c.findDangerousConfigurations()
-
-	if len(issues) > 0 {
-		return false, fmt.Sprintf("Configuration validation failed: %s", strings.Join(issues, "; ")), nil
-	}
-
-	configCount := len(c.setParams) + len(c.setFileParams)
-	if configCount == 0 {
-		return true, "No custom configuration parameters provided", nil
-	}
-
-	// Build success message
-	message := fmt.Sprintf("All %d custom configuration parameters are valid", configCount)
-	if len(dangerousConfigs) > 0 {
-		message += fmt.Sprintf(". Warnings: %s", strings.Join(dangerousConfigs, "; "))
-	}
-
-	return true, message, nil
-}
-
-// validateSetParameter validates a single --set parameter.
-func (c *CustomConfigValidationCheck) validateSetParameter(param string) string {
-	// Check basic format (key=value)
-	parts := strings.SplitN(param, "=", 2)
-	if len(parts) != 2 {
-		return "must be in format 'key=value'"
-	}
-
-	key := strings.TrimSpace(parts[0])
-	value := strings.TrimSpace(parts[1])
-
-	if key == "" {
-		return "key cannot be empty"
-	}
-
-	if value == "" {
-		return "value cannot be empty"
-	}
-
-	// Validate key format (should be valid Helm path)
-	if !c.isValidHelmPath(key) {
-		return "key contains invalid characters for Helm configuration path"
-	}
-
-	// Check for array/map syntax and validate if present
-	if strings.Contains(key, "[") || strings.Contains(key, "]") {
-		if !c.isValidArrayOrMapSyntax(key) {
-			return "invalid array or map syntax in key"
-		}
-	}
-
-	return ""
-}
-
-// validateSetFileParameter validates a single --set-file parameter.
-func (c *CustomConfigValidationCheck) validateSetFileParameter(param string) string {
-	// Check basic format (key=filepath)
-	parts := strings.SplitN(param, "=", 2)
-	if len(parts) != 2 {
-		return "must be in format 'key=filepath'"
-	}
-
-	key := strings.TrimSpace(parts[0])
-	filepath := strings.TrimSpace(parts[1])
-
-	if key == "" {
-		return "key cannot be empty"
-	}
-
-	if filepath == "" {
-		return "filepath cannot be empty"
-	}
-
-	// Validate key format (should be valid Helm path)
-	if !c.isValidHelmPath(key) {
-		return "key contains invalid characters for Helm configuration path"
-	}
-
-	// Check for potentially dangerous file paths
-	if c.isDangerousFilePath(filepath) {
-		return "filepath appears to reference system files or use dangerous patterns"
-	}
-
-	return ""
-}
-
-// isValidHelmPath checks if a string is a valid Helm configuration path.
-func (c *CustomConfigValidationCheck) isValidHelmPath(path string) bool {
-	// Helm paths should contain only alphanumeric characters, dots, dashes, underscores, and brackets
-	for _, char := range path {
-		if (char < 'a' || char > 'z') &&
-			(char < 'A' || char > 'Z') &&
-			(char < '0' || char > '9') &&
-			char != '.' && char != '-' && char != '_' &&
-			char != '[' && char != ']' {
-			return false
-		}
-	}
-	return true
-}
-
-// isValidArrayOrMapSyntax validates array/map bracket syntax in Helm paths.
-func (c *CustomConfigValidationCheck) isValidArrayOrMapSyntax(path string) bool {
-	bracketCount := 0
-	inBrackets := false
-
-	for i, char := range path {
-		switch char {
-		case '[':
-			if inBrackets {
-				return false // Nested brackets not allowed
-			}
-			inBrackets = true
-			bracketCount++
-		case ']':
-			if !inBrackets {
-				return false // Closing bracket without opening
-			}
-			inBrackets = false
-
-			// Check if there's content between brackets
-			if i > 0 && path[i-1] == '[' {
-				return false // Empty brackets
-			}
-		}
-	}
-
-	// All brackets must be closed
-	return !inBrackets && bracketCount > 0
-}
-
-// isDangerousFilePath checks if a file path might be dangerous.
-func (c *CustomConfigValidationCheck) isDangerousFilePath(filepath string) bool {
-	dangerous := []string{
-		"/etc/", "/usr/", "/bin/", "/sbin/", "/var/",
-		"../", "./", "~", "$",
-	}
-
-	lowerPath := strings.ToLower(filepath)
-	for _, pattern := range dangerous {
-		if strings.Contains(lowerPath, pattern) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// findDangerousConfigurations identifies potentially dangerous configuration overrides.
-func (c *CustomConfigValidationCheck) findDangerousConfigurations() []string {
-	var warnings []string
-
-	dangerousKeys := map[string]string{
-		"image":                   "overriding container images can introduce security vulnerabilities",
-		"securityContext":         "security context changes can affect cluster security",
-		"serviceAccount":          "service account changes can affect permissions",
-		"rbac":                    "RBAC changes can affect cluster permissions",
-		"nodeSelector":            "node selector changes can affect scheduling",
-		"tolerations":             "toleration changes can affect scheduling",
-		"affinity":                "affinity changes can affect scheduling",
-		"resources.limits.cpu":    "CPU limit changes can affect cluster stability",
-		"resources.limits.memory": "memory limit changes can affect cluster stability",
-	}
-
-	// Check all --set parameters for dangerous keys
-	for _, param := range c.setParams {
-		parts := strings.SplitN(param, "=", 2)
-		if len(parts) == 2 {
-			key := strings.ToLower(strings.TrimSpace(parts[0]))
-			for dangerousKey, warning := range dangerousKeys {
-				if strings.Contains(key, dangerousKey) {
-					warnings = append(warnings, fmt.Sprintf("potentially dangerous configuration '%s': %s", key, warning))
-				}
-			}
-		}
-	}
-
-	return warnings
+	return issues
 }
