@@ -1802,3 +1802,165 @@ func TestValidator_ValidateSchema_MultipleErrors(t *testing.T) {
 		require.Equal(t, "status", validationErrors.Errors[0].Field)
 	})
 }
+
+func TestValidateResourceAgainstSchema(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("nil schema returns nil", func(t *testing.T) {
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"name": "test",
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("missing properties field", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type": "string",
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"name": "test", // missing properties wrapper
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource data missing 'properties' field")
+	})
+
+	t.Run("valid resource against object schema", func(t *testing.T) {
+		// Object schema with properties
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type": "string",
+				},
+				"count": map[string]any{
+					"type": "integer",
+				},
+			},
+			"required": []any{"name"},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"name":  "test-resource",
+				"count": 42,
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("invalid resource against schema - missing required field", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type": "string",
+				},
+			},
+			"required": []any{"name"},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"count": 42, // missing required "name" field
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource data validation failed")
+		require.Contains(t, err.Error(), "name")
+	})
+
+	t.Run("invalid resource against schema - wrong type", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"count": map[string]any{
+					"type": "integer",
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"count": "not a number", // should be integer
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource data validation failed")
+		require.Contains(t, err.Error(), "count")
+	})
+
+	t.Run("invalid schema format", func(t *testing.T) {
+		// Invalid schema that can't be converted
+		schema := "invalid schema format"
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"name": "test",
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to convert schema")
+	})
+
+	t.Run("empty properties data", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err) // empty object is valid against object schema
+	})
+
+	t.Run("structured error message with field path", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"user": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"age": map[string]any{
+							"type": "integer",
+						},
+					},
+					"required": []any{"age"},
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"user": map[string]any{
+					"name": "john", // missing required age field
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "property \"age\" is missing")
+	})
+}
