@@ -73,7 +73,7 @@ func ValidateManifestSchemas(ctx context.Context, provider *ResourceProvider) er
 			if versionInfo.Schema != nil {
 				schemaPath := fmt.Sprintf("%s.%s[%s]", provider.Name, resourceTypeName, apiVersion)
 
-				// Convert schema interface{} to OpenAPI schema
+				// Convert schema any to OpenAPI schema
 				openAPISchema, err := schema.ConvertToOpenAPISchema(versionInfo.Schema)
 				if err != nil {
 					errors.Add(schema.NewSchemaError(schemaPath, fmt.Sprintf("failed to parse schema: %v", err)))

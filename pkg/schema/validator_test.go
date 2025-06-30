@@ -143,7 +143,6 @@ func TestValidator_checkProhibitedFeatures(t *testing.T) {
 			if tt.hasErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMsg)
-				
 				// Check that it's a ConstraintError
 				var constraintErr *ValidationError
 				require.ErrorAs(t, err, &constraintErr)
@@ -216,7 +215,7 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 			errMsg: "unsupported type: null",
 		},
 		{
-			name: "no type specified (valid)",
+			name:   "no type specified (valid)",
 			schema: &openapi3.Schema{
 				// Type is nil - this should be valid
 			},
@@ -230,7 +229,7 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 			if tt.hasErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMsg)
-				
+
 				// Check that it's a ConstraintError
 				var constraintErr *ValidationError
 				require.ErrorAs(t, err, &constraintErr)
@@ -240,145 +239,6 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestValidator_validateStringFormat(t *testing.T) {
-	validator := NewValidator()
-
-	tests := []struct {
-		name   string
-		format string
-		hasErr bool
-		errMsg string
-	}{
-		{
-			name:   "date format allowed",
-			format: "date",
-			hasErr: false,
-		},
-		{
-			name:   "date-time format allowed",
-			format: "date-time",
-			hasErr: false,
-		},
-		{
-			name:   "email format allowed",
-			format: "email",
-			hasErr: false,
-		},
-		{
-			name:   "uri format allowed",
-			format: "uri",
-			hasErr: false,
-		},
-		{
-			name:   "uuid format allowed",
-			format: "uuid",
-			hasErr: false,
-		},
-		{
-			name:   "password format not allowed",
-			format: "password",
-			hasErr: true,
-			errMsg: "unsupported string format: password",
-		},
-		{
-			name:   "binary format not allowed",
-			format: "binary",
-			hasErr: true,
-			errMsg: "unsupported string format: binary",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateStringFormat(tt.format)
-			if tt.hasErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.errMsg)
-				
-				// Check that it's a ConstraintError
-				var constraintErr *ValidationError
-				require.ErrorAs(t, err, &constraintErr)
-				require.Equal(t, ErrorTypeConstraint, constraintErr.Type)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
-func TestValidator_ValidateSchemas(t *testing.T) {
-	validator := NewValidator()
-	ctx := context.Background()
-
-	t.Run("empty schemas", func(t *testing.T) {
-		schemas := map[string]*openapi3.SchemaRef{}
-		err := validator.ValidateSchemas(ctx, schemas)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "no schemas found")
-	})
-
-	t.Run("valid schemas", func(t *testing.T) {
-		schemas := map[string]*openapi3.SchemaRef{
-			"User": {
-				Value: &openapi3.Schema{
-					Type: &openapi3.Types{"object"},
-					Properties: openapi3.Schemas{
-						"name": {
-							Value: &openapi3.Schema{
-								Type: &openapi3.Types{"string"},
-							},
-						},
-					},
-				},
-			},
-			"Product": {
-				Value: &openapi3.Schema{
-					Type: &openapi3.Types{"object"},
-					Properties: openapi3.Schemas{
-						"price": {
-							Value: &openapi3.Schema{
-								Type: &openapi3.Types{"number"},
-							},
-						},
-					},
-				},
-			},
-		}
-		err := validator.ValidateSchemas(ctx, schemas)
-		require.NoError(t, err)
-	})
-
-	t.Run("schemas with validation errors", func(t *testing.T) {
-		schemas := map[string]*openapi3.SchemaRef{
-			"Invalid": {
-				Value: &openapi3.Schema{
-					Type: &openapi3.Types{"array"}, // Not allowed
-				},
-			},
-		}
-		err := validator.ValidateSchemas(ctx, schemas)
-		require.Error(t, err)
-		
-		var validationErrors *ValidationErrors
-		require.ErrorAs(t, err, &validationErrors)
-		require.True(t, validationErrors.HasErrors())
-		require.Contains(t, err.Error(), "unsupported type: array")
-	})
-
-	t.Run("nil schema ref", func(t *testing.T) {
-		schemas := map[string]*openapi3.SchemaRef{
-			"NilSchema": nil,
-		}
-		err := validator.ValidateSchemas(ctx, schemas)
-		require.Error(t, err)
-		
-		var validationErrors *ValidationErrors
-		require.ErrorAs(t, err, &validationErrors)
-		require.True(t, validationErrors.HasErrors())
-		require.Contains(t, err.Error(), "schema is nil")
-	})
 }
 
 func TestConvertToOpenAPISchema(t *testing.T) {

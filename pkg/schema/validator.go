@@ -58,13 +58,6 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 		return err
 	}
 
-	// Validate string formats if applicable
-	if schema.Type != nil && schema.Type.Is("string") && schema.Format != "" {
-		if err := v.validateStringFormat(schema.Format); err != nil {
-			return err
-		}
-	}
-
 	// Recursively validate object properties
 	if schema.Properties != nil {
 		for propName, propRef := range schema.Properties {
@@ -120,42 +113,6 @@ func ConvertToOpenAPISchema(schemaData any) (*openapi3.Schema, error) {
 	return &schema, nil
 }
 
-// ValidateSchemas validates the schema in a manifest file
-func (v *Validator) ValidateSchemas(ctx context.Context, schemas map[string]*openapi3.SchemaRef) error {
-	if len(schemas) == 0 {
-		return fmt.Errorf("no schemas found")
-	}
-
-	errors := &ValidationErrors{}
-
-	for name, schemaRef := range schemas {
-		if schemaRef == nil || schemaRef.Value == nil {
-			errors.Add(NewSchemaError(name, "schema is nil"))
-			continue
-		}
-
-		if err := v.ValidateSchema(ctx, schemaRef.Value); err != nil {
-			if valErr, ok := err.(*ValidationError); ok {
-				// Prepend schema name to field
-				if valErr.Field != "" {
-					valErr.Field = name + "." + valErr.Field
-				} else {
-					valErr.Field = name
-				}
-				errors.Add(valErr)
-			} else {
-				errors.Add(NewSchemaError(name, err.Error()))
-			}
-		}
-	}
-
-	if errors.HasErrors() {
-		return errors
-	}
-
-	return nil
-}
-
 // checkProhibitedFeatures checks for OpenAPI features not allowed in Radius
 func (v *Validator) checkProhibitedFeatures(schema *openapi3.Schema) error {
 	if len(schema.AllOf) > 0 {
@@ -193,17 +150,4 @@ func (v *Validator) validateTypeConstraints(schema *openapi3.Schema) error {
 	}
 
 	return NewConstraintError("", fmt.Sprintf("unsupported type: %s", schema.Type))
-}
-
-// validateStringFormat ensures only supported string formats are used
-func (v *Validator) validateStringFormat(format string) error {
-	supportedFormats := []string{"date", "date-time", "email", "uri", "uuid"}
-
-	for _, supported := range supportedFormats {
-		if format == supported {
-			return nil
-		}
-	}
-
-	return NewConstraintError("", fmt.Sprintf("unsupported string format: %s", format))
 }
