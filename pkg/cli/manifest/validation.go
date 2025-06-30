@@ -17,9 +17,12 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
+	"fmt"
 	"regexp"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/radius-project/radius/pkg/schema"
 )
 
 var (
@@ -52,4 +55,47 @@ func validateAPIVersion(fl validator.FieldLevel) bool {
 func validateCapability(fl validator.FieldLevel) bool {
 	str := fl.Field().String()
 	return capabilityRegex.Match([]byte(str))
+}
+
+// ValidateManifestSchemas validates schemas in a ResourceProvider
+func ValidateManifestSchemas(ctx context.Context, provider *ResourceProvider) error {
+	if provider == nil {
+		return fmt.Errorf("provider is nil")
+	}
+
+	validator := schema.NewValidator()
+	errors := &schema.ValidationErrors{}
+
+	// Iterate through resource types in the provider
+	for resourceTypeName, resourceType := range provider.Types {
+		// Check each API version
+		for apiVersion, versionInfo := range resourceType.APIVersions {
+			if versionInfo.Schema != nil {
+				schemaPath := fmt.Sprintf("%s.%s[%s]", provider.Name, resourceTypeName, apiVersion)
+
+				// Convert schema interface{} to OpenAPI schema
+				openAPISchema, err := schema.ConvertToOpenAPISchema(versionInfo.Schema)
+				if err != nil {
+					errors.Add(schema.NewSchemaError(schemaPath, fmt.Sprintf("failed to parse schema: %v", err)))
+					continue
+				}
+
+				// Validate the schema
+				if err := validator.ValidateSchema(ctx, openAPISchema); err != nil {
+					if valErr, ok := err.(*schema.ValidationError); ok {
+						valErr.Field = schemaPath + "." + valErr.Field
+						errors.Add(valErr)
+					} else {
+						errors.Add(schema.NewSchemaError(schemaPath, err.Error()))
+					}
+				}
+			}
+		}
+	}
+
+	if errors.HasErrors() {
+		return errors
+	}
+
+	return nil
 }
