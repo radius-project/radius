@@ -24,14 +24,12 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/cmd/resourcetype/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/maps"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -48,6 +46,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	Creating a resource type defines a new type that can be used in applications.
 	
 	Input can be passed in using a JSON or YAML file using the --from-file option.
+
+	resource-type name argument is optional. If specified, only the specified type is created/updated. 
+	If not specified, all resource types in the referenced file are created/updated.
 	`,
 		Example: `
 # Create a resource type from YAML file
@@ -55,8 +56,14 @@ rad resource-type create myType --from-file /path/to/input.yaml
 
 # Create a resource type from JSON file
 rad resource-type create myType --from-file /path/to/input.json
+
+# Create all resource types from YAML file
+rad resource-type create  --from-file /path/to/input.yaml
+ 
+# Create all resource types from JSON file
+rad resource-type create --from-file /path/to/input.json
 `,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -94,10 +101,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad resource-type create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	resourceTypeName, err := cli.RequireResourceTypeNameArgs(cmd, args)
-	if err != nil {
-		return err
-	}
+	resourceTypeName := cli.ReadResourceTypeNameArgs(cmd, args)
 	r.ResourceTypeName = resourceTypeName
 
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -118,8 +122,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	resourcesTypes := r.ResourceProvider.Types
-	if _, ok := resourcesTypes[r.ResourceTypeName]; !ok {
-		return clierrors.Message("Resource type %q not found in the manifest", r.ResourceTypeName)
+	if r.ResourceTypeName != "" {
+		_, ok := resourcesTypes[r.ResourceTypeName]
+		if !ok {
+			return clierrors.Message("Resource type %q not found in the manifest", r.ResourceTypeName)
+		}
 	}
 
 	return nil
@@ -137,41 +144,39 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.UCPClientFactory = clientFactory
 	}
 
-	_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
-	if err != nil {
-		if clients.Is404Error(err) {
-			r.Output.LogInfo("Resource provider %q not found.", r.ResourceProvider.Name)
-			if registerErr := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
-				return registerErr
-			}
-		} else {
-			return err
-		}
-	} else {
-		r.Output.LogInfo("Resource provider %q found. Registering resource type %q.", r.ResourceProvider.Name, r.ResourceTypeName)
-		if registerErr := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger); err != nil {
+	if r.ResourceTypeName == "" {
+		r.Output.LogInfo("No resource type name provided. Creating all resource types in the manifest.")
+
+		registerErr := manifest.RegisterResourceProvider(ctx, r.UCPClientFactory, "local", *r.ResourceProvider, r.Logger)
+		if registerErr != nil {
 			return registerErr
 		}
-	}
+	} else {
+		r.Output.LogInfo("Creating resource type %s/%s.", r.ResourceProvider.Name, r.ResourceTypeName)
 
-	_, err = r.UCPClientFactory.NewResourceTypesClient().Get(ctx, "local", r.ResourceProvider.Name, r.ResourceTypeName, nil)
-	if err != nil {
-		return err
-	}
+		_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
+		if err != nil {
+			if clients.Is404Error(err) {
+				for key := range r.ResourceProvider.Types {
+					if key != r.ResourceTypeName {
+						delete(r.ResourceProvider.Types, key)
+					}
+				}
+				registerErr := manifest.RegisterResourceProvider(ctx, r.UCPClientFactory, "local", *r.ResourceProvider, r.Logger)
+				if registerErr != nil {
+					return err
+				}
+			} else {
+				return err
+			}
 
-	r.Output.LogInfo("")
-
-	resourceTypeDetails, err := common.GetResourceTypeDetails(ctx, r.ResourceProvider.Name, r.ResourceTypeName, r.UCPClientFactory)
-	if err != nil {
-		return err
-	}
-	resourceTypeFormat := common.ResourceTypeListOutputFormat{
-		ResourceType:   resourceTypeDetails,
-		APIVersionList: maps.Keys(resourceTypeDetails.APIVersions),
-	}
-	err = r.Output.WriteFormatted(r.Format, resourceTypeFormat, common.GetResourceTypeTableFormat())
-	if err != nil {
-		return err
+			r.Output.LogInfo("Resource type %s/%s created successfully", r.ResourceProvider.Name, r.ResourceTypeName)
+		} else {
+			registerErr := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger)
+			if registerErr != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

@@ -14,23 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
-
-import (
-	"github.com/spf13/cobra"
-)
-
-func init() {
-	RootCmd.AddCommand(resourceProviderCmd)
-	resourceProviderCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
-}
-
-func NewResourceProviderCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:     "resource-provider",
-		Hidden:  true,
-		Aliases: []string{"rp"},
-		Short:   "Manage resource providers",
-		Long:    `Manage resource providers`,
-	}
-}
+// Package preflight provides utilities for performing preflight checks during upgrade operations.
+package preflight
