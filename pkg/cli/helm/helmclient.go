@@ -29,7 +29,6 @@ const (
 	installTimeout   = time.Duration(5) * time.Minute
 	uninstallTimeout = time.Duration(5) * time.Minute
 	upgradeTimeout   = time.Duration(5) * time.Minute
-	rollbackTimeout  = time.Duration(5) * time.Minute
 )
 
 //go:generate mockgen -typed -destination=./mock_helmclient.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm HelmClient
@@ -47,12 +46,6 @@ type HelmClient interface {
 
 	// RunHelmList lists the Helm releases.
 	RunHelmList(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error)
-
-	// RunHelmHistory lists the release revisions for a given release.
-	RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error)
-
-	// RunHelmRollback rolls back a release to a previous revision.
-	RunHelmRollback(helmConf *helm.Configuration, releaseName string, revision int, wait bool) error
 
 	// RunHelmPull pulls the Helm chart.
 	RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error)
@@ -113,22 +106,6 @@ func (client *HelmClientImpl) RunHelmPull(pullopts []helm.PullOpt, chartRef stri
 	)
 
 	return pullClient.Run(chartRef)
-}
-
-func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
-	historyClient := helm.NewHistory(helmConf)
-	historyClient.Max = 256 // Helm default
-
-	return historyClient.Run(releaseName)
-}
-
-func (client *HelmClientImpl) RunHelmRollback(helmConf *helm.Configuration, releaseName string, revision int, wait bool) error {
-	rollbackClient := helm.NewRollback(helmConf)
-	rollbackClient.Timeout = rollbackTimeout
-	rollbackClient.Wait = wait
-	rollbackClient.Version = revision
-
-	return rollbackClient.Run(releaseName)
 }
 
 func (client *HelmClientImpl) LoadChart(chartPath string) (*chart.Chart, error) {
