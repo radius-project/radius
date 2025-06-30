@@ -86,6 +86,7 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	// Recursively validate object properties
 	if schema.Properties != nil {
 		for propName, propRef := range schema.Properties {
@@ -112,6 +113,8 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 		}
 	}
 
+=======
+>>>>>>> 71cc6e005 (removing ValidateSchemas())
 	// Recursively validate object properties
 	if schema.Properties != nil {
 		for propName, propRef := range schema.Properties {
@@ -187,6 +190,7 @@ func ConvertToOpenAPISchema(schemaData any) (*openapi3.Schema, error) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // validateSchemaWithOpenAPI validates schema data by creating a minimal OpenAPI document
 // and using the library's built-in validation which includes format validation
 func (v *Validator) validateSchemaWithOpenAPI(schema *openapi3.Schema) error {
@@ -248,6 +252,8 @@ func (v *Validator) ValidateSchemas(ctx context.Context, schemas map[string]*ope
 	return nil
 }
 
+=======
+>>>>>>> 71cc6e005 (removing ValidateSchemas())
 // checkProhibitedFeatures checks for OpenAPI features not allowed in Radius
 func (v *Validator) checkProhibitedFeatures(schema *openapi3.Schema) error {
 	if len(schema.AllOf) > 0 {
@@ -446,6 +452,7 @@ func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) erro
 =======
 	return NewConstraintError("", fmt.Sprintf("unsupported type: %s", schema.Type))
 }
+<<<<<<< HEAD
 
 // validateStringFormat ensures only supported string formats are used
 func (v *Validator) validateStringFormat(format string) error {
@@ -460,3 +467,5 @@ func (v *Validator) validateStringFormat(format string) error {
 	return NewConstraintError("", fmt.Sprintf("unsupported string format: %s", format))
 >>>>>>> 01d7c5329 (initial draft)
 }
+=======
+>>>>>>> 71cc6e005 (removing ValidateSchemas())

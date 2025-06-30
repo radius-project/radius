@@ -148,9 +148,12 @@ func TestValidator_checkProhibitedFeatures(t *testing.T) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMsg)
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 				
 >>>>>>> 01d7c5329 (initial draft)
+=======
+>>>>>>> 71cc6e005 (removing ValidateSchemas())
 				// Check that it's a ConstraintError
 				var constraintErr *ValidationError
 				require.ErrorAs(t, err, &constraintErr)
@@ -224,10 +227,14 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 		},
 		{
 <<<<<<< HEAD
+<<<<<<< HEAD
 			name:   "no type specified (valid)",
 =======
 			name: "no type specified (valid)",
 >>>>>>> 01d7c5329 (initial draft)
+=======
+			name:   "no type specified (valid)",
+>>>>>>> 71cc6e005 (removing ValidateSchemas())
 			schema: &openapi3.Schema{
 				// Type is nil - this should be valid
 			},
@@ -242,10 +249,14 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMsg)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 				
 >>>>>>> 01d7c5329 (initial draft)
+=======
+
+>>>>>>> 71cc6e005 (removing ValidateSchemas())
 				// Check that it's a ConstraintError
 				var constraintErr *ValidationError
 				require.ErrorAs(t, err, &constraintErr)
@@ -257,6 +268,7 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 func TestValidator_validateStringFormat(t *testing.T) {
@@ -399,6 +411,8 @@ func TestValidator_ValidateSchemas(t *testing.T) {
 }
 
 >>>>>>> 01d7c5329 (initial draft)
+=======
+>>>>>>> 71cc6e005 (removing ValidateSchemas())
 func TestConvertToOpenAPISchema(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -573,6 +587,7 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 		require.Contains(t, err.Error(), "additionalProperties")
 		require.Contains(t, err.Error(), "unsupported type: array")
 	})
+<<<<<<< HEAD
 <<<<<<< HEAD
 }
 
@@ -1427,3 +1442,6 @@ func TestValidator_ValidateSchema_EdgeCases(t *testing.T) {
 =======
 }
 >>>>>>> 01d7c5329 (initial draft)
+=======
+}
+>>>>>>> 71cc6e005 (removing ValidateSchemas())
