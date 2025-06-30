@@ -75,8 +75,12 @@ func TestResourceProviderNamespaceValidation(t *testing.T) {
 
 	// Create a mock validator to test the validation function
 	v := validator.New()
+<<<<<<< HEAD
 	err := v.RegisterValidation("resourceProviderNamespace", resourceProviderNamespace)
 	require.NoError(t, err)
+=======
+	v.RegisterValidation("resourceProviderNamespace", resourceProviderNamespace)
+>>>>>>> 01d7c5329 (initial draft)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -141,8 +145,12 @@ func TestResourceTypeValidation(t *testing.T) {
 	}
 
 	v := validator.New()
+<<<<<<< HEAD
 	err := v.RegisterValidation("resourceType", validateResourceType)
 	require.NoError(t, err)
+=======
+	v.RegisterValidation("resourceType", validateResourceType)
+>>>>>>> 01d7c5329 (initial draft)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -201,8 +209,12 @@ func TestAPIVersionValidation(t *testing.T) {
 	}
 
 	v := validator.New()
+<<<<<<< HEAD
 	err := v.RegisterValidation("apiVersion", validateAPIVersion)
 	require.NoError(t, err)
+=======
+	v.RegisterValidation("apiVersion", validateAPIVersion)
+>>>>>>> 01d7c5329 (initial draft)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -261,8 +273,12 @@ func TestCapabilityValidation(t *testing.T) {
 	}
 
 	v := validator.New()
+<<<<<<< HEAD
 	err := v.RegisterValidation("capability", validateCapability)
 	require.NoError(t, err)
+=======
+	v.RegisterValidation("capability", validateCapability)
+>>>>>>> 01d7c5329 (initial draft)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -286,7 +302,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("nil provider", func(t *testing.T) {
+<<<<<<< HEAD
 		err := validateManifestSchemas(ctx, nil)
+=======
+		err := ValidateManifestSchemas(ctx, nil)
+>>>>>>> 01d7c5329 (initial draft)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "provider is nil")
 	})
@@ -296,7 +316,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 			Name:  "Test.Provider",
 			Types: map[string]*ResourceType{},
 		}
+<<<<<<< HEAD
 		err := validateManifestSchemas(ctx, provider)
+=======
+		err := ValidateManifestSchemas(ctx, provider)
+>>>>>>> 01d7c5329 (initial draft)
 		require.NoError(t, err) // Empty types should be valid
 	})
 
@@ -323,7 +347,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
+<<<<<<< HEAD
 		err := validateManifestSchemas(ctx, provider)
+=======
+		err := ValidateManifestSchemas(ctx, provider)
+>>>>>>> 01d7c5329 (initial draft)
 		require.NoError(t, err)
 	})
 
@@ -345,10 +373,17 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
+<<<<<<< HEAD
 		err := validateManifestSchemas(ctx, provider)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unsupported type: array")
 		require.Contains(t, err.Error(), "Test.Provider/widgets@2023-10-01")
+=======
+		err := ValidateManifestSchemas(ctx, provider)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unsupported type: array")
+		require.Contains(t, err.Error(), "Test.Provider.widgets[2023-10-01]")
+>>>>>>> 01d7c5329 (initial draft)
 	})
 
 	t.Run("provider with invalid schema - prohibited feature", func(t *testing.T) {
@@ -369,7 +404,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
+<<<<<<< HEAD
 		err := validateManifestSchemas(ctx, provider)
+=======
+		err := ValidateManifestSchemas(ctx, provider)
+>>>>>>> 01d7c5329 (initial draft)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "allOf is not supported")
 	})
@@ -387,7 +426,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
+<<<<<<< HEAD
 		err := validateManifestSchemas(ctx, provider)
+=======
+		err := ValidateManifestSchemas(ctx, provider)
+>>>>>>> 01d7c5329 (initial draft)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to parse schema")
 	})
@@ -405,7 +448,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
+<<<<<<< HEAD
 		err := validateManifestSchemas(ctx, provider)
+=======
+		err := ValidateManifestSchemas(ctx, provider)
+>>>>>>> 01d7c5329 (initial draft)
 		require.NoError(t, err) // nil schema should be skipped
 	})
 
@@ -427,7 +474,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
+<<<<<<< HEAD
 									"name":        map[string]any{"type": "string"},
+=======
+									"name": map[string]any{"type": "string"},
+>>>>>>> 01d7c5329 (initial draft)
 									"description": map[string]any{"type": "string"},
 								},
 							},
@@ -440,7 +491,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
+<<<<<<< HEAD
 									"id":     map[string]any{"type": "string"},
+=======
+									"id": map[string]any{"type": "string"},
+>>>>>>> 01d7c5329 (initial draft)
 									"active": map[string]any{"type": "boolean"},
 								},
 							},
@@ -449,7 +504,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
+<<<<<<< HEAD
 		err := validateManifestSchemas(ctx, provider)
+=======
+		err := ValidateManifestSchemas(ctx, provider)
+>>>>>>> 01d7c5329 (initial draft)
 		require.NoError(t, err)
 	})
 
@@ -461,7 +520,11 @@ func TestValidateManifestSchemas(t *testing.T) {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
 						"2023-10-01": {
 							Schema: map[string]any{
+<<<<<<< HEAD
 								"type": "invalidtype", // Error 1: invalid type
+=======
+								"type": "array", // Error 1: unsupported type
+>>>>>>> 01d7c5329 (initial draft)
 							},
 						},
 					},
@@ -479,13 +542,23 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
+<<<<<<< HEAD
 		err := validateManifestSchemas(ctx, provider)
 		require.Error(t, err)
 
+=======
+		err := ValidateManifestSchemas(ctx, provider)
+		require.Error(t, err)
+		
+>>>>>>> 01d7c5329 (initial draft)
 		// Should be a ValidationErrors with multiple errors
 		var validationErrors *schema.ValidationErrors
 		require.ErrorAs(t, err, &validationErrors)
 		require.True(t, validationErrors.HasErrors())
 		require.Len(t, validationErrors.Errors, 2)
 	})
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 01d7c5329 (initial draft)
