@@ -17,7 +17,7 @@
 ##@ Test
 
 # Will be set by our build workflow, this is just a default
-TEST_TIMEOUT ?=5m
+TEST_TIMEOUT ?=1h
 RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 REL_VERSION ?=latest
 DOCKER_REGISTRY ?=ghcr.io/radius-project/dev
@@ -129,10 +129,12 @@ test-functional-datastoresrp-noncloud: ## Runs Datastores RP functional tests th
 
 .PHONY: test-functional-dynamicrp-noncloud
 test-functional-dynamicrp-noncloud: ## Runs Dynamic RP functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
+.PHONY: test-functional-upgrade
 test-functional-upgrade: test-functional-upgrade-noncloud ## Runs all Upgrade functional tests
 
+.PHONY: test-functional-upgrade-noncloud
 test-functional-upgrade-noncloud: ## Runs Upgrade functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/upgrade/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 	

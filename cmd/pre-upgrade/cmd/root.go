@@ -1,5 +1,3 @@
-package cmd
-
 /*
 Copyright 2025 The Radius Authors.
 
@@ -16,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+package cmd
+
 import (
 	"os"
 	"strings"
@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/upgrade/preupgrade"
 )
 
-// RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
 var rootCmd = &cobra.Command{
 	Use:   "pre-upgrade",
 	Short: "Pre-upgrade service",
@@ -38,7 +37,6 @@ func Execute() error {
 	ctx := rootCmd.Context()
 
 	config := preupgrade.Config{
-		KubeContext: "", // Empty string for in-cluster configuration
 		Helm: &helm.Impl{
 			Helm: helm.NewHelmClient(),
 		},

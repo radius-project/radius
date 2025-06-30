@@ -228,14 +228,7 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	// Check if Radius is installed
 	radiusInstalled, radiusVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
-		// During a pre-upgrade hook, the release being upgraded might be temporarily inaccessible
-		// In this case, we should not fail but continue with other checks
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "failed to get release") {
-			radiusInstalled = false
-			radiusVersion = ""
-		} else {
-			return InstallState{}, err
-		}
+		return InstallState{}, err
 	}
 
 	// Check if Contour is installed
