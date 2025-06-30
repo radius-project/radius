@@ -162,10 +162,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
 			logger.Error(err, "Update failed.")
 
-			deploymentTemplate.Status.Operation = nil
-			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-			err := r.Client.Status().Update(ctx, deploymentTemplate)
-			if err != nil {
+			if err := r.updateFailedStatus(ctx, deploymentTemplate); err != nil {
 				return ctrl.Result{}, err
 			}
 
@@ -325,10 +322,7 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 		logger.Error(err, "Unable to create or update resource.")
 		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
 
-		deploymentTemplate.Status.Operation = nil
-		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-		statusErr := r.Client.Status().Update(ctx, deploymentTemplate)
-		if statusErr != nil {
+		if statusErr := r.updateFailedStatus(ctx, deploymentTemplate); statusErr != nil {
 			return ctrl.Result{}, statusErr
 		}
 
@@ -565,6 +559,14 @@ func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
 	}
 
 	return deploymentTemplate.Status.StatusHash == hash
+}
+
+// updateFailedStatus updates the deployment template status to failed state and clears the operation.
+// This helper reduces duplication when handling operation failures.
+func (r *DeploymentTemplateReconciler) updateFailedStatus(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) error {
+	deploymentTemplate.Status.Operation = nil
+	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+	return r.Client.Status().Update(ctx, deploymentTemplate)
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -296,7 +296,10 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 	// Track namespaces created during the test for cleanup
 	namespacesToCleanup := make(map[string]bool)
 	defer func() {
-		// Clean up namespaces at the end of the test
+		// Clean up namespaces at the end of the test using fresh context
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		
 		for ns := range namespacesToCleanup {
 			t.Logf("Cleaning up namespace: %s", ns)
 			namespace := &corev1.Namespace{
@@ -304,7 +307,7 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 					Name: ns,
 				},
 			}
-			err := opts.client.Delete(ctx, namespace)
+			err := opts.client.Delete(cleanupCtx, namespace)
 			if err != nil && k8sclient.IgnoreNotFound(err) != nil {
 				t.Logf("Failed to delete namespace %s: %v", ns, err)
 			}

@@ -827,11 +827,6 @@ jobs:
           echo "Pod logs saved to recipes/pod-logs/"
           # Get kubernetes events and save to file
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
-      
-      - name: TEMP list all namespaces on the cluster
-        run: |
-          echo "Listing all namespaces in the cluster:"
-          kubectl get namespaces
 
       - name: Upload Terraform recipe publishing logs
         uses: actions/upload-artifact@v4

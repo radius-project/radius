@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubernetes_test
+package kubernetes_noncloud_test
 
 import (
 	"context"
@@ -55,28 +55,6 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	environmentName := namespace + "-env"
 	applicationName := namespace
 
-	// Create the namespace, if it already exists we can ignore the error.
-	_, err := opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
-	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
-
-	// Clean up the namespace after the test
-	defer func() {
-		t.Logf("Cleaning up namespace: %s", namespace)
-		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			t.Logf("Failed to delete namespace %s: %v", namespace, err)
-		}
-	}()
-
-	// Clean up the environment namespace after the test
-	defer func() {
-		t.Logf("Cleaning up environment namespace: %s", environmentName)
-		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, environmentName, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			t.Logf("Failed to delete environment namespace %s: %v", environmentName, err)
-		}
-	}()
-
 	cli := radcli.NewCLI(t, "")
 
 	params := []string{
@@ -88,7 +66,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 		fmt.Sprintf("namespace=%s", environmentName),
 	}
 
-	err = cli.Deploy(ctx, "testdata/tutorial-environment.bicep", "", "", params...)
+	err := cli.Deploy(ctx, "testdata/tutorial-environment.bicep", "", "", params...)
 	require.NoError(t, err)
 
 	deployment := makeDeployment(types.NamespacedName{Name: "demo", Namespace: namespace}, environmentName, applicationName)
@@ -167,6 +145,18 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: "demo", Namespace: namespace}, deployment)
 			return apierrors.IsNotFound(err)
 		}, time.Second*60, time.Second*5, "waiting for deployment to be deleted")
+	})
+
+	t.Run("Cleanup", func(t *testing.T) {
+		t.Log("Deleting namespace")
+		err = opts.Client.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			ns := &corev1.Namespace{}
+			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+			return apierrors.IsNotFound(err)
+		}, time.Second*60, time.Second*5, "waiting for namespace to be deleted")
 	})
 }
 

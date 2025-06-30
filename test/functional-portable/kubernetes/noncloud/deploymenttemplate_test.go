@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubernetes_test
+package kubernetes_noncloud_test
 
 import (
 	"context"
@@ -69,19 +69,6 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 	template, err := os.ReadFile(templateFilePath)
 	require.NoError(t, err)
 
-	// Create the namespace, if it already exists we can ignore the error.
-	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
-	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
-
-	// Clean up the namespace after the test
-	defer func() {
-		t.Logf("Cleaning up namespace: %s", namespace)
-		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			t.Logf("Failed to delete namespace %s: %v", namespace, err)
-		}
-	}()
-
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
 
 	t.Run("Create DeploymentTemplate", func(t *testing.T) {
@@ -131,6 +118,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 
 	name := "dt-module"
 	namespace := "dt-module-ns"
+	// environmentNamespace := fmt.Sprintf("%s-env", name)
 	templateFilePath := path.Join("testdata", "module", "module.json")
 	parameters := []string{
 		fmt.Sprintf("name=%s", name),
@@ -144,29 +132,6 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 
 	template, err := os.ReadFile(templateFilePath)
 	require.NoError(t, err)
-
-	// Create the namespace, if it already exists we can ignore the error.
-	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
-	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
-
-	// Clean up the namespace after the test
-	defer func() {
-		t.Logf("Cleaning up namespace: %s", namespace)
-		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			t.Logf("Failed to delete namespace %s: %v", namespace, err)
-		}
-	}()
-
-	// Clean up the environment namespace created by the deployed resources
-	environmentNamespace := fmt.Sprintf("%s-env", name)
-	defer func() {
-		t.Logf("Cleaning up environment namespace: %s", environmentNamespace)
-		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, environmentNamespace, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			t.Logf("Failed to delete environment namespace %s: %v", environmentNamespace, err)
-		}
-	}()
 
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
 
@@ -210,6 +175,16 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 			return apierrors.IsNotFound(err)
 		}, time.Second*60, time.Second*5, "waiting for deploymentTemplate to be deleted")
 	})
+
+	t.Run("Delete namespace", func(t *testing.T) {
+		t.Log("Deleting namespace")
+
+		require.Eventually(t, func() bool {
+			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+			return apierrors.IsNotFound(err)
+		}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
+	})
 }
 
 func Test_DeploymentTemplate_Recipe(t *testing.T) {
@@ -233,29 +208,6 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 
 	template, err := os.ReadFile(templateFilePath)
 	require.NoError(t, err)
-
-	// Create the namespace, if it already exists we can ignore the error.
-	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
-	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
-
-	// Clean up the namespace after the test
-	defer func() {
-		t.Logf("Cleaning up namespace: %s", namespace)
-		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			t.Logf("Failed to delete namespace %s: %v", namespace, err)
-		}
-	}()
-
-	// Clean up the environment namespace created by the deployed resources
-	environmentNamespace := fmt.Sprintf("%s-env", name)
-	defer func() {
-		t.Logf("Cleaning up environment namespace: %s", environmentNamespace)
-		err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, environmentNamespace, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			t.Logf("Failed to delete environment namespace %s: %v", environmentNamespace, err)
-		}
-	}()
 
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
 
@@ -299,6 +251,16 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
 			return apierrors.IsNotFound(err)
 		}, time.Minute*10, time.Second*10, "waiting for deploymentTemplate to be deleted")
+	})
+
+	t.Run("Delete namespace", func(t *testing.T) {
+		t.Log("Deleting namespace")
+
+		require.Eventually(t, func() bool {
+			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+			return apierrors.IsNotFound(err)
+		}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
 	})
 }
 
