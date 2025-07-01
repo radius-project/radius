@@ -138,6 +138,7 @@ test-functional-upgrade: test-functional-upgrade-noncloud ## Runs all Upgrade fu
 test-functional-upgrade-noncloud: ## Runs Upgrade functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/upgrade/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 	
+.PHONY: test-functional-samples
 test-functional-samples: test-functional-samples-noncloud ## Runs all Samples functional tests
 
 .PHONY: test-functional-samples-noncloud

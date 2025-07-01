@@ -81,9 +81,9 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 
 	for _, result := range results {
 		if result.Success {
-			config.Output.LogInfo("✓ %s: %s", result.Check.Name(), result.Message)
+			config.Output.LogInfo("Success: %s: %s", result.Check.Name(), result.Message)
 		} else if result.Severity == preflight.SeverityWarning {
-			config.Output.LogInfo("⚠ %s: %s", result.Check.Name(), result.Message)
+			config.Output.LogInfo("Failure: %s: %s", result.Check.Name(), result.Message)
 		}
 	}
 

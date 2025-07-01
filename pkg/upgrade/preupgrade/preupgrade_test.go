@@ -47,7 +47,7 @@ func TestRunPreflightChecks_Success(t *testing.T) {
 	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any())
 	mockOutput.EXPECT().LogInfo("Pre-flight checks completed successfully")
 	mockOutput.EXPECT().LogInfo("All preflight checks completed successfully")
-	mockOutput.EXPECT().LogInfo("✓ %s: %s", gomock.Any(), gomock.Any())
+	mockOutput.EXPECT().LogInfo("Success: %s: %s", gomock.Any(), gomock.Any())
 
 	config := Config{
 		KubeContext: "test-context",
@@ -83,7 +83,7 @@ func TestRunPreflightChecks_MultipleChecks(t *testing.T) {
 	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any()).Times(2)
 	mockOutput.EXPECT().LogInfo("Pre-flight checks completed successfully")
 	mockOutput.EXPECT().LogInfo("All preflight checks completed successfully")
-	mockOutput.EXPECT().LogInfo("✓ %s: %s", gomock.Any(), gomock.Any()).Times(2)
+	mockOutput.EXPECT().LogInfo("Success: %s: %s", gomock.Any(), gomock.Any()).Times(2)
 
 	config := Config{
 		KubeContext: "test-context",
@@ -119,7 +119,7 @@ func TestRunPreflightChecks_WithSpacesInCheckNames(t *testing.T) {
 	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any())
 	mockOutput.EXPECT().LogInfo("Pre-flight checks completed successfully")
 	mockOutput.EXPECT().LogInfo("All preflight checks completed successfully")
-	mockOutput.EXPECT().LogInfo("✓ %s: %s", gomock.Any(), gomock.Any())
+	mockOutput.EXPECT().LogInfo("Success: %s: %s", gomock.Any(), gomock.Any())
 
 	config := Config{
 		KubeContext: "test-context",

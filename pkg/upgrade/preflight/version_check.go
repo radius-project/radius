@@ -23,6 +23,9 @@ import (
 	"github.com/Masterminds/semver/v3"
 )
 
+// Ensure VersionCompatibilityCheck implements PreflightCheck interface
+var _ PreflightCheck = (*VersionCompatibilityCheck)(nil)
+
 const (
 	RADIUS_EDGE_CHART_VERSION = "0.42.42-dev"
 )
@@ -83,8 +86,6 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 	// Always allow upgrades from edge development version
 	if currentVersion == RADIUS_EDGE_CHART_VERSION {
 		return true, "", nil
-	} else {
-		return false, fmt.Sprintf("Current version '%s' is not the edge development version '%s'", currentVersion, RADIUS_EDGE_CHART_VERSION), nil
 	}
 
 	// Ensure both versions have 'v' prefix for semver parsing
