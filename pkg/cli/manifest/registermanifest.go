@@ -42,7 +42,7 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return fmt.Errorf("invalid manifest file path")
 	}
 
-	resourceProvider, err := ValidateManifest(ctx, filePath)
+	resourceProvider, err := validateManifest(ctx, filePath)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return fmt.Errorf("invalid manifest file path")
 	}
 
-	resourceProvider, err := ValidateManifest(ctx, filePath)
+	resourceProvider, err := validateManifest(ctx, filePath)
 	if err != nil {
 		return err
 	}
@@ -365,11 +365,7 @@ func is409ConflictError(err error) bool {
 	return errors.As(err, &respErr) && respErr.StatusCode == 409
 }
 
-<<<<<<< HEAD
-// ValidateManifest validates manifest file and returns a resourceprovider if no errors
-=======
 // ValidateManifest validates manifest file
->>>>>>> 271942839 (fix tests)
 func ValidateManifest(ctx context.Context, path string) (resourceProvider *ResourceProvider, err error) {
 	resourceProvider, err = ReadFile(path)
 	if err != nil {
