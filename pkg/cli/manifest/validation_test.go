@@ -285,11 +285,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("nil provider", func(t *testing.T) {
-<<<<<<< HEAD
-		err := validateManifestSchemas(ctx, nil)
-=======
 		err := ValidateManifestSchemas(ctx, nil)
->>>>>>> 01d7c5329 (initial draft)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "provider is nil")
 	})
@@ -299,11 +295,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 			Name:  "Test.Provider",
 			Types: map[string]*ResourceType{},
 		}
-<<<<<<< HEAD
-		err := validateManifestSchemas(ctx, provider)
-=======
 		err := ValidateManifestSchemas(ctx, provider)
->>>>>>> 01d7c5329 (initial draft)
 		require.NoError(t, err) // Empty types should be valid
 	})
 
@@ -330,11 +322,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-<<<<<<< HEAD
-		err := validateManifestSchemas(ctx, provider)
-=======
 		err := ValidateManifestSchemas(ctx, provider)
->>>>>>> 01d7c5329 (initial draft)
 		require.NoError(t, err)
 	})
 
@@ -356,17 +344,10 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-<<<<<<< HEAD
-		err := validateManifestSchemas(ctx, provider)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "unsupported type: array")
-		require.Contains(t, err.Error(), "Test.Provider/widgets@2023-10-01")
-=======
 		err := ValidateManifestSchemas(ctx, provider)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unsupported type: array")
 		require.Contains(t, err.Error(), "Test.Provider.widgets[2023-10-01]")
->>>>>>> 01d7c5329 (initial draft)
 	})
 
 	t.Run("provider with invalid schema - prohibited feature", func(t *testing.T) {
@@ -387,11 +368,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-<<<<<<< HEAD
-		err := validateManifestSchemas(ctx, provider)
-=======
 		err := ValidateManifestSchemas(ctx, provider)
->>>>>>> 01d7c5329 (initial draft)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "allOf is not supported")
 	})
@@ -409,11 +386,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-<<<<<<< HEAD
-		err := validateManifestSchemas(ctx, provider)
-=======
 		err := ValidateManifestSchemas(ctx, provider)
->>>>>>> 01d7c5329 (initial draft)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to parse schema")
 	})
@@ -431,11 +404,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-<<<<<<< HEAD
-		err := validateManifestSchemas(ctx, provider)
-=======
 		err := ValidateManifestSchemas(ctx, provider)
->>>>>>> 01d7c5329 (initial draft)
 		require.NoError(t, err) // nil schema should be skipped
 	})
 
@@ -479,11 +448,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-<<<<<<< HEAD
-		err := validateManifestSchemas(ctx, provider)
-=======
 		err := ValidateManifestSchemas(ctx, provider)
->>>>>>> 01d7c5329 (initial draft)
 		require.NoError(t, err)
 	})
 
@@ -517,7 +482,6 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-
 		err := ValidateManifestSchemas(ctx, provider)
 		require.Error(t, err)
 		

@@ -36,12 +36,8 @@ func TestValidator_ValidateSchema(t *testing.T) {
 
 	t.Run("nil schema", func(t *testing.T) {
 		err := validator.ValidateSchema(ctx, nil)
-<<<<<<< HEAD
-		require.NoError(t, err)
-=======
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "schema cannot be nil")
->>>>>>> 01d7c5329 (initial draft)
 	})
 
 	t.Run("valid simple schema", func(t *testing.T) {
