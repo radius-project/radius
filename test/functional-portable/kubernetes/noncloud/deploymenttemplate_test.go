@@ -402,7 +402,12 @@ func assertExpectedResourcesToNotExist(ctx context.Context, scope string, expect
 
 func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts rp.RPTestOptions) {
 	err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-	require.NoError(t, err)
+	if !apierrors.IsNotFound(err) {
+		require.NoError(t, err, "failed to delete namespace %s", namespace)
+		t.Logf("Namespace %s deleted successfully", namespace)
+	} else {
+		t.Logf("Namespace %s already deleted or does not exist", namespace)
+	}
 
 	require.Eventually(t, func() bool {
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
