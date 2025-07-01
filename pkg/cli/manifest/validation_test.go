@@ -75,7 +75,8 @@ func TestResourceProviderNamespaceValidation(t *testing.T) {
 
 	// Create a mock validator to test the validation function
 	v := validator.New()
-	v.RegisterValidation("resourceProviderNamespace", resourceProviderNamespace)
+	err := v.RegisterValidation("resourceProviderNamespace", resourceProviderNamespace)
+	require.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -140,7 +141,8 @@ func TestResourceTypeValidation(t *testing.T) {
 	}
 
 	v := validator.New()
-	v.RegisterValidation("resourceType", validateResourceType)
+	err := v.RegisterValidation("resourceType", validateResourceType)
+	require.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -199,7 +201,8 @@ func TestAPIVersionValidation(t *testing.T) {
 	}
 
 	v := validator.New()
-	v.RegisterValidation("apiVersion", validateAPIVersion)
+	err := v.RegisterValidation("apiVersion", validateAPIVersion)
+	require.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -258,7 +261,8 @@ func TestCapabilityValidation(t *testing.T) {
 	}
 
 	v := validator.New()
-	v.RegisterValidation("capability", validateCapability)
+	err := v.RegisterValidation("capability", validateCapability)
+	require.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -423,7 +427,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
-									"name": map[string]any{"type": "string"},
+									"name":        map[string]any{"type": "string"},
 									"description": map[string]any{"type": "string"},
 								},
 							},
@@ -436,7 +440,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
-									"id": map[string]any{"type": "string"},
+									"id":     map[string]any{"type": "string"},
 									"active": map[string]any{"type": "boolean"},
 								},
 							},
@@ -477,7 +481,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 		}
 		err := ValidateManifestSchemas(ctx, provider)
 		require.Error(t, err)
-		
+
 		// Should be a ValidationErrors with multiple errors
 		var validationErrors *schema.ValidationErrors
 		require.ErrorAs(t, err, &validationErrors)
