@@ -114,6 +114,19 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 			return apierrors.IsNotFound(err)
 		}, time.Second*60, time.Second*5, "waiting for deploymentTemplate to be deleted")
 	})
+
+	t.Run("Delete namespace", func(t *testing.T) {
+		t.Log("Deleting namespace")
+
+		err = opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+			return apierrors.IsNotFound(err)
+		}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
+	})
 }
 
 func Test_DeploymentTemplate_Module(t *testing.T) {
@@ -186,6 +199,9 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 
 	t.Run("Delete namespace", func(t *testing.T) {
 		t.Log("Deleting namespace")
+
+		err = opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
@@ -267,6 +283,9 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 
 	t.Run("Delete namespace", func(t *testing.T) {
 		t.Log("Deleting namespace")
+
+		err = opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}

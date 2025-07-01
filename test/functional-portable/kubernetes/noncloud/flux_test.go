@@ -320,7 +320,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 	// Clean up namespaces at the end of the test
 	defer func() {
 		for _, namespace := range namespacesToCleanup {
-			t.Logf("Cleaning up namespace: %s", namespace)
+			t.Logf("Deleting namespace: %s", namespace)
 			err := opts.Client.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
 			if err != nil {
 				t.Logf("Error deleting namespace %s: %v", namespace, err)
