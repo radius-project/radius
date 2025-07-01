@@ -523,7 +523,7 @@ jobs:
           kubectl get pods -A >> $POD_STATE_LOG_FILENAME
           echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
           kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
-
+      
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v4

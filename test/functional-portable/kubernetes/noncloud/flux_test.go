@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubernetes_test
+package kubernetes_noncloud_test
 
 import (
 	"context"
@@ -77,7 +77,11 @@ func Test_Flux_Basic(t *testing.T) {
 		},
 	}
 
-	testFluxIntegration(t, testName, steps)
+	namespaces := []string{
+		"flux-basic",
+	}
+
+	testFluxIntegration(t, testName, steps, namespaces)
 }
 
 func Test_Flux_Complex(t *testing.T) {
@@ -113,11 +117,16 @@ func Test_Flux_Complex(t *testing.T) {
 		},
 	}
 
-	testFluxIntegration(t, testName, steps)
+	namespaces := []string{
+		"flux-complex",
+		"flux-complex-flux-complex-app",
+	}
+
+	testFluxIntegration(t, testName, steps, namespaces)
 }
 
 // testFluxIntegration is a helper function that runs a test for the integration of Radius and Flux.
-func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) {
+func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, namespaces []string) {
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 
@@ -312,6 +321,11 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 			t.Fatalf("Error asserting expected resources exist: %v", err)
 		}
 		t.Logf("Successfully asserted expected resources exist in %s", scope)
+	}
+
+	for _, namespace := range namespaces {
+		t.Logf("Deleting namespace: %s", namespace)
+		deleteNamespace(ctx, t, namespace, opts)
 	}
 }
 
