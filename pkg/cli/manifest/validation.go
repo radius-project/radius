@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	resourceProviderNamespaceRegex = regexp.MustCompile(`^[A-Z][A-Za-z0-9]+.[A-Z][A-Za-z0-9]+$`)
+	resourceProviderNamespaceRegex = regexp.MustCompile(`^[A-Z][A-Za-z0-9]+\.[A-Z][A-Za-z0-9]+$`)
 	resourceTypeRegex              = regexp.MustCompile(`^[a-z][A-Za-z0-9]+$`)
 	apiVersionRegex                = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(-preview)?$`)
 	capabilityRegex                = regexp.MustCompile(`^[A-Z][A-Za-z0-9]+$`)

@@ -53,6 +53,18 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 		return err
 	}
 
+	// Check for prohibited $ref usage throughout the schema
+	// We need to wrap the schema in a SchemaRef to use our recursive function
+	schemaRef := &openapi3.SchemaRef{Value: schema}
+	if err := v.checkRefUsage(schemaRef, ""); err != nil {
+		return err
+	}
+
+	// Check object property constraints
+	if err := v.checkObjectPropertyConstraints(schema); err != nil {
+		return err
+	}
+
 	// Validate type constraints
 	if err := v.validateTypeConstraints(schema); err != nil {
 		return err
@@ -61,9 +73,21 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 	// Recursively validate object properties
 	if schema.Properties != nil {
 		for propName, propRef := range schema.Properties {
-			if propRef == nil || propRef.Value == nil {
+			if propRef == nil {
 				return NewSchemaError(propName, "property schema is nil")
 			}
+
+			// If this is a reference (has Ref), we don't need to validate the Value
+			// because the actual schema is defined elsewhere
+			if propRef.Ref != "" {
+				// The $ref validation is already handled by checkRefUsage above
+				continue
+			}
+
+			if propRef.Value == nil {
+				return NewSchemaError(propName, "property schema is nil")
+			}
+
 			if err := v.validateRadiusConstraints(propRef.Value); err != nil {
 				// Add property context to error
 				if valErr, ok := err.(*ValidationError); ok {
@@ -81,14 +105,22 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 
 	// Also validate additionalProperties if present
 	if schema.AdditionalProperties.Has != nil {
-		if addPropSchema := schema.AdditionalProperties.Schema; addPropSchema != nil && addPropSchema.Value != nil {
-			if err := v.validateRadiusConstraints(addPropSchema.Value); err != nil {
-				// Add context to error
-				if valErr, ok := err.(*ValidationError); ok {
-					valErr.Field = "additionalProperties." + valErr.Field
-					return valErr
+		if addPropSchema := schema.AdditionalProperties.Schema; addPropSchema != nil {
+			// If this is a reference (has Ref), we don't need to validate the Value
+			if addPropSchema.Ref != "" {
+				// The $ref validation is already handled by checkRefUsage above
+				return nil
+			}
+
+			if addPropSchema.Value != nil {
+				if err := v.validateRadiusConstraints(addPropSchema.Value); err != nil {
+					// Add context to error
+					if valErr, ok := err.(*ValidationError); ok {
+						valErr.Field = "additionalProperties." + valErr.Field
+						return valErr
+					}
+					return NewSchemaError("additionalProperties", err.Error())
 				}
-				return NewSchemaError("additionalProperties", err.Error())
 			}
 		}
 	}
@@ -134,9 +166,122 @@ func (v *Validator) checkProhibitedFeatures(schema *openapi3.Schema) error {
 	return nil
 }
 
+// isInternalRef checks if a $ref is an internal reference within the same document
+func (v *Validator) isInternalRef(ref string) bool {
+	// Internal references start with "#/" which means they reference within the same document
+	// Examples of internal refs:
+	// - "#/components/schemas/MySchema"
+	// - "#/definitions/SomeType"
+	// External references would be:
+	// - "other-file.yaml#/components/schemas/MySchema"
+	// - "https://example.com/schema.json#/MySchema"
+	// - "relative/path/schema.yaml#/MySchema"
+	return len(ref) > 0 && ref[0] == '#'
+}
+
+// checkRefUsage recursively checks for prohibited $ref usage in SchemaRef instances
+func (v *Validator) checkRefUsage(schemaRef *openapi3.SchemaRef, fieldPath string) error {
+	if schemaRef == nil {
+		return nil
+	}
+
+	// Check if this SchemaRef contains a $ref
+	if schemaRef.Ref != "" {
+		// Allow internal references, but prohibit external ones
+		if !v.isInternalRef(schemaRef.Ref) {
+			return NewConstraintError(fieldPath, "external $ref references are not supported, only internal references starting with '#/' are allowed")
+		}
+	}
+
+	// If there's no value, we're done
+	if schemaRef.Value == nil {
+		return nil
+	}
+
+	schema := schemaRef.Value
+
+	// Check properties
+	if schema.Properties != nil {
+		for propName, propRef := range schema.Properties {
+			propPath := fieldPath
+			if propPath != "" {
+				propPath += "."
+			}
+			propPath += propName
+
+			if err := v.checkRefUsage(propRef, propPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Check additionalProperties
+	if schema.AdditionalProperties.Has != nil && schema.AdditionalProperties.Schema != nil {
+		addPropPath := fieldPath
+		if addPropPath != "" {
+			addPropPath += "."
+		}
+		addPropPath += "additionalProperties"
+
+		if err := v.checkRefUsage(schema.AdditionalProperties.Schema, addPropPath); err != nil {
+			return err
+		}
+	}
+
+	// Check array items
+	if schema.Items != nil {
+		itemsPath := fieldPath
+		if itemsPath != "" {
+			itemsPath += "."
+		}
+		itemsPath += "items"
+
+		if err := v.checkRefUsage(schema.Items, itemsPath); err != nil {
+			return err
+		}
+	}
+
+	// Check allOf, anyOf, oneOf (even though they're prohibited, we should check for refs)
+	for i, schemaRef := range schema.AllOf {
+		allOfPath := fmt.Sprintf("%s.allOf[%d]", fieldPath, i)
+		if err := v.checkRefUsage(schemaRef, allOfPath); err != nil {
+			return err
+		}
+	}
+
+	for i, schemaRef := range schema.AnyOf {
+		anyOfPath := fmt.Sprintf("%s.anyOf[%d]", fieldPath, i)
+		if err := v.checkRefUsage(schemaRef, anyOfPath); err != nil {
+			return err
+		}
+	}
+
+	for i, schemaRef := range schema.OneOf {
+		oneOfPath := fmt.Sprintf("%s.oneOf[%d]", fieldPath, i)
+		if err := v.checkRefUsage(schemaRef, oneOfPath); err != nil {
+			return err
+		}
+	}
+
+	// Check not
+	if schema.Not != nil {
+		notPath := fieldPath
+		if notPath != "" {
+			notPath += "."
+		}
+		notPath += "not"
+
+		if err := v.checkRefUsage(schema.Not, notPath); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // validateTypeConstraints ensures only supported types are used
 func (v *Validator) validateTypeConstraints(schema *openapi3.Schema) error {
-	// If type is not specified, it's valid (OpenAPI allows typeless schemas) - verify this
+	// If type is not specified, it's valid (OpenAPI allows typeless schemas)
 	if schema.Type == nil {
 		return nil
 	}
@@ -149,5 +294,42 @@ func (v *Validator) validateTypeConstraints(schema *openapi3.Schema) error {
 		}
 	}
 
-	return NewConstraintError("", fmt.Sprintf("unsupported type: %s", schema.Type))
+	// Get the actual type string from the Types slice
+	var typeStr string
+	if len(*schema.Type) > 0 {
+		typeStr = (*schema.Type)[0]
+	} else {
+		typeStr = "unknown"
+	}
+
+	return NewConstraintError("", fmt.Sprintf("unsupported type: %s", typeStr))
+}
+
+// checkObjectPropertyConstraints validates object-specific constraints
+func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) error {
+	// Apply this constraint to:
+	// 1. Explicit object types
+	// 2. Typeless schemas that have properties or additionalProperties (implicitly objects)
+	// 3. BUT NOT to schemas that are explicitly typed as non-objects
+	isExplicitNonObject := schema.Type != nil && !schema.Type.Is("object")
+	if isExplicitNonObject {
+		return nil // Skip constraint for explicitly non-object types
+	}
+
+	// Now we're dealing with either explicit objects or typeless schemas
+	hasObjectFeatures := schema.Properties != nil || schema.AdditionalProperties.Has != nil
+	if !hasObjectFeatures {
+		return nil // No object features to validate
+	}
+
+	// Check if both properties and additionalProperties are defined
+	// Note: Empty properties map should be treated as no properties defined
+	hasProperties := len(schema.Properties) > 0
+	hasAdditionalProperties := schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has
+
+	if hasProperties && hasAdditionalProperties {
+		return NewConstraintError("", "object schemas cannot have both 'properties' and 'additionalProperties' defined")
+	}
+
+	return nil
 }

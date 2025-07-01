@@ -276,7 +276,7 @@ func TestConvertToOpenAPISchema(t *testing.T) {
 		{
 			name: "invalid JSON structure",
 			input: map[string]any{
-				"type": []func(){}, // Functions can't be marshaled
+				"type": func() {}, // Functions can't be marshaled
 			},
 			wantErr: true,
 			errMsg:  "failed to marshal schema",
@@ -379,5 +379,590 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "additionalProperties")
 		require.Contains(t, err.Error(), "unsupported type: array")
+	})
+}
+
+func TestValidator_checkRefUsage(t *testing.T) {
+	validator := NewValidator()
+
+	tests := []struct {
+		name      string
+		schemaRef *openapi3.SchemaRef
+		fieldPath string
+		hasErr    bool
+		errMsg    string
+	}{
+		{
+			name: "internal $ref in root schema - allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Ref: "#/components/schemas/SomeSchema",
+			},
+			fieldPath: "",
+			hasErr:    false,
+		},
+		{
+			name: "external $ref with file path - not allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Ref: "other-file.yaml#/components/schemas/SomeSchema",
+			},
+			fieldPath: "",
+			hasErr:    true,
+			errMsg:    "external $ref references are not supported",
+		},
+		{
+			name: "external $ref with URL - not allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Ref: "https://example.com/schema.json#/MySchema",
+			},
+			fieldPath: "",
+			hasErr:    true,
+			errMsg:    "external $ref references are not supported",
+		},
+		{
+			name: "external $ref with relative path - not allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Ref: "../schemas/common.yaml#/definitions/CommonType",
+			},
+			fieldPath: "",
+			hasErr:    true,
+			errMsg:    "external $ref references are not supported",
+		},
+		{
+			name: "internal $ref in property - allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Type: &openapi3.Types{"object"},
+					Properties: map[string]*openapi3.SchemaRef{
+						"prop1": {
+							Ref: "#/components/schemas/SomeSchema",
+						},
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    false,
+		},
+		{
+			name: "external $ref in property - not allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Type: &openapi3.Types{"object"},
+					Properties: map[string]*openapi3.SchemaRef{
+						"prop1": {
+							Ref: "external.yaml#/components/schemas/SomeSchema",
+						},
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    true,
+			errMsg:    "external $ref references are not supported",
+		},
+		{
+			name: "internal $ref in additionalProperties - allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Type: &openapi3.Types{"object"},
+					AdditionalProperties: openapi3.AdditionalProperties{
+						Has: &[]bool{true}[0],
+						Schema: &openapi3.SchemaRef{
+							Ref: "#/components/schemas/SomeSchema",
+						},
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    false,
+		},
+		{
+			name: "external $ref in additionalProperties - not allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Type: &openapi3.Types{"object"},
+					AdditionalProperties: openapi3.AdditionalProperties{
+						Has: &[]bool{true}[0],
+						Schema: &openapi3.SchemaRef{
+							Ref: "external.yaml#/components/schemas/SomeSchema",
+						},
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    true,
+			errMsg:    "external $ref references are not supported",
+		},
+		{
+			name: "internal $ref in array items - allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Type: &openapi3.Types{"array"},
+					Items: &openapi3.SchemaRef{
+						Ref: "#/components/schemas/SomeSchema",
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    false,
+		},
+		{
+			name: "external $ref in array items - not allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Type: &openapi3.Types{"array"},
+					Items: &openapi3.SchemaRef{
+						Ref: "external.yaml#/components/schemas/SomeSchema",
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    true,
+			errMsg:    "external $ref references are not supported",
+		},
+		{
+			name: "external $ref in nested property - not allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Type: &openapi3.Types{"object"},
+					Properties: map[string]*openapi3.SchemaRef{
+						"parent": {
+							Value: &openapi3.Schema{
+								Type: &openapi3.Types{"object"},
+								Properties: map[string]*openapi3.SchemaRef{
+									"child": {
+										Ref: "external.yaml#/components/schemas/SomeSchema",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    true,
+			errMsg:    "external $ref references are not supported",
+		},
+		{
+			name: "internal $ref in allOf - allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					AllOf: []*openapi3.SchemaRef{
+						{
+							Ref: "#/components/schemas/SomeSchema",
+						},
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    false,
+		},
+		{
+			name: "external $ref in allOf - not allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					AllOf: []*openapi3.SchemaRef{
+						{
+							Ref: "external.yaml#/components/schemas/SomeSchema",
+						},
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    true,
+			errMsg:    "external $ref references are not supported",
+		},
+		{
+			name: "internal $ref in not - allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Not: &openapi3.SchemaRef{
+						Ref: "#/components/schemas/SomeSchema",
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    false,
+		},
+		{
+			name: "external $ref in not - not allowed",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Not: &openapi3.SchemaRef{
+						Ref: "external.yaml#/components/schemas/SomeSchema",
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    true,
+			errMsg:    "external $ref references are not supported",
+		},
+		{
+			name: "valid schema without $ref",
+			schemaRef: &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Type: &openapi3.Types{"object"},
+					Properties: map[string]*openapi3.SchemaRef{
+						"prop1": {
+							Value: &openapi3.Schema{
+								Type: &openapi3.Types{"string"},
+							},
+						},
+						"prop2": {
+							Value: &openapi3.Schema{
+								Type: &openapi3.Types{"integer"},
+							},
+						},
+					},
+				},
+			},
+			fieldPath: "",
+			hasErr:    false,
+		},
+		{
+			name:      "nil schema ref",
+			schemaRef: nil,
+			fieldPath: "",
+			hasErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.checkRefUsage(tt.schemaRef, tt.fieldPath)
+			if tt.hasErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errMsg)
+				// Check that it's a ConstraintError
+				var constraintErr *ValidationError
+				require.ErrorAs(t, err, &constraintErr)
+				require.Equal(t, ErrorTypeConstraint, constraintErr.Type)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Test that $ref validation is integrated into the main validation flow
+func TestValidator_RefValidationIntegration(t *testing.T) {
+	validator := NewValidator()
+	ctx := context.Background()
+
+	t.Run("schema with internal $ref in property passes validation", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: map[string]*openapi3.SchemaRef{
+				"goodProp": {
+					Ref: "#/components/schemas/SomeSchema",
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("schema with external $ref in property fails validation", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: map[string]*openapi3.SchemaRef{
+				"badProp": {
+					Ref: "external.yaml#/components/schemas/SomeSchema",
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "external $ref references are not supported")
+	})
+
+	t.Run("schema with internal $ref in additionalProperties passes validation", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			AdditionalProperties: openapi3.AdditionalProperties{
+				Has: &[]bool{true}[0],
+				Schema: &openapi3.SchemaRef{
+					Ref: "#/components/schemas/SomeSchema",
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("schema with external $ref in additionalProperties fails validation", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			AdditionalProperties: openapi3.AdditionalProperties{
+				Has: &[]bool{true}[0],
+				Schema: &openapi3.SchemaRef{
+					Ref: "external.yaml#/components/schemas/SomeSchema",
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "external $ref references are not supported")
+	})
+}
+
+func TestValidator_isInternalRef(t *testing.T) {
+	validator := NewValidator()
+
+	tests := []struct {
+		name     string
+		ref      string
+		expected bool
+	}{
+		{
+			name:     "empty string",
+			ref:      "",
+			expected: false,
+		},
+		{
+			name:     "internal ref - components/schemas",
+			ref:      "#/components/schemas/MySchema",
+			expected: true,
+		},
+		{
+			name:     "internal ref - definitions",
+			ref:      "#/definitions/SomeType",
+			expected: true,
+		},
+		{
+			name:     "internal ref - root fragment",
+			ref:      "#/",
+			expected: true,
+		},
+		{
+			name:     "internal ref - just hash",
+			ref:      "#",
+			expected: true,
+		},
+		{
+			name:     "external ref - relative path",
+			ref:      "other-file.yaml#/components/schemas/MySchema",
+			expected: false,
+		},
+		{
+			name:     "external ref - absolute path",
+			ref:      "/absolute/path/schema.yaml#/definitions/Type",
+			expected: false,
+		},
+		{
+			name:     "external ref - URL",
+			ref:      "https://example.com/schema.json#/MySchema",
+			expected: false,
+		},
+		{
+			name:     "external ref - relative directory",
+			ref:      "../schemas/common.yaml#/definitions/CommonType",
+			expected: false,
+		},
+		{
+			name:     "external ref - no fragment",
+			ref:      "external.yaml",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validator.isInternalRef(tt.ref)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
+	validator := NewValidator()
+
+	tests := []struct {
+		name   string
+		schema *openapi3.Schema
+		hasErr bool
+		errMsg string
+	}{
+		{
+			name: "object with only properties - allowed",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				Properties: map[string]*openapi3.SchemaRef{
+					"name": {
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
+					"age": {
+						Value: &openapi3.Schema{Type: &openapi3.Types{"integer"}},
+					},
+				},
+			},
+			hasErr: false,
+		},
+		{
+			name: "object with only additionalProperties - allowed",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Has: &[]bool{true}[0],
+					Schema: &openapi3.SchemaRef{
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
+				},
+			},
+			hasErr: false,
+		},
+		{
+			name: "object with both properties and additionalProperties - not allowed",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				Properties: map[string]*openapi3.SchemaRef{
+					"name": {
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
+				},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Has: &[]bool{true}[0],
+					Schema: &openapi3.SchemaRef{
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
+				},
+			},
+			hasErr: true,
+			errMsg: "object schemas cannot have both 'properties' and 'additionalProperties' defined",
+		},
+		{
+			name: "object with additionalProperties set to false - allowed with properties",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				Properties: map[string]*openapi3.SchemaRef{
+					"name": {
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
+				},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Has: &[]bool{false}[0],
+				},
+			},
+			hasErr: false,
+		},
+		{
+			name: "object with empty properties and additionalProperties true - allowed",
+			schema: &openapi3.Schema{
+				Type:       &openapi3.Types{"object"},
+				Properties: map[string]*openapi3.SchemaRef{}, // Empty properties map
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Has: &[]bool{true}[0],
+					Schema: &openapi3.SchemaRef{
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
+				},
+			},
+			hasErr: false,
+		},
+		{
+			name: "non-object schema with both properties and additionalProperties - allowed",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"}, // Not an object type
+				Properties: map[string]*openapi3.SchemaRef{
+					"name": {
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
+				},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Has: &[]bool{true}[0],
+				},
+			},
+			hasErr: false, // Constraint only applies to object types
+		},
+		{
+			name: "typeless schema with both properties and additionalProperties - not allowed",
+			schema: &openapi3.Schema{
+				// No type specified, but has object-like properties
+				Properties: map[string]*openapi3.SchemaRef{
+					"name": {
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
+				},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Has: &[]bool{true}[0],
+				},
+			},
+			hasErr: true,
+			errMsg: "object schemas cannot have both 'properties' and 'additionalProperties' defined",
+		},
+		{
+			name: "object with no properties or additionalProperties - allowed",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+			},
+			hasErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.checkObjectPropertyConstraints(tt.schema)
+			if tt.hasErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errMsg)
+				// Check that it's a ConstraintError
+				var constraintErr *ValidationError
+				require.ErrorAs(t, err, &constraintErr)
+				require.Equal(t, ErrorTypeConstraint, constraintErr.Type)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Test integration of object property constraints with main validation
+func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
+	validator := NewValidator()
+	ctx := context.Background()
+
+	t.Run("schema with both properties and additionalProperties fails main validation", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: map[string]*openapi3.SchemaRef{
+				"name": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+			},
+			AdditionalProperties: openapi3.AdditionalProperties{
+				Has: &[]bool{true}[0],
+				Schema: &openapi3.SchemaRef{
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "object schemas cannot have both 'properties' and 'additionalProperties' defined")
+	})
+
+	t.Run("schema with only properties passes main validation", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: map[string]*openapi3.SchemaRef{
+				"name": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("schema with only additionalProperties passes main validation", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			AdditionalProperties: openapi3.AdditionalProperties{
+				Has: &[]bool{true}[0],
+				Schema: &openapi3.SchemaRef{
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
 	})
 }
