@@ -136,7 +136,7 @@ bicep:
 
 preupgrade:
   # Enable pre-upgrade preflight checks
-  enabled: true
+  enabled: false
   # Container image for pre-upgrade checks
   image: ghcr.io/radius-project/pre-upgrade
   # Default tag uses Chart AppVersion.

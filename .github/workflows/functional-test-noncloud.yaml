@@ -501,7 +501,7 @@ jobs:
           namespace="radius-system"
           pod_names=($(kubectl get pods -n $namespace -o jsonpath='{.items[*].metadata.name}'))
           for pod_name in "${pod_names[@]}"; do
-            kubectl logs $pod_name -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt
+            kubectl logs $pod_name -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt 2>&1 || echo "Failed to get logs for pod: $pod_name" > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt
           done
           echo "Pod logs saved to func-nc/radius-logs-events/${{ matrix.name }}/"
           # Get kubernetes events and save to file
