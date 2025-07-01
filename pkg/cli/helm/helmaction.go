@@ -256,11 +256,8 @@ func (helmAction *HelmActionImpl) GetPreviousReleaseVersion(kubeContext, release
 		rel := releases[i]
 		if rel.Info != nil && (rel.Info.Status == release.StatusDeployed || rel.Info.Status == release.StatusSuperseded) {
 			if rel.Chart != nil && rel.Chart.Metadata != nil {
-				// Use AppVersion for consistency with pre-upgrade checks, fallback to Version if empty
 				version := rel.Chart.Metadata.AppVersion
-				if version == "" {
-					version = rel.Chart.Metadata.Version
-				}
+
 				return version, nil
 			}
 		}

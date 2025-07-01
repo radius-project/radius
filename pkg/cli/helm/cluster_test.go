@@ -166,18 +166,22 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	newRel := func(name, ver string) *release.Release {
 		return &release.Release{
 			Name:  name,
-			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver}},
+			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver, AppVersion: ver}},
 		}
 	}
 
 	// Radius is installed, Contour not installed.
+	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
+	// Set the release status to deployed for the history check
+	radiusRelease.Info = &release.Info{Status: release.StatusDeployed}
+	
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return(newRel(options.Radius.ReleaseName, "0.1.0"), nil).Times(1)
+		Return(radiusRelease, nil).Times(1)
 	// Mock the history call that happens when Radius is installed
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*release.Release{newRel(options.Radius.ReleaseName, "0.1.0")}, nil).Times(1)
+		Return([]*release.Release{radiusRelease}, nil).Times(1)
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, driver.ErrReleaseNotFound).Times(1)
@@ -300,6 +304,8 @@ func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
 
 	// Create release with both chart version and app version
 	radiusRelease := newRelWithAppVersion(options.Radius.ReleaseName, "1.0.0", "v0.43.0")
+	// Set the release status to deployed for the history check
+	radiusRelease.Info = &release.Info{Status: release.StatusDeployed}
 
 	// Radius is installed with AppVersion, Contour not installed.
 	mockHelmClient.EXPECT().
