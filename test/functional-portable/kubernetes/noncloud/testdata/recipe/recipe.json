@@ -41,7 +41,7 @@
           "compute": {
             "kind": "kubernetes",
             "resourceId": "self",
-            "namespace": "[format('{0}-env', parameters('name'))]"
+            "namespace": "[parameters('namespace')]"
           },
           "recipes": {
             "Applications.Datastores/redisCaches": {

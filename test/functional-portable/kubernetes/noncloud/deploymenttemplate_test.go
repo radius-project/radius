@@ -125,7 +125,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 			return apierrors.IsNotFound(err)
-		}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
+		}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
 	})
 }
 
@@ -135,7 +135,6 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 
 	name := "dt-module"
 	namespace := "dt-module-ns"
-	// environmentNamespace := fmt.Sprintf("%s-env", name)
 	templateFilePath := path.Join("testdata", "module", "module.json")
 	parameters := []string{
 		fmt.Sprintf("name=%s", name),
@@ -207,7 +206,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 			return apierrors.IsNotFound(err)
-		}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
+		}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
 	})
 }
 
@@ -278,7 +277,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 		require.Eventually(t, func() bool {
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
 			return apierrors.IsNotFound(err)
-		}, time.Minute*10, time.Second*10, "waiting for deploymentTemplate to be deleted")
+		}, time.Minute*3, time.Second*10, "waiting for deploymentTemplate to be deleted")
 	})
 
 	t.Run("Delete namespace", func(t *testing.T) {
@@ -291,7 +290,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 			return apierrors.IsNotFound(err)
-		}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
+		}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
 	})
 }
 
