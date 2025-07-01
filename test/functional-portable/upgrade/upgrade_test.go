@@ -67,7 +67,7 @@ func Test_PreflightContainer_FreshInstall(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 
 	t.Log("Attempting upgrade with local chart to trigger Helm pre-upgrade hook")
-	_, err = cli.RunCommand(ctx, []string{
+	_, _ = cli.RunCommand(ctx, []string{
 		"upgrade", "kubernetes",
 		"--chart", relativeChartPath,
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
@@ -115,7 +115,7 @@ func Test_PreflightContainer_PreflightDisabled(t *testing.T) {
 	// Ensure no leftover job exists before upgrade
 	_ = options.K8sClient.BatchV1().Jobs(radiusNamespace).Delete(ctx, preUpgradeJobName, metav1.DeleteOptions{}) // Ignore errors during cleanup
 
-	_, err = cli.RunCommand(ctx, []string{
+	_, _ = cli.RunCommand(ctx, []string{
 		"upgrade", "kubernetes",
 		"--chart", relativeChartPath,
 		"--set", "preupgrade.enabled=false",
@@ -162,7 +162,7 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 
 	t.Log("Attempting upgrade to trigger preflight checks")
-	_, err = cli.RunCommand(ctx, []string{
+	_, _ = cli.RunCommand(ctx, []string{
 		"upgrade", "kubernetes",
 		"--chart", relativeChartPath,
 		"--set", "preupgrade.enabled=true",

@@ -114,7 +114,7 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 
 	// Check if downgrade attempt
 	if target.LessThan(current) {
-		return true, "Downgrading is not supported", nil
+		return false, "Downgrading is not supported", nil
 	}
 
 	// Get the next expected version (increment minor version)

@@ -228,8 +228,8 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	// Check if Radius is installed
 	radiusInstalled, radiusVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
-		// return InstallState{}, fmt.Errorf("failed to check Radius installation (release: %s, namespace: %s, context: %s): %w",
-		// 	clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, kubeContext, err)
+		return InstallState{}, fmt.Errorf("failed to check Radius installation (release: %s, namespace: %s, context: %s): %w",
+			clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, kubeContext, err)
 	}
 
 	// If Radius is installed, check if we're in an upgrade scenario
@@ -248,8 +248,8 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	// Check if Contour is installed
 	contourInstalled, contourVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace)
 	if err != nil {
-		// return InstallState{}, fmt.Errorf("failed to check Contour installation (release: %s, namespace: %s, context: %s): %w",
-		// 	clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, kubeContext, err)
+		return InstallState{}, fmt.Errorf("failed to check Contour installation (release: %s, namespace: %s, context: %s): %w",
+			clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, kubeContext, err)
 	}
 
 	state := InstallState{

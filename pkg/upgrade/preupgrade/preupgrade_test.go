@@ -42,6 +42,8 @@ func TestRunPreflightChecks_Success(t *testing.T) {
 
 	mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 	mockOutput.EXPECT().LogInfo("Running preflight checks: %s", "version")
+	mockOutput.EXPECT().LogInfo("Target version: %s", "0.29.0")
+	mockOutput.EXPECT().LogInfo("Current version: %s", gomock.Any())
 	mockOutput.EXPECT().LogInfo("Running pre-flight checks...")
 	mockOutput.EXPECT().LogInfo("  Running %s...", gomock.Any())
 	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any())
@@ -56,8 +58,9 @@ func TestRunPreflightChecks_Success(t *testing.T) {
 	}
 
 	options := Options{
-		EnabledChecks: []string{"version"},
-		TargetVersion: "0.29.0",
+		EnabledChecks:  []string{"version"},
+		TargetVersion:  "0.29.0",
+		CurrentVersion: "",
 	}
 
 	err := RunPreflightChecks(context.Background(), config, options)
@@ -78,6 +81,8 @@ func TestRunPreflightChecks_MultipleChecks(t *testing.T) {
 
 	mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil).Times(2)
 	mockOutput.EXPECT().LogInfo("Running preflight checks: %s", "version, version")
+	mockOutput.EXPECT().LogInfo("Target version: %s", "0.29.0")
+	mockOutput.EXPECT().LogInfo("Current version: %s", gomock.Any())
 	mockOutput.EXPECT().LogInfo("Running pre-flight checks...")
 	mockOutput.EXPECT().LogInfo("  Running %s...", gomock.Any()).Times(2)
 	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any()).Times(2)
@@ -114,6 +119,8 @@ func TestRunPreflightChecks_WithSpacesInCheckNames(t *testing.T) {
 
 	mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 	mockOutput.EXPECT().LogInfo("Running preflight checks: %s", " version ")
+	mockOutput.EXPECT().LogInfo("Target version: %s", "0.29.0")
+	mockOutput.EXPECT().LogInfo("Current version: %s", gomock.Any())
 	mockOutput.EXPECT().LogInfo("Running pre-flight checks...")
 	mockOutput.EXPECT().LogInfo("  Running %s...", gomock.Any())
 	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any())
@@ -146,6 +153,8 @@ func TestRunPreflightChecks_HelmCheckError(t *testing.T) {
 	expectedError := errors.New("failed to connect to kubernetes")
 	mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, expectedError)
 	mockOutput.EXPECT().LogInfo("Running preflight checks: %s", "version")
+	mockOutput.EXPECT().LogInfo("Target version: %s", "0.29.0")
+	mockOutput.EXPECT().LogInfo("Current version: %s", gomock.Any())
 
 	config := Config{
 		KubeContext: "test-context",
@@ -154,8 +163,9 @@ func TestRunPreflightChecks_HelmCheckError(t *testing.T) {
 	}
 
 	options := Options{
-		EnabledChecks: []string{"version"},
-		TargetVersion: "0.29.0",
+		EnabledChecks:  []string{"version"},
+		TargetVersion:  "0.29.0",
+		CurrentVersion: "",
 	}
 
 	err := RunPreflightChecks(context.Background(), config, options)
@@ -172,6 +182,8 @@ func TestRunPreflightChecks_UnknownCheckName(t *testing.T) {
 	mockOutput := output.NewMockInterface(ctrl)
 
 	mockOutput.EXPECT().LogInfo("Running preflight checks: %s", "unknown-check")
+	mockOutput.EXPECT().LogInfo("Target version: %s", "0.29.0")
+	mockOutput.EXPECT().LogInfo("Current version: %s", gomock.Any())
 
 	config := Config{
 		KubeContext: "test-context",
@@ -197,6 +209,8 @@ func TestRunPreflightChecks_EmptyChecksList(t *testing.T) {
 	mockOutput := output.NewMockInterface(ctrl)
 
 	mockOutput.EXPECT().LogInfo("Running preflight checks: %s", "")
+	mockOutput.EXPECT().LogInfo("Target version: %s", "0.29.0")
+	mockOutput.EXPECT().LogInfo("Current version: %s", gomock.Any())
 	mockOutput.EXPECT().LogInfo("All preflight checks completed successfully")
 
 	config := Config{
@@ -228,6 +242,8 @@ func TestRunPreflightChecks_PreflightCheckFailure(t *testing.T) {
 
 	mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 	mockOutput.EXPECT().LogInfo("Running preflight checks: %s", "version")
+	mockOutput.EXPECT().LogInfo("Target version: %s", "0.29.0")
+	mockOutput.EXPECT().LogInfo("Current version: %s", gomock.Any())
 	mockOutput.EXPECT().LogInfo("Running pre-flight checks...")
 	mockOutput.EXPECT().LogInfo("  Running %s...", gomock.Any())
 	mockOutput.EXPECT().LogInfo("    %s [ERROR] %s", gomock.Any(), gomock.Any())
@@ -239,8 +255,9 @@ func TestRunPreflightChecks_PreflightCheckFailure(t *testing.T) {
 	}
 
 	options := Options{
-		EnabledChecks: []string{"version"},
-		TargetVersion: "0.29.0",
+		EnabledChecks:  []string{"version"},
+		TargetVersion:  "0.29.0",
+		CurrentVersion: "",
 	}
 
 	err := RunPreflightChecks(context.Background(), config, options)

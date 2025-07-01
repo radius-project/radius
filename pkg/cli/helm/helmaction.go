@@ -31,6 +31,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -215,7 +216,12 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 
 	release, err := helmAction.HelmClient.RunHelmGet(helmConf, releaseName)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to run helm get for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
+		if errors.Is(err, driver.ErrReleaseNotFound) {
+			// Release not found is not an error - it just means it's not installed
+			return false, "", nil
+		} else {
+			return false, "", fmt.Errorf("failed to run helm get for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
+		}
 	}
 
 	if release.Chart == nil || release.Chart.Metadata == nil {
