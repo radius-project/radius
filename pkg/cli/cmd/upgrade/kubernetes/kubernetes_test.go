@@ -18,18 +18,69 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/version"
+	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
+func Test_CommandValidation(t *testing.T) {
+	t.Parallel()
+	radcli.SharedCommandValidation(t, NewCommand)
+}
+
+func Test_Validate(t *testing.T) {
+	t.Parallel()
+	testcases := []radcli.ValidateInput{
+		{
+			Name:          "valid - basic",
+			Input:         []string{},
+			ExpectedValid: true,
+		},
+		{
+			Name: "valid - with all flags",
+			Input: []string{
+				"--version", "0.48.0",
+				"--kubecontext", "my-context",
+				"--chart", "/path/to/chart",
+				"--set", "key=value",
+				"--set-file", "cert=/path/to/cert",
+			},
+			ExpectedValid: true,
+		},
+		{
+			Name:          "valid - skip preflight",
+			Input:         []string{"--skip-preflight"},
+			ExpectedValid: true,
+		},
+		{
+			Name:          "valid - preflight only",
+			Input:         []string{"--preflight-only"},
+			ExpectedValid: true,
+		},
+		{
+			Name:          "invalid - conflicting flags",
+			Input:         []string{"--skip-preflight", "--preflight-only"},
+			ExpectedValid: false,
+		},
+		{
+			Name:          "invalid - too many args",
+			Input:         []string{"extra-arg"},
+			ExpectedValid: false,
+		},
+	}
+	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
 func TestNewCommand(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -49,6 +100,7 @@ func TestNewCommand(t *testing.T) {
 }
 
 func TestRunner_Validate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		skipPreflight bool
@@ -83,6 +135,7 @@ func TestRunner_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			runner := &Runner{
 				SkipPreflight: tt.skipPreflight,
 				PreflightOnly: tt.preflightOnly,
@@ -101,9 +154,11 @@ func TestRunner_Validate(t *testing.T) {
 }
 
 func TestRunner_Run(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		setupMock     func(*helm.MockInterface, *output.MockInterface)
+		version       string
 		skipPreflight bool
 		preflightOnly bool
 		expectError   bool
@@ -112,22 +167,17 @@ func TestRunner_Run(t *testing.T) {
 		{
 			name: "successful upgrade with skipped preflight",
 			setupMock: func(mockHelm *helm.MockInterface, mockOutput *output.MockInterface) {
-				// Mock CheckRadiusInstall to return installed state
 				installState := helm.InstallState{
 					RadiusInstalled: true,
 					RadiusVersion:   "v0.46.0",
 				}
 				mockHelm.EXPECT().CheckRadiusInstall("").Return(installState, nil)
-
-				// Mock upgrade
 				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").Return(nil)
-
-				// Mock output logging
 				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any()).AnyTimes()
 				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			},
-			skipPreflight: true, // Skip preflight to avoid version validation issues in tests
-			preflightOnly: false,
+			version:       "0.47.0",
+			skipPreflight: true,
 			expectError:   false,
 		},
 		{
@@ -138,25 +188,31 @@ func TestRunner_Run(t *testing.T) {
 				}
 				mockHelm.EXPECT().CheckRadiusInstall("").Return(installState, nil)
 			},
-			skipPreflight: false,
-			preflightOnly: false,
-			expectError:   true,
-			errorMessage:  "Radius is not currently installed",
+			expectError:  true,
+			errorMessage: "Radius is not currently installed",
 		},
 		{
-			name: "skip preflight and preflight only - should not run",
+			name: "upgrade failure",
 			setupMock: func(mockHelm *helm.MockInterface, mockOutput *output.MockInterface) {
-				// This test case is handled by the Validate function, so no mocks needed
+				installState := helm.InstallState{
+					RadiusInstalled: true,
+					RadiusVersion:   "v0.46.0",
+				}
+				mockHelm.EXPECT().CheckRadiusInstall("").Return(installState, nil)
+				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").Return(fmt.Errorf("upgrade failed"))
+				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any()).AnyTimes()
+				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			},
+			version:       "0.47.0",
 			skipPreflight: true,
-			preflightOnly: true,
 			expectError:   true,
-			errorMessage:  "cannot specify both --skip-preflight and --preflight-only",
+			errorMessage:  "failed to upgrade Radius",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
@@ -168,26 +224,11 @@ func TestRunner_Run(t *testing.T) {
 			runner := &Runner{
 				Helm:          mockHelm,
 				Output:        mockOutput,
+				Version:       tt.version,
 				SkipPreflight: tt.skipPreflight,
 				PreflightOnly: tt.preflightOnly,
 			}
 
-			// First run validation
-			validateErr := runner.Validate(nil, nil)
-			if validateErr != nil {
-				// If validation fails, that's our expected error
-				if tt.expectError {
-					assert.Error(t, validateErr)
-					if tt.errorMessage != "" {
-						assert.Contains(t, validateErr.Error(), tt.errorMessage)
-					}
-					return
-				} else {
-					t.Fatalf("Unexpected validation error: %v", validateErr)
-				}
-			}
-
-			// If validation passes, run the actual command
 			err := runner.Run(context.Background())
 
 			if tt.expectError {
@@ -203,6 +244,7 @@ func TestRunner_Run(t *testing.T) {
 }
 
 func TestRunner_ResolveTargetVersion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		versionFlag    string
@@ -210,27 +252,28 @@ func TestRunner_ResolveTargetVersion(t *testing.T) {
 		expectError    bool
 	}{
 		{
-			name:           "no version specified - uses CLI version",
+			name:           "no version specified - uses CLI release version",
 			versionFlag:    "",
-			expectedResult: version.Version(),
+			expectedResult: version.Release(),
 			expectError:    false,
 		},
 		{
 			name:           "explicit version specified",
-			versionFlag:    "v0.47.0",
-			expectedResult: "v0.47.0",
+			versionFlag:    "0.47.0",
+			expectedResult: "0.47.0",
 			expectError:    false,
 		},
 		{
 			name:           "latest version - should work with Helm implementation",
 			versionFlag:    "latest",
-			expectedResult: "v0.47.0", // Will be mocked to return this
+			expectedResult: "0.47.0",
 			expectError:    false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
@@ -238,9 +281,7 @@ func TestRunner_ResolveTargetVersion(t *testing.T) {
 			mockOutput := output.NewMockInterface(ctrl)
 
 			if tt.versionFlag == "latest" {
-				// Mock the Helm method for getting latest version
-				mockHelm.EXPECT().GetLatestRadiusVersion(gomock.Any()).Return("v0.47.0", nil)
-				// Mock the log message for latest resolution attempt
+				mockHelm.EXPECT().GetLatestRadiusVersion(gomock.Any()).Return("0.47.0", nil)
 				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any()).AnyTimes()
 			}
 
@@ -261,3 +302,5 @@ func TestRunner_ResolveTargetVersion(t *testing.T) {
 		})
 	}
 }
+
+
