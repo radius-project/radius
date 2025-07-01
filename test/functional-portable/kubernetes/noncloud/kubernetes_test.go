@@ -153,14 +153,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 
 	t.Run("Cleanup", func(t *testing.T) {
 		t.Log("Deleting namespace")
-		err = opts.Client.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			ns := &corev1.Namespace{}
-			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
-			return apierrors.IsNotFound(err)
-		}, time.Second*60, time.Second*5, "waiting for namespace to be deleted")
+		deleteNamespace(ctx, t, namespace, opts)
 	})
 }
 

@@ -317,16 +317,10 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep) 
 		t.Logf("Successfully asserted expected resources exist in %s", scope)
 	}
 
-	// Clean up namespaces at the end of the test
-	defer func() {
-		for _, namespace := range namespacesToCleanup {
-			t.Logf("Deleting namespace: %s", namespace)
-			err := opts.Client.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
-			if err != nil {
-				t.Logf("Error deleting namespace %s: %v", namespace, err)
-			}
-		}
-	}()
+	for _, namespace := range namespacesToCleanup {
+		t.Logf("Deleting namespace: %s", namespace)
+		deleteNamespace(ctx, t, namespace, opts)
+	}
 }
 
 func waitForDeploymentTemplateToBeReadyWithGeneration(t *testing.T, ctx context.Context, name types.NamespacedName, generation int, client controller_runtime.WithWatch) (*radappiov1alpha3.DeploymentTemplate, error) {

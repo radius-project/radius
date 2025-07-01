@@ -135,6 +135,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 
 	name := "dt-module"
 	namespace := "dt-module-ns"
+	envNamespace := fmt.Sprintf("%s-env", name)
 	templateFilePath := path.Join("testdata", "module", "module.json")
 	parameters := []string{
 		fmt.Sprintf("name=%s", name),
@@ -198,15 +199,8 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 
 	t.Run("Delete namespace", func(t *testing.T) {
 		t.Log("Deleting namespace")
-
-		err = opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
-			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
-			return apierrors.IsNotFound(err)
-		}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
+		deleteNamespace(ctx, t, namespace, opts)
+		deleteNamespace(ctx, t, envNamespace, opts)
 	})
 }
 
@@ -216,6 +210,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 
 	name := "dt-recipe"
 	namespace := "dt-recipe-ns"
+	envNamespace := fmt.Sprintf("%s-env", name)
 	templateFilePath := path.Join("testdata", "recipe", "recipe.json")
 	parameters := []string{
 		testutil.GetBicepRecipeRegistry(),
@@ -282,15 +277,8 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 
 	t.Run("Delete namespace", func(t *testing.T) {
 		t.Log("Deleting namespace")
-
-		err = opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
-			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
-			return apierrors.IsNotFound(err)
-		}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
+		deleteNamespace(ctx, t, namespace, opts)
+		deleteNamespace(ctx, t, envNamespace, opts)
 	})
 }
 
@@ -410,4 +398,15 @@ func assertExpectedResourcesToNotExist(ctx context.Context, scope string, expect
 	}
 
 	return nil
+}
+
+func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts rp.RPTestOptions) {
+	err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+		return apierrors.IsNotFound(err)
+	}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
 }

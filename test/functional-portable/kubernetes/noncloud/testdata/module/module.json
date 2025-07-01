@@ -35,7 +35,7 @@
           "compute": {
             "kind": "kubernetes",
             "resourceId": "self",
-            "namespace": "[parameters('namespace')]"
+            "namespace": "[format('{0}-env', parameters('name'))]"
           }
         }
       }
