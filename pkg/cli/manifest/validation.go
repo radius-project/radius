@@ -57,8 +57,8 @@ func validateCapability(fl validator.FieldLevel) bool {
 	return capabilityRegex.Match([]byte(str))
 }
 
-// ValidateManifestSchemas validates schemas in a ResourceProvider
-func ValidateManifestSchemas(ctx context.Context, provider *ResourceProvider) error {
+// validateManifestSchemas validates schemas in a ResourceProvider
+func validateManifestSchemas(ctx context.Context, provider *ResourceProvider) error {
 	if provider == nil {
 		return fmt.Errorf("provider is nil")
 	}
@@ -73,7 +73,7 @@ func ValidateManifestSchemas(ctx context.Context, provider *ResourceProvider) er
 			if versionInfo.Schema != nil {
 				schemaPath := fmt.Sprintf("%s.%s[%s]", provider.Name, resourceTypeName, apiVersion)
 
-				// Convert schema any to OpenAPI schema
+				// Convert schema to OpenAPI schema
 				openAPISchema, err := schema.ConvertToOpenAPISchema(versionInfo.Schema)
 				if err != nil {
 					errors.Add(schema.NewSchemaError(schemaPath, fmt.Sprintf("failed to parse schema: %v", err)))
