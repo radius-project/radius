@@ -20,7 +20,6 @@ import (
 	context "context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -336,9 +335,7 @@ func (i *Impl) GetLatestRadiusVersion(ctx context.Context) (string, error) {
 	// to fetch the latest chart and extract its version
 	chart, err := helmAction.HelmChartFromContainerRegistry("", helmConf, chartRepo, chartName)
 	if err != nil {
-		// If we can't fetch the latest version, fall back to CLI version
-		output.LogInfo("Warning: Could not fetch latest chart version from repository, using CLI version as fallback")
-		return version.Version(), nil
+		return "", fmt.Errorf("failed to fetch latest version from repository: %w", err)
 	}
 
 	// Extract version from chart metadata
@@ -346,12 +343,5 @@ func (i *Impl) GetLatestRadiusVersion(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("chart metadata does not contain version information")
 	}
 
-	latestVersion := chart.Metadata.Version
-
-	// Ensure version has 'v' prefix for consistency with Radius versioning
-	if !strings.HasPrefix(latestVersion, "v") {
-		latestVersion = "v" + latestVersion
-	}
-
-	return latestVersion, nil
+	return chart.Metadata.Version, nil
 }
