@@ -208,30 +208,23 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 		return false, "", fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
-	// Fall back to List if Get doesn't work
-	releases, err := helmAction.HelmClient.RunHelmList(helmConf, releaseName)
+	release, err := helmAction.HelmClient.RunHelmGet(helmConf, releaseName)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to run helm list, err: %w", err)
 	}
 
-	if len(releases) == 0 {
+	if release == nil {
+		// If the release is not found, it means it is not installed
 		return false, "", nil
 	}
 
-	if len(releases) > 1 {
-		return false, "", fmt.Errorf("multiple deployed releases found with the same name: %s", releaseName)
-	}
-
-	// Get the latest release (List returns sorted by revision number)
-	latestRelease := releases[0]
-
 	// During upgrade, the release might be in "pending-upgrade" or other states
 	// We should still be able to get the version
-	if latestRelease.Chart == nil || latestRelease.Chart.Metadata == nil {
+	if release.Chart == nil || release.Chart.Metadata == nil {
 		return false, "", fmt.Errorf("failed to get chart version for release: %s", releaseName)
 	}
 
-	version := latestRelease.Chart.Metadata.Version
+	version := release.Chart.Metadata.Version
 	return true, version, nil
 }
 
