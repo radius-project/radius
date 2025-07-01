@@ -310,7 +310,7 @@ func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terra
 	if len(options.RegistryEnv) > 0 {
 		envVarUpdate = true
 		logger.Info("Adding registry environment variables", "count", len(options.RegistryEnv))
-
+		
 		// Log each registry environment variable for debugging
 		for key, value := range options.RegistryEnv {
 			if strings.Contains(key, "TOKEN") {
@@ -321,7 +321,7 @@ func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terra
 				logger.Info("Adding registry env var", "key", key, "value", value)
 			}
 		}
-
+		
 		maps.Copy(envVars, options.RegistryEnv)
 	}
 
@@ -330,12 +330,12 @@ func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terra
 		logger.Info("Setting environment variables for Terraform process",
 			"totalCount", len(envVars),
 			"hasUpdate", envVarUpdate)
-
+		
 		if err := tf.SetEnv(envVars); err != nil {
 			logger.Error(err, "Failed to set environment variables")
 			return fmt.Errorf("failed to set environment variables: %w", err)
 		}
-
+		
 		logger.Info("Successfully set environment variables for Terraform process")
 	}
 
@@ -497,11 +497,6 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 			return "", err
 		}
 
-		//update the recipe context with connected resources properties
-		if options.ResourceRecipe != nil {
-			recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
-		}
-
 		if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
 			return "", err
 		}
@@ -558,7 +553,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 	// Initialize Terraform
 	logger.Info("Initializing Terraform",
 		"workingDir", tf.WorkingDir())
-
+	
 	// Check if required environment variables are set (for debugging)
 	for _, envKey := range []string{"TF_CLI_CONFIG_FILE", "SSL_CERT_FILE", "CURL_CA_BUNDLE"} {
 		if value := os.Getenv(envKey); value != "" {
@@ -567,7 +562,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 			logger.Info("Environment variable not set in process", "key", envKey)
 		}
 	}
-
+	
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
 		logger.Error(err, "Terraform init failed during apply flow")
