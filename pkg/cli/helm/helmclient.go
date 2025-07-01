@@ -96,8 +96,7 @@ func (client *HelmClientImpl) RunHelmUninstall(helmConf *helm.Configuration, rel
 func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
 	listClient := helm.NewList(helmConf)
 	listClient.Filter = releaseName
-	// listClient.Deployed = true
-	// listClient.AllNamespaces = true
+	listClient.Deployed = true
 
 	return listClient.Run()
 }

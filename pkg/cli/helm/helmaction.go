@@ -208,17 +208,6 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 		return false, "", fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
-	// First try to get the release directly using Get instead of List
-	// This is more reliable during pre-upgrade hooks
-	getClient := helm.NewGet(helmConf)
-	directRelease, getErr := getClient.Run(releaseName)
-	if getErr == nil && directRelease != nil {
-		if directRelease.Chart != nil && directRelease.Chart.Metadata != nil {
-			version := directRelease.Chart.Metadata.Version
-			return true, version, nil
-		}
-	}
-
 	// Fall back to List if Get doesn't work
 	releases, err := helmAction.HelmClient.RunHelmList(helmConf, releaseName)
 	if err != nil {
@@ -235,7 +224,7 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 
 	// Get the latest release (List returns sorted by revision number)
 	latestRelease := releases[0]
-	
+
 	// During upgrade, the release might be in "pending-upgrade" or other states
 	// We should still be able to get the version
 	if latestRelease.Chart == nil || latestRelease.Chart.Metadata == nil {
@@ -257,7 +246,7 @@ func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, 
 	if flags.Context != nil && *flags.Context == "" {
 		flags.Context = nil
 	}
-	
+
 	builder := strings.Builder{}
 	hc := helm.Configuration{}
 	// helmDriver is "secret" to make the backend storage driver
@@ -266,7 +255,7 @@ func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, 
 		builder.WriteString(fmt.Sprintf(format, v...))
 		builder.WriteRune('\n')
 	})
-	
+
 	return &hc, err
 }
 
