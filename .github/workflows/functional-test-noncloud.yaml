@@ -523,36 +523,7 @@ jobs:
           kubectl get pods -A >> $POD_STATE_LOG_FILENAME
           echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
           kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
-
-      - name: TEMP list all namespaces on the cluster
-        if: always()
-        run: |
-          echo "Listing all namespaces in the cluster:"
-          kubectl get namespaces
       
-      - name: TEMP list all DeploymentTemplates on the cluster
-        if: always()
-        run: |
-          echo "Listing all DeploymentTemplates in the cluster:"
-          kubectl get deploymenttemplates -A
-      
-      - name: TEMP describe all DeploymentTemplates on the cluster
-        if: always()
-        run: |
-          echo "Describing all DeploymentTemplates in the cluster:"
-          kubectl describe deploymenttemplates -A
-
-      - name: TEMP list all DeploymentResources on the cluster
-        if: always()
-        run: |
-          echo "Listing all DeploymentResources in the cluster:"
-          kubectl get deploymentresources -A
-
-      - name: TEMP describe all DeploymentResources on the cluster
-        if: always()
-        run: |
-          echo "Describing all DeploymentResources in the cluster:"
-          kubectl describe deploymentresources -A
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v4
