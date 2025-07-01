@@ -67,13 +67,13 @@ resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {
   properties: {
     environment: udttoudtenv.id
     application: udttoudtapp.id
-    configMap: string(configMap.data)
+    configMap: string(udt2udttfconfigmap.data)
   }
 }
 
-resource configMap 'core/ConfigMap@v1' = {
+resource udt2udttfconfigmap 'core/ConfigMap@v1' = {
   metadata: {
-    name: 'udt-config-map-child'
+    name: 'udt2udttfconfigmap'
   }
   data: {
     'app1.sample.properties': 'property1=value1\nproperty2=value2'
