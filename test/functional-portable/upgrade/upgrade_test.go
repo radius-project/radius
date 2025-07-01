@@ -65,8 +65,21 @@ func Test_PreflightContainer_FreshInstall(t *testing.T) {
 	err := runHelmCommand(ctx, installCommand)
 	require.NoError(t, err, "Failed to install Radius using helm")
 
-	// Now we can get the RPTestOptions after Radius is installed
-	options := rp.NewRPTestOptions(t)
+	// Wait for the control plane to become available
+	var options rp.RPTestOptions
+	require.Eventually(t, func() bool {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// NewRPTestOptions calls require.NoError internally, catch panics
+					t.Logf("Control plane not ready yet: %v", r)
+				}
+			}()
+			options = rp.NewRPTestOptions(t)
+		}()
+		// Test if we can make a simple API call to verify the control plane is ready
+		return options.ManagementClient != nil
+	}, 2*time.Minute, 5*time.Second, "Control plane did not become available within timeout")
 
 	t.Log("Attempting upgrade with local chart to trigger Helm pre-upgrade hook")
 	upgradeCommand := []string{
@@ -185,7 +198,21 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 	err := runHelmCommand(ctx, installCommand)
 	require.NoError(t, err, "Failed to install Radius using helm")
 
-	options := rp.NewRPTestOptions(t)
+	// Wait for the control plane to become available
+	var options rp.RPTestOptions
+	require.Eventually(t, func() bool {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// NewRPTestOptions calls require.NoError internally, catch panics
+					t.Logf("Control plane not ready yet: %v", r)
+				}
+			}()
+			options = rp.NewRPTestOptions(t)
+		}()
+		// Test if we can make a simple API call to verify the control plane is ready
+		return options.ManagementClient != nil
+	}, 2*time.Minute, 5*time.Second, "Control plane did not become available within timeout")
 
 	t.Log("Attempting upgrade to trigger preflight checks using helm")
 	upgradeCommand := []string{
@@ -253,7 +280,21 @@ func Test_PreflightContainer_PreflightOnly(t *testing.T) {
 	err := runHelmCommand(ctx, installCommand)
 	require.NoError(t, err, "Failed to install Radius using helm")
 
-	options := rp.NewRPTestOptions(t)
+	// Wait for the control plane to become available
+	var options rp.RPTestOptions
+	require.Eventually(t, func() bool {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// NewRPTestOptions calls require.NoError internally, catch panics
+					t.Logf("Control plane not ready yet: %v", r)
+				}
+			}()
+			options = rp.NewRPTestOptions(t)
+		}()
+		// Test if we can make a simple API call to verify the control plane is ready
+		return options.ManagementClient != nil
+	}, 2*time.Minute, 5*time.Second, "Control plane did not become available within timeout")
 
 	t.Log("Running upgrade to trigger preflight hooks using helm")
 	upgradeCommand := []string{
