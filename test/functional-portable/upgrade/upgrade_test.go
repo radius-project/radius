@@ -222,7 +222,7 @@ func Test_PreflightContainer_PreflightOnly(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 
 	t.Log("Running preflight-only upgrade")
-	_, err = cli.RunCommand(ctx, []string{
+	_, _ = cli.RunCommand(ctx, []string{
 		"upgrade", "kubernetes",
 		"--chart", relativeChartPath,
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),

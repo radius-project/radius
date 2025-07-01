@@ -78,9 +78,9 @@ func Test_Helm_InstallRadius(t *testing.T) {
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
 	}
 
-	// Mock Helm List
-	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return([]*release.Release{}, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour").Return([]*release.Release{}, nil).Times(1)
+	// Mock Helm Get - QueryRelease now uses RunHelmGet instead of RunHelmList
+	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, driver.ErrReleaseNotFound).Times(1)
+	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour").Return(nil, driver.ErrReleaseNotFound).Times(1)
 
 	// Mock Helm Install
 	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system", true).Return(radiusRelease, nil).Times(1)
@@ -172,11 +172,15 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 
 	// Radius is installed, Contour not installed.
 	mockHelmClient.EXPECT().
-		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
+		Return(newRel(options.Radius.ReleaseName, "0.1.0"), nil).Times(1)
+	// Mock the history call that happens when Radius is installed
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
 		Return([]*release.Release{newRel(options.Radius.ReleaseName, "0.1.0")}, nil).Times(1)
 	mockHelmClient.EXPECT().
-		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
-		Return([]*release.Release{}, nil).Times(1)
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).Times(1)
 
 	state, err := impl.CheckRadiusInstall(kubeContext)
 	require.NoError(t, err)
@@ -197,7 +201,7 @@ func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
 
 	// First call (Radius) returns an error – the method should propagate it.
 	mockHelmClient.EXPECT().
-		RunHelmList(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
 		Return(nil, fmt.Errorf("query failed")).
 		Times(1)
 
