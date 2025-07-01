@@ -123,6 +123,7 @@ func Test_PreflightContainer_PreflightDisabled(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil {
 					// NewRPTestOptions calls require.NoError internally, catch panics
+					t.Logf("Control plane not ready yet: %v", r)
 				}
 			}()
 			options = rp.NewRPTestOptions(t)
