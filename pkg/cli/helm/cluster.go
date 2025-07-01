@@ -228,16 +228,38 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	// Check if Radius is installed
 	radiusInstalled, radiusVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
-		return InstallState{}, err
+		// return InstallState{}, fmt.Errorf("failed to check Radius installation (release: %s, namespace: %s, context: %s): %w",
+		// 	clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, kubeContext, err)
+	}
+
+	// If Radius is installed, check if we're in an upgrade scenario
+	// During a Helm upgrade, the release is in a pending state with the new version already set
+	// We need to get the previous deployed version instead
+	if radiusInstalled && radiusVersion != "" {
+		// Try to get the previous deployed version from history
+		previousVersion, err := helmAction.GetPreviousReleaseVersion(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
+		if err == nil && previousVersion != "" && previousVersion != radiusVersion {
+			// We're likely in an upgrade scenario - use the previous deployed version
+			output.LogInfo("Detected upgrade scenario: chart version is %s, but using previous deployed version %s", radiusVersion, previousVersion)
+			radiusVersion = previousVersion
+		}
 	}
 
 	// Check if Contour is installed
 	contourInstalled, contourVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace)
 	if err != nil {
-		return InstallState{}, err
+		// return InstallState{}, fmt.Errorf("failed to check Contour installation (release: %s, namespace: %s, context: %s): %w",
+		// 	clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, kubeContext, err)
 	}
 
-	return InstallState{RadiusInstalled: radiusInstalled, RadiusVersion: radiusVersion, ContourInstalled: contourInstalled, ContourVersion: contourVersion}, nil
+	state := InstallState{
+		RadiusInstalled:  radiusInstalled,
+		RadiusVersion:    radiusVersion,
+		ContourInstalled: contourInstalled,
+		ContourVersion:   contourVersion,
+	}
+
+	return state, nil
 }
 
 // UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.

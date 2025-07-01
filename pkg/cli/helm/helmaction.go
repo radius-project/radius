@@ -30,6 +30,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/release"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -79,6 +80,10 @@ type HelmAction interface {
 	// QueryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
 	// Returns a bool indicating if the release is deployed, the version of the release, and an error if one occurs.
 	QueryRelease(kubeContext, releaseName, namespace string) (bool, string, error)
+
+	// GetPreviousReleaseVersion gets the version of the last deployed or superseded release.
+	// This is useful during upgrades to get the actual running version rather than the pending upgrade version.
+	GetPreviousReleaseVersion(kubeContext, releaseName, namespace string) (string, error)
 
 	// LoadChart loads a helm chart from the specified path and returns the chart object.
 	LoadChart(chartPath string) (*chart.Chart, error)
@@ -208,26 +213,48 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 		return false, "", fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
-	releases, err := helmAction.HelmClient.RunHelmList(helmConf, releaseName)
+	release, err := helmAction.HelmClient.RunHelmGet(helmConf, releaseName)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to run helm list, err: %w", err)
+		return false, "", fmt.Errorf("failed to run helm get for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
 	}
 
-	if len(releases) == 0 {
-		return false, "", nil
+	if release.Chart == nil || release.Chart.Metadata == nil {
+		return false, "", fmt.Errorf("failed to get chart version for release: %s (chart or metadata is nil)", releaseName)
 	}
 
-	if len(releases) > 1 {
-		return false, "", fmt.Errorf("multiple deployed releases found with the same name: %s", releaseName)
+	version := release.Chart.Metadata.Version
+	return true, version, nil
+}
+
+func (helmAction *HelmActionImpl) GetPreviousReleaseVersion(kubeContext, releaseName, namespace string) (string, error) {
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+		Context:   &kubeContext,
 	}
 
-	// Get the latest deployed release (List returns sorted by revision number)
-	latestRelease := releases[0]
-	if latestRelease.Chart == nil || latestRelease.Chart.Metadata == nil {
-		return false, "", fmt.Errorf("failed to get chart version for release: %s", releaseName)
+	helmConf, err := initHelmConfig(&flags)
+	if err != nil {
+		return "", fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
-	return true, latestRelease.Chart.Metadata.Version, nil
+	// Get release history
+	releases, err := helmAction.HelmClient.RunHelmHistory(helmConf, releaseName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get helm history for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
+	}
+
+	// Find the most recent deployed or superseded release
+	// We iterate from the end (newest) to find the last stable release
+	for i := len(releases) - 1; i >= 0; i-- {
+		rel := releases[i]
+		if rel.Info != nil && (rel.Info.Status == release.StatusDeployed || rel.Info.Status == release.StatusSuperseded) {
+			if rel.Chart != nil && rel.Chart.Metadata != nil {
+				return rel.Chart.Metadata.Version, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no deployed or superseded release found for %s", releaseName)
 }
 
 func (helmAction *HelmActionImpl) LoadChart(chartPath string) (*chart.Chart, error) {

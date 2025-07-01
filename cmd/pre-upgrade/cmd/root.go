@@ -50,9 +50,22 @@ func Execute() error {
 
 	targetVersion := os.Getenv("TARGET_VERSION")
 
+	// Retrieve current version from cluster for accurate logging
+	var currentVersion string
+	state, err := config.Helm.CheckRadiusInstall(config.KubeContext)
+	if err != nil {
+		config.Output.LogInfo("Warning: Failed to detect current Radius version: %v", err)
+		currentVersion = "unknown"
+	} else if !state.RadiusInstalled {
+		currentVersion = "not-installed"
+	} else {
+		currentVersion = state.RadiusVersion
+	}
+
 	options := preupgrade.Options{
-		EnabledChecks: enabledChecks,
-		TargetVersion: targetVersion,
+		EnabledChecks:  enabledChecks,
+		TargetVersion:  targetVersion,
+		CurrentVersion: currentVersion,
 	}
 
 	return preupgrade.RunPreflightChecks(ctx, config, options)

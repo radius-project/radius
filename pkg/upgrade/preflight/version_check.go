@@ -108,14 +108,14 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 	}
 
 	// Check if versions are the same
-	// if current.Equal(target) {
-	// 	return false, "Target version is the same as current version", nil
-	// }
+	if current.Equal(target) {
+		return false, "Target version is the same as current version", nil
+	}
 
 	// Check if downgrade attempt
-	// if target.LessThan(current) {
-	// 	return false, "Downgrading is not supported", nil
-	// }
+	if target.LessThan(current) {
+		return true, "Downgrading is not supported", nil
+	}
 
 	// Get the next expected version (increment minor version)
 	expectedNextMinor := semver.New(current.Major(), current.Minor()+1, 0, "", "")
