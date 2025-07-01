@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubernetes_test
+package kubernetes_noncloud_test
 
 import (
 	"context"
@@ -52,6 +52,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	opts := rp.NewRPTestOptions(t)
 
 	namespace := "kubernetes-interop-tutorial"
+	envNamespace := "kubernetes-interop-tutorial-env"
 	environmentName := namespace + "-env"
 	applicationName := namespace
 
@@ -149,6 +150,12 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: "demo", Namespace: namespace}, deployment)
 			return apierrors.IsNotFound(err)
 		}, time.Second*60, time.Second*5, "waiting for deployment to be deleted")
+	})
+
+	t.Run("Cleanup", func(t *testing.T) {
+		t.Log("Deleting namespace")
+		deleteNamespace(ctx, t, namespace, opts)
+		deleteNamespace(ctx, t, envNamespace, opts)
 	})
 }
 
