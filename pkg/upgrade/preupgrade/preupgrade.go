@@ -46,6 +46,9 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 
 	config.Output.LogInfo("Running preflight checks: %s", strings.Join(options.EnabledChecks, ", "))
 
+	config.Output.LogInfo("Target version: %s", options.TargetVersion)
+	config.Output.LogInfo("Current version: %s", options.CurrentVersion)
+
 	for _, checkName := range options.EnabledChecks {
 		checkName = strings.TrimSpace(checkName)
 
