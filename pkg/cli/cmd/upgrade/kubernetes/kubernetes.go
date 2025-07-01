@@ -51,7 +51,7 @@ Preflight checks include:
 - Cluster resource availability
 - Custom configuration parameter validation
 
-Radius is installed in the 'radius-system' namespace. For more information visit https://docs.radapp.io/concepts/technical/architecture/
+Radius is installed in the 'radius-system' namespace. For more information visit https://docs.radapp.io/concepts/technical/architecture/.
 
 Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
 `,
@@ -69,7 +69,7 @@ rad upgrade kubernetes
 rad upgrade kubernetes --set key=value
 
 # Upgrade to a specific version
-rad upgrade kubernetes --version v0.47.0
+rad upgrade kubernetes --version 0.47.0
 
 # Upgrade to the latest available version
 rad upgrade kubernetes --version latest
@@ -156,8 +156,6 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Run preflight checks unless skipped
 	if !r.SkipPreflight {
-		r.Output.LogInfo("Running preflight checks...")
-
 		err = r.runPreflightChecks(ctx, currentVersion, targetVersion)
 		if err != nil {
 			return fmt.Errorf("preflight checks failed: %w", err)
@@ -210,7 +208,7 @@ func (r *Runner) runPreflightChecks(ctx context.Context, currentVersion, targetV
 	registry.AddCheck(preflight.NewVersionCompatibilityCheck(currentVersion, targetVersion))
 
 	// 3. Configuration validation (warnings only)
-	registry.AddCheck(preflight.NewCustomConfigValidationCheck(r.Set, r.SetFile))
+	registry.AddCheck(preflight.NewCustomConfigValidationCheck(r.Set, r.SetFile, r.Chart, nil))
 
 	// 4. Resource availability check (warnings only)
 	registry.AddCheck(preflight.NewKubernetesResourceCheck(r.KubeContext))
@@ -222,14 +220,14 @@ func (r *Runner) runPreflightChecks(ctx context.Context, currentVersion, targetV
 
 // resolveTargetVersion resolves the target version for upgrade based on user input.
 func (r *Runner) resolveTargetVersion() (string, error) {
-	// If no version specified, use CLI version
+	// If no version specified, use CLI release version
 	if r.Version == "" {
-		return version.Version(), nil
+		return version.Release(), nil
 	}
 
 	// If user specified "latest", resolve to actual latest version
 	if strings.ToLower(r.Version) == "latest" {
-		latestVersion, err := r.fetchLatestRadiusVersion()
+		latestVersion, err := r.Helm.GetLatestRadiusVersion(context.Background())
 		if err != nil {
 			return "", fmt.Errorf("failed to fetch latest Radius version: %w", err)
 		}
@@ -241,8 +239,3 @@ func (r *Runner) resolveTargetVersion() (string, error) {
 	return r.Version, nil
 }
 
-// fetchLatestRadiusVersion fetches the latest Radius version from Helm repository.
-func (r *Runner) fetchLatestRadiusVersion() (string, error) {
-	// Use the Helm interface to get the latest chart version
-	return r.Helm.GetLatestRadiusVersion(context.Background())
-}
