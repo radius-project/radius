@@ -226,15 +226,12 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 			errMsg: "unsupported type: null",
 		},
 		{
-<<<<<<< HEAD
-<<<<<<< HEAD
 			name:   "no type specified (valid)",
-=======
+
 			name: "no type specified (valid)",
->>>>>>> 01d7c5329 (initial draft)
-=======
+
 			name:   "no type specified (valid)",
->>>>>>> 71cc6e005 (removing ValidateSchemas())
+
 			schema: &openapi3.Schema{
 				// Type is nil - this should be valid
 			},
@@ -248,15 +245,7 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 			if tt.hasErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMsg)
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-=======
-				
->>>>>>> 01d7c5329 (initial draft)
-=======
-
->>>>>>> 71cc6e005 (removing ValidateSchemas())
 				// Check that it's a ConstraintError
 				var constraintErr *ValidationError
 				require.ErrorAs(t, err, &constraintErr)
@@ -268,9 +257,6 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 func TestValidator_validateStringFormat(t *testing.T) {
 	validator := NewValidator()
 
@@ -450,8 +436,6 @@ func TestConvertToOpenAPISchema(t *testing.T) {
 			input: map[string]any{
 <<<<<<< HEAD
 				"type": func() {}, // Functions can't be marshaled
-=======
-				"type": []func(){}, // Functions can't be marshaled
 >>>>>>> 01d7c5329 (initial draft)
 			},
 			wantErr: true,
