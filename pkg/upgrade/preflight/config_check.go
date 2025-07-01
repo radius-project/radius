@@ -30,7 +30,7 @@ import (
 
 const (
 	// DefaultChartPath is the default path to the Radius Helm chart.
-	DefaultChartPath = "../../../deploy/Chart"
+	DefaultChartPath = "../../deploy/Chart"
 
 	// SetParamFormat is the expected format for --set parameters
 	SetParamFormat = "key=value"

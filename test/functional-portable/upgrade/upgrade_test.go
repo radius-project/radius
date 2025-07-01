@@ -19,11 +19,11 @@ package upgrade_test
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
@@ -46,43 +46,48 @@ func Test_PreflightContainer_FreshInstall(t *testing.T) {
 
 	image, tag := getPreUpgradeImage()
 
-	cli := radcli.NewCLI(t, "")
-
-	// Clean up any existing installation
-	_, err := cli.RunCommand(ctx, []string{"uninstall", "kubernetes"})
-	require.NoError(t, err, "Failed to clean up previous installation")
+	// Clean up any existing installation using helm
+	t.Log("Cleaning up any existing Radius installation")
+	cleanupCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace, "--ignore-not-found"}
+	exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Use local registry image for testing the pre-upgrade functionality
-	t.Log("Installing Radius with preflight enabled")
-	_, err = cli.RunCommand(ctx, []string{
-		"install", "kubernetes",
-		"--chart", relativeChartPath,
+	t.Log("Installing Radius with preflight enabled using helm")
+	installCommand := []string{
+		"helm", "install", "radius", relativeChartPath,
+		"--namespace", radiusNamespace,
+		"--create-namespace",
 		"--set", "preupgrade.enabled=true",
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
-	})
-	require.NoError(t, err, "Failed to install Radius")
+		"--wait",
+	}
+	err := runHelmCommand(ctx, installCommand)
+	require.NoError(t, err, "Failed to install Radius using helm")
 
 	// Now we can get the RPTestOptions after Radius is installed
 	options := rp.NewRPTestOptions(t)
 
 	t.Log("Attempting upgrade with local chart to trigger Helm pre-upgrade hook")
-	_, _ = cli.RunCommand(ctx, []string{
-		"upgrade", "kubernetes",
-		"--chart", relativeChartPath,
+	upgradeCommand := []string{
+		"helm", "upgrade", "radius", relativeChartPath,
+		"--namespace", radiusNamespace,
+		"--set", "preupgrade.enabled=true",
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
-		"--skip-preflight", // Skip CLI preflight to trigger Helm pre-upgrade hook
-	})
+		"--wait",
+	}
 	// This might fail due to version issues, but should trigger the Helm hook
 	// The key test is that the job gets created
+	runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade may fail due to version issues
 
 	t.Log("Verifying preflight job was created by Helm pre-upgrade hook")
 	verifyPreflightJobRan(t, ctx, options, true)
 
-	t.Log("Cleaning up - uninstalling Radius")
-	_, err = cli.RunCommand(ctx, []string{"uninstall", "kubernetes"})
-	require.NoError(t, err, "Failed to uninstall Radius")
+	t.Log("Cleaning up - uninstalling Radius using helm")
+	uninstallCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace}
+	err = runHelmCommand(ctx, uninstallCommand)
+	require.NoError(t, err, "Failed to uninstall Radius using helm")
 }
 
 func Test_PreflightContainer_PreflightDisabled(t *testing.T) {
@@ -90,47 +95,51 @@ func Test_PreflightContainer_PreflightDisabled(t *testing.T) {
 
 	image, tag := getPreUpgradeImage()
 
-	cli := radcli.NewCLI(t, "")
-
-	// Clean up any existing installation
-	_, _ = cli.RunCommand(ctx, []string{"uninstall", "kubernetes"}) // Ignore errors during cleanup
+	// Clean up any existing installation using helm
+	t.Log("Cleaning up any existing Radius installation")
+	cleanupCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace, "--ignore-not-found"}
+	exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Wait for cleanup to complete
 	time.Sleep(3 * time.Second)
 
-	t.Log("Installing Radius with preflight disabled")
-	_, err := cli.RunCommand(ctx, []string{
-		"install", "kubernetes",
-		"--chart", relativeChartPath,
+	t.Log("Installing Radius with preflight disabled using helm")
+	installCommand := []string{
+		"helm", "install", "radius", relativeChartPath,
+		"--namespace", radiusNamespace,
+		"--create-namespace",
 		"--set", "preupgrade.enabled=false",
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
-	})
-	require.NoError(t, err, "Failed to install Radius")
+		"--wait",
+	}
+	err := runHelmCommand(ctx, installCommand)
+	require.NoError(t, err, "Failed to install Radius using helm")
 
 	options := rp.NewRPTestOptions(t)
 
-	t.Log("Attempting upgrade with preflight disabled")
+	t.Log("Attempting upgrade with preflight disabled using helm")
 
 	// Ensure no leftover job exists before upgrade
 	_ = options.K8sClient.BatchV1().Jobs(radiusNamespace).Delete(ctx, preUpgradeJobName, metav1.DeleteOptions{}) // Ignore errors during cleanup
 
-	_, _ = cli.RunCommand(ctx, []string{
-		"upgrade", "kubernetes",
-		"--chart", relativeChartPath,
+	upgradeCommand := []string{
+		"helm", "upgrade", "radius", relativeChartPath,
+		"--namespace", radiusNamespace,
 		"--set", "preupgrade.enabled=false",
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
-		"--skip-preflight",
-	})
-	// Upgrade might fail due to version issues, but that's expected in test environment
+		"--wait",
+	}
+	runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade might fail due to version issues
 
 	t.Log("Verifying no preflight job was created")
 	verifyPreflightJobRan(t, ctx, options, false)
 
-	t.Log("Cleaning up - uninstalling Radius")
-	_, err = cli.RunCommand(ctx, []string{"uninstall", "kubernetes"})
-	require.NoError(t, err, "Failed to uninstall Radius")
+	t.Log("Cleaning up - uninstalling Radius using helm")
+	uninstallCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace}
+	err = runHelmCommand(ctx, uninstallCommand)
+	require.NoError(t, err, "Failed to uninstall Radius using helm")
 }
 
 func Test_PreflightContainer_JobConfiguration(t *testing.T) {
@@ -138,40 +147,44 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 
 	image, tag := getPreUpgradeImage()
 
-	cli := radcli.NewCLI(t, "")
-
-	// Clean up any existing installation
-	_, _ = cli.RunCommand(ctx, []string{"uninstall", "kubernetes"}) // Ignore errors during cleanup
+	// Clean up any existing installation using helm
+	t.Log("Cleaning up any existing Radius installation")
+	cleanupCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace, "--ignore-not-found"}
+	exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Wait for cleanup to complete
 	time.Sleep(3 * time.Second)
 
 	// Use local registry image for testing
-	t.Log("Installing Radius with custom preflight configuration")
-	_, err := cli.RunCommand(ctx, []string{
-		"install", "kubernetes",
-		"--chart", relativeChartPath,
+	t.Log("Installing Radius with custom preflight configuration using helm")
+	installCommand := []string{
+		"helm", "install", "radius", relativeChartPath,
+		"--namespace", radiusNamespace,
+		"--create-namespace",
 		"--set", "preupgrade.enabled=true",
 		"--set", "preupgrade.ttlSecondsAfterFinished=60",
 		"--set", "preupgrade.checks.version=true",
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
-	})
-	require.NoError(t, err, "Failed to install Radius")
+		"--wait",
+	}
+	err := runHelmCommand(ctx, installCommand)
+	require.NoError(t, err, "Failed to install Radius using helm")
 
 	options := rp.NewRPTestOptions(t)
 
-	t.Log("Attempting upgrade to trigger preflight checks")
-	_, _ = cli.RunCommand(ctx, []string{
-		"upgrade", "kubernetes",
-		"--chart", relativeChartPath,
+	t.Log("Attempting upgrade to trigger preflight checks using helm")
+	upgradeCommand := []string{
+		"helm", "upgrade", "radius", relativeChartPath,
+		"--namespace", radiusNamespace,
 		"--set", "preupgrade.enabled=true",
 		"--set", "preupgrade.ttlSecondsAfterFinished=60",
 		"--set", "preupgrade.checks.version=true",
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
-	})
-	// Upgrade might fail due to version issues, but we still want to check job configuration
+		"--wait",
+	}
+	runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade might fail due to version issues
 
 	t.Log("Verifying preflight job configuration")
 	// Try to get the job, but don't fail the test if upgrade failed before job creation
@@ -196,9 +209,10 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 		t.Log("This is acceptable in test environment")
 	}
 
-	t.Log("Cleaning up - uninstalling Radius")
-	_, err = cli.RunCommand(ctx, []string{"uninstall", "kubernetes"})
-	require.NoError(t, err, "Failed to uninstall Radius")
+	t.Log("Cleaning up - uninstalling Radius using helm")
+	uninstallCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace}
+	err = runHelmCommand(ctx, uninstallCommand)
+	require.NoError(t, err, "Failed to uninstall Radius using helm")
 }
 
 func Test_PreflightContainer_PreflightOnly(t *testing.T) {
@@ -206,37 +220,45 @@ func Test_PreflightContainer_PreflightOnly(t *testing.T) {
 
 	image, tag := getPreUpgradeImage()
 
-	cli := radcli.NewCLI(t, "")
+	// Clean up any existing installation using helm
+	t.Log("Cleaning up any existing Radius installation")
+	cleanupCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace, "--ignore-not-found"}
+	exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Use local registry image for testing
-	t.Log("Installing Radius")
-	_, err := cli.RunCommand(ctx, []string{
-		"install", "kubernetes",
-		"--chart", relativeChartPath,
+	t.Log("Installing Radius using helm")
+	installCommand := []string{
+		"helm", "install", "radius", relativeChartPath,
+		"--namespace", radiusNamespace,
+		"--create-namespace",
 		"--set", "preupgrade.enabled=true",
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
-	})
-	require.NoError(t, err, "Failed to install Radius")
+		"--wait",
+	}
+	err := runHelmCommand(ctx, installCommand)
+	require.NoError(t, err, "Failed to install Radius using helm")
 
 	options := rp.NewRPTestOptions(t)
 
-	t.Log("Running preflight-only upgrade")
-	_, _ = cli.RunCommand(ctx, []string{
-		"upgrade", "kubernetes",
-		"--chart", relativeChartPath,
+	t.Log("Running upgrade to trigger preflight hooks using helm")
+	upgradeCommand := []string{
+		"helm", "upgrade", "radius", relativeChartPath,
+		"--namespace", radiusNamespace,
+		"--set", "preupgrade.enabled=true",
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
-		"--preflight-only",
-	})
-	// Preflight might fail due to version compatibility issues, which is expected
+		"--wait",
+	}
+	runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade might fail due to version issues but should trigger hooks
 
 	t.Log("Verifying preflight job ran successfully")
 	verifyPreflightJobRan(t, ctx, options, true)
 
-	t.Log("Cleaning up - uninstalling Radius")
-	_, err = cli.RunCommand(ctx, []string{"uninstall", "kubernetes"})
-	require.NoError(t, err, "Failed to uninstall Radius")
+	t.Log("Cleaning up - uninstalling Radius using helm")
+	uninstallCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace}
+	err = runHelmCommand(ctx, uninstallCommand)
+	require.NoError(t, err, "Failed to uninstall Radius using helm")
 }
 
 // Helper functions
@@ -245,6 +267,16 @@ func Test_PreflightContainer_PreflightOnly(t *testing.T) {
 func getPreUpgradeImage() (image string, tag string) {
 	registry, tag := testutil.SetDefault()
 	return fmt.Sprintf("%s/pre-upgrade", registry), tag
+}
+
+// runHelmCommand executes a helm command and returns an error if it fails
+func runHelmCommand(ctx context.Context, args []string) error {
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("helm command failed: %s, output: %s", err, string(output))
+	}
+	return nil
 }
 
 func verifyPreflightJobRan(t *testing.T, ctx context.Context, options rp.RPTestOptions, shouldExist bool) {

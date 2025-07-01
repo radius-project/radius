@@ -212,7 +212,6 @@ func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
 }
 
 func Test_Helm_UpgradeRadius(t *testing.T) {
-	t.Skip()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
