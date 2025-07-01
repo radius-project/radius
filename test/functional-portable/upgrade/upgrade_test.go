@@ -49,7 +49,7 @@ func Test_PreflightContainer_FreshInstall(t *testing.T) {
 	// Clean up any existing installation using helm
 	t.Log("Cleaning up any existing Radius installation")
 	cleanupCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace, "--ignore-not-found"}
-	exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
+	_ = exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Use local registry image for testing the pre-upgrade functionality
 	t.Log("Installing Radius with preflight enabled using helm")
@@ -79,7 +79,7 @@ func Test_PreflightContainer_FreshInstall(t *testing.T) {
 	}
 	// This might fail due to version issues, but should trigger the Helm hook
 	// The key test is that the job gets created
-	runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade may fail due to version issues
+	_ = runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade may fail due to version issues
 
 	t.Log("Verifying preflight job was created by Helm pre-upgrade hook")
 	verifyPreflightJobRan(t, ctx, options, true)
@@ -98,7 +98,7 @@ func Test_PreflightContainer_PreflightDisabled(t *testing.T) {
 	// Clean up any existing installation using helm
 	t.Log("Cleaning up any existing Radius installation")
 	cleanupCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace, "--ignore-not-found"}
-	exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
+	_ = exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Wait for cleanup to complete
 	time.Sleep(3 * time.Second)
@@ -131,7 +131,7 @@ func Test_PreflightContainer_PreflightDisabled(t *testing.T) {
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
 		"--wait",
 	}
-	runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade might fail due to version issues
+	_ = runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade might fail due to version issues
 
 	t.Log("Verifying no preflight job was created")
 	verifyPreflightJobRan(t, ctx, options, false)
@@ -150,7 +150,7 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 	// Clean up any existing installation using helm
 	t.Log("Cleaning up any existing Radius installation")
 	cleanupCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace, "--ignore-not-found"}
-	exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
+	_ = exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Wait for cleanup to complete
 	time.Sleep(3 * time.Second)
@@ -184,7 +184,7 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
 		"--wait",
 	}
-	runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade might fail due to version issues
+	_ = runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade might fail due to version issues
 
 	t.Log("Verifying preflight job configuration")
 	// Try to get the job, but don't fail the test if upgrade failed before job creation
@@ -223,7 +223,7 @@ func Test_PreflightContainer_PreflightOnly(t *testing.T) {
 	// Clean up any existing installation using helm
 	t.Log("Cleaning up any existing Radius installation")
 	cleanupCommand := []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace, "--ignore-not-found"}
-	exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
+	_ = exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Use local registry image for testing
 	t.Log("Installing Radius using helm")
@@ -250,7 +250,7 @@ func Test_PreflightContainer_PreflightOnly(t *testing.T) {
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
 		"--wait",
 	}
-	runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade might fail due to version issues but should trigger hooks
+	_ = runHelmCommand(ctx, upgradeCommand) // Ignore errors as upgrade might fail due to version issues but should trigger hooks
 
 	t.Log("Verifying preflight job ran successfully")
 	verifyPreflightJobRan(t, ctx, options, true)
