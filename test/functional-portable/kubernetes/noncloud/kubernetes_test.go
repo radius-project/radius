@@ -52,6 +52,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	opts := rp.NewRPTestOptions(t)
 
 	namespace := "kubernetes-interop-tutorial"
+	envNamespace := "kubernetes-interop-tutorial-env"
 	environmentName := namespace + "-env"
 	applicationName := namespace
 
@@ -154,6 +155,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	t.Run("Cleanup", func(t *testing.T) {
 		t.Log("Deleting namespace")
 		deleteNamespace(ctx, t, namespace, opts)
+		deleteNamespace(ctx, t, envNamespace, opts)
 	})
 }
 

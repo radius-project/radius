@@ -39,6 +39,8 @@ type GitOpsTestStep struct {
 	// The expected Radius resources that should not exist on the cluster.
 	// This is used to verify that the resources were deleted.
 	expectedResourcesToNotExist [][]string
+	// The namespaces that should exist after the step.
+	namespaces []string
 }
 
 // addFilesToRepository adds all files from the given path to the repository.
