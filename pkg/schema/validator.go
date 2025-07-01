@@ -34,8 +34,15 @@ func NewValidator() *Validator {
 
 // ValidateSchema validates an OpenAPI 3.0 schema against Radius constraints
 func (v *Validator) ValidateSchema(ctx context.Context, schema *openapi3.Schema) error {
+	// If no schema is provided, it is valid
 	if schema == nil {
-		return fmt.Errorf("schema cannot be nil")
+		return nil
+	}
+
+	// Validate the schema using OpenAPI loader
+	err := v.validateSchemaWithOpenAPI(schema)
+	if err != nil {
+		return fmt.Errorf("OpenAPI schema validation failed: %w", err)
 	}
 
 	// Check Radius-specific constraints
@@ -106,7 +113,6 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 	// Also validate additionalProperties if present
 	if schema.AdditionalProperties.Has != nil {
 		if addPropSchema := schema.AdditionalProperties.Schema; addPropSchema != nil {
-			// If this is a reference (has Ref), we don't need to validate the Value
 			if addPropSchema.Ref != "" {
 				// The $ref validation is already handled by checkRefUsage above
 				return nil
@@ -143,6 +149,34 @@ func ConvertToOpenAPISchema(schemaData any) (*openapi3.Schema, error) {
 	}
 
 	return &schema, nil
+}
+
+// validateSchemaWithOpenAPI validates schema data by creating a minimal OpenAPI document
+// and using the library's built-in validation which includes format validation
+func (v *Validator) validateSchemaWithOpenAPI(schema *openapi3.Schema) error {
+	ctx := context.Background()
+
+	// Create a minimal OpenAPI document
+	doc := &openapi3.T{
+		OpenAPI: "3.0.0",
+		Info: &openapi3.Info{
+			Title:   "temp",
+			Version: "1.0.0",
+		},
+		Components: &openapi3.Components{
+			Schemas: map[string]*openapi3.SchemaRef{
+				"temp": {Value: schema},
+			},
+		},
+		Paths: &openapi3.Paths{}, // Required field, even if empty
+	}
+
+	// This validates the entire document including formats, references, and schema structure
+	if err := doc.Validate(ctx); err != nil {
+		return fmt.Errorf("OpenAPI document validation failed: %w", err)
+	}
+
+	return nil
 }
 
 // checkProhibitedFeatures checks for OpenAPI features not allowed in Radius
@@ -216,7 +250,7 @@ func (v *Validator) checkRefUsage(schemaRef *openapi3.SchemaRef, fieldPath strin
 	}
 
 	// Check additionalProperties
-	if schema.AdditionalProperties.Has != nil && schema.AdditionalProperties.Schema != nil {
+	if schema.AdditionalProperties.Schema != nil {
 		addPropPath := fieldPath
 		if addPropPath != "" {
 			addPropPath += "."
@@ -325,7 +359,8 @@ func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) erro
 	// Check if both properties and additionalProperties are defined
 	// Note: Empty properties map should be treated as no properties defined
 	hasProperties := len(schema.Properties) > 0
-	hasAdditionalProperties := schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has
+	hasAdditionalProperties := (schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has) ||
+		schema.AdditionalProperties.Schema != nil
 
 	if hasProperties && hasAdditionalProperties {
 		return NewConstraintError("", "object schemas cannot have both 'properties' and 'additionalProperties' defined")

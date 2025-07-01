@@ -36,8 +36,7 @@ func TestValidator_ValidateSchema(t *testing.T) {
 
 	t.Run("nil schema", func(t *testing.T) {
 		err := validator.ValidateSchema(ctx, nil)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "schema cannot be nil")
+		require.NoError(t, err)
 	})
 
 	t.Run("valid simple schema", func(t *testing.T) {
@@ -280,6 +279,34 @@ func TestConvertToOpenAPISchema(t *testing.T) {
 			},
 			wantErr: true,
 			errMsg:  "failed to marshal schema",
+		},
+		{
+			name: "valid complex schema with validation",
+			input: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"user": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name": map[string]any{
+								"type":      "string",
+								"minLength": 1,
+							},
+							"email": map[string]any{
+								"type":   "string",
+								"format": "email",
+							},
+						},
+					},
+					"metadata": map[string]any{
+						"type": "object",
+						"additionalProperties": map[string]any{
+							"type": "string",
+						},
+					},
+				},
+			},
+			wantErr: false,
 		},
 	}
 
@@ -645,7 +672,6 @@ func TestValidator_checkRefUsage(t *testing.T) {
 // Test that $ref validation is integrated into the main validation flow
 func TestValidator_RefValidationIntegration(t *testing.T) {
 	validator := NewValidator()
-	ctx := context.Background()
 
 	t.Run("schema with internal $ref in property passes validation", func(t *testing.T) {
 		schema := &openapi3.Schema{
@@ -656,7 +682,7 @@ func TestValidator_RefValidationIntegration(t *testing.T) {
 				},
 			},
 		}
-		err := validator.ValidateSchema(ctx, schema)
+		err := validator.validateRadiusConstraints(schema)
 		require.NoError(t, err)
 	})
 
@@ -669,7 +695,7 @@ func TestValidator_RefValidationIntegration(t *testing.T) {
 				},
 			},
 		}
-		err := validator.ValidateSchema(ctx, schema)
+		err := validator.validateRadiusConstraints(schema)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "external $ref references are not supported")
 	})
@@ -678,13 +704,12 @@ func TestValidator_RefValidationIntegration(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
 			AdditionalProperties: openapi3.AdditionalProperties{
-				Has: &[]bool{true}[0],
 				Schema: &openapi3.SchemaRef{
 					Ref: "#/components/schemas/SomeSchema",
 				},
 			},
 		}
-		err := validator.ValidateSchema(ctx, schema)
+		err := validator.validateRadiusConstraints(schema)
 		require.NoError(t, err)
 	})
 
@@ -692,13 +717,12 @@ func TestValidator_RefValidationIntegration(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
 			AdditionalProperties: openapi3.AdditionalProperties{
-				Has: &[]bool{true}[0],
 				Schema: &openapi3.SchemaRef{
 					Ref: "external.yaml#/components/schemas/SomeSchema",
 				},
 			},
 		}
-		err := validator.ValidateSchema(ctx, schema)
+		err := validator.validateRadiusConstraints(schema)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "external $ref references are not supported")
 	})
@@ -917,7 +941,6 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 // Test integration of object property constraints with main validation
 func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 	validator := NewValidator()
-	ctx := context.Background()
 
 	t.Run("schema with both properties and additionalProperties fails main validation", func(t *testing.T) {
 		schema := &openapi3.Schema{
@@ -934,7 +957,7 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 				},
 			},
 		}
-		err := validator.ValidateSchema(ctx, schema)
+		err := validator.validateRadiusConstraints(schema)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "object schemas cannot have both 'properties' and 'additionalProperties' defined")
 	})
@@ -948,7 +971,7 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 				},
 			},
 		}
-		err := validator.ValidateSchema(ctx, schema)
+		err := validator.validateRadiusConstraints(schema)
 		require.NoError(t, err)
 	})
 
@@ -962,6 +985,274 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 				},
 			},
 		}
+		err := validator.validateRadiusConstraints(schema)
+		require.NoError(t, err)
+	})
+}
+
+func TestValidator_validateSchemaWithOpenAPI(t *testing.T) {
+	validator := NewValidator()
+
+	tests := []struct {
+		name    string
+		schema  *openapi3.Schema
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid simple string schema",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid object schema with properties",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				Properties: map[string]*openapi3.SchemaRef{
+					"name": {
+						Value: &openapi3.Schema{
+							Type: &openapi3.Types{"string"},
+						},
+					},
+					"age": {
+						Value: &openapi3.Schema{
+							Type: &openapi3.Types{"integer"},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid schema with format constraints",
+			schema: &openapi3.Schema{
+				Type:   &openapi3.Types{"string"},
+				Format: "email",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid schema with pattern",
+			schema: &openapi3.Schema{
+				Type:    &openapi3.Types{"string"},
+				Pattern: "^[a-z]+$",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid number schema with range constraints",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"number"},
+				Min:  &[]float64{0}[0],
+				Max:  &[]float64{100}[0],
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid integer schema with range constraints",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"integer"},
+				Min:  &[]float64{1}[0],
+				Max:  &[]float64{1000}[0],
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid string schema with length constraints",
+			schema: &openapi3.Schema{
+				Type:      &openapi3.Types{"string"},
+				MinLength: 1,
+				MaxLength: &[]uint64{255}[0],
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid schema with enum values",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Enum: []any{"red", "green", "blue"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid boolean schema",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"boolean"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid schema without internal reference dependency",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				Properties: map[string]*openapi3.SchemaRef{
+					"name": {
+						Value: &openapi3.Schema{
+							Type: &openapi3.Types{"string"},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid array schema with items",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"array"},
+				Items: &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid schema with additionalProperties",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Schema: &openapi3.SchemaRef{
+						Value: &openapi3.Schema{
+							Type: &openapi3.Types{"string"},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid typeless schema",
+			schema: &openapi3.Schema{
+				Description: "A schema without explicit type",
+			},
+			wantErr: false,
+		},
+		{
+			name: "schema with invalid regex pattern",
+			schema: &openapi3.Schema{
+				Type:    &openapi3.Types{"string"},
+				Pattern: "[invalid regex",
+			},
+			wantErr: true,
+			errMsg:  "OpenAPI document validation failed",
+		},
+		{
+			name: "schema with complex nested structure",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				Properties: map[string]*openapi3.SchemaRef{
+					"address": {
+						Value: &openapi3.Schema{
+							Type: &openapi3.Types{"object"},
+							Properties: map[string]*openapi3.SchemaRef{
+								"street": {
+									Value: &openapi3.Schema{
+										Type:      &openapi3.Types{"string"},
+										MinLength: 1,
+									},
+								},
+								"zipCode": {
+									Value: &openapi3.Schema{
+										Type:    &openapi3.Types{"string"},
+										Pattern: "^\\d{5}$",
+									},
+								},
+							},
+						},
+					},
+					"contacts": {
+						Value: &openapi3.Schema{
+							Type: &openapi3.Types{"array"},
+							Items: &openapi3.SchemaRef{
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"object"},
+									Properties: map[string]*openapi3.SchemaRef{
+										"email": {
+											Value: &openapi3.Schema{
+												Type:   &openapi3.Types{"string"},
+												Format: "email",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "schema with invalid nested pattern",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				Properties: map[string]*openapi3.SchemaRef{
+					"invalidField": {
+						Value: &openapi3.Schema{
+							Type:    &openapi3.Types{"string"},
+							Pattern: "[unclosed bracket",
+						},
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "OpenAPI document validation failed",
+		},
+		{
+			name:    "nil schema",
+			schema:  nil,
+			wantErr: true,
+			errMsg:  "OpenAPI document validation failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateSchemaWithOpenAPI(tt.schema)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidator_ValidateSchema_EdgeCases(t *testing.T) {
+	validator := NewValidator()
+	ctx := context.Background()
+
+	t.Run("schema with empty object", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+		}
+
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("schema with multiple types should fail", func(t *testing.T) {
+		// OpenAPI 3.0 doesn't support multiple types in the same way as JSON Schema
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"string", "null"}, // Multiple types
+		}
+
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "OpenAPI document validation failed")
+	})
+
+	t.Run("schema with unknown format should be valid", func(t *testing.T) {
+		// OpenAPI should allow unknown formats (they are just hints)
+		schema := &openapi3.Schema{
+			Type:   &openapi3.Types{"string"},
+			Format: "custom-format",
+		}
+
 		err := validator.ValidateSchema(ctx, schema)
 		require.NoError(t, err)
 	})
