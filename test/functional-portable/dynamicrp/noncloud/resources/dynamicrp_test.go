@@ -227,12 +227,13 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 // 2. Resource Deployment:
 //   - Creates a Kubernetes ConfigMap containing configuration properties
 //   - Deploys a custom resource instance of type Test.Resources/externalResource that reads the ConfigMap data
-//   - Launches a container that receives the ConfigMap data via environment variables
-//   - Validates the environment variable in the container to ensure it contains the expected value
+//   - Launches a container that receives the ConfigMap data via environment variables by defining a connection to the external resource
+//   - Validates the environment variable in the container and ensures it contains the expected value
 func Test_DynamicRP_ExternalResource(t *testing.T) {
 	template := "testdata/externalresource.bicep"
 	appName := "udt-externalresource-app"
 	appNamespace := "udt-externalresource-env-udt-externalresource-app"
+	expectedEnvName := "CONNECTION_EXTERNALRESOURCE_CONFIGMAP"
 	expectedEnvValue := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
 	resourceTypeName := "Test.Resources/externalResource"
 	containerName := "externalresourcecntr"
@@ -300,14 +301,227 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 				require.NotNil(t, targetContainer, "Container not found")
 
 				found := false
+				var secretName, secretKey string
 				for _, env := range targetContainer.Env {
-					if env.Name == "UDTCONFIGMAP_DATA" {
-						require.Equal(t, expectedEnvValue, env.Value)
+					if env.Name == expectedEnvName {
+						require.NotNil(t, env.ValueFrom)
+						require.NotNil(t, env.ValueFrom.SecretKeyRef)
+						require.Equal(t, env.Name, env.ValueFrom.SecretKeyRef.Key)
+						secretName = env.ValueFrom.SecretKeyRef.Name
+						secretKey = env.ValueFrom.SecretKeyRef.Key
 						found = true
 						break
 					}
 				}
-				require.True(t, found, "Environment variable not found")
+				require.True(t, found, "Environment variable %q not found", expectedEnvName)
+
+				// Verify the secret contains the expected value
+				secret, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, secretName, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.NotNil(t, secret.Data)
+
+				secretValue, exists := secret.Data[secretKey]
+				require.True(t, exists, "Secret key %s not found in secret %s", secretKey, secretName)
+				require.Equal(t, expectedEnvValue, string(secretValue), "Secret value does not match expected value")
+			},
+		},
+	})
+	test.Test(t)
+}
+
+// Test_UDT_ConnectionTo_UDT tests the deployment of a user-defined resource type with connections to another UDT.
+// It consists of two main steps:
+// 1. Resource Type Registration:
+//   - Registers a user-defined resource type "Test.Resources/externalResource" and "Test.Resources/userTypeAlpha" using the CLI.
+//
+// 2. Resource Deployment:
+//   - Deploys a Bicep template that creates a UDT instance and connects it to another UDT instance.
+//   - Validates the creation of required resources in the Kubernetes cluster.
+//   - Validates that the UDT parent resource contains the expected environment variable injected and populated with the correct value
+//     from the connected UDT child resource.
+func Test_UDT_ConnectionTo_UDT(t *testing.T) {
+	existingTemplate := "testdata/udt2udt-connection.bicep"
+	name := "dynamicrp-udt2udt"
+	appNamespace := "udttoudtapp"
+	appName := "udttoudtapp"
+	childResourceTypeName := "Test.Resources/externalResource"
+	parentResourceTypeName := "Test.Resources/userTypeAlpha"
+	filepath := "testdata/testresourcetypes.yaml"
+	expectedEnvName := "CONN_INJECTED"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			// The first step in this test is to create/register required user-defined resource types using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, childResourceTypeName)
+				output, err = cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, parentResourceTypeName)
+			},
+		},
+		{
+			Executor:                               step.NewDeployExecutor(existingTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			SkipKubernetesOutputResourceValidation: true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "udttoudtparent",
+						Type: "test.resources/usertypealpha",
+						App:  appName,
+					},
+					{
+						Name: "udttoudtchild",
+						Type: "test.resources/externalresource",
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				deploys, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, deploys.Items, "No deployments found in namespace %s", appNamespace)
+
+				// Expected configMap data from the external resource
+				expectedConfigMapData := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
+
+				found := false
+				for _, deploy := range deploys.Items {
+					t.Logf("Checking deployment: %s", deploy.Name)
+
+					if len(deploy.Spec.Template.Spec.Containers) > 0 {
+						container := deploy.Spec.Template.Spec.Containers[0]
+						t.Logf("Environment variables for container '%s':", container.Name)
+
+						for _, env := range container.Env {
+							t.Logf("  %s: %s", env.Name, env.Value)
+							if env.Name == expectedEnvName {
+								t.Logf("✓ Found deployment %q with env var %q = %q", deploy.Name, expectedEnvName, env.Value)
+								found = true
+								require.NotEmpty(t, env.Value, "Environment variable value should not be empty")
+								require.Equal(t, expectedConfigMapData, env.Value, "Environment variable should contain configMap data from connected externalResource")
+								break
+							}
+						}
+					}
+				}
+
+				require.True(t, found, "No deployments found with environment variable %q", expectedEnvName)
+
+			},
+		},
+	})
+	test.Test(t)
+}
+
+// Test_UDT_ConnectionTo_UDTTF tests the deployment of a user-defined resource type with connections to another UDT using terraform recipe.
+// It consists of two main steps:
+// 1. Resource Type Registration:
+//   - Registers user-defined resource types "test.resources/usertypealpha" (parent) and "test.resources/externalresource" (child) using the CLI.
+//
+// 2. Resource Deployment:
+//   - Deploys a Bicep template that creates a UDT instance and connects it to an external resource UDT instance using terraform recipe.
+//   - Validates the creation of required resources in the Kubernetes cluster.
+//   - Validates that the UDT parent resource contains the expected environment variable injected and populated with the correct value
+//     from the connected UDT child resource.
+func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
+	existingTemplate := "testdata/udt2udt-connection-tf.bicep"
+	name := "dynamicrp-udt2udt-tf"
+	appNamespace := "udttoudtapp"
+	appName := "udttoudtapp"
+	expectedEnvName := "CONN_INJECTED"
+	childResourceTypeName := "Test.Resources/externalResource"
+	parentResourceTypeName := "Test.Resources/userTypeAlpha"
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, childResourceTypeName)
+				output, err = cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, parentResourceTypeName)
+			},
+		},
+		{
+			Executor:                               step.NewDeployExecutor(existingTemplate, testutil.GetTerraformRecipeModuleServerURL()),
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			SkipKubernetesOutputResourceValidation: true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "udttoudtparent",
+						Type: "test.resources/usertypealpha",
+						App:  appName,
+					},
+					{
+						Name: "udttoudtchild",
+						Type: "test.resources/externalresource",
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				deploys, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, deploys.Items, "No deployments found in namespace %s", appNamespace)
+
+				expectedConfigMapData := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
+
+				found := false
+				for _, deploy := range deploys.Items {
+					t.Logf("Checking deployment: %s", deploy.Name)
+
+					if len(deploy.Spec.Template.Spec.Containers) > 0 {
+						container := deploy.Spec.Template.Spec.Containers[0]
+						t.Logf("Environment variables for container '%s':", container.Name)
+
+						for _, env := range container.Env {
+							t.Logf("  %s: %s", env.Name, env.Value)
+							if env.Name == expectedEnvName {
+								t.Logf("✓ Found deployment %q with env var %q=%q", deploy.Name, expectedEnvName, env.Value)
+								found = true
+								require.NotEmpty(t, env.Value, "Environment variable value should not be empty")
+								require.Equal(t, expectedConfigMapData, env.Value, "Environment variable should contain configMap data from connected externalResource")
+								break
+							}
+						}
+					}
+				}
+
+				require.True(t, found, "No deployments found with environment variable %q", expectedEnvName)
+
 			},
 		},
 	})
