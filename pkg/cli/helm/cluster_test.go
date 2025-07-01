@@ -78,7 +78,7 @@ func Test_Helm_InstallRadius(t *testing.T) {
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
 	}
 
-	// Mock Helm Get - QueryRelease now uses RunHelmGet instead of RunHelmList
+	// Mock Helm Get
 	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, driver.ErrReleaseNotFound).Times(1)
 	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour").Return(nil, driver.ErrReleaseNotFound).Times(1)
 
@@ -279,4 +279,45 @@ func Test_PopulateDefaultClusterOptions(t *testing.T) {
 	require.Equal(t, []string{"foo=bar"}, opts.Radius.SetArgs)
 	require.Equal(t, []string{"cert=./ca.crt"}, opts.Radius.SetFileArgs)
 	require.Equal(t, "1.2.3", opts.Radius.ChartVersion)
+}
+
+func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	impl := &Impl{Helm: mockHelmClient}
+	kubeContext := "test-context"
+	options := NewDefaultClusterOptions()
+
+	// Helper to create a dummy release with both chart version and app version.
+	newRelWithAppVersion := func(name, chartVer, appVer string) *release.Release {
+		return &release.Release{
+			Name:  name,
+			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: chartVer, AppVersion: appVer}},
+		}
+	}
+
+	// Create release with both chart version and app version
+	radiusRelease := newRelWithAppVersion(options.Radius.ReleaseName, "1.0.0", "v0.43.0")
+
+	// Radius is installed with AppVersion, Contour not installed.
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
+		Return(radiusRelease, nil).Times(1)
+	// Mock the history call that happens when Radius is installed
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
+		Return([]*release.Release{radiusRelease}, nil).Times(1)
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).Times(1)
+
+	state, err := impl.CheckRadiusInstall(kubeContext)
+	require.NoError(t, err)
+	require.True(t, state.RadiusInstalled)
+	require.False(t, state.ContourInstalled)
+	// Should return AppVersion (v0.43.0) instead of chart Version (1.0.0)
+	require.Equal(t, "v0.43.0", state.RadiusVersion)
+	require.Equal(t, "", state.ContourVersion)
 }

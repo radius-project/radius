@@ -228,7 +228,8 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 		return false, "", fmt.Errorf("failed to get chart version for release: %s (chart or metadata is nil)", releaseName)
 	}
 
-	version := release.Chart.Metadata.Version
+	version := release.Chart.Metadata.AppVersion
+
 	return true, version, nil
 }
 
@@ -255,7 +256,12 @@ func (helmAction *HelmActionImpl) GetPreviousReleaseVersion(kubeContext, release
 		rel := releases[i]
 		if rel.Info != nil && (rel.Info.Status == release.StatusDeployed || rel.Info.Status == release.StatusSuperseded) {
 			if rel.Chart != nil && rel.Chart.Metadata != nil {
-				return rel.Chart.Metadata.Version, nil
+				// Use AppVersion for consistency with pre-upgrade checks, fallback to Version if empty
+				version := rel.Chart.Metadata.AppVersion
+				if version == "" {
+					version = rel.Chart.Metadata.Version
+				}
+				return version, nil
 			}
 		}
 	}
