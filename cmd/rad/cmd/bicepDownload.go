@@ -31,20 +31,7 @@ var (
 var bicepDownloadCmd = &cobra.Command{
 	Use:   "download",
 	Short: "Download the bicep compiler and manifest-to-bicep extension",
-	Long: `Downloads the latest bicep compiler and manifest-to-bicep extension locally.
-
-This command supports custom download URLs for air-gapped environments.
-
-Environment Variables:
-  RAD_BICEP                        Override the bicep binary installation path
-  RAD_MANIFEST_TO_BICEP_EXTENSION  Override the manifest-to-bicep extension installation path
-
-Examples:
-  # Download latest versions from default sources
-  rad bicep download
-  
-  # Use custom URLs for air-gapped environments
-  rad bicep download --bicep-download-url https://internal.company.com/bicep/releases/latest/download --manifest-to-bicep-extension-download-url https://internal.company.com/manifest-extension/releases/latest/download`,
+	Long:  `Downloads the latest bicep compiler and manifest-to-bicep extension locally.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
 
