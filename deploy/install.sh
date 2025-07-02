@@ -65,7 +65,6 @@ verifySupported() {
     exit 1
 }
 
-
 runAsRoot() {
     local CMD="$*"
 
@@ -187,7 +186,6 @@ installFile() {
            exit 1
         fi
 
-
         # TODO: $RADIUS_CLI_FILE --version
     else 
         echo "Failed to install $RADIUS_CLI_FILENAME"
@@ -232,12 +230,12 @@ else
     ret_val=v$1
 fi
 
-verifySupported "$ret_val"
+verifySupported $ret_val
 checkExistingRadius
 
 echo "Installing $ret_val Radius CLI..."
 
-downloadFile "$ret_val"
+downloadFile $ret_val
 installFile
 cleanup
 

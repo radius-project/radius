@@ -61,7 +61,6 @@ function GetWindowsAsset {
     return $return
 }
 
-
 # Set Github request authentication for basic authentication.
 if ($Env:GITHUB_USER) {
     $basicAuth = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Env:GITHUB_USER + ":" + $Env:GITHUB_TOKEN));
@@ -214,6 +213,5 @@ if ($cmd.ExitCode -ne 0) {
 else {
     Write-Output "Bicep has been successfully installed"
 }
-
 
 Write-Output "`r`nTo get started with Radius, please visit https://docs.radapp.io/getting-started/"
