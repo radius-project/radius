@@ -30,6 +30,10 @@ import (
 const (
 	// binaryRepo is the name of the remote bicep binary repository
 	binaryRepo = "https://github.com/Azure/bicep/releases/latest/download/"
+	// manifestToBicepExtensionRepo is the name of the remote manifest-to-bicep-extension repository
+	manifestToBicepExtensionRepo = "https://github.com/willdavsmith/bicep-tools/releases/download/"
+	// defaultManifestToBicepExtensionVersion is the default version of manifest-to-bicep-extension
+	defaultManifestToBicepExtensionVersion = "v0.2.0"
 )
 
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.
@@ -40,6 +44,15 @@ var validPlatforms = map[string]string{
 	"linux-arm64":   "bicep-linux-arm64",
 	"darwin-amd64":  "bicep-osx-x64",
 	"darwin-arm64":  "bicep-osx-arm64",
+}
+
+// manifestExtensionPlatforms is a map of valid platforms for manifest-to-bicep-extension
+var manifestExtensionPlatforms = map[string]string{
+	"windows-amd64": "manifest-to-bicep-extension-win-amd64",
+	"linux-amd64":   "manifest-to-bicep-extension-linux-amd64",
+	"linux-arm64":   "manifest-to-bicep-extension-linux-arm64",
+	"darwin-amd64":  "manifest-to-bicep-extension-darwin-amd64",
+	"darwin-arm64":  "manifest-to-bicep-extension-darwin-arm64",
 }
 
 // GetLocalFilepath returns the local binary file path. It does not verify that the file
@@ -178,4 +191,152 @@ func getFilename(base string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
+}
+
+// DownloadToFolderWithOptions downloads the bicep binary with custom URL and version
+func DownloadToFolderWithOptions(filepath, customURL, version string) error {
+	// Create folders
+	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
+	}
+
+	// Create the file
+	bicepBinary, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer bicepBinary.Close()
+
+	// Get file binary
+	binary, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return err
+	}
+
+	// Get binaryName extension
+	binaryName, err := getFilename(binary)
+	if err != nil {
+		return err
+	}
+
+	// Construct download URL
+	var downloadURL string
+	if customURL != "" {
+		downloadURL = customURL
+		if version != "" {
+			downloadURL = fmt.Sprintf("%s/%s/%s", customURL, version, binaryName)
+		} else {
+			downloadURL = fmt.Sprintf("%s/%s", customURL, binaryName)
+		}
+	} else {
+		if version != "" {
+			downloadURL = fmt.Sprintf("https://github.com/Azure/bicep/releases/download/%s/%s", version, binaryName)
+		} else {
+			downloadURL = binaryRepo + binaryName
+		}
+	}
+
+	// Get the data
+	resp, err := http.Get(downloadURL)
+	if clients.Is404Error(err) {
+		return fmt.Errorf("unable to locate bicep binary resource %s: %v", downloadURL, err)
+	} else if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Write the body to file
+	_, err = io.Copy(bicepBinary, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// Get the filemode so we can mark it as executable
+	file, err := bicepBinary.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to read file attributes %s: %v", filepath, err)
+	}
+
+	// Make file executable by everyone
+	err = bicepBinary.Chmod(file.Mode() | 0111)
+	if err != nil {
+		return fmt.Errorf("failed to change permissions for %s: %v", filepath, err)
+	}
+
+	return nil
+}
+
+// DownloadManifestToBicepExtension downloads the manifest-to-bicep extension
+func DownloadManifestToBicepExtension(filepath, customURL, version string) error {
+	// Create folders
+	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
+	}
+
+	// Create the file
+	extensionBinary, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer extensionBinary.Close()
+
+	// Get file binary
+	platform, ok := manifestExtensionPlatforms[runtime.GOOS+"-"+runtime.GOARCH]
+	if !ok {
+		return fmt.Errorf("manifest-to-bicep-extension is not available for platform %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+
+	// Get binaryName extension
+	binaryName, err := getFilename(platform)
+	if err != nil {
+		return err
+	}
+
+	// Construct download URL
+	var downloadURL string
+	if customURL != "" {
+		downloadURL = customURL
+		if version != "" {
+			downloadURL = fmt.Sprintf("%s/%s/%s", customURL, version, binaryName)
+		} else {
+			downloadURL = fmt.Sprintf("%s/%s", customURL, binaryName)
+		}
+	} else {
+		effectiveVersion := version
+		if effectiveVersion == "" {
+			effectiveVersion = defaultManifestToBicepExtensionVersion
+		}
+		downloadURL = fmt.Sprintf("%s%s/%s", manifestToBicepExtensionRepo, effectiveVersion, binaryName)
+	}
+
+	// Get the data
+	resp, err := http.Get(downloadURL)
+	if clients.Is404Error(err) {
+		return fmt.Errorf("unable to locate manifest-to-bicep-extension binary resource %s: %v", downloadURL, err)
+	} else if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Write the body to file
+	_, err = io.Copy(extensionBinary, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// Get the filemode so we can mark it as executable
+	file, err := extensionBinary.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to read file attributes %s: %v", filepath, err)
+	}
+
+	// Make file executable by everyone
+	err = extensionBinary.Chmod(file.Mode() | 0111)
+	if err != nil {
+		return fmt.Errorf("failed to change permissions for %s: %v", filepath, err)
+	}
+
+	return nil
 }

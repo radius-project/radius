@@ -61,37 +61,6 @@ function GetWindowsAsset {
     return $return
 }
 
-function DownloadManifestToBicepExtension {
-    param (
-        [string]$RadiusRoot
-    )
-    
-    $binaryName = "manifest-to-bicep-extension-win-amd64.exe"
-    $downloadURL = "https://github.com/willdavsmith/bicep-tools/releases/download/v0.2.0/$binaryName"
-    $binaryPath = Join-Path $RadiusRoot "manifest-to-bicep-extension.exe"
-    
-    try {
-        Write-Output "Downloading manifest-to-bicep-extension from $downloadURL..."
-        $oldProgressPreference = $ProgressPreference
-        $ProgressPreference = "SilentlyContinue" # Do not show progress bar
-        Invoke-WebRequest -Uri $downloadURL -OutFile $binaryPath
-        
-        if (Test-Path $binaryPath -PathType Leaf) {
-            Write-Output "manifest-to-bicep-extension has been successfully installed"
-            return $true
-        } else {
-            Write-Warning "Failed to download manifest-to-bicep-extension binary"
-            return $false
-        }
-    }
-    catch {
-        Write-Warning "Failed to download manifest-to-bicep-extension: $($_.Exception.Message)"
-        return $false
-    }
-    finally {
-        $ProgressPreference = $oldProgressPreference
-    }
-}
 
 # Set Github request authentication for basic authentication.
 if ($Env:GITHUB_USER) {
@@ -246,10 +215,5 @@ else {
     Write-Output "Bicep has been successfully installed"
 }
 
-Write-Output "`r`nInstalling manifest-to-bicep-extension..."
-$manifestToBicepSuccess = DownloadManifestToBicepExtension -RadiusRoot $RadiusRoot
-if (-Not $manifestToBicepSuccess) {
-    Write-Warning "`r`nFailed to install manifest-to-bicep-extension"
-}
 
 Write-Output "`r`nTo get started with Radius, please visit https://docs.radapp.io/getting-started/"
