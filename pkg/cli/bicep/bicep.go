@@ -25,11 +25,12 @@ import (
 )
 
 const (
-	radBicepEnvVar                   = "RAD_BICEP"
-	binaryName                       = "rad-bicep"
+	radBicepEnvVar                     = "RAD_BICEP"
+	radManifestToBicepExtensionEnvVar  = "RAD_MANIFEST_TO_BICEP_EXTENSION"
+	binaryName                         = "rad-bicep"
 	manifestToBicepExtensionBinaryName = "manifest-to-bicep-extension"
-	retryAttempts                    = 10
-	retryDelaySecs                   = 5
+	retryAttempts                      = 10
+	retryDelaySecs                     = 5
 )
 
 // DownloadOptions represents the options for downloading bicep and manifest-to-bicep extension
@@ -82,103 +83,56 @@ func DeleteBicep() error {
 // DownloadBicep updates our local copy of bicep
 //
 
-// DownloadBicep() attempts to download a file from a given URI and save it to a local filepath, retrying up to 10 times if
-// the download fails. If an error occurs, an error is returned.
+// DownloadBicep downloads both bicep and manifest-to-bicep extension using default options
 func DownloadBicep() error {
-	filepath, err := GetBicepFilePath()
-	if err != nil {
-		return err
-	}
+	return DownloadBicepTools(DownloadOptions{})
+}
 
-	retryAttempts := 10
+// retryDownload executes a download function with retry logic
+func retryDownload(toolName string, downloadFunc func() error) error {
 	for attempt := 1; attempt <= retryAttempts; attempt++ {
-		success, err := retry(filepath, attempt, retryAttempts)
+		err := downloadFunc()
 		if err != nil {
-			return err
+			if attempt == retryAttempts {
+				return fmt.Errorf("failed to download %s after %d attempts: %v", toolName, retryAttempts, err)
+			}
+			fmt.Printf("Attempt %d failed to download %s: %v\nRetrying in %d seconds...\n", attempt, toolName, err, retryDelaySecs)
+			time.Sleep(retryDelaySecs * time.Second)
+			continue
 		}
-		if success {
-			break
-		}
+		return nil
 	}
-
 	return nil
 }
 
-func retry(filepath string, attempt, retryAttempts int) (bool, error) {
-	err := tools.DownloadToFolder(filepath)
-	if err != nil {
-		if attempt == retryAttempts {
-			return false, fmt.Errorf("failed to download bicep: %v", err)
-		}
-		fmt.Printf("Attempt %d failed to download bicep: %v\nRetrying...", attempt, err)
-		time.Sleep(retryDelaySecs * time.Second)
-		return false, nil
-	}
-
-	return true, nil
-}
-
-// DownloadBicepWithOptions downloads bicep and manifest-to-bicep extension with custom options
-func DownloadBicepWithOptions(options DownloadOptions) error {
+// DownloadBicepTools downloads bicep and manifest-to-bicep extension with custom options
+func DownloadBicepTools(options DownloadOptions) error {
 	// Download bicep
 	bicepFilepath, err := GetBicepFilePath()
 	if err != nil {
 		return err
 	}
 
-	for attempt := 1; attempt <= retryAttempts; attempt++ {
-		success, err := retryWithOptions(bicepFilepath, options.BicepURL, options.BicepVersion, "bicep", attempt, retryAttempts)
-		if err != nil {
-			return err
-		}
-		if success {
-			break
-		}
-	}
-
-	// Download manifest-to-bicep extension
-	manifestFilepath, err := tools.GetLocalFilepath("", manifestToBicepExtensionBinaryName)
+	err = retryDownload("bicep", func() error {
+		return tools.DownloadToFolderWithOptions(bicepFilepath, options.BicepURL, options.BicepVersion)
+	})
 	if err != nil {
 		return err
 	}
 
-	for attempt := 1; attempt <= retryAttempts; attempt++ {
-		success, err := retryManifestExtension(manifestFilepath, options.ManifestToBicepExtensionURL, options.ManifestToBicepExtensionVersion, attempt, retryAttempts)
-		if err != nil {
-			return err
-		}
-		if success {
-			break
-		}
+	// Download manifest-to-bicep extension
+	manifestFilepath, err := tools.GetLocalFilepath(radManifestToBicepExtensionEnvVar, manifestToBicepExtensionBinaryName)
+	if err != nil {
+		return err
+	}
+
+	err = retryDownload("manifest-to-bicep-extension", func() error {
+		return tools.DownloadManifestToBicepExtension(manifestFilepath, options.ManifestToBicepExtensionURL, options.ManifestToBicepExtensionVersion)
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func retryWithOptions(filepath, customURL, version, toolName string, attempt, retryAttempts int) (bool, error) {
-	err := tools.DownloadToFolderWithOptions(filepath, customURL, version)
-	if err != nil {
-		if attempt == retryAttempts {
-			return false, fmt.Errorf("failed to download %s: %v", toolName, err)
-		}
-		fmt.Printf("Attempt %d failed to download %s: %v\nRetrying...", attempt, toolName, err)
-		time.Sleep(retryDelaySecs * time.Second)
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func retryManifestExtension(filepath, customURL, version string, attempt, retryAttempts int) (bool, error) {
-	err := tools.DownloadManifestToBicepExtension(filepath, customURL, version)
-	if err != nil {
-		if attempt == retryAttempts {
-			return false, fmt.Errorf("failed to download manifest-to-bicep-extension: %v", err)
-		}
-		fmt.Printf("Attempt %d failed to download manifest-to-bicep-extension: %v\nRetrying...", attempt, err)
-		time.Sleep(retryDelaySecs * time.Second)
-		return false, nil
-	}
-
-	return true, nil
-}
