@@ -24,18 +24,16 @@ import (
 )
 
 var (
-	bicepDownloadURL                           string
-	bicepDownloadVersion                       string
-	manifestToBicepExtensionDownloadURL        string
-	manifestToBicepExtensionDownloadVersion    string
+	bicepDownloadURL                    string
+	manifestToBicepExtensionDownloadURL string
 )
 
 var bicepDownloadCmd = &cobra.Command{
 	Use:   "download",
 	Short: "Download the bicep compiler and manifest-to-bicep extension",
-	Long: `Downloads the bicep compiler and manifest-to-bicep extension locally.
+	Long: `Downloads the latest bicep compiler and manifest-to-bicep extension locally.
 
-This command supports custom download URLs and versions for air-gapped environments.
+This command supports custom download URLs for air-gapped environments.
 
 Environment Variables:
   RAD_BICEP                        Override the bicep binary installation path
@@ -45,21 +43,16 @@ Examples:
   # Download latest versions from default sources
   rad bicep download
   
-  # Download specific versions
-  rad bicep download --bicep-download-version v0.21.1 --manifest-to-bicep-extension-download-version v0.3.0
-  
   # Use custom URLs for air-gapped environments
-  rad bicep download --bicep-download-url https://internal.company.com/bicep/releases --manifest-to-bicep-extension-download-url https://internal.company.com/manifest-extension/releases`,
+  rad bicep download --bicep-download-url https://internal.company.com/bicep/releases/latest/download --manifest-to-bicep-extension-download-url https://internal.company.com/manifest-extension/releases/latest/download`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
-		
+
 		options := bicep.DownloadOptions{
-			BicepURL:                         bicepDownloadURL,
-			BicepVersion:                     bicepDownloadVersion,
-			ManifestToBicepExtensionURL:      manifestToBicepExtensionDownloadURL,
-			ManifestToBicepExtensionVersion:  manifestToBicepExtensionDownloadVersion,
+			BicepURL:                    bicepDownloadURL,
+			ManifestToBicepExtensionURL: manifestToBicepExtensionDownloadURL,
 		}
-		
+
 		err := bicep.DownloadBicepTools(options)
 		return err
 	},
@@ -67,9 +60,7 @@ Examples:
 
 func init() {
 	bicepCmd.AddCommand(bicepDownloadCmd)
-	
+
 	bicepDownloadCmd.Flags().StringVar(&bicepDownloadURL, "bicep-download-url", "", "Custom URL for downloading the bicep compiler")
-	bicepDownloadCmd.Flags().StringVar(&bicepDownloadVersion, "bicep-download-version", "", "Specific version of the bicep compiler to download")
 	bicepDownloadCmd.Flags().StringVar(&manifestToBicepExtensionDownloadURL, "manifest-to-bicep-extension-download-url", "", "Custom URL for downloading the manifest-to-bicep extension")
-	bicepDownloadCmd.Flags().StringVar(&manifestToBicepExtensionDownloadVersion, "manifest-to-bicep-extension-download-version", "", "Specific version of the manifest-to-bicep extension to download")
 }

@@ -35,14 +35,16 @@ const (
 
 // DownloadOptions represents the options for downloading bicep and manifest-to-bicep extension
 type DownloadOptions struct {
-	BicepURL                         string
-	BicepVersion                     string
-	ManifestToBicepExtensionURL      string
-	ManifestToBicepExtensionVersion  string
+	BicepURL                    string
+	ManifestToBicepExtensionURL string
 }
 
 func GetBicepFilePath() (string, error) {
 	return tools.GetLocalFilepath(radBicepEnvVar, binaryName)
+}
+
+func GetManifestToBicepExtensionFilePath() (string, error) {
+	return tools.GetLocalFilepath(radManifestToBicepExtensionEnvVar, manifestToBicepExtensionBinaryName)
 }
 
 // IsBicepInstalled returns true if our local copy of bicep is installed
@@ -51,6 +53,22 @@ func GetBicepFilePath() (string, error) {
 // IsBicepInstalled checks if the Bicep binary is installed on the local machine and returns a boolean and an error if one occurs.
 func IsBicepInstalled() (bool, error) {
 	filepath, err := GetBicepFilePath()
+	if err != nil {
+		return false, err
+	}
+
+	_, err = os.Stat(filepath)
+	if err != nil && os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, fmt.Errorf("error checking for %s: %v", filepath, err)
+	}
+
+	return true, nil
+}
+
+func IsManifestToBicepExtensionInstalled() (bool, error) {
+	filepath, err := GetManifestToBicepExtensionFilePath()
 	if err != nil {
 		return false, err
 	}
@@ -107,27 +125,27 @@ func retryDownload(toolName string, downloadFunc func() error) error {
 
 // DownloadBicepTools downloads bicep and manifest-to-bicep extension with custom options
 func DownloadBicepTools(options DownloadOptions) error {
-	// Download bicep
+	// Download bicep CLI
 	bicepFilepath, err := GetBicepFilePath()
 	if err != nil {
 		return err
 	}
 
 	err = retryDownload("bicep", func() error {
-		return tools.DownloadToFolderWithOptions(bicepFilepath, options.BicepURL, options.BicepVersion)
+		return tools.DownloadToFolderWithOptions(bicepFilepath, options.BicepURL)
 	})
 	if err != nil {
 		return err
 	}
 
-	// Download manifest-to-bicep extension
+	// Download manifest-to-bicep-extension CLI
 	manifestFilepath, err := tools.GetLocalFilepath(radManifestToBicepExtensionEnvVar, manifestToBicepExtensionBinaryName)
 	if err != nil {
 		return err
 	}
 
 	err = retryDownload("manifest-to-bicep-extension", func() error {
-		return tools.DownloadManifestToBicepExtension(manifestFilepath, options.ManifestToBicepExtensionURL, options.ManifestToBicepExtensionVersion)
+		return tools.DownloadManifestToBicepExtension(manifestFilepath, options.ManifestToBicepExtensionURL)
 	})
 	if err != nil {
 		return err
@@ -135,4 +153,3 @@ func DownloadBicepTools(options DownloadOptions) error {
 
 	return nil
 }
-

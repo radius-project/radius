@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
-	"github.com/radius-project/radius/pkg/cli/manifestbicep"
 	"github.com/radius-project/radius/pkg/cli/output"
 
 	"github.com/spf13/cobra"
@@ -113,12 +112,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	//
 	// 3. We can clean up the "index" directory after publishing.
 
-	_, err := manifestbicep.GetManifestToBicepExtensionFilePath()
+	_, err := bicep.GetManifestToBicepExtensionFilePath()
 	if err != nil {
 		return err
 	}
 
-	installed, err := manifestbicep.IsManifestToBicepExtensionInstalled()
+	installed, err := bicep.IsManifestToBicepExtensionInstalled()
 	if err != nil {
 		return err
 	}
@@ -148,7 +147,7 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outputDirectoryPath string) error {
-	manifestToBicepExtensionFilePath, err := manifestbicep.GetManifestToBicepExtensionFilePath()
+	manifestToBicepExtensionFilePath, err := bicep.GetManifestToBicepExtensionFilePath()
 	if err != nil {
 		return err
 	}

@@ -33,9 +33,7 @@ const (
 	// binaryRepo is the name of the remote bicep binary repository
 	binaryRepo = "https://github.com/Azure/bicep/releases/latest/download/"
 	// manifestToBicepExtensionRepo is the name of the remote manifest-to-bicep-extension repository
-	manifestToBicepExtensionRepo = "https://github.com/willdavsmith/bicep-tools/releases/download/"
-	// defaultManifestToBicepExtensionVersion is the default version of manifest-to-bicep-extension
-	defaultManifestToBicepExtensionVersion = "v0.2.0"
+	manifestToBicepExtensionRepo = "https://github.com/willdavsmith/bicep-tools/releases/latest/download/"
 )
 
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.
@@ -213,37 +211,20 @@ func validateDownloadURL(downloadURL string) error {
 	return nil
 }
 
-// constructDownloadURL constructs the download URL based on base URL, version, and binary name
-func constructDownloadURL(baseURL, version, binaryName string) string {
+// constructDownloadURL constructs the download URL based on base URL and binary name
+func constructDownloadURL(baseURL, binaryName string) string {
 	if baseURL != "" {
-		if version != "" {
-			return fmt.Sprintf("%s/%s/%s", strings.TrimSuffix(baseURL, "/"), version, binaryName)
-		}
 		return fmt.Sprintf("%s/%s", strings.TrimSuffix(baseURL, "/"), binaryName)
-	}
-
-	// Default GitHub releases pattern
-	if version != "" {
-		return fmt.Sprintf("https://github.com/Azure/bicep/releases/download/%s/%s", version, binaryName)
 	}
 	return binaryRepo + binaryName
 }
 
 // constructManifestDownloadURL constructs the download URL for manifest-to-bicep extension
-func constructManifestDownloadURL(baseURL, version, binaryName string) string {
+func constructManifestDownloadURL(baseURL, binaryName string) string {
 	if baseURL != "" {
-		if version != "" {
-			return fmt.Sprintf("%s/%s/%s", strings.TrimSuffix(baseURL, "/"), version, binaryName)
-		}
 		return fmt.Sprintf("%s/%s", strings.TrimSuffix(baseURL, "/"), binaryName)
 	}
-
-	// Default manifest extension GitHub releases pattern
-	effectiveVersion := version
-	if effectiveVersion == "" {
-		effectiveVersion = defaultManifestToBicepExtensionVersion
-	}
-	return fmt.Sprintf("%s%s/%s", manifestToBicepExtensionRepo, effectiveVersion, binaryName)
+	return manifestToBicepExtensionRepo + binaryName
 }
 
 // downloadBinary downloads a binary from the given URL to the specified filepath
@@ -295,8 +276,8 @@ func downloadBinary(filepath, downloadURL string) error {
 	return nil
 }
 
-// DownloadToFolderWithOptions downloads the bicep binary with custom URL and version
-func DownloadToFolderWithOptions(filepath, customURL, version string) error {
+// DownloadToFolderWithOptions downloads the bicep binary with custom URL
+func DownloadToFolderWithOptions(filepath, customURL string) error {
 	// Validate custom URL if provided
 	if err := validateDownloadURL(customURL); err != nil {
 		return fmt.Errorf("invalid bicep download URL: %v", err)
@@ -318,14 +299,14 @@ func DownloadToFolderWithOptions(filepath, customURL, version string) error {
 	}
 
 	// Construct download URL
-	downloadURL := constructDownloadURL(customURL, version, binaryName)
+	downloadURL := constructDownloadURL(customURL, binaryName)
 
 	// Download the binary
 	return downloadBinary(filepath, downloadURL)
 }
 
 // DownloadManifestToBicepExtension downloads the manifest-to-bicep extension
-func DownloadManifestToBicepExtension(filepath, customURL, version string) error {
+func DownloadManifestToBicepExtension(filepath, customURL string) error {
 	// Validate custom URL if provided
 	if err := validateDownloadURL(customURL); err != nil {
 		return fmt.Errorf("invalid manifest-to-bicep-extension download URL: %v", err)
@@ -348,7 +329,7 @@ func DownloadManifestToBicepExtension(filepath, customURL, version string) error
 	}
 
 	// Construct download URL
-	downloadURL := constructManifestDownloadURL(customURL, version, binaryName)
+	downloadURL := constructManifestDownloadURL(customURL, binaryName)
 
 	// Download the binary
 	return downloadBinary(filepath, downloadURL)
