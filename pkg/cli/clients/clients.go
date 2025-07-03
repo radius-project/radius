@@ -60,6 +60,12 @@ type DeploymentOptions struct {
 	ProgressChan chan<- ResourceProgress
 }
 
+type DeleteOptions struct {
+	ApplicationNameOrID string
+	ProgressText        string
+	ProgressChan        chan<- ResourceProgress
+}
+
 type ResourceStatus string
 
 const (
