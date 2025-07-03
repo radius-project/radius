@@ -133,6 +133,67 @@ func WithResourceProviderServerNoError() ucpfake.ResourceProvidersServer {
 	return resourceProvidersServer
 }
 
+func WithContainersResourceProviderMock() ucpfake.ResourceProvidersServer {
+	resourceProvidersServer := ucpfake.ResourceProvidersServer{
+		BeginCreateOrUpdate: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			resource v20231001preview.ResourceProviderResource,
+			options *v20231001preview.ResourceProvidersClientBeginCreateOrUpdateOptions,
+		) (resp azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20231001preview.ResourceProvidersClientCreateOrUpdateResponse{
+				ResourceProviderResource: resource,
+			}
+			resp.AddNonTerminalResponse(http.StatusCreated, nil)
+			resp.SetTerminalResponse(http.StatusOK, result, nil)
+
+			return
+		},
+		Get: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			options *v20231001preview.ResourceProvidersClientGetOptions,
+		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
+			response := v20231001preview.ResourceProvidersClientGetResponse{
+				ResourceProviderResource: v20231001preview.ResourceProviderResource{
+					Name: to.Ptr(resourceProviderName),
+				},
+			}
+			resp.SetResponse(http.StatusOK, response, nil)
+			return
+		},
+		GetProviderSummary: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			options *v20231001preview.ResourceProvidersClientGetProviderSummaryOptions,
+		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetProviderSummaryResponse], errResp azfake.ErrorResponder) {
+			response := v20231001preview.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: v20231001preview.ResourceProviderSummary{
+					Name: to.Ptr(resourceProviderName),
+					ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
+						"containers": {
+							Description: to.Ptr("Container resource type"),
+							APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
+								"2023-01-01": {},
+							},
+							DefaultAPIVersion: to.Ptr("2023-01-01"),
+						},
+					},
+					Locations: map[string]map[string]any{
+						"east": {},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, response, nil)
+			return
+		},
+	}
+	return resourceProvidersServer
+}
+
 func WithResourceTypeServerNoError() ucpfake.ResourceTypesServer {
 	resourceTypesServer := ucpfake.ResourceTypesServer{
 		BeginCreateOrUpdate: func(
