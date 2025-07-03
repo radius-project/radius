@@ -67,16 +67,6 @@ resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {
   properties: {
     environment: udttoudtenv.id
     application: udttoudtapp.id
-    configMap: string(udttoudttfcfgmap.data)
-  }
-}
-
-resource udttoudttfcfgmap 'core/ConfigMap@v1' = {
-  metadata: {
-    name: 'udttoudttfcfgmap'
-  }
-  data: {
-    'app1.sample.properties': 'property1=value1\nproperty2=value2'
-    'app2.sample.properties': 'property3=value3\nproperty4=value4'
+    configMap: '{"app1.sample.properties":"property1=value1\\nproperty2=value2","app2.sample.properties":"property3=value3\\nproperty4=value4"}'
   }
 }
