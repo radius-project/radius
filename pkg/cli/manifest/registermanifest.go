@@ -47,6 +47,11 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
+	return RegisterResourceProvider(ctx, clientFactory, planeName, *resourceProvider, logger)
+}
+
+// RegisterResourceProvider registers a resource provider
+func RegisterResourceProvider(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, resourceProvider ResourceProvider, logger func(format string, args ...any)) error {
 	var locationName string
 	var address string
 
@@ -59,8 +64,7 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		}
 	}
 
-	logIfEnabled(logger, "Creating resource provider %s at location %s", resourceProvider.Name, locationName)
-	err = retryOperation(ctx, func() error {
+	err := retryOperation(ctx, func() error {
 		resourceProviderPoller, err := clientFactory.NewResourceProvidersClient().BeginCreateOrUpdate(
 			ctx, planeName, resourceProvider.Name,
 			v20231001preview.ResourceProviderResource{

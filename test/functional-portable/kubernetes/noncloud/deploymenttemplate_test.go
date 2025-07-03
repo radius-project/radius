@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kubernetes_test
+package kubernetes_noncloud_test
 
 import (
 	"context"
@@ -114,6 +114,19 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 			return apierrors.IsNotFound(err)
 		}, time.Second*60, time.Second*5, "waiting for deploymentTemplate to be deleted")
 	})
+
+	t.Run("Delete namespace", func(t *testing.T) {
+		t.Log("Deleting namespace")
+
+		err = opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+			return apierrors.IsNotFound(err)
+		}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
+	})
 }
 
 func Test_DeploymentTemplate_Module(t *testing.T) {
@@ -122,6 +135,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 
 	name := "dt-module"
 	namespace := "dt-module-ns"
+	envNamespace := fmt.Sprintf("%s-env", name)
 	templateFilePath := path.Join("testdata", "module", "module.json")
 	parameters := []string{
 		fmt.Sprintf("name=%s", name),
@@ -182,15 +196,21 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 			return apierrors.IsNotFound(err)
 		}, time.Second*60, time.Second*5, "waiting for deploymentTemplate to be deleted")
 	})
+
+	t.Run("Delete namespace", func(t *testing.T) {
+		t.Log("Deleting namespace")
+		deleteNamespace(ctx, t, namespace, opts)
+		deleteNamespace(ctx, t, envNamespace, opts)
+	})
 }
 
 func Test_DeploymentTemplate_Recipe(t *testing.T) {
-	t.Skip("Skipping this test temporarily - https://github.com/radius-project/radius/issues/9742")
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 
 	name := "dt-recipe"
 	namespace := "dt-recipe-ns"
+	envNamespace := fmt.Sprintf("%s-env", name)
 	templateFilePath := path.Join("testdata", "recipe", "recipe.json")
 	parameters := []string{
 		testutil.GetBicepRecipeRegistry(),
@@ -252,7 +272,13 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 		require.Eventually(t, func() bool {
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deploymentTemplate)
 			return apierrors.IsNotFound(err)
-		}, time.Minute*3, time.Second*5, "waiting for deploymentTemplate to be deleted")
+		}, time.Minute*3, time.Second*10, "waiting for deploymentTemplate to be deleted")
+	})
+
+	t.Run("Delete namespace", func(t *testing.T) {
+		t.Log("Deleting namespace")
+		deleteNamespace(ctx, t, namespace, opts)
+		deleteNamespace(ctx, t, envNamespace, opts)
 	})
 }
 
@@ -372,4 +398,20 @@ func assertExpectedResourcesToNotExist(ctx context.Context, scope string, expect
 	}
 
 	return nil
+}
+
+func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts rp.RPTestOptions) {
+	err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+	if !apierrors.IsNotFound(err) {
+		require.NoError(t, err, "failed to delete namespace %s", namespace)
+		t.Logf("Namespace %s deleted successfully", namespace)
+	} else {
+		t.Logf("Namespace %s already deleted or does not exist", namespace)
+	}
+
+	require.Eventually(t, func() bool {
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+		return apierrors.IsNotFound(err)
+	}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
 }

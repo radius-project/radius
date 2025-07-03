@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # ------------------------------------------------------------
 # Copyright 2023 The Radius Authors.
 #
@@ -52,8 +54,8 @@ echo "Downloading ${DOWNLOAD_URL}"
 curl -sSL "${DOWNLOAD_URL}" -o rad
 chmod +x ./rad
 
-RELEASE_FROM_RAD_VERSION=$(./rad version -o json | jq -r '.release')
-VERSION_FROM_RAD_VERSION=$(./rad version -o json | jq -r '.version')
+RELEASE_FROM_RAD_VERSION=$(./rad version --cli -o json | jq -r '.release')
+VERSION_FROM_RAD_VERSION=$(./rad version --cli -o json | jq -r '.version')
 
 if [[ "${RELEASE_FROM_RAD_VERSION}" != "${EXPECTED_CLI_VERSION}" ]]; then
     echo "Error: Release: ${RELEASE_FROM_RAD_VERSION} from rad version does not match the desired release: ${EXPECTED_CLI_VERSION}."

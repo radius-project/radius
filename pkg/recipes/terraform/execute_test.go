@@ -42,6 +42,13 @@ func TestGenerateConfig(t *testing.T) {
 				EnvRecipe: &recipes.EnvironmentDefinition{
 					TemplatePath: "test/module/source",
 				},
+				ResourceRecipe: &recipes.ResourceMetadata{
+					ConnectedResourcesProperties: map[string]map[string]any{
+						"conn1": {
+							"dbName": "db",
+						},
+					},
+				},
 			},
 			err: ErrRecipeNameEmpty.Error(),
 		},
