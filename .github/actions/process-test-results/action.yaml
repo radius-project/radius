@@ -74,9 +74,6 @@ runs:
         check_name: ${{ inputs.test_group_name }}
         files: |
           ${{ inputs.result_directory }}/processed/*.xml
-        report_individual_runs: true
-        # Don't fail if no files are found
-        ignore_runs: true
     - name: "Upload ${{ inputs.test_group_name }} Results"
       uses: actions/upload-artifact@v4
       if: always()
