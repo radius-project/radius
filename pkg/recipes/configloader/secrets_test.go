@@ -102,7 +102,7 @@ func Test_populateSecretData(t *testing.T) {
 			secretStoreID:   "testSecretStore",
 			expectedSecrets: recipes.SecretData{},
 			expectError:     true,
-			expectedErrMsg:  "a secret key was not found in secret store 'testSecretStore'",
+			expectedErrMsg:  "'missingKey' secret key was not found in secret store 'testSecretStore'",
 		},
 		{
 			name:       "fail - missing secret type",
