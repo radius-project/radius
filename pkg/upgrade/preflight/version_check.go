@@ -68,6 +68,11 @@ func (v *VersionCompatibilityCheck) Run(ctx context.Context) (bool, string, erro
 		return false, "Target version 'latest' must be resolved to a specific version before validation", nil
 	}
 
+	// Use the message from validation if provided
+	if message != "" {
+		return true, message, nil
+	}
+
 	return true, fmt.Sprintf("Upgrade from %s to %s is valid", v.currentVersion, v.targetVersion), nil
 }
 
@@ -77,6 +82,11 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 	// "latest" should be resolved to an actual version before calling this check
 	if targetVersion == "latest" {
 		return false, "Target version 'latest' must be resolved to a specific version before validation", nil
+	}
+
+	// Allow "edge" for local development builds
+	if targetVersion == "edge" {
+		return true, "Upgrade to edge version (development build)", nil
 	}
 
 	// Ensure both versions have 'v' prefix for semver parsing
