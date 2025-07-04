@@ -21,6 +21,7 @@
 import re
 import sys
 import xml.etree.ElementTree
+import os
 
 
 def main():
@@ -34,8 +35,28 @@ def main():
     output_file = sys.argv[3]
 
     print(f"Processing {input_file}")
+    
+    # Check if input file exists
+    if not os.path.exists(input_file):
+        print(f"Input file {input_file} does not exist, skipping...")
+        return
+    
+    # Check if input file is empty
+    if os.path.getsize(input_file) == 0:
+        print(f"Input file {input_file} is empty, skipping...")
+        return
+    
     pattern = re.compile(r"\tError Trace:\t(.*):(\d+)")
-    et = xml.etree.ElementTree.parse(input_file)
+    try:
+        et = xml.etree.ElementTree.parse(input_file)
+    except xml.etree.ElementTree.ParseError as e:
+        print(f"Error parsing XML file {input_file}: {e}")
+        print("Skipping malformed XML file...")
+        return
+    except Exception as e:
+        print(f"Unexpected error parsing {input_file}: {e}")
+        print("Skipping file...")
+        return
     for testcase in et.findall('./testsuite/testcase'):
         failure = testcase.find('./failure')
         if failure is None:
@@ -64,8 +85,13 @@ def main():
         failure.attrib["line"] = line
 
     # Write back to file
-    print(f"Writing {output_file}")
-    et.write(output_file)
+    try:
+        print(f"Writing {output_file}")
+        et.write(output_file)
+    except Exception as e:
+        print(f"Error writing output file {output_file}: {e}")
+        print("Skipping file...")
+        return
 
 
 if __name__ == "__main__":
