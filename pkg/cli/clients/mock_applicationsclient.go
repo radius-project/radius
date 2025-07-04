@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	generated "github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	output "github.com/radius-project/radius/pkg/cli/output"
 	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	v20231001preview0 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	gomock "go.uber.org/mock/gomock"
@@ -507,18 +508,18 @@ func (c *MockApplicationsManagementClientDeleteResourceCall) DoAndReturn(f func(
 }
 
 // DeleteResourceGroup mocks base method.
-func (m *MockApplicationsManagementClient) DeleteResourceGroup(arg0 context.Context, arg1, arg2 string) (bool, error) {
+func (m *MockApplicationsManagementClient) DeleteResourceGroup(arg0 context.Context, arg1, arg2 string, arg3 output.Interface) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteResourceGroup", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DeleteResourceGroup", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteResourceGroup indicates an expected call of DeleteResourceGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceGroup(arg0, arg1, arg2 any) *MockApplicationsManagementClientDeleteResourceGroupCall {
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceGroup(arg0, arg1, arg2, arg3 any) *MockApplicationsManagementClientDeleteResourceGroupCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceGroup), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceGroup), arg0, arg1, arg2, arg3)
 	return &MockApplicationsManagementClientDeleteResourceGroupCall{Call: call}
 }
 
@@ -534,13 +535,13 @@ func (c *MockApplicationsManagementClientDeleteResourceGroupCall) Return(arg0 bo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockApplicationsManagementClientDeleteResourceGroupCall) Do(f func(context.Context, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceGroupCall {
+func (c *MockApplicationsManagementClientDeleteResourceGroupCall) Do(f func(context.Context, string, string, output.Interface) (bool, error)) *MockApplicationsManagementClientDeleteResourceGroupCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockApplicationsManagementClientDeleteResourceGroupCall) DoAndReturn(f func(context.Context, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceGroupCall {
+func (c *MockApplicationsManagementClientDeleteResourceGroupCall) DoAndReturn(f func(context.Context, string, string, output.Interface) (bool, error)) *MockApplicationsManagementClientDeleteResourceGroupCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1087,6 +1088,45 @@ func (c *MockApplicationsManagementClientListEnvironmentsAllCall) Do(f func(cont
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockApplicationsManagementClientListEnvironmentsAllCall) DoAndReturn(f func(context.Context) ([]v20231001preview.EnvironmentResource, error)) *MockApplicationsManagementClientListEnvironmentsAllCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListEnvironmentsInResourceGroup mocks base method.
+func (m *MockApplicationsManagementClient) ListEnvironmentsInResourceGroup(arg0 context.Context, arg1 string) ([]v20231001preview.EnvironmentResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEnvironmentsInResourceGroup", arg0, arg1)
+	ret0, _ := ret[0].([]v20231001preview.EnvironmentResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEnvironmentsInResourceGroup indicates an expected call of ListEnvironmentsInResourceGroup.
+func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsInResourceGroup(arg0, arg1 any) *MockApplicationsManagementClientListEnvironmentsInResourceGroupCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnvironmentsInResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnvironmentsInResourceGroup), arg0, arg1)
+	return &MockApplicationsManagementClientListEnvironmentsInResourceGroupCall{Call: call}
+}
+
+// MockApplicationsManagementClientListEnvironmentsInResourceGroupCall wrap *gomock.Call
+type MockApplicationsManagementClientListEnvironmentsInResourceGroupCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientListEnvironmentsInResourceGroupCall) Return(arg0 []v20231001preview.EnvironmentResource, arg1 error) *MockApplicationsManagementClientListEnvironmentsInResourceGroupCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientListEnvironmentsInResourceGroupCall) Do(f func(context.Context, string) ([]v20231001preview.EnvironmentResource, error)) *MockApplicationsManagementClientListEnvironmentsInResourceGroupCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientListEnvironmentsInResourceGroupCall) DoAndReturn(f func(context.Context, string) ([]v20231001preview.EnvironmentResource, error)) *MockApplicationsManagementClientListEnvironmentsInResourceGroupCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

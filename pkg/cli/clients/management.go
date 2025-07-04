@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/cli/output"
 	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -386,6 +387,35 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	return response.StatusCode != 204, nil
 }
 
+// ListEnvironmentsInResourceGroup lists all environments in a resource group.
+func (amc *UCPApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx context.Context, resourceGroup string) ([]corerpv20231001.EnvironmentResource, error) {
+	scope, err := resources.ParseScope(amc.RootScope)
+	if err != nil {
+		return []corerpv20231001.EnvironmentResource{}, err
+	}
+	//"/planes/radius/local/resourceGroups/my-default-rg"
+	groupScope := scope.PlaneScope() + "/" + "resourceGroups" + "/" + resourceGroup
+	client, err := amc.createEnvironmentClient(groupScope)
+	if err != nil {
+		return []corerpv20231001.EnvironmentResource{}, err
+	}
+
+	environments := []corerpv20231001.EnvironmentResource{}
+	pager := client.NewListByScopePager(&corerpv20231001.EnvironmentsClientListByScopeOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return []corerpv20231001.EnvironmentResource{}, err
+		}
+
+		for _, environment := range page.EnvironmentResourceListResult.Value {
+			environments = append(environments, *environment)
+		}
+	}
+
+	return environments, nil
+}
+
 // ListEnvironments lists all environments in the configured scope (assumes configured scope is a resource group).
 func (amc *UCPApplicationsManagementClient) ListEnvironments(ctx context.Context) ([]corerpv20231001.EnvironmentResource, error) {
 	client, err := amc.createEnvironmentClient(amc.RootScope)
@@ -607,12 +637,29 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceGroup(ctx cont
 }
 
 // DeleteResourceGroup deletes a resource group by its name.
-func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error) {
+func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string, output output.Interface) (bool, error) {
 	client, err := amc.createResourceGroupClient()
 	if err != nil {
 		return false, err
 	}
 
+	envs, err := amc.ListEnvironmentsInResourceGroup(ctx, resourceGroupName)
+	if err != nil {
+		return false, err
+	}
+
+	if len(envs) > 0 {
+		output.LogInfo("deleting resources in group %q ...", resourceGroupName)
+	}
+
+	for _, env := range envs {
+		_, err := amc.DeleteEnvironment(ctx, *env.ID)
+		if err != nil {
+			return false, fmt.Errorf("failed to delete environment %s: %w", *env.ID, err)
+		}
+	}
+
+	output.LogInfo("deleting resource group %q ...\n", resourceGroupName)
 	var response *http.Response
 	ctx = amc.captureResponse(ctx, &response)
 
