@@ -20,7 +20,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,6 +32,8 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
@@ -46,6 +50,14 @@ var (
 )
 
 var _ TerraformExecutor = (*executor)(nil)
+
+// getEnvTerraformConfig extracts the terraform configuration from options, defaulting to empty if not configured
+func getEnvTerraformConfig(options Options) datamodel.TerraformConfigProperties {
+	if options.EnvConfig != nil {
+		return options.EnvConfig.RecipeConfig.Terraform
+	}
+	return datamodel.TerraformConfigProperties{}
+}
 
 // NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
 func NewExecutor(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) *executor {
@@ -70,14 +82,23 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+
+	terraformConfig := getEnvTerraformConfig(options)
+
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
 		if err := i.Remove(ctx); err != nil {
-			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
+			logger.Info("Failed to cleanup Terraform installation", "error", err.Error())
 		}
 	}()
+	if err != nil {
+		return nil, err
+	}
+
+	// Set environment variables for the Terraform process.
+	err = e.setEnvironmentVariables(ctx, tf, options)
 	if err != nil {
 		return nil, err
 	}
@@ -86,14 +107,6 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
 	if err != nil {
 		return nil, err
-	}
-
-	if options.EnvConfig != nil {
-		// Set environment variables for the Terraform process.
-		err = e.setEnvironmentVariables(tf, options)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	// Run TF Init and Apply in the working directory
@@ -109,7 +122,8 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, fmt.Errorf("error getting kubernetes client: %w", err)
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).
+		ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
 	} else if !backendExists {
@@ -126,14 +140,23 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+
+	terraformConfig := getEnvTerraformConfig(options)
+
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
 		if err := i.Remove(ctx); err != nil {
-			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
+			logger.Info("Failed to cleanup Terraform installation", "error", err.Error())
 		}
 	}()
+	if err != nil {
+		return err
+	}
+
+	// Set environment variables BEFORE generateConfig to ensure Git has proper TLS settings
+	err = e.setEnvironmentVariables(ctx, tf, options)
 	if err != nil {
 		return err
 	}
@@ -152,11 +175,12 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return fmt.Errorf("error getting kubernetes client: %w", err)
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).
+		ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 	if err != nil {
 		// Continue with the delete flow for all errors other than backend not found.
 		// If it is an intermittent error then the delete flow will fail and should be retried from the client.
-		logger.Info(fmt.Sprintf("Error retrieving Terraform state file backend: %s", err.Error()))
+		logger.Info("Error retrieving Terraform state file backend", "error", err.Error())
 	} else if !backendExists {
 		// Skip deletion if the backend does not exist. Delete can't be performed without Terraform state file.
 		logger.Info("Skipping deletion of recipe resources: Terraform state file backend does not exist.")
@@ -166,6 +190,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
 	err = initAndDestroy(ctx, tf)
 	if err != nil {
+		logger.Error(err, "Failed to initialize and destroy Terraform configuration")
 		return err
 	}
 
@@ -174,6 +199,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		Secrets(backends.RadiusNamespace).
 		Delete(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix, metav1.DeleteOptions{})
 	if err != nil {
+		logger.Error(err, "Failed to delete Kubernetes secret for terraform state", "secretName", backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 		return fmt.Errorf("error deleting kubernetes secret for terraform state: %w", err)
 	}
 
@@ -185,14 +211,24 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+
+	terraformConfig := getEnvTerraformConfig(options)
+
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
 		if err := i.Remove(ctx); err != nil {
-			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
+			logger.Info("Failed to cleanup Terraform installation", "error", err.Error())
 		}
 	}()
+	if err != nil {
+		return nil, err
+	}
+
+	// Set environment variables BEFORE any module operations
+	// Set environment variables for the Terraform process.
+	err = e.setEnvironmentVariables(ctx, tf, options)
 	if err != nil {
 		return nil, err
 	}
@@ -214,47 +250,178 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 // setEnvironmentVariables sets environment variables for the Terraform process by reading values from the recipe configuration.
 // Terraform process will use environment variables as input for the recipe deployment.
-func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options) error {
-	if options.EnvConfig == nil {
-		return nil
-	}
+func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terraform, options Options) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Populate envVars with the environment variables from current process
 	envVars := splitEnvVar(os.Environ())
-	recipeConfig := &options.EnvConfig.RecipeConfig
 	var envVarUpdate bool
 
-	if len(recipeConfig.Env.AdditionalProperties) > 0 {
-		envVarUpdate = true
-		for key, value := range recipeConfig.Env.AdditionalProperties {
-			envVars[key] = value
-		}
-	}
+	// Handle recipe config if present
+	if options.EnvConfig != nil {
+		recipeConfig := &options.EnvConfig.RecipeConfig
 
-	if len(recipeConfig.EnvSecrets) > 0 {
-		for secretName, secretReference := range recipeConfig.EnvSecrets {
-			// Extract secret value from the secrets input
-			if secretData, ok := options.Secrets[secretReference.Source]; ok {
-				if secretValue, ok := secretData.Data[secretReference.Key]; ok {
-					envVarUpdate = true
-					envVars[secretName] = secretValue
+		if len(recipeConfig.Env.AdditionalProperties) > 0 {
+			envVarUpdate = true
+			logger.Info("Setting environment variables from recipe config", "count", len(recipeConfig.Env.AdditionalProperties))
+			maps.Copy(envVars, recipeConfig.Env.AdditionalProperties)
+		}
+
+		if len(recipeConfig.EnvSecrets) > 0 {
+			logger.Info("Extracting secret environment variables", "count", len(recipeConfig.EnvSecrets))
+			for secretName, secretReference := range recipeConfig.EnvSecrets {
+				logger.Info("Processing environment secret", "secretName", secretName, "source", secretReference.Source, "key", secretReference.Key)
+				// Extract secret value from the secrets input
+				if secretData, ok := options.Secrets[secretReference.Source]; ok {
+					if secretValue, ok := secretData.Data[secretReference.Key]; ok {
+						envVarUpdate = true
+						envVars[secretName] = secretValue
+						logger.Info("Environment secret extracted successfully", "secretName", secretName)
+					} else {
+						logger.Error(nil, "Missing secret key in secret store", "source", secretReference.Source, "key", secretReference.Key)
+						return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
+					}
 				} else {
-					return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
+					logger.Error(nil, "Missing secret source", "source", secretReference.Source)
+					return fmt.Errorf("missing secret source: %s", secretReference.Source)
 				}
-			} else {
-				return fmt.Errorf("missing secret source: %s", secretReference.Source)
 			}
 		}
 	}
 
+	// Add TLS environment variables (this can run even if EnvConfig is nil)
+	err := addTLSEnvironmentVariables(ctx, options, envVars)
+	if err != nil {
+		return fmt.Errorf("failed to add TLS environment variables: %w", err)
+	}
+	// If TLS settings were added, mark for update
+	if options.EnvRecipe != nil && options.EnvRecipe.TLS != nil {
+		envVarUpdate = true
+	}
+
+	// Add registry environment variables if provided
+	if len(options.RegistryEnv) > 0 {
+		envVarUpdate = true
+		logger.Info("Adding registry environment variables", "count", len(options.RegistryEnv))
+
+		// Log each registry environment variable for debugging
+		for key, value := range options.RegistryEnv {
+			if strings.Contains(key, "TOKEN") {
+				logger.Info("Adding registry env var", "key", key, "valueLength", len(value))
+			} else if strings.Contains(key, "SSL_CERT_FILE") || strings.Contains(key, "CURL_CA_BUNDLE") {
+				logger.Info("Adding TLS env var", "key", key, "value", value)
+			} else {
+				logger.Info("Adding registry env var", "key", key, "value", value)
+			}
+		}
+
+		maps.Copy(envVars, options.RegistryEnv)
+	}
+
 	// Set the environment variables for the Terraform process
-	if envVarUpdate {
+	if envVarUpdate || len(envVars) > 0 {
+		logger.Info("Setting environment variables for Terraform process",
+			"totalCount", len(envVars),
+			"hasUpdate", envVarUpdate)
+
 		if err := tf.SetEnv(envVars); err != nil {
+			logger.Error(err, "Failed to set environment variables")
 			return fmt.Errorf("failed to set environment variables: %w", err)
+		}
+
+		logger.Info("Successfully set environment variables for Terraform process")
+	}
+
+	return nil
+}
+
+// tlsCertificatePaths holds paths to temporary certificate files
+type tlsCertificatePaths struct {
+	// CAPath is the path to the CA certificate file
+	CAPath string
+}
+
+func addTLSEnvironmentVariables(
+	ctx context.Context,
+	options Options,
+	envVars map[string]string,
+) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Handle TLS configuration if present in the recipe definition
+	if options.EnvRecipe != nil && options.EnvRecipe.TLS != nil {
+		logger.Info("Configuring TLS settings for recipe")
+
+		// Skip verification if requested
+		if options.EnvRecipe.TLS.SkipVerify {
+			logger.Info("TLS verification will be skipped")
+			envVars["GIT_SSL_NO_VERIFY"] = "true"
+		}
+
+		// Only write certificate files if certificates are actually provided
+		if options.EnvRecipe.TLS.CACertificate != nil {
+			// Note: We need the working directory, but don't have access to tf here
+			// This function is called before tf is fully initialized, so we use RootDir
+			workingDir := filepath.Join(options.RootDir, executionSubDir)
+			certPaths, err := writeTLSCertificates(ctx, workingDir, options.EnvRecipe.TLS, options.Secrets)
+			if err != nil {
+				return fmt.Errorf("failed to write TLS certificates: %w", err)
+			}
+
+			// CA certificate configuration
+			if certPaths != nil && certPaths.CAPath != "" {
+				logger.Info("Configuring custom CA certificate for Git operations", "path", certPaths.CAPath)
+				// Git respects GIT_SSL_CAINFO for Git-based module sources
+				envVars["GIT_SSL_CAINFO"] = certPaths.CAPath
+				// Note: We only set GIT_SSL_CAINFO here to avoid conflicts with registry CA certificates
+				// Registry operations use SSL_CERT_FILE which is set separately in registry configuration
+			}
 		}
 	}
 
 	return nil
+}
+
+// writeTLSCertificates extracts certificate data from secrets and writes them to temporary files
+func writeTLSCertificates(ctx context.Context, workingDir string, tls *recipes.TLSConfig, secrets map[string]recipes.SecretData) (*tlsCertificatePaths, error) {
+	if tls == nil {
+		return nil, nil
+	}
+
+	// Return nil if no certificates are configured
+	if tls.CACertificate == nil {
+		return nil, nil
+	}
+
+	logger := ucplog.FromContextOrDiscard(ctx)
+	paths := &tlsCertificatePaths{}
+
+	// Create .tls directory in working directory
+	tlsDir := filepath.Join(workingDir, ".tls")
+	if err := os.MkdirAll(tlsDir, 0700); err != nil {
+		return nil, fmt.Errorf("failed to create TLS directory: %w", err)
+	}
+
+	// Handle CA certificate
+	if tls.CACertificate != nil {
+		logger.Info("Writing CA certificate", "source", tls.CACertificate.Source)
+		secretData, ok := secrets[tls.CACertificate.Source]
+		if !ok {
+			return nil, fmt.Errorf("CA certificate secret not found: %s", tls.CACertificate.Source)
+		}
+
+		caData, ok := secretData.Data[tls.CACertificate.Key]
+		if !ok {
+			return nil, fmt.Errorf("CA certificate key %q not found in secret %s", tls.CACertificate.Key, tls.CACertificate.Source)
+		}
+
+		paths.CAPath = filepath.Join(tlsDir, "ca.crt")
+		if err := os.WriteFile(paths.CAPath, []byte(caData), 0600); err != nil {
+			return nil, fmt.Errorf("failed to write CA certificate: %w", err)
+		}
+	}
+
+	return paths, nil
 }
 
 // splitEnvVar splits a slice of environment variables into a map of keys and values.
@@ -286,7 +453,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	}
 
 	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
-	logger.Info(fmt.Sprintf("Adding provider config for required providers %+v", loadedModule.RequiredProviders))
+	logger.Info("Adding provider config for required providers", "providers", loadedModule.RequiredProviders)
 	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetUCPConfiguredTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig, options.Secrets); err != nil {
 		return "", err
@@ -338,8 +505,6 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		}
 	}
 
-	// Add more configurations here.
-
 	// Ensure that we need to save the configuration after adding providers and recipecontext.
 	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return "", err
@@ -355,6 +520,10 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the
 	// configuration is used as subdirectory name under .terraform/modules directory.
 	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
+	if options.EnvRecipe == nil {
+		return nil, errors.New("environment recipe cannot be nil")
+	}
+
 	localModuleName := options.EnvRecipe.Name
 	if localModuleName == "" {
 		return nil, ErrRecipeNameEmpty
@@ -380,20 +549,39 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Initialize Terraform
-	logger.Info("Initializing Terraform")
+	logger.Info("Initializing Terraform",
+		"workingDir", tf.WorkingDir())
+
+	// Check if required environment variables are set (for debugging)
+	for _, envKey := range []string{"TF_CLI_CONFIG_FILE", "SSL_CERT_FILE", "CURL_CA_BUNDLE"} {
+		if value := os.Getenv(envKey); value != "" {
+			logger.Info("Environment variable check", "key", envKey, "value", value)
+		} else {
+			logger.Info("Environment variable not set in process", "key", envKey)
+		}
+	}
+
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
+		logger.Error(err, "Terraform init failed during apply flow")
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
-		return nil, fmt.Errorf("terraform init failure: %w", err)
+		return nil, fmt.Errorf("terraform init failure during apply flow: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 		[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState)})
 
+	// Set apply options to handle locks
+	applyOptions := []tfexec.ApplyOption{
+		tfexec.Lock(true),
+		tfexec.LockTimeout("60s"),
+	}
+
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
-	if err := tf.Apply(ctx); err != nil {
+	if err := tf.Apply(ctx, applyOptions...); err != nil {
+		logger.Error(err, "Terraform apply failed")
 		return nil, fmt.Errorf("terraform apply failure: %w", err)
 	}
 
@@ -410,16 +598,18 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 	logger.Info("Initializing Terraform")
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
+		logger.Error(err, "Terraform init failed during destroy flow")
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
-		return fmt.Errorf("terraform init failure: %w", err)
+		return fmt.Errorf("terraform init failure during destroy flow: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
 	// Destroy Terraform configuration
 	logger.Info("Running Terraform destroy")
 	if err := tf.Destroy(ctx); err != nil {
+		logger.Error(err, "Terraform destroy failed")
 		return fmt.Errorf("terraform destroy failure: %w", err)
 	}
 

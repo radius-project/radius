@@ -46,6 +46,7 @@ type RuntimeConfiguration struct {
 type KubernetesRuntime struct {
 	// Namespace is set to the application namespace when the portable resource is application-scoped, and set to the environment namespace when it is environment scoped
 	Namespace string `json:"namespace,omitempty"`
+
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
 }
@@ -59,30 +60,61 @@ type AzureContainerInstancesRuntime struct {
 type EnvironmentDefinition struct {
 	// Name represents the name of the recipe within the environment
 	Name string
+
 	// Driver represents the kind of infrastructure language used to define recipe.
 	Driver string
+
 	// ResourceType represents the type of the portable resource this recipe can be consumed by.
 	ResourceType string
+
 	// Parameters represents key/value pairs to pass into the recipe template for every resource using this recipe. Specified during recipe registration to environment. Can be overridden by the radius resource consuming this recipe.
 	Parameters map[string]any
+
 	// TemplatePath represents path to the template provided by the recipe.
 	TemplatePath string
+
 	// TemplateVersion represents the version of the terraform module provided by the recipe.
 	TemplateVersion string
+
 	// Allows insecure connections to registry without SSL check.
 	PlainHTTP bool
+
+	// TLS represents TLS configuration for recipe downloads over HTTPS.
+	TLS *TLSConfig
+}
+
+// TLSConfig represents TLS configuration options for HTTPS connections.
+type TLSConfig struct {
+	// CACertificate represents a reference to a CA certificate secret.
+	CACertificate *SecretReference `json:"caCertificate,omitempty"`
+
+	// SkipVerify allows insecure connections (skip TLS verification).
+	SkipVerify bool `json:"skipVerify,omitempty"`
+}
+
+// SecretReference represents a reference to a secret.
+type SecretReference struct {
+	// Source is the source of the secret.
+	Source string `json:"source"`
+
+	// Key is the key in the secret.
+	Key string `json:"key"`
 }
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
 type ResourceMetadata struct {
 	// Name represents the name of the recipe within the environment
 	Name string
+
 	// ApplicationID represents fully qualified resource ID for the application that the portable resource is consumed by
 	ApplicationID string
+
 	// EnvironmentID represents fully qualified resource ID for the environment that the portable resource is linked to
 	EnvironmentID string
+
 	// ResourceID represents fully qualified resource ID for the resource the recipe is deploying
 	ResourceID string
+
 	// Properties represents the properties of the resource that the recipe is deploying
 	Properties map[string]any
 	// ConnectedResourcesProperties represents the properties of the connected resources that the recipe is deploying.
@@ -127,8 +159,8 @@ type SecretData struct {
 	Data map[string]string `json:"data"`
 }
 
-// PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.
-// outputs map is the value of "result" output from the recipe deployment response.
+// PrepareRecipeResponse populates the recipe output from the recipe deployment output stored in the "result" object.
+// resultValue is the value of the "result" output from the recipe deployment response.
 func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error {
 	b, err := json.Marshal(&resultValue)
 	if err != nil {

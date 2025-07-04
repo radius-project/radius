@@ -14,17 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver
+package terraform
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // getGitURLWithSecrets returns the git URL with secrets information added.
@@ -68,6 +72,8 @@ func getURLConfigKeyValue(secrets map[string]string, templatePath string) (strin
 // and adds them to the Git config by running
 // git config --file .git/config url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
 func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, templatePath string) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+
 	if !strings.HasPrefix(templatePath, "git::") || secrets == nil || len(secrets) == 0 {
 		return nil
 	}
@@ -75,7 +81,7 @@ func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, t
 	// Initialize a new Git repository in the terraform working directory.
 	_, err := git.PlainInit(workingDirectory, false)
 	if err != nil {
-		return fmt.Errorf("falied to initialize git in the working directory:%w", err)
+		return fmt.Errorf("failed to initialize git in the working directory:%w", err)
 	}
 
 	err = setGitConfigForDir(workingDirectory)
@@ -83,6 +89,10 @@ func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, t
 		return err
 	}
 
+	logger.Info("Configuring PAT/username authentication for Git",
+		"templatePath", templatePath,
+		"hasUsername", secrets["username"] != "")
+	// Handle PAT/username authentication
 	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
 	if err != nil {
 		return err
@@ -91,8 +101,10 @@ func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, t
 	cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", urlConfigKey, urlConfigValue)
 	_, err = cmd.Output()
 	if err != nil {
+		logger.Error(err, "Failed to add git config")
 		return errors.New("failed to add git config")
 	}
+	logger.Info("Git authentication configured successfully")
 
 	return nil
 }
@@ -129,18 +141,18 @@ func unsetGitConfigForDir(workingDirectory string, secrets map[string]string, te
 }
 
 // GetGitURL returns git url from generic git module source.
-// git::https://exmaple.com/project/module -> https://exmaple.com/project/module
+// git::https://example.com/project/module -> https://exmaple.com/project/module
 func GetGitURL(templatePath string) (*url.URL, error) {
 	paths := strings.Split(templatePath, "git::")
-	gitUrl := paths[len(paths)-1]
+	gitURL := paths[len(paths)-1]
 
-	if !(len(strings.Split(gitUrl, "://")) > 1) {
-		gitUrl = fmt.Sprintf("https://%s", gitUrl)
+	if len(strings.Split(gitURL, "://")) <= 1 {
+		gitURL = fmt.Sprintf("https://%s", gitURL)
 	}
 
-	url, err := url.Parse(gitUrl)
+	url, err := url.Parse(gitURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse git url %s : %w", gitUrl, err)
+		return nil, fmt.Errorf("failed to parse git url %s : %w", gitURL, err)
 	}
 
 	return url, nil
@@ -149,14 +161,19 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 // addSecretsToGitConfigIfApplicable adds secrets to the Git configuration file if applicable.
 // It is a wrapper function to addSecretsToGitConfig()
 func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[string]recipes.SecretData, requestDirPath string, templatePath string) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+
 	if secretStoreID == "" || secretData == nil {
 		return nil
 	}
 
 	secrets, ok := secretData[secretStoreID]
 	if !ok {
+		logger.Error(nil, "Secrets not found for secret store", "secretStoreID", secretStoreID)
 		return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
 	}
+
+	logger.Info("Adding Git authentication configuration", "secretStoreID", secretStoreID, "templatePath", templatePath)
 
 	err := addSecretsToGitConfig(requestDirPath, secrets.Data, templatePath)
 	if err != nil {
@@ -181,6 +198,44 @@ func unsetGitConfigForDirIfApplicable(secretStoreID string, secretData map[strin
 	err := unsetGitConfigForDir(requestDirPath, secrets.Data, templatePath)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// configureSSHAuth sets up SSH authentication for Git operations
+func configureSSHAuth(workingDirectory string, privateKey string, secrets map[string]string) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+
+	// Create SSH directory
+	sshDir := filepath.Join(workingDirectory, ".ssh")
+	if err := os.MkdirAll(sshDir, 0700); err != nil {
+		return fmt.Errorf("failed to create SSH directory: %w", err)
+	}
+
+	// Write private key to file
+	keyPath := filepath.Join(sshDir, "id_rsa")
+	logger.Info("Writing SSH private key", "keyPath", keyPath)
+	if err := os.WriteFile(keyPath, []byte(privateKey), 0600); err != nil {
+		logger.Error(err, "Failed to write SSH private key")
+		return fmt.Errorf("failed to write SSH private key: %w", err)
+	}
+
+	// Configure Git to use SSH command with custom key
+	sshCommand := fmt.Sprintf("ssh -i %s -o IdentitiesOnly=yes", keyPath)
+
+	// Handle StrictHostKeyChecking based on secrets
+	strictHostKey := "yes"
+	if strict, ok := secrets["strictHostKeyChecking"]; ok && strict == "false" {
+		strictHostKey = "no"
+		logger.Info("SSH strict host key checking disabled")
+	}
+	sshCommand += fmt.Sprintf(" -o StrictHostKeyChecking=%s", strictHostKey)
+
+	// Set GIT_SSH_COMMAND for the git config
+	cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", "core.sshCommand", sshCommand)
+	if _, err := cmd.Output(); err != nil {
+		return fmt.Errorf("failed to set SSH command in git config: %w", err)
 	}
 
 	return nil

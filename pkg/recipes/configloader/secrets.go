@@ -1,9 +1,12 @@
 /*
 Copyright 2023 The Radius Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +19,7 @@ package configloader
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -110,10 +114,24 @@ func populateSecretData(secretStoreID string, secretKeysFilter []string, secrets
 	for _, secretKey := range secretKeysFilter {
 		secretDataValue, ok := secrets.Data[secretKey]
 		if !ok {
+			// Special handling for Git authentication: username is optional
+			// If pat exists but username doesn't, that's acceptable for Git auth
+			if secretKey == "username" && containsString(secretKeysFilter, "pat") {
+				// Check if pat exists in the secret store
+				if _, patExists := secrets.Data["pat"]; patExists {
+					// Skip missing username - it's optional for Git authentication
+					continue
+				}
+			}
 			return recipes.SecretData{}, fmt.Errorf("a secret key was not found in secret store '%s'", secretStoreID)
 		}
 		secretData.Data[secretKey] = *secretDataValue.Value
 	}
 
 	return secretData, nil
+}
+
+// containsString checks if a string slice contains a specific string
+func containsString(slice []string, str string) bool {
+	return slices.Contains(slice, str)
 }

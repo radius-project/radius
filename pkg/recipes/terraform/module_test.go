@@ -17,6 +17,7 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
@@ -137,7 +138,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := inspectModule(tc.workingDir, tc.recipe)
+			result, err := inspectModule(context.Background(), tc.workingDir, tc.recipe)
 			if tc.err != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.err)

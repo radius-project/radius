@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver
+package terraform
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -48,10 +49,6 @@ func TestAddConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			tmpdir := t.TempDir()
-			_, recipeMetadata, _ := buildTestInputs()
-			if tt.desc == "invalid resource id" {
-				recipeMetadata.EnvironmentID = "//planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env"
-			}
 			err := addSecretsToGitConfig(tmpdir, getSecretList(), tt.templatePath)
 			if tt.expectedErr == nil {
 				require.NoError(t, err)
@@ -136,8 +133,88 @@ func getSecretList() map[string]string {
 	return secrets
 }
 
-func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
+func TestConfigureSSHAuth(t *testing.T) {
+	tests := []struct {
+		name                  string
+		privateKey            string
+		strictHostKeyChecking string
+		expectError           bool
+		expectSSHCommand      string
+	}{
+		{
+			name:                  "SSH auth with strict host key checking enabled",
+			privateKey:            "-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----",
+			strictHostKeyChecking: "true",
+			expectError:           false,
+			expectSSHCommand:      "StrictHostKeyChecking=yes",
+		},
+		{
+			name:                  "SSH auth with strict host key checking disabled",
+			privateKey:            "-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----",
+			strictHostKeyChecking: "false",
+			expectError:           false,
+			expectSSHCommand:      "StrictHostKeyChecking=no",
+		},
+		{
+			name:                  "SSH auth with default strict host key checking",
+			privateKey:            "-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----",
+			strictHostKeyChecking: "",
+			expectError:           false,
+			expectSSHCommand:      "StrictHostKeyChecking=yes",
+		},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpdir := t.TempDir()
+
+			secrets := map[string]string{
+				"privateKey": tt.privateKey,
+			}
+			if tt.strictHostKeyChecking != "" {
+				secrets["strictHostKeyChecking"] = tt.strictHostKeyChecking
+			}
+
+			// Initialize git repository first
+			err := os.MkdirAll(filepath.Join(tmpdir, ".git"), 0755)
+			require.NoError(t, err)
+
+			// Create an empty git config file
+			err = os.WriteFile(filepath.Join(tmpdir, ".git", "config"), []byte(""), 0644)
+			require.NoError(t, err)
+
+			err = configureSSHAuth(tmpdir, tt.privateKey, secrets)
+
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+
+				// Verify SSH key file was created
+				sshKeyPath := filepath.Join(tmpdir, ".ssh", "id_rsa")
+				require.FileExists(t, sshKeyPath)
+
+				// Verify key content
+				keyContent, err := os.ReadFile(sshKeyPath)
+				require.NoError(t, err)
+				require.Equal(t, tt.privateKey, string(keyContent))
+
+				// Verify file permissions
+				info, err := os.Stat(sshKeyPath)
+				require.NoError(t, err)
+				require.Equal(t, os.FileMode(0600), info.Mode())
+
+				// Verify git config contains SSH command
+				gitConfigPath := filepath.Join(tmpdir, ".git", "config")
+				gitConfigContent, err := os.ReadFile(gitConfigPath)
+				require.NoError(t, err)
+				require.Contains(t, string(gitConfigContent), tt.expectSSHCommand)
+			}
+		})
+	}
+}
+
+func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
 	tmpGitConfigFile := filepath.Join(tmpdir, ".gitconfig")
 
 	err := os.WriteFile(
@@ -149,11 +226,16 @@ func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
 	if err != nil {
 		return func() {}, err
 	}
+
 	prevGitConfigEnv := os.Getenv("HOME")
-	os.Setenv("HOME", tmpdir)
+	err = os.Setenv("HOME", tmpdir)
+	if err != nil {
+		return func() {}, fmt.Errorf("failed to set HOME environment variable: %w", err)
+	}
 
 	return func() {
-		os.Setenv("HOME", prevGitConfigEnv)
+		// Best effort restoration - errors here are non-critical
+		_ = os.Setenv("HOME", prevGitConfigEnv)
 	}, nil
 }
 

@@ -46,6 +46,7 @@ const (
 	summaryEnvironmentCreateAWSCloudProviderFmt   = summaryIndent + "AWS: account %s and region %s\n"
 	summaryEnvironmentCreateAzureCloudProviderFmt = summaryIndent + "Azure: subscription %s and resource group %s\n"
 	summaryEnvironmentCreateRecipePackyFmt        = summaryIndent + "Recipe pack: %s\n"
+	summaryEnvironmentRecipeRegistryFmt           = summaryIndent + "Recipe registry: %s\n"
 	summaryEnvironmentExistingHeadingFmt          = "Use existing environment %s\n"
 	summaryApplicationHeadingIcon                 = "🚧 "
 	summaryApplicationScaffoldHeadingFmt          = "Scaffold application %s\n"
@@ -246,6 +247,10 @@ func (m *summaryModel) View() string {
 
 		if options.Recipes.DevRecipes {
 			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
+
+			if options.Recipes.RecipeRegistry != "" {
+				message.WriteString(fmt.Sprintf(summaryEnvironmentRecipeRegistryFmt, highlight(options.Recipes.RecipeRegistry)))
+			}
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
@@ -389,6 +394,10 @@ func (m *progressModel) View() string {
 
 		if options.Recipes.DevRecipes {
 			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
+
+			if options.Recipes.RecipeRegistry != "" {
+				message.WriteString(fmt.Sprintf(summaryEnvironmentRecipeRegistryFmt, highlight(options.Recipes.RecipeRegistry)))
+			}
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))

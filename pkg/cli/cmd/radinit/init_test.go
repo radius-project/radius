@@ -817,7 +817,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			devRecipeClient := NewMockDevRecipeClient(ctrl)
 			if !tc.full {
 				devRecipeClient.EXPECT().
-					GetDevRecipes(context.Background()).
+					GetDevRecipes(context.Background(), gomock.Any()).
 					Return(tc.recipes, nil).
 					Times(1)
 			}

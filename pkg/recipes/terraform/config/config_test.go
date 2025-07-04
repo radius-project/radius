@@ -576,6 +576,43 @@ func Test_AddProviders(t *testing.T) {
 			requiredProviders:              nil,
 			expectedConfigFile:             "testdata/providers-empty.tf.json",
 		},
+		{
+			desc: "provider mappings applied",
+			expectedUCPConfiguredProviders: []map[string]any{
+				{
+					"region": "test-region",
+				},
+			},
+			Err: nil,
+			envConfig: recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "/planes/aws/aws/accounts/0000/regions/test-region",
+					},
+				},
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Registry: &datamodel.TerraformRegistryConfig{
+							ProviderMappings: map[string]string{
+								"hashicorp/postgresql": "cyrilgdn/postgresql",
+							},
+						},
+					},
+				},
+			},
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AWSProviderName: {
+					Source:  "hashicorp/aws",
+					Version: ">= 3.0",
+				},
+				"postgresql": {
+					Source:  "hashicorp/postgresql",
+					Version: ">= 1.0",
+				},
+			},
+			useUCPProviderConfig: true,
+			expectedConfigFile:   "testdata/providers-with-mappings.tf.json",
+		},
 	}
 
 	for _, tc := range configTests {

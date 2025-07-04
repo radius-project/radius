@@ -167,6 +167,18 @@ func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, reci
 	switch c := found.(type) {
 	case *v20231001preview.TerraformRecipeProperties:
 		definition.TemplateVersion = *c.TemplateVersion
+		// Extract TLS configuration
+		if c.TLS != nil {
+			definition.TLS = &recipes.TLSConfig{
+				SkipVerify: c.TLS.SkipVerify != nil && *c.TLS.SkipVerify,
+			}
+			if c.TLS.CaCertificate != nil {
+				definition.TLS.CACertificate = &recipes.SecretReference{
+					Source: *c.TLS.CaCertificate.Source,
+					Key:    *c.TLS.CaCertificate.Key,
+				}
+			}
+		}
 	case *v20231001preview.BicepRecipeProperties:
 		if c.PlainHTTP != nil {
 			definition.PlainHTTP = *c.PlainHTTP

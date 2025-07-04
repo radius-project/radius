@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver
+package terraform
 
 import (
 	"testing"
@@ -56,6 +56,27 @@ func Test_GetPrivateGitRepoSecretStoreID(t *testing.T) {
 		{
 			desc:                "empty config",
 			templatePath:        "git::https://dev.azure.com/project/module",
+			expectedSecretStore: "",
+			expectedErr:         false,
+		},
+		{
+			desc: "hostname not in PAT config",
+			envConfig: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{
+									"github.com": {
+										Secret: "github-secret",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			templatePath:        "git::https://gitlab.com/project/module",
 			expectedSecretStore: "",
 			expectedErr:         false,
 		},

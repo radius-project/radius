@@ -68,7 +68,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 
 	var recipes map[string]map[string]corerp.RecipePropertiesClassification
 	if r.Options.Recipes.DevRecipes {
-		recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
+		recipes, err = r.DevRecipeClient.GetDevRecipes(ctx, r.RecipeRegistry)
 		if err != nil {
 			return err
 		}

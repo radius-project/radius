@@ -228,10 +228,10 @@ func (b *BaseResource) GetBaseResource() *BaseResource {
 
 // ProvisioningState gets the provisioning state.
 func (b *BaseResource) ProvisioningState() ProvisioningState {
-	return b.InternalMetadata.AsyncProvisioningState
+	return b.AsyncProvisioningState
 }
 
 // SetProvisioningState sets the privisioning state of the resource.
 func (b *BaseResource) SetProvisioningState(state ProvisioningState) {
-	b.InternalMetadata.AsyncProvisioningState = state
+	b.AsyncProvisioningState = state
 }

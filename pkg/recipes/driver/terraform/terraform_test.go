@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver
+package terraform
 
 import (
 	"context"
@@ -29,21 +29,19 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	gomock "go.uber.org/mock/gomock"
-
+	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func setup(t *testing.T) (terraform.MockTerraformExecutor, terraformDriver) {
 	ctrl := gomock.NewController(t)
 	tfExecutor := terraform.NewMockTerraformExecutor(ctrl)
-
-	driver := terraformDriver{tfExecutor, TerraformOptions{Path: t.TempDir()}}
-
-	return *tfExecutor, driver
+	tfDriver := terraformDriver{tfExecutor, TerraformOptions{Path: t.TempDir()}}
+	return *tfExecutor, tfDriver
 }
 
 func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes.EnvironmentDefinition) {
@@ -93,7 +91,7 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 	}
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
-	tfExecutor, driver := setup(t)
+	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
 	expectedOutput := &recipes.RecipeOutput{
@@ -127,8 +125,8 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
-	recipeOutput, err := driver.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
+	recipeOutput, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
 			Definition:    envRecipe,
@@ -136,7 +134,7 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
-	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
@@ -146,7 +144,7 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	}
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
-	tfExecutor, driver := setup(t)
+	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 	recipeError := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
@@ -157,8 +155,8 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	}
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
 
-	_, err := driver.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
+	_, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
 			Definition:    envRecipe,
@@ -166,7 +164,7 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
-	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
@@ -176,7 +174,7 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	}
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
-	tfExecutor, driver := setup(t)
+	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
 	expectedTFState := &tfjson.State{
@@ -203,8 +201,8 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	}
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
-	_, err := driver.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
+	_, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
 			Definition:    envRecipe,
@@ -212,12 +210,12 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
-	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Execute_EmptyPath(t *testing.T) {
-	_, driver := setup(t)
-	driver.options.Path = ""
+	_, tfDriver := setup(t)
+	tfDriver.options.Path = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 	expErr := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
@@ -227,8 +225,8 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 		DeploymentStatus: "setupError",
 	}
 
-	_, err := driver.Execute(testcontext.New(t), ExecuteOptions{
-		BaseOptions: BaseOptions{
+	_, err := tfDriver.Execute(testcontext.New(t), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
 			Definition:    envRecipe,
@@ -242,7 +240,7 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
 
-	tfExecutor, driver := setup(t)
+	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 	expectedOutput := &recipes.RecipeOutput{
 		Values: map[string]any{
@@ -278,8 +276,8 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 		Times(1).
 		Return(expectedTFState, nil)
 
-	recipeOutput, err := driver.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
+	recipeOutput, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
 			Definition:    envRecipe,
@@ -293,12 +291,12 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 	ctx := testcontext.New(t)
 	// Do not add ARMRequestContext to the context
 
-	_, driver := setup(t)
+	_, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
 	require.Panics(t, func() {
-		_, _ = driver.Execute(ctx, ExecuteOptions{
-			BaseOptions: BaseOptions{
+		_, _ = tfDriver.Execute(ctx, driver.ExecuteOptions{
+			BaseOptions: driver.BaseOptions{
 				Configuration: envConfig,
 				Recipe:        recipeMetadata,
 				Definition:    envRecipe,
@@ -314,7 +312,7 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	}
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
-	tfExecutor, driver := setup(t)
+	tfExecutor, tfDriver := setup(t)
 	_, _, envRecipe := buildTestInputs()
 
 	expectedOutput := map[string]any{
@@ -324,18 +322,18 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	}
 	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
 
-	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+	recipeData, err := tfDriver.GetRecipeMetadata(ctx, driver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: envRecipe,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeData)
-	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
-	_, driver := setup(t)
-	driver.options.Path = ""
+	_, tfDriver := setup(t)
+	tfDriver.options.Path = ""
 	_, _, envRecipe := buildTestInputs()
 
 	expErr := recipes.RecipeError{
@@ -345,7 +343,7 @@ func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 		},
 	}
 
-	_, err := driver.GetRecipeMetadata(testcontext.New(t), BaseOptions{
+	_, err := tfDriver.GetRecipeMetadata(testcontext.New(t), driver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: envRecipe,
 	})
@@ -360,7 +358,7 @@ func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
 	}
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
-	tfExecutor, driver := setup(t)
+	tfExecutor, tfDriver := setup(t)
 	_, _, envRecipe := buildTestInputs()
 
 	expErr := recipes.RecipeError{
@@ -371,13 +369,13 @@ func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
 	}
 	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).Return(nil, errors.New("Failed to download module"))
 
-	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+	_, err := tfDriver.GetRecipeMetadata(ctx, driver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, &expErr, err)
-	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {
@@ -387,13 +385,13 @@ func Test_Terraform_Delete_Success(t *testing.T) {
 	}
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
-	tfExecutor, driver := setup(t)
+	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
 	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).Return(nil)
 
-	err := driver.Delete(ctx, DeleteOptions{
-		BaseOptions: BaseOptions{
+	err := tfDriver.Delete(ctx, driver.DeleteOptions{
+		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
 			Definition:    envRecipe,
@@ -401,12 +399,12 @@ func Test_Terraform_Delete_Success(t *testing.T) {
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.NoError(t, err)
-	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Delete_EmptyPath(t *testing.T) {
-	_, driver := setup(t)
-	driver.options.Path = ""
+	_, tfDriver := setup(t)
+	tfDriver.options.Path = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
 	expErr := recipes.RecipeError{
@@ -416,8 +414,8 @@ func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 		},
 	}
 
-	err := driver.Delete(testcontext.New(t), DeleteOptions{
-		BaseOptions: BaseOptions{
+	err := tfDriver.Delete(testcontext.New(t), driver.DeleteOptions{
+		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
 			Definition:    envRecipe,
@@ -435,7 +433,7 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 	}
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
-	tfExecutor, driver := setup(t)
+	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
 	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).
@@ -448,8 +446,8 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 		},
 	}
 
-	err := driver.Delete(ctx, DeleteOptions{
-		BaseOptions: BaseOptions{
+	err := tfDriver.Delete(ctx, driver.DeleteOptions{
+		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
 			Definition:    envRecipe,
@@ -458,7 +456,7 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, &expErr, err)
-	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
@@ -760,8 +758,8 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 		},
 	}
 
-	opts := ExecuteOptions{
-		BaseOptions: BaseOptions{
+	opts := driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
 			Definition: recipes.EnvironmentDefinition{
 				Name:            "mongo-azure",
 				Driver:          recipes.TemplateKindTerraform,
@@ -775,7 +773,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.Definition, tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})

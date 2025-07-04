@@ -28,7 +28,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
     application: app.id
     tls: {
       certificateFrom: certificate.id
-    } 
+    }
     routes: [
       {
         path: '/'

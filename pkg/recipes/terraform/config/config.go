@@ -130,7 +130,39 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 	if cfg.Terraform == nil {
 		cfg.Terraform = &TerraformDefinition{}
 	}
-	cfg.Terraform.RequiredProviders = requiredProviders
+
+	// Apply provider mappings if configured
+	if envConfig != nil && envConfig.RecipeConfig.Terraform.Registry != nil &&
+		len(envConfig.RecipeConfig.Terraform.Registry.ProviderMappings) > 0 {
+		logger.Info("Applying provider mappings", "mappings", envConfig.RecipeConfig.Terraform.Registry.ProviderMappings)
+
+		// Create a copy of requiredProviders with mappings applied
+		mappedProviders := make(map[string]*RequiredProviderInfo)
+		for providerName, providerInfo := range requiredProviders {
+			// Check if there's a mapping for this provider's source
+			if providerInfo.Source != "" {
+				if mappedSource, exists := envConfig.RecipeConfig.Terraform.Registry.ProviderMappings[providerInfo.Source]; exists {
+					logger.Info("Mapping provider source", "from", providerInfo.Source, "to", mappedSource)
+					// Create a new provider info with the mapped source
+					mappedInfo := &RequiredProviderInfo{
+						Source:               mappedSource,
+						Version:              providerInfo.Version,
+						ConfigurationAliases: providerInfo.ConfigurationAliases,
+					}
+					mappedProviders[providerName] = mappedInfo
+				} else {
+					// No mapping, use original
+					mappedProviders[providerName] = providerInfo
+				}
+			} else {
+				// No source specified, use original
+				mappedProviders[providerName] = providerInfo
+			}
+		}
+		cfg.Terraform.RequiredProviders = mappedProviders
+	} else {
+		cfg.Terraform.RequiredProviders = requiredProviders
+	}
 
 	return nil
 }
@@ -186,14 +218,20 @@ func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders ma
 // AddRecipeContext adds RecipeContext to TerraformConfig module parameters if recipeCtx is not nil.
 // Save() must be called after adding recipe context to the module config.
 func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName string, recipeCtx *recipecontext.Context) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	mod, ok := cfg.Module[moduleName]
 	if !ok {
 		// must not happen because module key is set when the config is initialized in New().
+		logger.Error(nil, "Module not found in terraform config", "module", moduleName)
 		return fmt.Errorf("module %q not found in the initialized terraform config", moduleName)
 	}
 
 	if recipeCtx != nil {
+		logger.Info("Adding recipe context to module", "module", moduleName)
 		mod.SetParams(RecipeParams{recipecontext.RecipeContextParamKey: recipeCtx})
+	} else {
+		logger.Info("No recipe context provided, skipping context addition", "module", moduleName)
 	}
 
 	return nil
@@ -278,12 +316,15 @@ func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.Resource
 	return backendConfig, nil
 }
 
-// Add outputs to the config file referencing module outputs to populate expected Radius resource outputs.
+// AddOutputs to the config file referencing module outputs to populate expected Radius resource outputs.
 // Outputs of modules are accessible through this format: module.<MODULE NAME>.<OUTPUT NAME>
 // https://developer.hashicorp.com/terraform/language/modules/syntax#accessing-module-output-values
 // This function only updates config in memory, Save() must be called to persist the updated config.
 func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
+	logger := ucplog.FromContextOrDiscard(context.Background())
+
 	if localModuleName == "" {
+		logger.Error(nil, "Module name cannot be empty")
 		return errors.New("module name cannot be empty")
 	}
 

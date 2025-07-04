@@ -133,7 +133,7 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Location = to.Ptr(env.Location)
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
-		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(env.AsyncProvisioningState),
 	}
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
@@ -185,8 +185,11 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeConfigProperties {
 	if config != nil {
 		recipeConfig := datamodel.RecipeConfigProperties{}
+
 		if config.Terraform != nil {
 			recipeConfig.Terraform = datamodel.TerraformConfigProperties{}
+
+			// Terraform authentication
 			if config.Terraform.Authentication != nil {
 				recipeConfig.Terraform.Authentication = datamodel.AuthConfig{}
 				gitConfig := config.Terraform.Authentication.Git
@@ -200,6 +203,93 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 							}
 						}
 						recipeConfig.Terraform.Authentication.Git.PAT = p
+					}
+				}
+			}
+
+			if config.Terraform.Registry != nil {
+				registryConfig := &datamodel.TerraformRegistryConfig{
+					Mirror: to.String(config.Terraform.Registry.Mirror),
+				}
+
+				if config.Terraform.Registry.ProviderMappings != nil {
+					providerMappings := make(map[string]string)
+					for key, value := range config.Terraform.Registry.ProviderMappings {
+						providerMappings[key] = to.String(value)
+					}
+					registryConfig.ProviderMappings = providerMappings
+				}
+
+				// Handle TLS configuration
+				if config.Terraform.Registry.TLS != nil {
+					registryConfig.TLS = toTLSConfigDatamodel(config.Terraform.Registry.TLS)
+				}
+
+				// Handle authentication only if provided
+				if config.Terraform.Registry.Authentication != nil {
+					auth := config.Terraform.Registry.Authentication
+					registryConfig.Authentication = datamodel.RegistryAuthConfig{}
+
+					// Handle token auth if provided
+					if auth.Token != nil {
+						registryConfig.Authentication.Token = &datamodel.TokenConfig{
+							Secret: to.String(auth.Token.Secret),
+						}
+					}
+
+					// Handle additional hosts if provided
+					if auth.AdditionalHosts != nil {
+						additionalHosts := []string{}
+						for _, host := range auth.AdditionalHosts {
+							additionalHosts = append(additionalHosts, to.String(host))
+						}
+						registryConfig.Authentication.AdditionalHosts = additionalHosts
+					}
+				}
+
+				recipeConfig.Terraform.Registry = registryConfig
+			}
+
+			if config.Terraform.Version != nil {
+				recipeConfig.Terraform.Version = &datamodel.TerraformVersionConfig{
+					Version:            to.String(config.Terraform.Version.Version),
+					ReleasesArchiveURL: to.String(config.Terraform.Version.ReleasesArchiveURL),
+					ReleasesAPIBaseURL: to.String(config.Terraform.Version.ReleasesAPIBaseURL),
+				}
+
+				// Convert TLS configuration if present
+				if config.Terraform.Version.TLS != nil {
+					recipeConfig.Terraform.Version.TLS = &datamodel.TLSConfig{
+						SkipVerify: to.Bool(config.Terraform.Version.TLS.SkipVerify),
+					}
+
+					// Convert CA certificate reference if present
+					if config.Terraform.Version.TLS.CaCertificate != nil {
+						recipeConfig.Terraform.Version.TLS.CACertificate = &datamodel.SecretReference{
+							Source: to.String(config.Terraform.Version.TLS.CaCertificate.Source),
+							Key:    to.String(config.Terraform.Version.TLS.CaCertificate.Key),
+						}
+					}
+				}
+
+				// Convert authentication configuration if present
+				if config.Terraform.Version.Authentication != nil {
+					recipeConfig.Terraform.Version.Authentication = &datamodel.RegistryAuthConfig{}
+
+					// Convert token auth
+					if config.Terraform.Version.Authentication.Token != nil {
+						recipeConfig.Terraform.Version.Authentication.Token = &datamodel.TokenConfig{
+							Secret: to.String(config.Terraform.Version.Authentication.Token.Secret),
+						}
+					}
+
+					// Handle additional hosts if provided
+					if config.Terraform.Version.Authentication.AdditionalHosts != nil {
+						additionalHosts := []string{}
+						for _, host := range config.Terraform.Version.Authentication.AdditionalHosts {
+							additionalHosts = append(additionalHosts, to.String(host))
+						}
+						recipeConfig.Terraform.Version.Authentication.AdditionalHosts = additionalHosts
 					}
 				}
 			}
@@ -234,6 +324,7 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 		recipeConfig := &RecipeConfigProperties{}
 		if !reflect.DeepEqual(config.Terraform, datamodel.TerraformConfigProperties{}) {
 			recipeConfig.Terraform = &TerraformConfigProperties{}
+
 			if !reflect.DeepEqual(config.Terraform.Authentication, datamodel.AuthConfig{}) {
 				recipeConfig.Terraform.Authentication = &AuthConfig{}
 				if !reflect.DeepEqual(config.Terraform.Authentication.Git, datamodel.GitAuthConfig{}) {
@@ -245,6 +336,95 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 								Secret: to.Ptr(v.Secret),
 							}
 						}
+					}
+				}
+			}
+
+			if config.Terraform.Registry != nil {
+				registryConfig := &TerraformRegistryConfig{
+					Mirror: to.Ptr(config.Terraform.Registry.Mirror),
+				}
+
+				// Only set ProviderMappings if it exists and is not empty
+				if len(config.Terraform.Registry.ProviderMappings) > 0 {
+					providerMappings := make(map[string]*string)
+					for key, value := range config.Terraform.Registry.ProviderMappings {
+						providerMappings[key] = to.Ptr(value)
+					}
+					registryConfig.ProviderMappings = providerMappings
+				}
+
+				// Handle authentication if provided
+				if !reflect.DeepEqual(config.Terraform.Registry.Authentication, datamodel.RegistryAuthConfig{}) {
+					registryConfig.Authentication = &RegistryAuthConfig{}
+
+					// Handle token auth if provided
+					if config.Terraform.Registry.Authentication.Token != nil {
+						registryConfig.Authentication.Token = &TokenConfig{
+							Secret: to.Ptr(config.Terraform.Registry.Authentication.Token.Secret),
+						}
+					}
+
+					// Handle additional hosts if provided
+					if config.Terraform.Registry.Authentication.AdditionalHosts != nil {
+						additionalHosts := []*string{}
+						for _, host := range config.Terraform.Registry.Authentication.AdditionalHosts {
+							h := host // Create a copy to avoid pointer issues
+							additionalHosts = append(additionalHosts, to.Ptr(h))
+						}
+						registryConfig.Authentication.AdditionalHosts = additionalHosts
+					}
+				}
+
+				// Handle TLS configuration
+				if config.Terraform.Registry.TLS != nil {
+					registryConfig.TLS = fromTLSConfigDatamodel(config.Terraform.Registry.TLS)
+				}
+
+				recipeConfig.Terraform.Registry = registryConfig
+			}
+
+			if config.Terraform.Version != nil {
+				recipeConfig.Terraform.Version = &TerraformVersionConfig{
+					Version:            to.Ptr(config.Terraform.Version.Version),
+					ReleasesArchiveURL: to.Ptr(config.Terraform.Version.ReleasesArchiveURL),
+					ReleasesAPIBaseURL: to.Ptr(config.Terraform.Version.ReleasesAPIBaseURL),
+				}
+
+				// Convert TLS configuration if present
+				if config.Terraform.Version.TLS != nil {
+					recipeConfig.Terraform.Version.TLS = &TLSConfig{
+						SkipVerify: to.Ptr(config.Terraform.Version.TLS.SkipVerify),
+					}
+
+					// Convert CA certificate reference if present
+					if config.Terraform.Version.TLS.CACertificate != nil {
+						recipeConfig.Terraform.Version.TLS.CaCertificate = &SecretReference{
+							Source: to.Ptr(config.Terraform.Version.TLS.CACertificate.Source),
+							Key:    to.Ptr(config.Terraform.Version.TLS.CACertificate.Key),
+						}
+					}
+				}
+
+				// Convert authentication configuration if present
+				if config.Terraform.Version.Authentication != nil {
+					recipeConfig.Terraform.Version.Authentication = &RegistryAuthConfig{}
+
+					// Convert token auth
+					if config.Terraform.Version.Authentication.Token != nil {
+						recipeConfig.Terraform.Version.Authentication.Token = &TokenConfig{
+							Secret: to.Ptr(config.Terraform.Version.Authentication.Token.Secret),
+						}
+					}
+
+					// Handle additional hosts if provided
+					if config.Terraform.Version.Authentication.AdditionalHosts != nil {
+						additionalHosts := []*string{}
+						for _, host := range config.Terraform.Version.Authentication.AdditionalHosts {
+							h := host // Create a copy to avoid pointer issues
+							additionalHosts = append(additionalHosts, to.Ptr(h))
+						}
+						recipeConfig.Terraform.Version.Authentication.AdditionalHosts = additionalHosts
 					}
 				}
 			}
@@ -440,19 +620,27 @@ func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.
 				return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, to.String(c.TemplatePath)))
 			}
 		}
-		return datamodel.EnvironmentRecipeProperties{
+		props := datamodel.EnvironmentRecipeProperties{
 			TemplateKind:    types.TemplateKindTerraform,
 			TemplateVersion: to.String(c.TemplateVersion),
 			TemplatePath:    to.String(c.TemplatePath),
 			Parameters:      c.Parameters,
-		}, nil
+		}
+		if c.TLS != nil {
+			props.TLS = toTLSConfigDatamodel(c.TLS)
+		}
+		return props, nil
 	case *BicepRecipeProperties:
-		return datamodel.EnvironmentRecipeProperties{
+		props := datamodel.EnvironmentRecipeProperties{
 			TemplateKind: types.TemplateKindBicep,
 			TemplatePath: to.String(c.TemplatePath),
 			PlainHTTP:    to.Bool(c.PlainHTTP),
 			Parameters:   c.Parameters,
-		}, nil
+		}
+		if c.TLS != nil {
+			props.TLS = toTLSConfigDatamodel(c.TLS)
+		}
+		return props, nil
 	}
 	return datamodel.EnvironmentRecipeProperties{}, nil
 }
@@ -460,19 +648,27 @@ func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.
 func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipeProperties) RecipePropertiesClassification {
 	switch e.TemplateKind {
 	case types.TemplateKindTerraform:
-		return &TerraformRecipeProperties{
+		props := &TerraformRecipeProperties{
 			TemplateKind:    to.Ptr(e.TemplateKind),
 			TemplateVersion: to.Ptr(e.TemplateVersion),
 			TemplatePath:    to.Ptr(e.TemplatePath),
 			Parameters:      e.Parameters,
 		}
+		if e.TLS != nil {
+			props.TLS = fromTLSConfigDatamodel(e.TLS)
+		}
+		return props
 	case types.TemplateKindBicep:
-		return &BicepRecipeProperties{
+		props := &BicepRecipeProperties{
 			TemplateKind: to.Ptr(e.TemplateKind),
 			TemplatePath: to.Ptr(e.TemplatePath),
 			Parameters:   e.Parameters,
 			PlainHTTP:    to.Ptr(e.PlainHTTP),
 		}
+		if e.TLS != nil {
+			props.TLS = fromTLSConfigDatamodel(e.TLS)
+		}
+		return props
 	}
 
 	return nil
@@ -577,4 +773,42 @@ func fromRecipeConfigEnvDatamodel(config datamodel.RecipeConfigProperties) map[s
 	}
 
 	return env
+}
+
+func toTLSConfigDatamodel(tls *TLSConfig) *datamodel.TLSConfig {
+	if tls == nil {
+		return nil
+	}
+
+	result := &datamodel.TLSConfig{
+		SkipVerify: to.Bool(tls.SkipVerify),
+	}
+
+	if tls.CaCertificate != nil {
+		result.CACertificate = &datamodel.SecretReference{
+			Source: to.String(tls.CaCertificate.Source),
+			Key:    to.String(tls.CaCertificate.Key),
+		}
+	}
+
+	return result
+}
+
+func fromTLSConfigDatamodel(tls *datamodel.TLSConfig) *TLSConfig {
+	if tls == nil {
+		return nil
+	}
+
+	result := &TLSConfig{
+		SkipVerify: to.Ptr(tls.SkipVerify),
+	}
+
+	if tls.CACertificate != nil {
+		result.CaCertificate = &SecretReference{
+			Source: to.Ptr(tls.CACertificate.Source),
+			Key:    to.Ptr(tls.CACertificate.Key),
+		}
+	}
+
+	return result
 }
