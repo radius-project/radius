@@ -110,7 +110,11 @@ func populateSecretData(secretStoreID string, secretKeysFilter []string, secrets
 	for _, secretKey := range secretKeysFilter {
 		secretDataValue, ok := secrets.Data[secretKey]
 		if !ok {
-			return recipes.SecretData{}, fmt.Errorf("a secret key was not found in secret store '%s'", secretStoreID)
+			return recipes.SecretData{}, fmt.Errorf(
+				"'%s' secret key was not found in secret store '%s'",
+				secretKey,
+				secretStoreID,
+			)
 		}
 		secretData.Data[secretKey] = *secretDataValue.Value
 	}
