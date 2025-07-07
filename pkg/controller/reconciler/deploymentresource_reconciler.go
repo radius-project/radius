@@ -129,7 +129,6 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentResource.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
-
 		poller, err := r.ResourceDeploymentsClient.ContinueDeleteOperation(ctx, deploymentResource.Status.Operation.ResumeToken)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to continue DELETE operation: %w", err)
@@ -153,13 +152,8 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 
 				// At this point we've cleaned up everything. We can remove the finalizer which will allow deletion of the
 				// DeploymentResource
-				if controllerutil.RemoveFinalizer(deploymentResource, DeploymentResourceFinalizer) {
-					deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
-					deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
-					err = r.Client.Update(ctx, deploymentResource)
-					if err != nil {
-						return ctrl.Result{}, err
-					}
+				if err := r.completeDeleteOperation(ctx, deploymentResource); err != nil {
+					return ctrl.Result{}, err
 				}
 				return ctrl.Result{}, nil
 			}
@@ -168,35 +162,20 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 			r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
 			logger.Error(err, "Delete failed.")
 
-			deploymentResource.Status.Operation = nil
-			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
-			err = r.Client.Status().Update(ctx, deploymentResource)
-			if err != nil {
-				return ctrl.Result{}, err
+			if statusErr := r.updateFailedStatus(ctx, deploymentResource); statusErr != nil {
+				return ctrl.Result{}, statusErr
 			}
 
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
-		}
-
-		// If we get here, the operation was a success. Update the status and continue.
-		deploymentResource.Status.Operation = nil
-		deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
-		err = r.Client.Status().Update(ctx, deploymentResource)
-		if err != nil {
 			return ctrl.Result{}, err
 		}
 
+		// If we get here, the operation was a success. Update the status and remove finalizer.
 		logger.Info("Resource is deleted.")
 
 		// At this point we've cleaned up everything. We can remove the finalizer which will allow deletion of the
-		// DeploymentResource
-		if controllerutil.RemoveFinalizer(deploymentResource, DeploymentResourceFinalizer) {
-			deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
-			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
-			err = r.Client.Update(ctx, deploymentResource)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+		// DeploymentResource. Also update the status in the same update to avoid multiple API calls.
+		if err := r.completeDeleteOperation(ctx, deploymentResource); err != nil {
+			return ctrl.Result{}, err
 		}
 
 		return ctrl.Result{}, nil
@@ -206,10 +185,7 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 	// tampered with the status of the object. Just reset the state and move on.
 	logger.Error(fmt.Errorf("unknown operation kind: %s", deploymentResource.Status.Operation.OperationKind), "Unknown operation kind.")
 
-	deploymentResource.Status.Operation = nil
-	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
-	err := r.Client.Status().Update(ctx, deploymentResource)
-	if err != nil {
+	if err := r.updateFailedStatus(ctx, deploymentResource); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -220,17 +196,6 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	logger.Info("Resource is being deleted.")
-
-	// Since we're going to reconcile, update the observed generation.
-	//
-	// We don't want to do this if we're in the middle of an operation, because we haven't
-	// fully processed any status changes until the async operation completes.
-	deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
-	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
-	err := r.Client.Status().Update(ctx, deploymentResource)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
 
 	// Check if the resource is being used by another resource
 	deploymentResourceList, err := listResourcesWithSameOwner(ctx, r.Client, deploymentResource.Namespace, deploymentResource.OwnerReferences[0])
@@ -245,8 +210,20 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	}
 
 	if dependentResource != "" {
-		logger.Info("Resource is an application or environment, being used by another resource.", "resourceId", deploymentResource.Spec.Id, "dependentResource", dependentResource)
+		logger.Info("Resource is an application or environment, being used by another resource. Waiting for dependent resource to be deleted.", "resourceId", deploymentResource.Spec.Id, "dependentResource", dependentResource)
+		// Requeue after a delay to check dependencies again
 		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	}
+
+	// Since we're going to proceed with deletion, update the observed generation and status.
+	//
+	// We don't want to do this if we're in the middle of an operation, because we haven't
+	// fully processed any status changes until the async operation completes.
+	deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
+	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
+	err = r.Client.Status().Update(ctx, deploymentResource)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	deletePoller, err := r.startDeleteOperation(ctx, deploymentResource)
@@ -268,28 +245,36 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		}
 
 		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	} else if deletePoller != nil && deletePoller.Done() {
+		// Synchronous delete completed, but we need to verify it succeeded
+		_, err = deletePoller.Result(ctx)
+		if err != nil {
+			if clients.Is404Error(err) {
+				// The resource was not found, so we can consider it deleted.
+				logger.Info("Resource was not found during synchronous delete.")
+			} else {
+				// Delete failed, update status and return error
+				logger.Error(err, "Synchronous delete failed.")
+				r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
+
+				if statusErr := r.updateFailedStatus(ctx, deploymentResource); statusErr != nil {
+					return ctrl.Result{}, statusErr
+				}
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
-	// If we get here then it means we can process the result of the operation.
+	// If we get here then the delete operation succeeded (either synchronously or the resource wasn't found).
 	logger.Info("Resource is deleted.")
 
 	// At this point we've cleaned up everything. We can remove the finalizer which will allow deletion of the
 	// DeploymentResource
-	if controllerutil.RemoveFinalizer(deploymentResource, DeploymentResourceFinalizer) {
-		deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
-		deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
-		err = r.Client.Update(ctx, deploymentResource)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	if err := r.completeDeleteOperation(ctx, deploymentResource); err != nil {
+		return ctrl.Result{}, err
 	}
 
-	// If we get here, then we're in a bad state. We should have removed the finalizer, but we didn't.
-	// We should requeue and try again.
-
-	logger.Info("Finalizer was not removed, requeueing.")
-
-	return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (sdkclients.Poller[sdkclients.ClientDeleteResponse], error) {
@@ -317,6 +302,26 @@ func (r *DeploymentResourceReconciler) requeueDelay() time.Duration {
 	}
 
 	return delay
+}
+
+// completeDeleteOperation removes the finalizer and updates the resource status to mark it as deleted.
+// This helper reduces duplication across the reconciler.
+func (r *DeploymentResourceReconciler) completeDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) error {
+	if controllerutil.RemoveFinalizer(deploymentResource, DeploymentResourceFinalizer) {
+		deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
+		deploymentResource.Status.Operation = nil
+		deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
+		return r.Client.Update(ctx, deploymentResource)
+	}
+	return nil
+}
+
+// updateFailedStatus updates the resource status to failed state and clears the operation.
+// This helper reduces duplication when handling operation failures.
+func (r *DeploymentResourceReconciler) updateFailedStatus(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) error {
+	deploymentResource.Status.Operation = nil
+	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
+	return r.Client.Status().Update(ctx, deploymentResource)
 }
 
 // SetupWithManager sets up the controller with the Manager.
