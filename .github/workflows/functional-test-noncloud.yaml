@@ -48,7 +48,7 @@ env:
   # Helm version
   HELM_VER: "v3.15.3"
   # KinD cluster version
-  KIND_VER: "v0.23.0"
+  KIND_VER: "v0.29.0"
   # Kubectl version
   KUBECTL_VER: "v1.30.0"
   # Dapr CLI version
