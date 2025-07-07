@@ -35,6 +35,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -116,7 +117,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	if deploymentTemplate.DeletionTimestamp != nil {
+	if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil {
 		return r.reconcileDelete(ctx, &deploymentTemplate)
 	}
 
@@ -145,18 +146,38 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		// If we get here, the operation is complete.
 		resp, err := poller.Result(ctx)
 		if err != nil {
-			// Operation failed, reset state and retry.
+			// Special case: If deletion is requested and we get a 404 error, treat it as success
+			// This can happen when resources are deleted while an operation is in progress
+			if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil && clients.Is404Error(err) {
+				logger.Info("Operation returned 404 during deletion, treating as success.")
+				deploymentTemplate.Status.Operation = nil
+				err := r.Client.Status().Update(ctx, deploymentTemplate)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
+			}
+
+			// Operation failed, reset state and schedule delayed retry.
 			r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
 			logger.Error(err, "Update failed.")
 
-			deploymentTemplate.Status.Operation = nil
-			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-			err = r.Client.Status().Update(ctx, deploymentTemplate)
-			if err != nil {
+			if err := r.updateFailedStatus(ctx, deploymentTemplate); err != nil {
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{}, nil
+		}
+
+		// If deletion is requested, skip creating output resources
+		if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil {
+			logger.Info("Skipping output resource creation due to pending deletion.")
+			deploymentTemplate.Status.Operation = nil
+			err := r.Client.Status().Update(ctx, deploymentTemplate)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
 		}
 
 		logger.Info("Creating output resources.")
@@ -252,6 +273,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.StatusHash = hash
+		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
+
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -298,12 +321,13 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
 		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
-		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-		err = r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
+
+		if statusErr := r.updateFailedStatus(ctx, deploymentTemplate); statusErr != nil {
+			return ctrl.Result{}, statusErr
 		}
 
+		// Return the error to the controller-runtime.
+		// This will cause the controller to requeue the request and retry the operation.
 		return ctrl.Result{}, err
 	} else if updatePoller != nil {
 		// We've successfully started an operation. Update the status and requeue.
@@ -374,12 +398,12 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 		// Trigger deletion of owned resources
 		for _, resource := range ownedResources {
 			err := r.Client.Delete(ctx, &resource)
-			if err != nil {
-				return ctrl.Result{}, err
+			if err != nil && !apierrors.IsNotFound(err) {
+				logger.Error(err, "Failed to delete owned resource, continuing with other resources", "resourceName", resource.Name)
 			}
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{}, fmt.Errorf("Requeuing to wait for owned resources to be deleted, %d remaining", len(ownedResources))
 	}
 
 	logger.Info("Resource is deleted.")
@@ -399,16 +423,11 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 	}
 
 	logger.Info("Finalizer was not removed, requeueing.")
-
 	err = r.Client.Status().Update(ctx, deploymentTemplate)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
-	// If we get here, then we're in a bad state. We should have removed the finalizer, but we didn't.
-	// We should requeue and try again.
-
-	return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (sdkclients.Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
@@ -540,6 +559,14 @@ func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
 	}
 
 	return deploymentTemplate.Status.StatusHash == hash
+}
+
+// updateFailedStatus updates the deployment template status to failed state and clears the operation.
+// This helper reduces duplication when handling operation failures.
+func (r *DeploymentTemplateReconciler) updateFailedStatus(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) error {
+	deploymentTemplate.Status.Operation = nil
+	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+	return r.Client.Status().Update(ctx, deploymentTemplate)
 }
 
 // SetupWithManager sets up the controller with the Manager.

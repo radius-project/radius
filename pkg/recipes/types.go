@@ -85,6 +85,11 @@ type ResourceMetadata struct {
 	ResourceID string
 	// Properties represents the properties of the resource that the recipe is deploying
 	Properties map[string]any
+	// ConnectedResourcesProperties represents the properties of the connected resources that the recipe is deploying.
+	// the key is connection name and the value is a map of properties for the connected resource.
+	// properties are inturn a map of key/value pairs, where the key is the property name and the value is the property value.
+	// these properties are passed into the recipe context.
+	ConnectedResourcesProperties map[string]map[string]any
 	// Parameters represents key/value pairs to pass into the recipe template. Overrides any parameters set by the environment.
 	Parameters map[string]any
 }
