@@ -172,6 +172,10 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 						Name: "existing-postgres",
 						Type: "test.resources/postgres",
 					},
+					{
+						Name: "pgversiontest",
+						Type: "test.resources/postgres",
+					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{

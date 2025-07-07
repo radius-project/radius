@@ -37,3 +37,12 @@ resource udtpg 'Test.Resources/postgres@2025-01-01-preview' = {
     password: password
   }
 }
+
+resource pgversiontest 'Test.Resources/postgres@2025-02-01-preview' = {
+  name: 'pgversiontest'
+  location: 'global'
+  properties: {
+    environment: udtenv.id
+    password: password
+  }
+}
