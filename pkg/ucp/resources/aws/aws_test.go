@@ -60,6 +60,14 @@ func Test_ToUCPResourceID(t *testing.T) {
 		require.Equal(t, expectedID, ucpID)
 	})
 
+	t.Run("arn format 4", func(t *testing.T) {
+		arn := "arn:aws:iam::179022619019:policy/BedrockUserPolicy-5b0a628b"
+		expectedID := "/planes/aws/aws/accounts/179022619019/regions/global/providers/AWS.iam/policy/BedrockUserPolicy-5b0a628b"
+		ucpID, err := ToUCPResourceID(arn)
+		require.NoError(t, err)
+		require.Equal(t, expectedID, ucpID)
+	})
+
 	t.Run("invalid arn", func(t *testing.T) {
 		arn := "arn:aws:ec2:us-east-2:179022619019"
 		_, err := ToUCPResourceID(arn)
