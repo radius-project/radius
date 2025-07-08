@@ -1022,9 +1022,87 @@ func isResourceInApplication(resource generated.GenericResource, applicationID s
 }
 
 func isResourceInEnvironment(resource generated.GenericResource, environmentID string) bool {
+	// First check for explicit environment property
 	obj, found := resource.Properties["environment"]
-	// A resource may not have an environment associated with it.
 	if !found {
+		// Special case for environment resources themselves
+		if resource.Type != nil && strings.EqualFold(*resource.Type, "Applications.Core/environments") && resource.ID != nil {
+			// First try direct comparison
+			if strings.EqualFold(*resource.ID, environmentID) {
+				return true
+			}
+
+			// If no direct match, check if one is a shortname and the other is a full ID
+			shortNameEnv := getResourceShortName(environmentID)
+
+			shortNameResource := *resource.ID
+			if strings.Contains(*resource.ID, "/") {
+				parts := strings.Split(*resource.ID, "/")
+				shortNameResource = parts[len(parts)-1]
+			}
+
+			if shortNameEnv != "" && shortNameResource != "" &&
+				strings.EqualFold(shortNameEnv, shortNameResource) {
+				return true
+			}
+		}
+		// Check if the resource has an application property
+		appObj, appFound := resource.Properties["application"]
+		if appFound {
+			// If the resource has an application property, we need to check two things:
+			// 1. Is the application in the specified environment? (using app id to find app and check its env)
+			// 2. Check for namespace patterns in the resource's status that match the environment
+
+			appID, ok := appObj.(string)
+			if ok && appID != "" {
+				shortNameEnv := getResourceShortName(environmentID)
+
+				// Check for namespace patterns like 'redenv-radius' in the outputResources
+				statusObj, statusFound := resource.Properties["status"]
+				if statusFound {
+					if statusMap, ok := statusObj.(map[string]interface{}); ok {
+						// Check for compute.namespace first (more direct)
+						if compute, ok := statusMap["compute"].(map[string]interface{}); ok {
+							if namespace, ok := compute["namespace"].(string); ok {
+								// Example: "namespace": "redenv-radius"
+								if strings.HasPrefix(namespace, shortNameEnv+"-") {
+									return true
+								}
+							}
+						}
+
+						// Then check outputResources
+						if outputResources, ok := statusMap["outputResources"].([]interface{}); ok {
+							for _, outputResource := range outputResources {
+								if outputResourceMap, ok := outputResource.(map[string]interface{}); ok {
+									if id, ok := outputResourceMap["id"].(string); ok {
+										// Check if the output resource ID contains the environment name in namespace
+										// For example: /planes/kubernetes/local/namespaces/redenv-radius/...
+										nsPattern := "/namespaces/" + shortNameEnv + "-"
+										if strings.Contains(id, nsPattern) {
+											return true
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Special handling for the default environment - resources without an explicit
+		// environment property are considered to be in the default environment
+		shortNameEnv := environmentID
+		if strings.Contains(environmentID, "/") {
+			parts := strings.Split(environmentID, "/")
+			shortNameEnv = parts[len(parts)-1]
+		}
+
+		if strings.EqualFold(shortNameEnv, "default") {
+			return true
+		}
+
 		return false
 	}
 
@@ -1033,7 +1111,22 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 		return false
 	}
 
+	// Do case-insensitive comparison and also check for potential ID variations
 	if strings.EqualFold(associatedEnvId, environmentID) {
+		return true
+	}
+
+	// Check if one is a shortname and the other is a full ID
+	shortNameEnv := getResourceShortName(environmentID)
+
+	shortNameAssociated := associatedEnvId
+	parsedAssociatedID, err := resources.Parse(associatedEnvId)
+	if err == nil {
+		shortNameAssociated = parsedAssociatedID.Name()
+	}
+
+	if shortNameEnv != "" && shortNameAssociated != "" &&
+		strings.EqualFold(shortNameEnv, shortNameAssociated) {
 		return true
 	}
 
@@ -1046,4 +1139,13 @@ func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context,
 	}
 
 	return amc.capture(ctx, response)
+}
+
+func getResourceShortName(resourceID string) string {
+	shortName := resourceID
+	if strings.Contains(resourceID, "/") {
+		parts := strings.Split(resourceID, "/")
+		shortName = parts[len(parts)-1]
+	}
+	return shortName
 }
