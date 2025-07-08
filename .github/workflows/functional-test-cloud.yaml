@@ -53,7 +53,7 @@ env:
   # Helm version
   HELM_VER: "v3.12.0"
   # KinD cluster version
-  KIND_VER: "v0.20.0"
+  KIND_VER: "v0.29.0"
   # Kubectl version
   KUBECTL_VER: "v1.25.0"
   # Azure Keyvault CSI driver chart version
