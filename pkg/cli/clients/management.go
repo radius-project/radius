@@ -943,7 +943,10 @@ func (amc *UCPApplicationsManagementClient) createGenericClient(scope string, re
 	if amc.genericResourceClientFactory == nil {
 		clientOptions := *amc.ClientOptions
 		if len(apiVersion) != 0 {
-			//  Set the apiVersion if provided else api version 2023-10-01-preview will be used by default.
+			// If an API version is provided, set it in the client options.
+			// Otherwise, the default API version (2023-10-01-preview) will be used.
+			// Note: If multiple API versions are supported for Applications.Core resource types in the future,
+			// update this logic to select the appropriate client.
 			clientOptions.APIVersion = apiVersion[0]
 		}
 		// Generated client doesn't like the leading '/' in the scope.
