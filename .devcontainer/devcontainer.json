@@ -22,6 +22,7 @@
     //Tools
     "ghcr.io/eitsupi/devcontainer-features/jq-likes:2": {},
     "ghcr.io/mpriscella/features/kind:1": {},
+    "ghcr.io/rio/features/k3d:1": {},
     "ghcr.io/dhoeric/features/stern:1": {},
     //Dapr
     "ghcr.io/dapr/cli/dapr-cli:0": {}
@@ -35,7 +36,6 @@
         "ms-python.vscode-pylance",
         "ms-azuretools.vscode-bicep",
         "ms-kubernetes-tools.vscode-kubernetes-tools",
-        "ms-azuretools.vscode-dapr",
         "ms-vscode.makefile-tools",
         "timonwong.shellcheck",
         "typespec.typespec-vscode"
