@@ -52,6 +52,16 @@ func ToUCPResourceID(arn string) (string, error) {
 	if len(arnSegments) < 6 {
 		return "", fmt.Errorf("\"%s\" is not a valid ARN", arn)
 	}
-	ucpId := fmt.Sprintf("/planes/aws/%s/accounts/%s/regions/%s/providers/AWS.%s/%s", arnSegments[1], arnSegments[4], arnSegments[3], arnSegments[2], strings.Join(arnSegments[5:], "/"))
-	return ucpId, nil
+	service := arnSegments[2]
+	region := arnSegments[3]
+	// Handle global services that don't have regions (like IAM policies, users, groups, route53, cloudfront etc.)
+	if region == "" {
+		region = "global"
+	}
+	account := arnSegments[4]
+	resourcePath := strings.Join(arnSegments[5:], "/")
+
+	ucpID := fmt.Sprintf("/planes/aws/%s/accounts/%s/regions/%s/providers/AWS.%s/%s", arnSegments[1], account, region, service, resourcePath)
+
+	return ucpID, nil
 }
