@@ -52,6 +52,6 @@ resource udtcntr 'Applications.Core/containers@2023-10-01-preview' = {
     }
 }
 
-resource udtpgexisting 'Test.Resources/postgres@2023-10-01-preview' existing= {
+resource udtpgexisting 'Test.Resources/postgres@2025-01-01-preview' existing= {
   name: 'existing-postgres'
 }
