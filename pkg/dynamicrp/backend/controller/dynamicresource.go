@@ -89,16 +89,16 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 
 	switch ot.Method {
 	case v1.OperationDelete:
-		if hasCapability(resourceType, datamodel.CapabilitySupportsRecipes) {
-			return NewRecipeDeleteController(options, c.engine, c.configurationLoader)
+		if hasCapability(resourceType, datamodel.CapabilityManualResourceProvisioning) {
+			return NewInertDeleteController(options)
 		}
-		return NewInertDeleteController(options)
+		return NewRecipeDeleteController(options, c.engine, c.configurationLoader)
 
 	case v1.OperationPut:
-		if hasCapability(resourceType, datamodel.CapabilitySupportsRecipes) {
-			return NewRecipePutController(options, c.engine, c.configurationLoader)
+		if hasCapability(resourceType, datamodel.CapabilityManualResourceProvisioning) {
+			return NewInertPutController(options)
 		}
-		return NewInertPutController(options)
+		return NewRecipePutController(options, c.engine, c.configurationLoader)
 
 	default:
 		return nil, fmt.Errorf("unsupported operation type: %q", request.OperationType)

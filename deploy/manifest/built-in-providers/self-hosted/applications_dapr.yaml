@@ -7,19 +7,20 @@ types:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
-    capabilities: ["SupportsRecipes"]
+    capabilities: []
   pubSubBrokers:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
-    capabilities: ["SupportsRecipes"]
+    capabilities: []
   secretStores:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
-    capabilities: ["SupportsRecipes"]
+    capabilities: []
   stateStores:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
-    capabilities: ["SupportsRecipes"]
+    capabilities: []
+  

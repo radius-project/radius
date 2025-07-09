@@ -1,7 +1,7 @@
 name: MyCompany.Resources4
 types:
   testResources:
-    capabilities: ["SupportsRecipes"]
+    capabilities: []
     description: Resource type description
     apiVersions:
       2023-10-01-preview:
@@ -20,7 +20,7 @@ types:
           required:
             - environment
   prodResources:
-    capabilities: ["SupportsRecipes"]
+    capabilities: []
     description: Resource type description
     apiVersions:
       2023-10-01-preview:

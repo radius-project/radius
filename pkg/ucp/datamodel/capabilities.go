@@ -17,6 +17,6 @@ limitations under the License.
 package datamodel
 
 const (
-	// CapabilitySupportsRecipes is a capability that indicates the resource type supports recipes.
-	CapabilitySupportsRecipes = "SupportsRecipes"
+	// CapabilityManualResourceProvisioning is a capability that indicates the resource type supports manual resource provisioning.
+	CapabilityManualResourceProvisioning = "ManualResourceProvisioning"
 )

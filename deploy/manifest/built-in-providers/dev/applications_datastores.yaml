@@ -7,14 +7,14 @@ types:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
-    capabilities: ["SupportsRecipes"]
+    capabilities: []
   sqlDatabases:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
-    capabilities: ["SupportsRecipes"]
+    capabilities: []
   redisCaches:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
-    capabilities: ["SupportsRecipes"]
+    capabilities: []
