@@ -31,40 +31,38 @@ types:
           required:
             - application
             - environment
-  postgres:
-    capabilities: ["SupportsRecipes"]
-    apiVersions:
-      '2025-01-01-preview':
-        schema: 
-          type: object
+      "2025-01-01-preview":
+        schema:
+          type: "object"
           properties:
-            environment:
-              type: string
             application:
               type: string
               description: The resource ID of the application.
-            database:
+            environment:
               type: string
-              description: The name of the database.
-            host:
-              type: string
-              description: The host name of the database.
-            port:
-              type: string
-              description: The port number of the database.
-            password:
-              type: string
-              description: The password for the database.
+              description: The resource ID of the environment.
+            connections:
+              type: object
+              additionalProperties:
+                source:
+                  type: string
+                  description: The resourceID of the source of the connection.
             status:
               type: object
               properties:
                 computedValues:
                   type: object
                   properties:
-                    username:
+                    port:
                       type: string
-                      description: The username for the database.
-      '2025-02-01-preview':
+                      description: The port the container listens on.
+          required:
+            - application
+            - environment
+  postgres:
+    capabilities: ["SupportsRecipes"]
+    apiVersions:
+      '2025-01-01-preview':
         schema: 
           type: object
           properties:

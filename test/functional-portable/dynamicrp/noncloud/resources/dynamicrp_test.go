@@ -90,6 +90,10 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 						Name: "usertypealphainstance",
 						Type: resourceTypeName,
 					},
+					{
+						Name: "usertypealphalatest",
+						Type: resourceTypeName,
+					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
@@ -170,10 +174,6 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 					},
 					{
 						Name: "existing-postgres",
-						Type: "test.resources/postgres",
-					},
-					{
-						Name: "pgversiontest",
 						Type: "test.resources/postgres",
 					},
 				},
