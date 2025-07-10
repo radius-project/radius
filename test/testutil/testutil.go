@@ -31,10 +31,10 @@ import (
 	"github.com/google/uuid"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/portforward"
@@ -360,7 +360,7 @@ func GetPodLogs(ctx context.Context, client k8s.Interface, namespace, podName, c
 	req := client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
 		Container: containerName,
 	})
-	
+
 	logs, err := req.Stream(ctx)
 	if err != nil {
 		return "", err
@@ -372,7 +372,7 @@ func GetPodLogs(ctx context.Context, client k8s.Interface, namespace, podName, c
 	if err != nil && err != io.EOF {
 		return "", err
 	}
-	
+
 	return string(buf[:n]), nil
 }
 
@@ -396,6 +396,6 @@ func GetK8sClient(t *testing.T) k8s.Interface {
 
 	client, err := k8s.NewForConfig(config)
 	require.NoError(t, err, "Failed to create Kubernetes client")
-	
+
 	return client
 }

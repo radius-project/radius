@@ -25,7 +25,7 @@ package resource_test
 // Tests in this file should be kept *roughly* in sync with recipe_bicep_test and any other drivers.
 //
 // Note: To test the Terraform container mounting feature (pre-mounted binaries), you would need to:
-// 1. Install Radius with the --terraform-container flag: 
+// 1. Install Radius with the --terraform-container flag:
 //    rad install kubernetes --terraform-container ghcr.io/hashicorp/terraform:latest
 // 2. Run these tests to verify that recipes execute using the pre-mounted binaries
 // 3. Check pod logs to confirm "Successfully using pre-mounted Terraform binary" messages

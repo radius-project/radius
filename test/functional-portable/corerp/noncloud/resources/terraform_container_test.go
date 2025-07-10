@@ -132,7 +132,7 @@ func verifyTerraformPreMountedBinaryUsage(ctx context.Context, t *testing.T) {
 		}
 
 		t.Logf("Checking logs for pod: %s", pod.Name)
-		
+
 		// Get logs from the pod
 		logs, err := testutil.GetPodLogs(ctx, k8sClient, "radius-system", pod.Name, "")
 		if err != nil {
@@ -142,14 +142,14 @@ func verifyTerraformPreMountedBinaryUsage(ctx context.Context, t *testing.T) {
 
 		// Check for pre-mounted binary usage
 		if strings.Contains(logs, "Successfully using pre-mounted Terraform binary") ||
-		   strings.Contains(logs, "Found pre-mounted Terraform binary") {
+			strings.Contains(logs, "Found pre-mounted Terraform binary") {
 			foundPreMountedUsage = true
 			t.Logf("✓ Found evidence of pre-mounted binary usage in pod %s", pod.Name)
 		}
 
 		// Check for download attempts (should not happen with pre-mounted binaries)
 		if strings.Contains(logs, "downloading Terraform") ||
-		   strings.Contains(logs, "Installing Terraform in the directory") {
+			strings.Contains(logs, "Installing Terraform in the directory") {
 			foundDownloadAttempt = true
 			t.Logf("⚠ Found evidence of Terraform download in pod %s", pod.Name)
 		}

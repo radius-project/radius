@@ -34,7 +34,7 @@ func TestInstall_PreMountedBinary(t *testing.T) {
 
 	// Create a fake Terraform binary in the expected pre-mounted location
 	preMountedPath := filepath.Join(tmpDir, "terraform")
-	
+
 	// Create a simple script that acts like terraform and responds to version command
 	terraformScript := `#!/bin/bash
 if [ "$1" = "version" ]; then
