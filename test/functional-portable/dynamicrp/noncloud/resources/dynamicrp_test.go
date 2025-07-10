@@ -90,6 +90,10 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 						Name: "usertypealphainstance",
 						Type: resourceTypeName,
 					},
+					{
+						Name: "usertypealphalatest",
+						Type: resourceTypeName,
+					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{

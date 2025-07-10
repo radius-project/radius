@@ -31,10 +31,38 @@ types:
           required:
             - application
             - environment
+      "2025-01-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            connections:
+              type: object
+              additionalProperties:
+                source:
+                  type: string
+                  description: The resourceID of the source of the connection.
+            status:
+              type: object
+              properties:
+                computedValues:
+                  type: object
+                  properties:
+                    port:
+                      type: string
+                      description: The port the container listens on.
+          required:
+            - application
+            - environment
   postgres:
     capabilities: ["SupportsRecipes"]
     apiVersions:
-      '2023-10-01-preview':
+      '2025-01-01-preview':
         schema: 
           type: object
           properties:

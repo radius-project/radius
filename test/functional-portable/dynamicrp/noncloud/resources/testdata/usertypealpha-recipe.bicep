@@ -67,3 +67,12 @@ resource usertypealpha 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
     environment: env.id
   }
 }
+
+resource usertypealphalatest 'Test.Resources/userTypeAlpha@2025-01-01-preview' = {
+  name: 'usertypealphalatest'
+  location: location
+  properties: {
+    application: app.id
+    environment: env.id
+  }
+}
