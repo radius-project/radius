@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -33,7 +34,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
@@ -344,4 +347,55 @@ func GetDockerRegistry() string {
 		return "ghcr.io/radius-project"
 	}
 	return regName
+}
+
+// GetTerraformContainerTestEnabled returns the value of the RADIUS_TERRAFORM_CONTAINER_TEST environment variable.
+// This is used to determine if Terraform container tests should be run.
+func GetTerraformContainerTestEnabled() string {
+	return os.Getenv("RADIUS_TERRAFORM_CONTAINER_TEST")
+}
+
+// GetPodLogs retrieves logs from a specific pod and container.
+func GetPodLogs(ctx context.Context, client k8s.Interface, namespace, podName, containerName string) (string, error) {
+	req := client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
+		Container: containerName,
+	})
+	
+	logs, err := req.Stream(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer logs.Close()
+
+	buf := make([]byte, 1024*1024) // 1MB buffer
+	n, err := logs.Read(buf)
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+	
+	return string(buf[:n]), nil
+}
+
+// GetK8sClient returns a Kubernetes client for testing.
+// This is a simplified version that relies on the test framework's existing client setup.
+func GetK8sClient(t *testing.T) k8s.Interface {
+	// Try in-cluster config first (for CI environments)
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		// Fall back to kubeconfig (for local development)
+		kubeconfig := os.Getenv("KUBECONFIG")
+		if kubeconfig == "" {
+			kubeconfig = filepath.Join(os.Getenv("HOME"), ".kube", "config")
+		}
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			t.Skipf("Skipping test: cannot get Kubernetes config: %v", err)
+			return nil
+		}
+	}
+
+	client, err := k8s.NewForConfig(config)
+	require.NoError(t, err, "Failed to create Kubernetes client")
+	
+	return client
 }
