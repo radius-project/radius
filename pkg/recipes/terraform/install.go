@@ -39,11 +39,40 @@ const (
 	installVerificationRetryDelaySecs = 3
 )
 
-// Install installs Terraform under /install in the provided Terraform root directory for the resource. It installs
-// the latest version of Terraform and returns the path to the installed Terraform executable. It returns an error
-// if the directory creation or Terraform installation fails.
+// Install installs Terraform under /install in the provided Terraform root directory for the resource.
+// It first checks for a pre-mounted Terraform binary (typically copied by an init container from a
+// container image) at the root of the tfDir. If found and working, it uses the pre-mounted binary
+// for better performance and reduced download overhead. If not found or not working, it falls back
+// to downloading the latest version of Terraform and returns the path to the installed Terraform
+// executable. It returns an error if the directory creation or Terraform installation fails.
 func Install(ctx context.Context, installer *install.Installer, tfDir string) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Check if Terraform is pre-mounted from a container (e.g., via init container)
+	preMountedPath := filepath.Join(tfDir, "terraform")
+	if _, err := os.Stat(preMountedPath); err == nil {
+		logger.Info(fmt.Sprintf("Found pre-mounted Terraform binary at: %q", preMountedPath))
+
+		// Create a new instance of tfexec.Terraform with the pre-mounted binary
+		tf, err := NewTerraform(ctx, tfDir, preMountedPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Terraform instance with pre-mounted binary: %w", err)
+		}
+
+		// Verify the pre-mounted Terraform binary is working
+		_, _, err = tf.Version(ctx, false)
+		if err != nil {
+			logger.Info(fmt.Sprintf("Pre-mounted Terraform binary is not working properly: %s. Falling back to download.", err.Error()))
+		} else {
+			logger.Info("Successfully using pre-mounted Terraform binary")
+			// Configure Terraform logs for the pre-mounted binary
+			configureTerraformLogs(ctx, tf)
+			return tf, nil
+		}
+	}
+
+	// Fall back to downloading Terraform if no pre-mounted binary is found or if it's not working
+	logger.Info("No pre-mounted Terraform binary found, downloading Terraform...")
 
 	// Create Terraform installation directory
 	installDir := filepath.Join(tfDir, installSubDir)

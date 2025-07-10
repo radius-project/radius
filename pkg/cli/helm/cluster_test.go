@@ -261,11 +261,12 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 func Test_PopulateDefaultClusterOptions(t *testing.T) {
 	custom := CLIClusterOptions{
 		Radius: ChartOptions{
-			Reinstall:    true,
-			ChartPath:    "custom-path",
-			SetArgs:      []string{"foo=bar"},
-			SetFileArgs:  []string{"cert=./ca.crt"},
-			ChartVersion: "1.2.3",
+			Reinstall:          true,
+			ChartPath:          "custom-path",
+			SetArgs:            []string{"foo=bar"},
+			SetFileArgs:        []string{"cert=./ca.crt"},
+			ChartVersion:       "1.2.3",
+			TerraformContainer: "hashicorp/terraform:latest",
 		},
 	}
 
@@ -276,4 +277,5 @@ func Test_PopulateDefaultClusterOptions(t *testing.T) {
 	require.Equal(t, []string{"foo=bar"}, opts.Radius.SetArgs)
 	require.Equal(t, []string{"cert=./ca.crt"}, opts.Radius.SetFileArgs)
 	require.Equal(t, "1.2.3", opts.Radius.ChartVersion)
+	require.Equal(t, "hashicorp/terraform:latest", opts.Radius.TerraformContainer)
 }

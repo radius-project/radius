@@ -30,6 +30,34 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: applications-rp
+      {{- if eq .Values.global.terraform.enabled true }}
+      # Init container to copy Terraform binary from a container image to a shared volume
+      # This avoids downloading Terraform at runtime and improves recipe execution performance
+      initContainers:
+      - name: terraform-init
+        image: "{{ .Values.global.terraform.image }}:{{ .Values.global.terraform.tag }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          if [ -f "{{ .Values.global.terraform.binaryPath }}" ]; then
+            echo "Copying terraform binary from {{ .Values.global.terraform.binaryPath }} to {{ .Values.rp.terraform.path }}/terraform"
+            cp "{{ .Values.global.terraform.binaryPath }}" "{{ .Values.rp.terraform.path }}/terraform"
+            chmod +x "{{ .Values.rp.terraform.path }}/terraform"
+            echo "Terraform binary successfully copied and made executable"
+          else
+            echo "Error: Terraform binary not found at {{ .Values.global.terraform.binaryPath }}"
+            exit 1
+          fi
+        volumeMounts:
+        - name: terraform
+          mountPath: {{ .Values.rp.terraform.path }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 65532
+      {{- end }}
       containers:
       - name: applications-rp
         image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"

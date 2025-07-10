@@ -32,6 +32,18 @@ global:
     irsa:
       enabled: false
 
+  # Configure terraform binary source container for pre-mounting terraform binaries
+  # This avoids downloading terraform on each recipe execution
+  terraform:
+    # Enable terraform binary pre-mounting from container
+    enabled: false
+    # Container image containing terraform binaries (default: hashicorp/terraform from ghcr.io)
+    image: "ghcr.io/hashicorp/terraform"
+    # Default tag uses latest terraform version
+    tag: "latest"
+    # Path to terraform binary inside the source container
+    binaryPath: "/bin/terraform"
+
 controller:
   image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.

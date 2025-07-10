@@ -44,6 +44,11 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 		},
 		{
+			Name:          "valid (with terraform-container)",
+			Input:         []string{"--terraform-container", "hashicorp/terraform:latest"},
+			ExpectedValid: true,
+		},
+		{
 			Name:          "too many args",
 			Input:         []string{"blah"},
 			ExpectedValid: false,
@@ -159,6 +164,44 @@ func Test_Run(t *testing.T) {
 		expectedWrites := []any{
 			output.LogOutput{
 				Format: "Reinstalling Radius version %s to namespace: %s...",
+				Params: []interface{}{"edge", "radius-system"},
+			},
+		}
+		require.Equal(t, expectedWrites, outputMock.Writes)
+	})
+	t.Run("Success: With Terraform Container", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		helmMock := helm.NewMockInterface(ctrl)
+		outputMock := &output.MockOutput{}
+
+		ctx := context.Background()
+		runner := &Runner{
+			Helm:   helmMock,
+			Output: outputMock,
+
+			KubeContext:        "test-context",
+			TerraformContainer: "hashicorp/terraform:latest",
+		}
+
+		helmMock.EXPECT().CheckRadiusInstall("test-context").
+			Return(helm.InstallState{}, nil).
+			Times(1)
+
+		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+			Radius: helm.ChartOptions{
+				TerraformContainer: "hashicorp/terraform:latest",
+			},
+		})
+		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
+			Return(nil).
+			Times(1)
+
+		err := runner.Run(ctx)
+		require.NoError(t, err)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: "Installing Radius version %s to namespace: %s...",
 				Params: []interface{}{"edge", "radius-system"},
 			},
 		}
