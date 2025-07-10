@@ -57,7 +57,15 @@ spec:
             TERRAFORM_VERSION=$(echo "$TERRAFORM_TAG" | sed 's/^v//')
           fi
           
-          TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          # Detect architecture for terraform download
+          ARCH=$(uname -m)
+          case $ARCH in
+            x86_64) TERRAFORM_ARCH="amd64" ;;
+            aarch64|arm64) TERRAFORM_ARCH="arm64" ;;
+            *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+          esac
+          
+          TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
           
           echo "Pre-downloading terraform ${TERRAFORM_VERSION} to {{ .Values.dynamicrp.terraform.path }}/terraform"
           
