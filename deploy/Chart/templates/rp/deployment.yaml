@@ -75,8 +75,6 @@ spec:
           echo "pre-mounted" > "{{ .Values.rp.terraform.path }}/.terraform-source"
           
           echo "Terraform binary successfully pre-downloaded and installed"
-            exit 1
-          fi
         volumeMounts:
         - name: terraform
           mountPath: {{ .Values.rp.terraform.path }}

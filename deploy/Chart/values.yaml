@@ -37,8 +37,8 @@ global:
   terraform:
     # Enable terraform binary pre-mounting from container
     enabled: false
-    # Container image containing terraform binaries (default: hashicorp/terraform from ghcr.io)
-    image: "ghcr.io/hashicorp/terraform"
+    # Container image containing terraform binaries (default: hashicorp/terraform from Docker Hub)
+    image: "hashicorp/terraform"
     # Default tag uses latest terraform version
     tag: "latest"
     # Path to terraform binary inside the source container
