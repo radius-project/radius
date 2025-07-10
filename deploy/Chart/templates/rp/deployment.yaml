@@ -31,23 +31,50 @@ spec:
     spec:
       serviceAccountName: applications-rp
       {{- if eq .Values.global.terraform.enabled true }}
-      # Init container to copy Terraform binary from a container image to a shared volume
+      # Init container to pre-download Terraform binary to a shared volume
       # This avoids downloading Terraform at runtime and improves recipe execution performance
       initContainers:
       - name: terraform-init
-        image: "{{ .Values.global.terraform.image }}:{{ .Values.global.terraform.tag }}"
+        image: "alpine:latest"
         command:
         - /bin/sh
         - -c
         - |
           set -e
-          if [ -f "{{ .Values.global.terraform.binaryPath }}" ]; then
-            echo "Copying terraform binary from {{ .Values.global.terraform.binaryPath }} to {{ .Values.rp.terraform.path }}/terraform"
-            cp "{{ .Values.global.terraform.binaryPath }}" "{{ .Values.rp.terraform.path }}/terraform"
-            chmod +x "{{ .Values.rp.terraform.path }}/terraform"
-            echo "Terraform binary successfully copied and made executable"
+          echo "Terraform init container starting..."
+          
+          # Create terraform directory
+          mkdir -p "{{ .Values.rp.terraform.path }}"
+          
+          # For the terraform container feature, we'll download the same version
+          # that's specified in the terraform image tag
+          TERRAFORM_TAG="{{ .Values.global.terraform.tag }}"
+          
+          # Extract version from tag (remove 'v' prefix if present, handle 'latest')
+          if [ "$TERRAFORM_TAG" = "latest" ]; then
+            TERRAFORM_VERSION="1.12.2"  # Default to current stable version
           else
-            echo "Error: Terraform binary not found at {{ .Values.global.terraform.binaryPath }}"
+            TERRAFORM_VERSION=$(echo "$TERRAFORM_TAG" | sed 's/^v//')
+          fi
+          
+          TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          
+          echo "Pre-downloading terraform ${TERRAFORM_VERSION} to {{ .Values.rp.terraform.path }}/terraform"
+          
+          # Install required tools
+          apk add --no-cache wget unzip
+          
+          # Download and extract terraform
+          cd /tmp
+          wget "${TERRAFORM_URL}" -O terraform.zip
+          unzip terraform.zip
+          cp terraform "{{ .Values.rp.terraform.path }}/terraform"
+          chmod +x "{{ .Values.rp.terraform.path }}/terraform"
+          
+          # Create marker file to indicate pre-mounted binary is available
+          echo "pre-mounted" > "{{ .Values.rp.terraform.path }}/.terraform-source"
+          
+          echo "Terraform binary successfully pre-downloaded and installed"
             exit 1
           fi
         volumeMounts:
