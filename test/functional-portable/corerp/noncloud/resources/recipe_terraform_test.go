@@ -73,7 +73,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName, "redisCacheName="+redisCacheName),
+			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName, "envName="+envName, "redisCacheName="+redisCacheName),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

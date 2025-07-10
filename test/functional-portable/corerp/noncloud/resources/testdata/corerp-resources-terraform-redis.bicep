@@ -9,13 +9,16 @@ param redisCacheName string
 @description('Name of the Radius Application.')
 param appName string
 
+@description('Name of the Radius Environment.')
+param envName string = 'corerp-resources-terraform-redis-env'
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'corerp-resources-terraform-redis-env'
+  name: envName
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-terraform-redis-env'
+      namespace: envName
     }
     recipeConfig: {
       env: {

@@ -35,7 +35,7 @@ spec:
       # This avoids downloading Terraform at runtime and improves recipe execution performance
       initContainers:
       - name: terraform-init
-        image: "busybox:latest"
+        image: "alpine:latest"
         command:
         - /bin/sh
         - -c
@@ -43,7 +43,7 @@ spec:
           set -e
           echo "Terraform init container starting..."
           echo "Running on architecture: $(uname -m)"
-          echo "Busybox version: $(busybox --help | head -1)"
+          echo "Alpine version: $(cat /etc/alpine-release)"
           
           # Create terraform directory
           mkdir -p "{{ .Values.dynamicrp.terraform.path }}"
@@ -82,12 +82,18 @@ spec:
           echo "- PWD: $(pwd)"
           echo "- Available commands: $(which wget || echo 'no wget') $(which unzip || echo 'no unzip')"
           
-          # Download and extract terraform using busybox wget
+          # Install wget and unzip if not available (Alpine doesn't include them by default)
+          if ! which wget >/dev/null 2>&1 || ! which unzip >/dev/null 2>&1; then
+            echo "Installing wget and unzip..."
+            apk add --no-cache wget unzip || { echo "ERROR: Failed to install wget/unzip"; exit 3; }
+          fi
+          
+          # Download and extract terraform using wget
           cd /tmp
-          echo "Downloading terraform using busybox wget..."
+          echo "Downloading terraform using wget..."
           wget "${TERRAFORM_URL}" -O terraform.zip || { echo "ERROR: Failed to download terraform"; exit 4; }
           
-          echo "Extracting terraform using busybox unzip..."
+          echo "Extracting terraform using unzip..."
           unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
           
           echo "Installing terraform binary..."
