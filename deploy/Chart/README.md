@@ -17,34 +17,25 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system
 
 ### Configuration Options
 
-#### Terraform Binary Pre-mounting
+#### Terraform Binary Pre-downloading
 
-By default, Radius downloads Terraform binaries at runtime for executing Terraform recipes. You can optionally configure Radius to use pre-mounted Terraform binaries from a container image instead. This can improve performance and reduce internet dependencies.
+By default, Radius downloads Terraform binaries at runtime when Terraform recipes are executed. You can optionally configure Radius to pre-download Terraform binaries during pod startup to improve performance.
 
-To enable Terraform pre-mounting:
+To enable Terraform pre-downloading:
+
+```console
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.terraform.enabled=true
+```
+
+This automatically downloads the latest Terraform version. For custom sources (private repositories, proxies, etc.), specify a complete download URL:
 
 ```console
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
   --set global.terraform.enabled=true \
-  --set global.terraform.image=ghcr.io/hashicorp/terraform \
-  --set global.terraform.tag=latest
+  --set global.terraform.downloadUrl="https://my-artifactory.com/terraform_1.5.7_linux_amd64.zip"
 ```
 
-Available configuration options under `global.terraform`:
-
-- `enabled`: Whether to enable pre-mounting (default: `false`)
-- `image`: Container image containing Terraform binaries (default: `ghcr.io/hashicorp/terraform`)
-- `tag`: Image tag to use (default: `latest`)
-- `binaryPath`: Path to Terraform binary inside the container (default: `/bin/terraform`)
-
-Example with a private registry:
-
-```console
-helm upgrade --wait --install radius deploy/Chart -n radius-system \
-  --set global.terraform.enabled=true \
-  --set global.terraform.image=myregistry.azurecr.io/terraform \
-  --set global.terraform.tag=1.6.0
-```
 
 ### Verify the installation
 

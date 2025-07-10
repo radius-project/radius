@@ -49,19 +49,6 @@ spec:
           mkdir -p "{{ .Values.rp.terraform.path }}"
           echo "Created directory: {{ .Values.rp.terraform.path }}"
           
-          # For the terraform container feature, we'll download the same version
-          # that's specified in the terraform image tag
-          TERRAFORM_TAG="{{ .Values.global.terraform.tag }}"
-          echo "Terraform tag: $TERRAFORM_TAG"
-          
-          # Extract version from tag (remove 'v' prefix if present, handle 'latest')
-          if [ "$TERRAFORM_TAG" = "latest" ]; then
-            TERRAFORM_VERSION="1.12.2"  # Default to current stable version
-          else
-            TERRAFORM_VERSION=$(echo "$TERRAFORM_TAG" | sed 's/^v//')
-          fi
-          echo "Terraform version: $TERRAFORM_VERSION"
-          
           # Detect architecture for terraform download
           ARCH=$(uname -m)
           case $ARCH in
@@ -71,7 +58,27 @@ spec:
           esac
           echo "Terraform architecture: $TERRAFORM_ARCH"
           
-          TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
+          # Install wget and unzip if not available (Alpine doesn't include them by default)
+          if ! which wget >/dev/null 2>&1 || ! which unzip >/dev/null 2>&1; then
+            echo "Installing wget and unzip..."
+            apk add --no-cache wget unzip || { echo "ERROR: Failed to install wget/unzip"; exit 3; }
+          fi
+          
+          # Determine download URL
+          TERRAFORM_URL="{{ .Values.global.terraform.downloadUrl }}"
+          
+          # If no custom URL provided, fetch latest version from HashiCorp API
+          if [[ -z "$TERRAFORM_URL" ]]; then
+            echo "Fetching latest Terraform version from HashiCorp API..."
+            LATEST_VERSION=$(wget -qO- "https://api.releases.hashicorp.com/v1/releases/terraform/latest" | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+            if [[ -z "$LATEST_VERSION" ]]; then
+              echo "ERROR: Failed to fetch latest Terraform version from API"
+              exit 2
+            fi
+            echo "Latest Terraform version: $LATEST_VERSION"
+            TERRAFORM_URL="https://releases.hashicorp.com/terraform/${LATEST_VERSION}/terraform_${LATEST_VERSION}_linux_${TERRAFORM_ARCH}.zip"
+          fi
+          
           echo "Download URL: $TERRAFORM_URL"
           
           # Basic connectivity and environment info
