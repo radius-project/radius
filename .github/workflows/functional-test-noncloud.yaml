@@ -142,7 +142,6 @@ jobs:
           [
             cli-noncloud,
             corerp-noncloud,
-            corerp-terraform-container,
             daprrp-noncloud,
             kubernetes-noncloud,
             msgrp-noncloud,
@@ -303,8 +302,8 @@ jobs:
                  --set bicep.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
                  --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
 
-          # Add Terraform container feature for specific test matrix
-          if [ "${{ matrix.name }}" = "corerp-terraform-container" ]; then
+          # Add Terraform container feature for corerp-noncloud tests
+          if [ "${{ matrix.name }}" = "corerp-noncloud" ]; then
             RAD_COMMAND="$RAD_COMMAND --terraform-container ghcr.io/hashicorp/terraform:latest"
             echo "RADIUS_TERRAFORM_CONTAINER_TEST=true" >> $GITHUB_ENV
           fi
@@ -368,7 +367,6 @@ jobs:
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
-        continue-on-error: true  
 
         env:
           USE_CERT_FILE: "true"
@@ -474,12 +472,7 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          # Choose the right test to run based on matrix
-          if [ "${{ matrix.name }}" = "corerp-terraform-container" ]; then
-            make test-functional-corerp-noncloud GOTESTSUM_OPTS="--junitfile ./dist/functional_test/results.xml" GO_TEST_FLAGS="-run Test_TerraformRecipe_PreMountedBinary"
-          else
-            make test-functional-${{ matrix.name }}
-          fi
+          make test-functional-${{ matrix.name }}
         env:
           DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
