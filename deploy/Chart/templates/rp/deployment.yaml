@@ -35,20 +35,24 @@ spec:
       # This avoids downloading Terraform at runtime and improves recipe execution performance
       initContainers:
       - name: terraform-init
-        image: "alpine:latest"
+        image: "busybox:latest"
         command:
         - /bin/sh
         - -c
         - |
           set -e
           echo "Terraform init container starting..."
+          echo "Running on architecture: $(uname -m)"
+          echo "Busybox version: $(busybox --help | head -1)"
           
           # Create terraform directory
           mkdir -p "{{ .Values.rp.terraform.path }}"
+          echo "Created directory: {{ .Values.rp.terraform.path }}"
           
           # For the terraform container feature, we'll download the same version
           # that's specified in the terraform image tag
           TERRAFORM_TAG="{{ .Values.global.terraform.tag }}"
+          echo "Terraform tag: $TERRAFORM_TAG"
           
           # Extract version from tag (remove 'v' prefix if present, handle 'latest')
           if [ "$TERRAFORM_TAG" = "latest" ]; then
@@ -56,28 +60,37 @@ spec:
           else
             TERRAFORM_VERSION=$(echo "$TERRAFORM_TAG" | sed 's/^v//')
           fi
+          echo "Terraform version: $TERRAFORM_VERSION"
           
           # Detect architecture for terraform download
           ARCH=$(uname -m)
           case $ARCH in
             x86_64) TERRAFORM_ARCH="amd64" ;;
             aarch64|arm64) TERRAFORM_ARCH="arm64" ;;
-            *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+            *) echo "ERROR: Unsupported architecture: $ARCH"; exit 1 ;;
           esac
+          echo "Terraform architecture: $TERRAFORM_ARCH"
           
           TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
+          echo "Download URL: $TERRAFORM_URL"
           
-          echo "Pre-downloading terraform ${TERRAFORM_VERSION} to {{ .Values.rp.terraform.path }}/terraform"
+          # Basic connectivity and environment info
+          echo "Environment debug info:"
+          echo "- Date: $(date)"
+          echo "- PWD: $(pwd)"
+          echo "- Available commands: $(which wget || echo 'no wget') $(which unzip || echo 'no unzip')"
           
-          # Install required tools
-          apk add --no-cache wget unzip
-          
-          # Download and extract terraform
+          # Download and extract terraform using busybox wget
           cd /tmp
-          wget "${TERRAFORM_URL}" -O terraform.zip
-          unzip terraform.zip
-          cp terraform "{{ .Values.rp.terraform.path }}/terraform"
-          chmod +x "{{ .Values.rp.terraform.path }}/terraform"
+          echo "Downloading terraform using busybox wget..."
+          wget "${TERRAFORM_URL}" -O terraform.zip || { echo "ERROR: Failed to download terraform"; exit 4; }
+          
+          echo "Extracting terraform using busybox unzip..."
+          unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
+          
+          echo "Installing terraform binary..."
+          cp terraform "{{ .Values.rp.terraform.path }}/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
+          chmod +x "{{ .Values.rp.terraform.path }}/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
           
           # Create marker file to indicate pre-mounted binary is available
           echo "pre-mounted" > "{{ .Values.rp.terraform.path }}/.terraform-source"
