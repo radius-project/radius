@@ -12,6 +12,9 @@ param appName string
 @description('Name of the Radius Environment.')
 param envName string = 'corerp-resources-terraform-redis-env'
 
+@description('Name of the extender resource.')
+param resourceName string = 'corerp-resources-terraform-redis'
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: envName
   properties: {
@@ -51,7 +54,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource webapp 'Applications.Core/extenders@2023-10-01-preview' = {
-  name: 'corerp-resources-terraform-redis'
+  name: resourceName
   properties: {
     application: app.id
     environment: env.id

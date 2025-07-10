@@ -54,7 +54,7 @@ func Test_TerraformRecipe_PreMountedBinary(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName, "envName="+envName, "redisCacheName="+redisCacheName),
+			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName, "envName="+envName, "resourceName="+name, "redisCacheName="+redisCacheName),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
