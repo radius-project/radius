@@ -52,7 +52,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "contour",
-			Input:         []string{"--contour-disabled"},
+			Input:         []string{"--skip-contour-install"},
 			ExpectedValid: true,
 		},
 	}
