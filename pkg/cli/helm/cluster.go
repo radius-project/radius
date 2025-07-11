@@ -221,39 +221,38 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 // UninstallRadius uninstalls Radius and its dependencies (Contour) from the cluster using the provided options.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
-	output.LogInfo("Uninstalling Radius...")
-	radiusFlags := genericclioptions.ConfigFlags{
-		Namespace: &clusterOptions.Radius.Namespace,
-		Context:   &kubeContext,
-	}
-	radiusHelmConf, err := initHelmConfig(&radiusFlags)
-	if err != nil {
-		return fmt.Errorf("failed to get helm config, err: %w", err)
-	}
-	_, err = i.Helm.RunHelmUninstall(radiusHelmConf, radiusReleaseName, clusterOptions.Radius.Namespace, true)
-	if err != nil {
-		if errors.Is(err, driver.ErrReleaseNotFound) {
-			output.LogInfo("%s not found", radiusReleaseName)
-		} else {
-			return fmt.Errorf("failed to uninstall radius, err: %w", err)
-		}
+	// Uninstall Radius
+	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
+		return err
 	}
 
-	output.LogInfo("Uninstalling Contour...")
-	contourFlags := genericclioptions.ConfigFlags{
-		Namespace: &clusterOptions.Radius.Namespace,
+	// Uninstall Contour
+	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (i *Impl) uninstallHelmRelease(componentName, releaseName, namespace, kubeContext string) error {
+	output.LogInfo("Uninstalling %s...", componentName)
+
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
 		Context:   &kubeContext,
 	}
-	contourHelmConf, err := initHelmConfig(&contourFlags)
+
+	helmConf, err := initHelmConfig(&flags)
 	if err != nil {
-		return fmt.Errorf("failed to get helm config, err: %w", err)
+		return fmt.Errorf("failed to get helm config for %s, err: %w", componentName, err)
 	}
-	_, err = i.Helm.RunHelmUninstall(contourHelmConf, contourReleaseName, clusterOptions.Radius.Namespace, true)
+
+	_, err = i.Helm.RunHelmUninstall(helmConf, releaseName, namespace, true)
 	if err != nil {
 		if errors.Is(err, driver.ErrReleaseNotFound) {
-			output.LogInfo("%s not found", contourReleaseName)
+			output.LogInfo("%s not found", releaseName)
 		} else {
-			return fmt.Errorf("failed to uninstall contour, err: %w", err)
+			return fmt.Errorf("failed to uninstall %s, err: %w", componentName, err)
 		}
 	}
 
