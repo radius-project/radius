@@ -28,10 +28,12 @@ import (
 )
 
 func Test_CommandValidation(t *testing.T) {
+	t.Parallel()
 	radcli.SharedCommandValidation(t, NewCommand)
 }
 
 func Test_Validate(t *testing.T) {
+	t.Parallel()
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "valid (basic)",
@@ -48,12 +50,19 @@ func Test_Validate(t *testing.T) {
 			Input:         []string{"blah"},
 			ExpectedValid: false,
 		},
+		{
+			Name:          "contour",
+			Input:         []string{"--contour-disabled"},
+			ExpectedValid: true,
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
 func Test_Run(t *testing.T) {
+	t.Parallel()
 	t.Run("Success: Install", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 		helmMock := helm.NewMockInterface(ctrl)
 		outputMock := &output.MockOutput{}
@@ -94,6 +103,7 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, expectedWrites, outputMock.Writes)
 	})
 	t.Run("Success: Already Installed", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 		helmMock := helm.NewMockInterface(ctrl)
 		outputMock := &output.MockOutput{}
@@ -123,6 +133,7 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, expectedWrites, outputMock.Writes)
 	})
 	t.Run("Success: Reinstall", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 		helmMock := helm.NewMockInterface(ctrl)
 		outputMock := &output.MockOutput{}
