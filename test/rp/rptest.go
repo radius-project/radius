@@ -454,6 +454,9 @@ func (ct RPTest) Test(t *testing.T) {
 		time.Sleep(10 * time.Second)
 	}
 
+	// Track background cleanups for informational logging
+	backgroundCleanupCount := 0
+
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range ct.Steps {
 		// Delete AWS resources if they were created. This delete logic is here because deleting a Radius Application
@@ -512,11 +515,13 @@ func (ct RPTest) Test(t *testing.T) {
 				// Fast cleanup: initiate deletion but don't wait for completion
 				// This avoids timeout issues with recipe-based resources (like DynamicRP postgres)
 				// The cluster cleanup will handle any orphaned resources at the end
+				backgroundCleanupCount++
 				go func(r validation.RPResource) {
-					err := validation.DeleteRPResource(ctx, t, cli, ct.Options.ManagementClient, r)
-					if err != nil {
-						t.Logf("background deletion of %s failed (non-fatal in fast cleanup mode): %v", r.Name, err)
-					}
+					// Use a background context that won't be canceled when the test finishes
+					// Use silent deletion to avoid "Log in goroutine after test has completed" panics
+					bgCtx := context.Background()
+					_ = validation.DeleteRPResourceSilent(bgCtx, cli, ct.Options.ManagementClient, r)
+					// Errors are ignored in fast cleanup mode since it's best-effort
 				}(resource)
 				t.Logf("initiated background deletion of %s", resource.Name)
 			} else {
@@ -546,6 +551,12 @@ func (ct RPTest) Test(t *testing.T) {
 	// Stop all watchers for the tests.
 	for _, watcher := range watchers {
 		watcher.Stop()
+	}
+
+	// Inform about background cleanups if any were initiated
+	if backgroundCleanupCount > 0 {
+		t.Logf("Fast cleanup mode: %d resources were deleted in the background", backgroundCleanupCount)
+		t.Logf("If you need to debug cleanup issues, re-run with RADIUS_TEST_FAST_CLEANUP=false")
 	}
 
 	t.Logf("finished cleanup phase of %s", ct.Description)
