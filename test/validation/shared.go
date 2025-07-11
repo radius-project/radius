@@ -97,9 +97,12 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 	} else if resource.Type == ApplicationsResource {
 		t.Logf("deleting application: %s", resource.Name)
 		return cli.ApplicationDelete(ctx, resource.Name)
+	} else {
+		// Handle other resource types (like ExtendersResource, ContainersResource, etc.)
+		t.Logf("deleting resource: %s of type: %s", resource.Name, resource.Type)
+		_, err := client.DeleteResource(ctx, resource.Type, resource.Name)
+		return err
 	}
-
-	return nil
 }
 
 // ValidateRPResources checks if the expected resources exist in the response and validates the output resources if present.
