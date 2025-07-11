@@ -37,7 +37,7 @@ func TestReadFileYAML(t *testing.T) {
 						Schema: map[string]any{},
 					},
 				},
-				Capabilities: []string{"SupportsRecipes"},
+				Capabilities: []string{"ManualResourceProvisioning"},
 			},
 		},
 	}
@@ -78,7 +78,7 @@ func TestReadFileJSON(t *testing.T) {
 						Schema: map[string]any{},
 					},
 				},
-				Capabilities: []string{"SupportsRecipes"},
+				Capabilities: []string{"ManualResourceProvisioning"},
 			},
 		},
 	}
