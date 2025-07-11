@@ -543,9 +543,13 @@ func (ct RPTest) Test(t *testing.T) {
 
 	// Custom verification is expected to use `t` to trigger its own assertions
 	if ct.PostDeleteVerify != nil {
-		t.Logf("running post-delete verification for %s", ct.Description)
-		ct.PostDeleteVerify(ctx, t, ct)
-		t.Logf("finished post-delete verification for %s", ct.Description)
+		if ct.FastCleanup {
+			t.Logf("skipping post-delete verification in fast cleanup mode (background deletions may not be complete)")
+		} else {
+			t.Logf("running post-delete verification for %s", ct.Description)
+			ct.PostDeleteVerify(ctx, t, ct)
+			t.Logf("finished post-delete verification for %s", ct.Description)
+		}
 	}
 
 	// Stop all watchers for the tests.
