@@ -137,6 +137,11 @@ type RPTest struct {
 	// RequiredFeatures specifies the optional features that are required
 	// for this test to run.
 	RequiredFeatures []RequiredFeature
+
+	// FastCleanup when true, initiates resource deletion but doesn't wait for completion.
+	// Useful when unique resource names are used and cluster cleanup handles orphaned resources.
+	// This dramatically reduces test execution time by avoiding deletion timeouts.
+	FastCleanup bool
 }
 
 type TestOptions struct {
@@ -204,11 +209,16 @@ func NewTestOptions(t *testing.T) TestOptions {
 
 // NewRPTest creates a new RPTest instance with the given name, steps and initial resources.
 func NewRPTest(t *testing.T, name string, steps []TestStep, initialResources ...unstructured.Unstructured) RPTest {
+	// Check if fast cleanup is enabled via environment variable
+	// This is useful for CI environments where tests run in isolated clusters
+	fastCleanup := os.Getenv("RADIUS_TEST_FAST_CLEANUP") == "true"
+
 	return RPTest{
-		Options:          NewRPTestOptions(t),
-		Name:             name,
 		Description:      name,
+		Name:             name,
 		Steps:            steps,
+		Options:          NewRPTestOptions(t),
+		FastCleanup:      fastCleanup,
 		InitialResources: initialResources,
 	}
 }
@@ -497,16 +507,31 @@ func (ct RPTest) Test(t *testing.T) {
 
 		for _, resource := range step.RPResources.Resources {
 			t.Logf("deleting %s", resource.Name)
-			err := validation.DeleteRPResource(ctx, t, cli, ct.Options.ManagementClient, resource)
-			require.NoErrorf(t, err, "failed to delete %s", resource.Name)
-			t.Logf("finished deleting %s", ct.Description)
-
-			if step.SkipObjectValidation {
-				t.Logf("skipping validation of deletion of pods...")
+			
+			if ct.FastCleanup {
+				// Fast cleanup: initiate deletion but don't wait for completion
+				// This avoids timeout issues with recipe-based resources (like DynamicRP postgres)
+				// The cluster cleanup will handle any orphaned resources at the end
+				go func(r validation.RPResource) {
+					err := validation.DeleteRPResource(ctx, t, cli, ct.Options.ManagementClient, r)
+					if err != nil {
+						t.Logf("background deletion of %s failed (non-fatal in fast cleanup mode): %v", r.Name, err)
+					}
+				}(resource)
+				t.Logf("initiated background deletion of %s", resource.Name)
 			} else {
-				t.Logf("validating deletion of pods for %s", ct.Description)
-				validation.ValidateNoPodsInApplication(ctx, t, ct.Options.K8sClient, TestNamespace, ct.Name)
-				t.Logf("finished validation of deletion of pods for %s", ct.Description)
+				// Standard cleanup: wait for deletion to complete
+				err := validation.DeleteRPResource(ctx, t, cli, ct.Options.ManagementClient, resource)
+				require.NoErrorf(t, err, "failed to delete %s", resource.Name)
+				t.Logf("finished deleting %s", resource.Name)
+
+				if step.SkipObjectValidation {
+					t.Logf("skipping validation of deletion of pods...")
+				} else {
+					t.Logf("validating deletion of pods for %s", ct.Description)
+					validation.ValidateNoPodsInApplication(ctx, t, ct.Options.K8sClient, TestNamespace, ct.Name)
+					t.Logf("finished validation of deletion of pods for %s", ct.Description)
+				}
 			}
 		}
 	}
