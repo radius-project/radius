@@ -103,10 +103,6 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.ChartVersion = cliOptions.Radius.ChartVersion
 	}
 
-	if cliOptions.Radius.TerraformContainer != "" {
-		options.Radius.TerraformContainer = cliOptions.Radius.TerraformContainer
-	}
-
 	return options
 }
 

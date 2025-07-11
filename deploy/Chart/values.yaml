@@ -41,10 +41,6 @@ global:
     # Leave empty to automatically fetch the latest version from HashiCorp
     # Or provide a complete direct download URL for custom sources
     downloadUrl: ""
-    # Container image containing terraform binaries (reserved for future container-based implementation)
-    image: "hashicorp/terraform"
-    # Path to terraform binary inside the source container (reserved for future container-based implementation)
-    binaryPath: "/bin/terraform"
 
 controller:
   image: ghcr.io/radius-project/controller

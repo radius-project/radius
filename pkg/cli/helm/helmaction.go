@@ -64,9 +64,6 @@ type ChartOptions struct {
 	// SetFileArgs specifies as set of additional "values" from file to pass it to helm.
 	SetFileArgs []string
 
-	// TerraformContainer specifies the container image to use for pre-mounting terraform binaries.
-	TerraformContainer string
-
 	// Wait specifies whether to wait for the chart to be ready.
 	Wait bool
 }

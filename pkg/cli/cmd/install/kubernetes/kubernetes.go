@@ -66,12 +66,6 @@ rad install kubernetes --set global.prometheus.path=/customdomain.com/metrics,gl
 # Install Radius using a helmchart from specified file path
 rad install kubernetes --chart /root/radius/deploy/Chart
 
-# Install Radius with pre-mounted Terraform binaries from a container image
-rad install kubernetes --terraform-container ghcr.io/hashicorp/terraform:latest
-
-# Install Radius with pre-mounted Terraform binaries from a private registry
-rad install kubernetes --terraform-container myregistry.azurecr.io/terraform:1.6.0
-
 # Force re-install Radius with latest version
 rad install kubernetes --reinstall
 `,
@@ -84,7 +78,6 @@ rad install kubernetes --reinstall
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to install Radius from")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
-	cmd.Flags().StringVar(&runner.TerraformContainer, "terraform-container", "", "Container image to use for pre-mounting Terraform binaries. Improves performance by avoiding downloads during recipe execution. Supports public images (hashicorp/terraform:latest) and private registries (myregistry.azurecr.io/terraform:1.6.0)")
 
 	return cmd, runner
 }
@@ -94,12 +87,11 @@ type Runner struct {
 	Helm   helm.Interface
 	Output output.Interface
 
-	KubeContext        string
-	Chart              string
-	Reinstall          bool
-	Set                []string
-	SetFile            []string
-	TerraformContainer string
+	KubeContext string
+	Chart       string
+	Reinstall   bool
+	Set         []string
+	SetFile     []string
 }
 
 // NewRunner creates an instance of the runner for the `rad install kubernetes` command.
@@ -128,11 +120,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.ChartOptions{
-			Reinstall:          r.Reinstall,
-			ChartPath:          r.Chart,
-			SetArgs:            r.Set,
-			SetFileArgs:        r.SetFile,
-			TerraformContainer: r.TerraformContainer,
+			Reinstall:   r.Reinstall,
+			ChartPath:   r.Chart,
+			SetArgs:     r.Set,
+			SetFileArgs: r.SetFile,
 		},
 	}
 

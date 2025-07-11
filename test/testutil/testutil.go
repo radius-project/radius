@@ -349,11 +349,6 @@ func GetDockerRegistry() string {
 	return regName
 }
 
-// GetTerraformContainerTestEnabled returns the value of the RADIUS_TERRAFORM_CONTAINER_TEST environment variable.
-// This is used to determine if Terraform container tests should be run.
-func GetTerraformContainerTestEnabled() string {
-	return os.Getenv("RADIUS_TERRAFORM_CONTAINER_TEST")
-}
 
 // GetPodLogs retrieves logs from a specific pod and container.
 func GetPodLogs(ctx context.Context, client k8s.Interface, namespace, podName, containerName string) (string, error) {
