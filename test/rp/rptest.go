@@ -437,6 +437,13 @@ func (ct RPTest) Test(t *testing.T) {
 
 	t.Logf("beginning cleanup phase of %s", ct.Description)
 
+	// If test failed, wait a moment for resources to stabilize before attempting cleanup
+	// This helps avoid 409 Conflicts when resources are stuck in "Updating" state after deployment failures
+	if t.Failed() {
+		t.Logf("test failed, waiting 10 seconds for resources to stabilize before cleanup")
+		time.Sleep(10 * time.Second)
+	}
+
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range ct.Steps {
 		// Delete AWS resources if they were created. This delete logic is here because deleting a Radius Application
