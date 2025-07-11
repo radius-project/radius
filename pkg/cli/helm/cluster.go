@@ -251,7 +251,7 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	_, err = i.Helm.RunHelmUninstall(contourHelmConf, contourReleaseName, clusterOptions.Radius.Namespace, true)
 	if err != nil {
 		if errors.Is(err, driver.ErrReleaseNotFound) {
-			output.LogInfo("%s not found", radiusReleaseName)
+			output.LogInfo("%s not found", contourReleaseName)
 		} else {
 			return fmt.Errorf("failed to uninstall contour, err: %w", err)
 		}
