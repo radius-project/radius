@@ -80,6 +80,21 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 		return nil, fmt.Errorf("failed to create directory for terraform installation for resource: %w", err)
 	}
 
+	// Check if pre-downloaded Terraform binary exists and copy it to installDir
+	preMountedBinaryPath := "/terraform/terraform"
+	markerFile := "/terraform/.terraform-source"
+	
+	if _, err := os.Stat(preMountedBinaryPath); err == nil {
+		if _, err := os.Stat(markerFile); err == nil {
+			logger.Info("Copying pre-downloaded Terraform binary to install directory")
+			if data, err := os.ReadFile(preMountedBinaryPath); err == nil {
+				if err := os.WriteFile(filepath.Join(installDir, "terraform"), data, 0755); err == nil {
+					logger.Info("Successfully copied pre-downloaded Terraform binary")
+				}
+			}
+		}
+	}
+
 	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
 
 	installStartTime := time.Now()

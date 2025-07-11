@@ -148,3 +148,6 @@ func TestInstall_PreMountedBinaryNotExecutable(t *testing.T) {
 	_, err = os.Stat(installDir)
 	require.NoError(t, err, "Install directory should exist when falling back to download")
 }
+
+// TODO: Add test for pre-downloaded binary functionality at /terraform/terraform path
+// This would require dependency injection to make the terraform mount path configurable for testing
