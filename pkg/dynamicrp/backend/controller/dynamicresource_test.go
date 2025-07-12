@@ -264,3 +264,39 @@ func Test_DynamicResourceController_fetchResourceTypeDetails(t *testing.T) {
 		})
 	}
 }
+
+func TestDynamicResourceController_validateRequestSchema(t *testing.T) {
+	// Note: The validation logic is tested in the schema package tests.
+
+	setup := func() *DynamicResourceController {
+		ucp, err := testUCPClientFactory()
+		require.NoError(t, err)
+
+		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil)
+		require.NoError(t, err)
+		return controller.(*DynamicResourceController)
+	}
+
+	t.Run("skip validation for non-PUT operations", func(t *testing.T) {
+		controller := setup()
+		request := &ctrl.Request{
+			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
+			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
+		}
+
+		err := controller.validateRequestSchema(context.Background(), request)
+		require.NoError(t, err) // Should skip validation for DELETE
+	})
+
+	t.Run("error - invalid resource ID", func(t *testing.T) {
+		controller := setup()
+		request := &ctrl.Request{
+			ResourceID:    "invalid-resource-id",
+			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationPut}.String(),
+		}
+
+		err := controller.validateRequestSchema(context.Background(), request)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid resource ID")
+	})
+}

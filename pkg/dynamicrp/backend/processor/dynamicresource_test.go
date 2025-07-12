@@ -19,6 +19,7 @@ package processor
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -228,5 +229,137 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 				APIVersionsServer: apiVersionServer,
 			}),
 		},
+	})
+}
+
+func TestGetSchemaForResourceType(t *testing.T) {
+	t.Run("success - schema found", func(t *testing.T) {
+		clientFactory, err := testUCPClientFactory()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
+		apiVersion := "2023-10-01-preview"
+
+		schema, err := GetSchemaForResourceType(ctx, clientFactory, resourceType, apiVersion)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Verify schema structure
+		schemaMap, ok := schema.(map[string]any)
+		require.True(t, ok)
+		
+		properties, exists := schemaMap["properties"]
+		require.True(t, exists)
+		require.NotNil(t, properties)
+	})
+
+	t.Run("error - invalid resource type format", func(t *testing.T) {
+		clientFactory, err := testUCPClientFactory()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		resourceType := "invalid-resource-type-format"
+		apiVersion := "2023-10-01-preview"
+
+		schema, err := GetSchemaForResourceType(ctx, clientFactory, resourceType, apiVersion)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.Contains(t, err.Error(), "invalid resource type format")
+	})
+
+	t.Run("error - API version not found", func(t *testing.T) {
+		// Create a client factory that returns 404 for API version requests
+		apiVersionServer := fake.APIVersionsServer{
+			Get: func(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
+				errResp.SetError(fmt.Errorf("API version not found"))
+				return
+			},
+		}
+
+		clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
+			ClientOptions: policy.ClientOptions{
+				Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+					APIVersionsServer: apiVersionServer,
+				}),
+			},
+		})
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
+		apiVersion := "nonexistent-version"
+
+		schema, err := GetSchemaForResourceType(ctx, clientFactory, resourceType, apiVersion)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.ErrorIs(t, err, ErrNoSchemaFound)
+	})
+
+	t.Run("error - no schema in response", func(t *testing.T) {
+		// Create a client factory that returns empty schema
+		apiVersionServer := fake.APIVersionsServer{
+			Get: func(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
+				response := v20231001preview.APIVersionsClientGetResponse{
+					APIVersionResource: v20231001preview.APIVersionResource{
+						Properties: &v20231001preview.APIVersionProperties{
+							Schema: nil, // No schema
+						},
+					},
+				}
+				resp.SetResponse(http.StatusOK, response, nil)
+				return
+			},
+		}
+
+		clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
+			ClientOptions: policy.ClientOptions{
+				Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+					APIVersionsServer: apiVersionServer,
+				}),
+			},
+		})
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
+		apiVersion := "2023-10-01-preview"
+
+		schema, err := GetSchemaForResourceType(ctx, clientFactory, resourceType, apiVersion)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.ErrorIs(t, err, ErrNoSchemaFound)
+	})
+
+	t.Run("success - different resource types", func(t *testing.T) {
+		clientFactory, err := testUCPClientFactory()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		
+		testCases := []struct {
+			name         string
+			resourceType string
+			apiVersion   string
+		}{
+			{
+				name:         "containers",
+				resourceType: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource",
+				apiVersion:   "2023-10-01-preview",
+			},
+			{
+				name:         "environments",
+				resourceType: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+				apiVersion:   "2023-10-01-preview",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				schema, err := GetSchemaForResourceType(ctx, clientFactory, tc.resourceType, tc.apiVersion)
+				require.NoError(t, err)
+				require.NotNil(t, schema)
+			})
+		}
 	})
 }
