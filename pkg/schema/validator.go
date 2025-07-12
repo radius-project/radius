@@ -368,3 +368,42 @@ func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) erro
 
 	return nil
 }
+
+// ValidateResourceAgainstSchema validates resource data against an OpenAPI 3.0 schema.
+// It converts the schema data to OpenAPI format, creates a minimal OpenAPI document for validation,
+// and then validates the resource data against the schema using OpenAPI's built-in validation.
+func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]any, schemaData any) error {
+	// Convert schema to OpenAPI schema format
+	openAPISchema, err := ConvertToOpenAPISchema(schemaData)
+	if err != nil {
+		return fmt.Errorf("failed to convert schema: %w", err)
+	}
+
+	// Create a minimal OpenAPI document with the schema
+	doc := &openapi3.T{
+		OpenAPI: "3.0.0",
+		Info: &openapi3.Info{
+			Title:   "temp",
+			Version: "1.0.0",
+		},
+		Components: &openapi3.Components{
+			Schemas: map[string]*openapi3.SchemaRef{
+				"temp": {Value: openAPISchema},
+			},
+		},
+		Paths: &openapi3.Paths{},
+	}
+
+	// Validate the document structure
+	if err := doc.Validate(ctx); err != nil {
+		return fmt.Errorf("schema validation failed: %w", err)
+	}
+
+	// Validate the data against the schema
+	schemaRef := &openapi3.SchemaRef{Value: openAPISchema}
+	if err := schemaRef.Value.VisitJSON(resourceData); err != nil {
+		return fmt.Errorf("data validation failed: %w", err)
+	}
+
+	return nil
+}
