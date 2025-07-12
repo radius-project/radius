@@ -1,0 +1,199 @@
+# Debug Development Configuration
+# This file configures the automated setup for running Radius components as OS processes
+
+# Development environment settings
+development:
+  root_directory: "debug_files"
+  
+  # Component configuration
+  components:
+    ucp:
+      port: 9000
+      health_endpoint: "/healthz"
+      config_template: "ucp-config.yaml.tmpl"
+      binary_name: "ucpd"
+    
+    applications-rp:
+      port: 5443
+      proxy_port: 5444
+      health_endpoint: "/healthz"
+      config_template: "applications-rp-config.yaml.tmpl"
+      binary_name: "applications-rp"
+    
+    controller:
+      port: 8081
+      health_endpoint: "/healthz"
+      config_template: "controller-config.yaml.tmpl"
+      binary_name: "controller"
+    
+    dynamic-rp:
+      port: 5445
+      health_endpoint: "/healthz"
+      config_template: "dynamic-rp-config.yaml.tmpl"
+      binary_name: "dynamic-rp"
+
+# Database configuration
+database:
+  provider: "postgresql"
+  connection_string: "postgresql://radius_user:radius_pass@localhost:5432/radius"
+  
+# Deployment Engine configuration
+deployment_engine:
+  # Choose deployment method: kubernetes, docker, or local
+  method: "docker"
+  
+  # Kubernetes deployment (requires rad install kubernetes)
+  kubernetes:
+    namespace: "radius-system"
+    service_name: "deployment-engine"
+    port: 8080
+    local_port: 8080
+  
+  # Docker container deployment
+  docker:
+    image: "ghcr.io/radius-project/deployment-engine:latest"
+    container_name: "radius-deployment-engine"
+    host_port: 5017
+    container_port: 8080
+    environment:
+      RADIUSBACKENDURL: "http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3"
+  
+  # Local debugging (requires deployment-engine repository)
+  local:
+    repository_path: "../deployment-engine"
+    build_path: "src/DeploymentEngine"
+    port: 5017
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      RADIUSBACKENDURL: "http://localhost:9000/apis/api.ucp.dev/v1alpha3"
+
+# Environment variables for debugging
+environment:
+  # Core Radius settings
+  RADIUS_ENV: "self-hosted"
+  K8S_CLUSTER: "true"
+  SKIP_ARM: "false"
+  ARM_AUTH_METHOD: "UCPCredential"
+  
+  # Logging settings
+  RADIUS_LOG_LEVEL: "debug"
+  RADIUS_LOG_JSON: "false"
+  
+  # Terraform CLI configuration  
+  TF_CLI_CONFIG_FILE: "${DEBUG_DEV_ROOT}/configs/terraformrc"
+  
+  # Kubernetes
+  KUBECONFIG: "${HOME}/.kube/config"
+
+# VS Code configuration
+vscode:
+  # Launch configurations for debugging
+  launch_configs:
+    - name: "Debug UCP"
+      type: "go"
+      request: "launch"
+      mode: "auto"
+      program: "${workspaceFolder}/cmd/ucpd"
+      
+    - name: "Debug Applications RP"
+      type: "go"
+      request: "launch" 
+      mode: "auto"
+      program: "${workspaceFolder}/cmd/applications-rp"
+      
+    - name: "Debug Controller"
+      type: "go"
+      request: "launch"
+      mode: "auto"
+      program: "${workspaceFolder}/cmd/controller"
+      
+    - name: "Debug Dynamic RP"
+      type: "go"
+      request: "launch"
+      mode: "auto"
+      program: "${workspaceFolder}/cmd/dynamic-rp"
+      
+    - name: "Debug Deployment Engine"
+      type: "coreclr"
+      request: "launch"
+      program: "${workspaceFolder}/../deployment-engine/src/DeploymentEngine/bin/Debug/net8.0/DeploymentEngine.dll"
+
+  # Compound configurations for launching multiple components
+  compounds:
+    - name: "Launch Control Plane (all)"
+      configurations: ["Debug UCP", "Debug Applications RP", "Debug Dynamic RP", "Debug Controller"]
+      
+    - name: "Launch Control Plane (with Deployment Engine)"
+      configurations: ["Debug UCP", "Debug Applications RP", "Debug Dynamic RP", "Debug Controller", "Debug Deployment Engine"]
+
+  # VS Code tasks
+  tasks:
+    - label: "Build All Components"
+      type: "shell"
+      command: "make"
+      args: ["build"]
+      
+    - label: "Build Deployment Engine"
+      type: "shell"
+      command: "dotnet"
+      args: ["build"]
+      options:
+        cwd: "${workspaceFolder}/../deployment-engine/src/DeploymentEngine"
+
+# Prerequisites check
+prerequisites:
+  required_commands:
+    - name: "go"
+      version_check: "go version"
+      min_version: "1.21"
+      install_url: "https://golang.org/dl/"
+      
+    - name: "kubectl"
+      version_check: "kubectl version --client"
+      install_url: "https://kubernetes.io/docs/tasks/tools/"
+      
+    - name: "psql"
+      version_check: "psql --version"
+      install_url: "https://www.postgresql.org/download/"
+      
+    - name: "terraform"
+      version_check: "terraform version"
+      min_version: "1.6.0"
+      install_url: "https://www.terraform.io/downloads"
+      
+    - name: "rad"
+      version_check: "rad version"
+      install_url: "https://docs.radapp.io/getting-started/install/"
+
+  # Optional tools for enhanced development
+  optional_commands:
+    - name: "dotnet"
+      version_check: "dotnet --version"
+      min_version: "8.0"
+      install_url: "https://dotnet.microsoft.com/download"
+      note: "Required for local deployment engine debugging"
+      
+    - name: "docker"
+      version_check: "docker --version"
+      install_url: "https://docs.docker.com/get-docker/"
+      note: "Required for Docker-based deployment engine"
+
+# Automation settings
+automation:
+  # Script generation settings
+  scripts:
+    shell: "/bin/bash"
+    use_colors: true
+    verbose: false
+    
+  # Health check settings
+  health_checks:
+    timeout: 30
+    retry_interval: 2
+    max_retries: 15
+    
+  # Component startup settings
+  startup:
+    sequence: ["ucp", "controller", "applications-rp", "dynamic-rp"]
+    delay_between_components: 3
+    initial_delay: 5

@@ -69,3 +69,7 @@ hack/bicep-types-radius/generated/**/*.md
 
 # Bicep extensions
 *.tgz
+
+# debug environment files
+rad
+debug_files/*
