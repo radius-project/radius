@@ -122,7 +122,8 @@ BINARIES := docgen:./cmd/docgen \
 	ucpd:./cmd/ucpd \
 	controller:./cmd/controller \
 	testrp:./test/testrp \
-	magpiego:./test/magpiego
+	magpiego:./test/magpiego \
+	pre-upgrade:./cmd/pre-upgrade
 
 # This function parses binary name and entrypoint from an item in the BINARIES list.
 define parseBinary
