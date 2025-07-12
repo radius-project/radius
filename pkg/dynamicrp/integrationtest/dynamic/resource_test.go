@@ -149,10 +149,11 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 	}))
 
 	schema := map[string]any{
+		"type": "object",
 		"properties": map[string]any{
-			"hostname": map[string]any{},
-			"port":     map[string]any{},
-			"password": map[string]any{},
+			"foo": map[string]any{
+				"type": "string",
+			},
 		},
 	}
 	// Setup a resource provider (Applications.Test/exampleRecipeResources)
@@ -227,9 +228,6 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 		"location": "global",
 		"name":     "my-recipe-example",
 		"properties": map[string]any{
-			"port":              float64(8080), // This is an artifact of the JSON unmarshal process. It's wierd but intended.
-			"hostname":          "example.com",
-			"password":          "v3ryS3cr3t", // TODO: See comments in dynamicresource.go
 			"foo":               "bar",
 			"provisioningState": "Succeeded",
 			"recipe": map[string]any{

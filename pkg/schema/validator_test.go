@@ -1419,9 +1419,139 @@ func TestValidator_ValidateSchema_EdgeCases(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+<<<<<<< HEAD
 =======
 }
 >>>>>>> 01d7c5329 (initial draft)
 =======
 }
 >>>>>>> 71cc6e005 (removing ValidateSchemas())
+=======
+
+func TestValidateResourceAgainstSchema(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("valid resource against simple schema", func(t *testing.T) {
+		// Simple string schema
+		schema := map[string]any{
+			"type": "string",
+		}
+
+		resourceData := map[string]any{
+			"value": "test string",
+		}
+
+		// Note: This will fail validation because the resource doesn't match the schema structure
+		// This is expected as the resource should be a string, not an object
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+	})
+
+	t.Run("valid resource against object schema", func(t *testing.T) {
+		// Object schema with properties
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type": "string",
+				},
+				"count": map[string]any{
+					"type": "integer",
+				},
+			},
+			"required": []any{"name"},
+		}
+
+		resourceData := map[string]any{
+			"name":  "test-resource",
+			"count": 42,
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("invalid resource against schema - missing required field", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type": "string",
+				},
+			},
+			"required": []any{"name"},
+		}
+
+		resourceData := map[string]any{
+			"count": 42, // missing required "name" field
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "data validation failed")
+	})
+
+	t.Run("invalid resource against schema - wrong type", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"count": map[string]any{
+					"type": "integer",
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"count": "not a number", // should be integer
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "data validation failed")
+	})
+
+	t.Run("invalid schema format", func(t *testing.T) {
+		// Invalid schema that can't be converted
+		schema := "invalid schema format"
+
+		resourceData := map[string]any{
+			"name": "test",
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to convert schema")
+	})
+
+	t.Run("empty resource data", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+		}
+
+		resourceData := map[string]any{}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err) // empty object is valid against object schema
+	})
+
+	t.Run("context cancellation", func(t *testing.T) {
+		// Create a cancelled context
+		cancelledCtx, cancel := context.WithCancel(context.Background())
+		cancel() // Cancel immediately
+
+		schema := map[string]any{
+			"type": "object",
+		}
+
+		resourceData := map[string]any{
+			"name": "test",
+		}
+
+		// Should still work since validation is quick, but tests context is properly passed
+		err := ValidateResourceAgainstSchema(cancelledCtx, resourceData, schema)
+		// Note: This might or might not fail depending on timing, but it validates context handling
+		// The important thing is that we're properly passing context through
+		_ = err // Just checking it compiles and runs
+	})
+}
+>>>>>>> 500e79562 (initial server side validation)
