@@ -30,14 +30,13 @@ dump: ## Outputs the values of all variables in the makefile.
 DEBUG_CONFIG_FILE ?= build/debug-config.yaml
 DEBUG_DEV_ROOT ?= $(PWD)/debug_files
 
-.PHONY: debug-setup debug-clean debug-start debug-stop debug-status debug-vscode debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init
+.PHONY: debug-setup debug-clean debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init
 
 debug-help: ## Show debug automation help
 	@echo "Debug Development Automation Commands:"
 	@echo ""
 	@echo "Setup Commands:"
 	@echo "  debug-setup          - Complete one-time setup for OS process debugging"
-	@echo "  debug-vscode         - Generate VS Code debugging configuration"
 	@echo "  debug-clean          - Clean up debug environment"
 	@echo ""
 	@echo "Runtime Commands:"
@@ -47,7 +46,7 @@ debug-help: ## Show debug automation help
 	@echo "  debug-logs           - Tail all component logs"
 	@echo ""
 	@echo "Environment Commands:"
-	@echo "  debug-env-init       - Create resource group, environment, and register recipes"
+	@echo "  debug-env-init       - Create resource group, environment, and register recipes (first time only)"
 	@echo "  debug-register-recipes - Register default recipes for common resource types"
 	@echo ""
 	@echo ""
@@ -82,12 +81,6 @@ debug-setup: ## Complete one-time setup for OS process debugging
 	@build/scripts/setup-debug-env.sh $(DEBUG_CONFIG_FILE) $(DEBUG_DEV_ROOT)
 	@echo "✅ Debug environment setup complete at $(DEBUG_DEV_ROOT)"
 	@echo "📖 See docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md for usage instructions"
-
-debug-vscode: ## Generate VS Code debugging configuration
-	@echo "Generating VS Code debug configuration..."
-	@build/scripts/generate-vscode-config.sh $(DEBUG_CONFIG_FILE) $(PWD)
-	@echo "✅ VS Code configuration generated in .vscode/"
-	@echo "💡 Open VS Code and use 'Launch Control Plane (all)' configuration"
 
 debug-build: build ## Build components with debug symbols for debugging
 	@echo "Building Radius components with debug symbols..."
@@ -253,7 +246,7 @@ debug-validate:
 	@echo "✅ Debug configuration valid"
 
 # Development workflow targets
-debug-dev-start: debug-setup debug-vscode debug-start ## Complete development setup and start
+debug-dev-start: debug-setup debug-start ## Complete development setup and start
 	@echo "🎉 Debug development environment ready!"
 	@echo ""
 	@echo "Next steps:"
@@ -269,6 +262,7 @@ debug-dev-stop: debug-stop ## Stop development environment
 debug-check-prereqs:
 	@echo "Checking prerequisites for debug development..."
 	@command -v go >/dev/null 2>&1 || { echo "❌ Go not found. Please install Go 1.21+"; exit 1; }
+	@command -v dlv >/dev/null 2>&1 || { echo "❌ Delve debugger not found. Please install: go install github.com/go-delve/delve/cmd/dlv@latest"; exit 1; }
 	@command -v kubectl >/dev/null 2>&1 || { echo "❌ kubectl not found. Please install kubectl"; exit 1; }
 	@command -v psql >/dev/null 2>&1 || { echo "❌ PostgreSQL client not found. Please install PostgreSQL"; exit 1; }
 	@command -v terraform >/dev/null 2>&1 || { echo "❌ Terraform not found. Please install Terraform"; exit 1; }
