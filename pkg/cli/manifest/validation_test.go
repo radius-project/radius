@@ -348,7 +348,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 		err := validateManifestSchemas(ctx, provider)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unsupported type: array")
-		require.Contains(t, err.Error(), "Test.Provider.widgets[2023-10-01]")
+		require.Contains(t, err.Error(), "Test.Provider/widgets@2023-10-01")
 	})
 
 	t.Run("provider with invalid schema - prohibited feature", func(t *testing.T) {

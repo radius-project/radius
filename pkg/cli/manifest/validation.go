@@ -71,7 +71,7 @@ func validateManifestSchemas(ctx context.Context, provider *ResourceProvider) er
 		// Check each API version
 		for apiVersion, versionInfo := range resourceType.APIVersions {
 			if versionInfo.Schema != nil {
-				schemaPath := fmt.Sprintf("%s.%s[%s]", provider.Name, resourceTypeName, apiVersion)
+				schemaPath := fmt.Sprintf("%s/%s@%s", provider.Name, resourceTypeName, apiVersion)
 
 				// Convert schema to OpenAPI schema
 				openAPISchema, err := schema.ConvertToOpenAPISchema(versionInfo.Schema)
