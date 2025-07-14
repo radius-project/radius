@@ -27,27 +27,32 @@ Running these as OS processes enables:
 
 ## Quick Start
 
-The Radius build system provides complete automation for OS process debugging:
+The simplest way to get debugging working:
 
 ```bash
-# Check prerequisites and setup everything
+# One-time setup
 make debug-setup
 
-# Generate VS Code debugging configuration
-make debug-vscode
-
-# Start all components as OS processes
+# Start all components as OS processes  
 make debug-start
 
-# Check component status
+# First time only: initialize database
+make debug-env-init
+
+# Check that everything is running
 make debug-status
-
-# View logs
-make debug-logs
-
-# Stop all components
-make debug-stop
 ```
+
+**Then in VS Code:**
+1. Set breakpoints in your code
+2. Open Debug panel (Ctrl+Shift+D)
+3. Select "Attach to [Component]" 
+4. Press F5 and pick the component process
+5. Debug with full breakpoint support!
+
+**For code changes:**
+1. Use "Rebuild and Restart [Component]" task
+2. Re-attach debugger to new process
 
 **What the automation provides:**
 - Environment directory structure at `debug_files/` (in project root)
@@ -55,8 +60,6 @@ make debug-stop
 - Controller configured to skip webhooks in local development (no TLS certs required)
 - Database setup verification
 - Management scripts (start/stop/status)
-- VS Code launch and task configurations
-- Deployment engine setup (Docker-based by default)
 - Incremental builds for individual components
 - Convenient `./rad` symlink in workspace root for easy CLI access
 - Debug CLI wrapper `./rad` with automatic UCP endpoint configuration
@@ -67,6 +70,7 @@ The automation checks for all required tools. Install any missing prerequisites:
 
 ### Required Tools
 - **Go 1.21+** - `go version`
+- **Delve debugger** - `dlv version` (Go debugger for VS Code integration)
 - **kubectl** - Kubernetes cluster access
 - **psql** - PostgreSQL client for database verification
 - **terraform** - Terraform CLI for recipe execution
@@ -82,6 +86,13 @@ The automation checks for all required tools. Install any missing prerequisites:
 # Core tools
 brew install go kubectl postgresql
 
+# Delve debugger
+go install github.com/go-delve/delve/cmd/dlv@latest
+
+# Add Go binaries to PATH (required for delve)
+echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
 # Terraform (HashiCorp official method)
 brew tap hashicorp/tap
 brew install hashicorp/tap/terraform
@@ -96,6 +107,13 @@ brew install --cask visual-studio-code
 # Core tools
 sudo apt update
 sudo apt install golang-go kubectl postgresql-client
+
+# Delve debugger
+go install github.com/go-delve/delve/cmd/dlv@latest
+
+# Add Go binaries to PATH (required for delve)
+echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 
 # Terraform (HashiCorp official method)
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -124,10 +142,9 @@ make debug-dev-start
 
 # This single command:
 # 1. Sets up directory structure and configuration files
-# 2. Generates VS Code debugging configuration
-# 3. Builds components with debug symbols
-# 4. Starts all components as OS processes
-# 5. Provides next steps for creating resources
+# 2. Builds components with debug symbols
+# 3. Starts all components as OS processes
+# 4. Provides next steps for creating resources
 
 # Create Radius resources (after components are running)
 # Use ./rad for automatic UCP connection and workspace setup
@@ -172,7 +189,6 @@ make debug-stop
 make debug-help           # Show all available debug commands
 make debug-check-prereqs  # Verify all prerequisites are installed
 make debug-setup          # Complete one-time environment setup
-make debug-vscode         # Generate VS Code debugging configuration
 make debug-clean          # Clean up debug environment
 
 # Development Workflow
@@ -223,7 +239,7 @@ debug_files/
 └── env-setup.sh           # Environment variables
 ```
 
-And in your workspace:
+And VS Code configuration files are already included in the repository:
 
 ```
 .vscode/
@@ -235,42 +251,105 @@ And in your workspace:
 
 ## VS Code Debugging
 
-> 💡 **Quick Setup**: Run `make debug-vscode` to automatically generate all VS Code configuration files.
+> 💡 **Quick Setup**: VS Code configuration files are included in the repository and ready to use.
 
-### Generated Launch Configurations
+### Available Debug Configurations
 
-The automation creates the following debug configurations in `.vscode/launch.json`:
+The following attach-based debug configurations are available in `.vscode/launch.json`:
 
-- **"Debug UCP"** - Debug the Universal Control Plane
-- **"Debug Applications RP"** - Debug the Applications Resource Provider
-- **"Debug Controller"** - Debug the Kubernetes Controller
-- **"Debug Dynamic RP"** - Debug the Dynamic Resource Provider
-- **"Launch Control Plane (all)"** - Start all components for debugging
+- **"Attach to UCP"** - Attach debugger to running UCP process
+- **"Attach to Applications RP"** - Attach debugger to running Applications RP process  
+- **"Attach to Controller"** - Attach debugger to running Controller process
+- **"Attach to Dynamic RP"** - Attach debugger to running Dynamic RP process
+
+All configurations use the "attach" mode - they connect to already running processes started via `make debug-start`.
 
 ### Debugging Workflow in VS Code
 
-1. **Setup** (one-time):
+This workflow separates process management (via make) from debugging (via VS Code), making it much cleaner and more reliable.
+
+#### Initial Setup
+
+1. **Complete Setup and Start** (first time):
    ```bash
-   make debug-setup
-   make debug-vscode
+   make debug-setup              # Setup environment
+   make debug-start              # Start all components as processes
+   make debug-env-init           # Initialize database (first time only)
    ```
 
-2. **Start Debugging**:
-   - Open VS Code in the radius repository
+2. **Daily Development Start**:
+   ```bash
+   make debug-start              # Start all components
+   # Components run as regular OS processes, ready for debugger attachment
+   ```
+
+#### Debugging Workflow
+
+1. **Set Breakpoints**: Add breakpoints in your code in VS Code
+
+2. **Attach Debugger** (Choose one method):
+
+   **Method A: Automatic PID Resolution (Recommended)**
+   - Run VS Code task: "Update Launch.json PIDs" (Ctrl+Shift+P → "Tasks: Run Task")
    - Open Debug panel (Ctrl+Shift+D / Cmd+Shift+D)
-   - Select "Launch Control Plane (all)"
-   - Press F5 or click Start Debugging
+   - Select "Quick Attach to [Component]" (e.g., "Quick Attach to UCP (Update PID)")
+   - Press F5 - debugger attaches immediately with current PID
+   
+   **Method B: Manual PID Entry**
+   - Run VS Code task: "Show PIDs for Debugging" to see current process IDs
+   - Open Debug panel and select "Attach to [Component]"
+   - Press F5 and enter the PID when prompted
+   
+   **Method C: VS Code Process Picker**
+   - Open Debug panel and select "Attach to [Component]"
+   - Press F5 - VS Code will show a process picker
+   - Select the component process (e.g., "ucpd")
 
-3. **Development Process**:
-   - Set breakpoints in your code
-   - Make changes and rebuild: Ctrl+Shift+P → "Tasks: Run Task" → "Build All Components"
-   - Restart debugging: Ctrl+Shift+F5
+   **Method D: Attach to All Components**
+   - Use compound configuration "Attach to All Components" for multi-component debugging
 
-4. **Component Status**:
-   - All components start automatically in the correct order
-   - UCP starts first (port 9000)
-   - Applications RP, Dynamic RP, and Controller follow
-   - Health checks verify successful startup
+3. **Code Changes**: 
+   - Make your code changes
+   - Use rebuild/restart tasks: Ctrl+Shift+P → "Tasks: Run Task" → "Rebuild and Restart [Component]"
+   - Re-run "Update Launch.json PIDs" task if using Method A
+   - Re-attach debugger to the new process
+
+4. **Individual Component Development**:
+   - **UCP**: "Rebuild and Restart UCP" → "Update Launch.json PIDs" → "Quick Attach to UCP"  
+   - **Applications RP**: "Rebuild and Restart Applications RP" → "Update Launch.json PIDs" → "Quick Attach to Applications RP"
+   - **Controller**: "Rebuild and Restart Controller" → "Update Launch.json PIDs" → "Quick Attach to Controller"
+   - **Dynamic RP**: "Rebuild and Restart Dynamic RP" → "Update Launch.json PIDs" → "Quick Attach to Dynamic RP"
+
+> **Note**: Currently, the rebuild/restart tasks restart all components because the underlying make system doesn't support individual component restart. This ensures all inter-component dependencies are properly refreshed, but means a slight delay when you only want to restart one component.
+> 
+> **💡 Contribution Opportunity**: Adding individual component start/stop make targets (e.g., `debug-start-ucpd`, `debug-stop-ucpd`) would enable truly granular rebuild/restart tasks. This would be a great contribution for anyone wanting to improve the developer experience!
+
+#### Available VS Code Tasks
+
+**Debug Management:**
+- **"Show PIDs for Debugging"** - Display current process IDs for all components
+- **"Update Launch.json PIDs"** - Automatically update Quick Attach configurations with current PIDs
+
+**Build and Restart:**
+- **"Rebuild and Restart UCP"** - Rebuild UCP binary and restart all components
+- **"Rebuild and Restart Applications RP"** - Rebuild Applications RP and restart all components
+- **"Rebuild and Restart Controller"** - Rebuild Controller and restart all components
+- **"Rebuild and Restart Dynamic RP"** - Rebuild Dynamic RP and restart all components
+
+**General:**
+- **"Build All Components"** - Build all components (without restart)
+- **"Component Status"** - Check which components are running
+- **"View All Logs"** - Tail all component logs
+
+> **Technical Note**: The rebuild/restart tasks currently restart all components due to make system limitations. Individual component builds are supported (`debug-build-ucpd`, etc.), but individual start/stop is not yet implemented.
+
+#### Advantages of This Approach
+
+- **Clean Separation**: Make handles processes, VS Code handles debugging
+- **Reliable**: No complex launch configurations that can break
+- **Flexible**: Debug any combination of components
+- **Fast Iteration**: Rebuild/restart only the component you're working on
+- **Preserved State**: Other components keep running while you restart one
 
 ### Debugging Specific Issues
 
