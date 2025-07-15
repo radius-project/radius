@@ -84,11 +84,6 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 		return false, "Target version 'latest' must be resolved to a specific version before validation", nil
 	}
 
-	// Allow "edge" for local development builds
-	if targetVersion == "edge" {
-		return true, "Upgrade to edge version (development build)", nil
-	}
-
 	// Ensure both versions have 'v' prefix for semver parsing
 	if len(currentVersion) > 0 && currentVersion[0] != 'v' {
 		currentVersion = "v" + currentVersion
