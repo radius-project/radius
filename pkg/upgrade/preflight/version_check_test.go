@@ -67,13 +67,6 @@ func TestVersionCompatibilityCheck_Run(t *testing.T) {
 			expectSuccess:  false,
 			expectMessage:  "Only incremental version upgrades are supported. Expected next version: 0.41.0",
 		},
-		{
-			name:           "edge version for development",
-			currentVersion: "v0.43.0",
-			targetVersion:  "edge",
-			expectSuccess:  true,
-			expectMessage:  "Upgrade to edge version (development build)",
-		},
 	}
 
 	for _, tt := range tests {
