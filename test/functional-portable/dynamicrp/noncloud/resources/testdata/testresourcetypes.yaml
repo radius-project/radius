@@ -1,7 +1,6 @@
 name: Test.Resources
 types:
-  userTypeAlpha:
-    capabilities: []
+  userTypeAlpha:    
     apiVersions:
       "2023-10-01-preview":
         schema:
@@ -60,7 +59,7 @@ types:
             - application
             - environment
   postgres:
-    capabilities: []
+    
     apiVersions:
       '2025-01-01-preview':
         schema: 

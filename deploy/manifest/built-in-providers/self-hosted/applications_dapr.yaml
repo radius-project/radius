@@ -6,21 +6,17 @@ types:
   configurationStores:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   pubSubBrokers:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   secretStores:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   stateStores:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   

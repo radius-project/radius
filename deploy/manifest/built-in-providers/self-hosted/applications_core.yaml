@@ -6,28 +6,23 @@ types:
   containers:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}   
   applications:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   environments:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   gateways:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   secretStores:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   extenders:
     apiVersions:
       "2023-10-01-preview":
@@ -36,4 +31,4 @@ types:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
-    capabilities: []
+    

@@ -6,15 +6,12 @@ types:
   mongoDatabases:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   sqlDatabases:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}   
   redisCaches:
     apiVersions:
       "2023-10-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
