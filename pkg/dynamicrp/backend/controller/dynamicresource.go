@@ -81,7 +81,10 @@ func (c *DynamicResourceController) extractOperationAndResourceType(ctx context.
 func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	// Validate request body against schema if available
 	if err := c.validateRequestSchema(ctx, request); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.NewFailedResult(v1.ErrorDetails{
+			Code:    v1.CodeInvalidRequestContent,
+			Message: err.Error(),
+		}), nil
 	}
 
 	// This is where we have the opportunity to branch out to different controllers based on:
@@ -97,8 +100,6 @@ func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Reque
 
 // validateRequestSchema validates the request body against the resource type's schema
 func (c *DynamicResourceController) validateRequestSchema(ctx context.Context, request *ctrl.Request) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
 	// Extract operation context once
 	operationContext, resourceTypeDetails, err := c.extractOperationAndResourceType(ctx, request)
 	if err != nil {
@@ -117,20 +118,8 @@ func (c *DynamicResourceController) validateRequestSchema(ctx context.Context, r
 		return fmt.Errorf("failed to access and validate resource data: %w", err)
 	}
 
-	if resourceData == nil {
-		// New resource - no existing data to validate against
-		logger := ucplog.FromContextOrDiscard(ctx)
-		logger.V(ucplog.LevelDebug).Info("No existing resource data found, skipping validation for new resource", "resourceID", request.ResourceID)
-		return nil
-	}
-
-	logger.Info("Validating existing resource data against schema", "resourceID", request.ResourceID)
-
-	// Use the API version from the request
-	apiVersion := request.APIVersion
-
 	// Get the schema for the resource type
-	schemaData, err := processor.GetSchemaForResourceType(ctx, c.ucp, *resourceTypeDetails.ID, apiVersion)
+	schemaData, err := processor.GetSchemaForResourceType(ctx, c.ucp, request.ResourceID, request.APIVersion)
 	if err != nil {
 		if errors.Is(err, processor.ErrNoSchemaFound) {
 			logger := ucplog.FromContextOrDiscard(ctx)
@@ -141,8 +130,12 @@ func (c *DynamicResourceController) validateRequestSchema(ctx context.Context, r
 	}
 
 	// Validate the resource against the schema using the schema package
-	if err := schema.ValidateResourceAgainstSchema(ctx, resourceData, schemaData); err != nil {
-		return fmt.Errorf("schema validation failed: %w", err)
+	err = schema.ValidateResourceAgainstSchema(ctx, resourceData, schemaData)
+	if err != nil {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalidRequestContent,
+			Message: fmt.Sprintf("Schema validation failed: %v", err),
+		}
 	}
 
 	return nil

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
@@ -373,6 +374,10 @@ func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) erro
 // It converts the schema data to OpenAPI format, creates a minimal OpenAPI document for validation,
 // and then validates the resource data against the schema using OpenAPI's built-in validation.
 func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]any, schemaData any) error {
+	if schemaData == nil {
+		return nil // No schema to validate against
+	}
+
 	// Convert schema to OpenAPI schema format
 	openAPISchema, err := ConvertToOpenAPISchema(schemaData)
 	if err != nil {
@@ -383,12 +388,12 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 	doc := &openapi3.T{
 		OpenAPI: "3.0.0",
 		Info: &openapi3.Info{
-			Title:   "temp",
+			Title:   "validateSchema",
 			Version: "1.0.0",
 		},
 		Components: &openapi3.Components{
 			Schemas: map[string]*openapi3.SchemaRef{
-				"temp": {Value: openAPISchema},
+				"validateSchema": {Value: openAPISchema},
 			},
 		},
 		Paths: &openapi3.Paths{},
@@ -396,13 +401,31 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 
 	// Validate the document structure
 	if err := doc.Validate(ctx); err != nil {
-		return fmt.Errorf("schema validation failed: %w", err)
+		return fmt.Errorf("resource type schema validation failed: %w", err)
 	}
 
 	// Validate the data against the schema
 	schemaRef := &openapi3.SchemaRef{Value: openAPISchema}
-	if err := schemaRef.Value.VisitJSON(resourceData); err != nil {
-		return fmt.Errorf("data validation failed: %w", err)
+
+	propertiesData, ok := resourceData["properties"]
+	if !ok {
+		return fmt.Errorf("resource data missing 'properties' field")
+	}
+
+	if err := schemaRef.Value.VisitJSON(propertiesData); err != nil {
+		// Try to extract structured error information
+		if openAPIErr, ok := err.(*openapi3.SchemaError); ok {
+
+			// Clean up the JSON pointer for better readability
+			schemaErr := openAPIErr.JSONPointer()
+			fieldPath := fmt.Sprintf("%v", schemaErr)
+			fieldPath = strings.Trim(fieldPath, "[]")
+
+			message := fmt.Sprintf("Error at %q: %s", fieldPath, openAPIErr.Reason)
+			return fmt.Errorf("resource data validation failed: %s", message)
+		}
+
+		return fmt.Errorf("resource data validation failed: %w", err)
 	}
 
 	return nil
