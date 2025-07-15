@@ -131,27 +131,39 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 }
 
 // GetSchemaForResourceType fetches the schema for a resource type from UCP
-func GetSchemaForResourceType(ctx context.Context, ucp *v20231001preview.ClientFactory, resourceTypeID string, apiVersion string) (any, error) {
-	// Parse resource type to get components
-	parsed, err := resources.ParseResource(resourceTypeID)
+func GetSchemaForResourceType(ctx context.Context, ucp *v20231001preview.ClientFactory, resourceID string, apiVersion string) (any, error) {
+	// Parse resourceID to get components
+	ID, err := resources.Parse(resourceID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid resource type format: %w", err)
+		return nil, err
 	}
 
 	// Fetch the API version resource to get schema
-	providerNamespace := parsed.ProviderNamespace()
-	planeName := parsed.ScopeSegments()[0].Name
+	plane := ID.PlaneNamespace()
+	planeName := strings.Split(plane, "/")[1]
+	resourceProvider := strings.Split(ID.ProviderNamespace(), "/")[0]
+	resourceType := strings.Split(ID.Type(), "/")[1]
 
 	response, err := ucp.NewAPIVersionsClient().Get(
 		ctx,
 		planeName,
-		providerNamespace,
-		resourceTypeID,
+		resourceProvider,
+		resourceType,
 		apiVersion,
 		nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrNoSchemaFound, err)
 	}
+
+	/*plane := ID.PlaneNamespace()
+	planeName := strings.Split(plane, "/")[1]
+	resourceProvider := strings.Split(resource.Type, "/")[0]
+	resourceType := strings.Split(resource.Type, "/")[1]
+
+	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, planeName, resourceProvider, resourceType, resource.InternalMetadata.UpdatedAPIVersion, nil)
+	if err != nil {
+		return err
+	}*/
 
 	// Check if schema exists
 	if response.Properties == nil || response.Properties.Schema == nil {

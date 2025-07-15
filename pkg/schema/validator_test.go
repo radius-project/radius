@@ -2114,4 +2114,33 @@ func TestValidateResourceAgainstSchema(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "property \"age\" is missing")
 	})
+
+	t.Run("structured error message with field path", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"user": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"age": map[string]any{
+							"type": "integer",
+						},
+					},
+					"required": []any{"age"},
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"user": map[string]any{
+					"name": "john", // missing required age field
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "property \"age\" is missing")
+	})
 }
