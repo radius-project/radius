@@ -38,8 +38,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "kubernetes",
 		Short: "Upgrades Radius on a Kubernetes cluster",
 		Long: `Upgrade Radius in a Kubernetes cluster using the Radius Helm chart.
-By default 'rad upgrade kubernetes' will upgrade Radius to the version matching the rad CLI version.
-
 This command upgrades the Radius control plane in the cluster associated with the active workspace.
 To upgrade Radius in a different cluster, switch to the appropriate workspace first using 'rad workspace switch'.
 
@@ -52,8 +50,6 @@ Preflight checks include:
 - Custom configuration parameter validation
 
 Radius is installed in the 'radius-system' namespace. For more information visit https://docs.radapp.io/concepts/technical/architecture/.
-
-Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
 `,
 		Example: `# Upgrade Radius in the cluster of the active workspace
 rad upgrade kubernetes
@@ -140,7 +136,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if !state.RadiusInstalled {
-		return fmt.Errorf("Radius is not currently installed. Use 'rad install kubernetes' to install Radius first")
+		return fmt.Errorf("the Radius control plane is not currently installed. Use 'rad install kubernetes' to install Radius first")
 	}
 
 	currentVersion := state.RadiusVersion
@@ -220,9 +216,23 @@ func (r *Runner) runPreflightChecks(ctx context.Context, currentVersion, targetV
 
 // resolveTargetVersion resolves the target version for upgrade based on user input.
 func (r *Runner) resolveTargetVersion() (string, error) {
-	// If no version specified, use CLI release version
+	// If no version specified, determine based on CLI version
 	if r.Version == "" {
-		return version.Release(), nil
+		cliVersion := version.Release()
+
+		// For edge builds, default to latest stable version
+		if cliVersion == "edge" {
+			r.Output.LogInfo("Edge build detected. Upgrading to latest stable version...")
+			latestVersion, err := r.Helm.GetLatestRadiusVersion(context.Background())
+			if err != nil {
+				return "", fmt.Errorf("failed to fetch latest Radius version: %w", err)
+			}
+			r.Output.LogInfo("Resolved to version: %s", latestVersion)
+			return latestVersion, nil
+		}
+
+		// For stable releases, use CLI version
+		return cliVersion, nil
 	}
 
 	// If user specified "latest", resolve to actual latest version
@@ -238,4 +248,3 @@ func (r *Runner) resolveTargetVersion() (string, error) {
 	// Otherwise, use the specified version
 	return r.Version, nil
 }
-
