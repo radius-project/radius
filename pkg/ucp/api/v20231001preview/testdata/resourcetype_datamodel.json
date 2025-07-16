@@ -4,7 +4,7 @@
   "type": "System.Resources/resourceProviders/resourceTypes",
   "provisioningState": "Succeeded",
   "properties": {
-    "capabilities": ["SupportsRecipes"],
+    "capabilities": [],
     "defaultApiVersion": "2025-01-01"
   }
 }

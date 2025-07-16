@@ -334,7 +334,11 @@ func createInertResourceType(server *ucptesthost.TestHost) {
 	ctx := context.Background()
 
 	resourceType := v20231001preview.ResourceTypeResource{
-		Properties: &v20231001preview.ResourceTypeProperties{},
+		Properties: &v20231001preview.ResourceTypeProperties{
+			Capabilities: []*string{
+				to.Ptr(datamodel.CapabilityManualResourceProvisioning),
+			},
+		},
 	}
 
 	client := server.UCP().NewResourceTypesClient()
@@ -349,11 +353,7 @@ func createRecipeResourceType(server *ucptesthost.TestHost) {
 	ctx := context.Background()
 
 	resourceType := v20231001preview.ResourceTypeResource{
-		Properties: &v20231001preview.ResourceTypeProperties{
-			Capabilities: []*string{
-				to.Ptr(datamodel.CapabilitySupportsRecipes),
-			},
-		},
+		Properties: &v20231001preview.ResourceTypeProperties{},
 	}
 
 	client := server.UCP().NewResourceTypesClient()
