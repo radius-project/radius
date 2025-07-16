@@ -70,6 +70,9 @@ type Options struct {
 	// RegistryEnv represents environment variables needed for Terraform registry configuration.
 	// These are passed from the driver layer to be included in the Terraform execution environment.
 	RegistryEnv map[string]string
+
+	// LogLevel is the log level for Terraform execution. Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF. Default: ERROR.
+	LogLevel string
 }
 
 // NewTerraform creates a working directory for Terraform execution and new Terraform executor with Terraform logs enabled.

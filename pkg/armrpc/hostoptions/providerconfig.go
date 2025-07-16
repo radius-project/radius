@@ -98,4 +98,6 @@ type BicepOptions struct {
 type TerraformOptions struct {
 	// Path is the path to the directory mounted to the container where terraform can be installed and executed.
 	Path string `yaml:"path,omitempty"`
+	// LogLevel is the log level for Terraform execution (ERROR, DEBUG, etc.).
+	LogLevel string `yaml:"logLevel,omitempty"`
 }

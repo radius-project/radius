@@ -121,11 +121,38 @@ func validateArchiveURL(ctx context.Context, archiveURL string, tlsConfig *datam
 	return nil
 }
 
-// Install installs Terraform under /install in the provided Terraform root directory for the resource. It installs
-// the latest version of Terraform and returns the path to the installed Terraform executable. It returns an error
-// if the directory creation or Terraform installation fails.
-func Install(ctx context.Context, installer *install.Installer, tfDir string, terraformConfig datamodel.TerraformConfigProperties, secrets map[string]recipes.SecretData) (*tfexec.Terraform, error) {
+// Install installs Terraform under /install in the provided Terraform root directory for the resource.
+// It supports multiple installation methods:
+// 1. Pre-mounted binaries from containers (for air-gapped environments)
+// 2. Pre-downloaded binaries from a standard location
+// 3. Download from HashiCorp releases (with custom URLs and TLS configuration)
+// It also configures Terraform logging based on the provided logLevel.
+// Returns the path to the installed Terraform executable or an error if installation fails.
+func Install(ctx context.Context, installer *install.Installer, tfDir string, terraformConfig datamodel.TerraformConfigProperties, secrets map[string]recipes.SecretData, logLevel string) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Check if Terraform is pre-mounted from a container (e.g., via init container)
+	preMountedPath := filepath.Join(tfDir, "terraform")
+	if _, err := os.Stat(preMountedPath); err == nil {
+		logger.Info(fmt.Sprintf("Found pre-mounted Terraform binary at: %q", preMountedPath))
+
+		// Create a new instance of tfexec.Terraform with the pre-mounted binary
+		tf, err := NewTerraform(ctx, tfDir, preMountedPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Terraform instance with pre-mounted binary: %w", err)
+		}
+
+		// Verify the pre-mounted Terraform binary is working
+		_, _, err = tf.Version(ctx, false)
+		if err != nil {
+			logger.Info(fmt.Sprintf("Pre-mounted Terraform binary is not working properly: %s. Falling back to download.", err.Error()))
+		} else {
+			logger.Info("Successfully using pre-mounted Terraform binary")
+			// Configure Terraform logs for the pre-mounted binary
+			configureTerraformLogs(ctx, tf, logLevel)
+			return tf, nil
+		}
+	}
 
 	// Create Terraform installation directory
 	installDir := filepath.Join(tfDir, installSubDir)
@@ -134,6 +161,38 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 	}
 
 	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
+
+	// Check if pre-downloaded Terraform binary exists and copy it to installDir
+	preMountedBinaryPath := "/terraform/terraform"
+	markerFile := "/terraform/.terraform-source"
+
+	if _, err := os.Stat(preMountedBinaryPath); err == nil {
+		if _, err := os.Stat(markerFile); err == nil {
+			logger.Info("Copying pre-downloaded Terraform binary to install directory")
+			if data, err := os.ReadFile(preMountedBinaryPath); err == nil {
+				if err := os.WriteFile(filepath.Join(installDir, "terraform"), data, 0755); err == nil {
+					logger.Info("Successfully copied pre-downloaded Terraform binary")
+					
+					// Create a new instance of tfexec.Terraform with the copied binary
+					tf, err := NewTerraform(ctx, tfDir, filepath.Join(installDir, "terraform"))
+					if err != nil {
+						return nil, fmt.Errorf("failed to create Terraform instance with copied binary: %w", err)
+					}
+
+					// Verify the copied Terraform binary is working
+					_, _, err = tf.Version(ctx, false)
+					if err != nil {
+						logger.Info(fmt.Sprintf("Copied Terraform binary is not working properly: %s. Falling back to download.", err.Error()))
+					} else {
+						logger.Info("Successfully using copied pre-downloaded Terraform binary")
+						// Configure Terraform logs for the copied binary
+						configureTerraformLogs(ctx, tf, logLevel)
+						return tf, nil
+					}
+				}
+			}
+		}
+	}
 
 	// Validate the URLs
 	var tlsConfig *datamodel.TLSConfig
@@ -314,7 +373,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 	}
 
 	// Configure Terraform logs once Terraform installation is complete
-	configureTerraformLogs(ctx, tf)
+	configureTerraformLogs(ctx, tf, logLevel)
 
 	return tf, nil
 }

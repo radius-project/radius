@@ -15,6 +15,39 @@ To install the chart with the release name `radius`:
 helm upgrade --wait --install radius deploy/Chart -n radius-system
 ```
 
+### Configuration Options
+
+#### Terraform Binary Pre-downloading
+
+By default, Radius downloads Terraform binaries at runtime when Terraform recipes are executed. You can optionally configure Radius to pre-download Terraform binaries during pod startup to improve performance.
+
+To enable Terraform pre-downloading:
+
+```console
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.terraform.enabled=true
+```
+
+This automatically downloads the latest Terraform version. For custom sources (private repositories, proxies, etc.), specify a complete download URL:
+
+```console
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.terraform.enabled=true \
+  --set global.terraform.downloadUrl="https://my-artifactory.com/terraform_1.5.7_linux_amd64.zip"
+```
+
+#### Terraform Logging Configuration
+
+You can configure the log level for Terraform execution to control verbosity:
+
+```console
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.terraform.loglevel="DEBUG"
+```
+
+Valid log levels are: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF`. Default is `TRACE`.
+
+
 ### Verify the installation
 
 Verify that the controller is running in the radius-system namespace:
