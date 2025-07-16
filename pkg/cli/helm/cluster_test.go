@@ -33,6 +33,8 @@ import (
 )
 
 func Test_DefaultsToHelmChartVersionValue(t *testing.T) {
+	t.Parallel()
+
 	clusterOptions := PopulateDefaultClusterOptions(CLIClusterOptions{})
 
 	// Not checking other values due to potential failures on release builds
@@ -40,6 +42,8 @@ func Test_DefaultsToHelmChartVersionValue(t *testing.T) {
 }
 
 func Test_Helm_InstallRadius(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -94,6 +98,8 @@ func Test_Helm_InstallRadius(t *testing.T) {
 }
 
 func Test_Helm_UninstallRadius(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -122,6 +128,8 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 }
 
 func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -154,6 +162,8 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 }
 
 func Test_Helm_CheckRadiusInstall(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -187,6 +197,8 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 }
 
 func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -208,7 +220,8 @@ func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
 }
 
 func Test_Helm_UpgradeRadius(t *testing.T) {
-	t.Skip()
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -249,7 +262,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 
 	// Mock Helm Upgrade
 	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system", true).Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system", true).Return(contourRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system", false).Return(contourRelease, nil).Times(1)
 
 	// Mock Helm Chart Load
 	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(2)
@@ -259,6 +272,8 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 }
 
 func Test_PopulateDefaultClusterOptions(t *testing.T) {
+	t.Parallel()
+
 	custom := CLIClusterOptions{
 		Radius: ChartOptions{
 			Reinstall:    true,
