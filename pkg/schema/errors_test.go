@@ -35,7 +35,7 @@ func TestValidationError_Error(t *testing.T) {
 				Field:   "properties.name",
 				Message: "field is required",
 			},
-			expected: "SchemaError error at 'properties.name': field is required",
+			expected: "SchemaError error at \"properties.name\": field is required",
 		},
 		{
 			name: "error without field",
@@ -53,7 +53,7 @@ func TestValidationError_Error(t *testing.T) {
 				Field:   "timestamp",
 				Message: "invalid date format",
 			},
-			expected: "FormatError error at 'timestamp': invalid date format",
+			expected: "FormatError error at \"timestamp\": invalid date format",
 		},
 	}
 
@@ -67,29 +67,29 @@ func TestValidationError_Error(t *testing.T) {
 
 func TestNewSchemaError(t *testing.T) {
 	err := NewSchemaError("field.name", "test message")
-	
+
 	require.Equal(t, ErrorTypeSchema, err.Type)
 	require.Equal(t, "field.name", err.Field)
 	require.Equal(t, "test message", err.Message)
-	require.Equal(t, "SchemaError error at 'field.name': test message", err.Error())
+	require.Equal(t, "SchemaError error at \"field.name\": test message", err.Error())
 }
 
 func TestNewConstraintError(t *testing.T) {
 	err := NewConstraintError("constraint.field", "constraint violated")
-	
+
 	require.Equal(t, ErrorTypeConstraint, err.Type)
 	require.Equal(t, "constraint.field", err.Field)
 	require.Equal(t, "constraint violated", err.Message)
-	require.Equal(t, "ConstraintError error at 'constraint.field': constraint violated", err.Error())
+	require.Equal(t, "ConstraintError error at \"constraint.field\": constraint violated", err.Error())
 }
 
 func TestNewFormatError(t *testing.T) {
 	err := NewFormatError("date.field", "date", "invalid format")
-	
+
 	require.Equal(t, ErrorTypeFormat, err.Type)
 	require.Equal(t, "date.field", err.Field)
 	require.Equal(t, "invalid format", err.Message)
-	require.Equal(t, "FormatError error at 'date.field': invalid format", err.Error())
+	require.Equal(t, "FormatError error at \"date.field\": invalid format", err.Error())
 }
 
 func TestValidationErrors_Error(t *testing.T) {
@@ -110,7 +110,7 @@ func TestValidationErrors_Error(t *testing.T) {
 					NewSchemaError("field1", "error message"),
 				},
 			},
-			expected: "SchemaError error at 'field1': error message",
+			expected: "SchemaError error at \"field1\": error message",
 		},
 		{
 			name: "multiple errors",
@@ -120,7 +120,7 @@ func TestValidationErrors_Error(t *testing.T) {
 					NewConstraintError("field2", "second error"),
 				},
 			},
-			expected: "validation failed with 2 errors:\n  1. SchemaError error at 'field1': first error\n  2. ConstraintError error at 'field2': second error",
+			expected: "validation failed with 2 errors:\n  1. SchemaError error at \"field1\": first error\n  2. ConstraintError error at \"field2\": second error",
 		},
 	}
 
@@ -134,19 +134,19 @@ func TestValidationErrors_Error(t *testing.T) {
 
 func TestValidationErrors_Add(t *testing.T) {
 	errors := &ValidationErrors{}
-	
+
 	// Test adding valid error
 	err1 := NewSchemaError("field1", "message1")
 	errors.Add(err1)
 	require.Len(t, errors.Errors, 1)
 	require.Equal(t, err1, errors.Errors[0])
-	
+
 	// Test adding another error
 	err2 := NewConstraintError("field2", "message2")
 	errors.Add(err2)
 	require.Len(t, errors.Errors, 2)
 	require.Equal(t, err2, errors.Errors[1])
-	
+
 	// Test adding nil error (should be ignored)
 	errors.Add(nil)
 	require.Len(t, errors.Errors, 2)
@@ -154,14 +154,14 @@ func TestValidationErrors_Add(t *testing.T) {
 
 func TestValidationErrors_HasErrors(t *testing.T) {
 	errors := &ValidationErrors{}
-	
+
 	// Initially no errors
 	require.False(t, errors.HasErrors())
-	
+
 	// Add an error
 	errors.Add(NewSchemaError("field", "message"))
 	require.True(t, errors.HasErrors())
-	
+
 	// Test with multiple errors
 	errors.Add(NewConstraintError("field2", "message2"))
 	require.True(t, errors.HasErrors())

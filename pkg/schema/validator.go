@@ -160,12 +160,12 @@ func (v *Validator) validateSchemaWithOpenAPI(schema *openapi3.Schema) error {
 	doc := &openapi3.T{
 		OpenAPI: "3.0.0",
 		Info: &openapi3.Info{
-			Title:   "temp",
+			Title:   "validateSchema",
 			Version: "1.0.0",
 		},
 		Components: &openapi3.Components{
 			Schemas: map[string]*openapi3.SchemaRef{
-				"temp": {Value: schema},
+				"validateSchema": {Value: schema},
 			},
 		},
 		Paths: &openapi3.Paths{}, // Required field, even if empty

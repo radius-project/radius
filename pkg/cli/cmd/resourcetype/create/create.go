@@ -116,7 +116,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Format = format
 
-	r.ResourceProvider, err = manifest.ReadFile(r.ResourceProviderManifestFilePath)
+	r.ResourceProvider, err = manifest.ValidateManifest(cmd.Context(), r.ResourceProviderManifestFilePath)
 	if err != nil {
 		return err
 	}
