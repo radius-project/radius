@@ -461,7 +461,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
 						"2023-10-01": {
 							Schema: map[string]any{
-								"type": "array", // Error 1: unsupported type
+								"type": "invalidtype", // Error 1: invalid type
 							},
 						},
 					},

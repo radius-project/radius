@@ -164,7 +164,7 @@ func (r *Runner) Run(ctx context.Context) error {
 				}
 				registerErr := manifest.RegisterResourceProvider(ctx, r.UCPClientFactory, "local", *r.ResourceProvider, r.Logger)
 				if registerErr != nil {
-					return err
+					return registerErr
 				}
 			} else {
 				return err
@@ -174,7 +174,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		} else {
 			registerErr := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger)
 			if registerErr != nil {
-				return err
+				return registerErr
 			}
 		}
 	}
