@@ -15,9 +15,11 @@ types:
             connections:
               type: object
               additionalProperties:
-                source:
-                  type: string
-                  description: The resourceID of the source of the connection.
+                type: object
+                properties:
+                  source:
+                    type: string
+                    description: The resourceID of the source of the connection.
             status:
               type: object
               properties:
@@ -43,9 +45,11 @@ types:
             connections:
               type: object
               additionalProperties:
-                source:
-                  type: string
-                  description: The resourceID of the source of the connection.
+                type: object
+                properties:
+                  source:
+                    type: string
+                    description: The resourceID of the source of the connection.
             status:
               type: object
               properties:
