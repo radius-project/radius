@@ -116,7 +116,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Format = format
 
-	r.ResourceProvider, err = manifest.ReadFile(r.ResourceProviderManifestFilePath)
+	r.ResourceProvider, err = manifest.ValidateManifest(cmd.Context(), r.ResourceProviderManifestFilePath)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (r *Runner) Run(ctx context.Context) error {
 				}
 				registerErr := manifest.RegisterResourceProvider(ctx, r.UCPClientFactory, "local", *r.ResourceProvider, r.Logger)
 				if registerErr != nil {
-					return err
+					return registerErr
 				}
 			} else {
 				return err
@@ -174,7 +174,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		} else {
 			registerErr := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger)
 			if registerErr != nil {
-				return err
+				return registerErr
 			}
 		}
 	}
