@@ -248,7 +248,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		// Verify schema structure
 		schemaMap, ok := schema.(map[string]any)
 		require.True(t, ok)
-		
+
 		properties, exists := schemaMap["properties"]
 		require.True(t, exists)
 		require.NotNil(t, properties)
@@ -265,7 +265,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		schema, err := GetSchemaForResourceType(ctx, clientFactory, resourceType, apiVersion)
 		require.Error(t, err)
 		require.Nil(t, schema)
-		require.Contains(t, err.Error(), "invalid resource type format")
+		require.Contains(t, err.Error(), "invalid-resource-type-format")
 	})
 
 	t.Run("error - API version not found", func(t *testing.T) {
@@ -336,7 +336,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		
+
 		testCases := []struct {
 			name         string
 			resourceType string

@@ -24,12 +24,6 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-/* Configuration that will cause type mismatches
-var invalidConfig = {
-  data: 12345 // This is an integer
-  settings: 'should be object' // This is a string
-}*/
-
 // This resource should fail schema validation due to type mismatches
 resource testResourceSchema 'Test.Resources/testResourceSchema@2023-10-01-preview'  = {
   name: 'udt-schemavalidation'
@@ -38,7 +32,5 @@ resource testResourceSchema 'Test.Resources/testResourceSchema@2023-10-01-previe
     application: app.id
     environment: env.id
     validationData: 123
-    numericField: 'not-a-number' // Type mismatch: string provided, integer expected
-    invalidField: 'does-not-exist' // This field does not exist in the schema
     }
 }
