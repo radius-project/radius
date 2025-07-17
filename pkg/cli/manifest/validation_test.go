@@ -77,6 +77,7 @@ func TestResourceProviderNamespaceValidation(t *testing.T) {
 	v := validator.New()
 	err := v.RegisterValidation("resourceProviderNamespace", resourceProviderNamespace)
 	require.NoError(t, err)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a test struct to validate
@@ -140,9 +141,9 @@ func TestResourceTypeValidation(t *testing.T) {
 	}
 
 	v := validator.New()
-
 	err := v.RegisterValidation("resourceType", validateResourceType)
 	require.NoError(t, err)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testStruct := struct {
@@ -202,6 +203,7 @@ func TestAPIVersionValidation(t *testing.T) {
 	v := validator.New()
 	err := v.RegisterValidation("apiVersion", validateAPIVersion)
 	require.NoError(t, err)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testStruct := struct {
@@ -262,7 +264,6 @@ func TestCapabilityValidation(t *testing.T) {
 	err := v.RegisterValidation("capability", validateCapability)
 	require.NoError(t, err)
 
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testStruct := struct {
@@ -285,7 +286,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("nil provider", func(t *testing.T) {
-		err := ValidateManifestSchemas(ctx, nil)
+		err := validateManifestSchemas(ctx, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "provider is nil")
 	})
@@ -295,7 +296,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 			Name:  "Test.Provider",
 			Types: map[string]*ResourceType{},
 		}
-		err := ValidateManifestSchemas(ctx, provider)
+		err := validateManifestSchemas(ctx, provider)
 		require.NoError(t, err) // Empty types should be valid
 	})
 
@@ -322,7 +323,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-		err := ValidateManifestSchemas(ctx, provider)
+		err := validateManifestSchemas(ctx, provider)
 		require.NoError(t, err)
 	})
 
@@ -344,10 +345,10 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-		err := ValidateManifestSchemas(ctx, provider)
+		err := validateManifestSchemas(ctx, provider)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unsupported type: array")
-		require.Contains(t, err.Error(), "Test.Provider.widgets[2023-10-01]")
+		require.Contains(t, err.Error(), "Test.Provider/widgets@2023-10-01")
 	})
 
 	t.Run("provider with invalid schema - prohibited feature", func(t *testing.T) {
@@ -368,7 +369,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-		err := ValidateManifestSchemas(ctx, provider)
+		err := validateManifestSchemas(ctx, provider)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "allOf is not supported")
 	})
@@ -386,7 +387,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-		err := ValidateManifestSchemas(ctx, provider)
+		err := validateManifestSchemas(ctx, provider)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to parse schema")
 	})
@@ -404,7 +405,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-		err := ValidateManifestSchemas(ctx, provider)
+		err := validateManifestSchemas(ctx, provider)
 		require.NoError(t, err) // nil schema should be skipped
 	})
 
@@ -426,7 +427,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
-									"name": map[string]any{"type": "string"},
+									"name":        map[string]any{"type": "string"},
 									"description": map[string]any{"type": "string"},
 								},
 							},
@@ -439,7 +440,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
-									"id": map[string]any{"type": "string"},
+									"id":     map[string]any{"type": "string"},
 									"active": map[string]any{"type": "boolean"},
 								},
 							},
@@ -448,7 +449,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-		err := ValidateManifestSchemas(ctx, provider)
+		err := validateManifestSchemas(ctx, provider)
 		require.NoError(t, err)
 	})
 
@@ -460,11 +461,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
 						"2023-10-01": {
 							Schema: map[string]any{
-<<<<<<< HEAD
 								"type": "invalidtype", // Error 1: invalid type
-=======
-								"type": "array", // Error 1: unsupported type
->>>>>>> 01d7c5329 (initial draft)
 							},
 						},
 					},
@@ -482,9 +479,9 @@ func TestValidateManifestSchemas(t *testing.T) {
 				},
 			},
 		}
-		err := ValidateManifestSchemas(ctx, provider)
+		err := validateManifestSchemas(ctx, provider)
 		require.Error(t, err)
-		
+
 		// Should be a ValidationErrors with multiple errors
 		var validationErrors *schema.ValidationErrors
 		require.ErrorAs(t, err, &validationErrors)

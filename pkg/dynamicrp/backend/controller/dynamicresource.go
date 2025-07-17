@@ -55,28 +55,6 @@ func NewDynamicResourceController(opts ctrl.Options, ucp *v20231001preview.Clien
 	}, nil
 }
 
-// extractOperationAndResourceType parses the operation type and fetches resource type details.
-// Returns the parsed operation type, resource type details from UCP, and any error encountered.
-// This function is shared by both selectController and validateRequestSchema for consistency.
-func (c *DynamicResourceController) extractOperationAndResourceType(ctx context.Context, request *ctrl.Request) (v1.OperationType, *v20231001preview.ResourceTypeResource, error) {
-	parsedOperationType, ok := v1.ParseOperationType(request.OperationType)
-	if !ok {
-		return v1.OperationType{}, nil, fmt.Errorf("invalid operation type: %q", request.OperationType)
-	}
-
-	id, err := resources.ParseResource(request.ResourceID)
-	if err != nil {
-		return v1.OperationType{}, nil, fmt.Errorf("invalid resource ID: %q", request.ResourceID)
-	}
-
-	resourceTypeDetails, err := c.fetchResourceTypeDetails(ctx, id)
-	if err != nil {
-		return v1.OperationType{}, nil, fmt.Errorf("failed to fetch resource type details: %w", err)
-	}
-
-	return parsedOperationType, resourceTypeDetails, nil
-}
-
 // Run implements the async controller interface.
 func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	// Validate request body against schema if available
@@ -96,12 +74,49 @@ func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Reque
 	}
 
 	return controller.Run(ctx, request)
+
+}
+
+// selectController determines which controller to use based on the operation and resource capabilities
+func (c *DynamicResourceController) selectController(ctx context.Context, request *ctrl.Request) (ctrl.Controller, error) {
+	operationType, resourceTypeDetails, err := c.extractOperationAndResourceTypeDetails(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check for Name field
+	if resourceTypeDetails.Name == nil {
+		return nil, fmt.Errorf("resource type name is missing in response")
+	}
+
+	options := ctrl.Options{
+		DatabaseClient: c.DatabaseClient(),
+		ResourceType:   *resourceTypeDetails.Name,
+		UcpClient:      c.ucp,
+	}
+
+	switch operationType.Method {
+	case v1.OperationDelete:
+		if hasCapability(resourceTypeDetails, datamodel.CapabilityManualResourceProvisioning) {
+			return NewInertDeleteController(options)
+		}
+		return NewRecipeDeleteController(options, c.engine, c.configurationLoader)
+
+	case v1.OperationPut:
+		if hasCapability(resourceTypeDetails, datamodel.CapabilityManualResourceProvisioning) {
+			return NewInertPutController(options)
+		}
+		return NewRecipePutController(options, c.engine, c.configurationLoader)
+
+	default:
+		return nil, fmt.Errorf("unsupported operation type: %q", request.OperationType)
+	}
 }
 
 // validateRequestSchema validates the request body against the resource type's schema
 func (c *DynamicResourceController) validateRequestSchema(ctx context.Context, request *ctrl.Request) error {
 	// Extract operation context once
-	operationContext, resourceTypeDetails, err := c.extractOperationAndResourceType(ctx, request)
+	operationContext, resourceTypeDetails, err := c.extractOperationAndResourceTypeDetails(ctx, request)
 	if err != nil {
 		return err
 	}
@@ -141,37 +156,6 @@ func (c *DynamicResourceController) validateRequestSchema(ctx context.Context, r
 	return nil
 }
 
-// selectController determines which controller to use based on the operation and resource capabilities
-func (c *DynamicResourceController) selectController(ctx context.Context, request *ctrl.Request) (ctrl.Controller, error) {
-	operationType, resourceTypeDetails, err := c.extractOperationAndResourceType(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-
-	options := ctrl.Options{
-		DatabaseClient: c.DatabaseClient(),
-		ResourceType:   *resourceTypeDetails.Name,
-		UcpClient:      c.ucp,
-	}
-
-	switch operationType.Method {
-	case v1.OperationDelete:
-		if hasCapability(resourceType, datamodel.CapabilityManualResourceProvisioning) {
-			return NewInertDeleteController(options)
-		}
-		return NewRecipeDeleteController(options, c.engine, c.configurationLoader)
-
-	case v1.OperationPut:
-		if hasCapability(resourceType, datamodel.CapabilityManualResourceProvisioning) {
-			return NewInertPutController(options)
-		}
-		return NewRecipePutController(options, c.engine, c.configurationLoader)
-
-	default:
-		return nil, fmt.Errorf("unsupported operation type: %q", request.OperationType)
-	}
-}
-
 // fetchResourceTypeDetails fetches the resource type details from the UCP API for the given resource ID.
 func (c *DynamicResourceController) fetchResourceTypeDetails(ctx context.Context, id resources.ID) (*v20231001preview.ResourceTypeResource, error) {
 	providerNamespace := id.ProviderNamespace()
@@ -188,6 +172,28 @@ func (c *DynamicResourceController) fetchResourceTypeDetails(ctx context.Context
 	}
 
 	return &response.ResourceTypeResource, nil
+}
+
+// extractOperationAndResourceTypeDetails parses the operation type and fetches resource type details.
+// Returns the parsed operation type, resource type details from UCP, and any error encountered.
+// This function is shared by both selectController and validateRequestSchema for consistency.
+func (c *DynamicResourceController) extractOperationAndResourceTypeDetails(ctx context.Context, request *ctrl.Request) (v1.OperationType, *v20231001preview.ResourceTypeResource, error) {
+	parsedOperationType, ok := v1.ParseOperationType(request.OperationType)
+	if !ok {
+		return v1.OperationType{}, nil, fmt.Errorf("invalid operation type: %q", request.OperationType)
+	}
+
+	id, err := resources.ParseResource(request.ResourceID)
+	if err != nil {
+		return v1.OperationType{}, nil, fmt.Errorf("invalid resource ID: %q", request.ResourceID)
+	}
+
+	resourceTypeDetails, err := c.fetchResourceTypeDetails(ctx, id)
+	if err != nil {
+		return v1.OperationType{}, nil, fmt.Errorf("failed to fetch resource type details: %w", err)
+	}
+
+	return parsedOperationType, resourceTypeDetails, nil
 }
 
 // getResourceDataFromStorage retrieves resource data from storage and converts it to a map

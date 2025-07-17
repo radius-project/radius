@@ -138,7 +138,6 @@ func GetSchemaForResourceType(ctx context.Context, ucp *v20231001preview.ClientF
 		return nil, err
 	}
 
-	// Fetch the API version resource to get schema
 	plane := ID.PlaneNamespace()
 	planeName := strings.Split(plane, "/")[1]
 	resourceProvider := strings.Split(ID.ProviderNamespace(), "/")[0]
@@ -155,17 +154,6 @@ func GetSchemaForResourceType(ctx context.Context, ucp *v20231001preview.ClientF
 		return nil, fmt.Errorf("%w: %v", ErrNoSchemaFound, err)
 	}
 
-	/*plane := ID.PlaneNamespace()
-	planeName := strings.Split(plane, "/")[1]
-	resourceProvider := strings.Split(resource.Type, "/")[0]
-	resourceType := strings.Split(resource.Type, "/")[1]
-
-	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, planeName, resourceProvider, resourceType, resource.InternalMetadata.UpdatedAPIVersion, nil)
-	if err != nil {
-		return err
-	}*/
-
-	// Check if schema exists
 	if response.Properties == nil || response.Properties.Schema == nil {
 		return nil, ErrNoSchemaFound
 	}

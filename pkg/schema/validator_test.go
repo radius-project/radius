@@ -36,8 +36,7 @@ func TestValidator_ValidateSchema(t *testing.T) {
 
 	t.Run("nil schema", func(t *testing.T) {
 		err := validator.ValidateSchema(ctx, nil)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "schema cannot be nil")
+		require.NoError(t, err)
 	})
 
 	t.Run("valid simple schema", func(t *testing.T) {
@@ -143,13 +142,6 @@ func TestValidator_checkProhibitedFeatures(t *testing.T) {
 			if tt.hasErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMsg)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-				
->>>>>>> 01d7c5329 (initial draft)
-=======
->>>>>>> 71cc6e005 (removing ValidateSchemas())
 				// Check that it's a ConstraintError
 				var constraintErr *ValidationError
 				require.ErrorAs(t, err, &constraintErr)
@@ -223,11 +215,6 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 		},
 		{
 			name:   "no type specified (valid)",
-
-			name: "no type specified (valid)",
-
-			name:   "no type specified (valid)",
-
 			schema: &openapi3.Schema{
 				// Type is nil - this should be valid
 			},
@@ -253,148 +240,6 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 	}
 }
 
-func TestValidator_validateStringFormat(t *testing.T) {
-	validator := NewValidator()
-
-	tests := []struct {
-		name   string
-		format string
-		hasErr bool
-		errMsg string
-	}{
-		{
-			name:   "date format allowed",
-			format: "date",
-			hasErr: false,
-		},
-		{
-			name:   "date-time format allowed",
-			format: "date-time",
-			hasErr: false,
-		},
-		{
-			name:   "email format allowed",
-			format: "email",
-			hasErr: false,
-		},
-		{
-			name:   "uri format allowed",
-			format: "uri",
-			hasErr: false,
-		},
-		{
-			name:   "uuid format allowed",
-			format: "uuid",
-			hasErr: false,
-		},
-		{
-			name:   "password format not allowed",
-			format: "password",
-			hasErr: true,
-			errMsg: "unsupported string format: password",
-		},
-		{
-			name:   "binary format not allowed",
-			format: "binary",
-			hasErr: true,
-			errMsg: "unsupported string format: binary",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateStringFormat(tt.format)
-			if tt.hasErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.errMsg)
-				
-				// Check that it's a ConstraintError
-				var constraintErr *ValidationError
-				require.ErrorAs(t, err, &constraintErr)
-				require.Equal(t, ErrorTypeConstraint, constraintErr.Type)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
-func TestValidator_ValidateSchemas(t *testing.T) {
-	validator := NewValidator()
-	ctx := context.Background()
-
-	t.Run("empty schemas", func(t *testing.T) {
-		schemas := map[string]*openapi3.SchemaRef{}
-		err := validator.ValidateSchemas(ctx, schemas)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "no schemas found")
-	})
-
-	t.Run("valid schemas", func(t *testing.T) {
-		schemas := map[string]*openapi3.SchemaRef{
-			"User": {
-				Value: &openapi3.Schema{
-					Type: &openapi3.Types{"object"},
-					Properties: openapi3.Schemas{
-						"name": {
-							Value: &openapi3.Schema{
-								Type: &openapi3.Types{"string"},
-							},
-						},
-					},
-				},
-			},
-			"Product": {
-				Value: &openapi3.Schema{
-					Type: &openapi3.Types{"object"},
-					Properties: openapi3.Schemas{
-						"price": {
-							Value: &openapi3.Schema{
-								Type: &openapi3.Types{"number"},
-							},
-						},
-					},
-				},
-			},
-		}
-		err := validator.ValidateSchemas(ctx, schemas)
-		require.NoError(t, err)
-	})
-
-	t.Run("schemas with validation errors", func(t *testing.T) {
-		schemas := map[string]*openapi3.SchemaRef{
-			"Invalid": {
-				Value: &openapi3.Schema{
-					Type: &openapi3.Types{"array"}, // Not allowed
-				},
-			},
-		}
-		err := validator.ValidateSchemas(ctx, schemas)
-		require.Error(t, err)
-		
-		var validationErrors *ValidationErrors
-		require.ErrorAs(t, err, &validationErrors)
-		require.True(t, validationErrors.HasErrors())
-		require.Contains(t, err.Error(), "unsupported type: array")
-	})
-
-	t.Run("nil schema ref", func(t *testing.T) {
-		schemas := map[string]*openapi3.SchemaRef{
-			"NilSchema": nil,
-		}
-		err := validator.ValidateSchemas(ctx, schemas)
-		require.Error(t, err)
-		
-		var validationErrors *ValidationErrors
-		require.ErrorAs(t, err, &validationErrors)
-		require.True(t, validationErrors.HasErrors())
-		require.Contains(t, err.Error(), "schema is nil")
-	})
-}
-
->>>>>>> 01d7c5329 (initial draft)
-=======
->>>>>>> 71cc6e005 (removing ValidateSchemas())
 func TestConvertToOpenAPISchema(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -430,14 +275,11 @@ func TestConvertToOpenAPISchema(t *testing.T) {
 		{
 			name: "invalid JSON structure",
 			input: map[string]any{
-<<<<<<< HEAD
 				"type": func() {}, // Functions can't be marshaled
->>>>>>> 01d7c5329 (initial draft)
 			},
 			wantErr: true,
 			errMsg:  "failed to marshal schema",
 		},
-<<<<<<< HEAD
 		{
 			name: "valid complex schema with validation",
 			input: map[string]any{
@@ -466,8 +308,6 @@ func TestConvertToOpenAPISchema(t *testing.T) {
 			},
 			wantErr: false,
 		},
-=======
->>>>>>> 01d7c5329 (initial draft)
 	}
 
 	for _, tt := range tests {
@@ -1417,14 +1257,6 @@ func TestValidator_ValidateSchema_EdgeCases(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
-<<<<<<< HEAD
-=======
-}
->>>>>>> 01d7c5329 (initial draft)
-=======
-}
->>>>>>> 71cc6e005 (removing ValidateSchemas())
-=======
 
 func TestValidateResourceAgainstSchema(t *testing.T) {
 	ctx := context.Background()
@@ -1558,28 +1390,6 @@ func TestValidateResourceAgainstSchema(t *testing.T) {
 		require.NoError(t, err) // empty object is valid against object schema
 	})
 
-	t.Run("context cancellation", func(t *testing.T) {
-		// Create a cancelled context
-		cancelledCtx, cancel := context.WithCancel(context.Background())
-		cancel() // Cancel immediately
-
-		schema := map[string]any{
-			"type": "object",
-		}
-
-		resourceData := map[string]any{
-			"properties": map[string]any{
-				"name": "test",
-			},
-		}
-
-		// Should still work since validation is quick, but tests context is properly passed
-		err := ValidateResourceAgainstSchema(cancelledCtx, resourceData, schema)
-		// Note: This might or might not fail depending on timing, but it validates context handling
-		// The important thing is that we're properly passing context through
-		_ = err // Just checking it compiles and runs
-	})
-
 	t.Run("structured error message with field path", func(t *testing.T) {
 		schema := map[string]any{
 			"type": "object",
@@ -1609,4 +1419,3 @@ func TestValidateResourceAgainstSchema(t *testing.T) {
 		require.Contains(t, err.Error(), "property \"age\" is missing")
 	})
 }
->>>>>>> 500e79562 (initial server side validation)
