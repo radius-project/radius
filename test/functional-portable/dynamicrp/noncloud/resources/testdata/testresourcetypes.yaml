@@ -134,7 +134,7 @@ types:
             - application
             - environment
   testResourceSchema:
-    capabilities: []
+    capabilities: ["ManualResourceProvisioning"]
     apiVersions:
       "2023-10-01-preview":
         schema:

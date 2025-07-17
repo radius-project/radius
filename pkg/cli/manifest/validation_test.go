@@ -77,6 +77,7 @@ func TestResourceProviderNamespaceValidation(t *testing.T) {
 	v := validator.New()
 	err := v.RegisterValidation("resourceProviderNamespace", resourceProviderNamespace)
 	require.NoError(t, err)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a test struct to validate
