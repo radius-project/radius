@@ -129,15 +129,15 @@ debug-build-rad: ## Build rad CLI with debug symbols
 
 debug-start: debug-build-all ## Start all Radius components as OS processes
 	@echo "Starting Radius components as OS processes..."
-	@$(DEBUG_DEV_ROOT)/scripts/start-radius.sh
+	@build/scripts/start-radius.sh
 	@echo "🚀 All components started. Use 'make debug-status' to check health."
 
 debug-stop: ## Stop all running Radius components
 	@echo "Stopping Radius components..."
-	@if [ -f $(DEBUG_DEV_ROOT)/scripts/stop-radius.sh ]; then \
-		$(DEBUG_DEV_ROOT)/scripts/stop-radius.sh; \
+	@if [ -f build/scripts/stop-radius.sh ]; then \
+		build/scripts/stop-radius.sh; \
 	else \
-		echo "❌ Stop script not found. Run 'make debug-setup' first."; \
+		echo "❌ Stop script not found at build/scripts/stop-radius.sh"; \
 		exit 1; \
 	fi
 	@echo "Stopping deployment engine..."
