@@ -567,8 +567,6 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 		require.Contains(t, err.Error(), "additionalProperties")
 		require.Contains(t, err.Error(), "unsupported type: array")
 	})
-<<<<<<< HEAD
-<<<<<<< HEAD
 }
 
 func TestValidator_checkRefUsage(t *testing.T) {
