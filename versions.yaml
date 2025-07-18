@@ -1,4 +1,6 @@
 supported:
+  - channel: '0.49'
+    version: 'v0.49.0-rc1'
   - channel: '0.48'
     version: 'v0.48.0'
 deprecated:
