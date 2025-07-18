@@ -36,7 +36,7 @@ global:
   # This avoids downloading terraform on each recipe execution
   terraform:
     # Enable terraform binary pre-downloading during pod startup
-    enabled: false
+    enabled: true
     # URL for downloading Terraform binary
     # Leave empty to automatically fetch the latest version from HashiCorp
     # Or provide a complete direct download URL for custom sources
