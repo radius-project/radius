@@ -78,6 +78,7 @@ import (
 	workspace_switch "github.com/radius-project/radius/pkg/cli/cmd/workspace/switch"
 	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/delete"
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -227,6 +228,7 @@ func initSubCommands() {
 		ConnectionFactory: connections.DefaultFactory,
 		ConfigHolder:      ConfigHolder,
 		Deploy:            &deploy.Impl{},
+		Delete:            &delete.Impl{},
 		Logstream:         &logstream.Impl{},
 		Output: &output.OutputWriter{
 			Writer: RootCmd.OutOrStdout(),

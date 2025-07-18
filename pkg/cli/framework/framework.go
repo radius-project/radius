@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
 	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/delete"
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
@@ -42,6 +43,7 @@ type Factory interface {
 	GetConnectionFactory() connections.Factory
 	GetConfigHolder() *ConfigHolder
 	GetDeploy() deploy.Interface
+	GetDelete() delete.Interface
 	GetLogstream() logstream.Interface
 	GetOutput() output.Interface
 
@@ -65,6 +67,7 @@ type Impl struct {
 	ConnectionFactory   connections.Factory
 	ConfigHolder        *ConfigHolder
 	Deploy              deploy.Interface
+	Delete              delete.Interface
 	Logstream           logstream.Interface
 	Output              output.Interface
 	Portforward         portforward.Interface
@@ -99,6 +102,11 @@ func (i *Impl) GetConfigHolder() *ConfigHolder {
 // GetDeploy() returns the Deploy interface stored in the Impl struct.
 func (i *Impl) GetDeploy() deploy.Interface {
 	return i.Deploy
+}
+
+// GetDelete returns the Delete interface stored in the Impl struct.
+func (i *Impl) GetDelete() delete.Interface {
+	return i.Delete
 }
 
 // GetLogstream returns the logstream.Interface stored in the Impl struct.
