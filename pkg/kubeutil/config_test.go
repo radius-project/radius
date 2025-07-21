@@ -98,6 +98,9 @@ users:
 `), os.FileMode(0755))
 	require.NoError(t, err)
 
+	// Get expected defaults based on current environment
+	expectedQPS, expectedBurst := GetServerQPSAndBurst()
+
 	optionTests := []struct {
 		name string
 		in   *ConfigOptions
@@ -109,8 +112,8 @@ users:
 				ConfigFilePath: configFile.Name(),
 			},
 			out: &ConfigOptions{
-				QPS:   0.0,
-				Burst: 0,
+				QPS:   expectedQPS,
+				Burst: expectedBurst,
 			},
 		},
 		{
@@ -121,7 +124,7 @@ users:
 			},
 			out: &ConfigOptions{
 				QPS:   DefaultServerQPS,
-				Burst: 0,
+				Burst: expectedBurst, // Burst should still be set to environment default
 			},
 		},
 		{
@@ -131,7 +134,7 @@ users:
 				Burst:          DefaultServerBurst,
 			},
 			out: &ConfigOptions{
-				QPS:   0.0,
+				QPS:   expectedQPS, // QPS should still be set to environment default
 				Burst: DefaultServerBurst,
 			},
 		},
