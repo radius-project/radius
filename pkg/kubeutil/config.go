@@ -19,6 +19,7 @@ package kubeutil
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -35,6 +36,17 @@ const (
 	DefaultCLIQPS float32 = 50.0
 	// DefaultCLIBurst is the default number of queries k8sclient handles concurrently for CLI.
 	DefaultCLIBurst int = 100
+
+	// CI environment QPS and Burst values (4x higher for high-concurrency test environments)
+	// DefaultCIServerQPS is the QPS for server operations in CI environments with high test parallelism.
+	DefaultCIServerQPS float32 = 800.0
+	// DefaultCIServerBurst is the burst for server operations in CI environments with high test parallelism.
+	DefaultCIServerBurst int = 800
+
+	// DefaultCICLIQPS is the QPS for CLI operations in CI environments with high test parallelism.
+	DefaultCICLIQPS float32 = 200.0
+	// DefaultCICLIBurst is the burst for CLI operations in CI environments with high test parallelism.
+	DefaultCICLIBurst int = 400
 )
 
 // ConfigOptions is custom options to configure kubernetes client config.
@@ -87,10 +99,18 @@ func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
 
 	if options.QPS > 0.0 {
 		config.QPS = options.QPS
+	} else {
+		// Auto-detect environment and set appropriate QPS
+		qps, _ := GetServerQPSAndBurst()
+		config.QPS = qps
 	}
 
 	if options.Burst > 0 {
 		config.Burst = options.Burst
+	} else {
+		// Auto-detect environment and set appropriate Burst
+		_, burst := GetServerQPSAndBurst()
+		config.Burst = burst
 	}
 
 	return config, nil
@@ -119,11 +139,60 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 
 	if options.QPS > 0.0 {
 		merged.QPS = options.QPS
+	} else {
+		// Auto-detect environment and set appropriate QPS
+		qps, _ := GetServerQPSAndBurst()
+		merged.QPS = qps
 	}
 
 	if options.Burst > 0 {
 		merged.Burst = options.Burst
+	} else {
+		// Auto-detect environment and set appropriate Burst
+		_, burst := GetServerQPSAndBurst()
+		merged.Burst = burst
 	}
 
 	return merged, nil
+}
+
+// IsCI detects if the current environment is a CI/CD environment by checking common environment variables.
+func IsCI() bool {
+	// Check for common CI environment variables
+	ciEnvVars := []string{
+		"CI",               // Generic CI indicator
+		"GITHUB_ACTIONS",   // GitHub Actions
+		"GITLAB_CI",        // GitLab CI
+		"TRAVIS",           // Travis CI
+		"CIRCLECI",         // Circle CI
+		"JENKINS_URL",      // Jenkins
+		"BUILDKITE",        // Buildkite
+		"AZURE_PIPELINES",  // Azure Pipelines
+		"TEAMCITY_VERSION", // TeamCity
+	}
+
+	for _, envVar := range ciEnvVars {
+		if os.Getenv(envVar) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// GetServerQPSAndBurst returns the appropriate QPS and Burst values for server operations,
+// automatically using higher values in CI environments.
+func GetServerQPSAndBurst() (float32, int) {
+	if IsCI() {
+		return DefaultCIServerQPS, DefaultCIServerBurst
+	}
+	return DefaultServerQPS, DefaultServerBurst
+}
+
+// GetCLIQPSAndBurst returns the appropriate QPS and Burst values for CLI operations,
+// automatically using higher values in CI environments.
+func GetCLIQPSAndBurst() (float32, int) {
+	if IsCI() {
+		return DefaultCICLIQPS, DefaultCICLIBurst
+	}
+	return DefaultCLIQPS, DefaultCLIBurst
 }
