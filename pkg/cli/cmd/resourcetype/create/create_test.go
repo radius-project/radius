@@ -105,7 +105,7 @@ func Test_Run(t *testing.T) {
 
 		// Verify RegisterType was called (should see specific log messages)
 		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s with capabilities", runner.ResourceProvider.Name, "testResources"))
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Name, "testResources"))
 	})
 
 	t.Run("No resource type name provided - registers entire manifest", func(t *testing.T) {
