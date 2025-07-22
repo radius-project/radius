@@ -30,20 +30,27 @@ for component in dynamic-rp applications-rp controller ucp; do
 done
 
 # Kill any remaining Radius processes and dlv
-pkill -f "ucpd" 2>/dev/null || true
-pkill -f "applications-rp" 2>/dev/null || true
-pkill -f "dynamic-rp" 2>/dev/null || true
-pkill -f "controller.*--config-file.*controller.yaml" 2>/dev/null || true
-pkill -f "dlv.*exec.*ucpd" 2>/dev/null || true
-pkill -f "dlv.*exec.*applications-rp" 2>/dev/null || true
-pkill -f "dlv.*exec.*dynamic-rp" 2>/dev/null || true
-pkill -f "dlv.*exec.*controller" 2>/dev/null || true
+# Use portable process killing that works on both macOS and Linux
+if command -v pgrep >/dev/null 2>&1; then
+  # Use pgrep/pkill if available (most Linux/macOS systems)
+  pkill -f "ucpd" 2>/dev/null || true
+  pkill -f "applications-rp" 2>/dev/null || true
+  pkill -f "dynamic-rp" 2>/dev/null || true
+  pkill -f "controller.*--config-file.*controller.yaml" 2>/dev/null || true
+  pkill -f "dlv.*exec.*ucpd" 2>/dev/null || true
+  pkill -f "dlv.*exec.*applications-rp" 2>/dev/null || true
+  pkill -f "dlv.*exec.*dynamic-rp" 2>/dev/null || true
+  pkill -f "dlv.*exec.*controller" 2>/dev/null || true
+else
+  # Fallback for systems without pkill
+  ps aux | grep -E "(ucpd|applications-rp|dynamic-rp|controller.*--config-file.*controller.yaml|dlv.*exec)" | grep -v grep | awk '{print $2}' | xargs -r kill 2>/dev/null || true
+fi
 
 echo "✅ Cleanup complete"
 
 # Start UCP with dlv
 echo "Starting UCP with dlv on port 40001..."
-dlv --listen=127.0.0.1:40001 --headless=true --api-version=2 --accept-multiclient --continue exec ./bin/ucpd -- --config-file=configs/ucp.yaml > logs/ucp.log 2>&1 &
+dlv exec ./bin/ucpd --listen=127.0.0.1:40001 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file=configs/ucp.yaml > logs/ucp.log 2>&1 &
 echo $! > logs/ucp.pid
 sleep 5
 
@@ -56,19 +63,19 @@ echo "✅ UCP started successfully"
 
 # Start Controller with dlv
 echo "Starting Controller with dlv on port 40002..."
-dlv --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue exec ./bin/controller -- --config-file=configs/controller.yaml --cert-dir="" > logs/controller.log 2>&1 &
+dlv exec ./bin/controller --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file=configs/controller.yaml --cert-dir="" > logs/controller.log 2>&1 &
 echo $! > logs/controller.pid
 sleep 3
 
 # Start Applications RP with dlv
 echo "Starting Applications RP with dlv on port 40003..."
-dlv --listen=127.0.0.1:40003 --headless=true --api-version=2 --accept-multiclient --continue exec ./bin/applications-rp -- --config-file=configs/applications-rp.yaml > logs/applications-rp.log 2>&1 &
+dlv exec ./bin/applications-rp --listen=127.0.0.1:40003 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file=configs/applications-rp.yaml > logs/applications-rp.log 2>&1 &
 echo $! > logs/applications-rp.pid
 sleep 3
 
 # Start Dynamic RP with dlv
 echo "Starting Dynamic RP with dlv on port 40004..."
-dlv --listen=127.0.0.1:40004 --headless=true --api-version=2 --accept-multiclient --continue exec ./bin/dynamic-rp -- --config-file=configs/dynamic-rp.yaml > logs/dynamic-rp.log 2>&1 &
+dlv exec ./bin/dynamic-rp --listen=127.0.0.1:40004 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file=configs/dynamic-rp.yaml > logs/dynamic-rp.log 2>&1 &
 echo $! > logs/dynamic-rp.pid
 sleep 3
 
