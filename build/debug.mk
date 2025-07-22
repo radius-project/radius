@@ -86,7 +86,7 @@ debug-build: build ## Build components with debug symbols for debugging
 	@echo "Building Radius components with debug symbols..."
 	@mkdir -p $(DEBUG_DEV_ROOT)/bin
 
-debug-build-all: debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp ## Build all debug components
+debug-build-all: debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad ## Build all debug components
 	@echo "✅ All debug binaries built in $(DEBUG_DEV_ROOT)/bin/"
 
 debug-build-ucpd: ## Build UCP daemon with debug symbols

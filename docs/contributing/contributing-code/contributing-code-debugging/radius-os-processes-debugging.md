@@ -29,25 +29,34 @@ Running these as OS processes enables:
 
 The simplest way to get debugging working:
 
+### Prerequisites
+- Local Kubernetes cluster accessible via kubectl (Docker Desktop, k3d, minikube, etc.)
+- Current kubectl context must point to your **local** cluster
+- PostgreSQL database running locally
+
+### Setup Commands
 ```bash
-# One-time setup
+# One-time setup (uses your current kubectl context)
 make debug-setup
 
-# Start all components as OS processes  
+# Start all components as OS processes with debugging
 make debug-start
 
-# First time only: initialize database
+# First time only: initialize environment resources
 make debug-env-init
 
 # Check that everything is running
 make debug-status
+
+# Use the debug CLI (doesn't conflict with installed rad)
+source debug_files/env-setup.sh
+drad version  # Should show "Connected" status
 ```
 
-**Then in VS Code:**
-1. Set breakpoints in your code
-2. Open Debug panel (Ctrl+Shift+D)
-3. Select "Attach to [Component]" 
-4. Press F5 and pick the component process
+**VS Code Debugging:**
+- Debugger attach configurations are pre-configured in `.vscode/launch.json`
+- Set breakpoints in your code, then use F5 to attach to any component
+- Debug ports: UCP (40001), Controller (40002), Applications RP (40003), Dynamic RP (40004)
 5. Debug with full breakpoint support!
 
 **For code changes:**
