@@ -175,6 +175,25 @@ func Test_NewConfig(t *testing.T) {
 			},
 			expectedConfigFile: "testdata/module-emptytemplateversion.tf.json",
 		},
+		{
+			desc:       "empty map as string parameter",
+			moduleName: testRecipeName,
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+				Parameters:      envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name: testRecipeName,
+				Parameters: map[string]any{
+					"redis_cache_name": "redis-test",
+					"sku":              "P",
+					"tags":             "{}", // This should be converted to an empty map
+				},
+			},
+			expectedConfigFile: "testdata/module-emptymap.tf.json",
+		},
 	}
 
 	for _, tc := range configTests {

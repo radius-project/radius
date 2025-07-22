@@ -255,6 +255,10 @@ func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terra
 
 	// Populate envVars with the environment variables from current process
 	envVars := splitEnvVar(os.Environ())
+
+	// Remove TF_LOG to prevent conflict with terraform-exec's logging configuration
+	delete(envVars, "TF_LOG")
+
 	var envVarUpdate bool
 
 	// Handle recipe config if present

@@ -16,6 +16,8 @@ limitations under the License.
 
 package config
 
+import "strings"
+
 const (
 	// moduleSourceKey represents the key for the module source parameter.
 	moduleSourceKey = "source"
@@ -34,7 +36,50 @@ type RecipeParams map[string]any
 // SetParams sets the recipe parameters in the Terraform module configuration.
 func (tf TFModuleConfig) SetParams(params RecipeParams) {
 	for k, v := range params {
-		tf[k] = v
+		tf[k] = normalizeValue(v)
+	}
+}
+
+// normalizeValue recursively normalizes parameter values, converting string representations
+// of empty objects/arrays to their proper types
+func normalizeValue(v any) any {
+	switch val := v.(type) {
+	case string:
+		// Trim outer whitespace for comparison
+		trimmed := strings.TrimSpace(val)
+		
+		// Handle empty object representations (including with spaces inside)
+		if trimmed == "{}" || trimmed == "{ }" {
+			return map[string]any{}
+		}
+		
+		// Handle empty array representations (including with spaces inside)
+		if trimmed == "[]" || trimmed == "[ ]" {
+			return []any{}
+		}
+		
+		// Return the original string if no conversion needed
+		return v
+		
+	case map[string]any:
+		// Recursively normalize nested maps
+		result := make(map[string]any)
+		for k, v := range val {
+			result[k] = normalizeValue(v)
+		}
+		return result
+		
+	case []any:
+		// Recursively normalize arrays
+		result := make([]any, len(val))
+		for i, item := range val {
+			result[i] = normalizeValue(item)
+		}
+		return result
+		
+	default:
+		// Return unchanged for other types
+		return v
 	}
 }
 
