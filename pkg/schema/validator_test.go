@@ -3,7 +3,7 @@ Copyright 2023 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+You may obtain a copy of the License ats
 
     http://www.apache.org/licenses/LICENSE-2.0
 
@@ -59,6 +59,11 @@ func TestValidator_ValidateSchema(t *testing.T) {
 				"age": &openapi3.SchemaRef{
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"integer"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
 					},
 				},
 			},
@@ -344,6 +349,11 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 						},
 					},
 				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
 			},
 		}
 		err := validator.validateRadiusConstraints(schema)
@@ -364,6 +374,11 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 								},
 							},
 						},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
 					},
 				},
 			},
@@ -969,6 +984,11 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 				"name": {
 					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
 			},
 		}
 		err := validator.validateRadiusConstraints(schema)
@@ -1255,5 +1275,461 @@ func TestValidator_ValidateSchema_EdgeCases(t *testing.T) {
 
 		err := validator.ValidateSchema(ctx, schema)
 		require.NoError(t, err)
+	})
+}
+
+func TestValidator_checkReservedProperties(t *testing.T) {
+	validator := NewValidator()
+
+	t.Run("nil properties", func(t *testing.T) {
+		schema := &openapi3.Schema{}
+		err := validator.checkReservedProperties(schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("valid properties", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"validProp": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("status property is not allowed", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"status": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "status", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'status' is reserved and cannot be used")
+	})
+
+	t.Run("recipe property is not allowed", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"recipe": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 2) // recipe + environment
+		// Check that recipe error is present
+		errorFields := make(map[string]bool)
+		for _, ve := range validationErrors.Errors {
+			errorFields[ve.Field] = true
+		}
+		require.Contains(t, errorFields, "recipe")
+		require.Contains(t, errorFields, "environment")
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'recipe' is reserved and cannot be used")
+	})
+
+	t.Run("application property must be string", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"application": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"integer"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "application", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'application' must be a string")
+	})
+
+	t.Run("valid application property as string", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"application": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("environment property must be string", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"number"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "environment", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'environment' must be a string")
+	})
+
+	t.Run("valid environment property as string", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("connections property must be object", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"connections": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "connections", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'connections' must be a map object")
+	})
+
+	t.Run("valid connections property as map with additionalProperties", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"connections": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						AdditionalProperties: openapi3.AdditionalProperties{
+							Has: &[]bool{true}[0], // Helper to get *bool from true
+						},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("connections property without additionalProperties should fail", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"connections": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						// No additionalProperties - should fail
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "connections", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "must be a map object (use additionalProperties)")
+	})
+
+	t.Run("connections property with fixed properties should fail", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"connections": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						Properties: openapi3.Schemas{
+							"fixedProp": &openapi3.SchemaRef{
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"string"},
+								},
+							},
+						},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "connections", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "must be a map object (use additionalProperties)")
+	})
+
+	t.Run("environment property always required", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"application": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+			// environment missing from properties - should always fail, regardless of Required array
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "environment", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'environment' must be included in schema")
+	})
+
+	t.Run("environment property missing from any schema should fail", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"someOtherProp": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+			// No Required array, no environment property - should still fail
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "environment", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'environment' must be included in schema")
+	})
+
+	t.Run("environment property present", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+			Required: []string{"environment"},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("property with nil value", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"application": &openapi3.SchemaRef{
+					Value: nil,
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("property with nil type", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"application": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: nil,
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "property 'application' must be a string")
+	})
+
+	t.Run("multiple violations", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"status": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+				"application": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"integer"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		// Should now collect all violations
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 3) // status, application, environment
+
+		// Check that all errors are present
+		errorFields := make(map[string]bool)
+		for _, ve := range validationErrors.Errors {
+			errorFields[ve.Field] = true
+		}
+		require.Contains(t, errorFields, "status")
+		require.Contains(t, errorFields, "application")
+		require.Contains(t, errorFields, "environment")
+	})
+}
+
+func TestValidator_ValidateSchema_MultipleErrors(t *testing.T) {
+	validator := NewValidator()
+	ctx := context.Background()
+
+	t.Run("always collects all errors", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"status": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+				"application": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"integer"},
+					},
+				},
+				"connections": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"boolean"},
+					},
+				},
+			},
+		}
+
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.GreaterOrEqual(t, len(validationErrors.Errors), 4) // At least status, application, connections, environment
+
+		t.Logf("Collected errors:\n%s", err.Error())
+	})
+
+	t.Run("single error still returns ValidationErrors", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"status": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+
+		// Should still be a ValidationErrors collection, not a single ValidationError
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "status", validationErrors.Errors[0].Field)
 	})
 }

@@ -91,9 +91,9 @@ func (ve *ValidationErrors) Error() string {
 		return ve.Errors[0].Error()
 	default:
 		var b strings.Builder
-		fmt.Fprintf(&b, "validation failed with %d errors:\n", len(ve.Errors))
-		for i, err := range ve.Errors {
-			fmt.Fprintf(&b, "  %d. %s\n", i+1, err.Error())
+		fmt.Fprintf(&b, "validation failed with following errors:\n")
+		for _, err := range ve.Errors {
+			fmt.Fprintf(&b, "  • %s\n", err.Error())
 		}
 		return strings.TrimSuffix(b.String(), "\n")
 	}
